@@ -102,15 +102,23 @@ for i in $(seq 1 20); do
   sleep 2
 done
 
-# 2) Esperar conexión con la BD
+# 2) Esperar conexión con la BD (PDO directo — sin bootstrap de Laravel)
 info "Esperando conexión con la base de datos..."
 for i in $(seq 1 40); do
-  if docker exec "$BACKEND_CONTAINER" php artisan migrate:status > /dev/null 2>&1; then
-    DB_READY=true
-    break
-  fi
+  DB_ERR=$(docker exec "$BACKEND_CONTAINER" php -r '
+    try {
+      $h = getenv("DB_HOST") ?: "maya_infra_postgres";
+      $p = getenv("DB_PORT") ?: "5432";
+      $d = getenv("DB_DATABASE");
+      $u = getenv("DB_USERNAME");
+      $w = getenv("DB_PASSWORD");
+      new PDO("pgsql:host=$h;port=$p;dbname=$d", $u, $w, [PDO::ATTR_TIMEOUT => 3]);
+    } catch (Exception $e) {
+      fwrite(STDERR, $e->getMessage());
+      exit(1);
+    }' 2>&1 >/dev/null) && { DB_READY=true; break; }
   if (( i % 10 == 0 )); then
-    info "  … esperando BD ($((i * 3))s/120s)"
+    info "  … esperando BD ($((i * 3))s/120s): $DB_ERR"
   fi
   sleep 3
 done
