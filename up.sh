@@ -68,15 +68,19 @@ info "Levantando servicios..."
 docker compose up -d ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"}
 
 # ─── Migraciones automáticas ──────────────────────────────────────────────────
-info "Comprobando estado de la base de datos..."
-RETRIES=15
+MAX_RETRIES=30
+RETRIES=$MAX_RETRIES
+info "Esperando conexión del backend con la BD (hasta $((MAX_RETRIES * 3))s)..."
 until docker exec maya_dms_backend php artisan migrate:status > /dev/null 2>&1; do
   RETRIES=$((RETRIES - 1))
   if [[ $RETRIES -eq 0 ]]; then
     warn "Backend aún no conecta con la BD — omitiendo migraciones automáticas."
     break
   fi
-  sleep 2
+  if (( (MAX_RETRIES - RETRIES) % 5 == 0 )); then
+    info "  … esperando BD ($(( (MAX_RETRIES - RETRIES) * 3 ))s/$((MAX_RETRIES * 3))s)"
+  fi
+  sleep 3
 done
 
 if [[ $RETRIES -gt 0 ]]; then
