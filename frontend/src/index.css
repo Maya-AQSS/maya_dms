@@ -1,111 +1,124 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+/* ─── Google Fonts ──────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;700;900&display=swap');
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/* ─── Tailwind v4 ───────────────────────────────────────── */
+@import "tailwindcss";
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* ─── Dark mode basado en clase .dark ─────────────────────  */
+@custom-variant dark (&:where(.dark, .dark *));
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+/* ─── Tokens del ecosistema Maya / Odoo 19 ─────────────── */
+@theme {
+  /* Paleta Odoo — Light */
+  --color-odoo-purple:       #714B67;
+  --color-odoo-purple-d:     #5A3A52;
+  --color-odoo-purple-l:     #9B7B93;
+  --color-odoo-teal:         #017E84;
+  --color-odoo-teal-d:       #015F65;
+
+  /* Paleta Odoo — Dark */
+  --color-odoo-dark-purple:   #9B7B93;
+  --color-odoo-dark-purple-d: #714B67;
+  --color-odoo-dark-purple-l: #5A3A52;
+  --color-odoo-dark-teal:     #20A8AE;
+  --color-odoo-dark-teal-d:   #017E84;
+
+  /* Grises de interfaz — Light */
+  --color-ui-sidebar:         #2C2C2C;
+  --color-ui-sidebar-hover:   #3D3D3D;
+  --color-ui-sidebar-active:  #714B67;
+  --color-ui-topbar:          #FFFFFF;
+  --color-ui-body:            #F4F5F7;
+  --color-ui-card:            #FFFFFF;
+  --color-ui-border:          #D0D0D0;
+  --color-ui-border-l:        #E9ECEF;
+
+  /* Grises de interfaz — Dark */
+  --color-ui-dark-bg:         #1A1A1A;
+  --color-ui-dark-card:       #2C2C2C;
+  --color-ui-dark-topbar:     #212121;
+  --color-ui-dark-border:     #404040;
+  --color-ui-dark-border-l:   #343434;
+
+  /* Texto — Light */
+  --color-text-primary:       #212529;
+  --color-text-secondary:     #6C757D;
+  --color-text-muted:         #ADB5BD;
+  --color-text-inverse:       #FFFFFF;
+  --color-text-link:          #714B67;
+
+  /* Texto — Dark */
+  --color-text-dark-primary:   #E9ECEF;
+  --color-text-dark-secondary: #ADB5BD;
+  --color-text-dark-muted:     #6C757D;
+  --color-text-dark-inverse:   #212529;
+  --color-text-dark-link:      #9B7B93;
+
+  /* Estados semánticos */
+  --color-success:       #28A745;
+  --color-success-light: #D4EDDA;
+  --color-success-dark:  #155724;
+  --color-info:          #17A2B8;
+  --color-info-light:    #D1ECF1;
+  --color-info-dark:     #0C5460;
+  --color-warning:       #FFC107;
+  --color-warning-light: #FFF3CD;
+  --color-warning-dark:  #856404;
+  --color-danger:        #DC3545;
+  --color-danger-light:  #F8D7DA;
+  --color-danger-dark:   #721C24;
+
+  /* Tipografía */
+  --font-sans: 'Lato', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* Escala de fuente (base 13px — Odoo) */
+  --text-xs:   11px;
+  --text-sm:   12px;
+  --text-base: 13px;
+  --text-md:   14px;
+  --text-lg:   16px;
+  --text-xl:   18px;
+  --text-2xl:  20px;
+  --text-3xl:  24px;
+
+  /* Bordes */
+  --radius-sm:   3px;
+  --radius:      4px;
+  --radius-md:   6px;
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-full: 9999px;
+
+  /* Sombras */
+  --shadow-card:     0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+  --shadow-card-md:  0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+  --shadow-topbar:   0 1px 4px rgba(0,0,0,0.1);
+  --shadow-dropdown: 0 4px 16px rgba(0,0,0,0.12);
+  --shadow-input:    0 0 0 3px rgba(113,75,103,0.15);
+
+  /* Espaciado custom */
+  --spacing-13: 3.25rem;
+  --spacing-15: 3.75rem;
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+  --spacing-68: 17rem;
+  --spacing-72: 18rem;
+
+  /* Z-index */
+  --z-index-sidebar:  100;
+  --z-index-topbar:   200;
+  --z-index-dropdown: 300;
+  --z-index-modal:    400;
+  --z-index-toast:    500;
+}
+
+/* ─── Base global ───────────────────────────────────────── */
+@layer base {
+  html {
+    font-size: 13px;
+    -webkit-font-smoothing: antialiased;
   }
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  body {
+    @apply bg-ui-body text-text-primary font-sans;
   }
-
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
-}
-
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
-}
-p {
-  margin: 0;
-}
-
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
-
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
 }
