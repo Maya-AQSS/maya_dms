@@ -37,3 +37,4 @@ rabbitmq_data/
 Thumbs.db
 
 dist/
+backend/composer.lock
