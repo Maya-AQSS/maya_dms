@@ -67,6 +67,35 @@ EXTRA_FLAGS=()
 info "Levantando servicios..."
 docker compose up -d "${EXTRA_FLAGS[@]}"
 
+# ─── Migraciones automáticas ──────────────────────────────────────────────────
+info "Comprobando estado de la base de datos..."
+RETRIES=15
+until docker exec maya_dms_backend php artisan migrate:status > /dev/null 2>&1; do
+  RETRIES=$((RETRIES - 1))
+  if [[ $RETRIES -eq 0 ]]; then
+    warn "Backend aún no conecta con la BD — omitiendo migraciones automáticas."
+    break
+  fi
+  sleep 2
+done
+
+if [[ $RETRIES -gt 0 ]]; then
+  PENDING=$(docker exec maya_dms_backend php artisan migrate:status 2>&1 | grep -c "Pending" || true)
+  TOTAL=$(docker exec maya_dms_backend php artisan migrate:status 2>&1 | grep -cE "Ran|Pending" || true)
+
+  if [[ "$TOTAL" -eq 0 ]] || [[ "$TOTAL" -eq "$PENDING" ]]; then
+    info "Base de datos vacía — ejecutando migraciones y seeds..."
+    docker exec maya_dms_backend php artisan migrate --seed --force
+    success "Migraciones y seeds aplicados."
+  elif [[ "$PENDING" -gt 0 ]]; then
+    info "${PENDING} migraciones pendientes — ejecutando migrate..."
+    docker exec maya_dms_backend php artisan migrate --force
+    success "Migraciones aplicadas."
+  else
+    success "Base de datos al día — nada que migrar."
+  fi
+fi
+
 # ─── URLs de acceso ───────────────────────────────────────────────────────────
 echo ""
 success "Sistema listo. Accesos disponibles:"
