@@ -68,36 +68,50 @@ info "Levantando servicios..."
 docker compose up -d ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"}
 
 # ─── Migraciones automáticas ──────────────────────────────────────────────────
-MAX_RETRIES=30
-RETRIES=$MAX_RETRIES
-info "Esperando conexión del backend con la BD (hasta $((MAX_RETRIES * 3))s)..."
-until docker exec maya_dms_backend php artisan migrate:status > /dev/null 2>&1; do
-  RETRIES=$((RETRIES - 1))
-  if [[ $RETRIES -eq 0 ]]; then
-    warn "Backend aún no conecta con la BD — omitiendo migraciones automáticas."
+BACKEND_CONTAINER="maya_dms_backend"
+DB_READY=false
+
+# 1) Esperar a que el contenedor responda
+info "Esperando a que el backend esté listo..."
+for i in $(seq 1 20); do
+  if docker exec "$BACKEND_CONTAINER" php -v > /dev/null 2>&1; then
     break
   fi
-  if (( (MAX_RETRIES - RETRIES) % 5 == 0 )); then
-    info "  … esperando BD ($(( (MAX_RETRIES - RETRIES) * 3 ))s/$((MAX_RETRIES * 3))s)"
+  sleep 2
+done
+
+# 2) Esperar conexión con la BD
+info "Esperando conexión con la base de datos..."
+for i in $(seq 1 40); do
+  if docker exec "$BACKEND_CONTAINER" php artisan migrate:status > /dev/null 2>&1; then
+    DB_READY=true
+    break
+  fi
+  if (( i % 10 == 0 )); then
+    info "  … esperando BD ($((i * 3))s/120s)"
   fi
   sleep 3
 done
 
-if [[ $RETRIES -gt 0 ]]; then
-  PENDING=$(docker exec maya_dms_backend php artisan migrate:status 2>&1 | grep -c "Pending" || true)
-  TOTAL=$(docker exec maya_dms_backend php artisan migrate:status 2>&1 | grep -cE "Ran|Pending" || true)
+# 3) Ejecutar migraciones si la BD está accesible
+if [[ "$DB_READY" == true ]]; then
+  PENDING=$(docker exec "$BACKEND_CONTAINER" php artisan migrate:status 2>&1 | grep -c "Pending" || true)
+  TOTAL=$(docker exec "$BACKEND_CONTAINER" php artisan migrate:status 2>&1 | grep -cE "Ran|Pending" || true)
 
   if [[ "$TOTAL" -eq 0 ]] || [[ "$TOTAL" -eq "$PENDING" ]]; then
     info "Base de datos vacía — ejecutando migraciones y seeds..."
-    docker exec maya_dms_backend php artisan migrate --seed --force
+    docker exec "$BACKEND_CONTAINER" php artisan migrate --seed --force
     success "Migraciones y seeds aplicados."
   elif [[ "$PENDING" -gt 0 ]]; then
     info "${PENDING} migraciones pendientes — ejecutando migrate..."
-    docker exec maya_dms_backend php artisan migrate --force
+    docker exec "$BACKEND_CONTAINER" php artisan migrate --force
     success "Migraciones aplicadas."
   else
     success "Base de datos al día — nada que migrar."
   fi
+else
+  warn "No se pudo conectar con la BD — omitiendo migraciones automáticas."
+  warn "Ejecuta manualmente: docker exec $BACKEND_CONTAINER php artisan migrate --seed --force"
 fi
 
 # ─── URLs de acceso ───────────────────────────────────────────────────────────
