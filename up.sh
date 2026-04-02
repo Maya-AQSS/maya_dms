@@ -65,7 +65,7 @@ EXTRA_FLAGS=()
 
 # ─── Levantar servicios ──────────────────────────────────────────────────────
 info "Levantando servicios..."
-docker compose up -d "${EXTRA_FLAGS[@]}"
+docker compose up -d ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"}
 
 # ─── Migraciones automáticas ──────────────────────────────────────────────────
 info "Comprobando estado de la base de datos..."
