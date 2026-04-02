@@ -1,0 +1,166 @@
+services:
+
+  # ─── PostgreSQL 17 ────────────────────────────────────────────
+  postgres:
+    image: postgres:17-alpine
+    container_name: maya_dms_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-maya_dms_db}
+      POSTGRES_USER: ${DB_USERNAME:-maya_dms_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    ports:
+      - "${DB_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-maya_dms_user} -d ${DB_DATABASE:-maya_dms_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - maya_network
+
+  # ─── Redis ───────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: maya_dms_redis
+    restart: unless-stopped
+    command: redis-server --requirepass ${REDIS_PASSWORD:-secret}
+    ports:
+      - "${REDIS_PORT:-6380}:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - maya_network
+
+  # ─── RabbitMQ ────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: maya_dms_rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - maya_network
+
+  # ─── Backend (Laravel 13) ─────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: maya_dms_backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_KEY: ${APP_KEY:-}
+      APP_URL: ${APP_URL:-http://maya-dms-api.localhost}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-maya_dms_db}
+      DB_USERNAME: ${DB_USERNAME:-maya_dms_user}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      # ─── FDW (solo producción, en local las migraciones crean stubs) ─
+      FDW_USERS_HOST: ${FDW_USERS_HOST:-}
+      FDW_USERS_PORT: ${FDW_USERS_PORT:-5432}
+      FDW_USERS_DATABASE: ${FDW_USERS_DATABASE:-}
+      FDW_USERS_USERNAME: ${FDW_USERS_USERNAME:-}
+      FDW_USERS_PASSWORD: ${FDW_USERS_PASSWORD:-}
+      FDW_USERS_SCHEMA: ${FDW_USERS_SCHEMA:-public}
+      FDW_USERS_TABLE: ${FDW_USERS_TABLE:-users}
+      # ─── Redis ────────────────────────────────────────────────
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-secret}
+      REDIS_PORT: 6379
+      # ─── JWT / JWKS ───────────────────────────────────────────
+      JWKS_URL: ${JWKS_URL:-http://keycloak:8080/realms/maya/protocol/openid-connect/certs}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-maya-dms-backend}
+      JWT_ISSUER: ${JWT_ISSUER:-http://keycloak.localhost/realms/maya}
+      # ─── RabbitMQ ─────────────────────────────────────────────
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      QUEUE_CONNECTION: rabbitmq
+      # ─── Reverb ───────────────────────────────────────────────
+      REVERB_APP_ID: ${REVERB_APP_ID:-maya-dms}
+      REVERB_APP_KEY: ${REVERB_APP_KEY:-}
+      REVERB_APP_SECRET: ${REVERB_APP_SECRET:-}
+      REVERB_HOST: 0.0.0.0
+      REVERB_PORT: 8080
+      BROADCAST_CONNECTION: reverb
+      # ─── CORS ─────────────────────────────────────────────────
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://maya-dms.localhost,http://localhost:5174}
+    volumes:
+      - ./backend:/var/www/html
+      - /var/www/html/vendor
+    ports:
+      - "${BACKEND_PORT:-8001}:8000"
+      - "${REVERB_PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.maya-dms-api.rule=Host(`maya-dms-api.localhost`)"
+      - "traefik.http.routers.maya-dms-api.entrypoints=web"
+      - "traefik.http.services.maya-dms-api.loadbalancer.server.port=8000"
+    networks:
+      - maya_network
+
+  # ─── Frontend (React 19 + Vite) ──────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: maya_dms_frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://maya-dms-api.localhost/api/v1}
+      VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-http://keycloak.localhost}
+      VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-maya}
+      VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-maya-dms-dashboard}
+      VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-}
+      VITE_REVERB_HOST: ${VITE_REVERB_HOST:-maya-dms-api.localhost}
+      VITE_REVERB_PORT: ${VITE_REVERB_PORT:-8080}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "${FRONTEND_PORT:-5174}:5173"
+    depends_on:
+      - backend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.maya-dms-front.rule=Host(`maya-dms.localhost`)"
+      - "traefik.http.routers.maya-dms-front.entrypoints=web"
+      - "traefik.http.services.maya-dms-front.loadbalancer.server.port=5173"
+    networks:
+      - maya_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  rabbitmq_data:
+
+networks:
+  maya_network:
+    external: true
+    name: maya_network
