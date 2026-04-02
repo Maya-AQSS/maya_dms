@@ -48,53 +48,39 @@ Si quieres levantar la infra de forma independiente:
 
 ```bash
 cd ../infra
-cp .env.example .env   # solo la primera vez
-docker compose up -d
+./ensure-running.sh   # crea .env automáticamente si no existe
 ```
 
 ## Instalación
 
-### 1. Clonar y copiar variables de entorno
+### 1. Clonar el repositorio
 
 ```bash
 git clone <repository-url>
 cd maya-dms
-cp .env.example .env
-cp backend/.env.example backend/.env
 ```
 
-### 2. Configurar variables de entorno
-
-Editar `.env` y `backend/.env`. Valores clave:
-
-```env
-DB_HOST=postgres             # nombre del servicio Docker, NO 127.0.0.1
-REDIS_HOST=redis
-RABBITMQ_HOST=rabbitmq
-JWKS_URL=http://keycloak:8080/realms/maya/protocol/openid-connect/certs
-JWT_ISSUER=http://keycloak.localhost/realms/maya
-```
-
-Generar las claves de Reverb (WebSocket) después del primer arranque:
+### 2. Setup completo desde cero
 
 ```bash
-docker compose exec backend php artisan key:generate
-docker compose exec backend php artisan reverb:install
+./up.sh --build
 ```
 
-### 3. Setup completo desde cero
+El script `up.sh` se encarga de todo automáticamente:
 
-```bash
-make install
-```
+- Copia `.env.example` → `.env` si no existe (raíz y `backend/`)
+- Levanta la infra compartida (Traefik, Keycloak, PostgreSQL, Redis, RabbitMQ)
+- Construye y levanta los contenedores
+- Genera `APP_KEY` si es un `.env` nuevo
+- Ejecuta migraciones y seeders si la BD está vacía
 
-Este comando: construye imágenes, levanta servicios (infra incluida), genera `APP_KEY`, ejecuta migraciones, seeders e instala dependencias del frontend.
+> Solo necesitas editar `.env` o `backend/.env` si quieres cambiar valores por defecto. Los `.env.example` ya contienen los valores correctos del ecosistema.
 
 O paso a paso:
 
 ```bash
 ./up.sh --build              # construye y levanta (verifica infra automáticamente)
-make migrate                 # migraciones
+make migrate                 # migraciones (si no se ejecutaron automáticamente)
 make seed                    # datos iniciales (opcional)
 ```
 
@@ -118,7 +104,7 @@ Para parar:
 | --- | --- | --- |
 | Frontend | <http://maya-dms.localhost> | <http://localhost:5174> |
 | Backend API | <http://maya-dms-api.localhost/api/v1> | <http://localhost:8001/api/v1> |
-| Keycloak | <http://keycloak.localhost> | <http://localhost:8080> |
+| Keycloak | <http://keycloak.localhost> | <http://localhost:8180> |
 | Traefik dashboard | <http://localhost:8888> | — |
 | RabbitMQ Management | — | <http://localhost:15673> |
 | PostgreSQL | — | localhost:5433 |
@@ -196,12 +182,12 @@ make migrate
 
 ### Backend no conecta a la BD o RabbitMQ
 
-Verificar `backend/.env`:
+Verificar `backend/.env` (creado automáticamente por `up.sh`):
 
 ```env
-DB_HOST=postgres       # NO 127.0.0.1
-REDIS_HOST=redis
-RABBITMQ_HOST=rabbitmq
+DB_HOST=maya_infra_postgres   # NO 127.0.0.1
+REDIS_HOST=maya_redis
+RABBITMQ_HOST=maya_rabbitmq
 ```
 
 Luego:
