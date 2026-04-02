@@ -63,9 +63,31 @@ fi
 EXTRA_FLAGS=()
 [[ "${1:-}" == "--build" ]] && EXTRA_FLAGS+=("--build")
 
+# ─── Preparar backend/.env ────────────────────────────────────────────────────
+if [[ ! -f backend/.env ]]; then
+    warn "backend/.env no encontrado — creando desde .env.example"
+    cp backend/.env.example backend/.env
+    NEED_KEY_GENERATE=true
+else
+    NEED_KEY_GENERATE=false
+fi
+
 # ─── Levantar servicios ──────────────────────────────────────────────────────
 info "Levantando servicios..."
 docker compose up -d ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"}
+
+# ─── Generar APP_KEY si es .env nuevo ─────────────────────────────────────────
+if [[ "$NEED_KEY_GENERATE" == true ]]; then
+    info "Generando APP_KEY..."
+    for i in $(seq 1 10); do
+      if docker exec maya_dms_backend php -v > /dev/null 2>&1; then
+        docker exec maya_dms_backend php artisan key:generate --force
+        success "APP_KEY generada."
+        break
+      fi
+      sleep 2
+    done
+fi
 
 # ─── Migraciones automáticas ──────────────────────────────────────────────────
 BACKEND_CONTAINER="maya_dms_backend"
