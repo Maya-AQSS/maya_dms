@@ -45,8 +45,8 @@ services:
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
       RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-/}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "${RABBITMQ_PORT:-5673}:5672"
+      - "${RABBITMQ_MGMT_PORT:-15673}:15672"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
