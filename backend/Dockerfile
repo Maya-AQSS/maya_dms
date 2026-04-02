@@ -21,6 +21,10 @@ COPY . .
 RUN composer install --optimize-autoloader --no-dev --no-interaction 2>/dev/null || true
 RUN chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 EXPOSE 8000 8080
 
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
