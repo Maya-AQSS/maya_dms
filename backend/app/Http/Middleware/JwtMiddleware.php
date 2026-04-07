@@ -13,7 +13,7 @@ use Lcobucci\JWT\Validation\Constraint\IssuedBy;
 use Lcobucci\JWT\Validation\Constraint\PermittedFor;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Lcobucci\JWT\Validation\Constraint\StrictValidAt;
-use Lcobucci\Clock\SystemClock;
+use Psr\Clock\ClockInterface;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -84,7 +84,7 @@ class JwtMiddleware
 
         $config = Configuration::forAsymmetricSigner(
             new Sha256(),
-            \Lcobucci\JWT\Signer\Key\InMemory::plainText(''), // signing key no se usa en validación
+            \Lcobucci\JWT\Signer\Key\InMemory::plainText('verification-only'), // signing key no se usa en validación
             $publicKey,
         );
 
@@ -92,7 +92,12 @@ class JwtMiddleware
             new SignedWith(new Sha256(), $publicKey),
             new IssuedBy(config('auth.jwt_issuer')),
             new PermittedFor(config('auth.jwt_audience')),
-            new StrictValidAt(new SystemClock(new \DateTimeZone('UTC'))),
+            new StrictValidAt(new class implements ClockInterface {
+                public function now(): \DateTimeImmutable
+                {
+                    return new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                }
+            }),
         );
 
         $token = $config->parser()->parse($rawToken);
