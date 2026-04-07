@@ -22,7 +22,25 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('DROP VIEW IF EXISTS users');
+        // users puede ser VIEW (caso normal) o TABLE (artefacto de entorno previo).
+        // Se usa DO $$ para evitar abortar la transacción si el tipo no coincide.
+        DB::statement("
+            DO \$\$ BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.views
+                    WHERE table_schema = 'public' AND table_name = 'users'
+                ) THEN
+                    DROP VIEW users;
+                ELSIF EXISTS (
+                    SELECT 1 FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = 'users'
+                    AND table_type = 'BASE TABLE'
+                ) THEN
+                    DROP TABLE users;
+                END IF;
+            END \$\$
+        ");
+
         DB::statement('DROP FOREIGN TABLE IF EXISTS users_fdw');
         DB::statement('DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER users_server');
         DB::statement('DROP SERVER IF EXISTS users_server CASCADE');
@@ -31,7 +49,15 @@ return new class extends Migration
             DB::statement('DROP TABLE IF EXISTS users_source');
         }
 
-        DB::statement('DROP EXTENSION IF EXISTS postgres_fdw');
+        // La extensión puede haber sido creada por el superusuario de infra,
+        // en cuyo caso maya_dms_user no tiene permisos para eliminarla.
+        DB::statement("
+            DO \$\$ BEGIN
+                DROP EXTENSION IF EXISTS postgres_fdw;
+            EXCEPTION WHEN insufficient_privilege THEN
+                NULL; -- La extensión persiste; la gestiona el DBA de infra
+            END \$\$
+        ");
     }
 
     /**
@@ -159,8 +185,9 @@ return new class extends Migration
 
         try {
             DB::statement("REVOKE INSERT, UPDATE, DELETE ON users_fdw FROM \"{$appUser}\"");
+            DB::statement("GRANT SELECT ON users_fdw TO \"{$appUser}\"");
         } catch (\Throwable $e) {
-            logger()->warning("FDW: could not revoke write permissions for {$appUser}: {$e->getMessage()}");
+            logger()->warning("FDW: could not set permissions for {$appUser}: {$e->getMessage()}");
         }
     }
 };
