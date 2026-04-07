@@ -11,8 +11,10 @@ use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\TemplateRepository;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\HealthCheckServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\DocumentService;
+use App\Services\HealthCheckService;
 use App\Services\TemplateService;
 use Illuminate\Support\ServiceProvider;
 
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
         // Service bindings
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
+        $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
     }
 
     public function boot(): void
