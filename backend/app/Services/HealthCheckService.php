@@ -87,16 +87,15 @@ class HealthCheckService implements HealthCheckServiceInterface
     }
 
     /**
-     * Verifica si el servidor FDW está registrado en PostgreSQL.
-     * Retornará 'down' si no está registrado.
+     * Verifica la conectividad real con el servidor FDW ejecutando una consulta
+     * sobre users_fdw. Retornará 'down' si la conexión falla o la tabla no existe.
      */
     private function checkFdw(): array
     {
         try {
-            $start  = hrtime(true);
-            $result = DB::select('SELECT COUNT(*) AS cnt FROM pg_foreign_server');
-            $status = ($result[0]->cnt ?? 0) > 0 ? 'ok' : 'down';
-            return ['status' => $status, 'latency_ms' => $this->ms($start)];
+            $start = hrtime(true);
+            DB::select('SELECT 1 FROM users_fdw LIMIT 1');
+            return ['status' => 'ok', 'latency_ms' => $this->ms($start)];
         } catch (\Throwable) {
             return ['status' => 'down', 'latency_ms' => null];
         }

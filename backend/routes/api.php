@@ -25,7 +25,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/health',       [\App\Http\Controllers\Api\HealthCheckController::class, 'index']);
     Route::get('/health/live',  [\App\Http\Controllers\Api\HealthCheckController::class, 'live']);
     Route::get('/health/ready', [\App\Http\Controllers\Api\HealthCheckController::class, 'ready']);
-
+    
     // ── Rutas protegidas por JWT ───────────────────────────────
     Route::middleware('jwt')->group(function () {
 
