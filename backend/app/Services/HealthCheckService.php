@@ -25,12 +25,12 @@ class HealthCheckService implements HealthCheckServiceInterface
             'redis'     => $this->checkRedis(),
             'fdw'       => $this->checkFdw(),
             'rabbitmq'  => $this->checkTcp(
-                (string) env('RABBITMQ_HOST', 'localhost'),
-                (int) env('RABBITMQ_PORT', 5672),
+                (string) config('services.rabbitmq.host'),
+                (int) config('services.rabbitmq.port'),
             ),
             'websocket' => $this->checkTcp(
-                (string) env('REVERB_HOST', 'localhost'),
-                (int) env('REVERB_PORT', 8082),
+                (string) config('services.health.websocket_host'),
+                (int) config('services.health.websocket_port'),
             ),
         ];
 
