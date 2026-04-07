@@ -56,6 +56,11 @@ Route::prefix('v1')->group(function () {
 
         Route::get('documents/{document}/versions', [\App\Http\Controllers\Api\DocumentVersionController::class, 'index']);
 
+        // Auditoría
+        Route::get('documents/{document}/audit', [\App\Http\Controllers\Api\AuditLogController::class, 'indexForDocument']);
+        Route::get('templates/{template}/audit', [\App\Http\Controllers\Api\AuditLogController::class, 'indexForTemplate']);
+        Route::get('comments/{comment}/audit', [\App\Http\Controllers\Api\AuditLogController::class, 'indexForComment']);
+
         // Sprint 3 — Compartición
         Route::post('documents/{document}/shares', [\App\Http\Controllers\Api\DocumentShareController::class, 'store']);
         Route::delete('documents/{document}/shares/{userId}', [\App\Http\Controllers\Api\DocumentShareController::class, 'destroy']);
