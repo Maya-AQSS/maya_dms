@@ -44,4 +44,17 @@ class AuditLog extends Model
             'new_value'      => 'array',
         ];
     }
+
+    /**
+     * Mapa de valores permitidos en entity_type → clase del modelo correspondiente.
+     * Usado por Observers, Policy y validaciones para lookups dinámicos.
+     */
+    public static function allowedEntityTypes(): array
+    {
+        return [
+            'document' => Document::class,
+            'template' => Template::class,
+            'comment'  => Comment::class,
+        ];
+    }
 }
