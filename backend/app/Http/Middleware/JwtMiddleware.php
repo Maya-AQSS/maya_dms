@@ -29,7 +29,9 @@ class JwtMiddleware
 
         if ($token === null) {
             $this->logAuthFailure($request, null, 'Missing Authorization header');
-            return response()->json(['error' => 'Unauthenticated'], 401);
+            return response()->json(['error' => 'Unauthenticated'], 401, [
+                'WWW-Authenticate' => 'Bearer realm="api"',
+            ]);
         }
 
         try {
@@ -37,7 +39,9 @@ class JwtMiddleware
             $this->setCurrentUser($request, $claims);
         } catch (\Throwable $e) {
             $this->logAuthFailure($request, $token, $e->getMessage());
-            return response()->json(['error' => 'Unauthenticated'], 401);
+            return response()->json(['error' => 'Unauthenticated'], 401, [
+                'WWW-Authenticate' => 'Bearer realm="api", error="invalid_token"',
+            ]);
         }
 
         return $next($request);
