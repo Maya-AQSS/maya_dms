@@ -6,6 +6,7 @@ use App\Services\JwksService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Validation\Constraint\IssuedBy;
@@ -27,17 +28,29 @@ class JwtMiddleware
         $token = $this->extractToken($request);
 
         if ($token === null) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            $this->logAuthFailure($request, null, 'Missing Authorization header');
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
         try {
             $claims = $this->validateAndExtractClaims($token);
             $this->setCurrentUser($request, $claims);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Invalid or expired token.'], 401);
+            $this->logAuthFailure($request, $token, $e->getMessage());
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
         return $next($request);
+    }
+
+    private function logAuthFailure(Request $request, ?string $token, string $reason): void
+    {
+        Log::warning('JWT authentication failed', [
+            'ip'         => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'token_hint' => $token !== null ? substr($token, 0, 8) : null,
+            'reason'     => $reason,
+        ]);
     }
 
     private function extractToken(Request $request): ?string
