@@ -10,12 +10,14 @@ use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\TemplateRepository;
+use App\Models\JwtUser;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\DocumentService;
 use App\Services\HealthCheckService;
 use App\Services\TemplateService;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -36,6 +38,12 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        // Guard JWT stateless: resuelve el usuario desde el atributo 'jwt_user'
+        // que JwtMiddleware deposita en el request tras validar el token.
+        // Auth::user() / $request->user() lo invocan de forma diferida, sin sesión.
+        Auth::viaRequest('jwt-token', function ($request) {
+            $profile = $request->attributes->get('jwt_user');
+            return $profile ? new JwtUser($profile) : null;
+        });
     }
 }

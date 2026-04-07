@@ -112,8 +112,9 @@ class JwtMiddleware
 
     /**
      * Construye el perfil del usuario a partir de los claims JWT y lo cachea en Redis (TTL 15 min).
-     * El perfil se guarda en el atributo 'jwt_user' del request para que los controladores
-     * puedan acceder vía $request->user() o $request->attributes->get('jwt_user').
+     * El perfil se deposita en el atributo 'jwt_user' del request.
+     * Auth::user() / $request->user() lo resuelven de forma diferida a través del guard
+     * 'api' (jwt-token) registrado en AppServiceProvider::boot().
      */
     private function setCurrentUser(Request $request, array $claims): void
     {
@@ -130,6 +131,7 @@ class JwtMiddleware
                 'id'              => $claims['sub'],
                 'email'           => $claims['email'] ?? null,
                 'name'            => $claims['name'] ?? null,
+                'department'      => $claims['department'] ?? $claims['departamento'] ?? null,
                 'organization_id' => $claims['organization_id'] ?? $claims['org_id'] ?? null,
                 'roles'           => $claims['realm_access']['roles'] ?? [],
                 'scope'           => $claims['scope'] ?? '',
@@ -137,8 +139,5 @@ class JwtMiddleware
         });
 
         $request->attributes->set('jwt_user', $profile);
-
-        // Compatibilidad con Auth::user() — se resuelve via userResolver
-        auth()->setUser(new \App\Models\JwtUser($profile));
     }
 }

@@ -17,16 +17,20 @@ class JwtUser implements Authenticatable
     public readonly string $id;
     public readonly ?string $email;
     public readonly ?string $name;
+    public readonly ?string $department;
     public readonly ?string $organizationId;
     public readonly array $roles;
+    public readonly string $scope;
 
     public function __construct(array $claims)
     {
         $this->id             = $claims['id'];
         $this->email          = $claims['email'] ?? null;
         $this->name           = $claims['name'] ?? null;
+        $this->department     = $claims['department'] ?? null;
         $this->organizationId = $claims['organization_id'] ?? null;
         $this->roles          = $claims['roles'] ?? [];
+        $this->scope          = $claims['scope'] ?? '';
     }
 
     public function hasRole(string $role): bool
