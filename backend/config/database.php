@@ -143,13 +143,14 @@ return [
     'fdw' => [
 
         'users' => [
-            'host'     => env('FDW_USERS_HOST', '127.0.0.1'),
-            'port'     => env('FDW_USERS_PORT', '5432'),
-            'database' => env('FDW_USERS_DATABASE', 'main_db'),
-            'username' => env('FDW_USERS_USERNAME', 'readonly_user'),
-            'password' => env('FDW_USERS_PASSWORD', ''),
-            'schema'   => env('FDW_USERS_SCHEMA', 'public'),
-            'table'    => env('FDW_USERS_TABLE', 'users'),
+            'host'      => env('FDW_USERS_HOST', '127.0.0.1'),
+            'port'      => env('FDW_USERS_PORT', '5432'),
+            'database'  => env('FDW_USERS_DATABASE', 'main_db'),
+            'username'  => env('FDW_USERS_USERNAME', 'readonly_user'),
+            'password'  => env('FDW_USERS_PASSWORD', ''),
+            'schema'    => env('FDW_USERS_SCHEMA', 'public'),
+            'table'     => env('FDW_USERS_TABLE', 'users'),
+            'cache_ttl' => (int) env('FDW_USERS_CACHE_TTL', 900),
         ],
 
     ],

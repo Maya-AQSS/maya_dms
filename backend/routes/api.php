@@ -22,12 +22,10 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // ── Health check (sin auth) ────────────────────────────────
-    Route::get('/health', fn () => response()->json([
-        'status'  => 'ok',
-        'service' => 'maya-dms',
-        'version' => '1.0.0',
-    ]));
-
+    Route::get('/health',       [\App\Http\Controllers\Api\HealthCheckController::class, 'index']);
+    Route::get('/health/live',  [\App\Http\Controllers\Api\HealthCheckController::class, 'live']);
+    Route::get('/health/ready', [\App\Http\Controllers\Api\HealthCheckController::class, 'ready']);
+    
     // ── Rutas protegidas por JWT ───────────────────────────────
     Route::middleware('jwt')->group(function () {
 
@@ -55,6 +53,11 @@ Route::prefix('v1')->group(function () {
         Route::put('documents/{document}/blocks/{block}', [\App\Http\Controllers\Api\DocumentBlockController::class, 'update']);
 
         Route::get('documents/{document}/versions', [\App\Http\Controllers\Api\DocumentVersionController::class, 'index']);
+
+        // Auditoría
+        Route::get('documents/{document}/audit', [\App\Http\Controllers\Api\AuditLogController::class, 'indexForDocument']);
+        Route::get('templates/{template}/audit', [\App\Http\Controllers\Api\AuditLogController::class, 'indexForTemplate']);
+        Route::get('comments/{comment}/audit', [\App\Http\Controllers\Api\AuditLogController::class, 'indexForComment']);
 
         // Sprint 3 — Compartición
         Route::post('documents/{document}/shares', [\App\Http\Controllers\Api\DocumentShareController::class, 'store']);
