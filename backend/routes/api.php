@@ -22,11 +22,8 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function () {
 
     // ── Health check (sin auth) ────────────────────────────────
-    Route::get('/health', fn () => response()->json([
-        'status'  => 'ok',
-        'service' => 'maya-dms',
-        'version' => '1.0.0',
-    ]));
+    Route::get('/health', \App\Http\Controllers\Api\HealthController::class);
+
 
     // ── Rutas protegidas por JWT ───────────────────────────────
     Route::middleware('jwt')->group(function () {
