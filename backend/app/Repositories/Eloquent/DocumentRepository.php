@@ -2,11 +2,17 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
 class DocumentRepository implements DocumentRepositoryInterface
 {
+    public function findOrFail(string $id): Document
+    {
+        return Document::findOrFail($id);
+    }
+
     public function isAuthorOrReviewer(string $documentId, string $userId): bool
     {
         $isAuthor = DB::table('documents')

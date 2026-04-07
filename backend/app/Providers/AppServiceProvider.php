@@ -10,16 +10,22 @@ use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\TemplateRepository;
+use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\DocumentService;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        // Repository bindings
         $this->app->bind(AuditLogRepositoryInterface::class, AuditLogRepository::class);
         $this->app->bind(DocumentRepositoryInterface::class, DocumentRepository::class);
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         $this->app->bind(CommentRepositoryInterface::class, CommentRepository::class);
+
+        // Service bindings
+        $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
     }
 
     public function boot(): void
