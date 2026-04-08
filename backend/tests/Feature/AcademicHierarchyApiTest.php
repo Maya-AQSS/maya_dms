@@ -5,22 +5,44 @@ namespace Tests\Feature;
 use App\Models\CourseModule;
 use App\Models\Study;
 use App\Models\StudyType;
-use App\Models\JwtUser;
 use App\Services\Contracts\AcademicHierarchyServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
 
 class AcademicHierarchyApiTest extends TestCase
 {
-    use RefreshDatabase;
-
     protected function setUp(): void
     {
         parent::setUp();
 
+        // Mock 'redis' store with ArrayStore for testing environments
+        Cache::extend('redis', function () {
+            return Cache::repository(new \Illuminate\Cache\ArrayStore());
+        });
+        
         // Clear cache before each test
         Cache::store('redis')->flush();
+
+        // Create only the necessary tables in-memory to bypass Postgres UUID issues in SQLite
+        if (!Schema::hasTable('study_types')) {
+            Schema::create('study_types', function (Blueprint $table) {
+                $table->string('id')->primary();
+                $table->string('name');
+            });
+            Schema::create('studies', function (Blueprint $table) {
+                $table->string('id')->primary();
+                $table->string('study_type_id');
+                $table->string('name');
+            });
+            Schema::create('course_modules', function (Blueprint $table) {
+                $table->string('id')->primary();
+                $table->string('study_id');
+                $table->string('name');
+            });
+        }
     }
 
     /**
