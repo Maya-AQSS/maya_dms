@@ -3,20 +3,14 @@
 namespace App\Services;
 
 use App\Repositories\UserProfileRepository;
+use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Servicio que orquesta la obtención del perfil completo del usuario activo.
- *
- * Escenarios cubiertos:
- *   - Escenario 1: Delega a UserProfileRepository que siempre filtra por user_id.
- *   - Escenario 2: Caché Redis con clave user_profile:{user_id} y TTL 15 min (900 s).
- *   - Escenario 3: Fallback a datos mínimos del JWT cuando FDW falla o no responde
- *                   dentro del timeout; la operación continúa con información parcial.
- *   - Requisito de rendimiento: con caché activo responde en < 5 ms (lectura Redis).
  */
-class UserProfileService
+class UserProfileService implements UserProfileServiceInterface
 {
     private const CACHE_PREFIX = 'user_profile:';
     private const CACHE_TTL_SECONDS = 900; // 15 minutos
@@ -49,19 +43,16 @@ class UserProfileService
             $fdwUser = $this->repository->findById($userId);
 
             if ($fdwUser === null) {
-                return $this->buildFallbackProfile($jwtProfile);
+                return $this->buildFallbackProfile($userId, $jwtProfile);
             }
 
             $groups = $this->repository->findGroupsByUserId($userId);
 
             $profile = [
                 'id'              => $fdwUser['id'],
-                'email'           => $fdwUser['email'],
-                'name'            => $fdwUser['name'],
-                'first_name'      => $fdwUser['first_name'],
-                'last_name'       => $fdwUser['last_name'],
-                'username'        => $fdwUser['username'],
-                'is_active'       => $fdwUser['is_active'],
+                'email'           => $fdwUser['email'] ?? null,
+                'name'            => $fdwUser['name'] ?? null,
+                'department'      => $fdwUser['department'] ?? null,
                 'organization_id' => $jwtProfile['organization_id'] ?? null,
                 'roles'           => $jwtProfile['roles'] ?? [],
                 'groups'          => $groups,
@@ -77,7 +68,7 @@ class UserProfileService
                 'error'   => $e->getMessage(),
             ]);
 
-            return $this->buildFallbackProfile($jwtProfile);
+            return $this->buildFallbackProfile($userId, $jwtProfile);
         }
     }
 
@@ -92,16 +83,13 @@ class UserProfileService
     /**
      * Construye perfil parcial desde los datos del JWT cuando FDW no está disponible.
      */
-    private function buildFallbackProfile(array $jwtProfile): array
+    private function buildFallbackProfile(string $userId, array $jwtProfile): array
     {
         return [
-            'id'              => $jwtProfile['id'],
+            'id'              => $jwtProfile['id'] ?? $userId,
             'email'           => $jwtProfile['email'] ?? null,
             'name'            => $jwtProfile['name'] ?? null,
-            'first_name'      => null,
-            'last_name'       => null,
-            'username'        => null,
-            'is_active'       => null,
+            'department'      => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
             'organization_id' => $jwtProfile['organization_id'] ?? null,
             'roles'           => $jwtProfile['roles'] ?? [],
             'groups'          => [],

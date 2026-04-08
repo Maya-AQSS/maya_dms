@@ -14,11 +14,14 @@ use App\Models\JwtUser;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use App\Services\Contracts\UserProfileServiceInterface;
 use App\Services\DocumentService;
 use App\Services\HealthCheckService;
 use App\Services\TemplateService;
+use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
+
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -34,6 +37,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
+        $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
     }
 
     public function boot(): void
