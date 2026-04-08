@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import './index.css'
+import { DocumentsContent } from './components/DocumentsContent'
 
 // ─── Íconos inline SVG ──────────────────────────────────────
 const FolderIcon = () => (
@@ -212,7 +213,8 @@ function App() {
 
         <main className="flex-1 overflow-auto">
           {activeSection === 'dashboard' && <DashboardContent />}
-          {activeSection !== 'dashboard' && (
+          {activeSection === 'documents' && <DocumentsContent />}
+          {activeSection !== 'dashboard' && activeSection !== 'documents' && (
             <div className="p-6">
               <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-8 text-center">
                 <p className="text-text-muted dark:text-text-dark-muted text-sm">
