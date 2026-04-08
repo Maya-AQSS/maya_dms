@@ -13,12 +13,16 @@ use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
 use App\Models\JwtUser;
+use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
+use App\Services\Contracts\JwksServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
+use App\Services\AuditLogService;
 use App\Services\DocumentService;
 use App\Services\HealthCheckService;
+use App\Services\JwksService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Auth;
@@ -37,9 +41,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
 
         // Service bindings
+        $this->app->bind(AuditLogServiceInterface::class, AuditLogService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
+        $this->app->bind(JwksServiceInterface::class, JwksService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
     }
 

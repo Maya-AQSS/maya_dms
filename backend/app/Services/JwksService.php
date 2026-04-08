@@ -2,13 +2,14 @@
 
 namespace App\Services;
 
+use App\Services\Contracts\JwksServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use RuntimeException;
 
-class JwksService
+class JwksService implements JwksServiceInterface
 {
     private const CACHE_KEY = 'jwks_keys';
     private const CACHE_TTL = 3600; // 1 hora

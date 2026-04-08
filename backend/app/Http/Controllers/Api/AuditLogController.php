@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AuditLogResource;
-use App\Services\AuditLogService;
+use App\Services\Contracts\AuditLogServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
@@ -12,7 +12,7 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 class AuditLogController extends Controller
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService,
+        private readonly AuditLogServiceInterface $auditLogService,
     ) {}
 
     /**

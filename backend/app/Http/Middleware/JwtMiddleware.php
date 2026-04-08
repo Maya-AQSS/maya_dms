@@ -2,7 +2,7 @@
 
 namespace App\Http\Middleware;
 
-use App\Services\JwksService;
+use App\Services\Contracts\JwksServiceInterface;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -20,7 +20,7 @@ use Symfony\Component\HttpFoundation\Response;
 class JwtMiddleware
 {
     public function __construct(
-        private readonly JwksService $jwksService,
+        private readonly JwksServiceInterface $jwksService,
     ) {}
 
     public function handle(Request $request, Closure $next): Response
