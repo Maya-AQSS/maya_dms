@@ -2,7 +2,7 @@
 
 namespace Tests\Unit\Services;
 
-use App\Services\JwksService;
+use App\Services\Contracts\JwksServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -20,7 +20,7 @@ class JwksServiceTest extends TestCase
         config(['auth.jwks_url' => 'https://example.com/.well-known/jwks.json']);
 
         try {
-            app(JwksService::class)->getPublicKey('k1');
+            app(JwksServiceInterface::class)->getPublicKey('k1');
         } catch (\Throwable) {
             // La clave puede ser inválida; lo que validamos es el PUT al caché
         }
@@ -40,7 +40,7 @@ class JwksServiceTest extends TestCase
         Http::fake(['*' => Http::response(null, 503)]);
         config(['auth.jwks_url' => 'https://example.com/.well-known/jwks.json']);
 
-        $result = app(JwksService::class)->getPublicKey('test-kid');
+        $result = app(JwksServiceInterface::class)->getPublicKey('test-kid');
 
         $this->assertNotNull($result);
     }
@@ -57,7 +57,7 @@ class JwksServiceTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/JWKS unavailable/');
 
-        app(JwksService::class)->getPublicKey('any-kid');
+        app(JwksServiceInterface::class)->getPublicKey('any-kid');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────

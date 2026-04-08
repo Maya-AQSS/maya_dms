@@ -14,18 +14,27 @@ use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
+use App\Models\Document;
 use App\Models\JwtUser;
+use App\Models\Template;
+use App\Policies\DocumentPolicy;
+use App\Policies\TemplatePolicy;
+use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
+use App\Services\Contracts\JwksServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
+use App\Services\AuditLogService;
 use App\Services\DocumentService;
 use App\Services\HealthCheckService;
+use App\Services\JwksService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
 use App\Services\Contracts\AcademicHierarchyServiceInterface;
 use App\Services\AcademicHierarchyService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 
@@ -42,9 +51,11 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
 
         // Service bindings
+        $this->app->bind(AuditLogServiceInterface::class, AuditLogService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
+        $this->app->bind(JwksServiceInterface::class, JwksService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
         $this->app->bind(AcademicHierarchyServiceInterface::class, AcademicHierarchyService::class);
     }
@@ -58,5 +69,9 @@ class AppServiceProvider extends ServiceProvider
             $profile = $request->attributes->get('jwt_user');
             return $profile ? new JwtUser($profile) : null;
         });
+
+        // Registro de políticas
+        Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(Template::class, TemplatePolicy::class);
     }
 }

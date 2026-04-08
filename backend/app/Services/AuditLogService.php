@@ -3,13 +3,14 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Services\Contracts\AuditLogServiceInterface;
 use App\Repositories\Contracts\AuditLogRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 
-class AuditLogService
+class AuditLogService implements AuditLogServiceInterface
 {
     public function __construct(
         private readonly AuditLogRepositoryInterface  $auditLogRepository,
