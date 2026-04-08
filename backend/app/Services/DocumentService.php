@@ -16,6 +16,11 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
+    public function findOrFail(string $id): Document
+    {
+        return $this->documentRepository->findOrFail($id);
+    }
+
     /**
      * @param  array<string, mixed>  $extraAttributes
      */
