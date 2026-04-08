@@ -3,13 +3,13 @@
 namespace App\Listeners;
 
 use App\Events\TemplateStateChanged;
-use App\Services\AuditLogService;
+use App\Services\Contracts\AuditLogServiceInterface;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 
 class RecordTemplateStateChange implements ShouldHandleEventsAfterCommit
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService,
+        private readonly AuditLogServiceInterface $auditLogService,
     ) {}
 
     public function handle(TemplateStateChanged $event): void

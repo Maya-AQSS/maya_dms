@@ -3,13 +3,13 @@
 namespace App\Listeners;
 
 use App\Events\DocumentStateChanged;
-use App\Services\AuditLogService;
+use App\Services\Contracts\AuditLogServiceInterface;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 
 class RecordDocumentStateChange implements ShouldHandleEventsAfterCommit
 {
     public function __construct(
-        private readonly AuditLogService $auditLogService,
+        private readonly AuditLogServiceInterface $auditLogService,
     ) {}
 
     public function handle(DocumentStateChanged $event): void

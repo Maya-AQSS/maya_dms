@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Http\Middleware\JwtMiddleware;
 use App\Models\JwtUser;
-use App\Services\JwksService;
+use App\Services\Contracts\JwksServiceInterface;
 use DateTimeImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -26,7 +26,7 @@ class JwtValidationTest extends TestCase
             'auth.jwt_audience' => 'test-audience',
         ]);
 
-        $this->mock(JwksService::class)
+        $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($publicPem));
 
@@ -77,7 +77,7 @@ class JwtValidationTest extends TestCase
             'auth.jwt_audience' => 'test-audience',
         ]);
 
-        $this->mock(JwksService::class)
+        $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($publicPem));
 
@@ -163,7 +163,7 @@ class JwtValidationTest extends TestCase
     {
         [$privatePem, $publicPem] = $this->generateRsaKeyPair();
 
-        $this->mock(JwksService::class)
+        $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($publicPem));
 
