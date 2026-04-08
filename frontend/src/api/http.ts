@@ -21,7 +21,6 @@ export async function apiGetJson<T>(path: string): Promise<T> {
   };
 
   const token = getStoredAccessToken();
-  console.log('TOKEN:', token);
   if (token) {
     headers.Authorization = `Bearer ${token}`;
   }
