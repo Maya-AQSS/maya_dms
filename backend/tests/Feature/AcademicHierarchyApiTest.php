@@ -2,15 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\CourseModule;
-use App\Models\Study;
-use App\Models\StudyType;
-use App\Services\Contracts\AcademicHierarchyServiceInterface;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Schema;
-use Illuminate\Database\Schema\Blueprint;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use Illuminate\Support\Facades\Cache;
 use Tests\TestCase;
+use Mockery;
 
 class AcademicHierarchyApiTest extends TestCase
 {
@@ -25,45 +20,11 @@ class AcademicHierarchyApiTest extends TestCase
         
         // Clear cache before each test
         Cache::store('redis')->flush();
-
-        // Create only the necessary tables in-memory to bypass Postgres UUID issues in SQLite
-        if (!Schema::hasTable('study_types')) {
-            Schema::create('study_types', function (Blueprint $table) {
-                $table->string('id')->primary();
-                $table->string('name');
-            });
-            Schema::create('studies', function (Blueprint $table) {
-                $table->string('id')->primary();
-                $table->string('study_type_id');
-                $table->string('name');
-            });
-            Schema::create('course_modules', function (Blueprint $table) {
-                $table->string('id')->primary();
-                $table->string('study_id');
-                $table->string('name');
-            });
-        }
     }
 
-    /**
-     * Authenticate a mock user to bypass JWT middleware
-     */
     private function authenticateFakeUser()
     {
-        $payload = [
-            'sub' => '12345',
-            'preferred_username' => 'test_teacher',
-            'email' => 'teacher@example.com',
-            'given_name' => 'John',
-            'family_name' => 'Doe',
-            'roles' => ['docente']
-        ];
-        
-        $this->withHeaders([
-            'Authorization' => 'Bearer fake-token'
-        ]);
-        
-        // This simulates what JwtMiddleware does
+        $this->withHeaders(['Authorization' => 'Bearer fake-token']);
         $this->withoutMiddleware(\App\Http\Middleware\JwtMiddleware::class);
     }
 
@@ -71,15 +32,32 @@ class AcademicHierarchyApiTest extends TestCase
     {
         $this->authenticateFakeUser();
 
-        // Arrange database using Models
-        $type = StudyType::create(['id' => 'ST_ESO', 'name' => 'Educación Secundaria Obligatoria']);
-        $study = $type->studies()->create(['id' => 'S_ESO_1', 'name' => '1º ESO']);
-        $study->courseModules()->create(['id' => 'M_MAT_1', 'name' => 'Matemáticas']);
+        // Act: Mock database fully using the Repository interface
+        $mockRepo = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $mockRepo->shouldReceive('getTree')
+            ->once()
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection([
+                [
+                    'id' => 'ST_ESO',
+                    'name' => 'Educación Secundaria Obligatoria',
+                    'studies' => [
+                        [
+                            'id' => 'S_ESO_1',
+                            'name' => '1º ESO',
+                            'study_type_id' => 'ST_ESO',
+                            'course_modules' => [
+                                ['id' => 'M_MAT_1', 'name' => 'Matemáticas', 'study_id' => 'S_ESO_1']
+                            ]
+                        ]
+                    ]
+                ]
+            ]));
 
-        // Act
-        $response = $this->getJson('/api/v1/hierarchy');
+        $this->app->instance(AcademicHierarchyRepositoryInterface::class, $mockRepo);
 
         // Assert
+        $response = $this->getJson('/api/v1/hierarchy');
+
         $response->assertStatus(200);
         $response->assertJsonStructure([
             '*' => [
@@ -111,12 +89,16 @@ class AcademicHierarchyApiTest extends TestCase
     {
         $this->authenticateFakeUser();
         
-        // Assert cache starts empty
         $this->assertFalse(Cache::store('redis')->has('academic_hierarchy_tree'));
 
-        $type = StudyType::create(['id' => 'ST_FP', 'name' => 'FP']);
-        $study = $type->studies()->create(['id' => 'S_DAW', 'name' => 'DAW']);
-        $study->courseModules()->create(['id' => 'M_DWES', 'name' => 'DWES']);
+        $mockRepo = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $mockRepo->shouldReceive('getTree')
+            ->once() // Especiyfing once() guarantees it is NOT queried twice
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection([
+                ['id' => 'ST_FP', 'name' => 'FP', 'studies' => []]
+            ]));
+        
+        $this->app->instance(AcademicHierarchyRepositoryInterface::class, $mockRepo);
 
         // First call populates cache
         $this->getJson('/api/v1/hierarchy')->assertStatus(200);
