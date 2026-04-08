@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useHierarchy } from '../context/HierarchyContext';
+import { useHierarchy } from '../features/hierarchy';
 
 interface CascadeFiltersProps {
   onClear: () => void;
