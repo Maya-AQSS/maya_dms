@@ -17,12 +17,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('block_versions', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('document_block_id')->constrained('document_blocks')->cascadeOnDelete();
             $table->foreignUuid('document_id')->constrained('documents')->cascadeOnDelete();
             $table->integer('version_number');
-            $table->jsonb('content');            // snapshot del contenido BlockNote
-            $table->jsonb('diff')->nullable();   // diff respecto a la versión anterior
+            $table->json('content');            // snapshot del contenido BlockNote
+            $table->json('diff')->nullable();   // diff respecto a la versión anterior
             $table->string('edited_by');         // FK lógica → users (FDW)
             $table->timestamp('created_at');     // solo created_at, no updated_at (inmutable)
 

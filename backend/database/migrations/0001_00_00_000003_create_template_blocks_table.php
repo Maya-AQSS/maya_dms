@@ -21,11 +21,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('template_blocks', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
             $table->string('type');              // heading | paragraph | table | list | image | custom
             $table->string('title')->nullable();
-            $table->jsonb('default_content')->nullable(); // contenido BlockNote inicial
+            $table->json('default_content')->nullable(); // contenido BlockNote inicial
             $table->string('block_state')->default('editable'); // editable | modifiable | locked
             $table->boolean('mandatory')->default(false);
             $table->integer('sort_order')->default(0);
