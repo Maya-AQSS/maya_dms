@@ -6,13 +6,14 @@ use App\Services\JwksService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Validation\Constraint\IssuedBy;
 use Lcobucci\JWT\Validation\Constraint\PermittedFor;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
 use Lcobucci\JWT\Validation\Constraint\StrictValidAt;
-use Lcobucci\Clock\SystemClock;
+use Psr\Clock\ClockInterface;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -27,17 +28,29 @@ class JwtMiddleware
         $token = $this->extractToken($request);
 
         if ($token === null) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            $this->logAuthFailure($request, null, 'Missing Authorization header');
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
         try {
             $claims = $this->validateAndExtractClaims($token);
             $this->setCurrentUser($request, $claims);
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Invalid or expired token.'], 401);
+            $this->logAuthFailure($request, $token, $e->getMessage());
+            return response()->json(['error' => 'Unauthenticated'], 401);
         }
 
         return $next($request);
+    }
+
+    private function logAuthFailure(Request $request, ?string $token, string $reason): void
+    {
+        Log::warning('JWT authentication failed', [
+            'ip'         => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'token_hint' => $token !== null ? substr($token, 0, 8) : null,
+            'reason'     => $reason,
+        ]);
     }
 
     private function extractToken(Request $request): ?string
@@ -71,7 +84,7 @@ class JwtMiddleware
 
         $config = Configuration::forAsymmetricSigner(
             new Sha256(),
-            \Lcobucci\JWT\Signer\Key\InMemory::plainText(''), // signing key no se usa en validación
+            \Lcobucci\JWT\Signer\Key\InMemory::plainText('verification-only'), // signing key no se usa en validación
             $publicKey,
         );
 
@@ -79,7 +92,12 @@ class JwtMiddleware
             new SignedWith(new Sha256(), $publicKey),
             new IssuedBy(config('auth.jwt_issuer')),
             new PermittedFor(config('auth.jwt_audience')),
-            new StrictValidAt(new SystemClock(new \DateTimeZone('UTC'))),
+            new StrictValidAt(new class implements ClockInterface {
+                public function now(): \DateTimeImmutable
+                {
+                    return new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                }
+            }),
         );
 
         $token = $config->parser()->parse($rawToken);
