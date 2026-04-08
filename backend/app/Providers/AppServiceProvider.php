@@ -12,7 +12,11 @@ use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
+use App\Models\Document;
 use App\Models\JwtUser;
+use App\Models\Template;
+use App\Policies\DocumentPolicy;
+use App\Policies\TemplatePolicy;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
@@ -26,6 +30,7 @@ use App\Services\JwksService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 
 
@@ -58,5 +63,9 @@ class AppServiceProvider extends ServiceProvider
             $profile = $request->attributes->get('jwt_user');
             return $profile ? new JwtUser($profile) : null;
         });
+
+        // Registro de políticas
+        Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(Template::class, TemplatePolicy::class);
     }
 }

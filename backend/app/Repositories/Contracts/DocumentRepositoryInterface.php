@@ -3,6 +3,8 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Document;
+use App\Models\DocumentReview;
+use Illuminate\Support\Collection;
 
 interface DocumentRepositoryInterface
 {
@@ -16,4 +18,27 @@ interface DocumentRepositoryInterface
      * del documento. Usado para control de acceso al historial de auditoría.
      */
     public function isAuthorOrReviewer(string $documentId, string $userId): bool;
+
+    /**
+     * Revisiones del documento ordenadas por etapa.
+     *
+     * @return Collection<int, DocumentReview>
+     */
+    public function listReviewsForDocument(string $documentId): Collection;
+
+    /**
+     * Busca una revisión por ID si pertenece al documento indicado.
+     */
+    public function findReviewInDocument(string $reviewId, string $documentId): ?DocumentReview;
+
+    public function deleteReviewsForDocument(string $documentId): void;
+
+    /**
+     * @param  list<array{reviewer_id: string, stage: int}>  $rows
+     */
+    public function createPendingReviews(string $documentId, array $rows): void;
+
+    public function countPendingReviewsForDocument(string $documentId): int;
+
+    public function saveReview(DocumentReview $review): void;
 }
