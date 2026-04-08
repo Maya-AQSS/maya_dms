@@ -12,6 +12,8 @@ use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Models\JwtUser;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
@@ -21,6 +23,8 @@ use App\Services\DocumentService;
 use App\Services\HealthCheckService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
+use App\Services\Contracts\AcademicHierarchyServiceInterface;
+use App\Services\AcademicHierarchyService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\ServiceProvider;
 
@@ -35,12 +39,14 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         $this->app->bind(CommentRepositoryInterface::class, CommentRepository::class);
         $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
+        $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
 
         // Service bindings
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
+        $this->app->bind(AcademicHierarchyServiceInterface::class, AcademicHierarchyService::class);
     }
 
     public function boot(): void
