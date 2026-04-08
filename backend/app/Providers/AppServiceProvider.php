@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Repositories\Contracts\AuditLogRepositoryInterface;
+use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -10,6 +11,7 @@ use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\TemplateRepository;
+use App\Repositories\Eloquent\UserProfileRepository;
 use App\Models\JwtUser;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
@@ -32,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DocumentRepositoryInterface::class, DocumentRepository::class);
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         $this->app->bind(CommentRepositoryInterface::class, CommentRepository::class);
+        $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
 
         // Service bindings
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);

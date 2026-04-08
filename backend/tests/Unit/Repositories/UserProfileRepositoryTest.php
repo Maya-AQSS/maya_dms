@@ -1,6 +1,6 @@
 <?php
 
-use App\Repositories\UserProfileRepository;
+use App\Repositories\Eloquent\UserProfileRepository;
 use Illuminate\Support\Facades\DB;
 
 
@@ -12,11 +12,19 @@ use Illuminate\Support\Facades\DB;
  *   Verifica que findGroupsByUserId SIEMPRE incluya filtro de user_id en el JOIN.
  */
 
+uses(Tests\TestCase::class);
+
 beforeEach(function () {
     $this->repository = new UserProfileRepository();
 });
 
-it('findById applies SET LOCAL statement_timeout and filters by user id', function () {
+it('findById runs inside transaction with SET LOCAL statement_timeout and filters by user id', function () {
+    DB::shouldReceive('transaction')
+        ->once()
+        ->andReturnUsing(function ($callback) {
+            return $callback();
+        });
+
     DB::shouldReceive('statement')
         ->once()
         ->with('SET LOCAL statement_timeout = 500');

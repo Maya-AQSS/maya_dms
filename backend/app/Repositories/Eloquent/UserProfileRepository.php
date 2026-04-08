@@ -1,0 +1,67 @@
+<?php
+
+namespace App\Repositories\Eloquent;
+
+use App\Models\UserFdw;
+use App\Repositories\Contracts\UserProfileRepositoryInterface;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Repositorio de acceso a datos de perfil de usuario vía FDW (vista `users`).
+ */
+class UserProfileRepository implements UserProfileRepositoryInterface
+{
+    /**
+     * Timeout en milisegundos para la consulta FDW.
+     * Si se excede, se lanza QueryException y el servicio usa fallback JWT.
+     */
+    private const STATEMENT_TIMEOUT_MS = 500;
+
+    /**
+     * Obtiene el perfil del usuario desde la vista FDW.
+     * SIEMPRE filtra por user_id — nunca ejecuta SELECT sin filtro.
+     *
+     * @throws \Illuminate\Database\QueryException Si FDW no responde en STATEMENT_TIMEOUT_MS.
+     */
+    public function findById(string $userId): ?array
+    {
+        return DB::transaction(function () use ($userId) {
+            DB::statement(sprintf('SET LOCAL statement_timeout = %d', self::STATEMENT_TIMEOUT_MS));
+
+            $user = UserFdw::query()
+                ->where('id', '=', $userId)
+                ->first();
+
+            if ($user === null) {
+                return null;
+            }
+
+            return [
+                'id'         => $user->id,
+                'email'      => $user->email,
+                'name'       => $user->name,
+                'department' => $user->department,
+            ];
+        });
+    }
+
+    /**
+     * Obtiene los grupos académicos a los que pertenece el usuario.
+     * SIEMPRE filtra por user_id — nunca ejecuta JOIN sin filtro del usuario activo.
+     */
+    public function findGroupsByUserId(string $userId): array
+    {
+        return DB::table('group_members')
+            ->join('groups', 'groups.id', '=', 'group_members.group_id')
+            ->where('group_members.user_id', '=', $userId)
+            ->whereNull('groups.deleted_at')
+            ->select([
+                'groups.id',
+                'groups.name',
+                'groups.description',
+                'group_members.role',
+            ])
+            ->get()
+            ->toArray();
+    }
+}

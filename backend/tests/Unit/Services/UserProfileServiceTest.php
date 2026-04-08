@@ -1,6 +1,6 @@
 <?php
 
-use App\Repositories\UserProfileRepository;
+use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Log;
 uses(Tests\TestCase::class);
 
 beforeEach(function () {
-    $this->repository = Mockery::mock(UserProfileRepository::class);
+    $this->repository = Mockery::mock(UserProfileRepositoryInterface::class);
     $this->service = new UserProfileService($this->repository);
 
     $this->jwtProfile = [
@@ -25,10 +25,7 @@ beforeEach(function () {
         'id'         => 'user-uuid-123',
         'email'      => 'test@example.com',
         'name'       => 'Test User',
-        'first_name' => 'Test',
-        'last_name'  => 'User',
-        'username'   => 'tuser',
-        'is_active'  => true,
+        'department' => 'Ingeniería',
     ];
 
     $this->groups = [
@@ -67,7 +64,7 @@ it('queries FDW filtered by user id from JWT', function () {
     expect($profile['id'])->toBe('user-uuid-123')
         ->and($profile['source'])->toBe('fdw')
         ->and($profile['email'])->toBe('test@example.com')
-        ->and($profile['first_name'])->toBe('Test')
+        ->and($profile['department'])->toBe('Ingeniería')
         ->and($profile['groups'])->toHaveCount(1);
 });
 
@@ -78,10 +75,7 @@ it('returns cached profile without querying FDW', function () {
         'id'              => 'user-uuid-123',
         'email'           => 'test@example.com',
         'name'            => 'Test User',
-        'first_name'      => 'Test',
-        'last_name'       => 'User',
-        'username'        => 'tuser',
-        'is_active'       => true,
+        'department'      => 'Ingeniería',
         'organization_id' => 'org-1',
         'roles'           => ['docente'],
         'groups'          => [],
@@ -159,7 +153,7 @@ it('falls back to JWT data when FDW throws exception', function () {
         ->and($profile['email'])->toBe('test@example.com')
         ->and($profile['name'])->toBe('Test User')
         ->and($profile['roles'])->toBe(['docente'])
-        ->and($profile['first_name'])->toBeNull()
+        ->and($profile['department'])->toBeNull()
         ->and($profile['groups'])->toBe([]);
 });
 
@@ -212,10 +206,11 @@ it('merges FDW data, JWT claims, and groups into complete profile', function () 
 
     expect($profile)
         ->toHaveKeys([
-            'id', 'email', 'name', 'first_name', 'last_name',
-            'username', 'is_active', 'organization_id', 'roles', 'groups', 'source',
+            'id', 'email', 'name', 'department',
+            'organization_id', 'roles', 'groups', 'source',
         ])
         ->and($profile['organization_id'])->toBe('org-1')
         ->and($profile['roles'])->toBe(['docente'])
+        ->and($profile['department'])->toBe('Ingeniería')
         ->and($profile['groups'])->toHaveCount(1);
 });

@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Repositories\UserProfileRepository;
+use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -16,7 +16,7 @@ class UserProfileService implements UserProfileServiceInterface
     private const CACHE_TTL_SECONDS = 900; // 15 minutos
 
     public function __construct(
-        private readonly UserProfileRepository $repository,
+        private readonly UserProfileRepositoryInterface $repository,
     ) {}
 
     /**
