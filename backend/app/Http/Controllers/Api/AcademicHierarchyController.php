@@ -8,15 +8,15 @@ use Illuminate\Http\JsonResponse;
 
 class AcademicHierarchyController extends Controller
 {
-    private AcademicHierarchyServiceInterface $hierarchyService;
+    public function __construct(
+        private readonly AcademicHierarchyServiceInterface $hierarchyService,
+    ) {}
 
-    public function __construct(AcademicHierarchyServiceInterface $hierarchyService)
-    {
-        $this->hierarchyService = $hierarchyService;
-    }
-
+    /**
+     * Árbol de jerarquía académica, con caché Redis.
+     */
     public function index(): JsonResponse
     {
-        return response()->json($this->hierarchyService->getCachedTree());
+        return response()->json(['data' => $this->hierarchyService->getCachedTree()]);
     }
 }

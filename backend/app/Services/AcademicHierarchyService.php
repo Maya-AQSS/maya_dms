@@ -8,13 +8,13 @@ use Illuminate\Support\Facades\Cache;
 
 class AcademicHierarchyService implements AcademicHierarchyServiceInterface
 {
-    private AcademicHierarchyRepositoryInterface $hierarchyRepository;
+    public function __construct(
+        private readonly AcademicHierarchyRepositoryInterface $hierarchyRepository,
+    ) {}
 
-    public function __construct(AcademicHierarchyRepositoryInterface $hierarchyRepository)
-    {
-        $this->hierarchyRepository = $hierarchyRepository;
-    }
-
+    /**
+     * Árbol de jerarquía académica, con caché Redis.
+     */
     public function getCachedTree(): array
     {
         return Cache::store('redis')->remember('academic_hierarchy_tree', 3600, function () {

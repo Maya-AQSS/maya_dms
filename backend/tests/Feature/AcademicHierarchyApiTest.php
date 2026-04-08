@@ -60,29 +60,31 @@ class AcademicHierarchyApiTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertJsonStructure([
-            '*' => [
-                'id',
-                'name',
-                'studies' => [
-                    '*' => [
-                        'id',
-                        'name',
-                        'study_type_id',
-                        'course_modules' => [
-                            '*' => [
-                                'id',
-                                'name',
-                                'study_id'
-                            ]
-                        ]
-                    ]
-                ]
-            ]
+            'data' => [
+                '*' => [
+                    'id',
+                    'name',
+                    'studies' => [
+                        '*' => [
+                            'id',
+                            'name',
+                            'study_type_id',
+                            'course_modules' => [
+                                '*' => [
+                                    'id',
+                                    'name',
+                                    'study_id',
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
         ]);
 
-        $response->assertJsonPath('0.id', 'ST_ESO');
-        $response->assertJsonPath('0.studies.0.id', 'S_ESO_1');
-        $response->assertJsonPath('0.studies.0.course_modules.0.id', 'M_MAT_1');
+        $response->assertJsonPath('data.0.id', 'ST_ESO');
+        $response->assertJsonPath('data.0.studies.0.id', 'S_ESO_1');
+        $response->assertJsonPath('data.0.studies.0.course_modules.0.id', 'M_MAT_1');
     }
 
     public function test_hierarchy_results_are_cached_in_redis()
