@@ -1,40 +1,62 @@
-# Environment
+# =============================================================================
+# ENVIRONMENT
+# =============================================================================
 .env
 .env.local
 .env.*.local
 !.env.example
 
-# Backend (Laravel)
-backend/vendor/
+# =============================================================================
+# BACKEND (Laravel)
+# =============================================================================
 backend/.env
+backend/vendor/
+backend/composer.lock
+backend/bootstrap/cache/*.php
 backend/storage/logs/*.log
 backend/storage/framework/cache/
 backend/storage/framework/sessions/
 backend/storage/framework/views/
-backend/bootstrap/cache/*.php
 backend/.phpunit.result.cache
 
-# Frontend (Vite)
-frontend/node_modules/
-frontend/dist/
+# =============================================================================
+# FRONTEND (Vite)
+# =============================================================================
 frontend/.env
 frontend/.env.local
 frontend/.env.*.local
+frontend/node_modules/
+frontend/dist/
+dist/
 
-# Docker volumes
+# =============================================================================
+# DOCKER VOLUMES
+# =============================================================================
 postgres_data/
 redis_data/
 rabbitmq_data/
 
-# IDE
+# =============================================================================
+# AGENTS & IDE
+# =============================================================================
+.claude/
 .idea/
 .vscode/
 *.swp
 *.swo
 
+# =============================================================================
 # OS
-.DS_Store
-Thumbs.db
+# =============================================================================
 
-dist/
-backend/composer.lock
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+._*
+Icon?
+
+# Windows
+Thumbs.db
