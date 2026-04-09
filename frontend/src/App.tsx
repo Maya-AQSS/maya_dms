@@ -2,6 +2,7 @@ import { useState } from 'react'
 import './index.css'
 import { DocumentsContent } from './components/DocumentsContent'
 import { GroupsContent } from './features/groups'
+import { TemplatesContent } from './features/templates'
 
 // ─── Íconos inline SVG ──────────────────────────────────────
 const FolderIcon = () => (
@@ -29,6 +30,11 @@ const UsersIcon = () => (
     <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
   </svg>
 )
+const TemplateIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+    <path d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm0 2h16v10H4V5zm2 2h8v2H6V7zm0 4h12v2H6v-2zm0 4h8v2H6v-2z" />
+  </svg>
+)
 const MoonIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
     <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
@@ -50,6 +56,7 @@ type NavItem = {
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: HomeIcon },
   { id: 'documents', label: 'Documentos', icon: FolderIcon },
+  { id: 'templates', label: 'Plantillas', icon: TemplateIcon },
   { id: 'groups', label: 'Grupos', icon: UsersIcon },
   { id: 'upload', label: 'Subir archivo', icon: UploadIcon },
   { id: 'search', label: 'Búsqueda', icon: SearchIcon },
@@ -221,8 +228,9 @@ function App() {
         <main className="flex-1 overflow-auto">
           {activeSection === 'dashboard' && <DashboardContent />}
           {activeSection === 'documents' && <DocumentsContent />}
+          {activeSection === 'templates' && <TemplatesContent />}
           {activeSection === 'groups' && <GroupsContent />}
-          {activeSection !== 'dashboard' && activeSection !== 'documents' && activeSection !== 'groups' && (
+          {activeSection !== 'dashboard' && activeSection !== 'documents' && activeSection !== 'templates' && activeSection !== 'groups' && (
             <div className="p-6">
               <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-8 text-center">
                 <p className="text-text-muted dark:text-text-dark-muted text-sm">
