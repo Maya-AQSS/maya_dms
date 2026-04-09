@@ -51,6 +51,7 @@ class Document extends Model
         'title',
         'organization_id',
         'study_id',
+        'course_module_id',
         'created_by',
         'owner_id',
         'status',
@@ -71,6 +72,16 @@ class Document extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(Template::class);
+    }
+
+    public function study(): BelongsTo
+    {
+        return $this->belongsTo(Study::class);
+    }
+
+    public function courseModule(): BelongsTo
+    {
+        return $this->belongsTo(CourseModule::class);
     }
 
     public function blocks(): HasMany
