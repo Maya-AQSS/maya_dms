@@ -11,9 +11,10 @@ use Illuminate\Support\Facades\DB;
 
 class Group extends Model
 {
-    use SoftDeletes, HasUuids;
+    use HasUuids, SoftDeletes;
 
     protected $keyType = 'string';
+
     public $incrementing = false;
 
     protected $fillable = [
@@ -27,6 +28,7 @@ class Group extends Model
         static::addGlobalScope('user_access', function (Builder $builder) {
             if (! auth()->check()) {
                 $builder->whereRaw('1 = 0');
+
                 return;
             }
 
