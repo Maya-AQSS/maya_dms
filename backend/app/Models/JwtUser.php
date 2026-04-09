@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TemplateVisibilityLevel;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\Access\Authorizable;
@@ -49,6 +50,21 @@ class JwtUser implements Authenticatable, AuthorizableContract
     public function hasRole(string $role): bool
     {
         return in_array($role, $this->roles, strict: true);
+    }
+
+    /**
+     * Puede crear o fijar visibilidad de plantilla distinta de {@see TemplateVisibilityLevel::Personal}
+     * (global, tipo de estudio, estudio, módulo, grupo).
+     */
+    public function canManageSharedTemplateVisibility(): bool
+    {
+        foreach (config('auth.template_shared_visibility_roles', []) as $role) {
+            if ($this->hasRole((string) $role)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // ── Authenticatable contract ──────────────────────────────

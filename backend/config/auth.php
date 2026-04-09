@@ -137,4 +137,22 @@ return [
         explode(',', (string) env('GROUP_MANAGEMENT_ROLES', 'manager,super-admin,admin'))
     ))),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Plantillas — visibilidad compartida (realm roles Keycloak)
+    |--------------------------------------------------------------------------
+    |
+    | Solo estos roles pueden crear o asignar visibilidad distinta de
+    | "personal" (global, tipo de estudio, estudio, módulo, grupo).
+    | Los valores deben coincidir exactamente con los roles del JWT.
+    |
+    */
+    'template_shared_visibility_roles' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env(
+            'TEMPLATE_SHARED_VISIBILITY_ROLES',
+            'department-head,studies-head,director'
+        ))
+    ))),
+
 ];
