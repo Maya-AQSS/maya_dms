@@ -16,7 +16,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_reviews', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('document_id')->constrained('documents')->cascadeOnDelete();
             $table->string('reviewer_id');       // FK lógica → users (FDW)
             $table->integer('stage');            // etapa del flujo (1, 2, 3...)

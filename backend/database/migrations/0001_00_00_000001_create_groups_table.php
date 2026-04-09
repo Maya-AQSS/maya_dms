@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('groups', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('owner_id');         // FK lógica → users (FDW, no constraint)
@@ -18,7 +18,7 @@ return new class extends Migration
         });
 
         Schema::create('group_members', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('group_id')->constrained('groups')->cascadeOnDelete();
             $table->string('user_id');           // FK lógica → users (FDW)
             $table->string('role')->default('member'); // member | admin

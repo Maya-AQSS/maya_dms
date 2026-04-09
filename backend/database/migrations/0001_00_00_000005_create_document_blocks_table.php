@@ -16,10 +16,10 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('document_blocks', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('document_id')->constrained('documents')->cascadeOnDelete();
             $table->foreignUuid('template_block_id')->constrained('template_blocks')->restrictOnDelete();
-            $table->jsonb('content')->nullable();     // contenido BlockNote actual
+            $table->json('content')->nullable();     // contenido BlockNote actual
             $table->boolean('is_filled')->default(false); // para validación de obligatorios
             $table->string('last_edited_by')->nullable();
             $table->string('locked_by')->nullable();  // FK lógica → users (FDW)

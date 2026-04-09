@@ -37,19 +37,19 @@ class DocumentController extends Controller
     /**
      * Mostrar documento.
      */
-    public function show(Document $document): JsonResponse
+    public function show(string $id): JsonResponse
     {
-        // TODO: DocumentResource
-
+        $document = $this->documentService->findOrFail($id);
         return response()->json(['data' => $document]);
     }
 
     /**
      * Actualizar documento.
      */
-    public function update(Request $request, Document $document): JsonResponse
+    public function update(Request $request, string $id): JsonResponse
     {
         // TODO: DocumentService::update(...)
+        $this->documentService->findOrFail($id);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -57,8 +57,9 @@ class DocumentController extends Controller
     /**
      * Eliminar documento.
      */
-    public function destroy(Document $document): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
+        $this->documentService->findOrFail($id);
         // TODO: borrado lógico / política propia
 
         return response()->json(['message' => 'Not implemented'], 501);
@@ -67,8 +68,9 @@ class DocumentController extends Controller
     /**
      * Enviar documento a revisión.
      */
-    public function submit(Request $request, Document $document): JsonResponse
+    public function submit(Request $request, string $id): JsonResponse
     {
+        $document = $this->documentService->findOrFail($id);
         $this->authorize('submit', $document);
 
         $actorId = $request->user()->getAuthIdentifier();
@@ -80,8 +82,9 @@ class DocumentController extends Controller
     /**
      * Publicar documento.
      */
-    public function publish(Request $request, Document $document): JsonResponse
+    public function publish(Request $request, string $id): JsonResponse
     {
+        $document = $this->documentService->findOrFail($id);
         $this->authorize('review', $document);
 
         $actorId = $request->user()->getAuthIdentifier();
@@ -93,8 +96,9 @@ class DocumentController extends Controller
     /**
      * Rechazar documento y vuelta a borrador.
      */
-    public function reject(Request $request, Document $document): JsonResponse
+    public function reject(Request $request, string $id): JsonResponse
     {
+        $document = $this->documentService->findOrFail($id);
         $this->authorize('review', $document);
 
         $actorId = $request->user()->getAuthIdentifier();
@@ -106,15 +110,17 @@ class DocumentController extends Controller
     /**
      * Delegar documento a otro usuario.
      */
-    public function delegate(Request $request, Document $document): JsonResponse
+    public function delegate(Request $request, string $id): JsonResponse
     {
+        $this->documentService->findOrFail($id);
+
         $validated = $request->validate([
             'new_owner_id' => ['required', 'string'],
         ]);
 
         $actorId = $request->user()->getAuthIdentifier();
         $updated = $this->documentService->delegateOwner(
-            $document->id,
+            $id,
             $validated['new_owner_id'],
             $actorId,
         );

@@ -18,8 +18,9 @@ class ReviewController extends Controller
     /**
      * Listar revisiones de un documento.
      */
-    public function index(Request $request, Document $document): JsonResponse
+    public function index(Request $request, string $documentId): JsonResponse
     {
+        $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
 
         $reviews = $this->documentService->listReviews($document->id);
@@ -30,16 +31,13 @@ class ReviewController extends Controller
     /**
      * Aprobar revisión de un documento.
      */
-    public function approve(Request $request, Document $document, DocumentReview $review): JsonResponse
+    public function approve(Request $request, string $documentId, string $reviewId): JsonResponse
     {
+        $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
 
-        if ($review->document_id !== $document->id) {
-            abort(404);
-        }
-
         $actorId = $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->approveReview($document->id, $review->id, $actorId);
+        $updated = $this->documentService->approveReview($document->id, $reviewId, $actorId);
 
         return response()->json(['data' => $updated]);
     }
@@ -47,13 +45,10 @@ class ReviewController extends Controller
     /**
      * Rechazar revisión de un documento.
      */
-    public function reject(Request $request, Document $document, DocumentReview $review): JsonResponse
+    public function reject(Request $request, string $documentId, string $reviewId): JsonResponse
     {
+        $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
-
-        if ($review->document_id !== $document->id) {
-            abort(404);
-        }
 
         $validated = $request->validate([
             'rejection_reason' => ['nullable', 'string'],
@@ -62,7 +57,7 @@ class ReviewController extends Controller
         $actorId = $request->user()->getAuthIdentifier();
         $updated = $this->documentService->rejectReview(
             $document->id,
-            $review->id,
+            $reviewId,
             $actorId,
             $validated['rejection_reason'] ?? null,
         );

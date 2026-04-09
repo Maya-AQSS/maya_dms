@@ -6,9 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Template;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Services\Contracts\TemplateServiceInterface;
 
 class TemplateController extends Controller
 {
+    public function __construct(
+        private readonly TemplateServiceInterface $templateService,
+    ) {}
     /**
      * Listar plantillas.
      */
@@ -32,8 +36,10 @@ class TemplateController extends Controller
     /**
      * Mostrar plantilla.
      */
-    public function show(Template $template): JsonResponse
+    public function show(string $id): JsonResponse
     {
+        $template = $this->templateService->findOrFail($id);
+
         // TODO: TemplateResource
 
         return response()->json(['data' => $template]);
@@ -43,8 +49,10 @@ class TemplateController extends Controller
      * Actualizar plantilla.
      * La publicación de una plantilla no puede hacerlo el creador; exige otro actor autorizado vía {@see TemplatePolicy::review}.
      */
-    public function update(Request $request, Template $template): JsonResponse
+    public function update(Request $request, string $id): JsonResponse
     {
+        $template = $this->templateService->findOrFail($id);
+
         $validated = $request->validate([
             'name'            => ['sometimes', 'string', 'max:255'],
             'description'     => ['sometimes', 'nullable', 'string'],
@@ -69,8 +77,10 @@ class TemplateController extends Controller
     /**
      * Eliminar plantilla.
      */
-    public function destroy(Template $template): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
+        $template = $this->templateService->findOrFail($id);
+
         // TODO: borrado lógico / política propia
 
         return response()->json(['message' => 'Not implemented'], 501);

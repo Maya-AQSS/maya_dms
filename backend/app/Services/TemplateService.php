@@ -13,6 +13,11 @@ class TemplateService implements TemplateServiceInterface
         private readonly TemplateRepositoryInterface $templateRepository,
     ) {}
 
+    public function findOrFail(string $id): Template
+    {
+        return $this->templateRepository->findOrFail($id);
+    }
+
     /**
      * Transiciona la plantilla a un nuevo estado y emite el evento de dominio TemplateStateChanged.
      */

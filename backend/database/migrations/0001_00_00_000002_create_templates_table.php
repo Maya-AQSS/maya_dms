@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('templates', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('study_id')->nullable();       // jerarquía académica (FDW)
@@ -30,7 +30,7 @@ return new class extends Migration
         });
 
         Schema::create('template_reviewers', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
             $table->string('user_id');    // FK lógica → users (FDW)
             $table->integer('stage');     // orden de revisión (1, 2, 3...)
