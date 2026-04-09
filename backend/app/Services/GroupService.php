@@ -61,7 +61,7 @@ class GroupService implements GroupServiceInterface
         if ($dto->name !== null) {
             $attributes['name'] = $dto->name;
         }
-        if ($dto->description !== null) {
+        if ($dto->setDescription) {
             $attributes['description'] = $dto->description;
         }
 
