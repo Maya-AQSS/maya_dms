@@ -12,7 +12,7 @@ use Lcobucci\JWT\Signer\Rsa\Sha256;
 use Lcobucci\JWT\Validation\Constraint\IssuedBy;
 use Lcobucci\JWT\Validation\Constraint\PermittedFor;
 use Lcobucci\JWT\Validation\Constraint\SignedWith;
-use Lcobucci\JWT\Validation\Constraint\StrictValidAt;
+use Lcobucci\JWT\Validation\Constraint\LooseValidAt;
 use Psr\Clock\ClockInterface;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\Response;
@@ -96,7 +96,7 @@ class JwtMiddleware
             new SignedWith(new Sha256(), $publicKey),
             new IssuedBy(config('auth.jwt_issuer')),
             new PermittedFor(config('auth.jwt_audience')),
-            new StrictValidAt(new class implements ClockInterface {
+            new LooseValidAt(new class implements ClockInterface {
                 public function now(): \DateTimeImmutable
                 {
                     return new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
