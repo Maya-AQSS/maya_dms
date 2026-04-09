@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\Document;
+use App\Models\Group;
+use App\Models\Comment;
 use App\Models\Template;
 use App\Services\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -121,6 +123,70 @@ class GlobalScopesIsolationTest extends TestCase
         // User B no debe encontrarla
         $this->getJson(
             "/api/v1/templates/{$templateId}",
+            ['Authorization' => 'Bearer '.$tokenB],
+        )->assertNotFound();
+    }
+
+    public function test_user_b_accessing_user_a_group_returns_404(): void
+    {
+        $userA = 'user-a-uuid-123';
+        $userB = 'user-b-uuid-999';
+
+        $groupId = (string) Str::uuid();
+        Group::query()->forceCreate([
+            'id'          => $groupId,
+            'name'        => 'Grupo Privado',
+            'description' => null,
+            'owner_id'    => $userA,
+        ]);
+
+        $tokenA = $this->buildAuthTokensForUser($userA);
+        $this->getJson(
+            "/api/v1/groups/{$groupId}",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertSuccessful();
+
+        $tokenB = $this->buildAuthTokensForUser($userB);
+        auth()->forgetUser();
+
+        $this->getJson(
+            "/api/v1/groups/{$groupId}",
+            ['Authorization' => 'Bearer '.$tokenB],
+        )->assertNotFound();
+    }
+
+    public function test_user_b_accessing_user_a_comment_returns_404(): void
+    {
+        $userA = 'user-a-uuid-123';
+        $userB = 'user-b-uuid-999';
+
+        [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $commentId = (string) Str::uuid();
+
+        Comment::query()->forceCreate([
+            'id'                => $commentId,
+            'document_id'       => $documentId,
+            'document_block_id' => null,
+            'parent_id'         => null,
+            'author_id'         => $userA,
+            'body'              => 'Comentario privado',
+            'type'              => 'general',
+            'resolved'          => false,
+            'resolved_by'       => null,
+            'resolved_at'       => null,
+        ]);
+
+        $tokenA = $this->buildAuthTokensForUser($userA);
+        $this->getJson(
+            "/api/v1/comments/{$commentId}",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertSuccessful();
+
+        $tokenB = $this->buildAuthTokensForUser($userB);
+        auth()->forgetUser();
+
+        $this->getJson(
+            "/api/v1/comments/{$commentId}",
             ['Authorization' => 'Bearer '.$tokenB],
         )->assertNotFound();
     }

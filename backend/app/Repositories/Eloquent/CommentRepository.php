@@ -2,11 +2,20 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\Comment;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
 class CommentRepository implements CommentRepositoryInterface
 {
+    /**
+     * Localiza un comentario por su ID o lanza ModelNotFoundException.
+     */
+    public function findOrFail(string $id): Comment
+    {
+        return Comment::findOrFail($id);
+    }
+
     /**
      * Indica si el usuario es autor del comentario o propietario/creador
      * del documento padre. Usado para control de acceso al historial de auditoría.
