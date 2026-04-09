@@ -31,6 +31,7 @@ Route::prefix('v1')->group(function () {
 
         // Sprint 1 — Auth / sesión
         Route::get('/me', [\App\Http\Controllers\Api\AuthController::class, 'me']);
+        Route::get('/hierarchy', [\App\Http\Controllers\Api\AcademicHierarchyController::class, 'index']);
 
         // Sprint 1 — Grupos
         Route::apiResource('groups', \App\Http\Controllers\Api\GroupController::class);

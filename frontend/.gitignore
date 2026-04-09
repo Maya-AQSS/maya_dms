@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Variables locales (JWT, URLs).
+.env
+.env.*.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
