@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Enums\TemplateVisibilityLevel;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -39,7 +41,12 @@ class Template extends Model
     protected $fillable = [
         'name',
         'description',
+        'visibility_level',
+        'delivery_deadline',
+        'study_type_id',
         'study_id',
+        'module_id',
+        'group_id',
         'organization_id',
         'created_by',
         'status',
@@ -51,9 +58,16 @@ class Template extends Model
     protected function casts(): array
     {
         return [
-            'version'       => 'integer',
-            'review_stages' => 'integer',
+            'visibility_level' => TemplateVisibilityLevel::class,
+            'delivery_deadline'  => 'datetime',
+            'version'            => 'integer',
+            'review_stages'      => 'integer',
         ];
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(Group::class);
     }
 
     public function blocks(): HasMany
