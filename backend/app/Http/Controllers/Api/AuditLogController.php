@@ -24,8 +24,10 @@ class AuditLogController extends Controller
         /** @var \App\Models\JwtUser $user */
         $user = auth()->user();
 
-        if (! $user->hasRole('direccion') && ! $this->auditLogService->canUserAccess('document', $documentId, $user->id)) {
-            return response()->json(['message' => 'This action is unauthorized.'], 403);
+        // Si el usuario no es de dirección, validamos acceso.
+        // Usar findOrFail asegura que si el recurso no es visible para el scope global, devuelva 404 (IDOR protection)
+        if (! $user->hasRole('direccion')) {
+            \App\Models\Document::findOrFail($documentId);
         }
 
         return AuditLogResource::collection(
@@ -42,8 +44,8 @@ class AuditLogController extends Controller
         /** @var \App\Models\JwtUser $user */
         $user = auth()->user();
 
-        if (! $user->hasRole('direccion') && ! $this->auditLogService->canUserAccess('template', $templateId, $user->id)) {
-            return response()->json(['message' => 'This action is unauthorized.'], 403);
+        if (! $user->hasRole('direccion')) {
+            \App\Models\Template::findOrFail($templateId);
         }
 
         return AuditLogResource::collection(
@@ -60,8 +62,8 @@ class AuditLogController extends Controller
         /** @var \App\Models\JwtUser $user */
         $user = auth()->user();
 
-        if (! $user->hasRole('direccion') && ! $this->auditLogService->canUserAccess('comment', $commentId, $user->id)) {
-            return response()->json(['message' => 'This action is unauthorized.'], 403);
+        if (! $user->hasRole('direccion')) {
+            \App\Models\Comment::findOrFail($commentId);
         }
 
         return AuditLogResource::collection(

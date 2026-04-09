@@ -17,7 +17,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('comments', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('document_id')->constrained('documents')->cascadeOnDelete();
             $table->foreignUuid('document_block_id')->nullable()->constrained('document_blocks')->cascadeOnDelete();
             $table->uuid('parent_id')->nullable(); // para respuestas anidadas

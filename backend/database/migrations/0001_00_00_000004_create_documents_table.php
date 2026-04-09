@@ -17,7 +17,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('documents', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->restrictOnDelete();
             $table->string('title');
             $table->string('organization_id');   // FK lógica → organización (FDW/contexto JWT)
@@ -38,7 +38,7 @@ return new class extends Migration
         });
 
         Schema::create('document_shares', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
             $table->foreignUuid('document_id')->constrained('documents')->cascadeOnDelete();
             $table->string('user_id');           // FK lógica → users (FDW)
             $table->string('permission')->default('read'); // read | edit

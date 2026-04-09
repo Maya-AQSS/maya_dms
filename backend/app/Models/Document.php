@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,7 +10,37 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Document extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, HasUuids;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('user_access', function (\Illuminate\Database\Eloquent\Builder $builder) {
+            // Si no hay usuario autenticado, NO devolvemos nada (fail-closed)
+            // Esto previene fugas de datos si el middleware aún no ha corrido
+            if (! auth()->check()) {
+                $builder->whereRaw('1 = 0');
+                return;
+            }
+
+            $userId = auth()->id();
+            $builder->where(function ($query) use ($userId) {
+                $query->where('documents.created_by', $userId)
+                      ->orWhere('documents.owner_id', $userId)
+                      ->orWhereExists(function ($subQuery) use ($userId) {
+                          $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                   ->from('document_shares')
+                                   ->whereColumn('document_shares.document_id', 'documents.id')
+                                   ->where('user_id', $userId);
+                      })
+                      ->orWhereExists(function ($subQuery) use ($userId) {
+                          $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                   ->from('document_reviews')
+                                   ->whereColumn('document_reviews.document_id', 'documents.id')
+                                   ->where('reviewer_id', $userId);
+                      });
+            });
+        });
+    }
 
     protected $keyType = 'string';
 

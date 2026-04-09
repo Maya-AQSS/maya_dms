@@ -19,7 +19,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('audit_log', function (Blueprint $table) {
-            $table->uuid('id')->primary()->default(DB::raw('gen_random_uuid()'));
+            $table->uuid('id')->primary();
 
             $table->string('entity_type');  // document | template | comment
             $table->uuid('entity_id');
@@ -33,10 +33,10 @@ return new class extends Migration
             $table->text('user_agent')->nullable();
 
             // Timestamp siempre del servidor — DEFAULT NOW(), nunca enviado por cliente
-            $table->timestamp('timestamp')->default(DB::raw('NOW()'));
+            $table->timestamp('timestamp')->useCurrent();
 
-            $table->jsonb('previous_value')->nullable();
-            $table->jsonb('new_value')->nullable();
+            $table->json('previous_value')->nullable();
+            $table->json('new_value')->nullable();
 
             $table->index(['entity_type', 'entity_id']);
             $table->index(['entity_id', 'action']);
@@ -46,17 +46,19 @@ return new class extends Migration
 
         // El usuario de aplicación solo puede INSERT y SELECT.
         // UPDATE y DELETE están prohibidos a nivel de PostgreSQL.
-        $appUser = config('database.connections.pgsql.username');
-
-        DB::statement("REVOKE UPDATE, DELETE ON audit_log FROM \"{$appUser}\"");
-        DB::statement("GRANT INSERT, SELECT ON audit_log TO \"{$appUser}\"");
+        if (DB::getDriverName() === 'pgsql') {
+            $appUser = config('database.connections.pgsql.username');
+            DB::statement("REVOKE UPDATE, DELETE ON audit_log FROM \"{$appUser}\"");
+            DB::statement("GRANT INSERT, SELECT ON audit_log TO \"{$appUser}\"");
+        }
     }
 
     public function down(): void
     {
-        $appUser = config('database.connections.pgsql.username');
-
-        DB::statement("GRANT UPDATE, DELETE ON audit_log TO \"{$appUser}\"");
+        if (DB::getDriverName() === 'pgsql') {
+            $appUser = config('database.connections.pgsql.username');
+            DB::statement("GRANT UPDATE, DELETE ON audit_log TO \"{$appUser}\"");
+        }
 
         Schema::dropIfExists('audit_log');
     }
