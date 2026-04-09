@@ -1,3 +1,6 @@
+import { FieldLabel } from '../../../ui/FieldLabel';
+import { TextInput } from '../../../ui/TextInput';
+
 export type TemplateHierarchyFieldKey = 'study_type_id' | 'study_id' | 'module_id' | 'group_id';
 
 export type TemplateHierarchyValues = Record<TemplateHierarchyFieldKey, string>;
@@ -23,12 +26,12 @@ export function TemplateHierarchyFields({
     <div className={gridClassName}>
       {KEYS.map((key) => (
         <div key={key}>
-          <label className="block text-xs text-text-muted dark:text-text-dark-muted mb-1">{key}</label>
-          <input
+          <FieldLabel>{key}</FieldLabel>
+          <TextInput
             type="text"
+            fieldSize="mono"
             value={values[key]}
             onChange={(e) => onFieldChange(key, e.target.value)}
-            className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg font-mono text-xs px-2 py-1.5"
           />
         </div>
       ))}

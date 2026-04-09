@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { Button, ConfirmDialog } from '../../../ui';
 import type { Group } from '../../../types/groups';
+import { FieldLabel, TextArea, TextInput } from '../../../ui';
 
 function MemberBadge({ userId, role }: { userId: string; role: string }) {
   return (
@@ -110,31 +111,34 @@ export function GroupCard({ group, onUpdate, onDelete, onAddMember, onRemoveMemb
         <div className="min-w-0 flex-1">
           {editing ? (
             <div className="space-y-2 max-w-lg">
-              <input
+              <TextInput
                 type="text"
+                fieldSize="md"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-1.5 text-sm text-text-primary dark:text-text-dark-primary"
                 placeholder="Nombre"
               />
-              <textarea
+              <TextArea
+                fieldSize="md"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-1.5 text-sm text-text-primary dark:text-text-dark-primary"
                 placeholder="Descripción (opcional)"
               />
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
                   disabled={busy || !name.trim()}
                   onClick={() => void handleSave()}
-                  className="rounded bg-odoo-purple px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
                 >
                   Guardar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   disabled={busy}
                   onClick={() => {
                     if (!editDirty) {
@@ -144,10 +148,9 @@ export function GroupCard({ group, onUpdate, onDelete, onAddMember, onRemoveMemb
                     }
                     setConfirmKind('discard');
                   }}
-                  className="rounded border border-ui-border px-3 py-1 text-xs text-text-secondary dark:text-text-dark-secondary"
                 >
                   Cancelar
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -168,22 +171,24 @@ export function GroupCard({ group, onUpdate, onDelete, onAddMember, onRemoveMemb
         </div>
         {!editing && (
           <div className="flex flex-wrap gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
               disabled={busy || dialogOpen}
               onClick={() => setEditing(true)}
-              className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-1 text-xs text-text-secondary dark:text-text-dark-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg"
             >
               Editar
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outlineWarning"
+              size="xs"
               disabled={busy || dialogOpen}
               onClick={() => setConfirmKind('delete')}
-              className="rounded border border-warning/40 px-2 py-1 text-xs text-warning-dark hover:bg-warning-light/30"
             >
               Eliminar
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -201,38 +206,41 @@ export function GroupCard({ group, onUpdate, onDelete, onAddMember, onRemoveMemb
             members.map((m) => (
               <span key={m.id} className="inline-flex items-center gap-1">
                 <MemberBadge userId={m.user_id} role={m.role} />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="xs"
                   disabled={busy || dialogOpen}
                   onClick={() => {
                     setRemoveMemberUserId(m.user_id);
                     setConfirmKind('removeMember');
                   }}
-                  className="text-xs text-text-link dark:text-text-dark-link hover:underline disabled:opacity-40"
+                  className="min-w-0"
                   title="Quitar miembro"
                 >
                   ✕
-                </button>
+                </Button>
               </span>
             ))
           )}
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex-1 min-w-[200px]">
-            <label className="block text-xs text-text-muted dark:text-text-dark-muted mb-1">
-              Añadir usuario (UUID)
-            </label>
-            <input
+            <FieldLabel>Añadir usuario (UUID)</FieldLabel>
+            <TextInput
               type="text"
+              fieldSize="mono"
               value={memberUserId}
               onChange={(e) => setMemberUserId(e.target.value)}
               placeholder="user_id"
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-1.5 text-xs font-mono text-text-primary dark:text-text-dark-primary"
             />
           </div>
-          <button
+          <Button
             type="button"
+            variant="teal"
+            size="sm"
             disabled={busy || !memberUserId.trim() || dialogOpen}
+            className="opacity-90 hover:opacity-100"
             onClick={async () => {
               const uid = memberUserId.trim();
               if (!uid) return;
@@ -244,10 +252,9 @@ export function GroupCard({ group, onUpdate, onDelete, onAddMember, onRemoveMemb
                 setBusy(false);
               }
             }}
-            className="rounded bg-odoo-teal/90 px-3 py-1.5 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
             Añadir miembro
-          </button>
+          </Button>
         </div>
       </div>
 

@@ -3,6 +3,7 @@ import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
 import { datetimeLocalToIso } from '../templateFormUtils';
+import { Button, FieldLabel, Select, TextInput } from '../../../ui';
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
 
@@ -103,14 +104,15 @@ export function TemplatesContent() {
             requiere roles de coordinación.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => void refetch()}
           disabled={loading}
-          className="rounded border border-ui-border dark:border-ui-dark-border px-3 py-1.5 text-xs text-text-secondary dark:text-text-dark-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg disabled:opacity-50"
         >
           Actualizar
-        </button>
+        </Button>
       </div>
 
       {listError && (
@@ -120,20 +122,20 @@ export function TemplatesContent() {
       )}
 
       {actionError && (
-        <div className="rounded-lg border border-odoo-purple/30 bg-odoo-purple/5 px-4 py-3 text-sm text-text-primary dark:text-text-dark-primary flex justify-between gap-4">
+        <div className="rounded-lg border border-odoo-purple/30 bg-odoo-purple/5 px-4 py-3 text-sm text-text-primary dark:text-text-dark-primary dark:border-odoo-dark-purple/40 dark:bg-odoo-dark-purple/15 flex justify-between gap-4">
           <span>{actionError}</span>
-          <button type="button" onClick={clearActionError} className="text-xs text-text-link shrink-0">
+          <Button type="button" variant="ghost" size="xs" onClick={clearActionError} className="shrink-0">
             Cerrar
-          </button>
+          </Button>
         </div>
       )}
 
       {actionInfo && (
-        <div className="rounded-lg border border-odoo-teal/30 bg-odoo-teal/5 px-4 py-3 text-sm flex justify-between gap-4">
+        <div className="rounded-lg border border-odoo-teal/30 bg-odoo-teal/5 px-4 py-3 text-sm text-text-primary dark:text-text-dark-primary dark:border-odoo-dark-teal/45 dark:bg-odoo-dark-teal/15 flex justify-between gap-4">
           <span>{actionInfo}</span>
-          <button type="button" onClick={clearActionInfo} className="text-xs text-text-link shrink-0">
+          <Button type="button" variant="ghost" size="xs" onClick={clearActionInfo} className="shrink-0">
             Cerrar
-          </button>
+          </Button>
         </div>
       )}
 
@@ -143,15 +145,15 @@ export function TemplatesContent() {
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <div>
-            <label className="block text-xs text-text-muted mb-1">Visibilidad</label>
-            <select
+            <FieldLabel>Visibilidad</FieldLabel>
+            <Select
+              fieldSize="sm"
               value={filterUi.visibility}
               onChange={(e) =>
                 applyFilters({
                   visibility_level: e.target.value || undefined,
                 })
               }
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-2 py-1.5 text-sm"
             >
               <option value="">Todas</option>
               {VISIBILITY_OPTIONS.map((o) => (
@@ -159,21 +161,21 @@ export function TemplatesContent() {
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">Estado</label>
-            <select
+            <FieldLabel>Estado</FieldLabel>
+            <Select
+              fieldSize="sm"
               value={filterUi.status}
               onChange={(e) => applyFilters({ status: e.target.value || undefined })}
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-2 py-1.5 text-sm"
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value || 'all'} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="lg:col-span-3">
             <TemplateHierarchyFields
@@ -198,44 +200,44 @@ export function TemplatesContent() {
         </h3>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs text-text-muted mb-1">Nombre</label>
-            <input
+            <FieldLabel>Nombre</FieldLabel>
+            <TextInput
               type="text"
+              fieldSize="comfortable"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">Visibilidad</label>
-            <select
+            <FieldLabel>Visibilidad</FieldLabel>
+            <Select
+              fieldSize="comfortable"
               value={newVisibility}
               onChange={(e) => setNewVisibility(e.target.value as TemplateVisibilityLevel)}
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
             >
               {VISIBILITY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
                   {o.label}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
           <div className="lg:col-span-2">
-            <label className="block text-xs text-text-muted mb-1">Descripción</label>
-            <input
+            <FieldLabel>Descripción</FieldLabel>
+            <TextInput
               type="text"
+              fieldSize="comfortable"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
             />
           </div>
           <div>
-            <label className="block text-xs text-text-muted mb-1">Plazo de entrega (opcional)</label>
-            <input
+            <FieldLabel>Plazo de entrega (opcional)</FieldLabel>
+            <TextInput
               type="datetime-local"
+              fieldSize="comfortable"
               value={newDeadline}
               onChange={(e) => setNewDeadline(e.target.value)}
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
             />
           </div>
           <div className="lg:col-span-2">
@@ -255,24 +257,17 @@ export function TemplatesContent() {
             />
           </div>
         </div>
-        <button
+        <Button
           type="button"
-          disabled={creating || !newName.trim()}
+          variant="primary"
+          size="md"
+          loading={creating}
+          disabled={!newName.trim()}
+          className="mt-3"
           onClick={() => void handleCreate()}
-          className="mt-3 rounded bg-odoo-purple px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 inline-flex items-center gap-2"
         >
-          {creating ? (
-            <>
-              <span
-                className="inline-block size-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white"
-                aria-hidden
-              />
-              Creando…
-            </>
-          ) : (
-            'Crear plantilla'
-          )}
-        </button>
+          {creating ? 'Creando…' : 'Crear plantilla'}
+        </Button>
       </div>
 
       {loading && templates.length === 0 ? (
@@ -301,22 +296,24 @@ export function TemplatesContent() {
             Página {meta.current_page} de {meta.last_page} — {meta.total} plantillas
           </span>
           <div className="flex gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
               disabled={loading || meta.current_page <= 1}
               onClick={() => goToPage(meta.current_page - 1)}
-              className="rounded border border-ui-border px-2 py-1 disabled:opacity-40"
             >
               Anterior
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
               disabled={loading || meta.current_page >= meta.last_page}
               onClick={() => goToPage(meta.current_page + 1)}
-              className="rounded border border-ui-border px-2 py-1 disabled:opacity-40"
             >
               Siguiente
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}

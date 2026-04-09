@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Button, FieldLabel, TextInput } from '../../../ui';
 import { useGroups } from '../hooks/useGroups';
 import { GroupCard } from './GroupCard';
 
@@ -51,14 +52,15 @@ export function GroupsContent() {
             Listado según tu visibilidad en la API. Crear, editar y miembros dependen de los permisos de tu cuenta.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="outline"
+          size="sm"
           onClick={() => void refetch()}
           disabled={loading}
-          className="rounded border border-ui-border dark:border-ui-dark-border px-3 py-1.5 text-xs text-text-secondary dark:text-text-dark-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg disabled:opacity-50"
         >
           Actualizar
-        </button>
+        </Button>
       </div>
 
       {listError && (
@@ -68,11 +70,11 @@ export function GroupsContent() {
       )}
 
       {actionError && (
-        <div className="rounded-lg border border-odoo-purple/30 bg-odoo-purple/5 px-4 py-3 text-sm text-text-primary dark:text-text-dark-primary flex justify-between gap-4">
+        <div className="rounded-lg border border-odoo-purple/30 bg-odoo-purple/5 px-4 py-3 text-sm text-text-primary dark:text-text-dark-primary dark:border-odoo-dark-purple/40 dark:bg-odoo-dark-purple/15 flex justify-between gap-4">
           <span>{actionError}</span>
-          <button type="button" onClick={clearActionError} className="text-xs text-text-link shrink-0">
+          <Button type="button" variant="ghost" size="xs" onClick={clearActionError} className="shrink-0">
             Cerrar
-          </button>
+          </Button>
         </div>
       )}
 
@@ -82,33 +84,35 @@ export function GroupsContent() {
         </h3>
         <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
           <div className="flex-1 min-w-[180px] w-full">
-            <label className="block text-xs text-text-muted mb-1">Nombre</label>
-            <input
+            <FieldLabel>Nombre</FieldLabel>
+            <TextInput
               type="text"
+              fieldSize="comfortable"
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
               placeholder="Nombre del grupo"
             />
           </div>
           <div className="flex-[2] min-w-[220px] w-full">
-            <label className="block text-xs text-text-muted mb-1">Descripción</label>
-            <input
+            <FieldLabel>Descripción</FieldLabel>
+            <TextInput
               type="text"
+              fieldSize="comfortable"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
-              className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
               placeholder="Opcional"
             />
           </div>
-          <button
+          <Button
             type="button"
-            disabled={creating || !newName.trim()}
+            variant="primary"
+            size="md"
+            loading={creating}
+            disabled={!newName.trim()}
             onClick={() => void handleCreate()}
-            className="rounded bg-odoo-purple px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
-            Crear grupo
-          </button>
+            {creating ? 'Creando…' : 'Crear grupo'}
+          </Button>
         </div>
       </div>
 

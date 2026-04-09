@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState, type ChangeEvent } from 'react';
 import { useHierarchy } from '../features/hierarchy';
+import { Button, Select } from '../ui';
 
 interface CascadeFiltersProps {
   onClear: () => void;
@@ -25,7 +26,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
   const currentStudy = studies.find(s => s.id === selectedStudy);
   const modules = currentStudy ? currentStudy.course_modules : [];
 
-  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleTypeChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setSelectedType(val);
     setSelectedStudy('');
@@ -35,7 +36,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
     onFilterChange({ studyTypeId: val, studyId: '', moduleId: '' });
   };
 
-  const handleStudyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleStudyChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setSelectedStudy(val);
     setSelectedModule('');
@@ -43,7 +44,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
     onFilterChange({ studyTypeId: selectedType, studyId: val, moduleId: '' });
   };
 
-  const handleModuleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+  const handleModuleChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setSelectedModule(val);
 
@@ -61,56 +62,74 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
   return (
     <div className="bg-ui-card dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border p-4 rounded-lg flex flex-col md:flex-row gap-4 mb-6 shadow-sm">
       <div className="flex-1">
-        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">Tipo de Estudio</label>
-        <select 
-          value={selectedType} 
+        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">
+          Tipo de Estudio
+        </label>
+        <Select
+          fieldSize="comfortable"
+          className="focus:ring-2 focus:ring-odoo-purple outline-none"
+          value={selectedType}
           onChange={handleTypeChange}
-          className="w-full text-sm p-2 rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-2 focus:ring-odoo-purple outline-none"
         >
           <option value="">Todos los tipos</option>
-          {hierarchy.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+          {hierarchy.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex-1">
-        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">Estudio</label>
-        <select 
-          value={selectedStudy} 
+        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">
+          Estudio
+        </label>
+        <Select
+          fieldSize="comfortable"
+          className="focus:ring-2 focus:ring-odoo-purple outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          value={selectedStudy}
           onChange={handleStudyChange}
           disabled={!selectedType}
-          className="w-full text-sm p-2 rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-odoo-purple outline-none"
         >
           <option value="">Todos los estudios</option>
-          {studies.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
+          {studies.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex-1">
-        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">Módulo</label>
-        <select 
-          value={selectedModule} 
+        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">
+          Módulo
+        </label>
+        <Select
+          fieldSize="comfortable"
+          className="focus:ring-2 focus:ring-odoo-purple outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          value={selectedModule}
           onChange={handleModuleChange}
           disabled={!selectedStudy}
-          className="w-full text-sm p-2 rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg disabled:opacity-50 disabled:cursor-not-allowed focus:ring-2 focus:ring-odoo-purple outline-none"
         >
           <option value="">Todos los módulos</option>
-          {modules.map(m => (
-            <option key={m.id} value={m.id}>{m.name}</option>
+          {modules.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex items-end">
-        <button 
+        <Button
+          type="button"
+          variant="secondary"
+          size="md"
           onClick={clearFilters}
-          className="h-[38px] px-4 text-sm font-medium rounded text-text-primary bg-ui-body border border-ui-border hover:bg-ui-border dark:text-text-dark-primary dark:bg-ui-dark-bg dark:border-ui-dark-border dark:hover:bg-ui-dark-border transition-colors mt-[18px] md:mt-0"
+          className="mt-[18px] h-[38px] self-end whitespace-nowrap md:mt-0"
         >
           Limpiar filtros
-        </button>
+        </Button>
       </div>
     </div>
   );

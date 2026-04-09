@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { ConfirmDialog } from '../../../components/ConfirmDialog';
+import { Button, ConfirmDialog } from '../../../ui';
 import type { UpdateTemplatePayload } from '../../../api/templates';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
@@ -9,6 +9,7 @@ import {
   templateEditIsDirty,
   type TemplateEditFields,
 } from '../templateFormUtils';
+import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { TemplateHierarchyFields, type TemplateHierarchyFieldKey } from './TemplateHierarchyFields';
 
 type Props = {
@@ -151,46 +152,42 @@ export function TemplateCard({ template: t, onUpdate, onDelete, onClone }: Props
         <div className="min-w-0 flex-1 space-y-2">
           {editing ? (
             <div className="space-y-2 max-w-2xl">
-              <input
+              <TextInput
                 type="text"
+                fieldSize="md"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-1.5 text-sm"
                 placeholder="Nombre"
               />
-              <textarea
+              <TextArea
+                fieldSize="md"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={2}
-                className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-1.5 text-sm"
                 placeholder="Descripción"
               />
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs text-text-muted dark:text-text-dark-muted mb-1">
-                    Visibilidad
-                  </label>
-                  <select
+                  <FieldLabel>Visibilidad</FieldLabel>
+                  <Select
+                    fieldSize="sm"
                     value={visibilityLevel}
                     onChange={(e) => setVisibilityLevel(e.target.value as TemplateVisibilityLevel)}
-                    className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-2 py-1.5 text-sm"
                   >
                     {VISIBILITY_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
                         {o.label}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted dark:text-text-dark-muted mb-1">
-                    Plazo de entrega (opcional)
-                  </label>
-                  <input
+                  <FieldLabel>Plazo de entrega (opcional)</FieldLabel>
+                  <TextInput
                     type="datetime-local"
+                    fieldSize="sm"
                     value={deliveryDeadline}
                     onChange={(e) => setDeliveryDeadline(e.target.value)}
-                    className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div className="sm:col-span-2">
@@ -205,56 +202,53 @@ export function TemplateCard({ template: t, onUpdate, onDelete, onClone }: Props
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted dark:text-text-dark-muted mb-1">
-                    Estado
-                  </label>
-                  <select
+                  <FieldLabel>Estado</FieldLabel>
+                  <Select
+                    fieldSize="sm"
                     value={status}
                     onChange={(e) => setStatus(e.target.value as Template['status'])}
-                    className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-2 py-1.5 text-sm"
                   >
                     <option value="draft">Borrador</option>
                     <option value="published">Publicada</option>
                     <option value="archived">Archivada</option>
-                  </select>
+                  </Select>
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted dark:text-text-dark-muted mb-1">
-                    Etapas de revisión
-                  </label>
-                  <input
+                  <FieldLabel>Etapas de revisión</FieldLabel>
+                  <TextInput
                     type="number"
+                    fieldSize="sm"
                     min={0}
                     value={reviewStages}
                     onChange={(e) => setReviewStages(e.target.value)}
-                    className="w-full rounded border border-ui-border px-2 py-1.5 text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-text-muted dark:text-text-dark-muted mb-1">
-                    Modo revisión
-                  </label>
-                  <select
+                  <FieldLabel>Modo revisión</FieldLabel>
+                  <Select
+                    fieldSize="sm"
                     value={reviewMode}
                     onChange={(e) => setReviewMode(e.target.value as Template['review_mode'])}
-                    className="w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-2 py-1.5 text-sm"
                   >
                     <option value="sequential">Secuencial</option>
                     <option value="parallel">Paralelo</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
                   disabled={busy || !name.trim()}
                   onClick={() => void handleSave()}
-                  className="rounded bg-odoo-purple px-3 py-1 text-xs font-medium text-white hover:opacity-90 disabled:opacity-50"
                 >
                   Guardar
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   disabled={busy}
                   onClick={() => {
                     if (!editDirty) {
@@ -264,10 +258,9 @@ export function TemplateCard({ template: t, onUpdate, onDelete, onClone }: Props
                     }
                     setDialog('discard');
                   }}
-                  className="rounded border border-ui-border px-3 py-1 text-xs text-text-secondary dark:text-text-dark-secondary"
                 >
                   Cancelar
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
@@ -290,30 +283,33 @@ export function TemplateCard({ template: t, onUpdate, onDelete, onClone }: Props
         </div>
         {!editing && (
           <div className="flex flex-wrap gap-2">
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="xs"
               disabled={busy || dialog !== null}
               onClick={() => setEditing(true)}
-              className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-1 text-xs text-text-secondary dark:text-text-dark-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg"
             >
               Editar
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outlineTeal"
+              size="xs"
               disabled={busy || dialog !== null}
               onClick={() => setDialog('clone')}
-              className="rounded border border-odoo-teal/40 px-2 py-1 text-xs text-odoo-teal hover:bg-odoo-teal/10"
             >
               Clonar
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="outlineWarning"
+              size="xs"
               disabled={busy || dialog !== null}
               onClick={() => setDialog('delete')}
-              className="rounded border border-warning/40 px-2 py-1 text-xs text-warning-dark hover:bg-warning-light/30"
             >
               Eliminar
-            </button>
+            </Button>
           </div>
         )}
       </div>
