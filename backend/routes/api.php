@@ -40,6 +40,11 @@ Route::prefix('v1')->group(function () {
 
         // Sprint 2 — Plantillas
         Route::apiResource('templates', \App\Http\Controllers\Api\TemplateController::class);
+
+        // Bloque bulk — debe declararse antes del shallow resource para evitar
+        // que Laravel interprete "bulk" como un {block} UUID.
+        Route::put('blocks/bulk', [\App\Http\Controllers\Api\TemplateBlockController::class, 'bulkUpdate']);
+
         Route::apiResource('templates.blocks', \App\Http\Controllers\Api\TemplateBlockController::class)
             ->shallow();
         Route::post('templates/{template}/clone', [\App\Http\Controllers\Api\TemplateController::class, 'clone']);
