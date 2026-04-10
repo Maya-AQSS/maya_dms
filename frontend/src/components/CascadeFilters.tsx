@@ -1,4 +1,5 @@
-import { useState, type ChangeEvent } from 'react';
+import { useId, useState, type ChangeEvent } from 'react';
+import type { CascadeDocumentFilters } from '../features/documents';
 import { useHierarchy } from '../features/hierarchy';
 import { Button, Select } from '../ui';
 
@@ -20,15 +21,21 @@ const ChevronIcon = ({ open }: { open: boolean }) => (
 
 interface CascadeFiltersProps {
   onClear: () => void;
-  onFilterChange: (filters: {
-    studyTypeId: string;
-    studyId: string;
-    moduleId: string;
-  }) => void;
+  onFilterChange: (filters: CascadeDocumentFilters) => void;
 }
 
+/**
+ * Componente para mostrar los selectores en cascada.
+ * 
+ * @param onClear - Función para limpiar los filtros.
+ * @param onFilterChange - Función para cambiar los filtros.
+ * @returns El componente de filtros en cascada.
+ */
 export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps) {
   const { hierarchy, loading, error } = useHierarchy();
+  const typeSelectId = useId();
+  const studySelectId = useId();
+  const moduleSelectId = useId();
 
   const [selectedType, setSelectedType] = useState<string>('');
   const [selectedStudy, setSelectedStudy] = useState<string>('');
@@ -49,8 +56,6 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
     setSelectedType(val);
     setSelectedStudy('');
     setSelectedModule('');
-    
-    // Debería ser inmediato < 16ms
     onFilterChange({ studyTypeId: val, studyId: '', moduleId: '' });
   };
 
@@ -89,7 +94,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
         className="md:hidden w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-text-primary dark:text-text-dark-primary"
       >
         <span>
-          Filtros jerárquicos
+          Filtros: tipo de estudio, estudio y módulo
           {hasActiveFilters && (
             <span className="ml-2 inline-flex items-center justify-center w-2 h-2 rounded-full bg-odoo-purple" aria-hidden="true" />
           )}
@@ -103,10 +108,14 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
         className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-4 p-4`}
       >
       <div className="flex-1">
-        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">
+        <label
+          htmlFor={typeSelectId}
+          className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1"
+        >
           Tipo de Estudio
         </label>
         <Select
+          id={typeSelectId}
           fieldSize="comfortable"
           className="focus:ring-2 focus:ring-odoo-purple outline-none"
           value={selectedType}
@@ -122,10 +131,14 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
       </div>
 
       <div className="flex-1">
-        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">
+        <label
+          htmlFor={studySelectId}
+          className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1"
+        >
           Estudio
         </label>
         <Select
+          id={studySelectId}
           fieldSize="comfortable"
           className="focus:ring-2 focus:ring-odoo-purple outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           value={selectedStudy}
@@ -142,10 +155,14 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
       </div>
 
       <div className="flex-1">
-        <label className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1">
+        <label
+          htmlFor={moduleSelectId}
+          className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1"
+        >
           Módulo
         </label>
         <Select
+          id={moduleSelectId}
           fieldSize="comfortable"
           className="focus:ring-2 focus:ring-odoo-purple outline-none disabled:opacity-50 disabled:cursor-not-allowed"
           value={selectedModule}
