@@ -51,9 +51,9 @@ const navItems: NavItem[] = [
 // ─── Sidebar ──────────────────────────────────────────────────
 function Sidebar({ active, onNav }: { active: string; onNav: (id: string) => void }) {
   return (
-    <aside className="fixed inset-y-0 left-0 w-64 bg-ui-sidebar flex flex-col z-[100]">
+    <aside className="fixed inset-y-0 left-0 w-64 bg-ui-sidebar dark:bg-ui-dark-bg flex flex-col z-[100] border-r border-white/10 dark:border-ui-dark-border">
       {/* Logo */}
-      <div className="h-14 flex items-center px-5 border-b border-white/10">
+      <div className="h-14 flex items-center px-5 border-b border-white/10 dark:border-ui-dark-border-l">
         <span className="text-lg font-bold text-white tracking-wide">Maya DMS</span>
       </div>
 
@@ -65,10 +65,10 @@ function Sidebar({ active, onNav }: { active: string; onNav: (id: string) => voi
             <button
               key={item.id}
               onClick={() => onNav(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-medium transition-colors text-left ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors text-left ${
                 isActive
-                  ? 'bg-ui-sidebar-active text-white'
-                  : 'text-white/70 hover:bg-ui-sidebar-hover hover:text-white'
+                  ? 'bg-ui-sidebar-active dark:bg-odoo-dark-purple text-white'
+                  : 'text-white/60 hover:bg-ui-sidebar-hover dark:hover:bg-ui-dark-card hover:text-white/90'
               }`}
             >
               <item.icon />
@@ -122,10 +122,10 @@ function Topbar({
 // ─── Contenido: Dashboard ─────────────────────────────────────
 function DashboardContent() {
   const stats = [
-    { label: 'Total documentos', value: '—', color: 'bg-odoo-purple/10 text-odoo-purple border-odoo-purple/20' },
-    { label: 'Subidos hoy', value: '—', color: 'bg-odoo-teal/10 text-odoo-teal border-odoo-teal/20' },
-    { label: 'Pendientes revisión', value: '—', color: 'bg-warning-light text-warning-dark border-warning/20' },
-    { label: 'Archivados', value: '—', color: 'bg-ui-body text-text-secondary border-ui-border' },
+    { label: 'Total documentos', value: '—', color: 'bg-odoo-purple/10 dark:bg-odoo-purple/40 text-odoo-purple-d dark:text-white border-odoo-purple/20 dark:border-odoo-purple/50' },
+    { label: 'Subidos hoy', value: '—', color: 'bg-odoo-teal/10 dark:bg-odoo-teal/40 text-odoo-teal-d dark:text-white border-odoo-teal/20 dark:border-odoo-teal/50' },
+    { label: 'Pendientes revisión', value: '—', color: 'bg-warning-light dark:bg-warning-dark/50 text-warning-dark dark:text-white border-warning/20 dark:border-warning/50' },
+    { label: 'Archivados', value: '—', color: 'bg-ui-body dark:bg-ui-dark-card text-text-secondary dark:text-text-dark-secondary border-ui-border dark:border-ui-dark-border' },
   ]
 
   return (
