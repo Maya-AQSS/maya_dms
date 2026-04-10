@@ -24,6 +24,9 @@ trait BuildsTestJwt
         return [$privatePem, $details['key']];
     }
 
+    /**
+     * @param  list<string>  $realmRoles  Roles en realm_access.roles (Keycloak).
+     */
     protected function buildJwtForSub(
         string $privatePem,
         string $publicPem,
@@ -31,25 +34,32 @@ trait BuildsTestJwt
         string $sub,
         string $issuer = 'test-issuer',
         string $audience = 'test-audience',
+        array $realmRoles = [],
     ): string {
         $config = Configuration::forAsymmetricSigner(
-            new Sha256(),
+            new Sha256,
             InMemory::plainText($privatePem),
             InMemory::plainText($publicPem),
         );
 
         $now = new DateTimeImmutable;
 
-        return $config->builder()
+        $builder = $config->builder()
             ->issuedBy($issuer)
             ->permittedFor($audience)
             ->issuedAt($now->modify('-2 hours'))
             ->canOnlyBeUsedAfter($now->modify('-2 hours'))
             ->expiresAt($now->modify('+1 hour'))
             ->relatedTo($sub)
-            ->withClaim('email', 'test@example.com')
+            ->withClaim('email', 'test@example.com');
+
+        if ($realmRoles !== []) {
+            $builder = $builder->withClaim('realm_access', ['roles' => $realmRoles]);
+        }
+
+        return $builder
             ->withHeader('kid', $kid)
-            ->getToken(new Sha256(), InMemory::plainText($privatePem))
+            ->getToken(new Sha256, InMemory::plainText($privatePem))
             ->toString();
     }
 }

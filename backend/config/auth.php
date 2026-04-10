@@ -39,7 +39,7 @@ return [
 
     'guards' => [
         'web' => [
-            'driver'   => 'session',
+            'driver' => 'session',
             'provider' => 'users',
         ],
         'api' => [
@@ -123,8 +123,18 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'jwks_url'     => env('JWKS_URL'),
+    'jwks_url' => env('JWKS_URL'),
     'jwt_audience' => env('JWT_AUDIENCE'),
-    'jwt_issuer'   => env('JWT_ISSUER'),
+    'jwt_issuer' => env('JWT_ISSUER'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Grupos internos — roles con permiso de gestión (realm roles Keycloak)
+    |--------------------------------------------------------------------------
+    */
+    'group_management_roles' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('GROUP_MANAGEMENT_ROLES', 'manager,super-admin,admin'))
+    ))),
 
 ];
