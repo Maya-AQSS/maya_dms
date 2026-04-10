@@ -2,42 +2,45 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\DB;
 
 class Document extends Model
 {
-    use SoftDeletes, HasUuids;
+    use HasUuids, SoftDeletes;
 
     protected static function booted(): void
     {
-        static::addGlobalScope('user_access', function (\Illuminate\Database\Eloquent\Builder $builder) {
+        static::addGlobalScope('user_access', function (Builder $builder) {
             // Si no hay usuario autenticado, NO devolvemos nada (fail-closed)
             // Esto previene fugas de datos si el middleware aún no ha corrido
             if (! auth()->check()) {
                 $builder->whereRaw('1 = 0');
+
                 return;
             }
 
             $userId = auth()->id();
             $builder->where(function ($query) use ($userId) {
                 $query->where('documents.created_by', $userId)
-                      ->orWhere('documents.owner_id', $userId)
-                      ->orWhereExists(function ($subQuery) use ($userId) {
-                          $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
-                                   ->from('document_shares')
-                                   ->whereColumn('document_shares.document_id', 'documents.id')
-                                   ->where('user_id', $userId);
-                      })
-                      ->orWhereExists(function ($subQuery) use ($userId) {
-                          $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
-                                   ->from('document_reviews')
-                                   ->whereColumn('document_reviews.document_id', 'documents.id')
-                                   ->where('reviewer_id', $userId);
-                      });
+                    ->orWhere('documents.owner_id', $userId)
+                    ->orWhereExists(function ($subQuery) use ($userId) {
+                        $subQuery->select(DB::raw(1))
+                            ->from('document_shares')
+                            ->whereColumn('document_shares.document_id', 'documents.id')
+                            ->where('user_id', $userId);
+                    })
+                    ->orWhereExists(function ($subQuery) use ($userId) {
+                        $subQuery->select(DB::raw(1))
+                            ->from('document_reviews')
+                            ->whereColumn('document_reviews.document_id', 'documents.id')
+                            ->where('reviewer_id', $userId);
+                    });
             });
         });
     }
@@ -48,6 +51,7 @@ class Document extends Model
 
     protected $fillable = [
         'template_id',
+        'template_version_id',
         'title',
         'organization_id',
         'study_id',
@@ -62,8 +66,8 @@ class Document extends Model
     protected function casts(): array
     {
         return [
-            'submitted_at'    => 'datetime',
-            'published_at'    => 'datetime',
+            'submitted_at' => 'datetime',
+            'published_at' => 'datetime',
             'current_version' => 'integer',
         ];
     }
@@ -71,6 +75,11 @@ class Document extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(Template::class);
+    }
+
+    public function templateVersion(): BelongsTo
+    {
+        return $this->belongsTo(TemplateVersion::class);
     }
 
     public function blocks(): HasMany

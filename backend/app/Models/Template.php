@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 
 class Template extends Model
 {
-    use SoftDeletes, HasUuids;
+    use HasUuids, SoftDeletes;
 
     /**
      * Visibilidad efectiva:
@@ -152,9 +152,9 @@ class Template extends Model
     {
         return [
             'visibility_level' => TemplateVisibilityLevel::class,
-            'delivery_deadline'  => 'datetime',
-            'version'            => 'integer',
-            'review_stages'      => 'integer',
+            'delivery_deadline' => 'datetime',
+            'version' => 'integer',
+            'review_stages' => 'integer',
         ];
     }
 
@@ -176,5 +176,10 @@ class Template extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
+    }
+
+    public function publishedVersions(): HasMany
+    {
+        return $this->hasMany(TemplateVersion::class)->orderBy('version_number');
     }
 }
