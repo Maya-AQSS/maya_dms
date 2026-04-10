@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useState, useTransition } from 'react';
 import { CascadeFilters } from './CascadeFilters';
-import { useDocuments } from '../features/documents';
+import {
+  useDocuments,
+  useFilteredDocuments,
+  type CascadeDocumentFilters,
+} from '../features/documents';
 import { useHierarchy } from '../features/hierarchy';
 import type { DocumentStatus } from '../types/documents';
-
-type ActiveFilters = { studyTypeId: string; studyId: string; moduleId: string };
 
 const STATUS_LABELS: Record<DocumentStatus, string> = {
   draft: 'Borrador',
@@ -21,36 +23,28 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
     'bg-ui-border dark:bg-ui-dark-border text-text-secondary dark:text-text-dark-secondary',
 };
 
+/**
+ * Componente para mostrar el contenido de los documentos.
+ */
 export function DocumentsContent() {
-  const [activeFilters, setActiveFilters] = useState<ActiveFilters>({
+  const [activeFilters, setActiveFilters] = useState<CascadeDocumentFilters>({
     studyTypeId: '',
     studyId: '',
     moduleId: '',
   });
+  const [, startTransition] = useTransition();
 
   const { documents, loading, error } = useDocuments();
   const { hierarchy } = useHierarchy();
-
-  // Filtrado 100% en cliente, O(n) sobre arrays pequeños — bien por debajo de 16ms
-  const filtered = useMemo(() => {
-    const { studyTypeId, studyId, moduleId } = activeFilters;
-    if (!studyTypeId && !studyId && !moduleId) return documents;
-
-    return documents.filter((doc) => {
-      if (moduleId) return doc.module_id === moduleId;
-      if (studyId) return doc.study_id === studyId;
-      // Tipo de estudio: incluir todos los estudios que pertenecen a ese tipo
-      const type = hierarchy.find((t) => t.id === studyTypeId);
-      if (!type) return false;
-      const ids = new Set(type.studies.map((s) => s.id));
-      return doc.study_id !== null && ids.has(doc.study_id);
-    });
-  }, [documents, activeFilters, hierarchy]);
+  const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
 
   const handleClear = () =>
-    setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' });
+    startTransition(() =>
+      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' })
+    );
 
-  const handleChange = (filters: ActiveFilters) => setActiveFilters(filters);
+  const handleChange = (filters: CascadeDocumentFilters) =>
+    startTransition(() => setActiveFilters(filters));
 
   return (
     <div className="p-6">
