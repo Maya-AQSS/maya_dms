@@ -39,7 +39,7 @@ return [
 
     'guards' => [
         'web' => [
-            'driver'   => 'session',
+            'driver' => 'session',
             'provider' => 'users',
         ],
         'api' => [
@@ -123,8 +123,36 @@ return [
     |--------------------------------------------------------------------------
     */
 
-    'jwks_url'     => env('JWKS_URL'),
+    'jwks_url' => env('JWKS_URL'),
     'jwt_audience' => env('JWT_AUDIENCE'),
-    'jwt_issuer'   => env('JWT_ISSUER'),
+    'jwt_issuer' => env('JWT_ISSUER'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Grupos internos — roles con permiso de gestión (realm roles Keycloak)
+    |--------------------------------------------------------------------------
+    */
+    'group_management_roles' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('GROUP_MANAGEMENT_ROLES', 'manager,super-admin,admin'))
+    ))),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Plantillas — visibilidad compartida (realm roles Keycloak)
+    |--------------------------------------------------------------------------
+    |
+    | Solo estos roles pueden crear o asignar visibilidad distinta de
+    | "personal" (global, tipo de estudio, estudio, módulo, grupo).
+    | Los valores deben coincidir exactamente con los roles del JWT.
+    |
+    */
+    'template_shared_visibility_roles' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env(
+            'TEMPLATE_SHARED_VISIBILITY_ROLES',
+            'department-head,studies-head,director'
+        ))
+    ))),
 
 ];

@@ -51,6 +51,7 @@ class Document extends Model
         'title',
         'organization_id',
         'study_id',
+        'module_id',
         'created_by',
         'owner_id',
         'status',
