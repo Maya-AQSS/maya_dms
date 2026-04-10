@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TemplateVisibilityLevel;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\Access\Authorizable;
@@ -32,6 +33,23 @@ class JwtUser implements Authenticatable, AuthorizableContract
 
     public readonly string $scope;
 
+    /**
+     * IDs de contexto académico (claims JWT opcionales, p. ej. mappers Keycloak).
+     *
+     * @var list<string>
+     */
+    public readonly array $studyTypeIds;
+
+    /**
+     * @var list<string>
+     */
+    public readonly array $studyIds;
+
+    /**
+     * @var list<string>
+     */
+    public readonly array $moduleIds;
+
     public function __construct(array $claims)
     {
         $this->id = $claims['id'];
@@ -41,6 +59,19 @@ class JwtUser implements Authenticatable, AuthorizableContract
         $this->organizationId = $claims['organization_id'] ?? null;
         $this->roles = $claims['roles'] ?? [];
         $this->scope = $claims['scope'] ?? '';
+
+        $this->studyTypeIds = self::mergeScopeIds(
+            $claims['study_type_ids'] ?? null,
+            $claims['study_type_id'] ?? null,
+        );
+        $this->studyIds = self::mergeScopeIds(
+            $claims['study_ids'] ?? null,
+            $claims['study_id'] ?? null,
+        );
+        $this->moduleIds = array_values(array_unique(array_merge(
+            self::mergeScopeIds($claims['module_ids'] ?? null, $claims['module_id'] ?? null),
+            self::mergeScopeIds($claims['course_module_ids'] ?? null, $claims['course_module_id'] ?? null),
+        )));
     }
 
     /**
@@ -49,6 +80,50 @@ class JwtUser implements Authenticatable, AuthorizableContract
     public function hasRole(string $role): bool
     {
         return in_array($role, $this->roles, strict: true);
+    }
+
+    /**
+     * Puede crear o fijar visibilidad de plantilla distinta de {@see TemplateVisibilityLevel::Personal}
+     * (global, tipo de estudio, estudio, módulo, grupo).
+     */
+    public function canManageSharedTemplateVisibility(): bool
+    {
+        foreach (config('auth.template_shared_visibility_roles', []) as $role) {
+            if ($this->hasRole((string) $role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Normaliza lista + valor escalar de claims (arrays o JSON en string).
+     *
+     * @return list<string>
+     */
+    public static function mergeScopeIds(mixed $listClaim, mixed $scalarClaim): array
+    {
+        $out = [];
+
+        if (is_string($listClaim) && $listClaim !== '') {
+            $decoded = json_decode($listClaim, true);
+            $listClaim = is_array($decoded) ? $decoded : null;
+        }
+
+        if (is_array($listClaim)) {
+            foreach ($listClaim as $v) {
+                if ($v !== null && $v !== '') {
+                    $out[] = (string) $v;
+                }
+            }
+        }
+
+        if (is_string($scalarClaim) && $scalarClaim !== '') {
+            $out[] = $scalarClaim;
+        }
+
+        return array_values(array_unique($out));
     }
 
     // ── Authenticatable contract ──────────────────────────────

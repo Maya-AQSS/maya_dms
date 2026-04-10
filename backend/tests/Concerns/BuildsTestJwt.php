@@ -26,6 +26,7 @@ trait BuildsTestJwt
 
     /**
      * @param  list<string>  $realmRoles  Roles en realm_access.roles (Keycloak).
+     * @param  array<string, mixed>  $extraClaims  Claims adicionales (p. ej. organization_id, study_ids).
      */
     protected function buildJwtForSub(
         string $privatePem,
@@ -35,6 +36,7 @@ trait BuildsTestJwt
         string $issuer = 'test-issuer',
         string $audience = 'test-audience',
         array $realmRoles = [],
+        array $extraClaims = [],
     ): string {
         $config = Configuration::forAsymmetricSigner(
             new Sha256,
@@ -55,6 +57,10 @@ trait BuildsTestJwt
 
         if ($realmRoles !== []) {
             $builder = $builder->withClaim('realm_access', ['roles' => $realmRoles]);
+        }
+
+        foreach ($extraClaims as $name => $value) {
+            $builder = $builder->withClaim((string) $name, $value);
         }
 
         return $builder

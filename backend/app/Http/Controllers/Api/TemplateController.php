@@ -3,86 +3,105 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Template;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use App\Http\Requests\Templates\CloneTemplateRequest;
+use App\Http\Requests\Templates\IndexTemplateRequest;
+use App\Http\Requests\Templates\StoreTemplateRequest;
+use App\Http\Requests\Templates\UpdateTemplateRequest;
+use App\Http\Resources\TemplateResource;
 use App\Services\Contracts\TemplateServiceInterface;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Auth;
 
+/**
+ * Los métodos reciben el UUID como string (route {template}) para no usar
+ * route model binding implícito antes del middleware JWT; el global scope
+ * de {@see \App\Models\Template} depende de auth y fallaría en SubstituteBindings.
+ */
 class TemplateController extends Controller
 {
     public function __construct(
         private readonly TemplateServiceInterface $templateService,
     ) {}
-    /**
-     * Listar plantillas.
-     */
-    public function index(Request $request): JsonResponse
-    {
-        // TODO: filtros, paginación, TemplateService
 
-        return response()->json(['data' => []]);
+    /**
+     * Listar plantillas (filtros en query; paginación máx. 20).
+     */
+    public function index(IndexTemplateRequest $request): AnonymousResourceCollection
+    {
+        $paginator = $this->templateService->paginateFiltered(
+            $request->toFilterDto(),
+            $request->perPage(),
+        );
+
+        return TemplateResource::collection($paginator);
     }
 
     /**
      * Crear plantilla.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreTemplateRequest $request): JsonResponse
     {
-        // TODO: TemplateService::create(...)
+        $template = $this->templateService->create($request->toCreateDto());
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        return (new TemplateResource($template))->response()->setStatusCode(201);
     }
 
     /**
      * Mostrar plantilla.
      */
-    public function show(string $id): JsonResponse
+    public function show(string $template): TemplateResource
     {
-        $template = $this->templateService->findOrFail($id);
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('view', $model);
 
-        // TODO: TemplateResource
-
-        return response()->json(['data' => $template]);
+        return new TemplateResource($model);
     }
 
     /**
      * Actualizar plantilla.
-     * La publicación de una plantilla no puede hacerlo el creador; exige otro actor autorizado vía {@see TemplatePolicy::review}.
+     * La publicación exige actor distinto del creador vía {@see \App\Policies\TemplatePolicy::review}.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateTemplateRequest $request, string $template): TemplateResource
     {
-        $template = $this->templateService->findOrFail($id);
+        $model = $this->templateService->findOrFail($template);
 
-        $validated = $request->validate([
-            'name'            => ['sometimes', 'string', 'max:255'],
-            'description'     => ['sometimes', 'nullable', 'string'],
-            'study_id'        => ['sometimes', 'nullable', 'string'],
-            'organization_id' => ['sometimes', 'nullable', 'string'],
-            'status'          => ['sometimes', 'string', 'in:draft,published,archived'],
-            'review_stages'   => ['sometimes', 'integer', 'min:0'],
-            'review_mode'     => ['sometimes', 'string', 'in:sequential,parallel'],
-        ]);
+        $dto = $request->toUpdateDto();
 
-        $targetStatus = $validated['status'] ?? $template->status;
-
-        if ($targetStatus === 'published' && $template->status !== 'published') {
-            $this->authorize('review', $template);
+        $targetStatus = $dto->setStatus ? $dto->status : $model->status;
+        if ($targetStatus === 'published' && $model->status !== 'published') {
+            $this->authorize('review', $model);
         }
 
-        // TODO: TemplateService::update(...)
+        $updated = $this->templateService->update($model->id, $dto);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        return new TemplateResource($updated);
     }
 
     /**
-     * Eliminar plantilla.
+     * Eliminar plantilla (archivo si hay documentos asociados; si no, borrado físico).
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(string $template): JsonResponse|\Illuminate\Http\Response
     {
-        $template = $this->templateService->findOrFail($id);
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('delete', $model);
 
-        // TODO: borrado lógico / política propia
+        $hardDeleted = $this->templateService->destroy($model->id, (string) Auth::id());
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        if ($hardDeleted) {
+            return response()->noContent();
+        }
+
+        return (new TemplateResource($this->templateService->findOrFail($model->id)))->response();
+    }
+
+    /**
+     * Clonar plantilla en borrador personal con sufijo "(copia)" y mismos bloques.
+     */
+    public function clone(CloneTemplateRequest $request, string $template): JsonResponse
+    {
+        $copy = $this->templateService->clone($template, (string) Auth::id());
+
+        return (new TemplateResource($copy))->response()->setStatusCode(201);
     }
 }

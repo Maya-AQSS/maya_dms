@@ -128,13 +128,22 @@ class JwtMiddleware
 
         $profile = Cache::remember($cacheKey, 900, function () use ($claims) {
             return [
-                'id'              => $claims['sub'],
-                'email'           => $claims['email'] ?? null,
-                'name'            => $claims['name'] ?? null,
-                'department'      => $claims['department'] ?? $claims['departamento'] ?? null,
-                'organization_id' => $claims['organization_id'] ?? $claims['org_id'] ?? null,
-                'roles'           => $claims['realm_access']['roles'] ?? [],
-                'scope'           => $claims['scope'] ?? '',
+                'id'                  => $claims['sub'],
+                'email'               => $claims['email'] ?? null,
+                'name'                => $claims['name'] ?? null,
+                'department'          => $claims['department'] ?? $claims['departamento'] ?? null,
+                'organization_id'     => $claims['organization_id'] ?? $claims['org_id'] ?? null,
+                'roles'               => $claims['realm_access']['roles'] ?? [],
+                'scope'               => $claims['scope'] ?? '',
+                // Contexto académico opcional (mappers en IdP) — ver {@see JwtUser} / scope de Template.
+                'study_type_ids'      => $claims['study_type_ids'] ?? null,
+                'study_type_id'       => $claims['study_type_id'] ?? null,
+                'study_ids'           => $claims['study_ids'] ?? null,
+                'study_id'            => $claims['study_id'] ?? null,
+                'module_ids'          => $claims['module_ids'] ?? null,
+                'module_id'           => $claims['module_id'] ?? null,
+                'course_module_ids'   => $claims['course_module_ids'] ?? null,
+                'course_module_id'    => $claims['course_module_id'] ?? null,
             ];
         });
 

@@ -119,6 +119,6 @@
     -webkit-font-smoothing: antialiased;
   }
   body {
-    @apply bg-ui-body text-text-primary font-sans;
+    @apply bg-ui-body text-text-primary font-sans dark:bg-ui-dark-bg dark:text-text-dark-primary;
   }
 }

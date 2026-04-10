@@ -42,6 +42,7 @@ Route::prefix('v1')->group(function () {
         Route::apiResource('templates', \App\Http\Controllers\Api\TemplateController::class);
         Route::apiResource('templates.blocks', \App\Http\Controllers\Api\TemplateBlockController::class)
             ->shallow();
+        Route::post('templates/{template}/clone', [\App\Http\Controllers\Api\TemplateController::class, 'clone']);
 
         // Sprint 3 — Documentos
         Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class);
