@@ -14,6 +14,14 @@ use App\Models\JwtUser;
 class DocumentPolicy
 {
     /**
+     * Ver documento: el alcance lo acota el global scope del modelo.
+     */
+    public function view(JwtUser $user, Document $document): bool
+    {
+        return true;
+    }
+
+    /**
      * Revisión / aprobación / rechazo del documento en flujo de revisión.
      */
     public function review(JwtUser $user, Document $document): bool

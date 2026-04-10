@@ -18,6 +18,17 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
     }
 
     /**
+     * Última versión publicada de la plantilla (mayor {@see TemplateVersion::$version_number}), o null.
+     */
+    public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion
+    {
+        return TemplateVersion::query()
+            ->where('template_id', $templateId)
+            ->orderByDesc('version_number')
+            ->first();
+    }
+
+    /**
      * Lista todas las versiones de una plantilla ordenadas por número de versión.
      */
     public function listForTemplateOrdered(string $templateId): Collection

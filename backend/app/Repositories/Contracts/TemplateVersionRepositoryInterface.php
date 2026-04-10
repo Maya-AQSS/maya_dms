@@ -10,6 +10,11 @@ interface TemplateVersionRepositoryInterface
     public function findOrFail(string $id): TemplateVersion;
 
     /**
+     * Última versión publicada de la plantilla (mayor {@see TemplateVersion::$version_number}), o null.
+     */
+    public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion;
+
+    /**
      * Lista todas las versiones de una plantilla ordenadas por número de versión.
      *
      * @return Collection<int, TemplateVersion>
