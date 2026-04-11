@@ -2,15 +2,13 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { HierarchyProvider } from './features/hierarchy'
-import { bootstrapSessionToken } from './lib/sessionToken'
-
-bootstrapSessionToken()
+import { AuthProvider } from '@maya/shared-auth-react'
+import { authService } from './lib/auth'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <HierarchyProvider>
+    <AuthProvider keycloak={authService.keycloak} enableLogging={import.meta.env.DEV}>
       <App />
-    </HierarchyProvider>
+    </AuthProvider>
   </StrictMode>,
 )

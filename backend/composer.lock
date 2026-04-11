@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c79027a19891903a4dd7ff24a8ace08f",
+    "content-hash": "e023d4fdbc654875cd7cddcd0db133c8",
     "packages": [
         {
             "name": "brick/math",
@@ -2484,6 +2484,42 @@
                 }
             ],
             "time": "2026-03-08T20:05:35+00:00"
+        },
+        {
+            "name": "maya/shared-auth-laravel",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../packages/maya-shared-auth-laravel",
+                "reference": "d5d98ab232cf66943ca19d4defa8bf1f56613532"
+            },
+            "require": {
+                "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "lcobucci/jwt": "^5.0",
+                "php": "^8.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Maya\\Auth\\Providers\\SharedAuthServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Auth\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Shared JWT Authentication logic for MAyA Laravel microservices.",
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "monolog/monolog",
@@ -10828,7 +10864,9 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {
+        "maya/shared-auth-laravel": 20
+    },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
