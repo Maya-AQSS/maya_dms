@@ -2,6 +2,8 @@
 
 namespace App\Services\Contracts;
 
+use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
+use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Models\TemplateBlock;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -19,17 +21,12 @@ interface TemplateBlockServiceInterface
      */
     public function create(string $templateId, array $attributes, string $userId): TemplateBlock;
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    public function update(string $blockId, array $attributes, string $userId): TemplateBlock;
+    public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlock;
 
     public function delete(string $blockId, string $userId): void;
 
     /**
-     * @param  list<string>  $ids
-     * @param  array<string, mixed>  $attributes
      * @return Collection<int, TemplateBlock>
      */
-    public function bulkUpdate(array $ids, array $attributes, string $userId): Collection;
+    public function bulkUpdate(BulkUpdateTemplateBlocksDto $dto, string $userId): Collection;
 }

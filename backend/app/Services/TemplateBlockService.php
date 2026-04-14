@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
+use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -58,12 +60,31 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         return $block;
     }
 
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    public function update(string $blockId, array $attributes, string $userId): TemplateBlock
+    public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlock
     {
-        $block    = $this->blockRepository->findOrFail($blockId);
+        $block = $this->blockRepository->findOrFail($blockId);
+
+        $attributes = [];
+        if ($dto->set_block_state) {
+            $attributes['block_state'] = $dto->block_state;
+        }
+        if ($dto->set_mandatory) {
+            $attributes['mandatory'] = $dto->mandatory;
+        }
+
+        // Only record audit and update if there are actual changes
+        $hasChanges = false;
+        if ($dto->set_block_state && $block->block_state !== $dto->block_state) {
+            $hasChanges = true;
+        }
+        if ($dto->set_mandatory && $block->mandatory !== $dto->mandatory) {
+            $hasChanges = true;
+        }
+
+        if (! $hasChanges) {
+            return $block;
+        }
+
         $previous = [
             'block_state' => $block->block_state,
             'mandatory'   => $block->mandatory,
@@ -108,36 +129,42 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $this->blockRepository->delete($block);
     }
 
-    /**
-     * @param  list<string>  $ids
-     * @param  array<string, mixed>  $attributes
-     * @return Collection<int, TemplateBlock>
-     */
-    public function bulkUpdate(array $ids, array $attributes, string $userId): Collection
+    public function bulkUpdate(BulkUpdateTemplateBlocksDto $dto, string $userId): Collection
     {
-        // Capture previous states before the bulk update
-        $before = $this->blockRepository->findByIds($ids)->keyBy('id');
+        // Capture previous states before the bulk update to identify actual changes
+        $before = $this->blockRepository->findByIds($dto->ids)->keyBy('id');
 
-        $updated = $this->blockRepository->bulkUpdate($ids, $attributes);
+        $attributes = ['block_state' => $dto->block_state];
+        if ($dto->set_mandatory) {
+            $attributes['mandatory'] = $dto->mandatory;
+        }
+
+        $updated = $this->blockRepository->bulkUpdate($dto->ids, $attributes);
 
         foreach ($updated as $block) {
             $prev = $before->get($block->getKey());
 
-            $this->auditLogService->record(
-                entityType:    'template',
-                entityId:      $block->template_id,
-                action:        'block_state_changed',
-                userId:        $userId,
-                blockUuid:     $block->getKey(),
-                previousValue: $prev ? [
-                    'block_state' => $prev->block_state,
-                    'mandatory'   => $prev->mandatory,
-                ] : null,
-                newValue: [
-                    'block_state' => $block->block_state,
-                    'mandatory'   => $block->mandatory,
-                ],
-            );
+            // Redundant audit prevention: only log if something actually changed
+            $changedState = $prev && $prev->block_state !== $block->block_state;
+            $changedMandatory = $dto->set_mandatory && $prev && $prev->mandatory !== $block->mandatory;
+
+            if ($changedState || $changedMandatory) {
+                $this->auditLogService->record(
+                    entityType:    'template',
+                    entityId:      $block->template_id,
+                    action:        'block_state_changed',
+                    userId:        $userId,
+                    blockUuid:     $block->getKey(),
+                    previousValue: [
+                        'block_state' => $prev->block_state,
+                        'mandatory'   => $prev->mandatory,
+                    ],
+                    newValue: [
+                        'block_state' => $block->block_state,
+                        'mandatory'   => $block->mandatory,
+                    ],
+                );
+            }
         }
 
         return $updated;

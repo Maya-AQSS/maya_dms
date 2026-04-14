@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
+use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TemplateBlocks\BulkUpdateTemplateBlockRequest;
 use App\Http\Requests\TemplateBlocks\StoreTemplateBlockRequest;
@@ -55,10 +57,18 @@ class TemplateBlockController extends Controller
      */
     public function update(UpdateTemplateBlockRequest $request, string $block): TemplateBlockResource
     {
+        $validated = $request->validated();
+        $dto = new UpdateTemplateBlockDto(
+            block_state:     $validated['block_state'] ?? null,
+            set_block_state: $request->has('block_state'),
+            mandatory:       $validated['mandatory'] ?? null,
+            set_mandatory:   $request->has('mandatory'),
+        );
+
         $updated = $this->blockService->update(
-            blockId:    $block,
-            attributes: $request->validated(),
-            userId:     (string) Auth::id(),
+            blockId: $block,
+            dto:     $dto,
+            userId:  (string) Auth::id(),
         );
 
         return new TemplateBlockResource($updated);
@@ -81,15 +91,17 @@ class TemplateBlockController extends Controller
     public function bulkUpdate(BulkUpdateTemplateBlockRequest $request): AnonymousResourceCollection
     {
         $validated = $request->validated();
-        $attributes = array_filter([
-            'block_state' => $validated['block_state'],
-            'mandatory'   => $validated['mandatory'] ?? null,
-        ], fn ($v) => $v !== null);
+        
+        $dto = new BulkUpdateTemplateBlocksDto(
+            ids:           $validated['ids'],
+            block_state:   $validated['block_state'],
+            mandatory:     $validated['mandatory'] ?? null,
+            set_mandatory: $request->has('mandatory'),
+        );
 
         $blocks = $this->blockService->bulkUpdate(
-            ids:        $validated['ids'],
-            attributes: $attributes,
-            userId:     (string) Auth::id(),
+            dto:    $dto,
+            userId: (string) Auth::id(),
         );
 
         return TemplateBlockResource::collection($blocks);
