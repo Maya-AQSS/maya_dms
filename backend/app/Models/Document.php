@@ -54,6 +54,7 @@ class Document extends Model
         'template_version_id',
         'title',
         'organization_id',
+        'study_type_id',
         'study_id',
         'module_id',
         'created_by',

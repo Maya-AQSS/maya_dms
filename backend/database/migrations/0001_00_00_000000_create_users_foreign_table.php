@@ -1,14 +1,35 @@
 <?php
 
+use App\Support\PostgresFdwMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
+    /**
+     * Nombre de la vista pública que consume la aplicación.
+     */
+    private const VIEW_NAME = 'users';
+
+    /**
+     * Nombre de la foreign table física gestionada por FDW.
+     */
+    private const FDW_TABLE = 'users_fdw';
+
+    /**
+     * Nombre del servidor FDW compartido en el esquema.
+     */
+    private const FDW_SERVER = 'users_server';
+
+    /**
+     * Tabla local usada como origen de datos en entorno local.
+     */
+    private const LOCAL_SOURCE_TABLE = 'users_source';
+
     public function up(): void
     {
         if (app()->environment('testing')) {
-            $this->createLocalTable();
+            $this->createTestingUsersTable();
             return;
         }
 
@@ -18,52 +39,34 @@ return new class extends Migration
     public function down(): void
     {
         if (app()->environment('testing')) {
-            DB::statement('DROP TABLE IF EXISTS users');
+            DB::statement('DROP TABLE IF EXISTS ' . self::VIEW_NAME);
             return;
         }
 
-        // users puede ser VIEW (caso normal) o TABLE (artefacto de entorno previo).
-        // Se usa DO $$ para evitar abortar la transacción si el tipo no coincide.
-        DB::statement("
-            DO \$\$ BEGIN
-                IF EXISTS (
-                    SELECT 1 FROM information_schema.views
-                    WHERE table_schema = 'public' AND table_name = 'users'
-                ) THEN
-                    DROP VIEW users;
-                ELSIF EXISTS (
-                    SELECT 1 FROM information_schema.tables
-                    WHERE table_schema = 'public' AND table_name = 'users'
-                    AND table_type = 'BASE TABLE'
-                ) THEN
-                    DROP TABLE users;
-                END IF;
-            END \$\$
-        ");
+        PostgresFdwMigration::dropViewOrTableInPublic(self::VIEW_NAME);
 
-        DB::statement('DROP FOREIGN TABLE IF EXISTS users_fdw');
-        DB::statement('DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER users_server');
-        DB::statement('DROP SERVER IF EXISTS users_server CASCADE');
+        DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TABLE);
+        DB::statement('DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER ' . self::FDW_SERVER);
+        DB::statement('DROP SERVER IF EXISTS ' . self::FDW_SERVER . ' CASCADE');
 
         if (app()->environment('local')) {
-            DB::statement('DROP TABLE IF EXISTS users_source');
+            DB::statement('DROP TABLE IF EXISTS ' . self::LOCAL_SOURCE_TABLE);
         }
 
-        // La extensión puede haber sido creada por el superusuario de infra,
-        // en cuyo caso maya_dms_user no tiene permisos para eliminarla.
+        // La extensión puede ser gestionada por infra (sin permisos para borrarla).
         DB::statement("
             DO \$\$ BEGIN
                 DROP EXTENSION IF EXISTS postgres_fdw;
             EXCEPTION WHEN insufficient_privilege THEN
-                NULL; -- La extensión persiste; la gestiona el DBA de infra
+                NULL;
             END \$\$
         ");
     }
 
     /**
-     * SQLite-compatible stub for testing (no FDW support).
+     * Tabla local de solo testing (SQLite compatible).
      */
-    private function createLocalTable(): void
+    private function createTestingUsersTable(): void
     {
         DB::statement('
             CREATE TABLE IF NOT EXISTS users (
@@ -78,10 +81,9 @@ return new class extends Migration
     }
 
     /**
-     * Configure postgres_fdw for both local and production.
-     *
-     * Local:      FDW points to the same database (self-referencing via users_source table).
-     * Production: FDW points to the remote corporate database via FDW_USERS_* env vars.
+     * Configura FDW para local y producción.
+     * - local: apunta a users_source (misma BD)
+     * - producción: apunta a BD externa (config database.fdw.users.*)
      */
     private function setupFdw(): void
     {
@@ -90,76 +92,76 @@ return new class extends Migration
         if ($isLocal) {
             $this->createLocalSourceTable();
 
-            $host     = config('database.connections.pgsql.host');
-            $port     = config('database.connections.pgsql.port');
-            $dbname   = config('database.connections.pgsql.database');
-            $user     = config('database.connections.pgsql.username');
+            $host = config('database.connections.pgsql.host');
+            $port = config('database.connections.pgsql.port');
+            $database = config('database.connections.pgsql.database');
+            $username = config('database.connections.pgsql.username');
             $password = config('database.connections.pgsql.password');
-            $schema   = 'public';
-            $table    = 'users_source';
+            $schema = 'public';
+            $sourceTable = self::LOCAL_SOURCE_TABLE;
         } else {
-            $host     = config('database.fdw.users.host');
-            $port     = config('database.fdw.users.port');
-            $dbname   = config('database.fdw.users.database');
-            $user     = config('database.fdw.users.username');
+            $host = config('database.fdw.users.host');
+            $port = config('database.fdw.users.port');
+            $database = config('database.fdw.users.database');
+            $username = config('database.fdw.users.username');
             $password = config('database.fdw.users.password');
-            $schema   = config('database.fdw.users.schema', 'public');
-            $table    = config('database.fdw.users.table', 'users');
+            $schema = config('database.fdw.users.schema', 'public');
+            $sourceTable = config('database.fdw.users.table', 'users');
         }
 
         try {
             DB::statement('CREATE EXTENSION IF NOT EXISTS postgres_fdw');
         } catch (\Throwable $e) {
-            logger()->error("No permission for postgres_fdw");
+            logger()->error('No permission for postgres_fdw');
             return;
         }
 
-        $host     = addcslashes($host, "'\\");
-        $port     = addcslashes($port, "'\\");
-        $dbname   = addcslashes($dbname, "'\\");
-        $user     = addcslashes($user, "'\\");
-        $password = addcslashes($password, "'\\");
-        $schema   = addcslashes($schema, "'\\");
-        $table    = addcslashes($table, "'\\");
+        $safeHost = PostgresFdwMigration::escapeSqlLiteral((string) $host);
+        $safePort = PostgresFdwMigration::escapeSqlLiteral((string) $port);
+        $safeDatabase = PostgresFdwMigration::escapeSqlLiteral((string) $database);
+        $safeUsername = PostgresFdwMigration::escapeSqlLiteral((string) $username);
+        $safePassword = PostgresFdwMigration::escapeSqlLiteral((string) $password);
+        $safeSchema = PostgresFdwMigration::escapeSqlLiteral((string) $schema);
+        $safeSourceTable = PostgresFdwMigration::escapeSqlLiteral((string) $sourceTable);
 
         DB::statement("
-            CREATE SERVER IF NOT EXISTS users_server
+            CREATE SERVER IF NOT EXISTS " . self::FDW_SERVER . "
             FOREIGN DATA WRAPPER postgres_fdw
-            OPTIONS (host '{$host}', port '{$port}', dbname '{$dbname}')
+            OPTIONS (host '{$safeHost}', port '{$safePort}', dbname '{$safeDatabase}')
         ");
 
         DB::statement("
             CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
-            SERVER users_server
-            OPTIONS (user '{$user}', password '{$password}')
+            SERVER " . self::FDW_SERVER . "
+            OPTIONS (user '{$safeUsername}', password '{$safePassword}')
         ");
 
         DB::statement("
-            CREATE FOREIGN TABLE IF NOT EXISTS users_fdw (
+            CREATE FOREIGN TABLE IF NOT EXISTS " . self::FDW_TABLE . " (
                 id           VARCHAR(255),
                 nombre       VARCHAR(255),
                 email        VARCHAR(255),
                 departamento VARCHAR(255)
             )
-            SERVER users_server
-            OPTIONS (schema_name '{$schema}', table_name '{$table}')
+            SERVER " . self::FDW_SERVER . "
+            OPTIONS (schema_name '{$safeSchema}', table_name '{$safeSourceTable}')
         ");
 
         DB::statement("
-            CREATE OR REPLACE VIEW users AS
+            CREATE OR REPLACE VIEW " . self::VIEW_NAME . " AS
             SELECT
                 id,
-                nombre as name,
+                nombre AS name,
                 email,
-                departamento as department
-            FROM users_fdw
+                departamento AS department
+            FROM " . self::FDW_TABLE . "
         ");
 
-        $this->revokeWritePermissions();
+        PostgresFdwMigration::revokeAppUserWriteOnFdwRelation(self::FDW_TABLE);
     }
 
     /**
-     * Stub table as data source for the local self-referencing FDW.
+     * Fuente local para simular origen externo en entorno local.
      */
     private function createLocalSourceTable(): void
     {
@@ -175,19 +177,4 @@ return new class extends Migration
         ');
     }
 
-    private function revokeWritePermissions(): void
-    {
-        $appUser = config('database.connections.pgsql.username');
-
-        if (empty($appUser)) {
-            return;
-        }
-
-        try {
-            DB::statement("REVOKE INSERT, UPDATE, DELETE ON users_fdw FROM \"{$appUser}\"");
-            DB::statement("GRANT SELECT ON users_fdw TO \"{$appUser}\"");
-        } catch (\Throwable $e) {
-            logger()->warning("FDW: could not set permissions for {$appUser}: {$e->getMessage()}");
-        }
-    }
 };

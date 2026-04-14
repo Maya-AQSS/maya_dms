@@ -10,6 +10,9 @@ return new class extends Migration
     /**
      * Tabla de auditoría inmutable para cumplimiento ISO 9001 y RGPD.
      *
+     * entity_id como string: admite UUIDs de entidades locales y IDs del catálogo académico (FDW).
+     * block_id: referencia opcional al bloque (template_block / document_block) como string.
+     *
      * Restricciones de integridad:
      *   - El usuario de aplicación solo tiene permiso INSERT + SELECT.
      *   - UPDATE y DELETE están revocados a nivel de PostgreSQL.
@@ -21,9 +24,9 @@ return new class extends Migration
         Schema::create('audit_log', function (Blueprint $table) {
             $table->uuid('id')->primary();
 
-            $table->string('entity_type');  // document | template | comment
-            $table->uuid('entity_id');
-            $table->uuid('block_uuid')->nullable();
+            $table->string('entity_type');  // document | template | comment | …
+            $table->string('entity_id');
+            $table->string('block_id')->nullable();
 
             // created | updated | deleted | state_changed | approved | rejected
             $table->string('action');
@@ -48,8 +51,10 @@ return new class extends Migration
         // UPDATE y DELETE están prohibidos a nivel de PostgreSQL.
         if (DB::getDriverName() === 'pgsql') {
             $appUser = config('database.connections.pgsql.username');
-            DB::statement("REVOKE UPDATE, DELETE ON audit_log FROM \"{$appUser}\"");
-            DB::statement("GRANT INSERT, SELECT ON audit_log TO \"{$appUser}\"");
+            if (! empty($appUser)) {
+                DB::statement("REVOKE UPDATE, DELETE ON audit_log FROM \"{$appUser}\"");
+                DB::statement("GRANT INSERT, SELECT ON audit_log TO \"{$appUser}\"");
+            }
         }
     }
 
@@ -57,7 +62,9 @@ return new class extends Migration
     {
         if (DB::getDriverName() === 'pgsql') {
             $appUser = config('database.connections.pgsql.username');
-            DB::statement("GRANT UPDATE, DELETE ON audit_log TO \"{$appUser}\"");
+            if (! empty($appUser)) {
+                DB::statement("GRANT UPDATE, DELETE ON audit_log TO \"{$appUser}\"");
+            }
         }
 
         Schema::dropIfExists('audit_log');

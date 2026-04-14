@@ -122,13 +122,13 @@ class TemplateBlocksApiTest extends TestCase
 
         $row = DB::table('audit_log')
             ->where('action', 'block_state_changed')
-            ->where('block_uuid', $blockId)
+            ->where('block_id', $blockId)
             ->orderByDesc('timestamp')
             ->first();
 
         $this->assertNotNull($row);
         $this->assertSame($userId, $row->user_id);
-        $this->assertSame($blockId, $row->block_uuid);
+        $this->assertSame($blockId, $row->block_id);
 
         $previous = json_decode((string) $row->previous_value, true);
         $new = json_decode((string) $row->new_value, true);

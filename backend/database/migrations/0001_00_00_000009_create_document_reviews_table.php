@@ -7,11 +7,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Flujo de revisión con N validadores (F-06.1).
+     * Flujo de revisión con N validadores.
      *
-     * document_reviews registra cada instancia de revisión de un documento.
-     * Un documento en estado in_review tiene exactamente un review activo.
-     * La SoD policy garantiza que created_by != reviewer_id (F-01.3).
+     * document_reviews guarda una fila por revisor asignado (columna stage) al pasar el documento
+     * a in_review. Puede haber varias filas pending a la vez: según templates.review_mode,
+     * parallel permite que cualquier revisión pendiente reciba approve/reject; sequential
+     * restringe en aplicación a la etapa pendiente de número más bajo (puede haber varios
+     * revisores en la misma etapa).
+     *
+     * La segregación de funciones (SoD: el autor no actúa como revisor) se aplica en políticas y servicio.
+     *
+     * UNIQUE(document_id, reviewer_id): alineado con template_reviewers (un mismo usuario no repite
+     * como revisor de la plantilla); evita filas duplicadas si los datos de plantilla estuvieran corruptos.
      */
     public function up(): void
     {
@@ -25,6 +32,7 @@ return new class extends Migration
             $table->timestamp('reviewed_at')->nullable();
             $table->timestamps();
 
+            $table->unique(['document_id', 'reviewer_id'], 'document_reviews_document_id_reviewer_id_unique');
             $table->index(['document_id', 'stage', 'status']);
             $table->index('reviewer_id');
         });
