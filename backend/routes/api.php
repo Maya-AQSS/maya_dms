@@ -63,6 +63,7 @@ Route::prefix('v1')->group(function () {
         Route::post('templates/{template}/reopen-draft', [TemplateController::class, 'reopenDraft']);
         Route::get('templates/{template}/versions', [TemplateController::class, 'versions']);
         Route::get('template-versions/{template_version}', [TemplateController::class, 'showVersion']);
+        Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, 'Los snapshots de plantilla son de solo inserción (append-only).'));
 
         // Sprint 3 — Documentos
         Route::apiResource('documents', DocumentController::class);

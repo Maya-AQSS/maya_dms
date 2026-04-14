@@ -769,6 +769,46 @@ class TemplatesApiTest extends TestCase
         $version->update(['changelog' => 'hack']);
     }
 
+    public function test_template_version_snapshot_mutation_via_http_returns_403(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Snap HTTP',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $vid = (string) Str::uuid();
+        TemplateVersion::query()->forceCreate([
+            'id' => $vid,
+            'template_id' => $tid,
+            'version_number' => 1,
+            'blocks_snapshot' => [],
+            'changelog' => 'x',
+            'published_by' => $userId,
+            'published_at' => now(),
+        ]);
+
+        $this->putJson("/api/v1/template-versions/{$vid}", ['changelog' => 'hack'], $headers)->assertForbidden();
+        $this->patchJson("/api/v1/template-versions/{$vid}", ['changelog' => 'hack'], $headers)->assertForbidden();
+        $this->deleteJson("/api/v1/template-versions/{$vid}", [], $headers)->assertForbidden();
+    }
+
     public function test_template_reject_review_returns_to_draft(): void
     {
         $creatorId = (string) Str::uuid();
