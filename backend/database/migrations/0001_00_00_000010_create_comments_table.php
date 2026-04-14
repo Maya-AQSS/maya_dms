@@ -7,12 +7,9 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Comentarios por bloque (F-06.2).
+     * Comentarios por bloque.
      * Los comentarios se muestran en un drawer lateral asociado al bloque.
      * Los comentarios de revisión tienen un estado resolved/unresolved.
-     *
-     * El Global Scope de Comment filtrará por organization_id del documento
-     * padre para prevenir IDOR (F-01.4).
      */
     public function up(): void
     {
