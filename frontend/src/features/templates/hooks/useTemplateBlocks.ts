@@ -147,5 +147,19 @@ export function useTemplateBlocks(templateId: string) {
     toggleSelect,
     selectOnly,
     clearSelection,
+    reorderBlocks: async (draggedId: string, targetIndex: number) => {
+      const sourceIndex = blocks.findIndex(b => b.id === draggedId);
+      if (sourceIndex === -1) return;
+      const newBlocks = [...blocks];
+      const [movedBlock] = newBlocks.splice(sourceIndex, 1);
+      newBlocks.splice(targetIndex, 0, movedBlock);
+      setBlocks(newBlocks);
+      try {
+        await updateBlockRequest(draggedId, { sort_order: targetIndex });
+      } catch (e) {
+        console.error('Failed to persist reorder:', e);
+        void load();
+      }
+    },
   };
 }

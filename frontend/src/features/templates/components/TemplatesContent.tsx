@@ -1,11 +1,15 @@
-import { useMemo, useState } from 'react';
-import type { TemplateVisibilityLevel } from '../../../types/templates';
+import { useEffect, useMemo, useState } from 'react';
+import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
 import { datetimeLocalToIso } from '../templateFormUtils';
 import { Button, FieldLabel, Select, TextInput } from '../../../ui';
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
+import { TemplateBlockEditor } from './TemplateBlockEditor';
+import { useHierarchy } from '../../../features/hierarchy';
+import { fetchGroups } from '../../../api/groups';
+import type { Group } from '../../../types/groups';
 
 /**
  * Gestión de plantillas normativas: datos vía {@link useTemplates}.
@@ -25,7 +29,6 @@ export function TemplatesContent() {
     applyFilters,
     goToPage,
     createTemplate,
-    updateTemplate,
     deleteTemplate,
     cloneTemplate,
   } = useTemplates();
@@ -40,6 +43,9 @@ export function TemplatesContent() {
   const [newGroupId, setNewGroupId] = useState('');
   const [creating, setCreating] = useState(false);
 
+  const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
+  const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
+
   const filterUi = useMemo(
     () => ({
       visibility: filters.visibility_level ?? '',
@@ -52,22 +58,35 @@ export function TemplatesContent() {
     [filters],
   );
 
-  const hasHierarchyIdFilters = useMemo(
-    () =>
-      Boolean(
-        filterUi.studyTypeId.trim() ||
-          filterUi.studyId.trim() ||
-          filterUi.moduleId.trim() ||
-          filterUi.groupId.trim(),
-      ),
-    [filterUi],
-  );
+  // ── Academic hierarchy for cascade filter dropdowns ──────────────────────
+  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
+  const [groups, setGroups] = useState<Group[]>([]);
+
+  useEffect(() => {
+    fetchGroups(200).then((res) => setGroups(res.data)).catch(() => undefined);
+  }, []);
+
+  const selectedTypeData = hierarchy.find((t) => t.id === filterUi.studyTypeId);
+  const availableStudies = selectedTypeData ? selectedTypeData.studies : [];
+  const selectedStudyData = availableStudies.find((s) => s.id === filterUi.studyId);
+  const availableModules = selectedStudyData ? selectedStudyData.course_modules : [];
+
+  const clearFilters = () => {
+    applyFilters({
+      visibility_level: undefined,
+      status: undefined,
+      study_type_id: undefined,
+      study_id: undefined,
+      module_id: undefined,
+      group_id: undefined,
+    });
+  };
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setCreating(true);
     try {
-      await createTemplate({
+      const newTemplate = await createTemplate({
         name: newName.trim(),
         description: newDesc.trim() === '' ? null : newDesc.trim(),
         visibility_level: newVisibility,
@@ -77,6 +96,7 @@ export function TemplatesContent() {
         module_id: newModuleId.trim() === '' ? null : newModuleId.trim(),
         group_id: newGroupId.trim() === '' ? null : newGroupId.trim(),
       });
+      
       setNewName('');
       setNewDesc('');
       setNewVisibility('personal');
@@ -85,6 +105,11 @@ export function TemplatesContent() {
       setNewStudyId('');
       setNewModuleId('');
       setNewGroupId('');
+      
+      setViewMode('list');
+      
+      // Auto-abrir editor
+      setEditingTemplate(newTemplate);
     } catch {
       /* el hook ya dejó el mensaje en actionError */
     } finally {
@@ -113,6 +138,14 @@ export function TemplatesContent() {
         >
           Actualizar
         </Button>
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          onClick={() => setViewMode('create')}
+        >
+          Nueva Plantilla
+        </Button>
       </div>
 
       {listError && (
@@ -139,198 +172,306 @@ export function TemplatesContent() {
         </div>
       )}
 
-      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-4 space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
-          Filtros
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div>
-            <FieldLabel>Visibilidad</FieldLabel>
-            <Select
-              fieldSize="sm"
-              value={filterUi.visibility}
-              onChange={(e) =>
-                applyFilters({
-                  visibility_level: e.target.value || undefined,
-                })
-              }
-            >
-              <option value="">Todas</option>
-              {VISIBILITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Estado</FieldLabel>
-            <Select
-              fieldSize="sm"
-              value={filterUi.status}
-              onChange={(e) => applyFilters({ status: e.target.value || undefined })}
-            >
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value || 'all'} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="lg:col-span-3">
-            <TemplateHierarchyFields
-              values={{
-                study_type_id: filterUi.studyTypeId,
-                study_id: filterUi.studyId,
-                module_id: filterUi.moduleId,
-                group_id: filterUi.groupId,
-              }}
-              onFieldChange={(key, value) =>
-                applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
-              }
-              gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-            />
-          </div>
-        </div>
-      </div>
+      {viewMode === 'list' ? (
+        <>
+          <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-4 space-y-3">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
+              Filtros
+            </h3>
+            {/* Row 1: Visibilidad + Estado */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <FieldLabel>Visibilidad</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.visibility}
+                  onChange={(e) =>
+                    applyFilters({
+                      visibility_level: e.target.value || undefined,
+                    })
+                  }
+                >
+                  <option value="">Todas</option>
+                  {VISIBILITY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <FieldLabel>Estado</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.status}
+                  onChange={(e) => applyFilters({ status: e.target.value || undefined })}
+                >
+                  {STATUS_OPTIONS.map((o) => (
+                    <option key={o.value || 'all'} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
 
-      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary mb-3">
-          Nueva plantilla
-        </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div>
-            <FieldLabel>Nombre</FieldLabel>
-            <TextInput
-              type="text"
-              fieldSize="comfortable"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
+            {/* Row 2: Cascade hierarchy + Limpiar filtros */}
+            <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-32">
+                <FieldLabel>Tipo de Estudio</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.studyTypeId}
+                  disabled={hierarchyLoading}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    applyFilters({
+                      study_type_id: val || undefined,
+                      study_id: undefined,
+                      module_id: undefined,
+                      group_id: undefined,
+                    });
+                  }}
+                >
+                  <option value="">Todos</option>
+                  {hierarchy.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex-1 min-w-32">
+                <FieldLabel>Estudio</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.studyId}
+                  disabled={!filterUi.studyTypeId || hierarchyLoading}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    applyFilters({
+                      study_id: val || undefined,
+                      module_id: undefined,
+                      group_id: undefined,
+                    });
+                  }}
+                >
+                  <option value="">Todos</option>
+                  {availableStudies.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex-1 min-w-32">
+                <FieldLabel>Módulo</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.moduleId}
+                  disabled={!filterUi.studyId || hierarchyLoading}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    applyFilters({
+                      module_id: val || undefined,
+                      group_id: undefined,
+                    });
+                  }}
+                >
+                  <option value="">Todos</option>
+                  {availableModules.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex-1 min-w-32">
+                <FieldLabel>Grupo</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.groupId}
+                  onChange={(e) =>
+                    applyFilters({ group_id: e.target.value || undefined })
+                  }
+                >
+                  <option value="">Todos</option>
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </Select>
+              </div>
+              <div className="shrink-0">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="md"
+                  onClick={clearFilters}
+                  className="h-9.5 whitespace-nowrap"
+                >
+                  Limpiar filtros
+                </Button>
+              </div>
+            </div>
           </div>
-          <div>
-            <FieldLabel>Visibilidad</FieldLabel>
-            <Select
-              fieldSize="comfortable"
-              value={newVisibility}
-              onChange={(e) => setNewVisibility(e.target.value as TemplateVisibilityLevel)}
-            >
-              {VISIBILITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="lg:col-span-2">
-            <FieldLabel>Descripción</FieldLabel>
-            <TextInput
-              type="text"
-              fieldSize="comfortable"
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-            />
-          </div>
-          <div>
-            <FieldLabel>Plazo de entrega (opcional)</FieldLabel>
-            <TextInput
-              type="datetime-local"
-              fieldSize="comfortable"
-              value={newDeadline}
-              onChange={(e) => setNewDeadline(e.target.value)}
-            />
-          </div>
-          <div className="lg:col-span-2">
-            <TemplateHierarchyFields
-              values={{
-                study_type_id: newStudyTypeId,
-                study_id: newStudyId,
-                module_id: newModuleId,
-                group_id: newGroupId,
-              }}
-              onFieldChange={(key, value) => {
-                if (key === 'study_type_id') setNewStudyTypeId(value);
-                else if (key === 'study_id') setNewStudyId(value);
-                else if (key === 'module_id') setNewModuleId(value);
-                else setNewGroupId(value);
-              }}
-            />
-          </div>
-        </div>
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          loading={creating}
-          disabled={!newName.trim()}
-          className="mt-3"
-          onClick={() => void handleCreate()}
-        >
-          {creating ? 'Creando…' : 'Crear plantilla'}
-        </Button>
-      </div>
 
-      {loading && templates.length === 0 ? (
-        <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantillas…</p>
-      ) : null}
-
-      {!loading && templates.length === 0 && !listError ? (
-        <div className="text-center py-8 space-y-2 max-w-lg mx-auto">
-          <p className="text-sm text-text-muted dark:text-text-dark-muted">
-            No hay plantillas visibles con los filtros actuales.
-          </p>
-          {hasHierarchyIdFilters ? (
-            <p className="text-xs text-text-muted dark:text-text-dark-muted leading-relaxed">
-              Si acabas de crear una plantilla, los filtros por <span className="font-mono">study_type_id</span>,{' '}
-              <span className="font-mono">study_id</span>, etc. deben coincidir con la plantilla. Si filtras por un ID
-              pero la creaste sin ese campo (p. ej. personal sin jerarquía), no aparecerá: vacía esos campos o repite
-              los mismos UUID que al crear.
-            </p>
+          {loading && templates.length === 0 ? (
+            <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantillas…</p>
           ) : null}
-        </div>
-      ) : null}
 
-      {meta ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-text-muted dark:text-text-dark-muted">
-          <span>
-            Página {meta.current_page} de {meta.last_page} — {meta.total} plantillas
-          </span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled={loading || meta.current_page <= 1}
-              onClick={() => goToPage(meta.current_page - 1)}
-            >
-              Anterior
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled={loading || meta.current_page >= meta.last_page}
-              onClick={() => goToPage(meta.current_page + 1)}
-            >
-              Siguiente
-            </Button>
+          {!loading && templates.length === 0 && !listError ? (
+            <div className="text-center py-8 space-y-2 max-w-lg mx-auto">
+              <p className="text-sm text-text-muted dark:text-text-dark-muted">
+                No hay plantillas visibles con los filtros actuales.
+              </p>
+            </div>
+          ) : null}
+
+          {meta ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-text-muted dark:text-text-dark-muted">
+              <span>
+                Página {meta.current_page} de {meta.last_page} — {meta.total} plantillas
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  disabled={loading || meta.current_page <= 1}
+                  onClick={() => goToPage(meta.current_page - 1)}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  disabled={loading || meta.current_page >= meta.last_page}
+                  onClick={() => goToPage(meta.current_page + 1)}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="space-y-4">
+            {templates.map((t) => (
+              <TemplateCard
+                key={t.id}
+                template={t}
+                onDelete={deleteTemplate}
+                onClone={cloneTemplate}
+              />
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
+          <div className="px-6 py-5 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50">
+            <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary">
+              Nueva plantilla normativa
+            </h3>
+            <p className="text-xs text-text-muted dark:text-text-dark-muted mt-1">
+              Configura los metadatos básicos. En el siguiente paso podrás diseñar los bloques de contenido.
+            </p>
+          </div>
+          
+          <div className="p-6 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="space-y-4">
+                <div>
+                  <FieldLabel>Nombre de la plantilla</FieldLabel>
+                  <TextInput
+                    type="text"
+                    fieldSize="comfortable"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    placeholder="Ej. Acta de Evaluación Final"
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Visibilidad</FieldLabel>
+                  <Select
+                    fieldSize="comfortable"
+                    value={newVisibility}
+                    onChange={(e) => setNewVisibility(e.target.value as TemplateVisibilityLevel)}
+                  >
+                    {VISIBILITY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <FieldLabel>Descripción corta</FieldLabel>
+                  <TextInput
+                    type="text"
+                    fieldSize="comfortable"
+                    value={newDesc}
+                    onChange={(e) => setNewDesc(e.target.value)}
+                    placeholder="Propósito de la plantilla..."
+                  />
+                </div>
+                <div>
+                  <FieldLabel>Plazo de entrega (opcional)</FieldLabel>
+                  <TextInput
+                    type="datetime-local"
+                    fieldSize="comfortable"
+                    value={newDeadline}
+                    onChange={(e) => setNewDeadline(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="bg-ui-body/30 dark:bg-ui-dark-bg/30 rounded-lg p-5 border border-dashed border-ui-border dark:border-ui-dark-border">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-4">
+                  Vinculación Académica
+                </h4>
+                <TemplateHierarchyFields
+                  values={{
+                    study_type_id: newStudyTypeId,
+                    study_id: newStudyId,
+                    module_id: newModuleId,
+                    group_id: newGroupId,
+                  }}
+                  onFieldChange={(key, value) => {
+                    if (key === 'study_type_id') setNewStudyTypeId(value);
+                    else if (key === 'study_id') setNewStudyId(value);
+                    else if (key === 'module_id') setNewModuleId(value);
+                    else setNewGroupId(value);
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-ui-border dark:border-ui-dark-border flex items-center gap-3">
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                className="px-8"
+                loading={creating}
+                disabled={!newName.trim()}
+                onClick={() => void handleCreate()}
+              >
+                Crear y continuar a bloques
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                disabled={creating}
+                onClick={() => setViewMode('list')}
+              >
+                Cancelar
+              </Button>
+            </div>
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="space-y-4">
-        {templates.map((t) => (
-          <TemplateCard
-            key={t.id}
-            template={t}
-            onUpdate={async (id, payload) => {
-              await updateTemplate(id, payload);
-            }}
-            onDelete={deleteTemplate}
-            onClone={cloneTemplate}
-          />
-        ))}
-      </div>
+      {editingTemplate && (
+        <TemplateBlockEditor 
+          template={editingTemplate} 
+          onClose={() => setEditingTemplate(null)} 
+        />
+      )}
     </div>
   );
 }

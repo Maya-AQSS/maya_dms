@@ -76,9 +76,10 @@ export function useTemplates() {
       try {
         setActionError(null);
         setActionInfo(null);
-        await createTemplateRequest(payload);
+        const res = await createTemplateRequest(payload);
         setActionInfo('Plantilla creada correctamente.');
         await load();
+        return res.data;
       } catch (e) {
         setActionError(formatActionError(e));
         throw e;
