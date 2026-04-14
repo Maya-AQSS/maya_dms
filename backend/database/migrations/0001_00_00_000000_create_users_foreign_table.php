@@ -80,7 +80,8 @@ return new class extends Migration
     /**
      * Configure postgres_fdw for both local and production.
      *
-     * Local:      FDW points to the same database (self-referencing via users_source table).
+     * Local:      FDW server + extension pre-created by infra/init-databases.sh.
+     *             Only USER MAPPING, FOREIGN TABLE and VIEW are created here.
      * Production: FDW points to the remote corporate database via FDW_USERS_* env vars.
      */
     private function setupFdw(): void
@@ -90,9 +91,6 @@ return new class extends Migration
         if ($isLocal) {
             $this->createLocalSourceTable();
 
-            $host     = config('database.connections.pgsql.host');
-            $port     = config('database.connections.pgsql.port');
-            $dbname   = config('database.connections.pgsql.database');
             $user     = config('database.connections.pgsql.username');
             $password = config('database.connections.pgsql.password');
             $schema   = 'public';
@@ -105,28 +103,31 @@ return new class extends Migration
             $password = config('database.fdw.users.password');
             $schema   = config('database.fdw.users.schema', 'public');
             $table    = config('database.fdw.users.table', 'users');
+
+            // En producción, la extensión y el server los gestiona el DBA.
+            // Intentamos crearlos por si es un entorno sin init-databases.sh.
+            try {
+                DB::statement('CREATE EXTENSION IF NOT EXISTS postgres_fdw');
+            } catch (\Throwable $e) {
+                logger()->error("FDW: no permission for CREATE EXTENSION — ensure DBA has pre-created it");
+                return;
+            }
+
+            $host   = addcslashes($host, "'\\");
+            $port   = addcslashes($port, "'\\");
+            $dbname = addcslashes($dbname, "'\\");
+
+            DB::statement("
+                CREATE SERVER IF NOT EXISTS users_server
+                FOREIGN DATA WRAPPER postgres_fdw
+                OPTIONS (host '{$host}', port '{$port}', dbname '{$dbname}')
+            ");
         }
 
-        try {
-            DB::statement('CREATE EXTENSION IF NOT EXISTS postgres_fdw');
-        } catch (\Throwable $e) {
-            logger()->error("No permission for postgres_fdw");
-            return;
-        }
-
-        $host     = addcslashes($host, "'\\");
-        $port     = addcslashes($port, "'\\");
-        $dbname   = addcslashes($dbname, "'\\");
         $user     = addcslashes($user, "'\\");
         $password = addcslashes($password, "'\\");
         $schema   = addcslashes($schema, "'\\");
         $table    = addcslashes($table, "'\\");
-
-        DB::statement("
-            CREATE SERVER IF NOT EXISTS users_server
-            FOREIGN DATA WRAPPER postgres_fdw
-            OPTIONS (host '{$host}', port '{$port}', dbname '{$dbname}')
-        ");
 
         DB::statement("
             CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER

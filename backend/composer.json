@@ -96,11 +96,6 @@
         "maya-shared-auth": {
             "type": "path",
             "url": "../../packages/maya-shared-auth-laravel"
-        },
-        "0": {
-            "name": "maya-shared-auth",
-            "type": "path",
-            "url": "../../packages/maya-shared-auth-laravel"
         }
     }
 }

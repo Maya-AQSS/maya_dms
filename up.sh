@@ -125,19 +125,89 @@ done
 
 # 3) Ejecutar migraciones si la BD está accesible
 if [[ "$DB_READY" == true ]]; then
-  PENDING=$(docker exec "$BACKEND_CONTAINER" php artisan migrate:status 2>&1 | grep -c "Pending" || true)
-  TOTAL=$(docker exec "$BACKEND_CONTAINER" php artisan migrate:status 2>&1 | grep -cE "Ran|Pending" || true)
+  SEED_MODE="${DB_SEED_MODE:-if-empty}" # always | if-empty | never
 
-  if [[ "$TOTAL" -eq 0 ]] || [[ "$TOTAL" -eq "$PENDING" ]]; then
-    info "Base de datos vacía — ejecutando migraciones y seeds..."
-    docker exec "$BACKEND_CONTAINER" php artisan migrate --seed --force
-    success "Migraciones y seeds aplicados."
-  elif [[ "$PENDING" -gt 0 ]]; then
-    info "${PENDING} migraciones pendientes — ejecutando migrate..."
-    docker exec "$BACKEND_CONTAINER" php artisan migrate --force
-    success "Migraciones aplicadas."
+  database_has_data() {
+    local has_data
+    has_data=$(docker exec "$BACKEND_CONTAINER" php -r '
+      try {
+        $h = getenv("DB_HOST") ?: "maya_infra_postgres";
+        $p = getenv("DB_PORT") ?: "5432";
+        $d = getenv("DB_DATABASE");
+        $u = getenv("DB_USERNAME");
+        $w = getenv("DB_PASSWORD");
+        $pdo = new PDO("pgsql:host=$h;port=$p;dbname=$d", $u, $w, [PDO::ATTR_TIMEOUT => 3]);
+
+        $tables = $pdo->query("SELECT tablename FROM pg_tables WHERE schemaname = ''public'' AND tablename NOT IN (''migrations'', ''failed_jobs'', ''jobs'', ''job_batches'', ''cache'', ''cache_locks'', ''password_reset_tokens'', ''sessions'')")->fetchAll(PDO::FETCH_COLUMN);
+
+        foreach ($tables as $table) {
+          if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
+            continue;
+          }
+
+          $stmt = $pdo->query("SELECT 1 FROM \"{$table}\" LIMIT 1");
+          if ($stmt && $stmt->fetchColumn() !== false) {
+            echo "1";
+            exit(0);
+          }
+        }
+
+        echo "0";
+      } catch (Exception $e) {
+        exit(2);
+      }')
+
+    if [[ "$?" -ne 0 ]]; then
+      warn "No se pudo verificar el estado de la BD — se omiten seeds por seguridad."
+      return 2
+    fi
+
+    [[ "$has_data" == "1" ]]
+  }
+
+  info "Aplicando migraciones..."
+  docker exec "$BACKEND_CONTAINER" php artisan migrate --force
+  success "Migraciones aplicadas/verificadas."
+
+  SHOULD_SEED=false
+  case "$SEED_MODE" in
+    always)
+      SHOULD_SEED=true
+      ;;
+    never)
+      SHOULD_SEED=false
+      ;;
+    if-empty)
+      if database_has_data; then
+        info "DB con datos detectados — no se ejecutan seeds (DB_SEED_MODE=if-empty)."
+      else
+        if [[ "$?" -eq 2 ]]; then
+          SHOULD_SEED=false
+        else
+          SHOULD_SEED=true
+        fi
+      fi
+      ;;
+    *)
+      warn "DB_SEED_MODE inválido ('$SEED_MODE'). Usando 'if-empty'."
+      if database_has_data; then
+        info "DB con datos detectados — no se ejecutan seeds (DB_SEED_MODE=if-empty)."
+      else
+        if [[ "$?" -eq 2 ]]; then
+          SHOULD_SEED=false
+        else
+          SHOULD_SEED=true
+        fi
+      fi
+      ;;
+  esac
+
+  if [[ "$SHOULD_SEED" == true ]]; then
+    info "Ejecutando seeders (DB_SEED_MODE=$SEED_MODE)..."
+    docker exec "$BACKEND_CONTAINER" php artisan db:seed --force
+    success "Seeders aplicados."
   else
-    success "Base de datos al día — nada que migrar."
+    success "Seeders omitidos (DB_SEED_MODE=$SEED_MODE)."
   fi
 else
   warn "No se pudo conectar con la BD — omitiendo migraciones automáticas."
