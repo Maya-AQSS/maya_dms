@@ -54,6 +54,7 @@ Route::prefix('v1')->group(function () {
 
         // Sprint 2 — Plantillas
         Route::apiResource('templates', TemplateController::class);
+        Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
         Route::apiResource('templates.blocks', TemplateBlockController::class)
             ->shallow();
         Route::post('templates/{template}/clone', [TemplateController::class, 'clone']);

@@ -16,6 +16,12 @@ interface TemplateBlockRepositoryInterface
     public function findOrFail(string $id): TemplateBlock;
 
     /**
+     * @param  list<string>  $ids
+     * @return Collection<int, TemplateBlock>
+     */
+    public function findByIds(array $ids): Collection;
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     public function create(Template $template, array $attributes): TemplateBlock;

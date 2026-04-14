@@ -28,6 +28,15 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
     }
 
     /**
+     * @param  list<string>  $ids
+     * @return Collection<int, TemplateBlock>
+     */
+    public function findByIds(array $ids): Collection
+    {
+        return TemplateBlock::whereIn('id', $ids)->get();
+    }
+
+    /**
      * @param  array<string, mixed>  $attributes
      */
     public function create(Template $template, array $attributes): TemplateBlock

@@ -116,9 +116,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     public function bulkUpdate(array $ids, array $attributes, string $userId): Collection
     {
         // Capture previous states before the bulk update
-        $before = TemplateBlock::whereIn('id', $ids)
-            ->get()
-            ->keyBy('id');
+        $before = $this->blockRepository->findByIds($ids)->keyBy('id');
 
         $updated = $this->blockRepository->bulkUpdate($ids, $attributes);
 
