@@ -11,6 +11,7 @@ import {
 } from '../templateFormUtils';
 import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { TemplateHierarchyFields, type TemplateHierarchyFieldKey } from './TemplateHierarchyFields';
+import { TemplateBlockEditor } from './TemplateBlockEditor';
 
 type Props = {
   template: Template;
@@ -33,6 +34,7 @@ export function TemplateCard({ template: t, onUpdate, onDelete, onClone }: Props
   const [reviewStages, setReviewStages] = useState(String(t.review_stages));
   const [reviewMode, setReviewMode] = useState(t.review_mode);
   const [busy, setBusy] = useState(false);
+  const [showBlockEditor, setShowBlockEditor] = useState(false);
   const [dialog, setDialog] = useState<'delete' | 'clone' | 'discard' | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
 
@@ -294,6 +296,15 @@ export function TemplateCard({ template: t, onUpdate, onDelete, onClone }: Props
             </Button>
             <Button
               type="button"
+              variant="outline"
+              size="xs"
+              disabled={busy || dialog !== null}
+              onClick={() => setShowBlockEditor(true)}
+            >
+              Bloques
+            </Button>
+            <Button
+              type="button"
               variant="outlineTeal"
               size="xs"
               disabled={busy || dialog !== null}
@@ -356,6 +367,10 @@ export function TemplateCard({ template: t, onUpdate, onDelete, onClone }: Props
         onCancel={closeDialog}
         onConfirm={confirmDiscard}
       />
+
+      {showBlockEditor && (
+        <TemplateBlockEditor template={t} onClose={() => setShowBlockEditor(false)} />
+      )}
     </div>
   );
 }

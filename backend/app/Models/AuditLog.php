@@ -55,9 +55,10 @@ class AuditLog extends Model
     public static function allowedEntityTypes(): array
     {
         return [
-            'document' => Document::class,
-            'template' => Template::class,
-            'comment'  => Comment::class,
+            'document'       => Document::class,
+            'template'       => Template::class,
+            'comment'        => Comment::class,
+            'template_block' => TemplateBlock::class,
         ];
     }
 }
