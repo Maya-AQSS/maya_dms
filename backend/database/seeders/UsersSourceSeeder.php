@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -12,8 +13,17 @@ class UsersSourceSeeder extends Seeder
     {
         $users = $this->mockUsers();
 
+        $now = Carbon::now();
+
         if (Schema::hasTable('users_source')) {
-            DB::table('users_source')->insertOrIgnore($users);
+            $rows = array_map(static function (array $user) use ($now): array {
+                $user['created_at'] ??= $now;
+                $user['updated_at'] ??= $now;
+
+                return $user;
+            }, $users);
+
+            DB::table('users_source')->insertOrIgnore($rows);
         }
 
         // En testing puede existir tabla users local en lugar de objetos FDW.
@@ -24,6 +34,8 @@ class UsersSourceSeeder extends Seeder
                     'name' => $user['nombre'],
                     'email' => $user['email'],
                     'department' => $user['departamento'],
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ],
                 $users
             ));
