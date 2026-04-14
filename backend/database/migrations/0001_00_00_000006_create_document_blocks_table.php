@@ -11,7 +11,7 @@ return new class extends Migration
      * El contenido actual siempre vive aquí; el historial en block_versions.
      *
      * El campo locked_by + locked_at implementa el lock optimista para
-     * edición colaborativa en tiempo real (F-05.x / Reverb).
+     * edición colaborativa en tiempo real (Reverb).
      */
     public function up(): void
     {

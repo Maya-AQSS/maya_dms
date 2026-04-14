@@ -234,6 +234,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             ->assertJsonPath('data.created_by', $userId)
             ->assertJsonPath('data.owner_id', $userId)
             ->assertJsonPath('data.module_id', 'MOD-1')
+            ->assertJsonPath('data.study_type_id', 'TYPE-1')
             ->assertJsonPath('data.study_id', 'STUDY-1');
 
         $this->assertDatabaseHas('documents', [
@@ -241,6 +242,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'template_version_id' => $version->id,
+            'study_type_id' => 'TYPE-1',
             'module_id' => 'MOD-1',
             'status' => 'draft',
         ]);

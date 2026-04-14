@@ -12,7 +12,7 @@ interface AuditLogServiceInterface
         string $entityId,
         string $action,
         string $userId,
-        ?string $blockUuid = null,
+        ?string $blockId = null,
         ?array $previousValue = null,
         ?array $newValue = null,
         ?string $ipAddress = null,

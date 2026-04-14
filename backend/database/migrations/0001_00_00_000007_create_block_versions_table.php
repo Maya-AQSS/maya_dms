@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -9,7 +10,7 @@ return new class extends Migration
     /**
      * Versionado append-only de bloques (F-04.4).
      * NUNCA se actualiza un registro existente: solo INSERT.
-     * La tabla es inmutable por convención — no hay UPDATE/DELETE en el código.
+     * En PostgreSQL se reutiliza la función forbid_append_only_mutation() creada en create_template_versions.
      *
      * El diff entre versiones consecutivas se calcula en la capa de aplicación
      * y se muestra en el drawer de revisión (F-06.3).
@@ -29,10 +30,22 @@ return new class extends Migration
             $table->unique(['document_block_id', 'version_number']);
             $table->index(['document_id', 'document_block_id']);
         });
+
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            DB::unprepared(<<<'SQL'
+CREATE TRIGGER block_versions_append_only
+  BEFORE UPDATE OR DELETE ON block_versions
+  FOR EACH ROW EXECUTE PROCEDURE forbid_append_only_mutation();
+SQL);
+        }
     }
 
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'pgsql') {
+            DB::unprepared('DROP TRIGGER IF EXISTS block_versions_append_only ON block_versions;');
+        }
+
         Schema::dropIfExists('block_versions');
     }
 };

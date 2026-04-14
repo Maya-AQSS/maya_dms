@@ -13,6 +13,7 @@ readonly class CreateDocumentDto
         public string $organizationId,
         public string $createdBy,
         public string $ownerId,
+        public ?string $studyTypeId = null,
         public ?string $studyId = null,
         public ?string $moduleId = null,
         public ?string $templateVersionId = null,

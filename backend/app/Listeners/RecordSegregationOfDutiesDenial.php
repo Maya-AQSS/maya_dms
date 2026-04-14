@@ -68,7 +68,7 @@ class RecordSegregationOfDutiesDenial
                 entityId:      (string) $subject->getKey(),
                 action:        'sod_violation',
                 userId:        (string) $userId,
-                blockUuid:     null,
+                blockId:       null,
                 previousValue: null,
                 newValue:      [
                     'ability' => $event->ability,

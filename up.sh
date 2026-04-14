@@ -50,7 +50,7 @@ esac
 # ─── Verificar y levantar infra compartida ───────────────────────────────────
 # Por defecto busca en ../infra (repo hermano). Puedes sobreescribir con:
 #   MAYA_INFRA_DIR=/ruta/absoluta/a/infra ./up.sh
-INFRA_SCRIPT="${MAYA_INFRA_DIR:-$SCRIPT_DIR/../infra}/ensure-running.sh"
+INFRA_SCRIPT="${MAYA_INFRA_DIR:-$SCRIPT_DIR/../maya_infra}/ensure-running.sh"
 if [[ -f "$INFRA_SCRIPT" ]]; then
     bash "$INFRA_SCRIPT"
 else
