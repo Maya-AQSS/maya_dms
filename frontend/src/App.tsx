@@ -2,7 +2,14 @@ import { useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './index.css';
 import { NAV_ITEMS, Sidebar, Topbar } from './components/layout';
-import { DashboardPage, DocumentsPage, GroupsPage, PlaceholderPage, TemplatesPage } from './pages';
+import {
+  DashboardPage,
+  DocumentEditorPage,
+  DocumentsPage,
+  GroupsPage,
+  PlaceholderPage,
+  TemplatesPage,
+} from './pages';
 
 function App() {
   const [isDark, setIsDark] = useState(() => {
@@ -22,11 +29,12 @@ function App() {
   if (isDark) document.documentElement.classList.add('dark');
 
   const location = useLocation();
+  const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
   const currentNav = useMemo(
     () => NAV_ITEMS.find((n) => location.pathname === n.path || location.pathname.startsWith(`${n.path}/`)),
     [location.pathname],
   );
-  const pageTitle = currentNav?.label ?? 'Maya DMS';
+  const pageTitle = isEditorRoute ? 'Editor de Programación' : currentNav?.label ?? 'Maya DMS';
 
   return (
     <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
@@ -40,6 +48,7 @@ function App() {
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
             <Route path="/templates" element={<TemplatesPage />} />
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/upload" element={<PlaceholderPage />} />
