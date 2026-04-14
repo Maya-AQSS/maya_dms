@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
  * Restricciones de integridad:
  *   - $timestamps = false: Laravel no gestiona created_at/updated_at.
  *     El campo 'timestamp' lo establece PostgreSQL con DEFAULT NOW().
+ *   - entity_id / block_id son string para soportar UUIDs locales y IDs de catálogo FDW.
  *   - 'timestamp' está excluido de $fillable: el código de aplicación
  *     nunca puede enviarlo; siempre es el reloj del servidor.
  *   - No se exponen métodos de actualización ni borrado.
@@ -31,7 +32,7 @@ class AuditLog extends Model
     protected $fillable = [
         'entity_type',
         'entity_id',
-        'block_uuid',
+        'block_id',
         'action',
         'user_id',
         'ip_address',

@@ -48,7 +48,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             entityId:      $templateId,
             action:        'block_created',
             userId:        $userId,
-            blockUuid:     $block->getKey(),
+            blockId:       $block->getKey(),
             previousValue: null,
             newValue:      [
                 'block_state' => $block->block_state,
@@ -110,7 +110,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
                 entityId:      $updated->template_id,
                 action:        'block_state_changed',
                 userId:        $userId,
-                blockUuid:     $blockId,
+                blockId:       $blockId,
                 previousValue: $previous,
                 newValue:      [
                     'block_state' => $updated->block_state,
@@ -131,7 +131,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             entityId:      $block->template_id,
             action:        'block_deleted',
             userId:        $userId,
-            blockUuid:     $blockId,
+            blockId:       $blockId,
             previousValue: [
                 'block_state' => $block->block_state,
                 'mandatory'   => $block->mandatory,
@@ -171,7 +171,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
                     entityId:      $block->template_id,
                     action:        'block_state_changed',
                     userId:        $userId,
-                    blockUuid:     $block->getKey(),
+                    blockId:       $block->getKey(),
                     previousValue: [
                         'block_state' => $prev->block_state,
                         'mandatory'   => $prev->mandatory,

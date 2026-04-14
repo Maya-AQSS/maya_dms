@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class AuditLogInsertLatencyTest extends TestCase
@@ -19,7 +20,7 @@ class AuditLogInsertLatencyTest extends TestCase
         $payload = [
             'entity_type'    => 'document',
             'entity_id'      => fake()->uuid(),
-            'block_uuid'     => null,
+            'block_id'       => null,
             'action'         => 'created',
             'user_id'        => fake()->uuid(),
             'ip_address'     => '127.0.0.1',
@@ -31,7 +32,7 @@ class AuditLogInsertLatencyTest extends TestCase
         // Warm-up: primera inserción para descartar overhead de conexión/cache
         DB::table('audit_log')->insert(array_merge($payload, [
             'id'        => fake()->uuid(),
-            'timestamp' => DB::raw('NOW()'),
+            'timestamp' => Carbon::now(),
         ]));
 
         // Medición real sobre N iteraciones
@@ -43,12 +44,12 @@ class AuditLogInsertLatencyTest extends TestCase
                 'id'             => fake()->uuid(),
                 'entity_type'    => $payload['entity_type'],
                 'entity_id'      => $payload['entity_id'],
-                'block_uuid'     => $payload['block_uuid'],
+                'block_id'       => $payload['block_id'],
                 'action'         => $payload['action'],
                 'user_id'        => $payload['user_id'],
                 'ip_address'     => $payload['ip_address'],
                 'user_agent'     => $payload['user_agent'],
-                'timestamp'      => DB::raw('NOW()'),
+                'timestamp'      => Carbon::now(),
                 'previous_value' => $payload['previous_value'],
                 'new_value'      => $payload['new_value'],
             ]);
@@ -77,7 +78,7 @@ class AuditLogInsertLatencyTest extends TestCase
                 'id'             => fake()->uuid(),
                 'entity_type'    => fake()->randomElement(['document', 'template', 'comment']),
                 'entity_id'      => fake()->uuid(),
-                'block_uuid'     => fake()->optional(0.3)->uuid(),
+                'block_id'       => fake()->optional(0.3)->uuid(),
                 'action'         => fake()->randomElement(['created', 'updated', 'deleted', 'state_changed', 'approved', 'rejected']),
                 'user_id'        => fake()->uuid(),
                 'ip_address'     => fake()->ipv4(),
@@ -102,12 +103,12 @@ class AuditLogInsertLatencyTest extends TestCase
                 'id'             => fake()->uuid(),
                 'entity_type'    => 'document',
                 'entity_id'      => fake()->uuid(),
-                'block_uuid'     => null,
+                'block_id'       => null,
                 'action'         => 'state_changed',
                 'user_id'        => fake()->uuid(),
                 'ip_address'     => '10.0.0.1',
                 'user_agent'     => 'PHPUnit/Load',
-                'timestamp'      => DB::raw('NOW()'),
+                'timestamp'      => Carbon::now(),
                 'previous_value' => json_encode(['status' => 'draft']),
                 'new_value'      => json_encode(['status' => 'in_review']),
             ]);

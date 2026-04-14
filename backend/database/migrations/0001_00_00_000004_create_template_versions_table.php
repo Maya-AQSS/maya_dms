@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * Snapshots inmutables de plantilla publicada.
- * En PostgreSQL se añade trigger append-only; en SQLite (tests) solo aplica la capa de aplicación.
+ * En PostgreSQL se define forbid_append_only_mutation() y el trigger append-only; la misma función
+ * se reutiliza en block_versions (migración posterior). En SQLite (tests) solo aplica la capa de aplicación.
  */
 return new class extends Migration
 {
@@ -28,15 +29,15 @@ return new class extends Migration
 
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::unprepared(<<<'SQL'
-CREATE OR REPLACE FUNCTION forbid_template_versions_mutation() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION forbid_append_only_mutation() RETURNS trigger AS $$
 BEGIN
-  RAISE EXCEPTION 'template_versions es append-only';
+  RAISE EXCEPTION '% is append-only', TG_TABLE_NAME;
 END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER template_versions_append_only
   BEFORE UPDATE OR DELETE ON template_versions
-  FOR EACH ROW EXECUTE PROCEDURE forbid_template_versions_mutation();
+  FOR EACH ROW EXECUTE PROCEDURE forbid_append_only_mutation();
 SQL);
         }
     }
@@ -45,7 +46,7 @@ SQL);
     {
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::unprepared('DROP TRIGGER IF EXISTS template_versions_append_only ON template_versions;');
-            DB::unprepared('DROP FUNCTION IF EXISTS forbid_template_versions_mutation();');
+            DB::unprepared('DROP FUNCTION IF EXISTS forbid_append_only_mutation();');
         }
 
         Schema::dropIfExists('template_versions');
