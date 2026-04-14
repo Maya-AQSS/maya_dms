@@ -126,8 +126,8 @@ export function DocumentsContent() {
         module_id: selectedModuleId,
         ...(templateVersionId ? { template_version_id: templateVersionId } : {}),
       });
-      await reload();
       navigate(`/documents/${created.id}/editor`);
+      void reload();
     } catch (err) {
       setCreationError(err instanceof Error ? err.message : 'No se pudo crear la programación.');
     } finally {

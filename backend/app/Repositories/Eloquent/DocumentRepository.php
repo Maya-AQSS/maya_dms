@@ -31,15 +31,20 @@ class DocumentRepository implements DocumentRepositoryInterface
         return DB::transaction(function () use ($documentAttributes, $blockRows) {
             $document = Document::query()->create($documentAttributes);
 
-            foreach ($blockRows as $row) {
-                DocumentBlock::query()->forceCreate([
+            if ($blockRows !== []) {
+                $now = now();
+                $rowsToInsert = array_map(fn (array $row) => [
                     'id' => (string) Str::uuid(),
                     'document_id' => $document->getKey(),
                     'template_block_id' => $row['template_block_id'],
                     'content' => $row['content'],
                     'is_filled' => false,
                     'sort_order' => $row['sort_order'],
-                ]);
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ], $blockRows);
+
+                DocumentBlock::query()->insert($rowsToInsert);
             }
 
             return $document->fresh(['blocks']);
