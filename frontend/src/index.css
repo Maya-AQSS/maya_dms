@@ -122,3 +122,13 @@
     @apply bg-ui-body text-text-primary font-sans dark:bg-ui-dark-bg dark:text-text-dark-primary;
   }
 }
+
+/* ─── Mobile typography floor ───────────────────────────── */
+/* The design tokens set text-xs/sm/base below 14px (Odoo 19 desktop scale).
+   On small viewports we raise the floor so nothing falls below ~12px,
+   and text-base reaches the readable 14px minimum. */
+@media (max-width: 767px) {
+  .text-xs   { font-size: 12px; }
+  .text-sm   { font-size: 13px; }
+  .text-base { font-size: 14px; }
+}
