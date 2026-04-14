@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './index.css';
 import { NAV_ITEMS, Sidebar, Topbar } from './components/layout';
-import { ActiveSection } from './pages';
+import { DashboardPage, DocumentsPage, GroupsPage, PlaceholderPage, TemplatesPage } from './pages';
 
 function App() {
-  const [activeSection, setActiveSection] = useState('dashboard');
   const [isDark, setIsDark] = useState(() => {
     return (
       localStorage.getItem('theme') === 'dark' ||
@@ -21,18 +21,31 @@ function App() {
 
   if (isDark) document.documentElement.classList.add('dark');
 
-  const currentNav = NAV_ITEMS.find((n) => n.id === activeSection);
+  const location = useLocation();
+  const currentNav = useMemo(
+    () => NAV_ITEMS.find((n) => location.pathname === n.path || location.pathname.startsWith(`${n.path}/`)),
+    [location.pathname],
+  );
   const pageTitle = currentNav?.label ?? 'Maya DMS';
 
   return (
     <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
-      <Sidebar active={activeSection} onNav={setActiveSection} />
+      <Sidebar />
 
       <div className="ml-64 flex flex-col min-h-screen">
         <Topbar title={pageTitle} isDark={isDark} onToggleDark={handleToggleDark} />
 
         <main className="flex-1 overflow-auto">
-          <ActiveSection section={activeSection} />
+          <Routes>
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/groups" element={<GroupsPage />} />
+            <Route path="/upload" element={<PlaceholderPage />} />
+            <Route path="/search" element={<PlaceholderPage />} />
+            <Route path="*" element={<PlaceholderPage />} />
+          </Routes>
         </main>
       </div>
     </div>
