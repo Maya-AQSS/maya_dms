@@ -78,6 +78,7 @@ class DocumentService implements DocumentServiceInterface
             'template_version_id' => $version->id,
             'title' => $dto->title,
             'organization_id' => $dto->organizationId,
+            'study_type_id' => $dto->studyTypeId,
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,
             'created_by' => $dto->createdBy,
@@ -150,7 +151,7 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        $module = CourseModule::query()->find($moduleId);
+        $module = CourseModule::query()->with('study')->find($moduleId);
         if ($module === null) {
             throw ValidationException::withMessages([
                 'module_id' => ['El módulo no existe.'],
@@ -165,11 +166,14 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
+        $studyTypeId = $module->study !== null ? (string) $module->study->study_type_id : null;
+
         return $this->create(new CreateDocumentDto(
             templateId: $selected['template_id'],
             templateVersionId: $selected['template_version_id'],
             title: 'Nueva Programación Didáctica',
             organizationId: $organizationId,
+            studyTypeId: $studyTypeId,
             studyId: (string) $module->study_id,
             moduleId: $moduleId,
             createdBy: $creatorId,
