@@ -2,9 +2,9 @@
 
 namespace Tests\Feature;
 
-use App\Http\Middleware\JwtMiddleware;
+use Maya\Auth\Middleware\JwtMiddleware;
 use App\Models\JwtUser;
-use App\Services\Contracts\JwksServiceInterface;
+use Maya\Auth\Contracts\JwksServiceInterface;
 use DateTimeImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;

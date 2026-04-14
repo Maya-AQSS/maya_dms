@@ -25,7 +25,7 @@ class AcademicHierarchyApiTest extends TestCase
     private function authenticateFakeUser()
     {
         $this->withHeaders(['Authorization' => 'Bearer fake-token']);
-        $this->withoutMiddleware(\App\Http\Middleware\JwtMiddleware::class);
+        $this->withoutMiddleware(\Maya\Auth\Middleware\JwtMiddleware::class);
     }
 
     public function test_hierarchy_endpoint_returns_nested_json_tree()

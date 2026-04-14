@@ -9,7 +9,7 @@ use App\Models\GroupMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Models\TemplateVersion;
-use App\Services\Contracts\JwksServiceInterface;
+use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;

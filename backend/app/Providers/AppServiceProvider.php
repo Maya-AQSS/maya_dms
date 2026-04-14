@@ -34,13 +34,12 @@ use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\GroupServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
-use App\Services\Contracts\JwksServiceInterface;
+use Maya\Auth\Contracts\JwksServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use App\Services\DocumentService;
 use App\Services\GroupService;
 use App\Services\HealthCheckService;
-use App\Services\JwksService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Auth;
@@ -68,7 +67,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(CommentServiceInterface::class, CommentService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
-        $this->app->bind(JwksServiceInterface::class, JwksService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
         $this->app->bind(AcademicHierarchyServiceInterface::class, AcademicHierarchyService::class);
     }

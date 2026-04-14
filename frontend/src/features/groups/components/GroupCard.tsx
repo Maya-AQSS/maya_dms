@@ -106,7 +106,7 @@ export function GroupCard({ group, onUpdate, onDelete, onAddMember, onRemoveMemb
   const dialogOpen = confirmKind !== 'idle';
 
   return (
-    <div className="rounded-lg border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-4 shadow-card">
+    <div className="rounded-lg border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-5 shadow-card">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           {editing ? (

@@ -3,7 +3,10 @@
     "name": "laravel/laravel",
     "type": "project",
     "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "keywords": [
+        "laravel",
+        "framework"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.2",
@@ -13,6 +16,7 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^2.10",
         "lcobucci/jwt": "^5.6",
+        "maya/shared-auth-laravel": "@dev",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "^14.1"
     },
     "require-dev": {
@@ -87,5 +91,16 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories": {
+        "maya-shared-auth": {
+            "type": "path",
+            "url": "../../packages/maya-shared-auth-laravel"
+        },
+        "0": {
+            "name": "maya-shared-auth",
+            "type": "path",
+            "url": "../../packages/maya-shared-auth-laravel"
+        }
+    }
 }

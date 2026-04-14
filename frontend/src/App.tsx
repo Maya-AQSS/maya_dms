@@ -10,8 +10,11 @@ import {
   PlaceholderPage,
   TemplatesPage,
 } from './pages';
+import { useAuth } from '@maya/shared-auth-react';
+import { HierarchyProvider } from './features/hierarchy';
 
 function App() {
+  const { isLoading, isAuthenticated, login } = useAuth();
   const [isDark, setIsDark] = useState(() => {
     return (
       localStorage.getItem('theme') === 'dark' ||
@@ -36,28 +39,47 @@ function App() {
   );
   const pageTitle = isEditorRoute ? 'Editor de Programación' : currentNav?.label ?? 'Maya DMS';
 
-  return (
-    <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
-      <Sidebar />
-
-      <div className="ml-64 flex flex-col min-h-screen">
-        <Topbar title={pageTitle} isDark={isDark} onToggleDark={handleToggleDark} />
-
-        <main className="flex-1 overflow-auto">
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/documents" element={<DocumentsPage />} />
-            <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
-            <Route path="/templates" element={<TemplatesPage />} />
-            <Route path="/groups" element={<GroupsPage />} />
-            <Route path="/upload" element={<PlaceholderPage />} />
-            <Route path="/search" element={<PlaceholderPage />} />
-            <Route path="*" element={<PlaceholderPage />} />
-          </Routes>
-        </main>
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
+        Autenticando con Keycloak...
       </div>
-    </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    login();
+    return (
+      <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
+        Redirigiendo al inicio de sesión...
+      </div>
+    );
+  }
+
+  return (
+    <HierarchyProvider>
+      <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
+        <Sidebar />
+
+        <div className="ml-64 flex flex-col min-h-screen">
+          <Topbar title={pageTitle} isDark={isDark} onToggleDark={handleToggleDark} />
+
+          <main className="flex-1 overflow-auto">
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={<DashboardPage />} />
+              <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
+              <Route path="/templates" element={<TemplatesPage />} />
+              <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/upload" element={<PlaceholderPage />} />
+              <Route path="/search" element={<PlaceholderPage />} />
+              <Route path="*" element={<PlaceholderPage />} />
+            </Routes>
+          </main>
+        </div>
+      </div>
+    </HierarchyProvider>
   );
 }
 
