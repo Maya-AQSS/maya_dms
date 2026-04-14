@@ -48,8 +48,10 @@ return new class extends Migration
         // UPDATE y DELETE están prohibidos a nivel de PostgreSQL.
         if (DB::getDriverName() === 'pgsql') {
             $appUser = config('database.connections.pgsql.username');
-            DB::statement("REVOKE UPDATE, DELETE ON audit_log FROM \"{$appUser}\"");
-            DB::statement("GRANT INSERT, SELECT ON audit_log TO \"{$appUser}\"");
+            if (! empty($appUser)) {
+                DB::statement("REVOKE UPDATE, DELETE ON audit_log FROM \"{$appUser}\"");
+                DB::statement("GRANT INSERT, SELECT ON audit_log TO \"{$appUser}\"");
+            }
         }
     }
 
@@ -57,7 +59,9 @@ return new class extends Migration
     {
         if (DB::getDriverName() === 'pgsql') {
             $appUser = config('database.connections.pgsql.username');
-            DB::statement("GRANT UPDATE, DELETE ON audit_log TO \"{$appUser}\"");
+            if (! empty($appUser)) {
+                DB::statement("GRANT UPDATE, DELETE ON audit_log TO \"{$appUser}\"");
+            }
         }
 
         Schema::dropIfExists('audit_log');
