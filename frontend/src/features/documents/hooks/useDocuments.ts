@@ -10,15 +10,28 @@ export function useDocuments(): {
   documents: Document[];
   loading: boolean;
   error: Error | null;
+  reload: () => Promise<void>;
 } {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const load = async () => {
+    try {
+      setLoading(true);
+      const data = await fetchDocuments();
+      setDocuments(data);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error('Unknown error'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
-
-    const load = async () => {
+    const loadOnMount = async () => {
       try {
         setLoading(true);
         const data = await fetchDocuments();
@@ -34,13 +47,17 @@ export function useDocuments(): {
         if (!cancelled) setLoading(false);
       }
     };
-
-    void load();
+    void loadOnMount();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  return { documents, loading, error };
+  return {
+    documents,
+    loading,
+    error,
+    reload: load,
+  };
 }

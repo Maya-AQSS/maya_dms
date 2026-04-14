@@ -4,13 +4,16 @@ namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
 use App\Events\DocumentStateChanged;
+use App\Models\CourseModule;
 use App\Models\Document;
 use App\Models\DocumentReview;
+use App\Models\JwtUser;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -76,6 +79,7 @@ class DocumentService implements DocumentServiceInterface
             'title' => $dto->title,
             'organization_id' => $dto->organizationId,
             'study_id' => $dto->studyId,
+            'module_id' => $dto->moduleId,
             'created_by' => $dto->createdBy,
             'owner_id' => $dto->ownerId,
             'status' => 'draft',
@@ -85,6 +89,109 @@ class DocumentService implements DocumentServiceInterface
         ], $blockRows);
     }
 
+    /**
+     * Opciones de creación de documento disponibles para un módulo.
+     * 
+     * @return list<array{template_id: string, template_version_id: string, name: string, description: ?string}>
+     */
+    public function creationOptionsForModule(string $moduleId): array
+    {
+        $templates = $this->templateRepository->listPublishedByModule($moduleId);
+
+        $options = [];
+        foreach ($templates as $template) {
+            $version = $this->templateVersionRepository->findLatestPublishedForTemplate($template->id);
+            if ($version === null) {
+                continue;
+            }
+
+            $options[] = [
+                'template_id' => $template->id,
+                'template_version_id' => $version->id,
+                'name' => (string) $template->name,
+                'description' => $template->description,
+            ];
+        }
+
+        return $options;
+    }
+
+    /**
+     * Crea un documento desde la vista de módulo resolviendo plantilla/version disponibles.
+     */
+    public function createFromModule(string $moduleId, string $creatorId, ?string $templateVersionId = null): Document
+    {
+        $options = $this->creationOptionsForModule($moduleId);
+        if ($options === []) {
+            throw ValidationException::withMessages([
+                'module_id' => ['El módulo no tiene plantillas publicadas disponibles.'],
+            ]);
+        }
+
+        $selected = null;
+        if ($templateVersionId !== null) {
+            foreach ($options as $option) {
+                if ($option['template_version_id'] === $templateVersionId) {
+                    $selected = $option;
+                    break;
+                }
+            }
+
+            if ($selected === null) {
+                throw ValidationException::withMessages([
+                    'template_version_id' => ['La versión seleccionada no está disponible para el módulo.'],
+                ]);
+            }
+        } elseif (count($options) === 1) {
+            $selected = $options[0];
+        } else {
+            throw ValidationException::withMessages([
+                'template_version_id' => ['Debe seleccionar una plantilla cuando existen varias opciones.'],
+            ]);
+        }
+
+        $module = CourseModule::query()->find($moduleId);
+        if ($module === null) {
+            throw ValidationException::withMessages([
+                'module_id' => ['El módulo no existe.'],
+            ]);
+        }
+
+        $user = Auth::user();
+        $organizationId = $user instanceof JwtUser ? $user->organizationId : null;
+        if ($organizationId === null || $organizationId === '') {
+            throw ValidationException::withMessages([
+                'organization_id' => ['No se pudo resolver la organización del usuario autenticado.'],
+            ]);
+        }
+
+        return $this->create(new CreateDocumentDto(
+            templateId: $selected['template_id'],
+            templateVersionId: $selected['template_version_id'],
+            title: 'Nueva Programación Didáctica',
+            organizationId: $organizationId,
+            studyId: (string) $module->study_id,
+            moduleId: $moduleId,
+            createdBy: $creatorId,
+            ownerId: $creatorId,
+        ));
+    }
+
+    /**
+     * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
+     * 
+     * @return Collection<int, Document>
+     */
+    public function listOrderedByCreatedAtDesc(): Collection
+    {
+        return $this->documentRepository->listOrderedByCreatedAtDesc();
+    }
+
+    /**
+     * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
+     *
+     * @return list<array<string, mixed>>
+     */
     public function blocksForDisplay(Document $document): array
     {
         $document->loadMissing(['blocks', 'templateVersion']);

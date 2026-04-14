@@ -7,8 +7,8 @@ use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class DocumentController extends Controller
 {
@@ -19,11 +19,11 @@ class DocumentController extends Controller
     /**
      * Listar documentos.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
-        // TODO: listar documentos (filtros, paginación)
-
-        return response()->json(['data' => []]);
+        return DocumentResource::collection(
+            $this->documentService->listOrderedByCreatedAtDesc(),
+        );
     }
 
     /**
@@ -31,8 +31,67 @@ class DocumentController extends Controller
      */
     public function store(StoreDocumentRequest $request): JsonResponse
     {
-        $userId = (string) Auth::id();
+        $userId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->create($request->toDto($userId, $userId));
+        $blocks = $this->documentService->blocksForDisplay($document);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($document))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ], 201);
+    }
+
+    /**
+     * Opciones para crear una programación desde la vista de módulo.
+     */
+    public function creationOptions(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'module_id' => ['required', 'string'],
+        ]);
+
+        $options = $this->documentService->creationOptionsForModule($validated['module_id']);
+        $count = count($options);
+
+        if ($count === 0) {
+            return response()->json([
+                'data' => [
+                    'can_create' => false,
+                    'mode' => 'none',
+                    'message' => 'No hay plantillas publicadas disponibles para este módulo.',
+                    'options' => [],
+                ],
+            ]);
+        }
+
+        return response()->json([
+            'data' => [
+                'can_create' => true,
+                'mode' => $count === 1 ? 'auto' : 'select',
+                'message' => null,
+                'options' => $options,
+            ],
+        ]);
+    }
+
+    /**
+     * Crear una programación desde módulo con selección opcional de versión de plantilla.
+     */
+    public function createFromModule(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'module_id' => ['required', 'string'],
+            'template_version_id' => ['sometimes', 'nullable', 'uuid'],
+        ]);
+
+        $userId = (string) $request->user()->getAuthIdentifier();
+        $document = $this->documentService->createFromModule(
+            $validated['module_id'],
+            $userId,
+            $validated['template_version_id'] ?? null,
+        );
         $blocks = $this->documentService->blocksForDisplay($document);
 
         return response()->json([
