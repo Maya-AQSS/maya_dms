@@ -26,24 +26,24 @@ class UpdateTemplateRequest extends FormRequest
 
     /**
      * Reglas de validación para la actualización de una plantilla.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'name'              => ['sometimes', 'string', 'max:255'],
-            'description'       => ['sometimes', 'nullable', 'string'],
-            'visibility_level'  => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
+            'name' => ['sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string'],
+            'visibility_level' => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
             'delivery_deadline' => ['sometimes', 'nullable', 'date'],
-            'study_type_id'     => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study_type'],
-            'study_id'          => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
-            'module_id'         => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,module'],
-            'group_id'          => ['sometimes', 'nullable', 'uuid', 'exists:groups,id', 'required_if:visibility_level,group'],
-            'organization_id'   => ['sometimes', 'nullable', 'string', 'max:255'],
-            'status'            => ['sometimes', 'string', 'in:draft,published,archived'],
-            'review_stages'     => ['sometimes', 'integer', 'min:0'],
-            'review_mode'       => ['sometimes', 'string', 'in:sequential,parallel'],
+            'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study_type'],
+            'study_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
+            'module_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,module'],
+            'group_id' => ['sometimes', 'nullable', 'uuid', 'exists:groups,id', 'required_if:visibility_level,group'],
+            'organization_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'status' => ['sometimes', 'string', 'in:draft,in_review,archived'],
+            'review_stages' => ['sometimes', 'integer', 'min:0'],
+            'review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
         ];
     }
 

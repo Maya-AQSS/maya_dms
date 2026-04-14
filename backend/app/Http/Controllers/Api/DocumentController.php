@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Document;
+use App\Http\Requests\Documents\StoreDocumentRequest;
+use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class DocumentController extends Controller
 {
@@ -25,22 +27,37 @@ class DocumentController extends Controller
     }
 
     /**
-     * Crear documento.
+     * Crear documento anclado a la última versión publicada de la plantilla (o a una indicada).
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreDocumentRequest $request): JsonResponse
     {
-        // TODO: DocumentService::create(...)
+        $userId = (string) Auth::id();
+        $document = $this->documentService->create($request->toDto($userId, $userId));
+        $blocks = $this->documentService->blocksForDisplay($document);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($document))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ], 201);
     }
 
     /**
-     * Mostrar documento.
+     * Mostrar documento con bloques según la versión de plantilla anclada (F-03.4).
      */
-    public function show(string $id): JsonResponse
+    public function show(Request $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
-        return response()->json(['data' => $document]);
+        $this->authorize('view', $document);
+        $blocks = $this->documentService->blocksForDisplay($document);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($document))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ]);
     }
 
     /**

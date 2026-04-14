@@ -3,6 +3,7 @@
 namespace App\Repositories\Eloquent;
 
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -17,6 +18,32 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function findOrFail(string $id): Document
     {
         return Document::findOrFail($id);
+    }
+
+    /**
+     * Crea el documento y sus bloques iniciales en una transacción.
+     *
+     * @param  array<string, mixed>  $documentAttributes
+     * @param  list<array{template_block_id: string, content: mixed, sort_order: int}>  $blockRows
+     */
+    public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document
+    {
+        return DB::transaction(function () use ($documentAttributes, $blockRows) {
+            $document = Document::query()->create($documentAttributes);
+
+            foreach ($blockRows as $row) {
+                DocumentBlock::query()->forceCreate([
+                    'id' => (string) Str::uuid(),
+                    'document_id' => $document->getKey(),
+                    'template_block_id' => $row['template_block_id'],
+                    'content' => $row['content'],
+                    'is_filled' => false,
+                    'sort_order' => $row['sort_order'],
+                ]);
+            }
+
+            return $document->fresh(['blocks']);
+        });
     }
 
     /**
@@ -58,11 +85,11 @@ class DocumentRepository implements DocumentRepositoryInterface
     {
         foreach ($rows as $row) {
             DocumentReview::forceCreate([
-                'id'            => (string) Str::uuid(),
-                'document_id'   => $documentId,
-                'reviewer_id'   => $row['reviewer_id'],
-                'stage'         => $row['stage'],
-                'status'        => 'pending',
+                'id' => (string) Str::uuid(),
+                'document_id' => $documentId,
+                'reviewer_id' => $row['reviewer_id'],
+                'stage' => $row['stage'],
+                'status' => 'pending',
             ]);
         }
     }
@@ -78,11 +105,28 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->count();
     }
 
+    public function minPendingReviewStageForDocument(string $documentId): ?int
+    {
+        $min = DocumentReview::query()
+            ->where('document_id', $documentId)
+            ->where('status', 'pending')
+            ->min('stage');
+
+        return $min !== null ? (int) $min : null;
+    }
+
+    /**
+     * Guarda una revisión del documento.
+     */
     public function saveReview(DocumentReview $review): void
     {
         $review->save();
     }
 
+    /**
+     * Indica si el usuario es autor (owner_id / created_by) o revisor asignado
+     * del documento. Usado para control de acceso al historial de auditoría.
+     */
     public function isAuthorOrReviewer(string $documentId, string $userId): bool
     {
         $isAuthor = DB::table('documents')

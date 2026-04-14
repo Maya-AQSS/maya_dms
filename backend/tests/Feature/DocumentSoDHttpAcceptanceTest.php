@@ -7,6 +7,7 @@ use App\Models\Template;
 use App\Services\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
@@ -22,34 +23,34 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
     private function seedTemplateAndDocument(string $creatorId): array
     {
-        $templateId = (string) \Illuminate\Support\Str::uuid();
-        $documentId = (string) \Illuminate\Support\Str::uuid();
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
 
         Template::query()->forceCreate([
-            'id'              => $templateId,
-            'name'            => 'Plantilla SoD',
-            'description'     => null,
-            'study_id'        => null,
+            'id' => $templateId,
+            'name' => 'Plantilla SoD',
+            'description' => null,
+            'study_id' => null,
             'organization_id' => 'org-test',
-            'created_by'      => $creatorId,
-            'status'          => 'draft',
-            'version'         => 1,
-            'review_stages'   => 0,
-            'review_mode'     => 'sequential',
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         Document::query()->forceCreate([
-            'id'               => $documentId,
-            'template_id'      => $templateId,
-            'title'            => 'Documento SoD',
-            'organization_id'  => 'org-test',
-            'study_id'         => null,
-            'created_by'       => $creatorId,
-            'owner_id'         => $creatorId,
-            'status'           => 'draft',
-            'current_version'  => 1,
-            'submitted_at'     => null,
-            'published_at'     => null,
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'title' => 'Documento SoD',
+            'organization_id' => 'org-test',
+            'study_id' => null,
+            'created_by' => $creatorId,
+            'owner_id' => $creatorId,
+            'status' => 'draft',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => null,
         ]);
 
         return [$templateId, $documentId];
@@ -67,7 +68,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-doc', 'creator-doc-uuid-01');
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -85,9 +86,9 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->assertDatabaseHas('audit_log', [
             'entity_type' => 'document',
-            'entity_id'   => $documentId,
-            'action'      => 'sod_violation',
-            'user_id'     => 'creator-doc-uuid-01',
+            'entity_id' => $documentId,
+            'action' => 'sod_violation',
+            'user_id' => 'creator-doc-uuid-01',
         ]);
 
         $row = DB::table('audit_log')
@@ -109,14 +110,14 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     public function test_creator_publish_template_returns_403(): void
     {
         $creatorId = 'creator-tpl-uuid-02';
-        [$templateId, ] = $this->seedTemplateAndDocument($creatorId);
+        [$templateId] = $this->seedTemplateAndDocument($creatorId);
         // Crea también un documento; no interfiere con la plantilla bajo prueba
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-tpl', $creatorId);
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -124,9 +125,9 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($publicPem));
 
-        $response = $this->patchJson(
-            "/api/v1/templates/{$templateId}",
-            ['status' => 'published'],
+        $response = $this->postJson(
+            "/api/v1/templates/{$templateId}/publish",
+            ['changelog' => 'Versión inicial'],
             ['Authorization' => 'Bearer '.$token],
         );
 
@@ -139,43 +140,43 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     public function test_delegate_owner_cannot_submit_document(): void
     {
         $creatorId = 'creator-deleg-uuid-03';
-        $ownerId   = 'owner-deleg-uuid-04';
+        $ownerId = 'owner-deleg-uuid-04';
 
-        $templateId = (string) \Illuminate\Support\Str::uuid();
-        $documentId = (string) \Illuminate\Support\Str::uuid();
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
 
         Template::query()->forceCreate([
-            'id'              => $templateId,
-            'name'            => 'T',
-            'description'     => null,
-            'study_id'        => null,
+            'id' => $templateId,
+            'name' => 'T',
+            'description' => null,
+            'study_id' => null,
             'organization_id' => 'org-test',
-            'created_by'      => $creatorId,
-            'status'          => 'draft',
-            'version'         => 1,
-            'review_stages'   => 0,
-            'review_mode'     => 'sequential',
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         Document::query()->forceCreate([
-            'id'               => $documentId,
-            'template_id'      => $templateId,
-            'title'            => 'Doc delegado',
-            'organization_id'  => 'org-test',
-            'study_id'         => null,
-            'created_by'       => $creatorId,
-            'owner_id'         => $ownerId,
-            'status'           => 'draft',
-            'current_version'  => 1,
-            'submitted_at'     => null,
-            'published_at'     => null,
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'title' => 'Doc delegado',
+            'organization_id' => 'org-test',
+            'study_id' => null,
+            'created_by' => $creatorId,
+            'owner_id' => $ownerId,
+            'status' => 'draft',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => null,
         ]);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-del', $ownerId);
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 

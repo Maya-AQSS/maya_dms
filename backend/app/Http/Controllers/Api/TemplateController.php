@@ -5,18 +5,24 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
+use App\Http\Requests\Templates\PublishTemplateRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
+use App\Http\Resources\TemplateVersionResource;
+use App\Http\Resources\TemplateVersionSummaryResource;
+use App\Policies\TemplatePolicy;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Resources\Json\ResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 /**
  * Los métodos reciben el UUID como string (route {template}) para no usar
  * route model binding implícito antes del middleware JWT; el global scope
- * de {@see \App\Models\Template} depende de auth y fallaría en SubstituteBindings.
+ * de {@see Template} depende de auth y fallaría en SubstituteBindings.
  */
 class TemplateController extends Controller
 {
@@ -60,18 +66,13 @@ class TemplateController extends Controller
 
     /**
      * Actualizar plantilla.
-     * La publicación exige actor distinto del creador vía {@see \App\Policies\TemplatePolicy::review}.
+     * La publicación exige actor distinto del creador vía {@see TemplatePolicy::review}.
      */
     public function update(UpdateTemplateRequest $request, string $template): TemplateResource
     {
         $model = $this->templateService->findOrFail($template);
 
         $dto = $request->toUpdateDto();
-
-        $targetStatus = $dto->setStatus ? $dto->status : $model->status;
-        if ($targetStatus === 'published' && $model->status !== 'published') {
-            $this->authorize('review', $model);
-        }
 
         $updated = $this->templateService->update($model->id, $dto);
 
@@ -81,7 +82,7 @@ class TemplateController extends Controller
     /**
      * Eliminar plantilla (archivo si hay documentos asociados; si no, borrado físico).
      */
-    public function destroy(string $template): JsonResponse|\Illuminate\Http\Response
+    public function destroy(string $template): JsonResponse|Response
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('delete', $model);
@@ -103,5 +104,85 @@ class TemplateController extends Controller
         $copy = $this->templateService->clone($template, (string) Auth::id());
 
         return (new TemplateResource($copy))->response()->setStatusCode(201);
+    }
+
+    /**
+     * Borrador → en revisión (autor o quien puede editar).
+     */
+    public function submitForReview(string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('submitForReview', $model);
+
+        $updated = $this->templateService->submitForReview($model->id, (string) Auth::id());
+
+        return new TemplateResource($updated);
+    }
+
+    /**
+     * En revisión → borrador (revisor).
+     */
+    public function rejectReview(string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('review', $model);
+
+        $updated = $this->templateService->rejectReview($model->id, (string) Auth::id());
+
+        return new TemplateResource($updated);
+    }
+
+    /**
+     * En revisión → publicado + snapshot (revisor; changelog obligatorio).
+     */
+    public function publish(PublishTemplateRequest $request, string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+
+        $updated = $this->templateService->publishWithSnapshot(
+            $model->id,
+            $request->validated('changelog'),
+            (string) Auth::id(),
+        );
+
+        return new TemplateResource($updated);
+    }
+
+    /**
+     * Publicado → borrador para preparar otra versión publicable.
+     */
+    public function reopenDraft(string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('reopenDraft', $model);
+
+        $updated = $this->templateService->reopenDraft($model->id, (string) Auth::id());
+
+        return new TemplateResource($updated);
+    }
+
+    /**
+     * Historial de versiones publicadas (metadatos).
+     */
+    public function versions(string $template): ResourceCollection
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('view', $model);
+
+        return TemplateVersionSummaryResource::collection(
+            $this->templateService->listPublishedVersions($model->id),
+        );
+    }
+
+    /**
+     * Detalle de un snapshot (incluye bloques).
+     */
+    public function showVersion(string $template_version): TemplateVersionResource
+    {
+        $version = $this->templateService->findVersionOrFail($template_version);
+        $template = $this->templateService->findOrFail($version->template_id);
+        $this->authorize('view', $template);
+
+        return new TemplateVersionResource($version);
     }
 }

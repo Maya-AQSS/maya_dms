@@ -8,7 +8,9 @@ use App\Models\Group;
 use App\Models\GroupMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\TemplateVersion;
 use App\Services\Contracts\JwksServiceInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
@@ -26,8 +28,8 @@ class TemplatesApiTest extends TestCase
         parent::setUp();
 
         config([
-            'auth.jwt_issuer'               => 'test-issuer',
-            'auth.jwt_audience'             => 'test-audience',
+            'auth.jwt_issuer' => 'test-issuer',
+            'auth.jwt_audience' => 'test-audience',
             'auth.template_shared_visibility_roles' => ['department-head', 'director'],
         ]);
 
@@ -69,13 +71,61 @@ class TemplatesApiTest extends TestCase
         return ['Authorization' => 'Bearer '.$token];
     }
 
+    /**
+     * Dos usuarios con tokens firmados con el mismo par RSA (el mock JWKS solo admite una clave activa).
+     *
+     * @param  array<string, mixed>  $reviewerExtraClaims
+     * @return array{0: array<string, string>, 1: array<string, string>}
+     */
+    private function authHeadersCreatorAndReviewer(
+        string $creatorSub,
+        string $reviewerSub,
+        array $reviewerRealmRoles = [],
+        array $reviewerExtraClaims = [],
+    ): array {
+        auth()->forgetUser();
+
+        [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($publicPem));
+
+        $tokenCreator = $this->buildJwtForSub(
+            $privatePem,
+            $publicPem,
+            'kid-c-'.substr($creatorSub, 0, 8),
+            $creatorSub,
+            'test-issuer',
+            'test-audience',
+            [],
+            [],
+        );
+
+        $tokenReviewer = $this->buildJwtForSub(
+            $privatePem,
+            $publicPem,
+            'kid-r-'.substr($reviewerSub, 0, 8),
+            $reviewerSub,
+            'test-issuer',
+            'test-audience',
+            $reviewerRealmRoles,
+            $reviewerExtraClaims,
+        );
+
+        return [
+            ['Authorization' => 'Bearer '.$tokenCreator],
+            ['Authorization' => 'Bearer '.$tokenReviewer],
+        ];
+    }
+
     public function test_user_can_crud_personal_template_via_api(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
 
         $create = $this->postJson('/api/v1/templates', [
-            'name'        => 'Plantilla personal',
+            'name' => 'Plantilla personal',
             'description' => 'Desc',
         ], $headers);
 
@@ -108,22 +158,22 @@ class TemplatesApiTest extends TestCase
 
     public function test_user_without_privileged_role_cannot_create_global_template(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId, ['teacher']);
 
         $this->postJson('/api/v1/templates', [
-            'name'              => 'Global prohibida',
-            'visibility_level'  => TemplateVisibilityLevel::Global->value,
+            'name' => 'Global prohibida',
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
         ], $headers)->assertForbidden();
     }
 
     public function test_department_head_can_create_global_template(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId, ['department-head']);
 
         $this->postJson('/api/v1/templates', [
-            'name'             => 'Plantilla global',
+            'name' => 'Plantilla global',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
         ], $headers)
             ->assertCreated()
@@ -132,46 +182,46 @@ class TemplatesApiTest extends TestCase
 
     public function test_index_filters_by_status_and_visibility_and_respects_per_page_max(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
 
         $t1 = (string) Str::uuid();
         $t2 = (string) Str::uuid();
 
         Template::query()->forceCreate([
-            'id'                => $t1,
-            'name'              => 'A',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Personal->value,
+            'id' => $t1,
+            'name' => 'A',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => 'org-x',
-            'created_by'        => $userId,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-x',
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         Template::query()->forceCreate([
-            'id'                => $t2,
-            'name'              => 'B',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Personal->value,
+            'id' => $t2,
+            'name' => 'B',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => 'org-x',
-            'created_by'        => $userId,
-            'status'            => 'published',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-x',
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $this->getJson('/api/v1/templates?status=draft', $headers)
@@ -190,11 +240,11 @@ class TemplatesApiTest extends TestCase
 
     public function test_store_study_visibility_requires_study_id(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId, ['department-head']);
 
         $this->postJson('/api/v1/templates', [
-            'name'             => 'Sin estudio',
+            'name' => 'Sin estudio',
             'visibility_level' => TemplateVisibilityLevel::Study->value,
         ], $headers)->assertUnprocessable();
     }
@@ -206,21 +256,21 @@ class TemplatesApiTest extends TestCase
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Mía',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Personal->value,
+            'id' => $tid,
+            'name' => 'Mía',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => null,
-            'created_by'        => $userId,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $this->patchJson("/api/v1/templates/{$tid}", [
@@ -230,49 +280,49 @@ class TemplatesApiTest extends TestCase
 
     public function test_clone_creates_draft_personal_copy_with_suffix_and_blocks(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Original',
-            'description'       => 'D',
-            'visibility_level'  => TemplateVisibilityLevel::Global->value,
+            'id' => $tid,
+            'name' => 'Original',
+            'description' => 'D',
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => 'org-1',
-            'created_by'        => $userId,
-            'status'            => 'published',
-            'version'           => 2,
-            'review_stages'     => 1,
-            'review_mode'       => 'parallel',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-1',
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 2,
+            'review_stages' => 1,
+            'review_mode' => 'parallel',
         ]);
 
         $b1 = (string) Str::uuid();
         $b2 = (string) Str::uuid();
         TemplateBlock::query()->forceCreate([
-            'id'              => $b1,
-            'template_id'     => $tid,
-            'type'            => 'paragraph',
-            'title'           => 'B1',
+            'id' => $b1,
+            'template_id' => $tid,
+            'type' => 'paragraph',
+            'title' => 'B1',
             'default_content' => ['x' => 1],
-            'block_state'     => 'editable',
-            'mandatory'       => true,
-            'sort_order'      => 0,
+            'block_state' => 'editable',
+            'mandatory' => true,
+            'sort_order' => 0,
         ]);
         TemplateBlock::query()->forceCreate([
-            'id'              => $b2,
-            'template_id'     => $tid,
-            'type'            => 'heading',
-            'title'           => 'B2',
+            'id' => $b2,
+            'template_id' => $tid,
+            'type' => 'heading',
+            'title' => 'B2',
             'default_content' => null,
-            'block_state'     => 'locked',
-            'mandatory'       => false,
-            'sort_order'      => 1,
+            'block_state' => 'locked',
+            'mandatory' => false,
+            'sort_order' => 1,
         ]);
 
         $response = $this->postJson("/api/v1/templates/{$tid}/clone", [], $headers);
@@ -291,42 +341,42 @@ class TemplatesApiTest extends TestCase
 
     public function test_destroy_archives_when_documents_exist(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
 
         $tid = (string) Str::uuid();
         $did = (string) Str::uuid();
 
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Con docs',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Personal->value,
+            'id' => $tid,
+            'name' => 'Con docs',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => 'org-1',
-            'created_by'        => $userId,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-1',
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         Document::query()->forceCreate([
-            'id'               => $did,
-            'template_id'      => $tid,
-            'title'            => 'Doc',
-            'organization_id'  => 'org-1',
-            'study_id'         => null,
-            'created_by'       => $userId,
-            'owner_id'         => $userId,
-            'status'           => 'draft',
-            'current_version'  => 1,
-            'submitted_at'     => null,
-            'published_at'     => null,
+            'id' => $did,
+            'template_id' => $tid,
+            'title' => 'Doc',
+            'organization_id' => 'org-1',
+            'study_id' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'draft',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => null,
         ]);
 
         $this->deleteJson("/api/v1/templates/{$tid}", [], $headers)
@@ -334,33 +384,33 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'archived');
 
         $this->assertDatabaseHas('templates', [
-            'id'     => $tid,
+            'id' => $tid,
             'status' => 'archived',
         ]);
     }
 
     public function test_destroy_no_content_when_no_documents(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Sin docs',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Personal->value,
+            'id' => $tid,
+            'name' => 'Sin docs',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => null,
-            'created_by'        => $userId,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $this->deleteJson("/api/v1/templates/{$tid}", [], $headers)
@@ -371,21 +421,21 @@ class TemplatesApiTest extends TestCase
 
     public function test_group_visibility_requires_existing_group(): void
     {
-        $userId  = (string) Str::uuid();
+        $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId, ['director']);
 
         $gid = (string) Str::uuid();
         Group::query()->forceCreate([
-            'id'          => $gid,
-            'name'        => 'G',
+            'id' => $gid,
+            'name' => 'G',
             'description' => null,
-            'owner_id'    => $userId,
+            'owner_id' => $userId,
         ]);
 
         $this->postJson('/api/v1/templates', [
-            'name'             => 'Por grupo',
+            'name' => 'Por grupo',
             'visibility_level' => TemplateVisibilityLevel::Group->value,
-            'group_id'         => $gid,
+            'group_id' => $gid,
         ], $headers)->assertCreated()->assertJsonPath('data.group_id', $gid);
     }
 
@@ -393,25 +443,25 @@ class TemplatesApiTest extends TestCase
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $org   = 'org-same';
+        $org = 'org-same';
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Global compartida',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Global->value,
+            'id' => $tid,
+            'name' => 'Global compartida',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => $org,
-            'created_by'        => $userA,
-            'status'            => 'published',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => $org,
+            'created_by' => $userA,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $headersB = $this->authHeaders($userB, ['teacher'], ['organization_id' => $org]);
@@ -425,25 +475,25 @@ class TemplatesApiTest extends TestCase
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $org   = 'org-same';
+        $org = 'org-same';
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Personal ajena',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Personal->value,
+            'id' => $tid,
+            'name' => 'Personal ajena',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => $org,
-            'created_by'        => $userA,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => $org,
+            'created_by' => $userA,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $headersB = $this->authHeaders($userB, ['teacher'], ['organization_id' => $org]);
@@ -455,31 +505,31 @@ class TemplatesApiTest extends TestCase
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $org   = 'org-stud';
-        $stud  = 'study-xyz';
+        $org = 'org-stud';
+        $stud = 'study-xyz';
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Por estudio',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Study->value,
+            'id' => $tid,
+            'name' => 'Por estudio',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Study->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => $stud,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => $org,
-            'created_by'        => $userA,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => $stud,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => $org,
+            'created_by' => $userA,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $headersB = $this->authHeaders($userB, ['teacher'], [
             'organization_id' => $org,
-            'study_id'        => $stud,
+            'study_id' => $stud,
         ]);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
@@ -489,30 +539,30 @@ class TemplatesApiTest extends TestCase
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $stud  = 'study-abc';
+        $stud = 'study-abc';
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'Otro tenant',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Study->value,
+            'id' => $tid,
+            'name' => 'Otro tenant',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Study->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => $stud,
-            'module_id'         => null,
-            'group_id'          => null,
-            'organization_id'   => 'org-a',
-            'created_by'        => $userA,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => $stud,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-a',
+            'created_by' => $userA,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $headersB = $this->authHeaders($userB, ['teacher'], [
             'organization_id' => 'org-b',
-            'study_id'        => $stud,
+            'study_id' => $stud,
         ]);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
@@ -522,43 +572,362 @@ class TemplatesApiTest extends TestCase
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $gid   = (string) Str::uuid();
+        $gid = (string) Str::uuid();
 
         Group::query()->forceCreate([
-            'id'          => $gid,
-            'name'        => 'Curso',
+            'id' => $gid,
+            'name' => 'Curso',
             'description' => null,
-            'owner_id'    => $userA,
+            'owner_id' => $userA,
         ]);
 
         GroupMember::query()->forceCreate([
-            'id'       => (string) Str::uuid(),
+            'id' => (string) Str::uuid(),
             'group_id' => $gid,
-            'user_id'  => $userB,
-            'role'     => 'member',
+            'user_id' => $userB,
+            'role' => 'member',
         ]);
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
-            'id'                => $tid,
-            'name'              => 'De grupo',
-            'description'       => null,
-            'visibility_level'  => TemplateVisibilityLevel::Group->value,
+            'id' => $tid,
+            'name' => 'De grupo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Group->value,
             'delivery_deadline' => null,
-            'study_type_id'     => null,
-            'study_id'          => null,
-            'module_id'         => null,
-            'group_id'          => $gid,
-            'organization_id'   => null,
-            'created_by'        => $userA,
-            'status'            => 'draft',
-            'version'           => 1,
-            'review_stages'     => 0,
-            'review_mode'       => 'sequential',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => $gid,
+            'organization_id' => null,
+            'created_by' => $userA,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
+    }
+
+    public function test_template_publish_requires_changelog_when_in_review(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = (string) Str::uuid();
+        $headersReviewer = $this->authHeaders($reviewerId, ['department-head'], ['organization_id' => 'org-x']);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'En revisión',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-x',
+            'created_by' => $creatorId,
+            'status' => 'in_review',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'type' => 'paragraph',
+            'title' => 'B',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'mandatory' => false,
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersReviewer)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['changelog']);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => '   '], $headersReviewer)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['changelog']);
+    }
+
+    public function test_template_review_flow_creates_snapshot_and_history(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = (string) Str::uuid();
+        [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+            ['department-head'],
+            ['organization_id' => 'org-x'],
+        );
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Flujo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-x',
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'type' => 'heading',
+            'title' => 'T',
+            'default_content' => null,
+            'block_state' => 'locked',
+            'mandatory' => true,
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [
+            'changelog' => 'Primera publicación',
+        ], $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.version', 1);
+
+        $this->assertDatabaseHas('template_versions', [
+            'template_id' => $tid,
+            'version_number' => 1,
+            'published_by' => $reviewerId,
+        ]);
+
+        $vid = TemplateVersion::query()->where('template_id', $tid)->value('id');
+        $this->assertNotEmpty($vid);
+
+        $this->getJson("/api/v1/templates/{$tid}/versions", $headersCreator)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.version_number', 1)
+            ->assertJsonPath('data.0.changelog', 'Primera publicación');
+
+        $this->getJson("/api/v1/template-versions/{$vid}", $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.version_number', 1)
+            ->assertJsonPath('data.blocks_snapshot.0.id', $bid)
+            ->assertJsonPath('data.blocks_snapshot.0.type', 'heading');
+    }
+
+    public function test_template_version_snapshot_cannot_be_updated_via_eloquent(): void
+    {
+        $userId = (string) Str::uuid();
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Snap',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $vid = (string) Str::uuid();
+        TemplateVersion::query()->forceCreate([
+            'id' => $vid,
+            'template_id' => $tid,
+            'version_number' => 1,
+            'blocks_snapshot' => [],
+            'changelog' => 'x',
+            'published_by' => $userId,
+            'published_at' => now(),
+        ]);
+
+        $version = TemplateVersion::query()->findOrFail($vid);
+        $this->expectException(AuthorizationException::class);
+        $version->update(['changelog' => 'hack']);
+    }
+
+    public function test_template_version_snapshot_mutation_via_http_returns_403(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Snap HTTP',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $vid = (string) Str::uuid();
+        TemplateVersion::query()->forceCreate([
+            'id' => $vid,
+            'template_id' => $tid,
+            'version_number' => 1,
+            'blocks_snapshot' => [],
+            'changelog' => 'x',
+            'published_by' => $userId,
+            'published_at' => now(),
+        ]);
+
+        $this->putJson("/api/v1/template-versions/{$vid}", ['changelog' => 'hack'], $headers)->assertForbidden();
+        $this->patchJson("/api/v1/template-versions/{$vid}", ['changelog' => 'hack'], $headers)->assertForbidden();
+        $this->deleteJson("/api/v1/template-versions/{$vid}", [], $headers)->assertForbidden();
+    }
+
+    public function test_template_reject_review_returns_to_draft(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = (string) Str::uuid();
+        [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+            ['department-head'],
+            ['organization_id' => 'org-x'],
+        );
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Rechazo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-x',
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/reject-review", [], $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->assertDatabaseCount('template_versions', 0);
+    }
+
+    public function test_template_second_publish_increments_version_after_reopen(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = (string) Str::uuid();
+        [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+            ['department-head'],
+            ['organization_id' => 'org-x'],
+        );
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'v2',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-x',
+            'created_by' => $creatorId,
+            'status' => 'in_review',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'type' => 'paragraph',
+            'title' => null,
+            'default_content' => null,
+            'block_state' => 'editable',
+            'mandatory' => false,
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $headersReviewer)->assertOk();
+
+        $this->postJson("/api/v1/templates/{$tid}/reopen-draft", [], $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v2'], $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.version', 2);
+
+        $this->assertDatabaseCount('template_versions', 2);
+    }
+
+    public function test_patch_status_cannot_set_published_without_publish_endpoint(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'No patch publish',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'group_id' => null,
+            'organization_id' => 'org-x',
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->patchJson("/api/v1/templates/{$tid}", ['status' => 'published'], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['status']);
     }
 }
