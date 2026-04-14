@@ -102,6 +102,18 @@ for i in $(seq 1 20); do
   sleep 2
 done
 
+# 1b) Esperar a que composer install termine (el entrypoint lo ejecuta en background)
+info "Esperando a que composer install termine..."
+for i in $(seq 1 30); do
+  if docker exec "$BACKEND_CONTAINER" test -f /var/www/html/vendor/autoload.php > /dev/null 2>&1; then
+    break
+  fi
+  if (( i % 5 == 0 )); then
+    info "  … composer install en curso ($((i * 3))s/90s)"
+  fi
+  sleep 3
+done
+
 # 2) Esperar conexión con la BD (PDO directo — sin bootstrap de Laravel)
 info "Esperando conexión con la base de datos..."
 for i in $(seq 1 40); do
