@@ -59,6 +59,14 @@ class TemplateBlockController extends Controller
     {
         $validated = $request->validated();
         $dto = new UpdateTemplateBlockDto(
+            type:            $validated['type'] ?? null,
+            set_type:        $request->has('type'),
+            title:           $validated['title'] ?? null,
+            set_title:       $request->has('title'),
+            default_content: $validated['default_content'] ?? null,
+            set_default_content: $request->has('default_content'),
+            sort_order:      $validated['sort_order'] ?? null,
+            set_sort_order:  $request->has('sort_order'),
             block_state:     $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
             mandatory:       $validated['mandatory'] ?? null,
@@ -94,7 +102,8 @@ class TemplateBlockController extends Controller
         
         $dto = new BulkUpdateTemplateBlocksDto(
             ids:           $validated['ids'],
-            block_state:   $validated['block_state'],
+            block_state:   $validated['block_state'] ?? null,
+            set_block_state: $request->has('block_state'),
             mandatory:     $validated['mandatory'] ?? null,
             set_mandatory: $request->has('mandatory'),
         );

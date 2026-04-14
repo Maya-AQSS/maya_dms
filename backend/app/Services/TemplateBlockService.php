@@ -65,6 +65,18 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $block = $this->blockRepository->findOrFail($blockId);
 
         $attributes = [];
+        if ($dto->set_type) {
+            $attributes['type'] = $dto->type;
+        }
+        if ($dto->set_title) {
+            $attributes['title'] = $dto->title;
+        }
+        if ($dto->set_default_content) {
+            $attributes['default_content'] = $dto->default_content;
+        }
+        if ($dto->set_sort_order) {
+            $attributes['sort_order'] = $dto->sort_order;
+        }
         if ($dto->set_block_state) {
             $attributes['block_state'] = $dto->block_state;
         }
@@ -72,17 +84,17 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             $attributes['mandatory'] = $dto->mandatory;
         }
 
-        // Only record audit and update if there are actual changes
-        $hasChanges = false;
-        if ($dto->set_block_state && $block->block_state !== $dto->block_state) {
-            $hasChanges = true;
-        }
-        if ($dto->set_mandatory && $block->mandatory !== $dto->mandatory) {
-            $hasChanges = true;
+        if ($attributes === []) {
+            return $block;
         }
 
-        if (! $hasChanges) {
-            return $block;
+        // Audit only when there is an actual state/mandatory transition.
+        $stateOrMandatoryChanged = false;
+        if ($dto->set_block_state && $block->block_state !== $dto->block_state) {
+            $stateOrMandatoryChanged = true;
+        }
+        if ($dto->set_mandatory && $block->mandatory !== $dto->mandatory) {
+            $stateOrMandatoryChanged = true;
         }
 
         $previous = [
@@ -92,18 +104,20 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         $updated = $this->blockRepository->update($block, $attributes);
 
-        $this->auditLogService->record(
-            entityType:    'template',
-            entityId:      $updated->template_id,
-            action:        'block_state_changed',
-            userId:        $userId,
-            blockUuid:     $blockId,
-            previousValue: $previous,
-            newValue:      [
-                'block_state' => $updated->block_state,
-                'mandatory'   => $updated->mandatory,
-            ],
-        );
+        if ($stateOrMandatoryChanged) {
+            $this->auditLogService->record(
+                entityType:    'template',
+                entityId:      $updated->template_id,
+                action:        'block_state_changed',
+                userId:        $userId,
+                blockUuid:     $blockId,
+                previousValue: $previous,
+                newValue:      [
+                    'block_state' => $updated->block_state,
+                    'mandatory'   => $updated->mandatory,
+                ],
+            );
+        }
 
         return $updated;
     }
@@ -134,7 +148,10 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         // Capture previous states before the bulk update to identify actual changes
         $before = $this->blockRepository->findByIds($dto->ids)->keyBy('id');
 
-        $attributes = ['block_state' => $dto->block_state];
+        $attributes = [];
+        if ($dto->set_block_state) {
+            $attributes['block_state'] = $dto->block_state;
+        }
         if ($dto->set_mandatory) {
             $attributes['mandatory'] = $dto->mandatory;
         }
@@ -145,7 +162,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             $prev = $before->get($block->getKey());
 
             // Redundant audit prevention: only log if something actually changed
-            $changedState = $prev && $prev->block_state !== $block->block_state;
+            $changedState = $dto->set_block_state && $prev && $prev->block_state !== $block->block_state;
             $changedMandatory = $dto->set_mandatory && $prev && $prev->mandatory !== $block->mandatory;
 
             if ($changedState || $changedMandatory) {

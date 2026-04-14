@@ -37,7 +37,7 @@ export type UpdateBlockPayload = {
 
 export type BulkUpdateBlockPayload = {
   ids: string[];
-  block_state: BlockState;
+  block_state?: BlockState;
   mandatory?: boolean;
 };
 

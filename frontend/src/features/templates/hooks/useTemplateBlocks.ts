@@ -100,6 +100,24 @@ export function useTemplateBlocks(templateId: string) {
     [selectedIds],
   );
 
+  const applyMandatoryToSelected = useCallback(
+    async (mandatory: boolean) => {
+      const ids = Array.from(selectedIds);
+      if (ids.length === 0) return;
+
+      if (ids.length === 1) {
+        const res = await updateBlockRequest(ids[0], { mandatory });
+        setBlocks((prev) => prev.map((b) => (b.id === ids[0] ? res.data : b)));
+      } else {
+        const payload: BulkUpdateBlockPayload = { ids, mandatory };
+        const res = await bulkUpdateBlocks(payload);
+        const updated = new Map(res.data.map((b) => [b.id, b]));
+        setBlocks((prev) => prev.map((b) => updated.get(b.id) ?? b));
+      }
+    },
+    [selectedIds],
+  );
+
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -125,6 +143,7 @@ export function useTemplateBlocks(templateId: string) {
     updateBlock,
     deleteBlock,
     applyStateToSelected,
+    applyMandatoryToSelected,
     toggleSelect,
     selectOnly,
     clearSelection,

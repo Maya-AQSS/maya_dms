@@ -27,6 +27,7 @@ export function TemplateBlockEditor({ template, onClose }: Props) {
     createBlock,
     deleteBlock,
     applyStateToSelected,
+    applyMandatoryToSelected,
     toggleSelect,
     selectOnly,
     clearSelection,
@@ -50,6 +51,15 @@ export function TemplateBlockEditor({ template, onClose }: Props) {
       )
       ? (blocks.find((b) => b.id === selectedArr[0])?.block_state ?? '')
       : '';
+
+  // Derived panel mandatory: if multiple selected & mixed values, show null state.
+  const panelMandatory: boolean | null = selectedArr.length === 0
+    ? null
+    : selectedArr.every(
+        (id) => blocks.find((b) => b.id === id)?.mandatory === blocks.find((b) => b.id === selectedArr[0])?.mandatory,
+      )
+      ? (blocks.find((b) => b.id === selectedArr[0])?.mandatory ?? false)
+      : null;
 
   const handleAddBlock = async () => {
     setBusy(true);
@@ -91,6 +101,18 @@ export function TemplateBlockEditor({ template, onClose }: Props) {
       await applyStateToSelected(state);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Error al cambiar estado');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleMandatoryChange = async (mandatory: boolean) => {
+    setBusy(true);
+    setActionError(null);
+    try {
+      await applyMandatoryToSelected(mandatory);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Error al cambiar obligatoriedad');
     } finally {
       setBusy(false);
     }
@@ -267,6 +289,50 @@ export function TemplateBlockEditor({ template, onClose }: Props) {
                         : panelState === 'locked'
                           ? 'Solo visible, no editable por ningún rol.'
                           : ''}
+                </p>
+              </div>
+
+              {/* Mandatory selector */}
+              <div>
+                <FieldLabel>Obligatoriedad</FieldLabel>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void handleMandatoryChange(true)}
+                    className={[
+                      'px-3 py-1.5 rounded text-xs font-medium transition-all',
+                      'border focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35',
+                      panelMandatory === true
+                        ? 'border-odoo-purple bg-odoo-purple text-white dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
+                        : 'border-ui-border dark:border-ui-dark-border text-text-secondary dark:text-text-dark-secondary hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50',
+                      'disabled:opacity-50 disabled:pointer-events-none',
+                    ].join(' ')}
+                  >
+                    Obligatorio
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void handleMandatoryChange(false)}
+                    className={[
+                      'px-3 py-1.5 rounded text-xs font-medium transition-all',
+                      'border focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35',
+                      panelMandatory === false
+                        ? 'border-odoo-purple bg-odoo-purple text-white dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
+                        : 'border-ui-border dark:border-ui-dark-border text-text-secondary dark:text-text-dark-secondary hover:border-odoo-purple/50 dark:hover:border-odoo-dark-purple/50',
+                      'disabled:opacity-50 disabled:pointer-events-none',
+                    ].join(' ')}
+                  >
+                    Opcional
+                  </button>
+                </div>
+                <p className="mt-2 text-xs text-text-muted dark:text-text-dark-muted">
+                  {selectedArr.length > 1 && panelMandatory === null
+                    ? 'Los bloques seleccionados tienen obligatoriedad distinta.'
+                    : panelMandatory
+                      ? 'El bloque se marcará como requerido en el documento.'
+                      : 'El bloque se considera opcional.'}
                 </p>
               </div>
 
