@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\PostgresFdwMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -42,7 +43,7 @@ return new class extends Migration
             return;
         }
 
-        $this->dropViewOrTable(self::VIEW_NAME);
+        PostgresFdwMigration::dropViewOrTableInPublic(self::VIEW_NAME);
 
         DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TABLE);
         DB::statement('DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER ' . self::FDW_SERVER);
@@ -115,13 +116,13 @@ return new class extends Migration
             return;
         }
 
-        $safeHost = $this->escapeSqlLiteral((string) $host);
-        $safePort = $this->escapeSqlLiteral((string) $port);
-        $safeDatabase = $this->escapeSqlLiteral((string) $database);
-        $safeUsername = $this->escapeSqlLiteral((string) $username);
-        $safePassword = $this->escapeSqlLiteral((string) $password);
-        $safeSchema = $this->escapeSqlLiteral((string) $schema);
-        $safeSourceTable = $this->escapeSqlLiteral((string) $sourceTable);
+        $safeHost = PostgresFdwMigration::escapeSqlLiteral((string) $host);
+        $safePort = PostgresFdwMigration::escapeSqlLiteral((string) $port);
+        $safeDatabase = PostgresFdwMigration::escapeSqlLiteral((string) $database);
+        $safeUsername = PostgresFdwMigration::escapeSqlLiteral((string) $username);
+        $safePassword = PostgresFdwMigration::escapeSqlLiteral((string) $password);
+        $safeSchema = PostgresFdwMigration::escapeSqlLiteral((string) $schema);
+        $safeSourceTable = PostgresFdwMigration::escapeSqlLiteral((string) $sourceTable);
 
         DB::statement("
             CREATE SERVER IF NOT EXISTS " . self::FDW_SERVER . "
@@ -156,7 +157,7 @@ return new class extends Migration
             FROM " . self::FDW_TABLE . "
         ");
 
-        $this->revokeWritePermissions();
+        PostgresFdwMigration::revokeAppUserWriteOnFdwRelation(self::FDW_TABLE);
     }
 
     /**
@@ -176,61 +177,4 @@ return new class extends Migration
         ');
     }
 
-    /**
-     * Fuerza acceso de solo lectura para tratar users como catálogo externo.
-     */
-    private function revokeWritePermissions(): void
-    {
-        $appUser = config('database.connections.pgsql.username');
-
-        if (empty($appUser)) {
-            return;
-        }
-
-        try {
-            DB::statement('REVOKE INSERT, UPDATE, DELETE ON ' . self::FDW_TABLE . ' FROM "' . $appUser . '"');
-            DB::statement('GRANT SELECT ON ' . self::FDW_TABLE . ' TO "' . $appUser . '"');
-        } catch (\Throwable $e) {
-            logger()->warning("FDW: could not set permissions for {$appUser}: {$e->getMessage()}");
-        }
-    }
-
-    /**
-     * Elimina users de forma segura aunque exista como VIEW o TABLE legado.
-     * Usa DO $$ para evitar abortar la transacción si el tipo no coincide.
-     */
-    private function dropViewOrTable(string $name): void
-    {
-        $safeName = $this->escapeSqlLiteral($name);
-
-        DB::statement("
-            DO \$\$ BEGIN
-                IF EXISTS (
-                    SELECT 1
-                    FROM information_schema.views
-                    WHERE table_schema = 'public'
-                      AND table_name = '{$safeName}'
-                ) THEN
-                    EXECUTE 'DROP VIEW ' || quote_ident('{$safeName}');
-                ELSIF EXISTS (
-                    SELECT 1
-                    FROM information_schema.tables
-                    WHERE table_schema = 'public'
-                      AND table_name = '{$safeName}'
-                      AND table_type = 'BASE TABLE'
-                ) THEN
-                    EXECUTE 'DROP TABLE ' || quote_ident('{$safeName}');
-                END IF;
-            END \$\$
-        ");
-    }
-
-    /**
-     * Escapa literales SQL interpolados en sentencias raw DB::statement.
-     * Evita SQL malformado cuando la config contiene comillas o backslashes.
-     */
-    private function escapeSqlLiteral(string $value): string
-    {
-        return addcslashes($value, "'\\");
-    }
 };
