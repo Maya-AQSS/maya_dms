@@ -95,6 +95,26 @@ class TemplatePolicy
     }
 
     /**
+     * Enviar borrador a revisión (autor o quien puede editar la plantilla).
+     */
+    public function submitForReview(JwtUser $user, Template $template): bool
+    {
+        return $this->userCanEditTemplate($user, $template);
+    }
+
+    /**
+     * Volver a borrador una plantilla publicada para preparar una nueva versión.
+     */
+    public function reopenDraft(JwtUser $user, Template $template): bool
+    {
+        if ($template->status !== 'published') {
+            return false;
+        }
+
+        return $this->userCanEditTemplate($user, $template);
+    }
+
+    /**
      * Normaliza el nivel de visibilidad a un valor de {@see TemplateVisibilityLevel}.
      */
     private function normalizeVisibility(?string $visibilityLevel): TemplateVisibilityLevel

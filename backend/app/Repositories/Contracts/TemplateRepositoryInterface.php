@@ -33,7 +33,7 @@ interface TemplateRepositoryInterface
 
     /**
      * Actualiza una plantilla con los atributos dados.
-     * 
+     *
      * @param  array<string, mixed>  $attributes
      */
     public function update(Template $template, array $attributes): Template;

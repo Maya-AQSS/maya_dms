@@ -2,9 +2,13 @@
 
 namespace App\Services;
 
+use App\DTOs\Documents\CreateDocumentDto;
 use App\Events\DocumentStateChanged;
 use App\Models\Document;
+use App\Models\DocumentReview;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -14,33 +18,160 @@ class DocumentService implements DocumentServiceInterface
 {
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
     ) {}
 
+    /**
+     * Localiza un documento por su ID.
+     */
     public function findOrFail(string $id): Document
     {
         return $this->documentRepository->findOrFail($id);
     }
 
     /**
+     * Crea un documento a partir de un DTO.
+     */
+    public function create(CreateDocumentDto $dto): Document
+    {
+        $this->templateRepository->findOrFail($dto->templateId);
+
+        if ($dto->templateVersionId !== null) {
+            $version = $this->templateVersionRepository->findOrFail($dto->templateVersionId);
+            if ($version->template_id !== $dto->templateId) {
+                throw ValidationException::withMessages([
+                    'template_version_id' => ['La versión no pertenece a la plantilla indicada.'],
+                ]);
+            }
+        } else {
+            $version = $this->templateVersionRepository->findLatestPublishedForTemplate($dto->templateId);
+            if ($version === null) {
+                throw ValidationException::withMessages([
+                    'template_id' => ['La plantilla no tiene versiones publicadas; no se puede crear un documento.'],
+                ]);
+            }
+        }
+
+        $snapshot = $version->blocks_snapshot;
+        if (! is_array($snapshot) || $snapshot === []) {
+            throw ValidationException::withMessages([
+                'template_id' => ['La versión de plantilla no contiene bloques.'],
+            ]);
+        }
+
+        $blockRows = collect($snapshot)
+            ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
+            ->map(fn (array $b) => [
+                'template_block_id' => (string) $b['id'],
+                'content' => $b['default_content'] ?? null,
+                'sort_order' => (int) ($b['sort_order'] ?? 0),
+            ])
+            ->values()
+            ->all();
+
+        return $this->documentRepository->createDocumentWithBlocks([
+            'template_id' => $dto->templateId,
+            'template_version_id' => $version->id,
+            'title' => $dto->title,
+            'organization_id' => $dto->organizationId,
+            'study_id' => $dto->studyId,
+            'created_by' => $dto->createdBy,
+            'owner_id' => $dto->ownerId,
+            'status' => 'draft',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => null,
+        ], $blockRows);
+    }
+
+    public function blocksForDisplay(Document $document): array
+    {
+        $document->loadMissing(['blocks', 'templateVersion']);
+
+        $byTemplateBlockId = $document->blocks->keyBy('template_block_id');
+        $definitions = $this->blockDefinitionsForDocument($document);
+
+        $out = [];
+        foreach ($definitions as $def) {
+            $tid = (string) $def['id'];
+            $row = $byTemplateBlockId->get($tid);
+
+            $out[] = [
+                'document_block_id' => $row?->id,
+                'template_block_id' => $tid,
+                'type' => $def['type'] ?? '',
+                'title' => $def['title'] ?? null,
+                'default_content' => $def['default_content'] ?? null,
+                'block_state' => $def['block_state'] ?? 'editable',
+                'mandatory' => (bool) ($def['mandatory'] ?? false),
+                'sort_order' => (int) ($def['sort_order'] ?? 0),
+                'content' => $row?->content,
+                'is_filled' => (bool) ($row?->is_filled ?? false),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function blockDefinitionsForDocument(Document $document): array
+    {
+        if ($document->template_version_id !== null) {
+            $document->loadMissing('templateVersion');
+            if ($document->templateVersion !== null) {
+                $snap = $document->templateVersion->blocks_snapshot;
+
+                return collect(is_array($snap) ? $snap : [])
+                    ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
+                    ->values()
+                    ->all();
+            }
+        }
+
+        $template = $this->templateRepository->findOrFail($document->template_id);
+        $template->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+
+        return $template->blocks->map(fn ($b) => [
+            'id' => $b->id,
+            'type' => $b->type,
+            'title' => $b->title,
+            'default_content' => $b->default_content,
+            'block_state' => $b->block_state,
+            'mandatory' => $b->mandatory,
+            'sort_order' => $b->sort_order,
+        ])->all();
+    }
+
+    /**
+     * Transiciona el documento a un nuevo estado y emite el evento de dominio DocumentStateChanged.
+     * 
      * @param  array<string, mixed>  $extraAttributes
      */
     public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document
     {
-        $document  = $this->documentRepository->findOrFail($documentId);
+        $document = $this->documentRepository->findOrFail($documentId);
         $oldStatus = $document->status;
 
         $document->update(array_merge(['status' => $newStatus], $extraAttributes));
 
         event(new DocumentStateChanged(
-            document:  $document->fresh(),
+            document: $document->fresh(),
             oldStatus: $oldStatus,
             newStatus: $newStatus,
-            actorId:   $actorId,
+            actorId: $actorId,
         ));
 
         return $document->fresh();
     }
 
+    /**
+     * Envia el documento a revisión.
+     */
     public function submitToReview(string $documentId, string $actorId): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
@@ -64,7 +195,7 @@ class DocumentService implements DocumentServiceInterface
                 ?->sortBy('stage')
                 ->map(fn ($r) => [
                     'reviewer_id' => $r->user_id,
-                    'stage'       => $r->stage,
+                    'stage' => $r->stage,
                 ])
                 ->values()
                 ->all() ?? [];
@@ -77,6 +208,9 @@ class DocumentService implements DocumentServiceInterface
         });
     }
 
+    /**
+     * Publica el documento.
+     */
     public function publishDocument(string $documentId, string $actorId): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
@@ -98,6 +232,9 @@ class DocumentService implements DocumentServiceInterface
         ]);
     }
 
+    /**
+     * Rechaza el documento.
+     */
     public function rejectDocument(string $documentId, string $actorId): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
@@ -118,6 +255,9 @@ class DocumentService implements DocumentServiceInterface
         });
     }
 
+    /**
+     * Delega la propiedad del documento a otro usuario.
+     */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
@@ -139,6 +279,11 @@ class DocumentService implements DocumentServiceInterface
         return $document->fresh();
     }
 
+    /**
+     * Lista las revisiones del documento.
+     * 
+     * @return Collection<int, DocumentReview>
+     */
     public function listReviews(string $documentId): Collection
     {
         $this->documentRepository->findOrFail($documentId);
@@ -146,6 +291,9 @@ class DocumentService implements DocumentServiceInterface
         return $this->documentRepository->listReviewsForDocument($documentId);
     }
 
+    /**
+     * Aprueba una revisión del documento.
+     */
     public function approveReview(string $documentId, string $reviewId, string $actorId): Document
     {
         return DB::transaction(function () use ($documentId, $reviewId, $actorId) {
@@ -173,8 +321,10 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
 
-            $review->status       = 'approved';
-            $review->reviewed_at  = now();
+            $this->assertSequentialReviewAllowsActing($document, $review);
+
+            $review->status = 'approved';
+            $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
@@ -187,6 +337,9 @@ class DocumentService implements DocumentServiceInterface
         });
     }
 
+    /**
+     * Rechaza una revisión del documento.
+     */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document
     {
         return DB::transaction(function () use ($documentId, $reviewId, $actorId, $reason) {
@@ -214,9 +367,11 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
 
-            $review->status            = 'rejected';
-            $review->rejection_reason  = $reason;
-            $review->reviewed_at       = now();
+            $this->assertSequentialReviewAllowsActing($document, $review);
+
+            $review->status = 'rejected';
+            $review->rejection_reason = $reason;
+            $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
 
             $this->documentRepository->deleteReviewsForDocument($documentId);
@@ -226,5 +381,30 @@ class DocumentService implements DocumentServiceInterface
                 'published_at' => null,
             ]);
         });
+    }
+
+    /**
+     * En modo {@see Template::$review_mode} secuencial, solo puede actuar quien pertenezca
+     * a la etapa pendiente con número más bajo (así se respetan varios revisores en la misma etapa).
+     * En modo paralelo no hay orden entre etapas.
+     */
+    private function assertSequentialReviewAllowsActing(Document $document, DocumentReview $review): void
+    {
+        $document->loadMissing('template');
+        $mode = $document->template?->review_mode ?? 'parallel';
+        if ($mode !== 'sequential') {
+            return;
+        }
+
+        $minStage = $this->documentRepository->minPendingReviewStageForDocument($document->id);
+        if ($minStage === null) {
+            return;
+        }
+
+        if ($review->stage !== $minStage) {
+            throw ValidationException::withMessages([
+                'review' => ['En revisión secuencial, solo puede actuar la etapa pendiente más baja.'],
+            ]);
+        }
     }
 }

@@ -93,7 +93,7 @@ class TemplateRepository implements TemplateRepositoryInterface
 
     /**
      * Crea una plantilla con los atributos dados.
-     * 
+     *
      * @param  array<string, mixed>  $attributes
      */
     public function create(array $attributes): Template
@@ -103,7 +103,7 @@ class TemplateRepository implements TemplateRepositoryInterface
 
     /**
      * Actualiza una plantilla con los atributos dados.
-     * 
+     *
      * @param  array<string, mixed>  $attributes
      */
     public function update(Template $template, array $attributes): Template
@@ -136,14 +136,14 @@ class TemplateRepository implements TemplateRepositoryInterface
         DB::transaction(function () use ($source, $target) {
             foreach ($source->blocks->sortBy('sort_order') as $block) {
                 TemplateBlock::query()->forceCreate([
-                    'id'               => (string) Str::uuid(),
-                    'template_id'      => $target->getKey(),
-                    'type'             => $block->type,
-                    'title'            => $block->title,
-                    'default_content'  => $block->default_content,
-                    'block_state'      => $block->block_state,
-                    'mandatory'        => $block->mandatory,
-                    'sort_order'       => $block->sort_order,
+                    'id' => (string) Str::uuid(),
+                    'template_id' => $target->getKey(),
+                    'type' => $block->type,
+                    'title' => $block->title,
+                    'default_content' => $block->default_content,
+                    'block_state' => $block->block_state,
+                    'mandatory' => $block->mandatory,
+                    'sort_order' => $block->sort_order,
                 ]);
             }
         });
