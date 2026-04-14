@@ -48,4 +48,11 @@ interface TemplateRepositoryInterface
      * Replica los bloques de una plantilla origen hacia otra destino.
      */
     public function replicateBlocks(Template $source, Template $target): void;
+
+    /**
+     * Lista plantillas publicadas disponibles para un módulo.
+     *
+     * @return \Illuminate\Support\Collection<int, Template>
+     */
+    public function listPublishedByModule(string $moduleId): \Illuminate\Support\Collection;
 }

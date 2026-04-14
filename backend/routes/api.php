@@ -48,54 +48,100 @@ Route::prefix('v1')->group(function () {
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
 
         // Sprint 1 — Grupos
-        Route::apiResource('groups', GroupController::class);
-        Route::post('groups/{group}/members', [GroupController::class, 'addMember']);
-        Route::delete('groups/{group}/members/{userId}', [GroupController::class, 'removeMember']);
+        Route::apiResource('groups', GroupController::class)
+            ->whereUuid('group');
+        Route::post('groups/{group}/members', [GroupController::class, 'addMember'])
+            ->whereUuid('group');
+        Route::delete('groups/{group}/members/{userId}', [GroupController::class, 'removeMember'])
+            ->whereUuid('group');
 
         // Sprint 2 — Plantillas
-        Route::apiResource('templates', TemplateController::class);
+        // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
+        Route::apiResource('templates', TemplateController::class)
+            ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
+        
         Route::apiResource('templates.blocks', TemplateBlockController::class)
-            ->shallow();
-        Route::post('templates/{template}/clone', [TemplateController::class, 'clone']);
-        Route::post('templates/{template}/submit-review', [TemplateController::class, 'submitForReview']);
-        Route::post('templates/{template}/reject-review', [TemplateController::class, 'rejectReview']);
-        Route::post('templates/{template}/publish', [TemplateController::class, 'publish']);
-        Route::post('templates/{template}/reopen-draft', [TemplateController::class, 'reopenDraft']);
-        Route::get('templates/{template}/versions', [TemplateController::class, 'versions']);
-        Route::get('template-versions/{template_version}', [TemplateController::class, 'showVersion']);
-        Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, 'Los snapshots de plantilla son de solo inserción (append-only).'));
+            ->shallow()
+            ->whereUuid('template')
+            ->whereUuid('block');
+        Route::post('templates/{template}/clone', [TemplateController::class, 'clone'])
+            ->whereUuid('template');
+        Route::post('templates/{template}/submit-review', [TemplateController::class, 'submitForReview'])
+            ->whereUuid('template');
+        Route::post('templates/{template}/reject-review', [TemplateController::class, 'rejectReview'])
+            ->whereUuid('template');
+        Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
+            ->whereUuid('template');
+        Route::post('templates/{template}/reopen-draft', [TemplateController::class, 'reopenDraft'])
+            ->whereUuid('template');
+        Route::get('templates/{template}/versions', [TemplateController::class, 'versions'])
+            ->whereUuid('template');
+        Route::get('template-versions/{template_version}', [TemplateController::class, 'showVersion'])
+            ->whereUuid('template_version');
+        Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, 'Los snapshots de plantilla son de solo inserción (append-only).'))
+            ->whereUuid('template_version');
 
         // Sprint 3 — Documentos
-        Route::apiResource('documents', DocumentController::class);
-        Route::post('documents/{document}/submit', [DocumentController::class, 'submit']);
-        Route::post('documents/{document}/publish', [DocumentController::class, 'publish']);
-        Route::post('documents/{document}/reject', [DocumentController::class, 'reject']);
-        Route::post('documents/{document}/delegate', [DocumentController::class, 'delegate']);
+        Route::get('documents/creation-options', [DocumentController::class, 'creationOptions']);
+        Route::post('documents/create-from-module', [DocumentController::class, 'createFromModule']);
+        Route::get('documents', [DocumentController::class, 'index']);
+        Route::post('documents', [DocumentController::class, 'store']);
+        Route::get('documents/{document}', [DocumentController::class, 'show'])
+            ->whereUuid('document');
+        Route::match(['put', 'patch'], 'documents/{document}', [DocumentController::class, 'update'])
+            ->whereUuid('document');
+        Route::delete('documents/{document}', [DocumentController::class, 'destroy'])
+            ->whereUuid('document');
+        Route::post('documents/{document}/submit', [DocumentController::class, 'submit'])
+            ->whereUuid('document');
+        Route::post('documents/{document}/publish', [DocumentController::class, 'publish'])
+            ->whereUuid('document');
+        Route::post('documents/{document}/reject', [DocumentController::class, 'reject'])
+            ->whereUuid('document');
+        Route::post('documents/{document}/delegate', [DocumentController::class, 'delegate'])
+            ->whereUuid('document');
 
-        Route::get('documents/{document}/blocks', [DocumentBlockController::class, 'index']);
-        Route::put('documents/{document}/blocks/{block}', [DocumentBlockController::class, 'update']);
+        Route::get('documents/{document}/blocks', [DocumentBlockController::class, 'index'])
+            ->whereUuid('document');
+        Route::put('documents/{document}/blocks/{block}', [DocumentBlockController::class, 'update'])
+            ->whereUuid('document')
+            ->whereUuid('block');
 
-        Route::get('documents/{document}/versions', [DocumentVersionController::class, 'index']);
+        Route::get('documents/{document}/versions', [DocumentVersionController::class, 'index'])
+            ->whereUuid('document');
 
         // Auditoría
-        Route::get('documents/{document}/audit', [AuditLogController::class, 'indexForDocument']);
-        Route::get('templates/{template}/audit', [AuditLogController::class, 'indexForTemplate']);
-        Route::get('comments/{comment}/audit', [AuditLogController::class, 'indexForComment']);
+        Route::get('documents/{document}/audit', [AuditLogController::class, 'indexForDocument'])
+            ->whereUuid('document');
+        Route::get('templates/{template}/audit', [AuditLogController::class, 'indexForTemplate'])
+            ->whereUuid('template');
+        Route::get('comments/{comment}/audit', [AuditLogController::class, 'indexForComment'])
+            ->whereUuid('comment');
 
         // Sprint 3 — Compartición
-        Route::post('documents/{document}/shares', [DocumentShareController::class, 'store']);
-        Route::delete('documents/{document}/shares/{userId}', [DocumentShareController::class, 'destroy']);
+        Route::post('documents/{document}/shares', [DocumentShareController::class, 'store'])
+            ->whereUuid('document');
+        Route::delete('documents/{document}/shares/{userId}', [DocumentShareController::class, 'destroy'])
+            ->whereUuid('document');
 
         // Sprint 4 — Revisión
-        Route::get('documents/{document}/reviews', [ReviewController::class, 'index']);
-        Route::post('documents/{document}/reviews/{review}/approve', [ReviewController::class, 'approve']);
-        Route::post('documents/{document}/reviews/{review}/reject', [ReviewController::class, 'reject']);
+        Route::get('documents/{document}/reviews', [ReviewController::class, 'index'])
+            ->whereUuid('document');
+        Route::post('documents/{document}/reviews/{review}/approve', [ReviewController::class, 'approve'])
+            ->whereUuid('document')
+            ->whereUuid('review');
+        Route::post('documents/{document}/reviews/{review}/reject', [ReviewController::class, 'reject'])
+            ->whereUuid('document')
+            ->whereUuid('review');
 
         // Sprint 5 — Comentarios
         Route::apiResource('documents.comments', CommentController::class)
-            ->shallow();
-        Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve']);
+            ->shallow()
+            ->whereUuid('document')
+            ->whereUuid('comment');
+        Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
+            ->whereUuid('comment');
 
         // Sprint 6 — Dashboard BFF
         Route::get('/dashboard', [DashboardController::class, 'index']);

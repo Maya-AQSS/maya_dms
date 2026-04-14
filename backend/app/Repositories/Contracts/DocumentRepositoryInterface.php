@@ -65,4 +65,11 @@ interface DocumentRepositoryInterface
      * Guarda una revisión del documento.
      */
     public function saveReview(DocumentReview $review): void;
+
+    /**
+     * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
+     *
+     * @return Collection<int, Document>
+     */
+    public function listOrderedByCreatedAtDesc(): Collection;
 }

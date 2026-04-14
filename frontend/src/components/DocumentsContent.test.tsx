@@ -1,0 +1,200 @@
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { DocumentsContent } from './DocumentsContent';
+
+const mockUseDocuments = vi.fn();
+const mockUseFilteredDocuments = vi.fn();
+const mockUseHierarchy = vi.fn();
+const mockFetchDocumentCreationOptions = vi.fn();
+const mockCreateDocumentFromModule = vi.fn();
+const mockNavigate = vi.fn();
+
+vi.mock('./CascadeFilters', () => ({
+  CascadeFilters: ({ onFilterChange }: { onFilterChange: (filters: { studyTypeId: string; studyId: string; moduleId: string }) => void }) => (
+    <button onClick={() => onFilterChange({ studyTypeId: 'st1', studyId: 's1', moduleId: 'm1' })}>
+      seleccionar-modulo
+    </button>
+  ),
+}));
+
+vi.mock('../features/documents', () => ({
+  useDocuments: () => mockUseDocuments(),
+  useFilteredDocuments: (...args: unknown[]) => mockUseFilteredDocuments(...args),
+}));
+
+vi.mock('../features/hierarchy', () => ({
+  useHierarchy: () => mockUseHierarchy(),
+}));
+
+vi.mock('../api/documents', () => ({
+  fetchDocumentCreationOptions: (...args: unknown[]) => mockFetchDocumentCreationOptions(...args),
+  createDocumentFromModule: (...args: unknown[]) => mockCreateDocumentFromModule(...args),
+}));
+
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+  };
+});
+
+const baseDocument = {
+  id: 'd-1',
+  template_id: 't-1',
+  title: 'Doc',
+  organization_id: 'org',
+  study_id: 's1',
+  module_id: 'm1',
+  created_by: 'u1',
+  owner_id: 'u1',
+  status: 'draft' as const,
+  current_version: 1,
+  submitted_at: null,
+  published_at: null,
+};
+
+describe('DocumentsContent creation flow', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUseDocuments.mockReturnValue({
+      documents: [baseDocument],
+      loading: false,
+      error: null,
+      reload: vi.fn().mockResolvedValue(undefined),
+    });
+    mockUseFilteredDocuments.mockImplementation((docs: unknown[]) => docs);
+    mockUseHierarchy.mockReturnValue({ hierarchy: [], loading: false, error: null });
+  });
+
+  it('deshabilita nueva programación sin módulo seleccionado', () => {
+    render(<DocumentsContent />);
+
+    const button = screen.getByRole('button', { name: 'Nueva Programación' });
+    expect(button).toHaveProperty('disabled', true);
+    expect(
+      screen.getByText('Selecciona un módulo para crear una nueva programación.'),
+    ).toBeTruthy();
+  });
+
+  it('muestra estado none cuando no hay plantillas disponibles', async () => {
+    mockFetchDocumentCreationOptions.mockResolvedValue({
+      can_create: false,
+      mode: 'none',
+      message: 'No hay plantillas publicadas disponibles para este módulo.',
+      options: [],
+    });
+
+    render(<DocumentsContent />);
+    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+
+    await waitFor(() =>
+      expect(mockFetchDocumentCreationOptions).toHaveBeenCalledWith('m1'),
+    );
+    expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', true);
+    expect(
+      screen.getByText('No hay plantillas publicadas disponibles para este módulo.'),
+    ).toBeTruthy();
+  });
+
+  it('crea automáticamente y navega al editor con modo auto', async () => {
+    const reload = vi.fn().mockResolvedValue(undefined);
+    mockUseDocuments.mockReturnValue({
+      documents: [baseDocument],
+      loading: false,
+      error: null,
+      reload,
+    });
+    mockFetchDocumentCreationOptions.mockResolvedValue({
+      can_create: true,
+      mode: 'auto',
+      message: null,
+      options: [
+        {
+          template_id: 'tpl-1',
+          template_version_id: 'ver-1',
+          name: 'Plantilla única',
+          description: 'Desc',
+        },
+      ],
+    });
+    mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-new' });
+
+    render(<DocumentsContent />);
+    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
+
+    await waitFor(() =>
+      expect(mockCreateDocumentFromModule).toHaveBeenCalledWith({
+        module_id: 'm1',
+        template_version_id: 'ver-1',
+      }),
+    );
+    expect(reload).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-new/editor');
+  });
+
+  it('muestra selector y crea con la plantilla elegida en modo select', async () => {
+    const reload = vi.fn().mockResolvedValue(undefined);
+    mockUseDocuments.mockReturnValue({
+      documents: [baseDocument],
+      loading: false,
+      error: null,
+      reload,
+    });
+    mockFetchDocumentCreationOptions.mockResolvedValue({
+      can_create: true,
+      mode: 'select',
+      message: null,
+      options: [
+        {
+          template_id: 'tpl-1',
+          template_version_id: 'ver-1',
+          name: 'Plantilla A',
+          description: 'Desc A',
+        },
+        {
+          template_id: 'tpl-2',
+          template_version_id: 'ver-2',
+          name: 'Plantilla B',
+          description: 'Desc B',
+        },
+      ],
+    });
+    mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-sel' });
+
+    render(<DocumentsContent />);
+    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
+
+    expect(
+      screen.getByText('Selecciona una plantilla para esta programación'),
+    ).toBeTruthy();
+
+    const select = screen.getByRole('combobox');
+    fireEvent.change(select, { target: { value: 'ver-2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Crear' }));
+
+    await waitFor(() =>
+      expect(mockCreateDocumentFromModule).toHaveBeenCalledWith({
+        module_id: 'm1',
+        template_version_id: 'ver-2',
+      }),
+    );
+    expect(reload).toHaveBeenCalled();
+    expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-sel/editor');
+  });
+});
+

@@ -21,6 +21,7 @@ class DocumentResource extends JsonResource
             'title' => $this->title,
             'organization_id' => $this->organization_id,
             'study_id' => $this->study_id,
+            'module_id' => $this->module_id,
             'created_by' => $this->created_by,
             'owner_id' => $this->owner_id,
             'status' => $this->status,

@@ -7,6 +7,7 @@ use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -147,5 +148,17 @@ class TemplateRepository implements TemplateRepositoryInterface
                 ]);
             }
         });
+    }
+
+    /**
+     * Lista plantillas publicadas disponibles para un módulo.
+     */
+    public function listPublishedByModule(string $moduleId): Collection
+    {
+        return Template::query()
+            ->where('status', 'published')
+            ->where('module_id', $moduleId)
+            ->orderByDesc('updated_at')
+            ->get();
     }
 }
