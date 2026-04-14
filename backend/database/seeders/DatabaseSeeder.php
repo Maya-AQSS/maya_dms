@@ -21,6 +21,8 @@ class DatabaseSeeder extends Seeder
             GroupsSeeder::class,
             TemplatesSeeder::class,
             TemplateReviewersSeeder::class,
+            TemplateBlocksSeeder::class,
+            TemplateVersionsSeeder::class,
         ]);
     }
 }
