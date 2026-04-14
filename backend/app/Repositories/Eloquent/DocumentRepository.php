@@ -124,6 +124,16 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
+     * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
+     */
+    public function listOrderedByCreatedAtDesc(): Collection
+    {
+        return Document::query()
+            ->orderByDesc('created_at')
+            ->get();
+    }
+
+    /**
      * Indica si el usuario es autor (owner_id / created_by) o revisor asignado
      * del documento. Usado para control de acceso al historial de auditoría.
      */

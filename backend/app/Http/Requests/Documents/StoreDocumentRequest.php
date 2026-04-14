@@ -35,6 +35,7 @@ class StoreDocumentRequest extends FormRequest
             'title' => ['required', 'string', 'max:255'],
             'organization_id' => ['required', 'string', 'max:255'],
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'template_version_id' => [
                 'sometimes',
                 'nullable',
@@ -58,6 +59,7 @@ class StoreDocumentRequest extends FormRequest
             createdBy: $createdBy,
             ownerId: $ownerId,
             studyId: $this->validated('study_id') ?? null,
+            moduleId: $this->validated('module_id') ?? null,
             templateVersionId: $this->validated('template_version_id') ?? null,
         );
     }

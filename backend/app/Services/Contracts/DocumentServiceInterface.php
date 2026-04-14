@@ -69,4 +69,23 @@ interface DocumentServiceInterface
      * Rechaza una revisión del documento.
      */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document;
+
+    /**
+     * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
+     *
+     * @return Collection<int, Document>
+     */
+    public function listOrderedByCreatedAtDesc(): Collection;
+
+    /**
+     * Opciones de creación de documento disponibles para un módulo.
+     *
+     * @return list<array{template_id: string, template_version_id: string, name: string, description: ?string}>
+     */
+    public function creationOptionsForModule(string $moduleId): array;
+
+    /**
+     * Crea documento desde la vista de módulo resolviendo plantilla/version disponibles.
+     */
+    public function createFromModule(string $moduleId, string $creatorId, ?string $templateVersionId = null): Document;
 }

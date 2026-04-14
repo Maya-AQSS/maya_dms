@@ -67,6 +67,8 @@ Route::prefix('v1')->group(function () {
 
         // Sprint 3 — Documentos
         Route::apiResource('documents', DocumentController::class);
+        Route::get('documents/creation-options', [DocumentController::class, 'creationOptions']);
+        Route::post('documents/create-from-module', [DocumentController::class, 'createFromModule']);
         Route::post('documents/{document}/submit', [DocumentController::class, 'submit']);
         Route::post('documents/{document}/publish', [DocumentController::class, 'publish']);
         Route::post('documents/{document}/reject', [DocumentController::class, 'reject']);
