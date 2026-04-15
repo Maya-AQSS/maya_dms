@@ -110,9 +110,22 @@ if grep -q '^APP_KEY=$' backend/.env 2>/dev/null; then
     NEED_KEY_GENERATE=true
 fi
 
-# Nota: frontend/.env no es necesario para Docker — el .env raíz se monta
-# directamente sobre /app/.env (ver docker-compose.yml). Para desarrollo local
-# sin Docker (npm run dev), copia frontend/.env.example a frontend/.env manualmente.
+# ─── Preparar frontend/.env ──────────────────────────────────────────────────
+# El .env raíz se monta en el contenedor como /app/.env (docker-compose.yml).
+# Para desarrollo local sin Docker (npm run dev) necesitamos frontend/.env con
+# las mismas vars VITE_*. Lo generamos automáticamente desde los valores del .env raíz.
+if [[ ! -f frontend/.env ]] || [[ ! -s frontend/.env ]]; then
+    info "Generando frontend/.env desde variables VITE_* del .env raíz..."
+    touch frontend/.env
+fi
+
+upsert_env_var frontend/.env VITE_API_URL        "${VITE_API_URL:-http://maya-dms-api.localhost/api/v1}"
+upsert_env_var frontend/.env VITE_KEYCLOAK_URL   "${VITE_KEYCLOAK_URL:-http://keycloak.localhost}"
+upsert_env_var frontend/.env VITE_KEYCLOAK_REALM "${VITE_KEYCLOAK_REALM:-maya}"
+upsert_env_var frontend/.env VITE_KEYCLOAK_CLIENT_ID "${VITE_KEYCLOAK_CLIENT_ID:-maya-dms-dashboard}"
+upsert_env_var frontend/.env VITE_REVERB_APP_KEY "${REVERB_APP_KEY:-}"
+upsert_env_var frontend/.env VITE_REVERB_HOST    "${VITE_REVERB_HOST:-maya-dms-api.localhost}"
+upsert_env_var frontend/.env VITE_REVERB_PORT    "${VITE_REVERB_PORT:-8082}"
 
 # ─── Levantar servicios ──────────────────────────────────────────────────────
 info "Levantando servicios..."
