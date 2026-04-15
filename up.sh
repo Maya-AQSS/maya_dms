@@ -97,6 +97,8 @@ EXTRA_FLAGS=()
 [[ "${1:-}" == "--build" ]] && EXTRA_FLAGS+=("--build")
 
 # ─── Preparar backend/.env ────────────────────────────────────────────────────
+NEED_KEY_GENERATE=false
+
 if [[ ! -f backend/.env ]]; then
     warn "backend/.env no encontrado — creando desde .env.example"
     cp backend/.env.example backend/.env
@@ -108,14 +110,9 @@ if grep -q '^APP_KEY=$' backend/.env 2>/dev/null; then
     NEED_KEY_GENERATE=true
 fi
 
-# ─── Preparar frontend/.env ───────────────────────────────────────────────────
-# Nota: en Docker el .env raíz se monta sobre /app/.env (docker-compose.yml).
-# Este archivo solo se usa al correr el frontend localmente (npm run dev).
-if [[ -f frontend/.env.example ]] && [[ ! -s frontend/.env ]]; then
-    warn "frontend/.env vacío — copiando desde frontend/.env.example (desarrollo local)"
-    cp frontend/.env.example frontend/.env 2>/dev/null \
-        || warn "No se pudo copiar frontend/.env.example (permisos). Corre: sudo chown \$USER frontend/.env"
-fi
+# Nota: frontend/.env no es necesario para Docker — el .env raíz se monta
+# directamente sobre /app/.env (ver docker-compose.yml). Para desarrollo local
+# sin Docker (npm run dev), copia frontend/.env.example a frontend/.env manualmente.
 
 # ─── Levantar servicios ──────────────────────────────────────────────────────
 info "Levantando servicios..."
@@ -263,8 +260,7 @@ if [[ "$DB_READY" == true ]]; then
       ;;
     if-empty|*)
       [[ "$SEED_MODE" == "if-empty" ]] || warn "DB_SEED_MODE inválido ('$SEED_MODE'). Usando 'if-empty'."
-      database_has_data
-      local seed_rc=$?
+      database_has_data && seed_rc=0 || seed_rc=$?
       if [[ $seed_rc -eq 0 ]]; then
         info "DB con datos detectados — no se ejecutan seeds (DB_SEED_MODE=if-empty)."
       elif [[ $seed_rc -eq 2 ]]; then
