@@ -41,5 +41,19 @@ class AcademicHierarchySeeder extends Seeder
         if ($modules !== []) {
             DB::table('course_modules_source')->insertOrIgnore($modules);
         }
+
+        // En entorno local la migración crea tablas directas (no FDW).
+        // Hay que poblarlas también para que la app pueda leer los datos.
+        if (Schema::hasTable('study_types') && DB::table('study_types')->count() === 0) {
+            if ($studyTypes !== []) {
+                DB::table('study_types')->insertOrIgnore($studyTypes);
+            }
+            if ($studies !== []) {
+                DB::table('studies')->insertOrIgnore($studies);
+            }
+            if ($modules !== []) {
+                DB::table('course_modules')->insertOrIgnore($modules);
+            }
+        }
     }
 }
