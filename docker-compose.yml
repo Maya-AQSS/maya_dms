@@ -10,7 +10,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_KEY: ${APP_KEY:-}
-      APP_URL: ${APP_URL:-http://maya-dms-api.localhost}
+      APP_URL: ${APP_URL:-http://maya_dms_api.localhost}
       DB_CONNECTION: pgsql
       DB_HOST: maya_infra_postgres
       DB_PORT: 5432
@@ -32,7 +32,7 @@ services:
       REDIS_DB: 1
       # ─── JWT / JWKS ───────────────────────────────────────────
       JWKS_URL: ${JWKS_URL:-http://maya_auth_keycloak:8080/realms/maya/protocol/openid-connect/certs}
-      JWT_AUDIENCE: ${JWT_AUDIENCE:-maya-dms-dashboard}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-maya-dms}
       JWT_ISSUER: ${JWT_ISSUER:-http://keycloak.localhost/realms/maya}
       # ─── RabbitMQ ─────────────────────────────────────────────
       RABBITMQ_HOST: maya_rabbitmq
@@ -49,7 +49,7 @@ services:
       REVERB_PORT: 8082
       BROADCAST_CONNECTION: reverb
       # ─── CORS ───────────────────────────────────────────────────────
-      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://maya-dms.localhost,http://localhost:5174}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://maya_dms.localhost,http://localhost:5174}
     volumes:
       - ./backend:/var/www/html
       - ../maya_infra/packages:/var/packages
@@ -59,7 +59,7 @@ services:
       - "${REVERB_PORT:-8082}:8082"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.maya-dms-api.rule=Host(`maya-dms-api.localhost`)"
+      - "traefik.http.routers.maya-dms-api.rule=Host(`maya_dms_api.localhost`)"
       - "traefik.http.routers.maya-dms-api.entrypoints=web"
       - "traefik.http.services.maya-dms-api.loadbalancer.server.port=8000"
     networks:
@@ -73,12 +73,12 @@ services:
     container_name: maya_dms_frontend
     restart: unless-stopped
     environment:
-      VITE_API_URL: ${VITE_API_URL:-http://maya-dms-api.localhost/api/v1}
+      VITE_API_URL: ${VITE_API_URL:-http://maya_dms_api.localhost/api/v1}
       VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-http://keycloak.localhost}
       VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-maya}
-      VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-maya-dms-dashboard}
+      VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-maya-dms}
       VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-}
-      VITE_REVERB_HOST: ${VITE_REVERB_HOST:-maya-dms-api.localhost}
+      VITE_REVERB_HOST: ${VITE_REVERB_HOST:-maya_dms_api.localhost}
       VITE_REVERB_PORT: ${VITE_REVERB_PORT:-8082}
     volumes:
       - ./frontend:/app
@@ -91,7 +91,7 @@ services:
       - backend
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.maya-dms-front.rule=Host(`maya-dms.localhost`)"
+      - "traefik.http.routers.maya-dms-front.rule=Host(`maya_dms.localhost`)"
       - "traefik.http.routers.maya-dms-front.entrypoints=web"
       - "traefik.http.services.maya-dms-front.loadbalancer.server.port=5173"
     networks:

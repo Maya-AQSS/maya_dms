@@ -99,6 +99,15 @@ else
     NEED_KEY_GENERATE=false
 fi
 
+# ─── Preparar frontend/.env ───────────────────────────────────────────────────
+# Nota: en Docker el .env raíz se monta sobre /app/.env (docker-compose.yml).
+# Este archivo solo se usa al correr el frontend localmente (npm run dev).
+if [[ -f frontend/.env.example ]] && [[ ! -s frontend/.env ]]; then
+    warn "frontend/.env vacío — copiando desde frontend/.env.example (desarrollo local)"
+    cp frontend/.env.example frontend/.env 2>/dev/null \
+        || warn "No se pudo copiar frontend/.env.example (permisos). Corre: sudo chown \$USER frontend/.env"
+fi
+
 # ─── Levantar servicios ──────────────────────────────────────────────────────
 info "Levantando servicios..."
 docker compose up -d ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"}
@@ -277,8 +286,8 @@ fi
 # ─── URLs de acceso ───────────────────────────────────────────────────────────
 echo ""
 success "Sistema listo. Accesos disponibles:"
-echo -e "  ${GREEN}Frontend:${NC}         http://maya-dms.localhost"
-echo -e "  ${GREEN}Backend API:${NC}      http://maya-dms-api.localhost/api/v1"
+echo -e "  ${GREEN}Frontend:${NC}         http://maya_dms.localhost"
+echo -e "  ${GREEN}Backend API:${NC}      http://maya_dms_api.localhost/api/v1"
 echo -e "  ${GREEN}Keycloak:${NC}         http://keycloak.localhost"
 echo -e "  ${GREEN}Traefik dashboard:${NC} http://localhost:8888"
 echo ""
