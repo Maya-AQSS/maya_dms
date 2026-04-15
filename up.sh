@@ -29,13 +29,25 @@ upsert_env_var() {
   local value="$3"
   local tmp
 
+  if [[ ! -f "$file" ]]; then
+    return 1
+  fi
+
   tmp="$(mktemp)"
-  awk -v key="$key" -v value="$value" '
+  if ! awk -v key="$key" -v value="$value" '
     BEGIN { updated=0 }
-    $0 ~ ("^" key "=") { print key "=" value; updated=1; next }
+    index($0, key "=") == 1 { print key "=" value; updated=1; next }
     { print }
     END { if (!updated) print key "=" value }
-  ' "$file" > "$tmp" && mv "$tmp" "$file"
+  ' "$file" > "$tmp"; then
+    rm -f "$tmp"
+    return 1
+  fi
+
+  if ! mv "$tmp" "$file"; then
+    rm -f "$tmp"
+    return 1
+  fi
 }
 
 # ─── Cargar .env ─────────────────────────────────────────────────────────────
@@ -98,7 +110,7 @@ if [[ "$NEED_KEY_GENERATE" == true ]]; then
     for i in $(seq 1 10); do
       if docker exec maya_dms_backend php -v > /dev/null 2>&1; then
         NEW_KEY=$(docker exec maya_dms_backend php artisan key:generate --show 2>/dev/null || true)
-        if [[ -n "$NEW_KEY" ]]; then
+        if [[ -n "$NEW_KEY" && "$NEW_KEY" == base64:* ]]; then
           if ! upsert_env_var backend/.env APP_KEY "$NEW_KEY"; then
             warn "No se pudo actualizar APP_KEY en backend/.env"
             break
@@ -113,7 +125,7 @@ if [[ "$NEED_KEY_GENERATE" == true ]]; then
           KEY_SYNCED=true
           success "APP_KEY generada y sincronizada en backend/.env y .env."
         else
-          warn "No se pudo obtener APP_KEY desde artisan key:generate --show."
+          warn "APP_KEY inválida o vacía desde artisan key:generate --show."
         fi
         break
       fi
