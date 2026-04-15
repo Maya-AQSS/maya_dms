@@ -79,14 +79,42 @@ docker compose up -d ${EXTRA_FLAGS[@]+"${EXTRA_FLAGS[@]}"}
 # ─── Generar APP_KEY si es .env nuevo ─────────────────────────────────────────
 if [[ "$NEED_KEY_GENERATE" == true ]]; then
     info "Generando APP_KEY..."
+    KEY_SYNCED=false
     for i in $(seq 1 10); do
       if docker exec maya_dms_backend php -v > /dev/null 2>&1; then
-        docker exec maya_dms_backend php artisan key:generate --force
-        success "APP_KEY generada."
+        NEW_KEY=$(docker exec maya_dms_backend php artisan key:generate --show 2>/dev/null || true)
+        if [[ -n "$NEW_KEY" ]]; then
+          if ! sed -i "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" backend/.env; then
+            warn "No se pudo actualizar APP_KEY en backend/.env"
+            break
+          fi
+
+          if grep -q '^APP_KEY=' .env; then
+            if ! sed -i "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" .env; then
+              warn "No se pudo actualizar APP_KEY en .env"
+              break
+            fi
+          else
+            if ! echo "APP_KEY=${NEW_KEY}" >> .env; then
+              warn "No se pudo escribir APP_KEY en .env"
+              break
+            fi
+          fi
+
+          docker compose up -d backend > /dev/null
+          KEY_SYNCED=true
+          success "APP_KEY generada y sincronizada en backend/.env y .env."
+        else
+          warn "No se pudo obtener APP_KEY desde artisan key:generate --show."
+        fi
         break
       fi
       sleep 2
     done
+
+    if [[ "$KEY_SYNCED" != true ]]; then
+      warn "No se pudo sincronizar APP_KEY automáticamente."
+    fi
 fi
 
 # ─── Migraciones automáticas ──────────────────────────────────────────────────
