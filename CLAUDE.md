@@ -4,7 +4,7 @@
 Sistema de gestión documental (Document Management System) para el ecosistema Maya (CEEDCV).
 - **Backend**: Laravel + PHP 8.2
 - **Frontend**: React 19 + Vite + TypeScript
-- **IdP**: Keycloak 24 (realm `maya`, client `maya-dms-dashboard`)
+- **IdP**: Keycloak 24 (realm `maya`, client `maya-dms`)
 - **BD**: PostgreSQL 17 (`maya_dms_db`, usuario `maya_dms_user`)
 - **Caché/Colas**: Redis 7 (DB 1), RabbitMQ 3
 - **WebSockets**: Laravel Reverb (puerto 8082)
@@ -16,8 +16,8 @@ Sistema de gestión documental (Document Management System) para el ecosistema M
 - Paquetes compartidos en `../infra/packages/` (symlink en `../packages/`)
 
 ## Accesos locales (vía Traefik)
-- Frontend: http://maya-dms.localhost (puerto directo: 5174)
-- Backend API: http://maya-dms-api.localhost/api/v1 (puerto directo: 8001)
+- Frontend: http://maya_dms.localhost (puerto directo: 5174)
+- Backend API: http://maya_dms_api.localhost/api/v1 (puerto directo: 8001)
 - Keycloak: http://keycloak.localhost
 - Traefik: http://localhost:8888
 
@@ -27,7 +27,7 @@ Sistema de gestión documental (Document Management System) para el ecosistema M
 
 ## JWT / JWKS
 - JWKS validado contra Keycloak: `http://maya_auth_keycloak:8080/realms/maya/protocol/openid-connect/certs`
-- Audience: `maya-dms-dashboard`
+- Audience: `maya-dms`
 - Issuer: `http://keycloak.localhost/realms/maya`
 
 ## Paquetes compartidos

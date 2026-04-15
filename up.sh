@@ -57,6 +57,12 @@ if [[ ! -f .env ]]; then
 fi
 set -a; source .env; set +a
 
+# ─── Detectar APP_KEY vacío en root .env (re-runs con .env pre-existente) ────
+if [[ -z "${APP_KEY:-}" ]]; then
+    warn "APP_KEY vacío en .env — se generará automáticamente"
+    NEED_KEY_GENERATE=true
+fi
+
 # ─── Subcomandos rápidos ──────────────────────────────────────────────────────
 case "${1:-}" in
     down)
@@ -95,8 +101,11 @@ if [[ ! -f backend/.env ]]; then
     warn "backend/.env no encontrado — creando desde .env.example"
     cp backend/.env.example backend/.env
     NEED_KEY_GENERATE=true
-else
-    NEED_KEY_GENERATE=false
+fi
+
+# Detectar APP_KEY vacío en backend/.env aunque el archivo ya existiera
+if grep -q '^APP_KEY=$' backend/.env 2>/dev/null; then
+    NEED_KEY_GENERATE=true
 fi
 
 # ─── Preparar frontend/.env ───────────────────────────────────────────────────
@@ -144,6 +153,22 @@ if [[ "$NEED_KEY_GENERATE" == true ]]; then
     if [[ "$KEY_SYNCED" != true ]]; then
       warn "No se pudo sincronizar APP_KEY automáticamente."
     fi
+fi
+
+# ─── Generar Reverb keys si están vacías ─────────────────────────────────────
+if [[ -z "${REVERB_APP_KEY:-}" ]]; then
+    info "Generando Reverb keys..."
+    NEW_REVERB_KEY=$(openssl rand -base64 24 | tr -d '=+/' | head -c 32)
+    NEW_REVERB_SECRET=$(openssl rand -base64 32 | tr -d '=+/' | head -c 40)
+    upsert_env_var .env REVERB_APP_KEY "$NEW_REVERB_KEY" \
+        && upsert_env_var .env REVERB_APP_SECRET "$NEW_REVERB_SECRET" \
+        && upsert_env_var .env VITE_REVERB_APP_KEY "$NEW_REVERB_KEY" \
+        && upsert_env_var backend/.env REVERB_APP_KEY "$NEW_REVERB_KEY" \
+        && upsert_env_var backend/.env REVERB_APP_SECRET "$NEW_REVERB_SECRET" \
+        && success "Reverb keys generadas y sincronizadas." \
+        || warn "No se pudieron sincronizar las Reverb keys."
+    # Recargar .env para que el resto del script vea los nuevos valores
+    set -a; source .env; set +a
 fi
 
 # ─── Migraciones automáticas ──────────────────────────────────────────────────
@@ -198,39 +223,29 @@ if [[ "$DB_READY" == true ]]; then
 
   database_has_data() {
     local has_data
-    has_data=$(docker exec "$BACKEND_CONTAINER" php -r '
+    has_data=$(docker exec "$BACKEND_CONTAINER" php -r "
       try {
-        $h = getenv("DB_HOST") ?: "maya_infra_postgres";
-        $p = getenv("DB_PORT") ?: "5432";
-        $d = getenv("DB_DATABASE");
-        $u = getenv("DB_USERNAME");
-        $w = getenv("DB_PASSWORD");
-        $pdo = new PDO("pgsql:host=$h;port=$p;dbname=$d", $u, $w, [PDO::ATTR_TIMEOUT => 3]);
-
-        $tables = $pdo->query("SELECT tablename FROM pg_tables WHERE schemaname = ''public'' AND tablename NOT IN (''migrations'', ''failed_jobs'', ''jobs'', ''job_batches'', ''cache'', ''cache_locks'', ''password_reset_tokens'', ''sessions'')")->fetchAll(PDO::FETCH_COLUMN);
-
-        foreach ($tables as $table) {
-          if (!preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $table)) {
-            continue;
-          }
-
-          $stmt = $pdo->query("SELECT 1 FROM \"{$table}\" LIMIT 1");
-          if ($stmt && $stmt->fetchColumn() !== false) {
-            echo "1";
-            exit(0);
-          }
+        \$h = getenv('DB_HOST') ?: 'maya_infra_postgres';
+        \$p = getenv('DB_PORT') ?: '5432';
+        \$d = getenv('DB_DATABASE');
+        \$u = getenv('DB_USERNAME');
+        \$w = getenv('DB_PASSWORD');
+        \$pdo = new PDO(\"pgsql:host=\$h;port=\$p;dbname=\$d\", \$u, \$w, [PDO::ATTR_TIMEOUT => 3]);
+        \$skip = ['migrations','failed_jobs','jobs','job_batches','cache','cache_locks','password_reset_tokens','sessions'];
+        \$tables = \$pdo->query(\"SELECT tablename FROM pg_tables WHERE schemaname = 'public'\")->fetchAll(PDO::FETCH_COLUMN);
+        foreach (\$tables as \$table) {
+          if (in_array(\$table, \$skip) || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', \$table)) continue;
+          \$stmt = \$pdo->query(\"SELECT 1 FROM \\\"\$table\\\" LIMIT 1\");
+          if (\$stmt && \$stmt->fetchColumn() !== false) { echo '1'; exit(0); }
         }
-
-        echo "0";
-      } catch (Exception $e) {
-        exit(2);
-      }')
-
-    if [[ "$?" -ne 0 ]]; then
+        echo '0';
+      } catch (Exception \$e) { exit(2); }
+    " 2>/dev/null)
+    local rc=$?
+    if [[ $rc -ne 0 ]]; then
       warn "No se pudo verificar el estado de la BD — se omiten seeds por seguridad."
       return 2
     fi
-
     [[ "$has_data" == "1" ]]
   }
 
@@ -246,27 +261,16 @@ if [[ "$DB_READY" == true ]]; then
     never)
       SHOULD_SEED=false
       ;;
-    if-empty)
-      if database_has_data; then
+    if-empty|*)
+      [[ "$SEED_MODE" == "if-empty" ]] || warn "DB_SEED_MODE inválido ('$SEED_MODE'). Usando 'if-empty'."
+      database_has_data
+      local seed_rc=$?
+      if [[ $seed_rc -eq 0 ]]; then
         info "DB con datos detectados — no se ejecutan seeds (DB_SEED_MODE=if-empty)."
+      elif [[ $seed_rc -eq 2 ]]; then
+        SHOULD_SEED=false
       else
-        if [[ "$?" -eq 2 ]]; then
-          SHOULD_SEED=false
-        else
-          SHOULD_SEED=true
-        fi
-      fi
-      ;;
-    *)
-      warn "DB_SEED_MODE inválido ('$SEED_MODE'). Usando 'if-empty'."
-      if database_has_data; then
-        info "DB con datos detectados — no se ejecutan seeds (DB_SEED_MODE=if-empty)."
-      else
-        if [[ "$?" -eq 2 ]]; then
-          SHOULD_SEED=false
-        else
-          SHOULD_SEED=true
-        fi
+        SHOULD_SEED=true
       fi
       ;;
   esac
