@@ -23,6 +23,21 @@ info()    { echo -e "${CYAN}[maya-dms]${NC} $*"; }
 success() { echo -e "${GREEN}[maya-dms]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[maya-dms]${NC} $*"; }
 
+upsert_env_var() {
+  local file="$1"
+  local key="$2"
+  local value="$3"
+  local tmp
+
+  tmp="$(mktemp)"
+  awk -v key="$key" -v value="$value" '
+    BEGIN { updated=0 }
+    $0 ~ ("^" key "=") { print key "=" value; updated=1; next }
+    { print }
+    END { if (!updated) print key "=" value }
+  ' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
 # ─── Cargar .env ─────────────────────────────────────────────────────────────
 if [[ ! -f .env ]]; then
     warn ".env no encontrado — copiando desde .env.example"
@@ -84,21 +99,14 @@ if [[ "$NEED_KEY_GENERATE" == true ]]; then
       if docker exec maya_dms_backend php -v > /dev/null 2>&1; then
         NEW_KEY=$(docker exec maya_dms_backend php artisan key:generate --show 2>/dev/null || true)
         if [[ -n "$NEW_KEY" ]]; then
-          if ! sed -i "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" backend/.env; then
+          if ! upsert_env_var backend/.env APP_KEY "$NEW_KEY"; then
             warn "No se pudo actualizar APP_KEY en backend/.env"
             break
           fi
 
-          if grep -q '^APP_KEY=' .env; then
-            if ! sed -i "s|^APP_KEY=.*|APP_KEY=${NEW_KEY}|" .env; then
-              warn "No se pudo actualizar APP_KEY en .env"
-              break
-            fi
-          else
-            if ! echo "APP_KEY=${NEW_KEY}" >> .env; then
-              warn "No se pudo escribir APP_KEY en .env"
-              break
-            fi
+          if ! upsert_env_var .env APP_KEY "$NEW_KEY"; then
+            warn "No se pudo actualizar APP_KEY en .env"
+            break
           fi
 
           docker compose up -d backend > /dev/null
