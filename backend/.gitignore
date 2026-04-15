@@ -24,3 +24,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Claude Code — archivos generados (no commitear)
+.claude
+.agent/
+.github/
+!.github/workflows/

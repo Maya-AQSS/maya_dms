@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './index.css';
 import { NAV_ITEMS, Sidebar, Topbar } from './components/layout';
@@ -12,24 +12,11 @@ import {
 } from './pages';
 import { useAuth } from '@maya/shared-auth-react';
 import { HierarchyProvider } from './features/hierarchy';
+import { useDarkMode } from './hooks/useDarkMode';
 
 function App() {
-  const { isLoading, isAuthenticated, login } = useAuth();
-  const [isDark, setIsDark] = useState(() => {
-    return (
-      localStorage.getItem('theme') === 'dark' ||
-      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    );
-  });
-
-  const handleToggleDark = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('theme', next ? 'dark' : 'light');
-  };
-
-  if (isDark) document.documentElement.classList.add('dark');
+  const { isLoading, isAuthenticated, login, user, logout } = useAuth();
+  const { isDark, toggle: handleToggleDark } = useDarkMode();
 
   const location = useLocation();
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
@@ -62,7 +49,7 @@ function App() {
         <Sidebar />
 
         <div className="ml-64 flex flex-col min-h-screen">
-          <Topbar title={pageTitle} isDark={isDark} onToggleDark={handleToggleDark} />
+          <Topbar title={pageTitle} isDark={isDark} onToggleDark={handleToggleDark} user={user} onLogout={logout} />
 
           <main className="flex-1 overflow-auto">
             <Routes>
