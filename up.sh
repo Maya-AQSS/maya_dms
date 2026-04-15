@@ -136,7 +136,7 @@ if [[ "$NEED_KEY_GENERATE" == true ]]; then
     info "Generando APP_KEY..."
     KEY_SYNCED=false
     for i in $(seq 1 10); do
-      if docker exec maya_dms_backend php -v > /dev/null 2>&1; then
+      if docker exec maya_dms_backend test -f /var/www/html/vendor/autoload.php 2>/dev/null; then
         NEW_KEY=$(docker exec maya_dms_backend php artisan key:generate --show 2>/dev/null || true)
         if [[ -n "$NEW_KEY" && "$NEW_KEY" == base64:* ]]; then
           if ! upsert_env_var backend/.env APP_KEY "$NEW_KEY"; then
