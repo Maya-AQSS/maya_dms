@@ -3,8 +3,8 @@ import { NAV_ITEMS } from './navItems';
 
 export function Sidebar() {
   return (
-    <aside className="fixed inset-y-0 left-0 w-64 bg-ui-sidebar flex flex-col z-[100]">
-      <div className="h-14 flex items-center px-5 border-b border-white/10">
+    <aside className="fixed inset-y-0 left-0 w-64 bg-ui-sidebar dark:bg-ui-dark-bg flex flex-col z-[100] border-r border-white/10 dark:border-ui-dark-border">
+      <div className="h-14 flex items-center px-5 border-b border-white/10 dark:border-ui-dark-border-l">
         <span className="text-lg font-bold text-white tracking-wide">Maya DMS</span>
       </div>
 

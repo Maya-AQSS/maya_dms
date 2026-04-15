@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Models\TemplateVersion;
-use App\Services\Contracts\JwksServiceInterface;
+use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;

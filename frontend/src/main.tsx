@@ -3,17 +3,15 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
-import { HierarchyProvider } from './features/hierarchy'
-import { bootstrapSessionToken } from './lib/sessionToken'
-
-bootstrapSessionToken()
+import { AuthProvider } from '@maya/shared-auth-react'
+import { authService } from './lib/auth'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <HierarchyProvider>
+    <AuthProvider keycloak={authService.keycloak} enableLogging={import.meta.env.DEV}>
+      <BrowserRouter>
         <App />
-      </HierarchyProvider>
-    </BrowserRouter>
+      </BrowserRouter>
+    </AuthProvider>
   </StrictMode>,
 )

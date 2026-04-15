@@ -4,4 +4,6 @@ COPY package*.json ./
 RUN npm install
 COPY . .
 EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+# Entrypoint runs npm install if needed, then starts Vite
+COPY --chmod=755 docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+ENTRYPOINT ["docker-entrypoint.sh"]
