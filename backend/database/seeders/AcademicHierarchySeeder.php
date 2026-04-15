@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -41,5 +42,8 @@ class AcademicHierarchySeeder extends Seeder
         if ($modules !== []) {
             DB::table('course_modules_source')->insertOrIgnore($modules);
         }
+
+        // Invalidar caché de jerarquía para forzar recarga al siguiente request.
+        Cache::store('redis')->forget('academic_hierarchy_tree');
     }
 }
