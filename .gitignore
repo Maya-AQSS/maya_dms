@@ -60,3 +60,8 @@ Icon?
 
 # Windows
 Thumbs.db
+# Claude Code — archivos generados (no commitear)
+.claude/
+.agent/
+.github/
+!.github/workflows/
