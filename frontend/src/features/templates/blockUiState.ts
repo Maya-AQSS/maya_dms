@@ -9,24 +9,24 @@ export const BLOCK_UI_STATE_CONFIG: Record<
   editable: {
     label: 'Editable',
     badgeCls:
-      'bg-odoo-teal/15 text-odoo-teal dark:bg-odoo-dark-teal/20 dark:text-odoo-dark-teal',
+      'bg-success/15 text-success-dark dark:bg-success-dark/30 dark:text-success-light',
     payload: { block_state: 'editable', mandatory: true },
   },
   modifiable: {
     label: 'Modificable',
     badgeCls:
-      'bg-odoo-purple/10 text-odoo-purple dark:bg-odoo-dark-purple/20 dark:text-odoo-dark-purple',
+      'bg-info/10 text-info-dark dark:bg-info-dark/30 dark:text-info-light',
     payload: { block_state: 'modifiable', mandatory: true },
   },
   locked: {
     label: 'Bloqueado',
-    badgeCls: 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger',
+    badgeCls: 'bg-danger/10 text-danger-dark dark:bg-danger-dark/30 dark:text-danger-light',
     payload: { block_state: 'locked', mandatory: true },
   },
   optional: {
     label: 'Opcional',
     badgeCls:
-      'bg-ui-body text-text-muted dark:bg-ui-dark-bg dark:text-text-dark-muted border border-ui-border dark:border-ui-dark-border',
+      'bg-odoo-purple/10 text-odoo-purple-d dark:bg-odoo-dark-purple-d/30 dark:text-odoo-dark-purple-l',
     payload: { block_state: 'editable', mandatory: false },
   },
 };

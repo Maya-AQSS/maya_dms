@@ -51,8 +51,8 @@ function SummaryCard({
 
 function SummaryRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-ui-border/30 last:border-0">
-      <dt className="sm:w-32 shrink-0 text-[10px] font-bold uppercase tracking-wider text-text-muted mt-0.5">
+    <div className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
+      <dt className="sm:w-32 shrink-0 text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mt-0.5">
         {label}
       </dt>
       <dd className="flex-1 text-sm font-medium text-text-primary dark:text-text-dark-primary">
@@ -107,9 +107,9 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
               {blocks.map((block, i) => {
                 const cfg = BLOCK_UI_STATE_CONFIG[blockToUiState(block)];
                 return (
-                  <div key={block.id} className="flex items-center gap-3 p-2 rounded-lg bg-ui-body/50 border border-ui-border/50">
-                    <span className="text-[10px] font-bold text-text-muted w-5 text-right">{i + 1}.</span>
-                    <span className="flex-1 text-xs font-bold text-text-primary truncate">{block.title}</span>
+                  <div key={block.id} className="flex items-center gap-3 p-2 rounded border border-ui-border dark:border-ui-dark-border/50 bg-white dark:bg-ui-dark-card shadow-sm">
+                    <span className="text-[10px] font-bold text-text-secondary w-5 text-right">{i + 1}.</span>
+                    <span className="flex-1 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">{block.title}</span>
                     <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}>
                       {cfg.label}
                     </span>
@@ -123,9 +123,9 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
         {/* Sección 3: Usuarios y validación */}
         <SummaryCard title="Usuarios y validación" onEdit={() => onGoToStep('users')}>
           <div className="space-y-6">
-            <div className="bg-odoo-purple/5 border border-odoo-purple/10 rounded-lg p-3">
-              <span className="text-[10px] font-bold uppercase text-odoo-purple/60">Tipo de validación:</span>
-              <span className="ml-2 text-xs font-bold text-odoo-purple capitalize">{validationType}</span>
+            <div className="bg-ui-body/30 dark:bg-ui-dark-bg/50 border border-ui-border dark:border-ui-dark-border rounded-lg p-3">
+              <span className="text-[10px] font-bold uppercase text-text-secondary">Tipo de validación:</span>
+              <span className="ml-2 text-xs font-bold text-text-primary dark:text-text-dark-primary capitalize">{validationType}</span>
             </div>
 
             {validators.length === 0 ? (
@@ -140,18 +140,18 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
                     .map((w) => w[0]?.toUpperCase() ?? '')
                     .join('');
                   return (
-                    <div key={v.userId} className="flex items-center gap-3 p-2 rounded-lg bg-white border border-ui-border/50 shadow-sm">
+                    <div key={v.userId} className="flex items-center gap-3 p-2 rounded border border-ui-border dark:border-ui-dark-border/50 bg-white dark:bg-ui-dark-card shadow-sm">
                       {validationType === 'ordenada' && (
                         <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold">
                           {i + 1}
                         </span>
                       )}
-                      <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20">
+                      <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple dark:text-odoo-dark-purple text-[10px] font-black border border-odoo-purple/20">
                         {initials}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <span className="text-xs font-bold text-text-primary block truncate">{v.name}</span>
-                        {v.role && <span className="text-[10px] text-text-muted uppercase tracking-tight">{v.role}</span>}
+                        <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary block truncate">{v.name}</span>
+                        {v.role && <span className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{v.role}</span>}
                       </div>
                     </div>
                   );

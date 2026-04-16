@@ -93,7 +93,7 @@ function SortableValidatorItem({
           {entry.name}
         </p>
         {entry.role && (
-          <p className="text-[10px] text-text-muted uppercase tracking-tight">{entry.role}</p>
+          <p className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{entry.role}</p>
         )}
       </div>
 
@@ -159,7 +159,7 @@ function UserSearchResult({
           {user.name}
         </p>
         {user.role && (
-          <p className="text-[10px] text-text-muted uppercase tracking-tight">{user.role}</p>
+          <p className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{user.role}</p>
         )}
       </div>
       {alreadyAdded ? (

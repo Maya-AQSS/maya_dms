@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -40,10 +40,12 @@ function SortableBlockItem({
   block,
   itemState,
   onClick,
+  onDoubleClick,
 }: {
   block: TemplateBlock;
   itemState: BlockItemState;
   onClick: (e: React.MouseEvent) => void;
+  onDoubleClick: (e: React.MouseEvent) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
@@ -61,15 +63,13 @@ function SortableBlockItem({
   const cfg = BLOCK_UI_STATE_CONFIG[uiState];
 
   const containerCls =
-    itemState === 'selected'
-      ? 'bg-odoo-purple/10 dark:bg-odoo-dark-purple/15 border-odoo-purple/30 shadow-sm'
-      : itemState === 'multi-current'
-        ? 'bg-odoo-purple/10 border-odoo-purple/30 shadow-sm'
-        : itemState === 'multi-queued'
-          ? 'bg-odoo-purple/5 border-odoo-purple/20'
-          : itemState === 'multi-saved'
-            ? 'bg-success/5 border-success/20'
-            : 'bg-white dark:bg-ui-dark-card border-ui-border/50 hover:bg-ui-body hover:border-ui-border dark:hover:bg-ui-dark-bg dark:border-ui-dark-border/50';
+    itemState === 'selected' || itemState === 'multi-current'
+      ? 'bg-odoo-purple/10 border-odoo-purple/30 shadow-sm'
+      : itemState === 'multi-queued'
+        ? 'bg-odoo-purple/5 border-odoo-purple/20'
+        : itemState === 'multi-saved'
+          ? 'bg-success/5 border-success/20'
+          : 'bg-white dark:bg-ui-dark-card border-ui-border/50 hover:bg-ui-body hover:border-ui-border dark:hover:bg-ui-dark-bg dark:border-ui-dark-border/50';
 
   return (
     <div
@@ -101,7 +101,8 @@ function SortableBlockItem({
       <button
         type="button"
         onClick={onClick}
-        className="flex-1 text-left min-w-0 flex items-center gap-2 focus:outline-none"
+        onDoubleClick={onDoubleClick}
+        className="flex-1 text-left min-w-0 flex items-center gap-2 focus:outline-none select-none"
       >
         <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
           {block.title || 'Bloque sin nombre'}
@@ -183,6 +184,13 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
   // Multi-edit state
   const [multiIndex, setMultiIndex] = useState(0);
   const [multiSaved, setMultiSaved] = useState<Set<string>>(new Set());
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    };
+  }, []);
 
   // Form state (shared: create / edit / multi)
   const [formName, setFormName] = useState('');
@@ -224,16 +232,25 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
 
   // ── Click handlers ────────────────────────────────────────────────────────────
 
-  const handleBlockClick = (blockId: string, ctrlKey: boolean) => {
-    if (ctrlKey) {
-      const isAlready = selectedBlockIds.includes(blockId);
-      const newIds = isAlready
-        ? selectedBlockIds.filter((id) => id !== blockId)
-        : [...selectedBlockIds, blockId];
+  const handleBlockClick = (blockId: string) => {
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
-      setSelectedBlockIds(newIds);
+    clickTimerRef.current = setTimeout(() => {
+      setSelectedBlockIds([blockId]);
+      setActiveSingleId(blockId);
+      setPanelMode('summary');
+      setMultiSaved(new Set());
       setActionError(null);
       setDeleteConfirm(false);
+    }, 200);
+  };
+
+  const handleBlockDoubleClick = (blockId: string) => {
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+
+    setSelectedBlockIds((prev) => {
+      const alreadySelected = prev.includes(blockId);
+      const newIds = alreadySelected ? prev.filter((id) => id !== blockId) : [...prev, blockId];
 
       if (newIds.length === 0) {
         setPanelMode('empty');
@@ -241,6 +258,8 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
       } else if (newIds.length === 1) {
         setActiveSingleId(newIds[0]);
         setPanelMode('summary');
+        const block = blocks.find((b) => b.id === newIds[0]);
+        if (block) loadFormFromBlock(block);
       } else {
         const ordered = blocks.filter((b) => newIds.includes(b.id)).map((b) => b.id);
         setMultiIndex(0);
@@ -249,14 +268,11 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
         if (first) loadFormFromBlock(first);
         setPanelMode('multi');
       }
-    } else {
-      setSelectedBlockIds([blockId]);
-      setActiveSingleId(blockId);
-      setPanelMode('summary');
-      setMultiSaved(new Set());
-      setActionError(null);
-      setDeleteConfirm(false);
-    }
+
+      return newIds;
+    });
+    setActionError(null);
+    setDeleteConfirm(false);
   };
 
   const handleToggleSelectAll = () => {
@@ -528,7 +544,8 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
                       key={block.id}
                       block={block}
                       itemState={itemState}
-                      onClick={(e) => handleBlockClick(block.id, e.ctrlKey || e.metaKey)}
+                      onClick={() => handleBlockClick(block.id)}
+                      onDoubleClick={() => handleBlockDoubleClick(block.id)}
                     />
                   );
                 })}
@@ -646,10 +663,9 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
             {/* Header + navigation */}
             <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border shrink-0">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-odoo-purple">Editando selección</h3>
-                <span className="text-[10px] text-text-muted">
-                  {orderedSelection.length} bloque{orderedSelection.length !== 1 ? 's' : ''}
-                </span>
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                  EDITANDO SELECCIÓN
+                </h3>
               </div>
               <div className="flex items-center gap-3 mt-3">
                 <button
