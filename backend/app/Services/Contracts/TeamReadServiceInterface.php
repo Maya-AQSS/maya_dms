@@ -6,16 +6,17 @@ interface TeamReadServiceInterface
 {
     /**
      * Devuelve equipos visibles para el usuario.
-     *
-     * @return list<array{id: string, name: string}>
      */
     public function listVisibleTeamsForUser(string $userId): array;
 
     /**
      * Devuelve un equipo visible por ID para el usuario o null.
-     *
-     * @return array{id: string, name: string}|null
      */
     public function findVisibleTeamByIdForUser(string $userId, string $teamId): ?array;
+
+    /**
+     * Valor embebible `team` para respuestas API (sin grupo o sin usuario → null).
+     */
+    public function embeddableTeamForGroup(?string $groupId, string $viewerUserId): ?array;
 }
 

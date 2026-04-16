@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Resources\DocumentResource;
+use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -14,6 +15,7 @@ class DocumentController extends Controller
 {
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
+        private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
     ) {}
 
     /**
@@ -21,9 +23,13 @@ class DocumentController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        return DocumentResource::collection(
-            $this->documentService->listOrderedByCreatedAtDesc(),
+        $documents = $this->documentService->listOrderedByCreatedAtDesc();
+        $this->apiTeamEmbedService->embedOnDocuments(
+            $documents,
+            (string) $request->user()->getAuthIdentifier(),
         );
+
+        return DocumentResource::collection($documents);
     }
 
     /**
@@ -33,6 +39,7 @@ class DocumentController extends Controller
     {
         $userId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->create($request->toDto($userId, $userId));
+        $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
         return response()->json([
@@ -92,6 +99,7 @@ class DocumentController extends Controller
             $userId,
             $validated['template_version_id'] ?? null,
         );
+        $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
         return response()->json([
@@ -109,6 +117,10 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+        $this->apiTeamEmbedService->embedOnDocument(
+            $document,
+            (string) $request->user()->getAuthIdentifier(),
+        );
         $blocks = $this->documentService->blocksForDisplay($document);
 
         return response()->json([

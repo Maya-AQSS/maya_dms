@@ -32,7 +32,9 @@ use App\Repositories\Eloquent\UserProfileRepository;
 use App\Services\AcademicHierarchyService;
 use App\Services\AuditLogService;
 use App\Services\CommentService;
+use App\Services\ApiTeamEmbedService;
 use App\Services\Contracts\AcademicHierarchyServiceInterface;
+use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -72,6 +74,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Service bindings
         $this->app->bind(AuditLogServiceInterface::class, AuditLogService::class);
+        $this->app->bind(ApiTeamEmbedServiceInterface::class, ApiTeamEmbedService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(GroupServiceInterface::class, GroupService::class);
         $this->app->bind(TeamReadServiceInterface::class, TeamReadService::class);
