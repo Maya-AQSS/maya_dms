@@ -1,0 +1,21 @@
+<?php
+
+namespace App\Services\Contracts;
+
+interface TeamReadServiceInterface
+{
+    /**
+     * Devuelve equipos visibles para el usuario.
+     *
+     * @return list<array{id: string, name: string}>
+     */
+    public function listVisibleTeamsForUser(string $userId): array;
+
+    /**
+     * Devuelve un equipo visible por ID para el usuario o null.
+     *
+     * @return array{id: string, name: string}|null
+     */
+    public function findVisibleTeamByIdForUser(string $userId, string $teamId): ?array;
+}
+

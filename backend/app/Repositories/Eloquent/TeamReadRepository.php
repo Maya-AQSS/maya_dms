@@ -2,17 +2,17 @@
 
 namespace App\Repositories\Eloquent;
 
-use App\Repositories\Contracts\GroupReadRepositoryInterface;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
-class GroupReadRepository implements GroupReadRepositoryInterface
+class TeamReadRepository implements TeamReadRepositoryInterface
 {
     /**
-     * Devuelve grupos visibles para el usuario.
-     * 
+     * Devuelve equipos visibles para el usuario.
+     *
      * @return list<array{id: string, name: string}>
      */
-    public function findVisibleGroupsForUser(string $userId): array
+    public function findVisibleTeamsForUser(string $userId): array
     {
         return DB::table('group_members')
             ->join('groups', 'groups.id', '=', 'group_members.group_id')
@@ -30,16 +30,16 @@ class GroupReadRepository implements GroupReadRepositoryInterface
     }
 
     /**
-     * Devuelve un grupo visible por ID para el usuario o null.
-     * 
+     * Devuelve un equipo visible por ID para el usuario o null.
+     *
      * @return array{id: string, name: string}|null
      */
-    public function findVisibleGroupByIdForUser(string $userId, string $groupId): ?array
+    public function findVisibleTeamByIdForUser(string $userId, string $teamId): ?array
     {
         $row = DB::table('group_members')
             ->join('groups', 'groups.id', '=', 'group_members.group_id')
             ->where('group_members.user_id', '=', $userId)
-            ->where('groups.id', '=', $groupId)
+            ->where('groups.id', '=', $teamId)
             ->whereNull('groups.deleted_at')
             ->select(['groups.id', 'groups.name'])
             ->first();
