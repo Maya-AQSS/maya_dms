@@ -13,6 +13,7 @@ use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\AuditLogRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\GroupReadRepositoryInterface;
 use App\Repositories\Contracts\GroupRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -22,6 +23,7 @@ use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
+use App\Repositories\Eloquent\GroupReadRepository;
 use App\Repositories\Eloquent\GroupRepository;
 use App\Repositories\Eloquent\TemplateBlockRepository;
 use App\Repositories\Eloquent\TemplateRepository;
@@ -34,6 +36,7 @@ use App\Services\Contracts\AcademicHierarchyServiceInterface;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\GroupReadServiceInterface;
 use App\Services\Contracts\GroupServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
 use Maya\Auth\Contracts\JwksServiceInterface;
@@ -41,6 +44,7 @@ use App\Services\Contracts\TemplateBlockServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use App\Services\DocumentService;
+use App\Services\GroupReadService;
 use App\Services\GroupService;
 use App\Services\HealthCheckService;
 use App\Services\TemplateBlockService;
@@ -57,6 +61,7 @@ class AppServiceProvider extends ServiceProvider
         // Repository bindings
         $this->app->bind(AuditLogRepositoryInterface::class, AuditLogRepository::class);
         $this->app->bind(DocumentRepositoryInterface::class, DocumentRepository::class);
+        $this->app->bind(GroupReadRepositoryInterface::class, GroupReadRepository::class);
         $this->app->bind(GroupRepositoryInterface::class, GroupRepository::class);
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         $this->app->bind(TemplateBlockRepositoryInterface::class, TemplateBlockRepository::class);
@@ -68,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
         // Service bindings
         $this->app->bind(AuditLogServiceInterface::class, AuditLogService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
+        $this->app->bind(GroupReadServiceInterface::class, GroupReadService::class);
         $this->app->bind(GroupServiceInterface::class, GroupService::class);
         $this->app->bind(CommentServiceInterface::class, CommentService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
