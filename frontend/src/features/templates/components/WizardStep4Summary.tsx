@@ -71,12 +71,12 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
     { label: 'Tipo de Estudio', value: template.study_type_id },
     { label: 'Estudio', value: template.study_id },
     { label: 'Módulo', value: template.module_id },
-    { label: 'Grupo', value: template.group_id },
+    { label: 'Equipo', value: template.group_id },
   ].filter((f) => f.value);
 
   return (
-    <div className="flex-1 overflow-y-auto p-6 bg-ui-body/30">
-      <div className="max-w-[700px] mx-auto space-y-6">
+    <div className="flex-1 overflow-y-auto px-8 py-6 bg-ui-body/30">
+      <div className="space-y-4">
 
         <p className="text-xs text-text-muted text-center animate-in fade-in">
           Revisa todos los datos antes de publicar la plantilla. Puedes editar cualquier sección volviendo al paso correspondiente.

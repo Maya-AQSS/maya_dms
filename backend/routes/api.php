@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\TemplateBlockController;
 use App\Http\Controllers\Api\TemplateController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -142,6 +143,9 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('comment');
         Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
             ->whereUuid('comment');
+
+        // Usuarios — búsqueda para asignación de validadores y compartición
+        Route::get('/users', [UserController::class, 'index']);
 
         // Sprint 6 — Dashboard BFF
         Route::get('/dashboard', [DashboardController::class, 'index']);

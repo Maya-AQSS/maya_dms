@@ -14,7 +14,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, FieldLabel } from '../../../ui';
+import { Button } from '../../../ui';
 import type { User } from '../../../types/users';
 import { searchUsers } from '../../../api/users';
 
@@ -205,15 +205,16 @@ export function WizardStep3Users({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!searchQuery.trim()) {
+      if (searchQuery.trim().length < 2) {
         setSearchResults([]);
+        setSearchError(null);
         return;
       }
       setSearching(true);
       setSearchError(null);
-      searchUsers(searchQuery)
+      searchUsers(searchQuery.trim())
         .then((res) => setSearchResults(res.data))
-        .catch(() => setSearchError('Error en la búsqueda'))
+        .catch(() => setSearchError('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearching(false));
     }, 300);
     return () => clearTimeout(timer);
@@ -239,47 +240,47 @@ export function WizardStep3Users({
   return (
     <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
       {/* Columna Izquierda: Validadores */}
-      <div className="md:w-1/2 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
-        <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50 flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-            VALIDADORES ({validators.length})
-          </span>
-          <Button variant="ghost" size="xs" onClick={() => document.getElementById('search-input')?.focus()}>
-            + Añadir usuario
+      <div className="md:w-1/2 min-w-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
+        <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50 flex items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary shrink-0">
+              VALIDADORES ({validators.length})
+            </span>
+            <div className="flex gap-1">
+              {(['libre', 'ordenada'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => onValidationTypeChange(t)}
+                  className={`px-2.5 py-1 rounded text-[10px] font-bold transition-all border ${
+                    validationType === t
+                      ? 'bg-odoo-purple text-white border-odoo-purple'
+                      : 'bg-transparent text-text-secondary border-ui-border hover:border-odoo-purple/50'
+                  }`}
+                >
+                  {t === 'libre' ? 'Libre' : 'Ordenada'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Button variant="ghost" size="xs" onClick={() => document.getElementById('search-input')?.focus()} className="shrink-0">
+            + Añadir
           </Button>
         </div>
 
-        <div className="px-5 py-4 border-b border-ui-border dark:border-ui-dark-border shrink-0 space-y-3 bg-ui-body/10">
-          <FieldLabel>Tipo de validación</FieldLabel>
-          <div className="flex gap-2">
-            {(['libre', 'ordenada'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => onValidationTypeChange(t)}
-                className={`px-4 py-2 rounded-md text-xs font-bold transition-all border ${
-                  validationType === t
-                    ? 'bg-odoo-purple text-white border-odoo-purple shadow-sm'
-                    : 'bg-white text-text-secondary border-ui-border hover:border-odoo-purple/50'
-                }`}
-              >
-                {t === 'libre' ? 'Libre' : 'Ordenada'}
-              </button>
-            ))}
+        {validationType === 'ordenada' && (
+          <div className="px-5 py-2 border-b border-warning/20 bg-warning-light/10 shrink-0">
+            <p className="text-[11px] text-warning-dark font-bold">
+              Validación ordenada activa — arrastra para reordenar.
+            </p>
           </div>
-          {validationType === 'ordenada' && (
-            <div className="p-3 bg-warning-light/20 border border-warning/30 rounded-lg animate-in fade-in slide-in-from-top-1">
-              <p className="text-[11px] text-warning-dark font-bold leading-tight">
-                La validación ordenada está activa. Arrastra los usuarios para definir el orden.
-              </p>
-            </div>
-          )}
-        </div>
+        )}
 
         <div className="flex-1 overflow-y-auto p-5">
           {validators.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-center p-6 bg-ui-body/30 rounded-xl border border-dashed border-ui-border">
-              <p className="text-xs text-text-muted italic">No hay validadores asignados.<br/>Busca usuarios en el panel derecho.</p>
+            <div className="pt-4">
+              <p className="text-xs text-text-muted">No hay validadores asignados.</p>
+              <p className="text-xs text-text-muted mt-0.5">Busca usuarios en el panel derecho para añadirlos.</p>
             </div>
           ) : (
             <DndContext
@@ -309,7 +310,7 @@ export function WizardStep3Users({
       </div>
 
       {/* Columna Derecha: Buscador */}
-      <div className="md:w-1/2 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
+      <div className="md:w-1/2 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
         <div className="p-4 border-b border-ui-border dark:border-ui-dark-border shrink-0">
           <div className="relative">
             <input
@@ -327,10 +328,16 @@ export function WizardStep3Users({
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {searching && <p className="text-xs text-text-muted italic p-2">Buscando usuarios...</p>}
+          {!searchQuery.trim() && (
+            <p className="text-xs text-text-muted italic p-2">Escribe al menos 2 caracteres para buscar.</p>
+          )}
+          {searchQuery.trim().length === 1 && (
+            <p className="text-xs text-text-muted italic p-2">Escribe al menos 2 caracteres para buscar.</p>
+          )}
+          {searching && <p className="text-xs text-text-muted italic p-2">Buscando usuarios…</p>}
           {searchError && <p className="text-xs text-danger-dark p-2">{searchError}</p>}
-          {!searching && !searchError && searchQuery && searchResults.length === 0 && (
-            <p className="text-xs text-text-muted p-2">No se encontraron resultados para "{searchQuery}"</p>
+          {!searching && !searchError && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+            <p className="text-xs text-text-muted p-2">No se encontraron usuarios con ese término.</p>
           )}
           {searchResults.map((u) => (
             <UserSearchResult

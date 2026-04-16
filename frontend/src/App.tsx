@@ -63,7 +63,7 @@ function App() {
 
   return (
     <HierarchyProvider>
-      <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
+      <div className="h-screen overflow-hidden bg-ui-body dark:bg-ui-dark-bg">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((prev) => !prev)}
@@ -72,7 +72,7 @@ function App() {
         />
 
         <div
-          className="flex flex-col min-h-screen transition-[margin] duration-200"
+          className="flex flex-col h-full transition-[margin] duration-200"
           style={{ marginLeft: mobileOpen ? '0' : sidebarCollapsed ? '3.5rem' : '16rem' }}
         >
           <Topbar

@@ -72,9 +72,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     
     const needsAcademic = visibility !== 'personal' && visibility !== 'global';
     if (needsAcademic) {
-      if (!studyTypeId) newErrors.studyTypeId = 'Obligatorio';
-      if ((visibility === 'study' || visibility === 'module' || visibility === 'group') && !studyId) newErrors.studyId = 'Obligatorio';
-      if ((visibility === 'module' || visibility === 'group') && !moduleId) newErrors.moduleId = 'Obligatorio';
+      if (visibility === 'study_type' && !studyTypeId) newErrors.studyTypeId = 'Obligatorio';
+      if (visibility === 'study' && !studyId) newErrors.studyId = 'Obligatorio';
+      if (visibility === 'module' && !moduleId) newErrors.moduleId = 'Obligatorio';
       if (visibility === 'group' && !groupId) newErrors.groupId = 'Obligatorio';
     }
 
@@ -196,7 +196,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   };
 
   return (
-    <div className="flex flex-col h-screen bg-ui-body dark:bg-ui-dark-bg">
+    <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
       {/* Top bar */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
         <button
@@ -243,67 +243,71 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       {/* Stepper */}
       {renderStepper()}
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-hidden flex flex-col relative">
-        <div className="flex-1 flex flex-col overflow-hidden bg-ui-body/30 pb-[72px]">
-          {step === 'properties' && (
-            <WizardStep1Properties
-              name={name} setName={setName}
-              description={description} setDescription={setDescription}
-              visibility={visibility} setVisibility={setVisibility}
-              deliveryDeadline={deliveryDeadline} setDeliveryDeadline={setDeliveryDeadline}
-              studyTypeId={studyTypeId} setStudyTypeId={setStudyTypeId}
-              studyId={studyId} setStudyId={setStudyId}
-              moduleId={moduleId} setModuleId={setModuleId}
-              groupId={groupId} setGroupId={setGroupId}
-              errors={errors}
-            />
-          )}
-          {step === 'blocks' && template && (
-            <WizardStep2Blocks
-              template={template}
-              onBlocksCountChange={setBlocksCount}
-            />
-          )}
-          {step === 'users' && (
-            <WizardStep3Users
-              validators={validators}
-              onValidatorsChange={setValidators}
-              validationType={validationType}
-              onValidationTypeChange={setValidationType}
-            />
-          )}
-          {step === 'summary' && template && (
-            <WizardStep4Summary
-              template={template}
-              validators={validators}
-              validationType={validationType}
-              onGoToStep={handleGoToStep}
-            />
-          )}
-        </div>
+      {/* Body — only this element scrolls */}
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-ui-body/30 dark:bg-ui-dark-bg">
+        {step === 'properties' && (
+          <WizardStep1Properties
+            name={name} setName={setName}
+            description={description} setDescription={setDescription}
+            visibility={visibility} setVisibility={setVisibility}
+            deliveryDeadline={deliveryDeadline} setDeliveryDeadline={setDeliveryDeadline}
+            studyTypeId={studyTypeId} setStudyTypeId={setStudyTypeId}
+            studyId={studyId} setStudyId={setStudyId}
+            moduleId={moduleId} setModuleId={setModuleId}
+            groupId={groupId} setGroupId={setGroupId}
+            errors={errors}
+          />
+        )}
+        {step === 'blocks' && template && (
+          <WizardStep2Blocks
+            template={template}
+            onBlocksCountChange={setBlocksCount}
+          />
+        )}
+        {step === 'users' && (
+          <WizardStep3Users
+            validators={validators}
+            onValidatorsChange={setValidators}
+            validationType={validationType}
+            onValidationTypeChange={setValidationType}
+          />
+        )}
+        {step === 'summary' && template && (
+          <WizardStep4Summary
+            template={template}
+            validators={validators}
+            validationType={validationType}
+            onGoToStep={handleGoToStep}
+          />
+        )}
+      </div>
 
-
-        {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-6 py-4 flex items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+      {/* Footer — outside the scroll area, always visible */}
+      <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-6 py-4 flex items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
           <div className="flex-1">
             {step === 'properties' && (
               <span className="text-[10px] text-text-muted italic opacity-70">
-                Los cambios se sincronizarán al avanzar de paso.
+                Los cambios no se guardan hasta pulsar «Guardar y continuar»
               </span>
             )}
-            {step !== 'properties' && (
-              <Button variant="ghost" size="sm" onClick={() => {
-                if (step === 'blocks') setStep('properties');
-                if (step === 'users') setStep('blocks');
-                if (step === 'summary') setStep('users');
-              }} className="text-odoo-purple font-bold">
-                ← Volver al paso anterior
+            {step === 'blocks' && (
+              <Button variant="ghost" size="sm" onClick={() => setStep('properties')} className="text-odoo-purple font-bold">
+                ← Volver a Propiedades
+              </Button>
+            )}
+            {step === 'users' && (
+              <Button variant="ghost" size="sm" onClick={() => setStep('blocks')} className="text-odoo-purple font-bold">
+                ← Volver a Bloques
+              </Button>
+            )}
+            {step === 'summary' && (
+              <Button variant="ghost" size="sm" onClick={() => setStep('users')} className="text-odoo-purple font-bold">
+                ← Volver a Usuarios
               </Button>
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-end gap-3">
             <Button
               variant="secondary"
               size="md"
@@ -312,20 +316,25 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             >
               Cancelar
             </Button>
-            <Button
-              variant="primary"
-              size={step === 'summary' ? 'lg' : 'md'}
-              loading={saving}
-              disabled={step === 'blocks' && blocksCount === 0}
-              onClick={handleContinue}
-              className={`text-[10px] font-black uppercase tracking-widest px-8 shadow-sm ${step === 'summary' ? 'bg-success border-success hover:bg-success-dark' : ''}`}
-              title={step === 'blocks' && blocksCount === 0 ? 'Añade al menos un bloque para continuar' : ''}
-            >
-              {step === 'summary' ? 'Publicar plantilla ✓' : 'Siguiente paso →'}
-            </Button>
+            <div className="flex flex-col items-end gap-1">
+              <Button
+                variant="primary"
+                size={step === 'summary' ? 'lg' : 'md'}
+                loading={saving}
+                disabled={step === 'blocks' && blocksCount === 0}
+                onClick={handleContinue}
+                className={`text-[10px] font-black uppercase tracking-widest px-8 shadow-sm ${step === 'summary' ? 'bg-success border-success hover:bg-success-dark' : ''}`}
+              >
+                {step === 'summary' ? 'Publicar plantilla ✓' : 'Guardar y continuar →'}
+              </Button>
+              {step === 'blocks' && blocksCount === 0 && (
+                <span className="text-[10px] text-text-muted italic">
+                  Añade al menos un bloque para continuar
+                </span>
+              )}
+            </div>
           </div>
         </div>
-      </div>
     </div>
   );
 }

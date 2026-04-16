@@ -44,177 +44,168 @@ export function WizardStep1Properties({
     fetchGroups(200).then((res) => setGroups(res.data)).catch(() => undefined);
   }, []);
 
-  const selectedTypeData = hierarchy.find((t) => t.id === studyTypeId);
-  const availableStudies = selectedTypeData ? selectedTypeData.studies : [];
-  const selectedStudyData = availableStudies.find((s) => s.id === studyId);
-  const availableModules = selectedStudyData ? selectedStudyData.course_modules : [];
+  const allStudies = hierarchy.flatMap((t) => t.studies);
+  const allModules = allStudies.flatMap((s) => s.course_modules);
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
-  // Dynamic titles and field requirements
-  const academicTitles: Record<string, string> = {
+  const BINDING_TITLES: Partial<Record<TemplateVisibilityLevel, string>> = {
     study_type: 'Tipo de Estudio',
     study: 'Estudio',
     module: 'Módulo',
-    group: 'Grupo',
+    group: 'Equipo',
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-6">
+    <div className="flex-1 overflow-y-auto px-8 py-6">
+      <div className="space-y-6">
 
-      <div className="max-w-3xl mx-auto space-y-6">
-        {/* Generales */}
-        <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-6">
-          <h3 className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-6">
-            Datos generales
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <FieldLabel required>Nombre</FieldLabel>
-              <TextInput
-                type="text"
-                fieldSize="comfortable"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Ej. Acta de Evaluación Final"
-                error={!!errors.name}
-              />
-              {errors.name && <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.name}</p>}
-            </div>
+        {/* Campos generales — grid sin card wrapper */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="md:col-span-2">
+            <FieldLabel required>Nombre</FieldLabel>
+            <TextInput
+              type="text"
+              fieldSize="comfortable"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Acta de Evaluación Final"
+              error={!!errors.name}
+            />
+            {errors.name && <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.name}</p>}
+          </div>
 
-            <div className="md:col-span-2">
-              <FieldLabel>Descripción</FieldLabel>
-              <TextArea
-                fieldSize="comfortable"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Propósito de la plantilla…"
-                style={{ minHeight: '64px' }}
-              />
-            </div>
+          <div className="md:col-span-2">
+            <FieldLabel>Descripción</FieldLabel>
+            <TextArea
+              fieldSize="comfortable"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Propósito de la plantilla…"
+              style={{ minHeight: '64px' }}
+            />
+          </div>
 
-            <div>
-              <FieldLabel required>Visibilidad</FieldLabel>
-              <Select
-                fieldSize="comfortable"
-                value={visibility}
-                onChange={(e) => {
-                  const v = e.target.value as TemplateVisibilityLevel;
-                  setVisibility(v);
-                  if (v === 'personal' || v === 'global') {
-                    setStudyTypeId('');
-                    setStudyId('');
-                    setModuleId('');
-                    setGroupId('');
-                  }
-                }}
-              >
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
+          <div>
+            <FieldLabel required>Visibilidad</FieldLabel>
+            <Select
+              fieldSize="comfortable"
+              value={visibility}
+              onChange={(e) => {
+                const v = e.target.value as TemplateVisibilityLevel;
+                setVisibility(v);
+                setStudyTypeId('');
+                setStudyId('');
+                setModuleId('');
+                setGroupId('');
+              }}
+            >
+              {VISIBILITY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </Select>
+          </div>
 
-            <div>
-              <FieldLabel>Plazo de entrega</FieldLabel>
-              <TextInput
-                type="date"
-                fieldSize="comfortable"
-                value={deliveryDeadline}
-                onChange={(e) => setDeliveryDeadline(e.target.value)}
-              />
-            </div>
+          <div>
+            <FieldLabel>Plazo de entrega</FieldLabel>
+            <TextInput
+              type="date"
+              fieldSize="comfortable"
+              value={deliveryDeadline}
+              onChange={(e) => setDeliveryDeadline(e.target.value)}
+            />
           </div>
         </div>
 
-        {/* Bloque de vinculación académica (condicional con animación) */}
+        {/* Bloque de vinculación — separador, sin card */}
         {showAcademicBlock && (
-          <div className="wizard-academic-block bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-6 animate-in fade-in slide-in-from-top-1 duration-200">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-6">
-              {academicTitles[visibility] || 'Vinculación Académica'}
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Tipo de Estudio */}
-              <div>
-                <FieldLabel required>Tipo de Estudio</FieldLabel>
-                <Select
-                  fieldSize="comfortable"
-                  value={studyTypeId}
-                  disabled={hierarchyLoading}
-                  onChange={(e) => {
-                    setStudyTypeId(e.target.value);
-                    setStudyId('');
-                    setModuleId('');
-                    setGroupId('');
-                  }}
-                  error={!!errors.studyTypeId}
-                >
-                  <option value="">— Seleccionar —</option>
-                  {hierarchy.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </Select>
-                {errors.studyTypeId && <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.studyTypeId}</p>}
-              </div>
+          <div
+            className="pt-5 border-t border-ui-border dark:border-ui-dark-border"
+            style={{
+              animation: 'wizardFadeSlide 150ms ease both',
+            }}
+          >
+            <style>{`
+              @keyframes wizardFadeSlide {
+                from { opacity: 0; transform: translateY(-4px); }
+                to   { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
+            <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-4">
+              {BINDING_TITLES[visibility] ?? visibility}
+            </p>
 
-              {/* Estudio (visible if visibility is study, module, group) */}
-              {(visibility === 'study' || visibility === 'module' || visibility === 'group') && (
+            <div className="max-w-sm">
+              {visibility === 'study_type' && (
+                <div>
+                  <FieldLabel required>Tipo de Estudio</FieldLabel>
+                  <Select
+                    fieldSize="comfortable"
+                    value={studyTypeId}
+                    disabled={hierarchyLoading}
+                    onChange={(e) => setStudyTypeId(e.target.value)}
+                    error={!!errors.studyTypeId}
+                  >
+                    <option value="">— Seleccionar —</option>
+                    {hierarchy.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </Select>
+                  {errors.studyTypeId && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.studyTypeId}</p>
+                  )}
+                </div>
+              )}
+
+              {visibility === 'study' && (
                 <div>
                   <FieldLabel required>Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyId}
-                    disabled={!studyTypeId}
-                    onChange={(e) => {
-                      setStudyId(e.target.value);
-                      setModuleId('');
-                      setGroupId('');
-                    }}
+                    disabled={hierarchyLoading}
+                    onChange={(e) => setStudyId(e.target.value)}
                     error={!!errors.studyId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {availableStudies.map((s) => (
+                    {allStudies.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </Select>
-                  {errors.studyId && <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.studyId}</p>}
+                  {errors.studyId && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.studyId}</p>
+                  )}
                 </div>
               )}
 
-              {/* Módulo (visible if visibility is module, group) */}
-              {(visibility === 'module' || visibility === 'group') && (
+              {visibility === 'module' && (
                 <div>
                   <FieldLabel required>Módulo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={moduleId}
-                    disabled={!studyId}
-                    onChange={(e) => {
-                      setModuleId(e.target.value);
-                      setGroupId('');
-                    }}
+                    disabled={hierarchyLoading}
+                    onChange={(e) => setModuleId(e.target.value)}
                     error={!!errors.moduleId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {availableModules.map((m) => (
+                    {allModules.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </Select>
-                  {errors.moduleId && <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.moduleId}</p>}
+                  {errors.moduleId && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.moduleId}</p>
+                  )}
                 </div>
               )}
 
-              {/* Grupo (visible if visibility is group) */}
               {visibility === 'group' && (
                 <div>
-                  <FieldLabel required>Grupo</FieldLabel>
+                  <FieldLabel required>Equipo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={groupId}
-                    disabled={!moduleId}
+                    disabled={!groups.length}
                     onChange={(e) => setGroupId(e.target.value)}
                     error={!!errors.groupId}
                   >
@@ -223,12 +214,15 @@ export function WizardStep1Properties({
                       <option key={g.id} value={g.id}>{g.name}</option>
                     ))}
                   </Select>
-                  {errors.groupId && <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.groupId}</p>}
+                  {errors.groupId && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.groupId}</p>
+                  )}
                 </div>
               )}
             </div>
           </div>
         )}
+
       </div>
     </div>
   );
