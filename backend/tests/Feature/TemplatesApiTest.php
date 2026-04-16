@@ -609,7 +609,11 @@ class TemplatesApiTest extends TestCase
 
         $headersB = $this->authHeaders($userB, ['teacher']);
 
-        $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
+        $this->getJson("/api/v1/templates/{$tid}", $headersB)
+            ->assertOk()
+            ->assertJsonPath('data.group_id', $gid)
+            ->assertJsonPath('data.team.id', $gid)
+            ->assertJsonPath('data.team.name', 'Curso');
     }
 
     public function test_template_publish_requires_changelog_when_in_review(): void
