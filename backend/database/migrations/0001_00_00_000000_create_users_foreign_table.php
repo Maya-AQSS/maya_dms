@@ -45,9 +45,8 @@ return new class extends Migration
 
         PostgresFdwMigration::dropViewOrTableInPublic(self::VIEW_NAME);
 
-        DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TABLE);
-        DB::statement('DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER ' . self::FDW_SERVER);
-        DB::statement('DROP SERVER IF EXISTS ' . self::FDW_SERVER . ' CASCADE');
+        PostgresFdwMigration::dropForeignTableIfExists(self::FDW_TABLE);
+        PostgresFdwMigration::dropFdwServerAndUserMapping(self::FDW_SERVER);
 
         if (app()->environment('local')) {
             DB::statement('DROP TABLE IF EXISTS ' . self::LOCAL_SOURCE_TABLE);
@@ -109,61 +108,30 @@ return new class extends Migration
             $sourceTable = config('database.fdw.users.table', 'users');
         }
 
-        try {
-            DB::statement('CREATE EXTENSION IF NOT EXISTS postgres_fdw');
-        } catch (\Throwable $e) {
-            logger()->error('No permission for postgres_fdw');
+        if (! PostgresFdwMigration::ensurePostgresFdwExtension('users catalog')) {
             return;
         }
 
-        $safeHost = PostgresFdwMigration::escapeSqlLiteral((string) $host);
-        $safePort = PostgresFdwMigration::escapeSqlLiteral((string) $port);
-        $safeDatabase = PostgresFdwMigration::escapeSqlLiteral((string) $database);
-        $safeUsername = PostgresFdwMigration::escapeSqlLiteral((string) $username);
-        $safePassword = PostgresFdwMigration::escapeSqlLiteral((string) $password);
-        $safeSchema = PostgresFdwMigration::escapeSqlLiteral((string) $schema);
-        $safeSourceTable = PostgresFdwMigration::escapeSqlLiteral((string) $sourceTable);
+        PostgresFdwMigration::createFdwServerWithUserMapping(
+            self::FDW_SERVER,
+            (string) $host,
+            (string) $port,
+            (string) $database,
+            (string) $username,
+            (string) $password,
+        );
 
-        DB::statement("
-            CREATE SERVER IF NOT EXISTS " . self::FDW_SERVER . "
-            FOREIGN DATA WRAPPER postgres_fdw
-            OPTIONS (host '{$safeHost}', port '{$safePort}', dbname '{$safeDatabase}')
-        ");
+        $foreignColumnsSql = 'id VARCHAR(255), nombre VARCHAR(255), email VARCHAR(255), departamento VARCHAR(255)';
+        $viewSelectSql = 'id, nombre AS name, email, departamento AS department';
 
-        // En local el servidor PostgreSQL usa autenticación trust (sin contraseña),
-        // por lo que postgres_fdw necesita password_required=false para no-superusuarios.
-        $userMappingOptions = $isLocal
-            ? "user '{$safeUsername}', password '{$safePassword}', password_required 'false'"
-            : "user '{$safeUsername}', password '{$safePassword}'";
-
-        DB::statement("
-            CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
-            SERVER " . self::FDW_SERVER . "
-            OPTIONS ({$userMappingOptions})
-        ");
-
-        DB::statement("
-            CREATE FOREIGN TABLE IF NOT EXISTS " . self::FDW_TABLE . " (
-                id           VARCHAR(255),
-                nombre       VARCHAR(255),
-                email        VARCHAR(255),
-                departamento VARCHAR(255)
-            )
-            SERVER " . self::FDW_SERVER . "
-            OPTIONS (schema_name '{$safeSchema}', table_name '{$safeSourceTable}')
-        ");
-
-        DB::statement("
-            CREATE OR REPLACE VIEW " . self::VIEW_NAME . " AS
-            SELECT
-                id,
-                nombre AS name,
-                email,
-                departamento AS department
-            FROM " . self::FDW_TABLE . "
-        ");
-
-        PostgresFdwMigration::revokeAppUserWriteOnFdwRelation(self::FDW_TABLE);
+        PostgresFdwMigration::createForeignTableWithPassThroughView(
+            self::VIEW_NAME,
+            $foreignColumnsSql,
+            $viewSelectSql,
+            self::FDW_SERVER,
+            (string) $schema,
+            (string) $sourceTable,
+        );
     }
 
     /**
