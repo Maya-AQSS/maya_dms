@@ -35,7 +35,7 @@ class StoreTemplateRequest extends FormRequest
             'study_type_id'     => ['nullable', 'string', 'max:255', 'required_if:visibility_level,study_type'],
             'study_id'          => ['nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
             'module_id'         => ['nullable', 'string', 'max:255', 'required_if:visibility_level,module'],
-            'group_id'          => ['nullable', 'uuid', 'exists:groups,id', 'required_if:visibility_level,group'],
+            'group_id'          => ['nullable', 'uuid', 'exists:teams,id', 'required_if:visibility_level,group'],
             'organization_id'   => ['nullable', 'string', 'max:255'],
             'review_stages'     => ['sometimes', 'integer', 'min:0'],
             'review_mode'       => ['sometimes', 'string', 'in:sequential,parallel'],

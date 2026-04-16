@@ -39,7 +39,7 @@ class UpdateTemplateRequest extends FormRequest
             'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study_type'],
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,module'],
-            'group_id' => ['sometimes', 'nullable', 'uuid', 'exists:groups,id', 'required_if:visibility_level,group'],
+            'group_id' => ['sometimes', 'nullable', 'uuid', 'exists:teams,id', 'required_if:visibility_level,group'],
             'organization_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'status' => ['sometimes', 'string', 'in:draft,in_review,archived'],
             'review_stages' => ['sometimes', 'integer', 'min:0'],

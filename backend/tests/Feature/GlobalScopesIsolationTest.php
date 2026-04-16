@@ -158,6 +158,7 @@ class GlobalScopesIsolationTest extends TestCase
             'name' => 'Equipo privado',
             'description' => null,
             'owner_id' => $userA,
+            'is_department' => false,
         ]);
 
         $templateId = (string) Str::uuid();

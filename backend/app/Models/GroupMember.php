@@ -10,18 +10,21 @@ class GroupMember extends Model
 {
     use HasUuids;
 
+    /** @var string Tabla física {@see team_members}. */
+    protected $table = 'team_members';
+
     protected $keyType = 'string';
 
     public $incrementing = false;
 
     protected $fillable = [
-        'group_id',
+        'team_id',
         'user_id',
         'role',
     ];
 
-    public function group(): BelongsTo
+    public function team(): BelongsTo
     {
-        return $this->belongsTo(Group::class);
+        return $this->belongsTo(Group::class, 'team_id');
     }
 }

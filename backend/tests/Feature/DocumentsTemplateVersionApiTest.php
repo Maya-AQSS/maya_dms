@@ -245,6 +245,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'name' => 'Equipo doc',
             'description' => null,
             'owner_id' => $creatorId,
+            'is_department' => true,
         ]);
 
         $tid = (string) Str::uuid();
@@ -292,10 +293,12 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $docId = $createDoc->json('data.id');
         $createDoc->assertJsonPath('data.team.id', $gid);
         $createDoc->assertJsonPath('data.team.name', 'Equipo doc');
+        $createDoc->assertJsonPath('data.team.is_department', true);
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
         $show->assertOk();
         $show->assertJsonPath('data.team.id', $gid);
         $show->assertJsonPath('data.team.name', 'Equipo doc');
+        $show->assertJsonPath('data.team.is_department', true);
     }
 }

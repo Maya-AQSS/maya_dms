@@ -430,6 +430,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'G',
             'description' => null,
             'owner_id' => $userId,
+            'is_department' => false,
         ]);
 
         $this->postJson('/api/v1/templates', [
@@ -579,11 +580,12 @@ class TemplatesApiTest extends TestCase
             'name' => 'Curso',
             'description' => null,
             'owner_id' => $userA,
+            'is_department' => false,
         ]);
 
         GroupMember::query()->forceCreate([
             'id' => (string) Str::uuid(),
-            'group_id' => $gid,
+            'team_id' => $gid,
             'user_id' => $userB,
             'role' => 'member',
         ]);
@@ -613,7 +615,8 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.group_id', $gid)
             ->assertJsonPath('data.team.id', $gid)
-            ->assertJsonPath('data.team.name', 'Curso');
+            ->assertJsonPath('data.team.name', 'Curso')
+            ->assertJsonPath('data.team.is_department', false);
     }
 
     public function test_template_publish_requires_changelog_when_in_review(): void

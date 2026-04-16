@@ -6,7 +6,7 @@ use App\Enums\TemplateVisibilityLevel;
  * Datos mock de plantillas y revisores para local/testing.
  *
  * - Los user_id deben existir en database/data/users_mock.php
- * - Los group_id deben existir en database/data/groups_mock.php (si aplica)
+ * - Los group_id (FK a equipos) deben existir en database/data/teams_mock.php (si aplica)
  */
 return [
     'templates' => [

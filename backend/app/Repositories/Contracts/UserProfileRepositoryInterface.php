@@ -12,7 +12,7 @@ interface UserProfileRepositoryInterface
     /**
      * Grupos académicos del usuario; el JOIN incluye filtro por user_id.
      *
-     * @return array<int, object>
+     * @return list<array{id: string, name: string, description: ?string, role: string, is_department: bool}>
      */
     public function findGroupsByUserId(string $userId): array;
 }

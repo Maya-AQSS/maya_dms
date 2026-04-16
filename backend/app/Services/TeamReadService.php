@@ -28,7 +28,9 @@ class TeamReadService implements TeamReadServiceInterface
     }
 
     /**
-     * Devuelve un equipo visible por ID para el usuario o null.
+     * Valor embebible `team` para respuestas API (sin grupo o sin usuario → null).
+     * 
+     * @return array{id: string, name: string, is_department: bool}|null
      */
     public function embeddableTeamForGroup(?string $groupId, string $viewerUserId): ?array
     {

@@ -29,7 +29,13 @@ beforeEach(function () {
     ];
 
     $this->groups = [
-        (object) ['id' => 'g1', 'name' => 'Ingeniería', 'description' => 'Facultad', 'role' => 'member'],
+        [
+            'id' => 'g1',
+            'name' => 'Ingeniería',
+            'description' => 'Facultad',
+            'role' => 'member',
+            'is_department' => false,
+        ],
     ];
 });
 

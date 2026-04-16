@@ -28,7 +28,7 @@ class IndexTemplateRequest extends FormRequest
             'study_type_id'    => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id'         => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id'        => ['sometimes', 'nullable', 'string', 'max:255'],
-            'group_id'         => ['sometimes', 'nullable', 'uuid', 'exists:groups,id'],
+            'group_id'         => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
             'per_page'         => ['sometimes', 'integer', 'min:1', 'max:20'],
         ];
     }

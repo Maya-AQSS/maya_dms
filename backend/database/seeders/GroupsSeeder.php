@@ -11,7 +11,7 @@ class GroupsSeeder extends Seeder
 {
     public function run(): void
     {
-        $data = $this->mockGroupsData();
+        $data = $this->mockTeamsData();
 
         if ($data === []) {
             return;
@@ -19,18 +19,19 @@ class GroupsSeeder extends Seeder
 
         $now = Carbon::now();
 
-        if (Schema::hasTable('groups') && isset($data['groups'])) {
-            $groups = array_map(static function (array $row) use ($now): array {
+        $teamsWrittable = $this->writableTeamsCatalogTable();
+        if ($teamsWrittable !== null && isset($data['teams'])) {
+            $teams = array_map(static function (array $row) use ($now): array {
                 $row['created_at'] ??= $now;
                 $row['updated_at'] ??= $now;
 
                 return $row;
-            }, $data['groups']);
+            }, $data['teams']);
 
-            DB::table('groups')->insertOrIgnore($groups);
+            DB::table($teamsWrittable)->insertOrIgnore($teams);
         }
 
-        if (Schema::hasTable('group_members') && isset($data['members'])) {
+        if (Schema::hasTable('team_members') && isset($data['members'])) {
             $members = array_map(static function (array $row) use ($now): array {
                 $row['created_at'] ??= $now;
                 $row['updated_at'] ??= $now;
@@ -38,16 +39,59 @@ class GroupsSeeder extends Seeder
                 return $row;
             }, $data['members']);
 
-            DB::table('group_members')->insertOrIgnore($members);
+            DB::table('team_members')->insertOrIgnore($members);
         }
     }
 
     /**
-     * Lee grupos y membresías mock desde database/data/groups_mock.php.
+     * Tabla donde se pueden insertar filas del catálogo de equipos (mocks).
+     * - Local FDW: `teams_source`.
+     * - Testing: `teams` (tabla física).
+     * - Producción con solo vista `teams`: null (catálogo remoto, sin mocks desde aquí).
      */
-    private function mockGroupsData(): array
+    private function writableTeamsCatalogTable(): ?string
     {
-        $filePath = database_path('data/groups_mock.php');
+        if (Schema::hasTable('teams_source')) {
+            return 'teams_source';
+        }
+
+        if (! Schema::hasTable('teams')) {
+            return null;
+        }
+
+        return $this->teamsCatalogIsPhysicalTable('teams') ? 'teams' : null;
+    }
+
+    private function teamsCatalogIsPhysicalTable(string $name): bool
+    {
+        $driver = Schema::getConnection()->getDriverName();
+
+        if ($driver === 'sqlite') {
+            return true;
+        }
+
+        if ($driver !== 'pgsql') {
+            return true;
+        }
+
+        $row = DB::selectOne(
+            'SELECT table_type FROM information_schema.tables WHERE table_schema = ? AND table_name = ?',
+            ['public', $name]
+        );
+
+        if ($row === null) {
+            return false;
+        }
+
+        return strtoupper((string) $row->table_type) === 'BASE TABLE';
+    }
+
+    /**
+     * Lee equipos y membresías mock desde database/data/teams_mock.php.
+     */
+    private function mockTeamsData(): array
+    {
+        $filePath = database_path('data/teams_mock.php');
 
         if (! is_file($filePath)) {
             return [];

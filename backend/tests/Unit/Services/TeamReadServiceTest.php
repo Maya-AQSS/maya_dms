@@ -10,8 +10,8 @@ beforeEach(function () {
 
 it('lists visible teams for a user through repository', function () {
     $expected = [
-        ['id' => 't-1', 'name' => 'Equipo A'],
-        ['id' => 't-2', 'name' => 'Equipo B'],
+        ['id' => 't-1', 'name' => 'Equipo A', 'is_department' => false],
+        ['id' => 't-2', 'name' => 'Equipo B', 'is_department' => true],
     ];
 
     $this->repository
@@ -26,7 +26,7 @@ it('lists visible teams for a user through repository', function () {
 });
 
 it('returns one visible team by id for user', function () {
-    $expected = ['id' => 't-1', 'name' => 'Equipo A'];
+    $expected = ['id' => 't-1', 'name' => 'Equipo A', 'is_department' => false];
 
     $this->repository
         ->shouldReceive('findVisibleTeamByIdForUser')
@@ -64,7 +64,7 @@ it('returns null for embeddable team when viewer id is empty', function () {
 });
 
 it('delegates embeddable team to findVisibleTeamByIdForUser', function () {
-    $expected = ['id' => 'g-1', 'name' => 'Grupo'];
+    $expected = ['id' => 'g-1', 'name' => 'Grupo', 'is_department' => false];
 
     $this->repository
         ->shouldReceive('findVisibleTeamByIdForUser')

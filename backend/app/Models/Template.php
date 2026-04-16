@@ -21,7 +21,7 @@ class Template extends Model
      * - Roles con {@see JwtUser::canManageSharedTemplateVisibility()}: plantillas de su organización
      *   (organization_id NULL o igual al claim).
      * - Resto: plantillas compartidas según nivel (global + org, tipo de estudio, estudio, módulo, grupo)
-     *   usando claims JWT opcionales y membresía en group_members.
+     *   usando claims JWT opcionales y membresía en team_members.
      */
     protected static function booted(): void
     {
@@ -119,9 +119,9 @@ class Template extends Model
                 $gr->where('templates.visibility_level', TemplateVisibilityLevel::Group->value)
                     ->whereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
-                            ->from('group_members')
-                            ->whereColumn('group_members.group_id', 'templates.group_id')
-                            ->where('group_members.user_id', $userId);
+                            ->from('team_members')
+                            ->whereColumn('team_members.team_id', 'templates.group_id')
+                            ->where('team_members.user_id', $userId);
                     });
             });
         });

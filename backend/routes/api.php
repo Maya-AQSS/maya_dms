@@ -24,7 +24,7 @@ use Illuminate\Support\Facades\Route;
 |
 | Sprints planificados:
 |   Sprint 0 — infraestructura (este archivo, health check)
-|   Sprint 1 — auth, groups, academic hierarchy
+|   Sprint 1 — auth, academic hierarchy
 |   Sprint 2 — templates CRUD
 |   Sprint 3 — documents CRUD + block editor
 |   Sprint 4 — review workflow

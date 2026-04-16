@@ -53,15 +53,15 @@ it('findGroupsByUserId always includes user_id filter in JOIN', function () {
     $mockQuery = Mockery::mock();
     $mockQuery->shouldReceive('join')
         ->once()
-        ->with('groups', 'groups.id', '=', 'group_members.group_id')
+        ->with('teams', 'teams.id', '=', 'team_members.team_id')
         ->andReturnSelf();
     $mockQuery->shouldReceive('where')
         ->once()
-        ->with('group_members.user_id', '=', 'user-123')
+        ->with('team_members.user_id', '=', 'user-123')
         ->andReturnSelf();
     $mockQuery->shouldReceive('whereNull')
         ->once()
-        ->with('groups.deleted_at')
+        ->with('teams.deleted_at')
         ->andReturnSelf();
     $mockQuery->shouldReceive('select')
         ->once()
@@ -72,7 +72,7 @@ it('findGroupsByUserId always includes user_id filter in JOIN', function () {
 
     DB::shouldReceive('table')
         ->once()
-        ->with('group_members')
+        ->with('team_members')
         ->andReturn($mockQuery);
 
     $result = $this->repository->findGroupsByUserId('user-123');
