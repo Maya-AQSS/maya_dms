@@ -8,14 +8,15 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     fs: {
-      allow: ['..']
+      allow: ['..', '../../maya_infra/packages/maya-shared-auth-react']
     },
     watch: {
       usePolling: true,
     }
   },
   optimizeDeps: {
-    include: ['keycloak-js', 'axios']
+    include: ['keycloak-js', 'axios'],
+    exclude: ['@maya/shared-auth-react']
   },
   resolve: {
     alias: {
