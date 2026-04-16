@@ -7,8 +7,10 @@ import { fileURLToPath, URL } from 'node:url'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    host: '0.0.0.0',
+    allowedHosts: true,
     fs: {
-      allow: ['..', '../../maya_infra/packages/maya-shared-auth-react']
+      allow: ['..', '/maya_infra/packages/maya-shared-auth-react']
     },
     watch: {
       usePolling: true,
@@ -21,7 +23,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@maya/shared-auth-react': fileURLToPath(
-        new URL('./node_modules/@maya/shared-auth-react/src/index.ts', import.meta.url)
+        new URL('../../maya_infra/packages/maya-shared-auth-react/src/index.ts', import.meta.url)
       )
     }
   }
