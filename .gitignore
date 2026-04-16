@@ -27,6 +27,7 @@ frontend/.env.local
 frontend/.env.*.local
 frontend/node_modules/
 frontend/dist/
+frontend/refresh_token.sh
 dist/
 
 # =============================================================================
@@ -60,3 +61,8 @@ Icon?
 
 # Windows
 Thumbs.db
+# Claude Code — archivos generados (no commitear)
+.claude/
+.agent/
+.github/
+!.github/workflows/

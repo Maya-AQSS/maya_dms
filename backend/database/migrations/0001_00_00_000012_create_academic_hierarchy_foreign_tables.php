@@ -31,7 +31,7 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (app()->environment('testing')) {
+        if (app()->environment('testing', 'local')) {
             $this->createTestingCatalogTables();
             return;
         }
@@ -41,7 +41,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (app()->environment('testing')) {
+        if (app()->environment('testing', 'local')) {
             DB::statement('DROP TABLE IF EXISTS course_modules');
             DB::statement('DROP TABLE IF EXISTS studies');
             DB::statement('DROP TABLE IF EXISTS study_types');

@@ -174,12 +174,11 @@ export function TemplatesContent() {
 
       {viewMode === 'list' ? (
         <>
-          <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-4 space-y-3">
+          <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-5 space-y-3">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
               Filtros
             </h3>
-            {/* Row 1: Visibilidad + Estado */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div>
                 <FieldLabel>Visibilidad</FieldLabel>
                 <Select
@@ -213,98 +212,32 @@ export function TemplatesContent() {
                   ))}
                 </Select>
               </div>
-            </div>
-
-            {/* Row 2: Cascade hierarchy + Limpiar filtros */}
-            <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-end">
-              <div className="flex-1 min-w-32">
-                <FieldLabel>Tipo de Estudio</FieldLabel>
-                <Select
-                  fieldSize="sm"
-                  value={filterUi.studyTypeId}
-                  disabled={hierarchyLoading}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    applyFilters({
-                      study_type_id: val || undefined,
-                      study_id: undefined,
-                      module_id: undefined,
-                      group_id: undefined,
-                    });
-                  }}
-                >
-                  <option value="">Todos</option>
-                  {hierarchy.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex-1 min-w-32">
-                <FieldLabel>Estudio</FieldLabel>
-                <Select
-                  fieldSize="sm"
-                  value={filterUi.studyId}
-                  disabled={!filterUi.studyTypeId || hierarchyLoading}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    applyFilters({
-                      study_id: val || undefined,
-                      module_id: undefined,
-                      group_id: undefined,
-                    });
-                  }}
-                >
-                  <option value="">Todos</option>
-                  {availableStudies.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex-1 min-w-32">
-                <FieldLabel>Módulo</FieldLabel>
-                <Select
-                  fieldSize="sm"
-                  value={filterUi.moduleId}
-                  disabled={!filterUi.studyId || hierarchyLoading}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    applyFilters({
-                      module_id: val || undefined,
-                      group_id: undefined,
-                    });
-                  }}
-                >
-                  <option value="">Todos</option>
-                  {availableModules.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="flex-1 min-w-32">
-                <FieldLabel>Grupo</FieldLabel>
-                <Select
-                  fieldSize="sm"
-                  value={filterUi.groupId}
-                  onChange={(e) =>
-                    applyFilters({ group_id: e.target.value || undefined })
-                  }
-                >
-                  <option value="">Todos</option>
-                  {groups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="shrink-0">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="md"
-                  onClick={clearFilters}
-                  className="h-9.5 whitespace-nowrap"
-                >
-                  Limpiar filtros
-                </Button>
+              <div className="lg:col-span-3">
+                <div className="flex flex-col lg:flex-row items-end gap-3">
+                  <div className="flex-1">
+                    <TemplateHierarchyFields
+                      values={{
+                        study_type_id: filterUi.studyTypeId,
+                        study_id: filterUi.studyId,
+                        module_id: filterUi.moduleId,
+                        group_id: filterUi.groupId,
+                      }}
+                      onFieldChange={(key, value) =>
+                        applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
+                      }
+                      gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={clearFilters}
+                    className="h-9.5 whitespace-nowrap shrink-0"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
               </div>
             </div>
           </div>

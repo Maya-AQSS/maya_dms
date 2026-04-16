@@ -18,7 +18,6 @@ COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 COPY . .
 
-RUN composer install --optimize-autoloader --no-dev --no-interaction --ignore-platform-reqs 2>/dev/null || true
 RUN chown -R www-data:www-data storage bootstrap/cache 2>/dev/null || true
 
 COPY docker-entrypoint.sh /usr/local/bin/

@@ -30,23 +30,23 @@ const focusRing =
   'focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35 focus-visible:ring-offset-1 focus-visible:ring-offset-ui-card dark:focus-visible:ring-offset-ui-dark-card';
 
 const sizeClass: Record<ButtonSize, string> = {
-  xs: 'px-2 py-1 text-xs font-medium rounded',
-  sm: 'px-3 py-1.5 text-xs font-medium rounded',
-  md: 'px-4 py-2 text-sm font-medium rounded',
+  xs: 'px-2 py-1 text-xs font-semibold rounded-md',
+  sm: 'px-4 py-1.5 text-sm font-semibold rounded-md',
+  md: 'px-5 py-2 text-sm font-semibold rounded-md',
 };
 
 const variantClass: Record<ButtonVariant, string> = {
-  primary: 'bg-odoo-purple text-text-inverse hover:bg-odoo-purple-d active:bg-odoo-purple-d',
+  primary: 'bg-odoo-purple dark:bg-odoo-dark-purple text-text-inverse border border-odoo-purple dark:border-odoo-dark-purple hover:bg-odoo-purple-d dark:hover:bg-odoo-dark-purple-d hover:border-odoo-purple-d dark:hover:border-odoo-dark-purple-d',
   secondary:
     'border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary hover:bg-white dark:hover:bg-ui-dark-bg',
-  danger: 'bg-danger text-text-inverse hover:brightness-95 active:brightness-90',
-  teal: 'bg-odoo-teal text-text-inverse hover:bg-odoo-teal-d active:bg-odoo-teal-d',
+  danger: 'bg-danger text-text-inverse border border-danger hover:bg-danger/90 active:bg-danger/90',
+  teal: 'bg-odoo-teal text-text-inverse border border-odoo-teal hover:bg-odoo-teal-d active:bg-odoo-teal-d',
   outline:
     'border border-ui-border dark:border-ui-dark-border text-text-secondary dark:text-text-dark-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg',
   outlineTeal: 'border border-odoo-teal/40 text-odoo-teal hover:bg-odoo-teal/10',
   outlineWarning: 'border border-warning/40 text-warning-dark hover:bg-warning-light/30 dark:hover:bg-warning-dark/15',
   ghost:
-    'border-0 bg-transparent px-1 py-0.5 text-text-link dark:text-text-dark-link hover:underline disabled:opacity-40 rounded',
+    'bg-transparent text-text-secondary dark:text-text-dark-secondary border border-transparent hover:border-ui-border dark:hover:border-ui-dark-border hover:text-text-primary dark:hover:text-text-dark-primary',
   unstyled: '',
 };
 

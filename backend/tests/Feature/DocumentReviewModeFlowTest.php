@@ -8,7 +8,7 @@ use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
 use App\Models\TemplateVersion;
-use App\Services\Contracts\JwksServiceInterface;
+use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;

@@ -6,9 +6,11 @@ echo "[entrypoint] Clearing bootstrap cache..."
 rm -f /var/www/html/bootstrap/cache/packages.php
 rm -f /var/www/html/bootstrap/cache/services.php
 
-# Install dependencies if vendor is missing (handles fresh anonymous volumes)
-if [ ! -f /var/www/html/vendor/autoload.php ]; then
-    echo "[entrypoint] vendor/autoload.php not found. Running composer install..."
+# Install dependencies if vendor is missing OR if path packages are not linked
+# (handles fresh anonymous volumes AND the case where autoload.php exists but
+# path packages like maya/shared-auth-laravel were dropped from the volume)
+if [ ! -f /var/www/html/vendor/autoload.php ] || [ ! -d /var/www/html/vendor/maya/shared-auth-laravel ]; then
+    echo "[entrypoint] vendor incomplete. Running composer install..."
     composer install --optimize-autoloader --no-interaction --ignore-platform-reqs
 fi
 

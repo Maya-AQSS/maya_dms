@@ -6,7 +6,7 @@ use App\Models\Document;
 use App\Models\Group;
 use App\Models\Comment;
 use App\Models\Template;
-use App\Services\Contracts\JwksServiceInterface;
+use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;

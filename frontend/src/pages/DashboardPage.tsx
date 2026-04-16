@@ -2,32 +2,28 @@ import { Button } from '../ui';
 
 /**
  * Portada con métricas placeholder y tabla de documentos recientes.
- * En modo oscuro: texto siempre claro sobre tarjeta oscura + acento en borde izquierdo (mejor contraste WCAG).
+ * Adaptado al diseño unificado de Maya Dashboard.
  */
 const STATS = [
   {
     label: 'Total documentos',
     value: '—',
-    light: 'bg-odoo-purple/10 text-odoo-purple border-odoo-purple/20',
-    dark: 'dark:bg-ui-dark-card dark:border-ui-dark-border dark:border-l-4 dark:border-l-odoo-purple-l dark:text-text-dark-primary',
+    colorClass: 'bg-odoo-purple/10 dark:bg-odoo-purple/40 text-odoo-purple-d dark:text-white border-odoo-purple/20 dark:border-odoo-purple/50',
   },
   {
     label: 'Subidos hoy',
     value: '—',
-    light: 'bg-odoo-teal/10 text-odoo-teal border-odoo-teal/20',
-    dark: 'dark:bg-ui-dark-card dark:border-ui-dark-border dark:border-l-4 dark:border-l-odoo-dark-teal dark:text-text-dark-primary',
+    colorClass: 'bg-odoo-teal/10 dark:bg-odoo-teal/40 text-odoo-teal-d dark:text-white border-odoo-teal/20 dark:border-odoo-teal/50',
   },
   {
     label: 'Pendientes revisión',
     value: '—',
-    light: 'bg-warning-light text-warning-dark border-warning/25',
-    dark: 'dark:bg-ui-dark-card dark:border-ui-dark-border dark:border-l-4 dark:border-l-warning dark:text-text-dark-primary',
+    colorClass: 'bg-warning-light dark:bg-warning-dark/50 text-warning-dark dark:text-white border-warning/20 dark:border-warning/50',
   },
   {
     label: 'Archivados',
     value: '—',
-    light: 'bg-ui-body text-text-secondary border-ui-border',
-    dark: 'dark:bg-ui-dark-card dark:border-ui-dark-border dark:border-l-4 dark:border-l-zinc-500 dark:text-text-dark-primary',
+    colorClass: 'bg-ui-body dark:bg-ui-dark-card text-text-secondary dark:text-text-dark-secondary border-ui-border dark:border-ui-dark-border',
   },
 ] as const;
 
@@ -38,12 +34,12 @@ export function DashboardPage() {
         {STATS.map((s) => (
           <div
             key={s.label}
-            className={`rounded-lg border p-4 shadow-card ${s.light} ${s.dark}`}
+            className={`rounded-lg border p-5 shadow-card ${s.colorClass}`}
           >
-            <p className="text-xs uppercase tracking-wide font-semibold opacity-90 dark:opacity-100 dark:text-text-dark-primary">
+            <p className="text-xs uppercase tracking-wide font-medium opacity-75">
               {s.label}
             </p>
-            <p className="text-3xl font-bold mt-1 tabular-nums dark:text-text-dark-primary">{s.value}</p>
+            <p className="text-3xl font-bold mt-1 tabular-nums">{s.value}</p>
           </div>
         ))}
       </div>

@@ -4,7 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Document;
 use App\Models\Template;
-use App\Services\Contracts\JwksServiceInterface;
+use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;

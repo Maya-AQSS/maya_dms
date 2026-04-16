@@ -130,10 +130,16 @@ return new class extends Migration
             OPTIONS (host '{$safeHost}', port '{$safePort}', dbname '{$safeDatabase}')
         ");
 
+        // En local el servidor PostgreSQL usa autenticación trust (sin contraseña),
+        // por lo que postgres_fdw necesita password_required=false para no-superusuarios.
+        $userMappingOptions = $isLocal
+            ? "user '{$safeUsername}', password '{$safePassword}', password_required 'false'"
+            : "user '{$safeUsername}', password '{$safePassword}'";
+
         DB::statement("
             CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
             SERVER " . self::FDW_SERVER . "
-            OPTIONS (user '{$safeUsername}', password '{$safePassword}')
+            OPTIONS ({$userMappingOptions})
         ");
 
         DB::statement("

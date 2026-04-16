@@ -1,10 +1,10 @@
 /**
  * Cliente HTTP mínimo para la API Laravel (prefijo /api/v1).
- * El JWT se guarda vía {@link bootstrapSessionToken} (URL corporativa o VITE_DEV_ACCESS_TOKEN).
+ * El JWT se obtiene vía `@maya/shared-auth-react` (Keycloak SSO).
  */
-import { getStoredAccessToken } from '../lib/sessionToken';
+import { authService } from '../lib/auth';
 
-const DEFAULT_BASE_URL = 'http://localhost:8001/api/v1';
+const DEFAULT_BASE_URL = 'http://maya-dms-api.localhost/api/v1';
 
 export class ApiHttpError extends Error {
   readonly status: number;
@@ -27,17 +27,22 @@ function buildUrl(path: string): string {
   return path.startsWith('http') ? path : `${base}/${normalizedPath}`;
 }
 
-function authHeaders(jsonBody: boolean): HeadersInit {
-  const headers: HeadersInit = {
+async function authHeaders(jsonBody: boolean): Promise<HeadersInit> {
+  const headers: Record<string, string> = {
     Accept: 'application/json',
   };
+  
   if (jsonBody) {
     headers['Content-Type'] = 'application/json';
   }
-  const token = getStoredAccessToken();
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+
+  if (authService.keycloak.authenticated) {
+    await authService.keycloak.updateToken(30).catch(() => authService.keycloak.login());
+    if (authService.keycloak.token) {
+      headers.Authorization = `Bearer ${authService.keycloak.token}`;
+    }
   }
+
   return headers;
 }
 
@@ -66,11 +71,14 @@ export async function apiFetchJson<T>(path: string, options: ApiFetchOptions = {
 
   const response = await fetch(url, {
     method,
-    headers: authHeaders(hasBody),
+    headers: await authHeaders(hasBody),
     body: hasBody ? JSON.stringify(options.body) : undefined,
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      authService.keycloak.login();
+    }
     const msg = await parseErrorMessage(response);
     throw new ApiHttpError(msg || `HTTP ${response.status}`, response.status);
   }
