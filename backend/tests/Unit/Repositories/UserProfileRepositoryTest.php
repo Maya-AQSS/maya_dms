@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
  *   Verifica que findById SIEMPRE filtre por user_id.
  *
  * Escenario 4 (Prohibición de JOIN sin filtro):
- *   Verifica que findGroupsByUserId SIEMPRE incluya filtro de user_id en el JOIN.
+ *   Verifica que findTeamsByUserId SIEMPRE incluya filtro de user_id en el JOIN.
  */
 
 uses(Tests\TestCase::class);
@@ -49,7 +49,7 @@ it('findById runs inside transaction with SET LOCAL statement_timeout and filter
     expect($result)->toBeNull();
 });
 
-it('findGroupsByUserId always includes user_id filter in JOIN', function () {
+it('findTeamsByUserId always includes user_id filter in JOIN', function () {
     $mockQuery = Mockery::mock();
     $mockQuery->shouldReceive('join')
         ->once()
@@ -75,7 +75,7 @@ it('findGroupsByUserId always includes user_id filter in JOIN', function () {
         ->with('team_members')
         ->andReturn($mockQuery);
 
-    $result = $this->repository->findGroupsByUserId('user-123');
+    $result = $this->repository->findTeamsByUserId('user-123');
 
     expect($result)->toBe([]);
 });

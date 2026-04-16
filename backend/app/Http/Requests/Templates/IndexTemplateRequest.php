@@ -28,7 +28,7 @@ class IndexTemplateRequest extends FormRequest
             'study_type_id'    => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id'         => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id'        => ['sometimes', 'nullable', 'string', 'max:255'],
-            'group_id'         => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
+            'team_id'          => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
             'per_page'         => ['sometimes', 'integer', 'min:1', 'max:20'],
         ];
     }
@@ -54,7 +54,7 @@ class IndexTemplateRequest extends FormRequest
             studyTypeId: $v['study_type_id'] ?? null,
             studyId: $v['study_id'] ?? null,
             moduleId: $v['module_id'] ?? null,
-            groupId: $v['group_id'] ?? null,
+            teamId: $v['team_id'] ?? null,
         );
     }
 }

@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
-use App\Models\Group;
+use App\Models\Team;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use Maya\Auth\Contracts\JwksServiceInterface;
@@ -125,7 +125,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'draft',
@@ -166,7 +166,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',
@@ -228,7 +228,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $show->assertJsonPath('data.team', null);
     }
 
-    public function test_show_document_includes_team_when_template_is_group_scoped(): void
+    public function test_show_document_includes_team_when_template_is_team_scoped(): void
     {
         $creatorId = (string) Str::uuid();
         $reviewerId = (string) Str::uuid();
@@ -240,7 +240,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         );
 
         $gid = (string) Str::uuid();
-        Group::query()->forceCreate([
+        Team::query()->forceCreate([
             'id' => $gid,
             'name' => 'Equipo doc',
             'description' => null,
@@ -255,12 +255,12 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $tid,
             'name' => 'Plantilla de equipo',
             'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Group->value,
+            'visibility_level' => TemplateVisibilityLevel::Team->value,
             'delivery_deadline' => null,
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => $gid,
+            'team_id' => $gid,
             'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',

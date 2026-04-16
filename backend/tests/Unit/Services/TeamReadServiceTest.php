@@ -51,20 +51,20 @@ it('returns null when team is not visible for user', function () {
     expect($result)->toBeNull();
 });
 
-it('returns null for embeddable team when group id is null without hitting repository', function () {
+it('returns null for embeddable team when team id is null without hitting repository', function () {
     $this->repository->shouldNotReceive('findVisibleTeamByIdForUser');
 
-    expect($this->service->embeddableTeamForGroup(null, 'user-123'))->toBeNull();
+    expect($this->service->embeddableTeam(null, 'user-123'))->toBeNull();
 });
 
 it('returns null for embeddable team when viewer id is empty', function () {
     $this->repository->shouldNotReceive('findVisibleTeamByIdForUser');
 
-    expect($this->service->embeddableTeamForGroup('g-1', ''))->toBeNull();
+    expect($this->service->embeddableTeam('g-1', ''))->toBeNull();
 });
 
 it('delegates embeddable team to findVisibleTeamByIdForUser', function () {
-    $expected = ['id' => 'g-1', 'name' => 'Grupo', 'is_department' => false];
+    $expected = ['id' => 'g-1', 'name' => 'Equipo', 'is_department' => false];
 
     $this->repository
         ->shouldReceive('findVisibleTeamByIdForUser')
@@ -72,6 +72,6 @@ it('delegates embeddable team to findVisibleTeamByIdForUser', function () {
         ->with('user-123', 'g-1')
         ->andReturn($expected);
 
-    expect($this->service->embeddableTeamForGroup('g-1', 'user-123'))->toBe($expected);
+    expect($this->service->embeddableTeam('g-1', 'user-123'))->toBe($expected);
 });
 

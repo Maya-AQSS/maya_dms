@@ -197,7 +197,7 @@ class TemplateService implements TemplateServiceInterface
             'study_type_id' => $dto->studyTypeId,
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,
-            'group_id' => $dto->groupId,
+            'team_id' => $dto->teamId,
             'organization_id' => $organizationId,
             'created_by' => (string) $userId,
             'status' => 'draft',
@@ -243,8 +243,8 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setModuleId) {
             $attributes['module_id'] = $dto->moduleId;
         }
-        if ($dto->setGroupId) {
-            $attributes['group_id'] = $dto->groupId;
+        if ($dto->setTeamId) {
+            $attributes['team_id'] = $dto->teamId;
         }
         if ($dto->setOrganizationId) {
             $attributes['organization_id'] = $dto->organizationId;
@@ -303,7 +303,7 @@ class TemplateService implements TemplateServiceInterface
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => $orgId,
             'created_by' => $actorId,
             'status' => 'draft',

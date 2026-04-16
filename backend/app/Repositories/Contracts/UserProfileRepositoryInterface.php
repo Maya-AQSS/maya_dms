@@ -14,5 +14,5 @@ interface UserProfileRepositoryInterface
      *
      * @return list<array{id: string, name: string, description: ?string, role: string, is_department: bool}>
      */
-    public function findGroupsByUserId(string $userId): array;
+    public function findTeamsByUserId(string $userId): array;
 }

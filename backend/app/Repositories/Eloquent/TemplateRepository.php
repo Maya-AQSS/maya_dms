@@ -57,7 +57,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.study_type_id',
                 'templates.study_id',
                 'templates.module_id',
-                'templates.group_id',
+                'templates.team_id',
                 'templates.organization_id',
                 'templates.created_by',
                 'templates.status',
@@ -83,8 +83,8 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filters->moduleId !== null) {
             $query->where('templates.module_id', $filters->moduleId);
         }
-        if ($filters->groupId !== null) {
-            $query->where('templates.group_id', $filters->groupId);
+        if ($filters->teamId !== null) {
+            $query->where('templates.team_id', $filters->teamId);
         }
 
         return $query

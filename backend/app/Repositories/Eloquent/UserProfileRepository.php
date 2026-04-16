@@ -46,10 +46,10 @@ class UserProfileRepository implements UserProfileRepositoryInterface
     }
 
     /**
-     * Obtiene los grupos académicos a los que pertenece el usuario.
+     * Obtiene los equipos a los que pertenece el usuario.
      * SIEMPRE filtra por user_id — nunca ejecuta JOIN sin filtro del usuario activo.
      */
-    public function findGroupsByUserId(string $userId): array
+    public function findTeamsByUserId(string $userId): array
     {
         return DB::table('team_members')
             ->join('teams', 'teams.id', '=', 'team_members.team_id')

@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
-class Group extends Model
+class Team extends Model
 {
     use HasUuids, SoftDeletes;
 
-    /** @var string Tabla física {@see teams} (equipos); el modelo conserva el nombre {@see Group} por compatibilidad temporal. */
+    /** @var string Catálogo lógico de equipos (tabla o vista {@see teams}). */
     protected $table = 'teams';
 
     protected $keyType = 'string';
@@ -59,6 +59,6 @@ class Group extends Model
 
     public function members(): HasMany
     {
-        return $this->hasMany(GroupMember::class, 'team_id');
+        return $this->hasMany(TeamMember::class, 'team_id');
     }
 }

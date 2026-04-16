@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Comment;
 use App\Models\Document;
-use App\Models\Group;
+use App\Models\Team;
 use App\Models\Template;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -145,16 +145,16 @@ class GlobalScopesIsolationTest extends TestCase
     }
 
     /**
-     * Sin CRUD de grupos en API: el aislamiento de equipos se refleja vía plantillas de visibilidad grupo.
+     * Sin CRUD de equipos en API: el aislamiento se refleja vía plantillas de visibilidad por equipo.
      */
-    public function test_teacher_without_group_membership_cannot_view_group_scoped_template(): void
+    public function test_teacher_without_team_membership_cannot_view_team_scoped_template(): void
     {
         $userA = 'user-a-uuid-123';
         $userB = 'user-b-uuid-999';
 
-        $groupId = (string) Str::uuid();
-        Group::query()->forceCreate([
-            'id' => $groupId,
+        $teamId = (string) Str::uuid();
+        Team::query()->forceCreate([
+            'id' => $teamId,
             'name' => 'Equipo privado',
             'description' => null,
             'owner_id' => $userA,
@@ -166,12 +166,12 @@ class GlobalScopesIsolationTest extends TestCase
             'id' => $templateId,
             'name' => 'Plantilla de equipo',
             'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Group->value,
+            'visibility_level' => TemplateVisibilityLevel::Team->value,
             'delivery_deadline' => null,
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => $groupId,
+            'team_id' => $teamId,
             'organization_id' => null,
             'created_by' => $userA,
             'status' => 'draft',

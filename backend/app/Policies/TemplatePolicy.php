@@ -9,7 +9,7 @@ use App\Models\Template;
 /**
  * Autorización sobre plantillas normativas y segregación de funciones (SoD).
  *
- * Listado y detalle confían en el global scope de {@see Template} (como {@see Group}).
+ * Listado y detalle confían en el global scope de {@see Template} (como {@see Team}).
  *
  * Visibilidad compartida (no personal) en alta o cambio de nivel:
  * usar {@see JwtUser::canManageSharedTemplateVisibility()} vía {@see self::create}.

@@ -4,23 +4,34 @@ use App\Support\PostgresFdwMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Catálogo de equipos: solo lectura desde la aplicación (visibilidad de plantillas).
- *
- * - testing: tabla física `teams` (SQLite / PostgreSQL de tests).
- * - local: tabla `teams_source` + postgres_fdw (`teams_fdw`) + vista `teams` (misma BD que la app).
- * - resto: FDW hacia la tabla remota configurada en database.fdw.teams (sin teams_source).
- *
- * Los mocks de desarrollo se insertan en `teams_source` (local) o en `teams` (testing), nunca en la vista.
- */
 return new class extends Migration
 {
+    /**
+     * Nombre de la relación lógica que consume la app (`exists:teams,id`, modelo {@see \App\Models\Team}).
+     *
+     * Rutas (mismo patrón FDW que {@see 0001_00_00_000000_create_users_foreign_table}; catálogo distinto, servidor propio):
+     * - `testing`: tabla física `teams` (sin postgres_fdw).
+     * - `local`: `teams_source` + foreign table {@see self::FDW_TABLE} + vista homónima vía
+     *   {@see PostgresFdwMigration::createForeignTableWithPassThroughView} y servidor {@see self::FDW_SERVER}.
+     * - staging/production: FDW remoto según `config('database.fdw.teams')`.
+     *
+     * Mocks: {@see \Database\Seeders\TeamsSeeder} en `teams_source` (local) o tabla `teams` (testing), nunca en la vista.
+     */
     private const VIEW_NAME = 'teams';
 
+    /**
+     * Nombre de la foreign table gestionada por postgres_fdw (siempre `{base}_fdw`).
+     */
     private const FDW_TABLE = 'teams_fdw';
 
+    /**
+     * Servidor FDW propio del catálogo de equipos (no reutiliza `users_server`: otro origen / otro mapping).
+     */
     private const FDW_SERVER = 'teams_server';
 
+    /**
+     * Tabla local escribible solo en `local`; la vista `teams` la lee a través del FDW.
+     */
     private const LOCAL_SOURCE_TABLE = 'teams_source';
 
     public function up(): void
@@ -53,7 +64,7 @@ return new class extends Migration
     }
 
     /**
-     * Tabla local de solo testing (PostgreSQL / SQLite).
+     * Tabla local de solo testing (SQLite / PostgreSQL de tests).
      */
     private function createTestingTeamsTable(): void
     {
@@ -72,9 +83,9 @@ return new class extends Migration
     }
 
     /**
-     * Configura FDW para local y producción/staging.
-     * - local: apunta a teams_source (misma BD).
-     * - producción: apunta a BD externa (config database.fdw.teams.*).
+     * Monta postgres_fdw: foreign table + vista de paso, igual que usuarios.
+     * - `local`: conexión y credenciales de `pgsql` hacia `teams_source` en esta BD.
+     * - otros: `database.fdw.teams.*` hacia el catálogo remoto real.
      */
     private function setupFdw(): void
     {
@@ -129,7 +140,7 @@ return new class extends Migration
     }
 
     /**
-     * Fuente local para simular catálogo externo en entorno local (rellenable con mocks).
+     * Fuente local para simular catálogo corporativo en entorno `local` (rellenable con mocks).
      */
     private function createLocalTeamsSourceTable(): void
     {

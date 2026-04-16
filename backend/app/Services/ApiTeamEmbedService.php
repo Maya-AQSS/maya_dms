@@ -20,10 +20,10 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
      */
     public function embedOnTemplate(Template $template, string $viewerUserId): void
     {
-        $groupId = $template->group_id;
+        $teamCatalogId = $template->team_id;
 
-        $team = $this->teamReadService->embeddableTeamForGroup(
-            $groupId !== null ? (string) $groupId : null,
+        $team = $this->teamReadService->embeddableTeam(
+            $teamCatalogId !== null ? (string) $teamCatalogId : null,
             $viewerUserId,
         );
         $template->setAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY, $team);
@@ -53,10 +53,10 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     public function embedOnDocument(Document $document, string $viewerUserId): void
     {
         $document->loadMissing('template');
-        $groupId = $document->template?->group_id;
+        $teamCatalogId = $document->template?->team_id;
 
-        $team = $this->teamReadService->embeddableTeamForGroup(
-            $groupId !== null ? (string) $groupId : null,
+        $team = $this->teamReadService->embeddableTeam(
+            $teamCatalogId !== null ? (string) $teamCatalogId : null,
             $viewerUserId,
         );
 

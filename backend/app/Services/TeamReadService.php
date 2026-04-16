@@ -28,17 +28,17 @@ class TeamReadService implements TeamReadServiceInterface
     }
 
     /**
-     * Valor embebible `team` para respuestas API (sin grupo o sin usuario → null).
-     * 
+     * Valor embebible `team` para respuestas API (sin equipo o sin usuario → null).
+     *
      * @return array{id: string, name: string, is_department: bool}|null
      */
-    public function embeddableTeamForGroup(?string $groupId, string $viewerUserId): ?array
+    public function embeddableTeam(?string $teamId, string $viewerUserId): ?array
     {
-        if ($groupId === null || $groupId === '' || $viewerUserId === '') {
+        if ($teamId === null || $teamId === '' || $viewerUserId === '') {
             return null;
         }
 
-        return $this->findVisibleTeamByIdForUser($viewerUserId, $groupId);
+        return $this->findVisibleTeamByIdForUser($viewerUserId, $teamId);
     }
 }
 

@@ -10,8 +10,8 @@ use Illuminate\Support\Facades\Schema;
  *
  * Los valores de visibility_level coinciden con {@see TemplateVisibilityLevel}.
  *
- * `group_id` guarda el id del equipo en el catálogo lógico `teams` (nombre de columna histórico en API).
- * No hay FK física: en entornos con FDW `teams` es una vista; en `testing` es tabla, pero se mantiene el mismo patrón (validación con exists:teams,id).
+ * `team_id` guarda el id del equipo en el catálogo lógico `teams`.
+ * No hay FK física: en entornos con FDW `teams` es una vista; en `testing` es tabla (validación con exists:teams,id).
  */
 return new class extends Migration
 {
@@ -32,7 +32,7 @@ return new class extends Migration
             $table->string('module_id')->nullable();
 
             // Sin FK física hacia `teams` (vista FDW o tabla en testing); validación exists:teams,id en Form Requests.
-            $table->uuid('group_id')->nullable()->index();
+            $table->uuid('team_id')->nullable()->index();
 
             $table->string('organization_id')->nullable(); // FK lógica → organización
             $table->string('created_by');                  // FK lógica → users (FDW)
