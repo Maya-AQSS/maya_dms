@@ -434,11 +434,6 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
     onCancel: () => void,
   ) => (
     <div className="space-y-4">
-      {formUiState === 'locked' && (
-        <div className="px-3 py-2 bg-warning-light/20 border border-warning/30 rounded text-[11px] text-warning-dark font-bold">
-          Bloque bloqueado: su obligatoriedad es siempre Obligatorio.
-        </div>
-      )}
       <div>
         <FieldLabel required>Nombre</FieldLabel>
         <TextInput
@@ -702,11 +697,6 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
                 {currentMultiBlock?.title || 'Bloque sin nombre'}
               </p>
 
-              {formUiState === 'locked' && (
-                <div className="px-3 py-2 bg-warning-light/20 border border-warning/30 rounded text-[11px] text-warning-dark font-bold">
-                  Bloque bloqueado: su obligatoriedad es siempre Obligatorio.
-                </div>
-              )}
               <div>
                 <FieldLabel required>Nombre</FieldLabel>
                 <TextInput
