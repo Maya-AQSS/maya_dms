@@ -312,18 +312,18 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               variant="secondary"
               size="md"
               onClick={handleBackArrow}
-              className="text-[10px] font-black uppercase tracking-widest"
+              className="text-[10px] font-black uppercase tracking-widest px-8 rounded-full"
             >
               Cancelar
             </Button>
             <div className="flex flex-col items-end gap-1">
               <Button
                 variant="primary"
-                size={step === 'summary' ? 'lg' : 'md'}
+                size="md"
                 loading={saving}
                 disabled={step === 'blocks' && blocksCount === 0}
                 onClick={handleContinue}
-                className={`text-[10px] font-black uppercase tracking-widest px-8 shadow-sm ${step === 'summary' ? 'bg-success border-success hover:bg-success-dark' : ''}`}
+                className={`text-[10px] font-black uppercase tracking-widest px-8 rounded-full shadow-sm ${step === 'summary' ? 'bg-success border-success hover:bg-success-dark' : ''}`}
               >
                 {step === 'summary' ? 'Publicar plantilla ✓' : 'Guardar y continuar →'}
               </Button>
