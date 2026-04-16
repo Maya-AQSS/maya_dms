@@ -63,8 +63,21 @@ function SortableValidatorItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-4 py-3 rounded-lg border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card transition-shadow ${isDragging ? 'shadow-lg border-odoo-purple/50' : 'border-ui-border shadow-sm'}`}
+      className={`flex items-center gap-3 px-4 py-3 rounded-lg border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card transition-shadow ${
+        isDragging ? 'shadow-lg border-odoo-purple/50' : 'border-ui-border shadow-sm'
+      }`}
     >
+      {isOrdered && (
+        <button
+          type="button"
+          className="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+          {...attributes}
+          {...listeners}
+        >
+          ⠿
+        </button>
+      )}
+
       {isOrdered && (
         <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-odoo-purple text-white text-[10px] font-bold">
           {index + 1}
@@ -112,21 +125,11 @@ function SortableValidatorItem({
             ✕
           </button>
         )}
-
-        {isOrdered && (
-          <button
-            type="button"
-            className="w-8 h-8 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary transition-colors focus:outline-none"
-            {...attributes}
-            {...listeners}
-          >
-            ⠿
-          </button>
-        )}
       </div>
     </div>
   );
 }
+
 
 // ── User search result row ───────────────────────────────────────────────────
 

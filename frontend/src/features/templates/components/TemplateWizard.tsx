@@ -244,8 +244,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       {renderStepper()}
 
       {/* Content Area */}
-      <div className="flex-1 overflow-hidden flex flex-col relative pb-[72px]">
-        <div className="flex-1 overflow-auto bg-ui-body/30">
+      <div className="flex-1 overflow-hidden flex flex-col relative">
+        <div className="flex-1 flex flex-col overflow-hidden bg-ui-body/30 pb-[72px]">
           {step === 'properties' && (
             <WizardStep1Properties
               name={name} setName={setName}
@@ -282,6 +282,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             />
           )}
         </div>
+
 
         {/* Footer */}
         <div className="absolute bottom-0 left-0 right-0 border-t border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-6 py-4 flex items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">

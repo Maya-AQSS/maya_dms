@@ -60,7 +60,8 @@ export function WizardStep1Properties({
   };
 
   return (
-    <div className="flex-1 overflow-auto p-6">
+    <div className="flex-1 overflow-y-auto p-6">
+
       <div className="max-w-3xl mx-auto space-y-6">
         {/* Generales */}
         <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-6">

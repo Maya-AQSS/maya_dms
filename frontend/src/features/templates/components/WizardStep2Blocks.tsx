@@ -1,4 +1,19 @@
 import { useEffect, useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  type DragEndEvent,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { Button, FieldLabel, TextArea, TextInput } from '../../../ui';
 import type { TemplateBlock } from '../../../types/blocks';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -9,7 +24,72 @@ import {
   blockToUiState,
 } from '../blockUiState';
 
-// ── Sub-components ────────────────────────────────────────────────────────────
+
+function SortableBlockItem({
+  block,
+  isSelected,
+  onClick,
+}: {
+  block: TemplateBlock;
+  isSelected: boolean;
+  onClick: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: block.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : 1,
+    position: 'relative',
+    opacity: isDragging ? 0.6 : 1,
+  };
+
+  const uiState = blockToUiState(block);
+  const cfg = BLOCK_UI_STATE_CONFIG[uiState];
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={[
+        'group w-full rounded px-3 py-2 flex items-center gap-2 transition-all min-h-11 border',
+        isSelected
+          ? 'bg-odoo-purple/10 dark:bg-odoo-dark-purple/15 border-odoo-purple/30 dark:border-odoo-dark-purple/40 shadow-sm'
+          : 'bg-white dark:bg-ui-dark-card border-ui-border/50 dark:border-ui-dark-border/50 hover:bg-ui-body dark:hover:bg-ui-dark-bg hover:border-ui-border dark:hover:border-ui-dark-border',
+      ].join(' ')}
+    >
+      <button
+        type="button"
+        className="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary transition-colors focus:outline-none"
+        {...attributes}
+        {...listeners}
+      >
+        ⠿
+      </button>
+
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex-1 text-left min-w-0 flex items-center gap-2 focus:outline-none"
+      >
+        <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
+          {block.title || 'Bloque sin nombre'}
+        </span>
+        <span
+          className={[
+            'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight',
+            cfg.badgeCls,
+          ].join(' ')}
+        >
+          {cfg.label}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 
 type PanelMode = 'empty' | 'summary' | 'edit' | 'create';
 
@@ -50,50 +130,7 @@ function BlockUiStateToggle({
           </button>
         ))}
       </div>
-      {value === 'locked' && (
-        <p className="text-xs text-warning-dark dark:text-warning-light animate-in fade-in slide-in-from-top-1">
-          Bloque bloqueado: su obligatoriedad es siempre Obligatorio.
-        </p>
-      )}
     </div>
-  );
-}
-
-function BlockListItem({
-  block,
-  isSelected,
-  onClick,
-}: {
-  block: TemplateBlock;
-  isSelected: boolean;
-  onClick: () => void;
-}) {
-  const uiState = blockToUiState(block);
-  const cfg = BLOCK_UI_STATE_CONFIG[uiState];
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={[
-        'w-full text-left rounded px-3 py-2 flex items-center gap-2 transition-all min-h-11',
-        'border focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35',
-        isSelected
-          ? 'bg-odoo-purple/10 dark:bg-odoo-dark-purple/15 border-odoo-purple/30 dark:border-odoo-dark-purple/40 shadow-sm'
-          : 'bg-white dark:bg-ui-dark-card border-ui-border/50 dark:border-ui-dark-border/50 hover:bg-ui-body dark:hover:bg-ui-dark-bg hover:border-ui-border dark:hover:border-ui-dark-border',
-      ].join(' ')}
-    >
-      <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
-        {block.title || 'Bloque sin nombre'}
-      </span>
-      <span
-        className={[
-          'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight',
-          cfg.badgeCls,
-        ].join(' ')}
-      >
-        {cfg.label}
-      </span>
-    </button>
   );
 }
 
@@ -105,9 +142,21 @@ type Props = {
 };
 
 export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
-  const { blocks, loading, error, createBlock, updateBlock, deleteBlock } = useTemplateBlocks(
+  const { blocks, loading, error, createBlock, updateBlock, deleteBlock, reorderBlocks } = useTemplateBlocks(
     template.id,
   );
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    
+    const newIndex = blocks.findIndex((b) => b.id === over.id);
+    void reorderBlocks(active.id.toString(), newIndex);
+  };
+
 
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -278,10 +327,11 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
     </div>
   );
 
+
   // ── Variant A — Empty State ──
   if (!loading && blocks.length === 0) {
     return (
-      <div className="flex-1 overflow-auto p-6 flex flex-col items-center justify-center">
+      <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-ui-body dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border mb-4">
              <svg className="w-6 h-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -303,9 +353,10 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
     );
   }
 
+
   // ── Variant B — Two Columns ──
   return (
-    <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+    <div className="flex-1 overflow-hidden flex flex-col md:flex-row translate-z-0">
       {/* Columna Izquierda: Lista */}
       <div className="md:w-1/2 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
         <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50 flex items-center justify-between shrink-0">
@@ -322,25 +373,39 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {blocks.map((block) => (
-            <BlockListItem
-              key={block.id}
-              block={block}
-              isSelected={selectedBlockId === block.id}
-              onClick={() => openSummary(block.id)}
-            />
-          ))}
+        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={blocks.map((b) => b.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {blocks.map((block) => (
+                  <SortableBlockItem
+                    key={block.id}
+                    block={block}
+                    isSelected={selectedBlockId === block.id}
+                    onClick={() => openSummary(block.id)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
           
           <button
             type="button"
             onClick={openCreate}
-            className="w-full text-left rounded-lg px-3 py-3 flex items-center gap-2 border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted"
+            className="w-full text-left rounded-lg px-3 py-3 flex items-center gap-2 border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted shrink-0 mt-2"
           >
             <span className="text-sm font-medium">+ Añadir bloque</span>
           </button>
         </div>
       </div>
+
 
       {/* Columna Derecha: Panel */}
       <div className="md:w-1/2 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">

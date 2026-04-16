@@ -75,8 +75,9 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
   ].filter((f) => f.value);
 
   return (
-    <div className="flex-1 overflow-auto p-6 bg-ui-body/30">
+    <div className="flex-1 overflow-y-auto p-6 bg-ui-body/30">
       <div className="max-w-[700px] mx-auto space-y-6">
+
         <p className="text-xs text-text-muted text-center animate-in fade-in">
           Revisa todos los datos antes de publicar la plantilla. Puedes editar cualquier sección volviendo al paso correspondiente.
         </p>
