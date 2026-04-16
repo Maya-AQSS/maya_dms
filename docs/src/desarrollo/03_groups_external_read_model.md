@@ -7,7 +7,7 @@ Los grupos pasan a tratarse como un dominio externo (análogo al origen externo 
 
 ## Decisión
 
-1. DMS elimina la gestión CRUD de grupos como objetivo de arquitectura.
+1. DMS elimina la gestión CRUD de grupos como objetivo de arquitectura (rutas `/api/v1/groups` retiradas del backend en esta refactorización).
 2. El frontend no dependerá de un endpoint dedicado `/api/v1/groups`.
 3. La información de grupo necesaria para UI se entregará embebida en endpoints de negocio, principalmente plantillas y, cuando aplique, documentos.
 4. La resolución de grupos se implementará por capas (`Controller -> DTO -> Service -> Repository -> Resource`) mediante lectura externa.
@@ -17,7 +17,7 @@ Los grupos pasan a tratarse como un dominio externo (análogo al origen externo 
 En respuestas de plantillas:
 
 - `group_id: string | null` (compatibilidad temporal).
-- `group: { id: string, name: string } | null` (nuevo nodo de consumo frontend).
+- `team: { id: string, name: string } | null` (lectura externa; el id coincide con el legado `group_id` mientras dure la transición).
 
 En respuestas de documentos:
 

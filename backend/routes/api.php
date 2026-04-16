@@ -9,7 +9,6 @@ use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentVersionController;
-use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\TemplateBlockController;
@@ -46,14 +45,6 @@ Route::prefix('v1')->group(function () {
         // Sprint 1 — Auth / sesión
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
-
-        // Sprint 1 — Grupos
-        Route::apiResource('groups', GroupController::class)
-            ->whereUuid('group');
-        Route::post('groups/{group}/members', [GroupController::class, 'addMember'])
-            ->whereUuid('group');
-        Route::delete('groups/{group}/members/{userId}', [GroupController::class, 'removeMember'])
-            ->whereUuid('group');
 
         // Sprint 2 — Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
