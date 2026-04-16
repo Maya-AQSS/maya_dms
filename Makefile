@@ -54,11 +54,13 @@ seed:
 	docker compose exec backend php artisan db:seed
 
 # ─── Tests ────────────────────────────────────────────────────
+# `env ...` evita que el compose (DB_CONNECTION=pgsql) gane sobre phpunit.xml; la suite usa
+# sqlite :memory: y no toca maya_dms_db ni el catálogo teams (FDW solo lectura).
 test:
-	docker compose exec backend php artisan test
+	docker compose exec backend env APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL= php artisan test
 
 test-backend:
-	docker compose exec backend php artisan test --coverage --min=80
+	docker compose exec backend env APP_ENV=testing DB_CONNECTION=sqlite DB_DATABASE=:memory: DB_URL= php artisan test --coverage --min=80
 
 test-frontend:
 	docker compose exec frontend npm run test
