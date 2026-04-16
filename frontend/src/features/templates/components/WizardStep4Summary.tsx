@@ -29,12 +29,18 @@ function SummaryCard({
   onEdit: () => void;
 }) {
   return (
-    <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
+    <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1">
       <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between bg-ui-card/50 dark:bg-ui-dark-card/50">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+        <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
           {title}
         </span>
-        <Button type="button" variant="outline" size="xs" onClick={onEdit}>
+        <Button 
+          type="button" 
+          variant="secondary" 
+          size="xs" 
+          onClick={onEdit}
+          className="hover:text-odoo-purple"
+        >
           Editar →
         </Button>
       </div>
@@ -43,11 +49,15 @@ function SummaryCard({
   );
 }
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
+function SummaryRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex gap-3">
-      <dt className="w-32 shrink-0 text-xs text-text-muted dark:text-text-dark-muted">{label}</dt>
-      <dd className="flex-1 text-xs text-text-primary dark:text-text-dark-primary">{value}</dd>
+    <div className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-ui-border/30 last:border-0">
+      <dt className="sm:w-32 shrink-0 text-[10px] font-bold uppercase tracking-wider text-text-muted mt-0.5">
+        {label}
+      </dt>
+      <dd className="flex-1 text-sm font-medium text-text-primary dark:text-text-dark-primary">
+        {value || <span className="text-text-muted italic">—</span>}
+      </dd>
     </div>
   );
 }
@@ -57,7 +67,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 export function WizardStep4Summary({ template, validators, validationType, onGoToStep }: Props) {
   const { blocks } = useTemplateBlocks(template.id);
 
-  const hierarchyFields: { label: string; value: string | null }[] = [
+  const hierarchyFields = [
     { label: 'Tipo de Estudio', value: template.study_type_id },
     { label: 'Estudio', value: template.study_id },
     { label: 'Módulo', value: template.module_id },
@@ -65,57 +75,41 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
   ].filter((f) => f.value);
 
   return (
-    <div className="flex-1 overflow-auto p-6">
-      <p className="text-xs text-text-muted dark:text-text-dark-muted italic mb-6 max-w-2xl mx-auto">
-        Revisa todos los datos antes de publicar la plantilla. Puedes editar cualquier sección
-        volviendo al paso correspondiente.
-      </p>
+    <div className="flex-1 overflow-auto p-6 bg-ui-body/30">
+      <div className="max-w-[700px] mx-auto space-y-6">
+        <p className="text-xs text-text-muted text-center animate-in fade-in">
+          Revisa todos los datos antes de publicar la plantilla. Puedes editar cualquier sección volviendo al paso correspondiente.
+        </p>
 
-      <div className="max-w-2xl mx-auto space-y-4">
-        {/* Propiedades */}
+        {/* Sección 1: Propiedades */}
         <SummaryCard title="Propiedades" onEdit={() => onGoToStep('properties')}>
-          <dl className="space-y-3">
+          <dl className="divide-y divide-ui-border/20">
             <SummaryRow label="Nombre" value={template.name} />
-            {template.description && (
-              <SummaryRow label="Descripción" value={template.description} />
-            )}
+            <SummaryRow label="Descripción" value={template.description} />
             <SummaryRow label="Visibilidad" value={visibilityLabel(template.visibility_level)} />
             {hierarchyFields.map((f) => (
-              <SummaryRow key={f.label} label={f.label} value={f.value!} />
+              <SummaryRow key={f.label} label={f.label} value={f.value} />
             ))}
-            {template.delivery_deadline && (
-              <SummaryRow
-                label="Plazo de entrega"
-                value={new Date(template.delivery_deadline).toLocaleString()}
-              />
-            )}
+            <SummaryRow 
+              label="Plazo de entrega" 
+              value={template.delivery_deadline ? new Date(template.delivery_deadline).toLocaleDateString() : null} 
+            />
           </dl>
         </SummaryCard>
 
-        {/* Bloques */}
+        {/* Sección 2: Bloques */}
         <SummaryCard title={`Bloques (${blocks.length})`} onEdit={() => onGoToStep('blocks')}>
           {blocks.length === 0 ? (
-            <p className="text-xs text-text-muted dark:text-text-dark-muted">
-              Sin bloques. Vuelve al paso anterior para añadir al menos uno.
-            </p>
+            <p className="text-xs text-warning-dark italic">Aún no se han añadido bloques.</p>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {blocks.map((block, i) => {
                 const cfg = BLOCK_UI_STATE_CONFIG[blockToUiState(block)];
                 return (
-                  <div key={block.id} className="flex items-center gap-2">
-                    <span className="text-xs text-text-muted dark:text-text-dark-muted w-5 shrink-0 text-right">
-                      {i + 1}.
-                    </span>
-                    <span className="flex-1 text-xs text-text-primary dark:text-text-dark-primary truncate">
-                      {block.title || 'Bloque sin nombre'}
-                    </span>
-                    <span
-                      className={[
-                        'shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight',
-                        cfg.badgeCls,
-                      ].join(' ')}
-                    >
+                  <div key={block.id} className="flex items-center gap-3 p-2 rounded-lg bg-ui-body/50 border border-ui-border/50">
+                    <span className="text-[10px] font-bold text-text-muted w-5 text-right">{i + 1}.</span>
+                    <span className="flex-1 text-xs font-bold text-text-primary truncate">{block.title}</span>
+                    <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}>
                       {cfg.label}
                     </span>
                   </div>
@@ -125,50 +119,45 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
           )}
         </SummaryCard>
 
-        {/* Usuarios y validación */}
+        {/* Sección 3: Usuarios y validación */}
         <SummaryCard title="Usuarios y validación" onEdit={() => onGoToStep('users')}>
-          <dl className="space-y-3 mb-3">
-            <SummaryRow
-              label="Tipo de validación"
-              value={validationType === 'ordenada' ? 'Ordenada' : 'Libre'}
-            />
-          </dl>
-
-          {validators.length === 0 ? (
-            <p className="text-xs text-text-muted dark:text-text-dark-muted">
-              Sin validadores asignados.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {validators.map((v, i) => {
-                const initials = v.name
-                  .split(' ')
-                  .slice(0, 2)
-                  .map((w) => w[0]?.toUpperCase() ?? '')
-                  .join('');
-                return (
-                  <div key={v.userId} className="flex items-center gap-2">
-                    {validationType === 'ordenada' && (
-                      <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple/15 text-odoo-purple dark:bg-odoo-dark-purple/20 dark:text-odoo-dark-purple text-[10px] font-bold">
-                        {i + 1}
-                      </span>
-                    )}
-                    <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-odoo-purple/15 dark:bg-odoo-dark-purple/25 text-odoo-purple dark:text-odoo-dark-purple text-xs font-bold">
-                      {initials}
-                    </span>
-                    <span className="text-xs text-text-primary dark:text-text-dark-primary">
-                      {v.name}
-                    </span>
-                    {v.role && (
-                      <span className="text-[10px] text-text-muted dark:text-text-dark-muted ml-auto">
-                        {v.role}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+          <div className="space-y-6">
+            <div className="bg-odoo-purple/5 border border-odoo-purple/10 rounded-lg p-3">
+              <span className="text-[10px] font-bold uppercase text-odoo-purple/60">Tipo de validación:</span>
+              <span className="ml-2 text-xs font-bold text-odoo-purple capitalize">{validationType}</span>
             </div>
-          )}
+
+            {validators.length === 0 ? (
+              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+            ) : (
+              <div className="space-y-2">
+                {validators.map((v, i) => {
+                  const initials = v.name
+                    .split(' ')
+                    .filter(Boolean)
+                    .slice(0, 2)
+                    .map((w) => w[0]?.toUpperCase() ?? '')
+                    .join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-3 p-2 rounded-lg bg-white border border-ui-border/50 shadow-sm">
+                      {validationType === 'ordenada' && (
+                        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold">
+                          {i + 1}
+                        </span>
+                      )}
+                      <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20">
+                        {initials}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-xs font-bold text-text-primary block truncate">{v.name}</span>
+                        {v.role && <span className="text-[10px] text-text-muted uppercase tracking-tight">{v.role}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </SummaryCard>
       </div>
     </div>

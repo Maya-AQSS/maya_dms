@@ -1,180 +1,63 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
-import { updateTemplate as apiUpdateTemplate } from '../../../api/templates';
-import { fetchGroups } from '../../../api/groups';
-import type { Group } from '../../../types/groups';
-import { useHierarchy } from '../../../features/hierarchy';
-import { VISIBILITY_OPTIONS, STATUS_OPTIONS } from '../constants';
-import {
-  templateEditIsDirty,
-  isoToDatetimeLocal,
-  datetimeLocalToIso,
-  type TemplateEditFields,
-} from '../templateFormUtils';
-import { Button, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
-import { TemplateBlockEditor } from './TemplateBlockEditor';
+import { updateTemplate as apiUpdateTemplate, createTemplate as apiCreateTemplate } from '../../../api/templates';
+import { Button } from '../../../ui';
+import { WizardStep1Properties } from './WizardStep1Properties';
+import { WizardStep2Blocks } from './WizardStep2Blocks';
+import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
+import { WizardStep4Summary } from './WizardStep4Summary';
 
-// ── Stepper ───────────────────────────────────────────────────────────────────
+type Step = 'properties' | 'blocks' | 'users' | 'summary';
 
-type StepperProps = {
-  step: 'properties' | 'blocks';
-  step1Done: boolean;
-  onGoToStep1: () => void;
-  onGoToStep2: () => void;
+type Props = {
+  template?: Template | null;
+  initialTemplate?: Template | null;
 };
 
-function Stepper({ step, step1Done, onGoToStep1, onGoToStep2 }: StepperProps) {
-  const isStep1Active = step === 'properties';
-  const isStep2Active = step === 'blocks';
-
-  const step1CircleCls = isStep1Active
-    ? 'bg-odoo-purple dark:bg-odoo-dark-purple text-white'
-    : step1Done
-      ? 'bg-odoo-teal dark:bg-odoo-dark-teal text-white'
-      : 'border-2 border-ui-border dark:border-ui-dark-border text-text-muted dark:text-text-dark-muted';
-
-  const step1LabelCls = isStep1Active
-    ? 'text-odoo-purple dark:text-odoo-dark-purple'
-    : step1Done
-      ? 'text-odoo-teal dark:text-odoo-dark-teal'
-      : 'text-text-muted dark:text-text-dark-muted';
-
-  const step2CircleCls = isStep2Active
-    ? 'bg-odoo-purple dark:bg-odoo-dark-purple text-white'
-    : 'border-2 border-ui-border dark:border-ui-dark-border text-text-muted dark:text-text-dark-muted';
-
-  const step2LabelCls = isStep2Active
-    ? 'text-odoo-purple dark:text-odoo-dark-purple'
-    : 'text-text-muted dark:text-text-dark-muted';
-
-  const connectorCls = step1Done
-    ? 'bg-odoo-teal dark:bg-odoo-dark-teal'
-    : 'bg-ui-border dark:bg-ui-dark-border';
-
-  return (
-    <div className="flex items-center px-6 py-4 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
-      {/* Step 1 */}
-      <button
-        type="button"
-        className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35 rounded"
-        onClick={onGoToStep1}
-      >
-        <span
-          className={[
-            'flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0',
-            step1CircleCls,
-          ].join(' ')}
-        >
-          {step1Done && !isStep1Active ? '✓' : '1'}
-        </span>
-        <span className="text-left">
-          <span className={['block text-sm font-semibold', step1LabelCls].join(' ')}>
-            Propiedades
-          </span>
-          <span className="block text-xs text-text-muted dark:text-text-dark-muted">
-            Nombre, descripción…
-          </span>
-        </span>
-      </button>
-
-      {/* Connector */}
-      <div className={['flex-1 h-0.5 mx-4', connectorCls].join(' ')} />
-
-      {/* Step 2 */}
-      <button
-        type="button"
-        className="flex items-center gap-3 focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35 rounded"
-        onClick={onGoToStep2}
-      >
-        <span
-          className={[
-            'flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold shrink-0',
-            step2CircleCls,
-          ].join(' ')}
-        >
-          2
-        </span>
-        <span className="text-left">
-          <span className={['block text-sm font-semibold', step2LabelCls].join(' ')}>
-            Bloques
-          </span>
-          <span className="block text-xs text-text-muted dark:text-text-dark-muted">
-            Estructura del documento
-          </span>
-        </span>
-      </button>
-    </div>
-  );
-}
-
-// ── TemplateWizard ────────────────────────────────────────────────────────────
-
-export function TemplateWizard({ template: initialTemplate }: { template: Template }) {
+export function TemplateWizard({ template: templateProp, initialTemplate }: Props) {
   const navigate = useNavigate();
+  const initial = templateProp || initialTemplate;
 
   // Step state
-  const [step, setStep] = useState<'properties' | 'blocks'>('properties');
-  const [step1Done, setStep1Done] = useState(false);
+  const [step, setStep] = useState<Step>('properties');
+  const [completedSteps, setCompletedSteps] = useState<Step[]>([]);
   const [leaveGuard, setLeaveGuard] = useState(false);
 
-  // Template (updated after save)
-  const [template, setTemplate] = useState<Template>(initialTemplate);
+  // Template state (synchronized with API)
+  const [template, setTemplate] = useState<Template | null>(initial || null);
 
-  // Form fields
-  const [name, setName] = useState(initialTemplate.name);
-  const [description, setDescription] = useState(initialTemplate.description ?? '');
-  const [visibilityLevel, setVisibilityLevel] = useState<TemplateVisibilityLevel>(
-    initialTemplate.visibility_level,
-  );
-  const [deliveryDeadline, setDeliveryDeadline] = useState(
-    isoToDatetimeLocal(initialTemplate.delivery_deadline),
-  );
-  const [studyTypeId, setStudyTypeId] = useState(initialTemplate.study_type_id ?? '');
-  const [studyId, setStudyId] = useState(initialTemplate.study_id ?? '');
-  const [moduleId, setModuleId] = useState(initialTemplate.module_id ?? '');
-  const [groupId, setGroupId] = useState(initialTemplate.group_id ?? '');
-  const [status, setStatus] = useState(initialTemplate.status);
-  const [reviewStages, setReviewStages] = useState(String(initialTemplate.review_stages));
-  const [reviewMode, setReviewMode] = useState(initialTemplate.review_mode);
+  // Step 1: Properties state
+  const [name, setName] = useState(initial?.name || '');
+  const [description, setDescription] = useState(initial?.description || '');
+  const [visibility, setVisibility] = useState<TemplateVisibilityLevel>(initial?.visibility_level || 'personal');
+  const [deliveryDeadline, setDeliveryDeadline] = useState(initial?.delivery_deadline ? initial.delivery_deadline.split('T')[0] : '');
+  const [studyTypeId, setStudyTypeId] = useState(initial?.study_type_id || '');
+  const [studyId, setStudyId] = useState(initial?.study_id || '');
+  const [moduleId, setModuleId] = useState(initial?.module_id || '');
+  const [groupId, setGroupId] = useState(initial?.group_id || '');
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Step 2: Blocks state
+  const [blocksCount, setBlocksCount] = useState(0);
+
+  // Step 3: Users state
+  const [validators, setValidators] = useState<ValidatorEntry[]>([]);
+  const [validationType, setValidationType] = useState<'libre' | 'ordenada'>('libre');
 
   // UI state
   const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-
-  // Groups
-  const [groups, setGroups] = useState<Group[]>([]);
-
-  useEffect(() => {
-    fetchGroups(200)
-      .then((res) => setGroups(res.data))
-      .catch(() => undefined);
-  }, []);
-
-  // Cascade hierarchy
-  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
-  const selectedTypeData = hierarchy.find((t) => t.id === studyTypeId);
-  const availableStudies = selectedTypeData ? selectedTypeData.studies : [];
-  const selectedStudyData = availableStudies.find((s) => s.id === studyId);
-  const availableModules = selectedStudyData ? selectedStudyData.course_modules : [];
 
   // Dirty check
-  const editFields: TemplateEditFields = {
-    name,
-    description,
-    visibilityLevel,
-    deliveryDeadline,
-    studyTypeId,
-    studyId,
-    moduleId,
-    groupId,
-    status,
-    reviewStages,
-    reviewMode,
-  };
-  const isDirty = step === 'properties' && templateEditIsDirty(template, editFields);
+  const isDirty = useMemo(() => {
+    if (step === 'properties') {
+      return name !== (template?.name || '') || 
+             description !== (template?.description || '') ||
+             visibility !== (template?.visibility_level || 'personal');
+    }
+    return false;
+  }, [step, name, description, visibility, template]);
 
-  // Handlers
   const handleBackArrow = () => {
     if (isDirty) {
       setLeaveGuard(true);
@@ -183,356 +66,264 @@ export function TemplateWizard({ template: initialTemplate }: { template: Templa
     navigate('/templates');
   };
 
-  const handleSaveAndContinue = async () => {
-    if (!name.trim()) return;
+  const validateStep1 = () => {
+    const newErrors: Record<string, string> = {};
+    if (!name.trim()) newErrors.name = 'El nombre es obligatorio.';
+    
+    const needsAcademic = visibility !== 'personal' && visibility !== 'global';
+    if (needsAcademic) {
+      if (!studyTypeId) newErrors.studyTypeId = 'Obligatorio';
+      if ((visibility === 'study' || visibility === 'module' || visibility === 'group') && !studyId) newErrors.studyId = 'Obligatorio';
+      if ((visibility === 'module' || visibility === 'group') && !moduleId) newErrors.moduleId = 'Obligatorio';
+      if (visibility === 'group' && !groupId) newErrors.groupId = 'Obligatorio';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const saveProperties = async () => {
+    if (!validateStep1()) return;
     setSaving(true);
-    setSaveError(null);
     try {
-      const res = await apiUpdateTemplate(template.id, {
+      const payload = {
         name: name.trim(),
-        description: description.trim() === '' ? null : description.trim(),
-        visibility_level: visibilityLevel,
-        delivery_deadline: datetimeLocalToIso(deliveryDeadline),
-        study_type_id: studyTypeId.trim() === '' ? null : studyTypeId.trim(),
-        study_id: studyId.trim() === '' ? null : studyId.trim(),
-        module_id: moduleId.trim() === '' ? null : moduleId.trim(),
-        group_id: groupId.trim() === '' ? null : groupId.trim(),
-        status,
-        review_stages: parseInt(reviewStages, 10) || 0,
-        review_mode: reviewMode,
-      });
+        description: description.trim() || null,
+        visibility_level: visibility,
+        delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+        study_type_id: studyTypeId || null,
+        study_id: studyId || null,
+        module_id: moduleId || null,
+        group_id: groupId || null,
+      };
+
+      let res;
+      if (template?.id) {
+        res = await apiUpdateTemplate(template.id, payload);
+      } else {
+        res = await apiCreateTemplate(payload);
+      }
       setTemplate(res.data);
-      setStep1Done(true);
+      setCompletedSteps(prev => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : 'Error al guardar la plantilla');
+      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar' });
     } finally {
       setSaving(false);
     }
   };
 
+  const handleContinue = () => {
+    if (step === 'properties') {
+      void saveProperties();
+    } else if (step === 'blocks') {
+      if (blocksCount > 0) {
+        setCompletedSteps(prev => Array.from(new Set([...prev, 'blocks'])) as Step[]);
+        setStep('users');
+      }
+    } else if (step === 'users') {
+      setCompletedSteps(prev => Array.from(new Set([...prev, 'users'])) as Step[]);
+      setStep('summary');
+    } else if (step === 'summary') {
+      navigate('/templates');
+    }
+  };
+
+  const handleGoToStep = (s: Step) => {
+    if (s === 'properties') setStep(s);
+    else if (s === 'blocks' && completedSteps.includes('properties')) setStep(s);
+    else if (s === 'users' && completedSteps.includes('blocks')) setStep(s);
+    else if (s === 'summary' && completedSteps.includes('users')) setStep(s);
+  };
+
+  // ── Render Helpers ─────────────────────────────────────────────────────────
+
+  const renderStepper = () => {
+    const stepsData: { id: Step; label: string; sub: string }[] = [
+      { id: 'properties', label: 'Propiedades', sub: 'Nombre, descripción…' },
+      { id: 'blocks', label: 'Bloques', sub: 'Estructura del documento' },
+      { id: 'users', label: 'Usuarios', sub: 'Validadores' },
+      { id: 'summary', label: 'Resumen', sub: 'Revisión final' },
+    ];
+
+    return (
+      <div className="flex items-center px-6 py-4 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
+        {stepsData.map((s, i) => {
+          const isActive = step === s.id;
+          const isDone = completedSteps.includes(s.id);
+          const isPending = !isActive && !isDone;
+
+          const circleCls = isActive
+            ? 'bg-odoo-purple text-white'
+            : isDone
+              ? 'bg-success text-white'
+              : 'border border-ui-border text-text-muted';
+
+          const labelCls = isActive
+            ? 'text-odoo-purple'
+            : isDone
+              ? 'text-success'
+              : 'text-text-muted';
+
+          return (
+            <div key={s.id} className="flex flex-1 items-center last:flex-none">
+              <button
+                type="button"
+                onClick={() => handleGoToStep(s.id)}
+                className={`flex items-center gap-3 focus:outline-none transition-all group ${isPending ? 'opacity-50 cursor-default' : 'cursor-pointer hover:scale-105'}`}
+                disabled={isPending}
+              >
+                <span className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors shadow-sm ${circleCls}`}>
+                  {isDone && !isActive ? '✓' : i + 1}
+                </span>
+                <span className="text-left hidden lg:block">
+                  <span className={`block text-[10px] font-black uppercase tracking-widest ${labelCls}`}>
+                    {s.label}
+                  </span>
+                  <span className="block text-[10px] text-text-muted">
+                    {s.sub}
+                  </span>
+                </span>
+              </button>
+              {i < stepsData.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-4 rounded-full ${completedSteps.includes(s.id) ? 'bg-success' : 'bg-ui-border'}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
-    <div className="flex flex-col min-h-full bg-ui-body dark:bg-ui-dark-bg">
+    <div className="flex flex-col h-screen bg-ui-body dark:bg-ui-dark-bg">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border">
+      <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
         <button
           type="button"
           onClick={handleBackArrow}
-          className="w-8 h-8 rounded text-text-secondary dark:text-text-dark-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35 flex items-center justify-center"
-          aria-label="Volver a plantillas"
+          className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95"
+          aria-label="Volver"
         >
           ←
         </button>
-        <span className="text-sm text-text-secondary dark:text-text-dark-secondary">
+        <span className="text-sm text-text-secondary">
           Plantillas /{' '}
-          <span className="font-medium text-text-primary dark:text-text-dark-primary">
-            Editando «{template.name}»
+          <span className="font-bold text-text-primary dark:text-text-dark-primary">
+            {template ? `Editando «${template.name}»` : 'Nueva plantilla'}
           </span>
         </span>
       </div>
 
-      {/* Leave guard strip */}
+      {/* Leave guard confirmation */}
       {leaveGuard && (
-        <div className="shrink-0 flex items-center gap-3 px-4 py-2.5 border-b border-warning/30 bg-warning-light/50 dark:bg-warning-dark/15 text-sm">
-          <span className="flex-1 text-warning-dark dark:text-warning-light">
-            Tienes cambios sin guardar. ¿Salir sin guardar?
+        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-warning/30 bg-warning-light/40 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-warning-dark">
+            ⚠️ Tienes cambios sin guardar en este paso. ¿Seguro que quieres salir?
           </span>
-          <button
-            type="button"
-            className="font-semibold underline text-warning-dark dark:text-warning-light focus:outline-none"
-            onClick={() => navigate('/templates')}
-          >
-            Salir
-          </button>
-          <button
-            type="button"
-            className="underline text-text-secondary dark:text-text-dark-secondary focus:outline-none"
-            onClick={() => setLeaveGuard(false)}
-          >
-            Cancelar
-          </button>
+          <div className="flex gap-2">
+            <button
+               type="button"
+              className="bg-warning-dark text-white px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider shadow-sm active:scale-95 transition-transform"
+              onClick={() => navigate('/templates')}
+            >
+              Salir sin guardar
+            </button>
+            <button
+              type="button"
+              className="bg-white border border-ui-border px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider text-text-secondary active:scale-95 transition-transform"
+              onClick={() => setLeaveGuard(false)}
+            >
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
 
       {/* Stepper */}
-      <Stepper
-        step={step}
-        step1Done={step1Done}
-        onGoToStep1={() => setStep('properties')}
-        onGoToStep2={() => {
-          if (step1Done) setStep('blocks');
-        }}
-      />
+      {renderStepper()}
 
-      {/* Content area */}
-      {step === 'properties' ? (
-        <div className="flex-1 overflow-auto p-6">
-          {saveError && (
-            <div className="mb-4 rounded-lg border border-warning/40 bg-warning-light/40 dark:bg-warning-dark/10 px-4 py-3 text-sm text-warning-dark dark:text-warning-light flex justify-between gap-4">
-              <span>{saveError}</span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="xs"
-                onClick={() => setSaveError(null)}
-              >
-                ✕
-              </Button>
-            </div>
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden flex flex-col relative pb-[72px]">
+        <div className="flex-1 overflow-auto bg-ui-body/30">
+          {step === 'properties' && (
+            <WizardStep1Properties
+              name={name} setName={setName}
+              description={description} setDescription={setDescription}
+              visibility={visibility} setVisibility={setVisibility}
+              deliveryDeadline={deliveryDeadline} setDeliveryDeadline={setDeliveryDeadline}
+              studyTypeId={studyTypeId} setStudyTypeId={setStudyTypeId}
+              studyId={studyId} setStudyId={setStudyId}
+              moduleId={moduleId} setModuleId={setModuleId}
+              groupId={groupId} setGroupId={setGroupId}
+              errors={errors}
+            />
           )}
+          {step === 'blocks' && template && (
+            <WizardStep2Blocks
+              template={template}
+              onBlocksCountChange={setBlocksCount}
+            />
+          )}
+          {step === 'users' && (
+            <WizardStep3Users
+              validators={validators}
+              onValidatorsChange={setValidators}
+              validationType={validationType}
+              onValidationTypeChange={setValidationType}
+            />
+          )}
+          {step === 'summary' && template && (
+            <WizardStep4Summary
+              template={template}
+              validators={validators}
+              validationType={validationType}
+              onGoToStep={handleGoToStep}
+            />
+          )}
+        </div>
 
-          <div className="max-w-3xl mx-auto bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {/* Nombre */}
-              <div className="lg:col-span-2">
-                <FieldLabel>Nombre</FieldLabel>
-                <TextInput
-                  type="text"
-                  fieldSize="comfortable"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ej. Acta de Evaluación Final"
-                />
-              </div>
+        {/* Footer */}
+        <div className="absolute bottom-0 left-0 right-0 border-t border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-6 py-4 flex items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-10">
+          <div className="flex-1">
+            {step === 'properties' && (
+              <span className="text-[10px] text-text-muted italic opacity-70">
+                Los cambios se sincronizarán al avanzar de paso.
+              </span>
+            )}
+            {step !== 'properties' && (
+              <Button variant="ghost" size="sm" onClick={() => {
+                if (step === 'blocks') setStep('properties');
+                if (step === 'users') setStep('blocks');
+                if (step === 'summary') setStep('users');
+              }} className="text-odoo-purple font-bold">
+                ← Volver al paso anterior
+              </Button>
+            )}
+          </div>
 
-              {/* Descripción */}
-              <div className="lg:col-span-2">
-                <FieldLabel>Descripción</FieldLabel>
-                <TextArea
-                  fieldSize="comfortable"
-                  rows={3}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Propósito de la plantilla…"
-                />
-              </div>
-
-              {/* Visibilidad */}
-              <div>
-                <FieldLabel>Visibilidad</FieldLabel>
-                <Select
-                  fieldSize="comfortable"
-                  value={visibilityLevel}
-                  onChange={(e) => setVisibilityLevel(e.target.value as TemplateVisibilityLevel)}
-                >
-                  {VISIBILITY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-
-              {/* Plazo de entrega */}
-              <div>
-                <FieldLabel>Plazo de entrega</FieldLabel>
-                <TextInput
-                  type="datetime-local"
-                  fieldSize="comfortable"
-                  value={deliveryDeadline}
-                  onChange={(e) => setDeliveryDeadline(e.target.value)}
-                />
-              </div>
-
-              {/* Estado */}
-              <div>
-                <FieldLabel>Estado</FieldLabel>
-                <Select
-                  fieldSize="comfortable"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as Template['status'])}
-                >
-                  <option value="draft">Borrador</option>
-                  <option value="published">Publicada</option>
-                  <option value="archived">Archivada</option>
-                </Select>
-              </div>
-
-              {/* Sesiones de validación */}
-              <div>
-                <FieldLabel>Sesiones de validación</FieldLabel>
-                <TextInput
-                  type="number"
-                  min={0}
-                  fieldSize="comfortable"
-                  value={reviewStages}
-                  onChange={(e) => setReviewStages(e.target.value)}
-                />
-              </div>
-
-              {/* Modo de revisión */}
-              <div>
-                <FieldLabel>Modo de revisión</FieldLabel>
-                <Select
-                  fieldSize="comfortable"
-                  value={reviewMode}
-                  onChange={(e) => setReviewMode(e.target.value as Template['review_mode'])}
-                >
-                  <option value="sequential">Secuencial</option>
-                  <option value="parallel">Paralelo</option>
-                </Select>
-              </div>
-
-              {/* Vinculación Académica */}
-              <div className="lg:col-span-2">
-                <div className="border-t border-ui-border dark:border-ui-dark-border pt-4">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-4">
-                    Vinculación Académica
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Tipo de Estudio */}
-                    <div>
-                      <FieldLabel>Tipo de Estudio</FieldLabel>
-                      <Select
-                        fieldSize="comfortable"
-                        value={studyTypeId}
-                        disabled={hierarchyLoading}
-                        onChange={(e) => {
-                          setStudyTypeId(e.target.value);
-                          setStudyId('');
-                          setModuleId('');
-                          setGroupId('');
-                        }}
-                      >
-                        <option value="">— Sin seleccionar —</option>
-                        {hierarchy.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    {/* Estudio */}
-                    <div>
-                      <FieldLabel>Estudio</FieldLabel>
-                      <Select
-                        fieldSize="comfortable"
-                        value={studyId}
-                        disabled={!studyTypeId}
-                        onChange={(e) => {
-                          setStudyId(e.target.value);
-                          setModuleId('');
-                          setGroupId('');
-                        }}
-                      >
-                        <option value="">— Sin seleccionar —</option>
-                        {availableStudies.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    {/* Módulo */}
-                    <div>
-                      <FieldLabel>Módulo</FieldLabel>
-                      <Select
-                        fieldSize="comfortable"
-                        value={moduleId}
-                        disabled={!studyId}
-                        onChange={(e) => {
-                          setModuleId(e.target.value);
-                          setGroupId('');
-                        }}
-                      >
-                        <option value="">— Sin seleccionar —</option>
-                        {availableModules.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-
-                    {/* Grupo */}
-                    <div>
-                      <FieldLabel>Grupo</FieldLabel>
-                      <Select
-                        fieldSize="comfortable"
-                        value={groupId}
-                        onChange={(e) => setGroupId(e.target.value)}
-                      >
-                        <option value="">— Sin seleccionar —</option>
-                        {groups.map((g) => (
-                          <option key={g.id} value={g.id}>
-                            {g.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={handleBackArrow}
+              className="text-[10px] font-black uppercase tracking-widest"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="primary"
+              size={step === 'summary' ? 'lg' : 'md'}
+              loading={saving}
+              disabled={step === 'blocks' && blocksCount === 0}
+              onClick={handleContinue}
+              className={`text-[10px] font-black uppercase tracking-widest px-8 shadow-sm ${step === 'summary' ? 'bg-success border-success hover:bg-success-dark' : ''}`}
+              title={step === 'blocks' && blocksCount === 0 ? 'Añade al menos un bloque para continuar' : ''}
+            >
+              {step === 'summary' ? 'Publicar plantilla ✓' : 'Siguiente paso →'}
+            </Button>
           </div>
         </div>
-      ) : (
-        <div className="flex flex-1 overflow-hidden">
-          <TemplateBlockEditor template={template} inline />
-        </div>
-      )}
-
-      {/* Footer bar */}
-      <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card px-6 py-4 flex items-center justify-between gap-4">
-        {step === 'properties' ? (
-          <>
-            <span className="hidden sm:block text-xs text-text-muted dark:text-text-dark-muted italic">
-              Los cambios no se guardan hasta pulsar «Guardar y continuar»
-            </span>
-            <div className="flex items-center gap-3 ml-auto">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                disabled={saving}
-                onClick={handleBackArrow}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                loading={saving}
-                disabled={!name.trim()}
-                onClick={() => void handleSaveAndContinue()}
-              >
-                Guardar y continuar →
-              </Button>
-            </div>
-          </>
-        ) : (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="md"
-              onClick={() => setStep('properties')}
-            >
-              ← Volver a Propiedades
-            </Button>
-            <div className="flex items-center gap-3">
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={() => navigate('/templates')}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                onClick={() => navigate('/templates')}
-              >
-                Finalizar plantilla ✓
-              </Button>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
