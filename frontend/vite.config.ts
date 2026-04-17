@@ -1,30 +1,36 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { fileURLToPath, URL } from 'node:url';
+import path from 'node:path';
 
-// https://vite.dev/config/
+const defaultSharedAuthRoot = fileURLToPath(
+  new URL('../../maya_infra/packages/maya-shared-auth-react', import.meta.url),
+);
+
+const sharedAuthRoot = process.env.SHARED_AUTH_PACKAGE_ROOT
+  ? path.resolve(process.env.SHARED_AUTH_PACKAGE_ROOT)
+  : defaultSharedAuthRoot;
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     host: '0.0.0.0',
     allowedHosts: true,
     fs: {
-      allow: ['..', '/maya_infra/packages/maya-shared-auth-react']
-    },
+      allow: ['..', sharedAuthRoot],
+    }, 
     watch: {
       usePolling: true,
     }
   },
   optimizeDeps: {
     include: ['keycloak-js', 'axios'],
-    exclude: ['@maya/shared-auth-react']
+    exclude: ['@maya/shared-auth-react'],
   },
   resolve: {
     alias: {
-      '@maya/shared-auth-react': fileURLToPath(
-        new URL('../../maya_infra/packages/maya-shared-auth-react/src/index.ts', import.meta.url)
-      )
-    }
-  }
-})
+      '@maya/shared-auth-react': path.join(sharedAuthRoot, 'src/index.ts'),
+    },
+  },
+});
