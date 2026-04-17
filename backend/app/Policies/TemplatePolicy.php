@@ -24,6 +24,7 @@ class TemplatePolicy
 {
     /**
      * Listar plantillas (el alcance lo acota el modelo / repositorio).
+     * Los listados deben construirse con {@see Template::query()}, nunca sin scope.
      */
     public function viewAny(JwtUser $user): bool
     {

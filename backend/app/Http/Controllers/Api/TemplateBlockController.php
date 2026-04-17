@@ -13,6 +13,7 @@ use App\Models\Template;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 class TemplateBlockController extends Controller
@@ -23,14 +24,12 @@ class TemplateBlockController extends Controller
 
     /**
      * GET /api/v1/templates/{template}/blocks
-     * 
-     * Lista todos los bloques de una plantilla.
-     * 
-     * @param  string  $template
-     * @return AnonymousResourceCollection
      */
     public function index(string $template): AnonymousResourceCollection
     {
+        $templateModel = Template::query()->findOrFail($template);
+        $this->authorize('view', $templateModel);
+
         $blocks = $this->blockService->listForTemplate($template);
 
         return TemplateBlockResource::collection($blocks);
@@ -38,12 +37,6 @@ class TemplateBlockController extends Controller
 
     /**
      * POST /api/v1/templates/{template}/blocks
-     * 
-     * Crea un nuevo bloque para una plantilla.
-     * 
-     * @param  StoreTemplateBlockRequest  $request
-     * @param  string  $template
-     * @return JsonResponse
      */
     public function store(StoreTemplateBlockRequest $request, string $template): JsonResponse
     {
@@ -58,28 +51,18 @@ class TemplateBlockController extends Controller
 
     /**
      * GET /api/v1/blocks/{block}
-     * 
-     * Muestra un bloque de una plantilla.
-     * 
-     * @param  string  $block
-     * @return TemplateBlockResource
      */
     public function show(string $block): TemplateBlockResource
     {
         $blockModel = $this->blockService->findOrFail($block);
-        Template::findOrFail($blockModel->template_id);
+        $templateModel = Template::query()->findOrFail($blockModel->template_id);
+        $this->authorize('view', $templateModel);
 
         return new TemplateBlockResource($blockModel);
     }
 
     /**
      * PUT /api/v1/blocks/{block}
-     * 
-     * Actualiza un bloque de una plantilla.
-     * 
-     * @param  UpdateTemplateBlockRequest  $request
-     * @param  string  $block
-     * @return TemplateBlockResource
      */
     public function update(UpdateTemplateBlockRequest $request, string $block): TemplateBlockResource
     {
@@ -110,13 +93,8 @@ class TemplateBlockController extends Controller
 
     /**
      * DELETE /api/v1/blocks/{block}
-     * 
-     * Elimina un bloque de una plantilla.
-     * 
-     * @param  string  $block
-     * @return \Illuminate\Http\Response
      */
-    public function destroy(string $block): \Illuminate\Http\Response
+    public function destroy(string $block): Response
     {
         $this->blockService->delete($block, (string) Auth::id());
 
@@ -125,22 +103,17 @@ class TemplateBlockController extends Controller
 
     /**
      * PUT /api/v1/blocks/bulk
-     * 
-     * Actualización masiva de block_state (y opcionalmente mandatory) para múltiples bloques.
-     * 
-     * @param  BulkUpdateTemplateBlockRequest  $request
-     * @return AnonymousResourceCollection
      */
     public function bulkUpdate(BulkUpdateTemplateBlockRequest $request): AnonymousResourceCollection
     {
         $validated = $request->validated();
-        
+
         $dto = new BulkUpdateTemplateBlocksDto(
-            ids:           $validated['ids'],
-            block_state:   $validated['block_state'] ?? null,
+            ids:             $validated['ids'],
+            block_state:     $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
-            mandatory:     $validated['mandatory'] ?? null,
-            set_mandatory: $request->has('mandatory'),
+            mandatory:       $validated['mandatory'] ?? null,
+            set_mandatory:   $request->has('mandatory'),
         );
 
         $blocks = $this->blockService->bulkUpdate(

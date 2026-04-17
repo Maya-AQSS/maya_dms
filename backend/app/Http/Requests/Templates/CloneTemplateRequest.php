@@ -12,7 +12,7 @@ class CloneTemplateRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        $template = Template::findOrFail($this->route('template'));
+        $template = Template::query()->findOrFail($this->route('template'));
 
         return $this->user()->can('clone', $template);
     }

@@ -86,6 +86,6 @@ class UpdateTemplateRequest extends FormRequest
     {
         $id = $this->route('template');
 
-        return Template::findOrFail($id);
+        return Template::query()->findOrFail($id);
     }
 }
