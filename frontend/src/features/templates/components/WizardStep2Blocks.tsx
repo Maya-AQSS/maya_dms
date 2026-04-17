@@ -297,7 +297,37 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
 
   // ── Single-block CRUD ────────────────────────────────────────────────────────
 
-  const openCreate = () => {
+  const saveCurrentIfValid = async () => {
+    if (!formName.trim() || busy) return;
+    try {
+      if (panelMode === 'create') {
+        const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
+        await createBlock({
+          type: 'paragraph',
+          title: formName.trim(),
+          default_content: formDesc.trim() ? formDesc.split('\n').filter(Boolean) : null,
+          block_state,
+          mandatory,
+        });
+      } else if (panelMode === 'edit' && activeSingleId) {
+        const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
+        await updateBlock(activeSingleId, {
+          title: formName.trim(),
+          default_content: formDesc.trim() ? formDesc.split('\n').filter(Boolean) : null,
+          block_state,
+          mandatory,
+        });
+      }
+    } catch (e) {
+      console.error('Auto-save failed:', e);
+    }
+  };
+
+  const openCreate = async () => {
+    if (busy) return;
+    if (formName.trim()) {
+      await saveCurrentIfValid();
+    }
     resetForm();
     setSelectedBlockIds([]);
     setActiveSingleId(null);
@@ -500,7 +530,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           </p>
         </div>
         <div className="w-full max-w-sm bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-6">
-          {renderBlockForm('Añadir bloque', handleAddBlock, resetForm)}
+          {renderBlockForm('Guardar bloque', handleAddBlock, resetForm)}
         </div>
       </div>
     );
@@ -644,7 +674,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
             </div>
             <div className="flex-1 overflow-y-auto p-6">
               {renderBlockForm(
-                panelMode === 'create' ? 'Añadir bloque' : 'Guardar bloque',
+                'Guardar bloque',
                 panelMode === 'create' ? handleAddBlock : handleSaveEdit,
                 () => (panelMode === 'create' ? setPanelMode('empty') : setPanelMode('summary')),
               )}
