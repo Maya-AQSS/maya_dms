@@ -31,21 +31,30 @@ class JwtUser implements Authenticatable, AuthorizableContract
 
     public readonly array $roles;
 
+    /**
+     * Códigos de permiso CRUD desde BD (`user_permissions`), resueltos en el guard.
+     *
+     * @var list<string>
+     */
+    public readonly array $permissions;
+
     public readonly string $scope;
 
     /**
-     * IDs de contexto académico (claims JWT opcionales, p. ej. mappers Keycloak).
+     * IDs de contexto académico.
      *
      * @var list<string>
      */
     public readonly array $studyTypeIds;
 
     /**
+     * IDs de estudios.
      * @var list<string>
      */
     public readonly array $studyIds;
 
     /**
+     * IDs de módulos.
      * @var list<string>
      */
     public readonly array $moduleIds;
@@ -55,9 +64,13 @@ class JwtUser implements Authenticatable, AuthorizableContract
         $this->id = $claims['id'];
         $this->email = $claims['email'] ?? null;
         $this->name = $claims['name'] ?? null;
-        $this->department = $claims['department'] ?? null;
+        $this->department = $claims['department'] ?? $claims['departamento'] ?? null;
         $this->organizationId = $claims['organization_id'] ?? null;
         $this->roles = $claims['roles'] ?? [];
+        $this->permissions = array_values(array_unique(array_map(
+            static fn ($c): string => (string) $c,
+            $claims['permissions'] ?? [],
+        )));
         $this->scope = $claims['scope'] ?? '';
 
         $this->studyTypeIds = self::mergeScopeIds(
@@ -80,6 +93,14 @@ class JwtUser implements Authenticatable, AuthorizableContract
     public function hasRole(string $role): bool
     {
         return in_array($role, $this->roles, strict: true);
+    }
+
+    /**
+     * Comprueba si el usuario tiene un permiso de catálogo (p. ej. `templates.read`).
+     */
+    public function hasPermission(string $code): bool
+    {
+        return in_array($code, $this->permissions, strict: true);
     }
 
     /**

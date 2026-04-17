@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,7 @@ class UserProfileService implements UserProfileServiceInterface
 
     public function __construct(
         private readonly UserProfileRepositoryInterface $repository,
+        private readonly UserPermissionRepositoryInterface $userPermissionRepository,
     ) {}
 
     /**
@@ -49,14 +51,13 @@ class UserProfileService implements UserProfileServiceInterface
             $teams = $this->repository->findTeamsByUserId($userId);
 
             $profile = [
-                'id'              => $fdwUser['id'],
-                'email'           => $fdwUser['email'] ?? null,
-                'name'            => $fdwUser['name'] ?? null,
-                'department'      => $fdwUser['department'] ?? null,
-                'organization_id' => $jwtProfile['organization_id'] ?? null,
-                'roles'           => $jwtProfile['roles'] ?? [],
-                'teams'           => $teams,
-                'source'          => 'fdw',
+                'id'          => $fdwUser['id'],
+                'email'       => $fdwUser['email'] ?? null,
+                'name'        => $fdwUser['name'] ?? null,
+                'department'  => $fdwUser['department'] ?? null,
+                'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+                'teams'       => $teams,
+                'source'      => 'fdw',
             ];
 
             Cache::put($cacheKey, $profile, self::CACHE_TTL_SECONDS);
@@ -77,6 +78,7 @@ class UserProfileService implements UserProfileServiceInterface
      */
     public function invalidateCache(string $userId): void
     {
+        $this->userPermissionRepository->forgetCachedCodesForUser($userId);
         Cache::forget(self::CACHE_PREFIX . $userId);
     }
 
@@ -86,14 +88,13 @@ class UserProfileService implements UserProfileServiceInterface
     private function buildFallbackProfile(string $userId, array $jwtProfile): array
     {
         return [
-            'id'              => $jwtProfile['id'] ?? $userId,
-            'email'           => $jwtProfile['email'] ?? null,
-            'name'            => $jwtProfile['name'] ?? null,
-            'department'      => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
-            'organization_id' => $jwtProfile['organization_id'] ?? null,
-            'roles'           => $jwtProfile['roles'] ?? [],
-            'teams'           => [],
-            'source'          => 'jwt_fallback',
+            'id'          => $jwtProfile['id'] ?? $userId,
+            'email'       => $jwtProfile['email'] ?? null,
+            'name'        => $jwtProfile['name'] ?? null,
+            'department'  => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+            'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+            'teams'       => [],
+            'source'      => 'jwt_fallback',
         ];
     }
 }

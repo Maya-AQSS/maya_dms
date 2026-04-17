@@ -1,5 +1,6 @@
 <?php
 
+use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Cache;
@@ -10,15 +11,15 @@ uses(Tests\TestCase::class);
 
 beforeEach(function () {
     $this->repository = Mockery::mock(UserProfileRepositoryInterface::class);
-    $this->service = new UserProfileService($this->repository);
+    $this->userPermissionRepository = Mockery::mock(UserPermissionRepositoryInterface::class);
+    $this->userPermissionRepository->shouldReceive('findPermissionCodesByUserId')->andReturn([])->byDefault();
+    $this->userPermissionRepository->shouldReceive('forgetCachedCodesForUser')->byDefault();
+    $this->service = new UserProfileService($this->repository, $this->userPermissionRepository);
 
     $this->jwtProfile = [
-        'id'              => 'user-uuid-123',
-        'email'           => 'test@example.com',
-        'name'            => 'Test User',
-        'organization_id' => 'org-1',
-        'roles'           => ['docente'],
-        'scope'           => 'openid profile',
+        'id'    => 'user-uuid-123',
+        'email' => 'test@example.com',
+        'name'  => 'Test User',
     ];
 
     $this->fdwUser = [
@@ -59,6 +60,12 @@ it('queries FDW filtered by user id from JWT', function () {
         ->with('user-uuid-123')
         ->andReturn($this->teams);
 
+    $this->userPermissionRepository
+        ->shouldReceive('findPermissionCodesByUserId')
+        ->once()
+        ->with('user-uuid-123')
+        ->andReturn(['templates.read']);
+
     Cache::shouldReceive('put')
         ->once()
         ->withArgs(function ($key, $value, $ttl) {
@@ -71,21 +78,21 @@ it('queries FDW filtered by user id from JWT', function () {
         ->and($profile['source'])->toBe('fdw')
         ->and($profile['email'])->toBe('test@example.com')
         ->and($profile['department'])->toBe('Ingeniería')
-        ->and($profile['teams'])->toHaveCount(1);
+        ->and($profile['teams'])->toHaveCount(1)
+        ->and($profile['permissions'])->toBe(['templates.read']);
 });
 
 // ── Escenario 2: Caché del perfil ──────────────────────────────────────
 
 it('returns cached profile without querying FDW', function () {
     $cachedProfile = [
-        'id'              => 'user-uuid-123',
-        'email'           => 'test@example.com',
-        'name'            => 'Test User',
-        'department'      => 'Ingeniería',
-        'organization_id' => 'org-1',
-        'roles'           => ['docente'],
-        'teams'           => [],
-        'source'          => 'fdw',
+        'id'          => 'user-uuid-123',
+        'email'       => 'test@example.com',
+        'name'        => 'Test User',
+        'department'  => 'Ingeniería',
+        'permissions' => [],
+        'teams'       => [],
+        'source'      => 'fdw',
     ];
 
     Cache::shouldReceive('get')
@@ -116,6 +123,12 @@ it('caches profile with key user_profile:{user_id} and 15 min TTL', function () 
 
     $this->repository->shouldReceive('findTeamsByUserId')
         ->once()
+        ->andReturn([]);
+
+    $this->userPermissionRepository
+        ->shouldReceive('findPermissionCodesByUserId')
+        ->once()
+        ->with('user-uuid-123')
         ->andReturn([]);
 
     Cache::shouldReceive('put')
@@ -152,15 +165,57 @@ it('falls back to JWT data when FDW throws exception', function () {
                 && $context['user_id'] === 'user-uuid-123';
         });
 
+    $this->userPermissionRepository
+        ->shouldReceive('findPermissionCodesByUserId')
+        ->once()
+        ->with('user-uuid-123')
+        ->andReturn([]);
+
     $profile = $this->service->getProfile('user-uuid-123', $this->jwtProfile);
 
     expect($profile['source'])->toBe('jwt_fallback')
         ->and($profile['id'])->toBe('user-uuid-123')
         ->and($profile['email'])->toBe('test@example.com')
         ->and($profile['name'])->toBe('Test User')
-        ->and($profile['roles'])->toBe(['docente'])
         ->and($profile['department'])->toBeNull()
+        ->and($profile['permissions'])->toBe([])
         ->and($profile['teams'])->toBe([]);
+});
+
+it('falls back copies department from jwt departamento claim', function () {
+    Cache::shouldReceive('get')->once()->andReturnNull();
+
+    $this->repository->shouldReceive('findById')->once()->andReturnNull();
+
+    $this->userPermissionRepository
+        ->shouldReceive('findPermissionCodesByUserId')
+        ->once()
+        ->with('user-uuid-123')
+        ->andReturn([]);
+
+    $jwt = array_merge($this->jwtProfile, ['departamento' => 'Desde claim ES']);
+
+    $profile = $this->service->getProfile('user-uuid-123', $jwt);
+
+    expect($profile['department'])->toBe('Desde claim ES');
+});
+
+it('falls back copies department from jwt department claim', function () {
+    Cache::shouldReceive('get')->once()->andReturnNull();
+
+    $this->repository->shouldReceive('findById')->once()->andReturnNull();
+
+    $this->userPermissionRepository
+        ->shouldReceive('findPermissionCodesByUserId')
+        ->once()
+        ->with('user-uuid-123')
+        ->andReturn([]);
+
+    $jwt = array_merge($this->jwtProfile, ['department' => 'Desde claim EN']);
+
+    $profile = $this->service->getProfile('user-uuid-123', $jwt);
+
+    expect($profile['department'])->toBe('Desde claim EN');
 });
 
 it('falls back to JWT data when FDW user not found', function () {
@@ -173,6 +228,12 @@ it('falls back to JWT data when FDW user not found', function () {
         ->with('user-uuid-123')
         ->andReturnNull();
 
+    $this->userPermissionRepository
+        ->shouldReceive('findPermissionCodesByUserId')
+        ->once()
+        ->with('user-uuid-123')
+        ->andReturn([]);
+
     $profile = $this->service->getProfile('user-uuid-123', $this->jwtProfile);
 
     expect($profile['source'])->toBe('jwt_fallback')
@@ -182,6 +243,11 @@ it('falls back to JWT data when FDW user not found', function () {
 // ── Escenario 4: Invalidación de caché ─────────────────────────────────
 
 it('invalidates cache for a specific user', function () {
+    $this->userPermissionRepository
+        ->shouldReceive('forgetCachedCodesForUser')
+        ->once()
+        ->with('user-uuid-123');
+
     Cache::shouldReceive('forget')
         ->once()
         ->with('user_profile:user-uuid-123')
@@ -206,17 +272,20 @@ it('merges FDW data, JWT claims, and teams into complete profile', function () {
         ->once()
         ->andReturn($this->teams);
 
+    $this->userPermissionRepository
+        ->shouldReceive('findPermissionCodesByUserId')
+        ->once()
+        ->with('user-uuid-123')
+        ->andReturn([]);
+
     Cache::shouldReceive('put')->once();
 
     $profile = $this->service->getProfile('user-uuid-123', $this->jwtProfile);
 
     expect($profile)
         ->toHaveKeys([
-            'id', 'email', 'name', 'department',
-            'organization_id', 'roles', 'teams', 'source',
+            'id', 'email', 'name', 'department', 'permissions', 'teams', 'source',
         ])
-        ->and($profile['organization_id'])->toBe('org-1')
-        ->and($profile['roles'])->toBe(['docente'])
         ->and($profile['department'])->toBe('Ingeniería')
         ->and($profile['teams'])->toHaveCount(1);
 });

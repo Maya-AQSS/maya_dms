@@ -15,6 +15,7 @@ use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\AuditLogRepository;
@@ -24,6 +25,7 @@ use App\Repositories\Eloquent\TeamReadRepository;
 use App\Repositories\Eloquent\TemplateBlockRepository;
 use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\TemplateVersionRepository;
+use App\Repositories\Eloquent\UserPermissionRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
 use App\Services\AcademicHierarchyService;
 use App\Services\AuditLogService;
@@ -63,6 +65,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateVersionRepositoryInterface::class, TemplateVersionRepository::class);
         $this->app->bind(CommentRepositoryInterface::class, CommentRepository::class);
         $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
+        $this->app->bind(UserPermissionRepositoryInterface::class, UserPermissionRepository::class);
         $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
 
         // Service bindings
@@ -86,7 +89,16 @@ class AppServiceProvider extends ServiceProvider
         Auth::viaRequest('jwt-token', function ($request) {
             $profile = $request->attributes->get('jwt_user');
 
-            return $profile ? new JwtUser($profile) : null;
+            if (! $profile) {
+                return null;
+            }
+
+            $permissions = app(UserPermissionRepositoryInterface::class)
+                ->findPermissionCodesByUserId((string) $profile['id']);
+
+            $profile['permissions'] = $permissions;
+
+            return new JwtUser($profile);
         });
 
         // Registro de políticas

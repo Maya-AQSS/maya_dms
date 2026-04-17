@@ -18,8 +18,7 @@ export type MeProfile = {
   email: string | null;
   name: string | null;
   department: string | null;
-  organization_id: string | null;
-  roles: string[];
+  permissions: string[];
   teams: UserTeam[];
   source: 'fdw' | 'jwt_fallback';
 };
