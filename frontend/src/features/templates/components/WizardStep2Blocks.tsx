@@ -551,7 +551,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           <button
             type="button"
             onClick={openCreate}
-            className="w-full text-left rounded-lg px-3 py-3 flex items-center gap-2 border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted shrink-0 mt-2"
+            className="w-full text-center rounded-lg px-3 py-3 flex items-center justify-center border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted shrink-0 mt-2"
           >
             <span className="text-sm font-medium">+ Añadir bloque</span>
           </button>

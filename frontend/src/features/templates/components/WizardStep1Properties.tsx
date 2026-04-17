@@ -45,7 +45,12 @@ export function WizardStep1Properties({
   }, []);
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
-  const allModules = allStudies.flatMap((s) => s.course_modules);
+  const filteredStudies = studyTypeId
+    ? (hierarchy.find((t) => String(t.id) === studyTypeId)?.studies ?? [])
+    : allStudies;
+  const filteredModules = studyId
+    ? (allStudies.find((s) => String(s.id) === studyId)?.course_modules ?? [])
+    : [];
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
@@ -135,15 +140,20 @@ export function WizardStep1Properties({
               {BINDING_TITLES[visibility] ?? visibility}
             </p>
 
-            <div className="max-w-sm">
-              {visibility === 'study_type' && (
+            <div className="max-w-sm space-y-4">
+              {/* Tipo de Estudio — required parent context for study_type, study, module */}
+              {(visibility === 'study_type' || visibility === 'study' || visibility === 'module') && (
                 <div>
                   <FieldLabel required>Tipo de Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyTypeId}
                     disabled={hierarchyLoading}
-                    onChange={(e) => setStudyTypeId(e.target.value)}
+                    onChange={(e) => {
+                      setStudyTypeId(e.target.value);
+                      setStudyId('');
+                      setModuleId('');
+                    }}
                     error={!!errors.studyTypeId}
                   >
                     <option value="">— Seleccionar —</option>
@@ -157,18 +167,22 @@ export function WizardStep1Properties({
                 </div>
               )}
 
-              {visibility === 'study' && (
+              {/* Estudio — filtered by Tipo de Estudio; required parent context for study, module */}
+              {(visibility === 'study' || visibility === 'module') && (
                 <div>
                   <FieldLabel required>Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyId}
                     disabled={hierarchyLoading}
-                    onChange={(e) => setStudyId(e.target.value)}
+                    onChange={(e) => {
+                      setStudyId(e.target.value);
+                      setModuleId('');
+                    }}
                     error={!!errors.studyId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {allStudies.map((s) => (
+                    {filteredStudies.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </Select>
@@ -178,6 +192,7 @@ export function WizardStep1Properties({
                 </div>
               )}
 
+              {/* Módulo — filtered by Estudio */}
               {visibility === 'module' && (
                 <div>
                   <FieldLabel required>Módulo</FieldLabel>
@@ -189,7 +204,7 @@ export function WizardStep1Properties({
                     error={!!errors.moduleId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {allModules.map((m) => (
+                    {filteredModules.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </Select>
@@ -199,6 +214,7 @@ export function WizardStep1Properties({
                 </div>
               )}
 
+              {/* Equipo — standalone, no hierarchy */}
               {visibility === 'group' && (
                 <div>
                   <FieldLabel required>Equipo</FieldLabel>

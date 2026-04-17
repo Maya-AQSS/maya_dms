@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import { updateTemplate as apiUpdateTemplate, createTemplate as apiCreateTemplate } from '../../../api/templates';
+import { ApiHttpError } from '../../../api/http';
 import { Button } from '../../../ui';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks } from './WizardStep2Blocks';
@@ -47,6 +48,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // UI state
   const [saving, setSaving] = useState(false);
+  const [permissionError, setPermissionError] = useState<string | null>(null);
 
   // Dirty check
   const isDirty = useMemo(() => {
@@ -69,13 +71,18 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const validateStep1 = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = 'El nombre es obligatorio.';
-    
-    const needsAcademic = visibility !== 'personal' && visibility !== 'global';
-    if (needsAcademic) {
-      if (visibility === 'study_type' && !studyTypeId) newErrors.studyTypeId = 'Obligatorio';
-      if (visibility === 'study' && !studyId) newErrors.studyId = 'Obligatorio';
-      if (visibility === 'module' && !moduleId) newErrors.moduleId = 'Obligatorio';
-      if (visibility === 'group' && !groupId) newErrors.groupId = 'Obligatorio';
+
+    if (visibility === 'study_type') {
+      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
+    } else if (visibility === 'study') {
+      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
+      if (!studyId) newErrors.studyId = 'Este campo es obligatorio';
+    } else if (visibility === 'module') {
+      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
+      if (!studyId) newErrors.studyId = 'Este campo es obligatorio';
+      if (!moduleId) newErrors.moduleId = 'Este campo es obligatorio';
+    } else if (visibility === 'group') {
+      if (!groupId) newErrors.groupId = 'Este campo es obligatorio';
     }
 
     setErrors(newErrors);
@@ -85,6 +92,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const saveProperties = async () => {
     if (!validateStep1()) return;
     setSaving(true);
+    setPermissionError(null);
     try {
       const payload = {
         name: name.trim(),
@@ -107,7 +115,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setCompletedSteps(prev => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
     } catch (e) {
-      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar' });
+      if (e instanceof ApiHttpError && (e.status === 401 || e.status === 403)) {
+        setPermissionError(
+          'No tienes permisos para guardar una plantilla con esta visibilidad. ' +
+          'Contacta con un coordinador o selecciona una visibilidad diferente.'
+        );
+      } else {
+        setErrors({ api: e instanceof Error ? e.message : 'Error al guardar' });
+      }
     } finally {
       setSaving(false);
     }
@@ -249,7 +264,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           <WizardStep1Properties
             name={name} setName={setName}
             description={description} setDescription={setDescription}
-            visibility={visibility} setVisibility={setVisibility}
+            visibility={visibility} setVisibility={(v) => { setVisibility(v); setPermissionError(null); }}
             deliveryDeadline={deliveryDeadline} setDeliveryDeadline={setDeliveryDeadline}
             studyTypeId={studyTypeId} setStudyTypeId={setStudyTypeId}
             studyId={studyId} setStudyId={setStudyId}
@@ -281,6 +296,21 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           />
         )}
       </div>
+
+      {/* Permission / API error banner */}
+      {step === 'properties' && permissionError && (
+        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
+          <button
+            type="button"
+            onClick={() => setPermissionError(null)}
+            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {/* Footer — outside the scroll area, always visible */}
       <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-6 py-4 flex items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
