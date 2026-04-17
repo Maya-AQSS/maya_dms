@@ -21,7 +21,8 @@ class ReviewController extends Controller
     public function index(Request $request, string $documentId): JsonResponse
     {
         $document = $this->documentService->findOrFail($documentId);
-        $this->authorize('review', $document);
+        // Listar revisiones: participantes con acceso al documento (SoD solo aplica a aprobar/rechazar).
+        $this->authorize('view', $document);
 
         $reviews = $this->documentService->listReviews($document->id);
 

@@ -17,12 +17,14 @@ return [
     ['user_id' => 'usr_direction_demo', 'permission_code' => 'documents.update'],
     ['user_id' => 'usr_direction_demo', 'permission_code' => 'documents.delete'],
     ['user_id' => 'usr_direction_demo', 'permission_code' => 'audit.read'],
+    ['user_id' => 'usr_direction_demo', 'permission_code' => 'users.search'],
     ['user_id' => 'usr_javier_navarro', 'permission_code' => 'audit.read'],
 
     ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'templates.read'],
     ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'documents.read'],
     ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'documents.create'],
     ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'documents.update'],
+    ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'users.search'],
 
     ['user_id' => 'usr_hierarchy_eso_demo', 'permission_code' => 'templates.read'],
     ['user_id' => 'usr_hierarchy_eso_demo', 'permission_code' => 'documents.read'],

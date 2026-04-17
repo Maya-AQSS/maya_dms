@@ -15,6 +15,8 @@ class DocumentPolicy
 {
     /**
      * Ver documento: el alcance lo acota el global scope del modelo.
+     * Los controladores deben resolver el modelo con {@see Document::query()} (no sin scope)
+     * antes de delegar aquí.
      */
     public function view(JwtUser $user, Document $document): bool
     {

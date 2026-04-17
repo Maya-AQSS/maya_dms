@@ -120,7 +120,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     /**
      * @param  list<string>  $codes
      */
-    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create']): void
+    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'users.search']): void
     {
         $now = now();
         foreach ($codes as $code) {

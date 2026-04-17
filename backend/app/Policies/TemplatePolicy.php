@@ -32,6 +32,7 @@ class TemplatePolicy
 
     /**
      * Ver una plantilla (el alcance impide cargar filas no visibles).
+     * Resolver siempre vía {@see Template::query()} antes de autorizar.
      */
     public function view(JwtUser $user, Template $template): bool
     {
