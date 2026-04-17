@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TemplateWizard } from '../TemplateWizard';
 import { updateTemplate, createTemplate } from '../../../../api/templates';
@@ -10,6 +10,13 @@ import { MemoryRouter } from 'react-router-dom';
 vi.mock('../../../../api/templates');
 vi.mock('../../../../api/blocks');
 vi.mock('../../../../api/users');
+vi.mock('../../../../api/groups', () => ({
+  fetchGroups: vi.fn().mockResolvedValue({ data: [] }),
+}));
+vi.mock('../../../../features/hierarchy', () => ({
+  useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
+  HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
 
 // Mock dnd-kit globally for the wizard
 vi.mock('@dnd-kit/core', () => ({
@@ -44,9 +51,31 @@ vi.mock('react-router-dom', async () => {
 });
 
 describe('TemplateWizard Integration', () => {
+  const fullTemplate = (overrides: Partial<Record<string, unknown>> = {}) => ({
+    id: 't1',
+    name: 'Existing',
+    description: null,
+    visibility_level: 'personal',
+    delivery_deadline: null,
+    study_type_id: null,
+    study_id: null,
+    module_id: null,
+    group_id: null,
+    organization_id: null,
+    created_by: 'u1',
+    status: 'draft',
+    version: 1,
+    review_stages: 1,
+    review_mode: 'parallel',
+    ...overrides,
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     (fetchBlocks as any).mockResolvedValue({ data: [] });
+    (updateTemplate as any).mockImplementation(async (_id: string, payload: { name?: string }) => ({
+      data: fullTemplate({ name: payload.name ?? 'Existing' }),
+    }));
   });
 
   const renderWizard = (props = {}) => {
@@ -58,7 +87,7 @@ describe('TemplateWizard Integration', () => {
   };
 
   it('completes full "Create" flow from Step 1 to Step 4', async () => {
-    const mockNewTemplate = { id: 't123', name: 'New Template', visibility_level: 'personal' };
+    const mockNewTemplate = fullTemplate({ id: 't123', name: 'New Template' });
     (createTemplate as any).mockResolvedValue({ data: mockNewTemplate });
     (fetchBlocks as any).mockResolvedValue({ data: [{ id: 'b1', title: 'Block 1', mandatory: true, block_state: 'locked' }] });
 
@@ -67,10 +96,10 @@ describe('TemplateWizard Integration', () => {
     // Step 1: Properties
     expect(screen.getByText('Nueva plantilla')).toBeTruthy();
     
-    const nameInput = screen.getByLabelText(/Nombre de la plantilla/i);
+    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
     fireEvent.change(nameInput, { target: { value: 'New Template' } });
     
-    const continueBtn = screen.getByText(/Guardar y continuar/i);
+    const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
 
     await waitFor(() => {
@@ -81,21 +110,25 @@ describe('TemplateWizard Integration', () => {
 
     // Step 2: Blocks
     // We already have 1 block from mocked fetchBlocks
-    fireEvent.click(screen.getByText(/Continuar/i));
+    await waitFor(() => {
+      const btn = screen.getByRole('button', { name: /Guardar y continuar →/ }) as HTMLButtonElement;
+      expect(btn.disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
-      expect(screen.getByText('Validadores asignados (0)')).toBeTruthy(); // Transitioned to Step 3
+      expect(screen.getByText(/VALIDADORES \(0\)/)).toBeTruthy(); // Paso 3
     });
 
     // Step 3: Users
-    fireEvent.click(screen.getByText(/Continuar/i));
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
       expect(screen.getByText('Revisión final')).toBeTruthy(); // Transitioned to Step 4 (Resumen)
     });
 
     // Step 4: Summary -> Finish
-    fireEvent.click(screen.getByText(/Publicar plantilla/i));
+    fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
     
     expect(mockNavigate).toHaveBeenCalledWith('/templates');
   });
@@ -103,7 +136,7 @@ describe('TemplateWizard Integration', () => {
   it('handles Step 1 validation errors', async () => {
     renderWizard();
     
-    const continueBtn = screen.getByText(/Guardar y continuar/i);
+    const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
 
     expect(screen.getByText('El nombre es obligatorio.')).toBeTruthy();
@@ -111,29 +144,40 @@ describe('TemplateWizard Integration', () => {
   });
 
   it('allows moving back to previous steps', async () => {
-    const mockTemplate = { id: 't1', name: 'Existing', visibility_level: 'personal' };
-    (fetchBlocks as any).mockResolvedValue({ data: [{ id: 'b1', title: 'B1' }] });
+    const mockTemplate = fullTemplate();
+    (fetchBlocks as any).mockResolvedValue({
+      data: [{
+        id: 'b1',
+        template_id: 't1',
+        type: 'paragraph',
+        title: 'B1',
+        default_content: null,
+        block_state: 'locked',
+        mandatory: true,
+        sort_order: 0,
+      }],
+    });
 
     renderWizard({ template: mockTemplate });
     
     // We start at Step 1, but let's go to Step 2
-    fireEvent.change(screen.getByLabelText(/Nombre/i), { target: { value: 'Modified' } });
-    fireEvent.click(screen.getByText(/Guardar y continuar/i));
+    fireEvent.change(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0], { target: { value: 'Modified' } });
+    fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
       expect(screen.getByText('BLOQUES (1)')).toBeTruthy();
     });
 
     // Now go back
-    fireEvent.click(screen.getByText(/Volver a Propiedades/i));
+    fireEvent.click(screen.getByRole('button', { name: /Volver a Propiedades/i }));
     
-    expect(screen.getByLabelText(/Nombre de la plantilla/i)).toBeTruthy();
+    expect(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0]).toBeTruthy();
   });
 
   it('shows leave guard when dirty', async () => {
     renderWizard();
     
-    const nameInput = screen.getByLabelText(/Nombre de la plantilla/i);
+    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
     fireEvent.change(nameInput, { target: { value: 'Some change' } });
 
     // Try to go back to templates list via back arrow

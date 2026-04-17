@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep2Blocks } from '../WizardStep2Blocks';
 import { useTemplateBlocks } from '../../hooks/useTemplateBlocks';
@@ -69,31 +69,19 @@ describe('WizardStep2Blocks', () => {
 
   it('opens summary panel when a block is clicked', async () => {
     render(<WizardStep2Blocks {...defaultProps} />);
-    const blockButton = screen.getByText('Bloque 1');
-    
+    const blockButton = screen.getByRole('button', { name: /Bloque 1/i });
     fireEvent.click(blockButton);
-    
-    // Summary panel should show "Editar" and "Eliminar" buttons
-    expect(screen.getByText('Editar')).toBeTruthy();
-    expect(screen.getByText('Eliminar')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('Editar')).toBeTruthy();
+      expect(screen.getByText('Eliminar')).toBeTruthy();
+    });
   });
 
-  it('enters multi-selection mode on double click', async () => {
-    vi.useFakeTimers();
+  it('enters multi-selection mode when selecting all blocks', () => {
     render(<WizardStep2Blocks {...defaultProps} />);
-    const block1 = screen.getByText('Bloque 1');
-    
-    // Double click
-    fireEvent.click(block1);
-    fireEvent.click(block1);
-    
-    act(() => {
-      vi.runAllTimers();
-    });
-
+    fireEvent.click(screen.getByText('Seleccionar todos'));
     expect(screen.getByText('EDITANDO SELECCIÓN')).toBeTruthy();
-    expect(screen.getByText('1 / 1')).toBeTruthy();
-    vi.useRealTimers();
+    expect(screen.getByText('1 / 2')).toBeTruthy();
   });
 
   it('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
@@ -106,29 +94,13 @@ describe('WizardStep2Blocks', () => {
     expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
   });
 
-  it('navigates through multi-selection items', async () => {
-    vi.useFakeTimers();
+  it('navigates through multi-selection items', () => {
     render(<WizardStep2Blocks {...defaultProps} />);
-    
-    // Select both blocks via multi-selection
     fireEvent.click(screen.getByText('Seleccionar todos'));
-    
-    // Double click one to enter multi-mode
-    const block1 = screen.getByText('Bloque 1');
-    fireEvent.click(block1);
-    fireEvent.click(block1);
-    
-    act(() => {
-      vi.runAllTimers();
-    });
-
     expect(screen.getByText('1 / 2')).toBeTruthy();
-    
-    // Click next arrow (find by text → or role if accessible)
-    const nextBtn = screen.getByText('→');
+
+    const nextBtn = screen.getByRole('button', { name: '→' });
     fireEvent.click(nextBtn);
-    
     expect(screen.getByText('2 / 2')).toBeTruthy();
-    vi.useRealTimers();
   });
 });

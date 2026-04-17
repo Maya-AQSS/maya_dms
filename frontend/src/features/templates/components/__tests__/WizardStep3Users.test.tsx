@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep3Users } from '../WizardStep3Users';
 import { searchUsers } from '../../../../api/users';
@@ -55,8 +55,7 @@ describe('WizardStep3Users', () => {
 
   it('switches between Libre and Ordenada', () => {
     render(<WizardStep3Users {...defaultProps} />);
-    const orderedBtn = screen.getByText(/Validación Ordenada/i);
-    
+    const orderedBtn = screen.getByRole('button', { name: 'Ordenada' });
     fireEvent.click(orderedBtn);
     expect(defaultProps.onValidationTypeChange).toHaveBeenCalledWith('ordenada');
   });
@@ -64,39 +63,29 @@ describe('WizardStep3Users', () => {
   it('removes a validator after confirmation', async () => {
     render(<WizardStep3Users {...defaultProps} />);
     const removeBtn = screen.getByText('✕');
-    
     fireEvent.click(removeBtn);
-    
-    // Should show "¿Eliminar?" confirmation
     expect(screen.getByText('¿Eliminar?')).toBeTruthy();
-    
     const confirmYes = screen.getByText('Sí');
     fireEvent.click(confirmYes);
-    
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([]);
   });
 
   it('searches and adds a new validator', async () => {
     render(<WizardStep3Users {...defaultProps} validators={[]} />);
-    
-    const addBtn = screen.getByText(/\+ Añadir validador/i);
+
+    const addBtn = screen.getByText('+ Añadir');
     fireEvent.click(addBtn);
-    
-    const searchInput = screen.getByPlaceholderText(/Buscar por nombre o correo/i);
-    
-    await act(async () => {
-      fireEvent.change(searchInput, { target: { value: 'User 2' } });
-      // Wait for debounce (300ms)
-      await new Promise((r) => setTimeout(r, 400));
-    });
+
+    const searchInput = screen.getByPlaceholderText(/Buscar por nombre, rol o email/i);
+    fireEvent.change(searchInput, { target: { value: 'User 2' } });
 
     await waitFor(() => {
       expect(searchUsers).toHaveBeenCalledWith('User 2');
       expect(screen.getByText('User 2')).toBeTruthy();
     });
 
-    const addButtonInRow = screen.getByText('+ Añadir');
-    fireEvent.click(addButtonInRow);
+    const addButtons = screen.getAllByText('+ Añadir');
+    fireEvent.click(addButtons[addButtons.length - 1]);
 
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([
       { userId: 'u2', name: 'User 2', role: 'Staff' }

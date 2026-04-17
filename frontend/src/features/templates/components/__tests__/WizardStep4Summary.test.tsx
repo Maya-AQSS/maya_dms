@@ -1,46 +1,99 @@
-import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep4Summary } from '../WizardStep4Summary';
+import type { Template } from '../../../../types/templates';
+import type { TemplateBlock } from '../../../../types/blocks';
+import { useTemplateBlocks } from '../../hooks/useTemplateBlocks';
+
+vi.mock('../../hooks/useTemplateBlocks');
 
 describe('WizardStep4Summary', () => {
-  const mockData = {
+  const mockTemplate: Template = {
+    id: 'tpl-1',
     name: 'Test Template',
     description: 'This is a description',
-    visibility: 'study_type' as const,
-    studyTypeId: 'st1',
-    blocksCount: 5,
-    validatorsCount: 2,
-    validationType: 'ordenada' as const,
-    onEditStep: vi.fn(),
+    visibility_level: 'study_type',
+    delivery_deadline: null,
+    study_type_id: 'st1',
+    study_id: null,
+    module_id: null,
+    group_id: null,
+    organization_id: null,
+    created_by: 'u1',
+    status: 'draft',
+    version: 1,
+    review_stages: 1,
+    review_mode: 'parallel',
   };
 
+  const mockBlocks: TemplateBlock[] = Array.from({ length: 5 }, (_, i) => ({
+    id: `b${i}`,
+    template_id: 'tpl-1',
+    type: 'text',
+    title: `Bloque ${i + 1}`,
+    default_content: null,
+    block_state: 'locked',
+    mandatory: true,
+    sort_order: i,
+  }));
+
+  const validators = [
+    { userId: 'v1', name: 'Validator One', role: 'Teacher' },
+    { userId: 'v2', name: 'Validator Two', role: 'Staff' },
+  ];
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useTemplateBlocks as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      blocks: mockBlocks,
+      loading: false,
+      createBlock: vi.fn(),
+      updateBlock: vi.fn(),
+      deleteBlock: vi.fn(),
+      reorderBlocks: vi.fn(),
+    });
+  });
+
   it('renders summary data correctly', () => {
-    render(<WizardStep4Summary {...mockData} />);
-    
+    render(
+      <WizardStep4Summary
+        template={mockTemplate}
+        validators={validators}
+        validationType="ordenada"
+        onGoToStep={vi.fn()}
+      />,
+    );
+
     expect(screen.getByText('Test Template')).toBeTruthy();
     expect(screen.getByText('This is a description')).toBeTruthy();
-    expect(screen.getByText('Por tipo de estudio')).toBeTruthy();
-    
-    // Check counts
-    expect(screen.getByText('5 bloques definidos')).toBeTruthy();
-    expect(screen.getByText('2 validadores asignados')).toBeTruthy();
-    
-    // Check validation type
-    expect(screen.getByText(/Validación Ordenada/i)).toBeTruthy();
+    expect(screen.getByText('Visibilidad')).toBeTruthy();
+    expect(screen.getAllByText('Tipo de Estudio').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('st1')).toBeTruthy();
+    expect(screen.getByText(/Bloques \(5\)/)).toBeTruthy();
+    expect(screen.getByText('Validator One')).toBeTruthy();
+    expect(screen.getByText('Validator Two')).toBeTruthy();
+    expect(screen.getByText(/Tipo de validación:/i)).toBeTruthy();
+    expect(screen.getByText('ordenada')).toBeTruthy();
   });
 
-  it('calls onEditStep when edit buttons are clicked', () => {
-    const onEditStep = vi.fn();
-    render(<WizardStep4Summary {...mockData} onEditStep={onEditStep} />);
-    
-    // There are several "Editar" buttons in the summary
-    const editBtns = screen.getAllByRole('button', { name: /Editar/i });
-    
-    // Clicking the first one (Properties)
-    fireEvent.click(editBtns[0]);
-    expect(onEditStep).toHaveBeenCalledWith(1);
+  it('calls onGoToStep when edit buttons are clicked', () => {
+    const onGoToStep = vi.fn();
+    render(
+      <WizardStep4Summary
+        template={mockTemplate}
+        validators={validators}
+        validationType="ordenada"
+        onGoToStep={onGoToStep}
+      />,
+    );
+
+    const editButton = screen
+      .getAllByText('Editar →')
+      .map((el) => el.closest('button'))
+      .find((b): b is HTMLButtonElement => b != null);
+
+    expect(editButton).toBeTruthy();
+    fireEvent.click(editButton!);
+    expect(onGoToStep).toHaveBeenCalledWith('properties');
   });
 });
-
-// Import fireEvent since it was missing in the previous thought block
-import { fireEvent } from '@testing-library/react';
