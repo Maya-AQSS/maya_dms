@@ -8,6 +8,9 @@ use App\Services\Contracts\AuditLogServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\ResourceCollection;
+use App\Models\Document;
+use App\Models\Template;
+use App\Models\Comment;
 
 class AuditLogController extends Controller
 {
@@ -17,17 +20,13 @@ class AuditLogController extends Controller
 
     /**
      * Historial de auditoría de un documento.
-     * Acceso: autor (owner_id / created_by), revisor asignado o rol 'direccion'.
      */
     public function indexForDocument(Request $request, string $documentId): ResourceCollection|JsonResponse
     {
         /** @var \App\Models\JwtUser $user */
         $user = auth()->user();
-
-        // Si el usuario no es de dirección, validamos acceso.
-        // Usar findOrFail asegura que si el recurso no es visible para el scope global, devuelva 404 (IDOR protection)
-        if (! $user->hasRole('direccion')) {
-            \App\Models\Document::findOrFail($documentId);
+        if (! $user->hasPermission('audit.read')) {
+            Document::findOrFail($documentId);
         }
 
         return AuditLogResource::collection(
@@ -37,15 +36,14 @@ class AuditLogController extends Controller
 
     /**
      * Historial de auditoría de una plantilla.
-     * Acceso: creador, revisor asignado o rol 'direccion'.
      */
     public function indexForTemplate(Request $request, string $templateId): ResourceCollection|JsonResponse
     {
         /** @var \App\Models\JwtUser $user */
         $user = auth()->user();
 
-        if (! $user->hasRole('direccion')) {
-            \App\Models\Template::findOrFail($templateId);
+        if (! $user->hasPermission('audit.read')) {
+            Template::findOrFail($templateId);
         }
 
         return AuditLogResource::collection(
@@ -55,15 +53,14 @@ class AuditLogController extends Controller
 
     /**
      * Historial de auditoría de un comentario.
-     * Acceso: autor del comentario, propietario/creador del documento padre o rol 'direccion'.
      */
     public function indexForComment(Request $request, string $commentId): ResourceCollection|JsonResponse
     {
         /** @var \App\Models\JwtUser $user */
         $user = auth()->user();
 
-        if (! $user->hasRole('direccion')) {
-            \App\Models\Comment::findOrFail($commentId);
+        if (! $user->hasPermission('audit.read')) {
+            Comment::findOrFail($commentId);
         }
 
         return AuditLogResource::collection(

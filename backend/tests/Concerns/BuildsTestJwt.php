@@ -26,7 +26,7 @@ trait BuildsTestJwt
 
     /**
      * @param  list<string>  $realmRoles  Roles en realm_access.roles (Keycloak).
-     * @param  array<string, mixed>  $extraClaims  Claims adicionales (p. ej. organization_id, study_ids).
+     * @param  array<string, mixed>  $extraClaims  Claims adicionales (p. ej. study_id, study_ids).
      */
     protected function buildJwtForSub(
         string $privatePem,

@@ -24,8 +24,6 @@ readonly class UpdateTemplateDto
         public bool $setModuleId = false,
         public ?string $teamId = null,
         public bool $setTeamId = false,
-        public ?string $organizationId = null,
-        public bool $setOrganizationId = false,
         public ?string $status = null,
         public bool $setStatus = false,
         public ?int $reviewStages = null,

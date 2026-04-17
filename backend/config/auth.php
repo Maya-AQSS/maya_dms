@@ -142,20 +142,25 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Plantillas — visibilidad compartida (realm roles Keycloak)
+    | Plantillas — catálogo ampliado por permisos (global scope Template)
     |--------------------------------------------------------------------------
     |
-    | Solo estos roles pueden crear o asignar visibilidad distinta de
-    | "personal" (global, tipo de estudio, estudio, módulo, equipo).
-    | Los valores deben coincidir exactamente con los roles del JWT.
+    | Códigos de `permissions` (BD). Si el usuario tiene al menos uno, entra la
+    | rama de catálogo ampliado del global scope (p. ej. ver plantillas personales
+    | ajenas).
+    |
+    | Así se puede dar solo `templates.read` y `templates.delete` sin
+    | `templates.update` (quien ve y archiva pero no edita contenido ajeno).
+    |
+    | Crear con visibilidad no personal, editar o borrar ajenas se resuelven en
+    | {@see \App\Policies\TemplatePolicy} con `templates.create`, `templates.update`
+    | y `templates.delete` por separado.
     |
     */
-    'template_shared_visibility_roles' => array_values(array_filter(array_map(
-        'trim',
-        explode(',', (string) env(
-            'TEMPLATE_SHARED_VISIBILITY_ROLES',
-            'department-head,studies-head,director'
-        ))
-    ))),
+    'template_catalog_access_codes' => [
+        'templates.read',
+        'templates.update',
+        'templates.delete',
+    ],
 
 ];

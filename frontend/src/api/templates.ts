@@ -19,7 +19,6 @@ export type CreateTemplatePayload = {
   study_id?: string | null;
   module_id?: string | null;
   team_id?: string | null;
-  organization_id?: string | null;
   review_stages?: number;
   review_mode?: ReviewMode;
 };
@@ -33,7 +32,6 @@ export type UpdateTemplatePayload = {
   study_id?: string | null;
   module_id?: string | null;
   team_id?: string | null;
-  organization_id?: string | null;
   status?: TemplateStatus;
   review_stages?: number;
   review_mode?: ReviewMode;

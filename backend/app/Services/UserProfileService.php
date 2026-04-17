@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\JwtUser;
 use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
@@ -50,14 +51,20 @@ class UserProfileService implements UserProfileServiceInterface
 
             $teams = $this->repository->findTeamsByUserId($userId);
 
+            $jwtScopes = $this->scopeListsFromJwtProfile($jwtProfile);
+
             $profile = [
-                'id'          => $fdwUser['id'],
-                'email'       => $fdwUser['email'] ?? null,
-                'name'        => $fdwUser['name'] ?? null,
-                'department'  => $fdwUser['department'] ?? null,
-                'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
-                'teams'       => $teams,
-                'source'      => 'fdw',
+                'id'             => $fdwUser['id'],
+                'email'          => $fdwUser['email'] ?? null,
+                'name'           => $fdwUser['name'] ?? null,
+                'department'     => $fdwUser['department'] ?? null,
+                'study_type_ids' => $this->mergeFdwScopeListOrJwt($fdwUser, 'study_type_ids', 'study_type_id', $jwtScopes['study_type_ids']),
+                'study_ids'      => $this->mergeFdwScopeListOrJwt($fdwUser, 'study_ids', 'study_id', $jwtScopes['study_ids']),
+                'module_ids'     => $this->moduleIdsFromFdwOrJwt($fdwUser, $jwtScopes['module_ids']),
+                'team_ids'       => $this->mergeFdwScopeListOrJwt($fdwUser, 'team_ids', 'team_id', $jwtScopes['team_ids']),
+                'permissions'    => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+                'teams'          => $teams,
+                'source'         => 'fdw',
             ];
 
             Cache::put($cacheKey, $profile, self::CACHE_TTL_SECONDS);
@@ -87,14 +94,64 @@ class UserProfileService implements UserProfileServiceInterface
      */
     private function buildFallbackProfile(string $userId, array $jwtProfile): array
     {
+        $scopes = $this->scopeListsFromJwtProfile($jwtProfile);
+
         return [
-            'id'          => $jwtProfile['id'] ?? $userId,
-            'email'       => $jwtProfile['email'] ?? null,
-            'name'        => $jwtProfile['name'] ?? null,
-            'department'  => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
-            'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
-            'teams'       => [],
-            'source'      => 'jwt_fallback',
+            'id'             => $jwtProfile['id'] ?? $userId,
+            'email'          => $jwtProfile['email'] ?? null,
+            'name'           => $jwtProfile['name'] ?? null,
+            'department'     => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+            'study_type_ids' => $scopes['study_type_ids'],
+            'study_ids'      => $scopes['study_ids'],
+            'module_ids'     => $scopes['module_ids'],
+            'team_ids'       => $scopes['team_ids'],
+            'permissions'    => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+            'teams'          => [],
+            'source'         => 'jwt_fallback',
         ];
+    }
+
+    /**
+     * Listas de ámbito académico / equipos en JWT, misma normalización que {@see JwtUser}.
+     *
+     * @return array{study_type_ids: list<string>, study_ids: list<string>, module_ids: list<string>, team_ids: list<string>}
+     */
+    private function scopeListsFromJwtProfile(array $jwtProfile): array
+    {
+        return [
+            'study_type_ids' => JwtUser::mergeScopeIds($jwtProfile['study_type_ids'] ?? null, $jwtProfile['study_type_id'] ?? null),
+            'study_ids' => JwtUser::mergeScopeIds($jwtProfile['study_ids'] ?? null, $jwtProfile['study_id'] ?? null),
+            'module_ids' => array_values(array_unique(array_merge(
+                JwtUser::mergeScopeIds($jwtProfile['module_ids'] ?? null, $jwtProfile['module_id'] ?? null),
+                JwtUser::mergeScopeIds($jwtProfile['course_module_ids'] ?? null, $jwtProfile['course_module_id'] ?? null),
+            ))),
+            'team_ids' => JwtUser::mergeScopeIds($jwtProfile['team_ids'] ?? null, $jwtProfile['team_id'] ?? null),
+        ];
+    }
+
+    /**
+     * @param  list<string>  $jwtFallback
+     * @return list<string>
+     */
+    private function mergeFdwScopeListOrJwt(array $fdwUser, string $listKey, ?string $scalarKey, array $jwtFallback): array
+    {
+        $scalar = $scalarKey !== null ? ($fdwUser[$scalarKey] ?? null) : null;
+        $fromFdw = JwtUser::mergeScopeIds($fdwUser[$listKey] ?? null, $scalar);
+
+        return $fromFdw !== [] ? $fromFdw : $jwtFallback;
+    }
+
+    /**
+     * @param  list<string>  $jwtFallbackModuleIds
+     * @return list<string>
+     */
+    private function moduleIdsFromFdwOrJwt(array $fdwUser, array $jwtFallbackModuleIds): array
+    {
+        $fromFdw = array_values(array_unique(array_merge(
+            JwtUser::mergeScopeIds($fdwUser['module_ids'] ?? null, $fdwUser['module_id'] ?? null),
+            JwtUser::mergeScopeIds($fdwUser['course_module_ids'] ?? null, $fdwUser['course_module_id'] ?? null),
+        )));
+
+        return $fromFdw !== [] ? $fromFdw : $jwtFallbackModuleIds;
     }
 }

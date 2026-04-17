@@ -6,8 +6,9 @@ import { filterDocumentsByCascade } from './filterDocumentsByCascade';
 const baseDoc = (overrides: Partial<Document>): Document => ({
   id: 'd1',
   template_id: 't1',
+  template_version_id: null,
   title: 'Doc',
-  organization_id: 'o1',
+  study_type_id: null,
   study_id: 's1',
   module_id: 'm1',
   created_by: 'u1',

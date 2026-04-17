@@ -10,7 +10,6 @@ readonly class CreateDocumentDto
     public function __construct(
         public string $templateId,
         public string $title,
-        public string $organizationId,
         public string $createdBy,
         public string $ownerId,
         public ?string $studyTypeId = null,

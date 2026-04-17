@@ -78,6 +78,10 @@ it('queries FDW filtered by user id from JWT', function () {
         ->and($profile['source'])->toBe('fdw')
         ->and($profile['email'])->toBe('test@example.com')
         ->and($profile['department'])->toBe('Ingeniería')
+        ->and($profile['study_type_ids'])->toBe([])
+        ->and($profile['study_ids'])->toBe([])
+        ->and($profile['module_ids'])->toBe([])
+        ->and($profile['team_ids'])->toBe([])
         ->and($profile['teams'])->toHaveCount(1)
         ->and($profile['permissions'])->toBe(['templates.read']);
 });
@@ -86,13 +90,17 @@ it('queries FDW filtered by user id from JWT', function () {
 
 it('returns cached profile without querying FDW', function () {
     $cachedProfile = [
-        'id'          => 'user-uuid-123',
-        'email'       => 'test@example.com',
-        'name'        => 'Test User',
-        'department'  => 'Ingeniería',
-        'permissions' => [],
-        'teams'       => [],
-        'source'      => 'fdw',
+        'id'             => 'user-uuid-123',
+        'email'          => 'test@example.com',
+        'name'           => 'Test User',
+        'department'     => 'Ingeniería',
+        'study_type_ids' => [],
+        'study_ids'      => [],
+        'module_ids'     => [],
+        'team_ids'       => [],
+        'permissions'    => [],
+        'teams'          => [],
+        'source'         => 'fdw',
     ];
 
     Cache::shouldReceive('get')
@@ -178,6 +186,10 @@ it('falls back to JWT data when FDW throws exception', function () {
         ->and($profile['email'])->toBe('test@example.com')
         ->and($profile['name'])->toBe('Test User')
         ->and($profile['department'])->toBeNull()
+        ->and($profile['study_type_ids'])->toBe([])
+        ->and($profile['study_ids'])->toBe([])
+        ->and($profile['module_ids'])->toBe([])
+        ->and($profile['team_ids'])->toBe([])
         ->and($profile['permissions'])->toBe([])
         ->and($profile['teams'])->toBe([]);
 });
@@ -261,6 +273,22 @@ it('invalidates cache for a specific user', function () {
 
 // ── Perfil completo incluye datos FDW + JWT + equipos ───────────────────
 
+it('fills scope lists from JWT when FDW row has no scope columns', function () {
+    Cache::shouldReceive('get')->once()->andReturnNull();
+
+    $this->repository->shouldReceive('findById')->once()->andReturn($this->fdwUser);
+    $this->repository->shouldReceive('findTeamsByUserId')->once()->andReturn([]);
+    $this->userPermissionRepository->shouldReceive('findPermissionCodesByUserId')->once()->andReturn([]);
+    Cache::shouldReceive('put')->once();
+
+    $jwt = array_merge($this->jwtProfile, ['study_id' => 'ST-1', 'module_ids' => json_encode(['M-1', 'M-2'])]);
+
+    $profile = $this->service->getProfile('user-uuid-123', $jwt);
+
+    expect($profile['study_ids'])->toBe(['ST-1'])
+        ->and($profile['module_ids'])->toBe(['M-1', 'M-2']);
+});
+
 it('merges FDW data, JWT claims, and teams into complete profile', function () {
     Cache::shouldReceive('get')->once()->andReturnNull();
 
@@ -284,7 +312,17 @@ it('merges FDW data, JWT claims, and teams into complete profile', function () {
 
     expect($profile)
         ->toHaveKeys([
-            'id', 'email', 'name', 'department', 'permissions', 'teams', 'source',
+            'id',
+            'email',
+            'name',
+            'department',
+            'study_type_ids',
+            'study_ids',
+            'module_ids',
+            'team_ids',
+            'permissions',
+            'teams',
+            'source',
         ])
         ->and($profile['department'])->toBe('Ingeniería')
         ->and($profile['teams'])->toHaveCount(1);

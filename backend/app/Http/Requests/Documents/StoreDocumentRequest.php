@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\Models\JwtUser;
 use App\Models\Template;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -14,13 +15,18 @@ class StoreDocumentRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        $user = $this->user();
+        if (! $user instanceof JwtUser || ! $user->hasPermission('documents.create')) {
+            return false;
+        }
+
         if (! $this->filled('template_id')) {
             return true;
         }
 
         $template = Template::query()->find($this->input('template_id'));
 
-        return $template !== null && $this->user()->can('view', $template);
+        return $template !== null && $user->can('view', $template);
     }
 
     /**
@@ -33,7 +39,6 @@ class StoreDocumentRequest extends FormRequest
         return [
             'template_id' => ['required', 'uuid', 'exists:templates,id'],
             'title' => ['required', 'string', 'max:255'],
-            'organization_id' => ['required', 'string', 'max:255'],
             'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -56,7 +61,6 @@ class StoreDocumentRequest extends FormRequest
         return new CreateDocumentDto(
             templateId: $this->validated('template_id'),
             title: $this->validated('title'),
-            organizationId: $this->validated('organization_id'),
             createdBy: $createdBy,
             ownerId: $ownerId,
             studyTypeId: $this->validated('study_type_id') ?? null,

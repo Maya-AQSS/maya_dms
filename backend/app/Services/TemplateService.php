@@ -7,7 +7,6 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Events\TemplateStateChanged;
-use App\Models\JwtUser;
 use App\Models\Template;
 use App\Models\TemplateVersion;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -183,12 +182,6 @@ class TemplateService implements TemplateServiceInterface
             throw new RuntimeException('Cannot create template without authenticated user.');
         }
 
-        $user = Auth::user();
-        $organizationId = $dto->organizationId;
-        if ($organizationId === null && $user instanceof JwtUser) {
-            $organizationId = $user->organizationId;
-        }
-
         return $this->templateRepository->create([
             'name' => $dto->name,
             'description' => $dto->description,
@@ -198,7 +191,6 @@ class TemplateService implements TemplateServiceInterface
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,
             'team_id' => $dto->teamId,
-            'organization_id' => $organizationId,
             'created_by' => (string) $userId,
             'status' => 'draft',
             'version' => 1,
@@ -246,9 +238,6 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setTeamId) {
             $attributes['team_id'] = $dto->teamId;
         }
-        if ($dto->setOrganizationId) {
-            $attributes['organization_id'] = $dto->organizationId;
-        }
         if ($dto->setStatus) {
             $attributes['status'] = $dto->status;
         }
@@ -292,9 +281,6 @@ class TemplateService implements TemplateServiceInterface
         $source = $this->templateRepository->findOrFail($sourceTemplateId);
         $source->loadMissing('blocks');
 
-        $user = Auth::user();
-        $orgId = $user instanceof JwtUser ? $user->organizationId : null;
-
         $target = $this->templateRepository->create([
             'name' => $source->name.' (copia)',
             'description' => $source->description,
@@ -304,7 +290,6 @@ class TemplateService implements TemplateServiceInterface
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => $orgId,
             'created_by' => $actorId,
             'status' => 'draft',
             'version' => 1,

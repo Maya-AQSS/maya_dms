@@ -36,7 +36,6 @@ class StoreTemplateRequest extends FormRequest
             'study_id'          => ['nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
             'module_id'         => ['nullable', 'string', 'max:255', 'required_if:visibility_level,module'],
             'team_id'           => ['nullable', 'uuid', 'exists:teams,id', 'required_if:visibility_level,team'],
-            'organization_id'   => ['nullable', 'string', 'max:255'],
             'review_stages'     => ['sometimes', 'integer', 'min:0'],
             'review_mode'       => ['sometimes', 'string', 'in:sequential,parallel'],
         ];
@@ -58,7 +57,6 @@ class StoreTemplateRequest extends FormRequest
             studyId: $v['study_id'] ?? null,
             moduleId: $v['module_id'] ?? null,
             teamId: $v['team_id'] ?? null,
-            organizationId: $v['organization_id'] ?? null,
             reviewStages: (int) ($v['review_stages'] ?? 0),
             reviewMode: $v['review_mode'] ?? 'sequential',
         );

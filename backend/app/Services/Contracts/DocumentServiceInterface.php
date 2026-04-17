@@ -87,5 +87,9 @@ interface DocumentServiceInterface
     /**
      * Crea documento desde la vista de módulo resolviendo plantilla/version disponibles.
      */
-    public function createFromModule(string $moduleId, string $creatorId, ?string $templateVersionId = null): Document;
+    public function createFromModule(
+        string $moduleId,
+        string $creatorId,
+        ?string $templateVersionId = null,
+    ): Document;
 }

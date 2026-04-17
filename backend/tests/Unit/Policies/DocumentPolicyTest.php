@@ -76,13 +76,12 @@ class DocumentPolicyTest extends TestCase
     private function makeJwtUser(string $id): JwtUser
     {
         return new JwtUser([
-            'id'              => $id,
-            'email'           => null,
-            'name'            => null,
-            'department'      => null,
-            'organization_id' => null,
-            'roles'           => [],
-            'scope'           => '',
+            'id'            => $id,
+            'email'         => null,
+            'name'          => null,
+            'department'    => null,
+            'permissions'   => [],
+            'scope'         => '',
         ]);
     }
 

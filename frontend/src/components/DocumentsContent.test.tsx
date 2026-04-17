@@ -42,8 +42,9 @@ vi.mock('react-router-dom', async () => {
 const baseDocument = {
   id: 'd-1',
   template_id: 't-1',
+  template_version_id: null,
   title: 'Doc',
-  organization_id: 'org',
+  study_type_id: null,
   study_id: 's1',
   module_id: 'm1',
   created_by: 'u1',

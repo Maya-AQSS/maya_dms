@@ -64,7 +64,6 @@ class TemplateBlockStatePerformanceTest extends TestCase
         Template::query()->forceCreate([
             'id' => $templateId,
             'name' => 'Perf Template',
-            'organization_id' => 'org-1',
             'created_by' => $userId,
             'status' => 'draft',
             'visibility_level' => 'personal',

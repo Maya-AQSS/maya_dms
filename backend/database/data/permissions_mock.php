@@ -15,4 +15,6 @@ return [
     ['code' => 'documents.read', 'name' => 'Documentos — leer', 'description' => 'Ver documentos visibles.'],
     ['code' => 'documents.update', 'name' => 'Documentos — actualizar', 'description' => 'Editar documentos.'],
     ['code' => 'documents.delete', 'name' => 'Documentos — eliminar', 'description' => 'Eliminar documentos.'],
+
+    ['code' => 'audit.read', 'name' => 'Auditoría — leer', 'description' => 'Ver historial de auditoría sin ser participante directo del recurso.'],
 ];

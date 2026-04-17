@@ -15,13 +15,12 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
     public function test_persists_audit_when_document_submit_is_denied(): void
     {
         $user = new JwtUser([
-            'id'              => 'user-1',
-            'email'           => null,
-            'name'            => null,
-            'department'      => null,
-            'organization_id' => null,
-            'roles'           => [],
-            'scope'           => '',
+            'id'            => 'user-1',
+            'email'         => null,
+            'name'          => null,
+            'department'    => null,
+            'permissions'   => [],
+            'scope'         => '',
         ]);
 
         $document = new Document;
@@ -59,13 +58,12 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
         $audit->expects($this->never())->method('record');
 
         $user = new JwtUser([
-            'id'              => 'reviewer',
-            'email'           => null,
-            'name'            => null,
-            'department'      => null,
-            'organization_id' => null,
-            'roles'           => [],
-            'scope'           => '',
+            'id'            => 'reviewer',
+            'email'         => null,
+            'name'          => null,
+            'department'    => null,
+            'permissions'   => [],
+            'scope'         => '',
         ]);
 
         $document = new Document;

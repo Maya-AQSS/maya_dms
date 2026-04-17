@@ -6,7 +6,6 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Policies\TemplatePolicy;
-use Illuminate\Support\Facades\Config;
 use Tests\TestCase;
 
 class TemplatePolicyTest extends TestCase
@@ -46,17 +45,16 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->create($user, TemplateVisibilityLevel::Personal->value));
     }
 
-    public function test_create_shared_visibility_denied_without_privileged_role(): void
+    public function test_create_shared_visibility_denied_without_templates_create(): void
     {
         $user = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd');
 
         $this->assertFalse($this->policy->create($user, TemplateVisibilityLevel::Global->value));
     }
 
-    public function test_create_shared_visibility_allowed_with_configured_role(): void
+    public function test_create_shared_visibility_allowed_with_templates_create(): void
     {
-        Config::set('auth.template_shared_visibility_roles', ['department-head']);
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['department-head']);
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['templates.create']);
 
         $this->assertTrue($this->policy->create($user, TemplateVisibilityLevel::Global->value));
     }
@@ -71,8 +69,7 @@ class TemplatePolicyTest extends TestCase
 
     public function test_update_allowed_for_coordinator_on_foreign_template(): void
     {
-        Config::set('auth.template_shared_visibility_roles', ['director']);
-        $user     = $this->makeJwtUser('11111111-2222-3333-4444-555555555555', ['director']);
+        $user     = $this->makeJwtUser('11111111-2222-3333-4444-555555555555', ['templates.update']);
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertTrue($this->policy->update($user, $template));
@@ -87,27 +84,42 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->update($user, $template, TemplateVisibilityLevel::Study->value));
     }
 
-    public function test_delete_follows_same_rules_as_update(): void
+    public function test_delete_non_creator_requires_templates_delete(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $creator   = $this->makeJwtUser($creatorId);
-        $other     = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
-        $template  = $this->makeTemplate(createdBy: $creatorId);
+        $creator     = $this->makeJwtUser($creatorId);
+        $sinPermisos = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+        $conDelete   = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['templates.delete']);
 
-        $this->assertTrue($this->policy->delete($creator, $template));
-        $this->assertFalse($this->policy->delete($other, $template));
+        $t1 = $this->makeTemplate(createdBy: $creatorId);
+        $t2 = $this->makeTemplate(createdBy: $creatorId);
+        $t3 = $this->makeTemplate(createdBy: $creatorId);
+
+        $this->assertTrue($this->policy->delete($creator, $t1));
+        $this->assertTrue($this->policy->delete($conDelete, $t2));
+        $this->assertFalse($this->policy->delete($sinPermisos, $t3));
     }
 
-    private function makeJwtUser(string $id, array $roles = []): JwtUser
+    public function test_update_denied_for_user_with_only_templates_delete(): void
+    {
+        $user     = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['templates.delete']);
+        $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+
+        $this->assertFalse($this->policy->update($user, $template));
+    }
+
+    /**
+     * @param  list<string>  $permissions
+     */
+    private function makeJwtUser(string $id, array $permissions = []): JwtUser
     {
         return new JwtUser([
-            'id'              => $id,
-            'email'           => null,
-            'name'            => null,
-            'department'      => null,
-            'organization_id' => null,
-            'roles'           => $roles,
-            'scope'           => '',
+            'id'           => $id,
+            'email'        => null,
+            'name'         => null,
+            'department'   => null,
+            'permissions'  => $permissions,
+            'scope'        => '',
         ]);
     }
 

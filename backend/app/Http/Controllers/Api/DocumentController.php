@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Resources\DocumentResource;
+use App\Models\JwtUser;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -55,6 +56,8 @@ class DocumentController extends Controller
      */
     public function creationOptions(Request $request): JsonResponse
     {
+        $this->assertUserMayCreateDocuments($request);
+
         $validated = $request->validate([
             'module_id' => ['required', 'string'],
         ]);
@@ -88,6 +91,8 @@ class DocumentController extends Controller
      */
     public function createFromModule(Request $request): JsonResponse
     {
+        $this->assertUserMayCreateDocuments($request);
+
         $validated = $request->validate([
             'module_id' => ['required', 'string'],
             'template_version_id' => ['sometimes', 'nullable', 'uuid'],
@@ -214,5 +219,13 @@ class DocumentController extends Controller
         );
 
         return response()->json(['data' => $updated]);
+    }
+
+    private function assertUserMayCreateDocuments(Request $request): void
+    {
+        $user = $request->user();
+        if (! $user instanceof JwtUser || ! $user->hasPermission('documents.create')) {
+            abort(403, 'No tienes permiso para crear documentos.');
+        }
     }
 }

@@ -34,7 +34,6 @@ return new class extends Migration
             // Sin FK física hacia `teams` (vista FDW o tabla en testing); validación exists:teams,id en Form Requests.
             $table->uuid('team_id')->nullable()->index();
 
-            $table->string('organization_id')->nullable(); // FK lógica → organización
             $table->string('created_by');                  // FK lógica → users (FDW)
             $table->string('status')->default('draft');    // draft | published | archived
             $table->integer('version')->default(1);
@@ -46,10 +45,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(
-                ['organization_id', 'visibility_level', 'status'],
-                'templates_org_visibility_status_index'
-            );
+            $table->index(['visibility_level', 'status'], 'templates_visibility_status_index');
             $table->index('study_id');
             $table->index('study_type_id');
             $table->index('module_id');

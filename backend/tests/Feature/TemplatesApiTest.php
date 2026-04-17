@@ -5,6 +5,9 @@ namespace Tests\Feature;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\Team;
+use Database\Seeders\PermissionsSeeder;
+use Database\Seeders\UserPermissionsSeeder;
+use Database\Seeders\UsersSourceSeeder;
 use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
@@ -30,10 +33,13 @@ class TemplatesApiTest extends TestCase
         config([
             'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
-            'auth.template_shared_visibility_roles' => ['department-head', 'director'],
         ]);
 
         Cache::flush();
+
+        $this->seed(UsersSourceSeeder::class);
+        $this->seed(PermissionsSeeder::class);
+        $this->seed(UserPermissionsSeeder::class);
     }
 
     protected function tearDown(): void
@@ -167,10 +173,11 @@ class TemplatesApiTest extends TestCase
         ], $headers)->assertForbidden();
     }
 
-    public function test_department_head_can_create_global_template(): void
+    public function test_user_with_coordination_permissions_can_create_global_template(): void
     {
-        $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, ['department-head']);
+        // `usr_direction_demo` tiene `templates.create`/`templates.update` en user_permissions (mock).
+        $userId = 'usr_direction_demo';
+        $headers = $this->authHeaders($userId, []);
 
         $this->postJson('/api/v1/templates', [
             'name' => 'Plantilla global',
@@ -198,7 +205,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'draft',
             'version' => 1,
@@ -216,7 +222,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'published',
             'version' => 1,
@@ -240,8 +245,8 @@ class TemplatesApiTest extends TestCase
 
     public function test_store_study_visibility_requires_study_id(): void
     {
-        $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, ['department-head']);
+        $userId = 'usr_direction_demo';
+        $headers = $this->authHeaders($userId, []);
 
         $this->postJson('/api/v1/templates', [
             'name' => 'Sin estudio',
@@ -265,7 +270,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
             'version' => 1,
@@ -294,7 +298,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-1',
             'created_by' => $userId,
             'status' => 'published',
             'version' => 2,
@@ -357,7 +360,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-1',
             'created_by' => $userId,
             'status' => 'draft',
             'version' => 1,
@@ -369,7 +371,6 @@ class TemplatesApiTest extends TestCase
             'id' => $did,
             'template_id' => $tid,
             'title' => 'Doc',
-            'organization_id' => 'org-1',
             'study_id' => null,
             'created_by' => $userId,
             'owner_id' => $userId,
@@ -405,7 +406,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
             'version' => 1,
@@ -421,8 +421,8 @@ class TemplatesApiTest extends TestCase
 
     public function test_team_visibility_requires_existing_team(): void
     {
-        $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, ['director']);
+        $userId = 'usr_direction_demo';
+        $headers = $this->authHeaders($userId, []);
 
         $gid = (string) Str::uuid();
         Team::query()->forceCreate([
@@ -440,11 +440,10 @@ class TemplatesApiTest extends TestCase
         ], $headers)->assertCreated()->assertJsonPath('data.team_id', $gid);
     }
 
-    public function test_peer_can_view_global_template_in_same_organization(): void
+    public function test_peer_can_view_global_template_as_teacher(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $org = 'org-same';
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -457,7 +456,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => $org,
             'created_by' => $userA,
             'status' => 'published',
             'version' => 1,
@@ -465,18 +463,17 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        $headersB = $this->authHeaders($userB, ['teacher'], ['organization_id' => $org]);
+        $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)
             ->assertOk()
             ->assertJsonPath('data.id', $tid);
     }
 
-    public function test_peer_cannot_view_others_personal_template_even_same_organization(): void
+    public function test_peer_cannot_view_others_personal_template(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $org = 'org-same';
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -489,7 +486,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => $org,
             'created_by' => $userA,
             'status' => 'draft',
             'version' => 1,
@@ -497,7 +493,7 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        $headersB = $this->authHeaders($userB, ['teacher'], ['organization_id' => $org]);
+        $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
     }
@@ -506,7 +502,6 @@ class TemplatesApiTest extends TestCase
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $org = 'org-stud';
         $stud = 'study-xyz';
 
         $tid = (string) Str::uuid();
@@ -520,7 +515,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => $stud,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => $org,
             'created_by' => $userA,
             'status' => 'draft',
             'version' => 1,
@@ -529,14 +523,13 @@ class TemplatesApiTest extends TestCase
         ]);
 
         $headersB = $this->authHeaders($userB, ['teacher'], [
-            'organization_id' => $org,
             'study_id' => $stud,
         ]);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
     }
 
-    public function test_teacher_does_not_see_study_template_from_other_organization(): void
+    public function test_teacher_sees_study_scoped_template_when_jwt_study_matches(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
@@ -545,7 +538,7 @@ class TemplatesApiTest extends TestCase
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'Otro tenant',
+            'name' => 'Por estudio',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Study->value,
             'delivery_deadline' => null,
@@ -553,7 +546,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => $stud,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-a',
             'created_by' => $userA,
             'status' => 'draft',
             'version' => 1,
@@ -562,11 +554,10 @@ class TemplatesApiTest extends TestCase
         ]);
 
         $headersB = $this->authHeaders($userB, ['teacher'], [
-            'organization_id' => 'org-b',
             'study_id' => $stud,
         ]);
 
-        $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
+        $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
     }
 
     public function test_teacher_sees_team_template_when_member(): void
@@ -601,7 +592,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => $gid,
-            'organization_id' => null,
             'created_by' => $userA,
             'status' => 'draft',
             'version' => 1,
@@ -622,8 +612,8 @@ class TemplatesApiTest extends TestCase
     public function test_template_publish_requires_changelog_when_in_review(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = (string) Str::uuid();
-        $headersReviewer = $this->authHeaders($reviewerId, ['department-head'], ['organization_id' => 'org-x']);
+        $reviewerId = 'usr_direction_demo';
+        $headersReviewer = $this->authHeaders($reviewerId, []);
 
         $tid = (string) Str::uuid();
         $bid = (string) Str::uuid();
@@ -637,7 +627,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'in_review',
             'version' => 1,
@@ -667,12 +656,11 @@ class TemplatesApiTest extends TestCase
     public function test_template_review_flow_creates_snapshot_and_history(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = (string) Str::uuid();
+        $reviewerId = 'usr_direction_demo';
         [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
-            ['department-head'],
-            ['organization_id' => 'org-x'],
+            [],
         );
 
         $tid = (string) Str::uuid();
@@ -687,7 +675,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',
             'version' => 1,
@@ -752,7 +739,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => null,
             'created_by' => $userId,
             'status' => 'published',
             'version' => 1,
@@ -792,7 +778,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => null,
             'created_by' => $userId,
             'status' => 'published',
             'version' => 1,
@@ -819,12 +804,11 @@ class TemplatesApiTest extends TestCase
     public function test_template_reject_review_returns_to_draft(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = (string) Str::uuid();
+        $reviewerId = 'usr_direction_demo';
         [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
-            ['department-head'],
-            ['organization_id' => 'org-x'],
+            [],
         );
 
         $tid = (string) Str::uuid();
@@ -838,7 +822,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',
             'version' => 1,
@@ -857,12 +840,11 @@ class TemplatesApiTest extends TestCase
     public function test_template_second_publish_increments_version_after_reopen(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = (string) Str::uuid();
+        $reviewerId = 'usr_direction_demo';
         [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
-            ['department-head'],
-            ['organization_id' => 'org-x'],
+            [],
         );
 
         $tid = (string) Str::uuid();
@@ -877,7 +859,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'in_review',
             'version' => 1,
@@ -925,7 +906,6 @@ class TemplatesApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'draft',
             'version' => 1,
