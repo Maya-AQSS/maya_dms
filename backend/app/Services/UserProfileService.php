@@ -46,7 +46,7 @@ class UserProfileService implements UserProfileServiceInterface
                 return $this->buildFallbackProfile($userId, $jwtProfile);
             }
 
-            $groups = $this->repository->findGroupsByUserId($userId);
+            $teams = $this->repository->findTeamsByUserId($userId);
 
             $profile = [
                 'id'              => $fdwUser['id'],
@@ -55,7 +55,7 @@ class UserProfileService implements UserProfileServiceInterface
                 'department'      => $fdwUser['department'] ?? null,
                 'organization_id' => $jwtProfile['organization_id'] ?? null,
                 'roles'           => $jwtProfile['roles'] ?? [],
-                'groups'          => $groups,
+                'teams'           => $teams,
                 'source'          => 'fdw',
             ];
 
@@ -92,7 +92,7 @@ class UserProfileService implements UserProfileServiceInterface
             'department'      => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
             'organization_id' => $jwtProfile['organization_id'] ?? null,
             'roles'           => $jwtProfile['roles'] ?? [],
-            'groups'          => [],
+            'teams'           => [],
             'source'          => 'jwt_fallback',
         ];
     }

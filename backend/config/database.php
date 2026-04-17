@@ -153,6 +153,16 @@ return [
             'cache_ttl' => (int) env('FDW_USERS_CACHE_TTL', 900),
         ],
 
+        'teams' => [
+            'host'     => env('FDW_TEAMS_HOST', '127.0.0.1'),
+            'port'     => env('FDW_TEAMS_PORT', '5432'),
+            'database' => env('FDW_TEAMS_DATABASE', 'main_db'),
+            'username' => env('FDW_TEAMS_USERNAME', 'readonly_user'),
+            'password' => env('FDW_TEAMS_PASSWORD', ''),
+            'schema'   => env('FDW_TEAMS_SCHEMA', 'public'),
+            'table'    => env('FDW_TEAMS_TABLE', 'teams'),
+        ],
+
     ],
 
     /*

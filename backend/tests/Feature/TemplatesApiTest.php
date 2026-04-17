@@ -4,8 +4,8 @@ namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
-use App\Models\Group;
-use App\Models\GroupMember;
+use App\Models\Team;
+use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Models\TemplateVersion;
@@ -197,7 +197,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'draft',
@@ -215,7 +215,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'published',
@@ -264,7 +264,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
@@ -293,7 +293,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-1',
             'created_by' => $userId,
             'status' => 'published',
@@ -356,7 +356,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-1',
             'created_by' => $userId,
             'status' => 'draft',
@@ -404,7 +404,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
@@ -419,24 +419,25 @@ class TemplatesApiTest extends TestCase
         $this->assertDatabaseMissing('templates', ['id' => $tid]);
     }
 
-    public function test_group_visibility_requires_existing_group(): void
+    public function test_team_visibility_requires_existing_team(): void
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId, ['director']);
 
         $gid = (string) Str::uuid();
-        Group::query()->forceCreate([
+        Team::query()->forceCreate([
             'id' => $gid,
             'name' => 'G',
             'description' => null,
             'owner_id' => $userId,
+            'is_department' => false,
         ]);
 
         $this->postJson('/api/v1/templates', [
             'name' => 'Por grupo',
-            'visibility_level' => TemplateVisibilityLevel::Group->value,
-            'group_id' => $gid,
-        ], $headers)->assertCreated()->assertJsonPath('data.group_id', $gid);
+            'visibility_level' => TemplateVisibilityLevel::Team->value,
+            'team_id' => $gid,
+        ], $headers)->assertCreated()->assertJsonPath('data.team_id', $gid);
     }
 
     public function test_peer_can_view_global_template_in_same_organization(): void
@@ -455,7 +456,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => $org,
             'created_by' => $userA,
             'status' => 'published',
@@ -487,7 +488,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => $org,
             'created_by' => $userA,
             'status' => 'draft',
@@ -518,7 +519,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => $stud,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => $org,
             'created_by' => $userA,
             'status' => 'draft',
@@ -551,7 +552,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => $stud,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-a',
             'created_by' => $userA,
             'status' => 'draft',
@@ -568,22 +569,23 @@ class TemplatesApiTest extends TestCase
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
     }
 
-    public function test_teacher_sees_group_template_when_member(): void
+    public function test_teacher_sees_team_template_when_member(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
         $gid = (string) Str::uuid();
 
-        Group::query()->forceCreate([
+        Team::query()->forceCreate([
             'id' => $gid,
             'name' => 'Curso',
             'description' => null,
             'owner_id' => $userA,
+            'is_department' => false,
         ]);
 
-        GroupMember::query()->forceCreate([
+        TeamMember::query()->forceCreate([
             'id' => (string) Str::uuid(),
-            'group_id' => $gid,
+            'team_id' => $gid,
             'user_id' => $userB,
             'role' => 'member',
         ]);
@@ -593,12 +595,12 @@ class TemplatesApiTest extends TestCase
             'id' => $tid,
             'name' => 'De grupo',
             'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Group->value,
+            'visibility_level' => TemplateVisibilityLevel::Team->value,
             'delivery_deadline' => null,
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => $gid,
+            'team_id' => $gid,
             'organization_id' => null,
             'created_by' => $userA,
             'status' => 'draft',
@@ -609,7 +611,12 @@ class TemplatesApiTest extends TestCase
 
         $headersB = $this->authHeaders($userB, ['teacher']);
 
-        $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
+        $this->getJson("/api/v1/templates/{$tid}", $headersB)
+            ->assertOk()
+            ->assertJsonPath('data.team_id', $gid)
+            ->assertJsonPath('data.team.id', $gid)
+            ->assertJsonPath('data.team.name', 'Curso')
+            ->assertJsonPath('data.team.is_department', false);
     }
 
     public function test_template_publish_requires_changelog_when_in_review(): void
@@ -629,7 +636,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'in_review',
@@ -679,7 +686,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',
@@ -744,7 +751,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => null,
             'created_by' => $userId,
             'status' => 'published',
@@ -784,7 +791,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => null,
             'created_by' => $userId,
             'status' => 'published',
@@ -830,7 +837,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',
@@ -869,7 +876,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'in_review',
@@ -917,7 +924,7 @@ class TemplatesApiTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'draft',

@@ -13,6 +13,6 @@ readonly class FilterTemplatesDto
         public ?string $studyTypeId = null,
         public ?string $studyId = null,
         public ?string $moduleId = null,
-        public ?string $groupId = null,
+        public ?string $teamId = null,
     ) {}
 }

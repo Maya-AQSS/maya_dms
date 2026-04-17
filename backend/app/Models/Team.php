@@ -9,9 +9,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
-class Group extends Model
+class Team extends Model
 {
     use HasUuids, SoftDeletes;
+
+    /** @var string Catálogo lógico de equipos (tabla o vista {@see teams}). */
+    protected $table = 'teams';
 
     protected $keyType = 'string';
 
@@ -21,7 +24,15 @@ class Group extends Model
         'name',
         'description',
         'owner_id',
+        'is_department',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_department' => 'boolean',
+        ];
+    }
 
     protected static function booted(): void
     {
@@ -35,12 +46,12 @@ class Group extends Model
             $userId = auth()->id();
 
             $builder->where(function (Builder $query) use ($userId) {
-                $query->where('groups.owner_id', $userId)
+                $query->where('teams.owner_id', $userId)
                     ->orWhereExists(function ($subQuery) use ($userId) {
                         $subQuery->select(DB::raw(1))
-                            ->from('group_members')
-                            ->whereColumn('group_members.group_id', 'groups.id')
-                            ->where('group_members.user_id', $userId);
+                            ->from('team_members')
+                            ->whereColumn('team_members.team_id', 'teams.id')
+                            ->where('team_members.user_id', $userId);
                     });
             });
         });
@@ -48,6 +59,6 @@ class Group extends Model
 
     public function members(): HasMany
     {
-        return $this->hasMany(GroupMember::class);
+        return $this->hasMany(TeamMember::class, 'team_id');
     }
 }

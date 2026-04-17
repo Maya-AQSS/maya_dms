@@ -19,7 +19,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             UsersSourceSeeder::class,
             AcademicHierarchySeeder::class,
-            GroupsSeeder::class,
+            TeamsSeeder::class,
             TemplatesSeeder::class,
             TemplateReviewersSeeder::class,
             TemplateBlocksSeeder::class,

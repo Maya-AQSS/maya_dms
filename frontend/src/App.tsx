@@ -6,7 +6,6 @@ import {
   DashboardPage,
   DocumentEditorPage,
   DocumentsPage,
-  GroupsPage,
   PlaceholderPage,
   TemplateEditPage,
   TemplateNewPage,
@@ -91,7 +90,6 @@ function App() {
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/templates/new" element={<TemplateNewPage />} />
               <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
-              <Route path="/groups" element={<GroupsPage />} />
               <Route path="/upload" element={<PlaceholderPage />} />
               <Route path="/search" element={<PlaceholderPage />} />
               <Route path="*" element={<PlaceholderPage />} />

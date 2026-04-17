@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,8 +10,6 @@ class DocumentResource extends JsonResource
 {
     /**
      * Convierte el documento en un array para la respuesta JSON.
-     *
-     * @return array<string, mixed>
      */
     public function toArray(Request $request): array
     {
@@ -18,6 +17,7 @@ class DocumentResource extends JsonResource
             'id' => $this->id,
             'template_id' => $this->template_id,
             'template_version_id' => $this->template_version_id,
+            'team' => $this->resource->getAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY),
             'title' => $this->title,
             'organization_id' => $this->organization_id,
             'study_type_id' => $this->study_type_id,

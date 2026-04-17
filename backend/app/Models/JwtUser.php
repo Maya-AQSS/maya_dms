@@ -84,7 +84,7 @@ class JwtUser implements Authenticatable, AuthorizableContract
 
     /**
      * Puede crear o fijar visibilidad de plantilla distinta de {@see TemplateVisibilityLevel::Personal}
-     * (global, tipo de estudio, estudio, módulo, grupo).
+     * (global, tipo de estudio, estudio, módulo, equipo).
      */
     public function canManageSharedTemplateVisibility(): bool
     {

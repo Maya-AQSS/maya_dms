@@ -5,15 +5,17 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Jerarquía académica (tipo de enseñanza → estudios → módulos) como catálogo externo.
+ * Jerarquía académica (tipo de enseñanza → estudios → módulos) como catálogo.
  *
  * Rutas:
- * - Entorno `testing`: tablas reales `study_types`, `studies`, `course_modules` (p. ej. SQLite en tests).
- * - Entorno `local`: tablas `*_source` en la misma BD, FDW + vistas homónimas; reutiliza el servidor
- *   {@see self::FDW_SERVER} creado en la migración de usuarios.
- * - Otros entornos: FDW hacia tablas o vistas remotas (`config/database.fdw.*`).
+ * - Entornos `testing` y `local`: tablas físicas homónimas al catálogo lógico (`study_types`, `studies`,
+ *   `course_modules`), sin postgres_fdw — mismo esquema que consume la aplicación, apto para tests y desarrollo local.
+ * - Cualquier otro entorno (p. ej. staging, production): catálogo remoto vía postgres_fdw: foreign tables
+ *   `{nombre}_fdw` y vistas de paso con el nombre lógico, usando el servidor {@see self::FDW_SERVER} definido
+ *   en la migración de usuarios. Tablas remotas: `config/database.fdw.study_types|studies|course_modules`
+ *   (esquema por defecto: `database.fdw.users.schema`).
  *
- * Datos de ejemplo en local: {@see \Database\Seeders\AcademicHierarchySeeder}.
+ * Datos de ejemplo en local/testing: {@see \Database\Seeders\AcademicHierarchySeeder}.
  */
 return new class extends Migration
 {
@@ -61,7 +63,7 @@ return new class extends Migration
     }
 
     /**
-     * Catálogo mínimo para tests (sin postgres_fdw).
+     * Catálogo en tablas físicas para entornos `testing` y `local` (sin postgres_fdw).
      */
     private function createTestingCatalogTables(): void
     {
@@ -98,9 +100,10 @@ return new class extends Migration
     }
 
     /**
-     * Configura FDW para local y producción.
-     * - local: apunta a tablas source (misma BD)
-     * - producción: apunta a tablas remotas (config database.fdw.*)
+     * Configura postgres_fdw solo cuando el entorno no es `testing` ni `local` ({@see up()}).
+     * Crea las foreign tables y vistas con {@see PostgresFdwMigration::createForeignTableWithPassThroughView}
+     * sobre {@see self::FDW_SERVER}. Rama interna `local` + tablas `*_source`: preparada para un origen en la
+     * misma BD; con el flujo actual de `up()` no se ejecuta en `local` (ahí se usan tablas planas).
      */
     private function setupFdw(): void
     {

@@ -27,7 +27,7 @@ class TemplateBlockStatePersistenceLatencyTest extends TestCase
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => null,
             'created_by' => (string) Str::uuid(),
             'status' => 'draft',

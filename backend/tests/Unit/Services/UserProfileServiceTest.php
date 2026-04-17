@@ -28,8 +28,14 @@ beforeEach(function () {
         'department' => 'Ingeniería',
     ];
 
-    $this->groups = [
-        (object) ['id' => 'g1', 'name' => 'Ingeniería', 'description' => 'Facultad', 'role' => 'member'],
+    $this->teams = [
+        [
+            'id' => 'g1',
+            'name' => 'Ingeniería',
+            'description' => 'Facultad',
+            'role' => 'member',
+            'is_department' => false,
+        ],
     ];
 });
 
@@ -48,10 +54,10 @@ it('queries FDW filtered by user id from JWT', function () {
         ->andReturn($this->fdwUser);
 
     $this->repository
-        ->shouldReceive('findGroupsByUserId')
+        ->shouldReceive('findTeamsByUserId')
         ->once()
         ->with('user-uuid-123')
-        ->andReturn($this->groups);
+        ->andReturn($this->teams);
 
     Cache::shouldReceive('put')
         ->once()
@@ -65,7 +71,7 @@ it('queries FDW filtered by user id from JWT', function () {
         ->and($profile['source'])->toBe('fdw')
         ->and($profile['email'])->toBe('test@example.com')
         ->and($profile['department'])->toBe('Ingeniería')
-        ->and($profile['groups'])->toHaveCount(1);
+        ->and($profile['teams'])->toHaveCount(1);
 });
 
 // ── Escenario 2: Caché del perfil ──────────────────────────────────────
@@ -78,7 +84,7 @@ it('returns cached profile without querying FDW', function () {
         'department'      => 'Ingeniería',
         'organization_id' => 'org-1',
         'roles'           => ['docente'],
-        'groups'          => [],
+        'teams'           => [],
         'source'          => 'fdw',
     ];
 
@@ -89,7 +95,7 @@ it('returns cached profile without querying FDW', function () {
 
     // Repository should NOT be called
     $this->repository->shouldNotReceive('findById');
-    $this->repository->shouldNotReceive('findGroupsByUserId');
+    $this->repository->shouldNotReceive('findTeamsByUserId');
 
     $profile = $this->service->getProfile('user-uuid-123', $this->jwtProfile);
 
@@ -108,7 +114,7 @@ it('caches profile with key user_profile:{user_id} and 15 min TTL', function () 
         ->with('user-uuid-123')
         ->andReturn($this->fdwUser);
 
-    $this->repository->shouldReceive('findGroupsByUserId')
+    $this->repository->shouldReceive('findTeamsByUserId')
         ->once()
         ->andReturn([]);
 
@@ -154,7 +160,7 @@ it('falls back to JWT data when FDW throws exception', function () {
         ->and($profile['name'])->toBe('Test User')
         ->and($profile['roles'])->toBe(['docente'])
         ->and($profile['department'])->toBeNull()
-        ->and($profile['groups'])->toBe([]);
+        ->and($profile['teams'])->toBe([]);
 });
 
 it('falls back to JWT data when FDW user not found', function () {
@@ -187,18 +193,18 @@ it('invalidates cache for a specific user', function () {
     expect(true)->toBeTrue();
 });
 
-// ── Perfil completo incluye datos FDW + JWT + grupos ───────────────────
+// ── Perfil completo incluye datos FDW + JWT + equipos ───────────────────
 
-it('merges FDW data, JWT claims, and groups into complete profile', function () {
+it('merges FDW data, JWT claims, and teams into complete profile', function () {
     Cache::shouldReceive('get')->once()->andReturnNull();
 
     $this->repository->shouldReceive('findById')
         ->once()
         ->andReturn($this->fdwUser);
 
-    $this->repository->shouldReceive('findGroupsByUserId')
+    $this->repository->shouldReceive('findTeamsByUserId')
         ->once()
-        ->andReturn($this->groups);
+        ->andReturn($this->teams);
 
     Cache::shouldReceive('put')->once();
 
@@ -207,10 +213,10 @@ it('merges FDW data, JWT claims, and groups into complete profile', function () 
     expect($profile)
         ->toHaveKeys([
             'id', 'email', 'name', 'department',
-            'organization_id', 'roles', 'groups', 'source',
+            'organization_id', 'roles', 'teams', 'source',
         ])
         ->and($profile['organization_id'])->toBe('org-1')
         ->and($profile['roles'])->toBe(['docente'])
         ->and($profile['department'])->toBe('Ingeniería')
-        ->and($profile['groups'])->toHaveCount(1);
+        ->and($profile['teams'])->toHaveCount(1);
 });
