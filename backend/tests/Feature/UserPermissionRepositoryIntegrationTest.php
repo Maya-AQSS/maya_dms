@@ -46,6 +46,15 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
         $this->assertSame([], $codes);
     }
 
+    public function test_javier_navarro_mock_has_only_audit_read_assignment(): void
+    {
+        $repo = app(UserPermissionRepositoryInterface::class);
+
+        $codes = $repo->findPermissionCodesByUserId('usr_javier_navarro');
+
+        $this->assertSame(['audit.read'], $codes);
+    }
+
     public function test_second_call_uses_cache_until_forget(): void
     {
         $repo = app(UserPermissionRepositoryInterface::class);
