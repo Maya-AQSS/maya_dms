@@ -9,7 +9,6 @@ import { MemoryRouter } from 'react-router-dom';
 
 vi.mock('../../../../api/templates');
 vi.mock('../../../../api/blocks');
-vi.mock('../../../../api/users');
 vi.mock('../../../../api/users', () => ({
   fetchMe: vi.fn().mockResolvedValue({ data: { teams: [] } }),
 }));

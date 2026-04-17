@@ -38,9 +38,23 @@ export function WizardStep1Properties({
 }: Props) {
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const [teams, setTeams] = useState<UserTeam[]>([]);
+  const [teamsLoading, setTeamsLoading] = useState(false);
+  const [teamsError, setTeamsError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchMe().then((res) => setTeams(res.data.teams ?? [])).catch(() => undefined);
+    setTeamsLoading(true);
+    setTeamsError(null);
+    fetchMe()
+      .then((res) => {
+        setTeams(res.data.teams ?? []);
+      })
+      .catch(() => {
+        setTeams([]);
+        setTeamsError('No se pudieron cargar tus equipos. Revisa la sesión o inténtalo de nuevo.');
+      })
+      .finally(() => {
+        setTeamsLoading(false);
+      });
   }, []);
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
@@ -204,15 +218,20 @@ export function WizardStep1Properties({
                   <Select
                     fieldSize="comfortable"
                     value={teamId}
-                    disabled={!teams.length}
+                    disabled={teamsLoading || !teams.length}
                     onChange={(e) => setTeamId(e.target.value)}
                     error={!!errors.teamId}
                   >
-                    <option value="">— Seleccionar —</option>
+                    <option value="">
+                      {teamsLoading ? 'Cargando equipos…' : '— Seleccionar —'}
+                    </option>
                     {teams.map((team) => (
                       <option key={team.id} value={team.id}>{team.name}</option>
                     ))}
                   </Select>
+                  {teamsError && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{teamsError}</p>
+                  )}
                   {errors.teamId && (
                     <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.teamId}</p>
                   )}
