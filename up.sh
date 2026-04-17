@@ -23,6 +23,12 @@ info()    { echo -e "${CYAN}[maya-dms]${NC} $*"; }
 success() { echo -e "${GREEN}[maya-dms]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[maya-dms]${NC} $*"; }
 
+# UID/GID locales para evitar archivos root-owned en bind mounts (ej. frontend/node_modules).
+# Permite override explícito vía entorno si fuese necesario.
+export LOCAL_UID="${LOCAL_UID:-$(id -u)}"
+export LOCAL_GID="${LOCAL_GID:-$(id -g)}"
+info "Usando LOCAL_UID=$LOCAL_UID LOCAL_GID=$LOCAL_GID para docker compose"
+
 upsert_env_var() {
   local file="$1"
   local key="$2"
