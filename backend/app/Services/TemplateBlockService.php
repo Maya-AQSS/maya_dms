@@ -4,12 +4,16 @@ namespace App\Services;
 
 use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
+use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class TemplateBlockService implements TemplateBlockServiceInterface
 {
@@ -20,6 +24,8 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     ) {}
 
     /**
+     * Lista todos los bloques de una plantilla.
+     * 
      * @return Collection<int, TemplateBlock>
      */
     public function listForTemplate(string $templateId): Collection
@@ -30,18 +36,57 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         return $this->blockRepository->allForTemplate($templateId);
     }
 
+    /**
+     * Busca un bloque por ID. Lanza excepción si no existe.
+     * 
+     * @param  string  $id
+     * @return TemplateBlock
+     */
     public function findOrFail(string $id): TemplateBlock
     {
         return $this->blockRepository->findOrFail($id);
     }
 
     /**
+     * Carga todos los bloques por ID (IDs únicos). Lanza validación si falta alguno.
+     *
+     * @param  list<string>  $ids
+     * @return Collection<int, TemplateBlock>
+     */
+    public function findBlocksByIdsOrFail(array $ids): Collection
+    {
+        $unique = array_values(array_unique($ids));
+
+        if ($unique === []) {
+            throw ValidationException::withMessages([
+                'ids' => ['Se requiere al menos un ID de bloque.'],
+            ]);
+        }
+
+        $blocks = $this->blockRepository->findByIds($unique);
+
+        if ($blocks->count() !== count($unique)) {
+            throw ValidationException::withMessages([
+                'ids' => ['Uno o más bloques no existen.'],
+            ]);
+        }
+
+        return $blocks;
+    }
+
+    /**
+     * Crea un nuevo bloque para una plantilla.
+     * 
+     * @param  string  $templateId
+     * @param  string  $userId
      * @param  array<string, mixed>  $attributes
+     * @return TemplateBlock
      */
     public function create(string $templateId, array $attributes, string $userId): TemplateBlock
     {
         $template = $this->templateRepository->findOrFail($templateId);
-        $block    = $this->blockRepository->create($template, $attributes);
+        $this->assertUserMayUpdateTemplate($template);
+        $block = $this->blockRepository->create($template, $attributes);
 
         $this->auditLogService->record(
             entityType:    'template',
@@ -60,9 +105,20 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         return $block;
     }
 
+    /**
+     * Actualiza un bloque existente de una plantilla.
+     * 
+     * @param  string  $blockId
+     * @param  UpdateTemplateBlockDto  $dto
+     * @param  string  $userId
+     * @return TemplateBlock
+     */
     public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlock
     {
         $block = $this->blockRepository->findOrFail($blockId);
+        $this->assertUserMayUpdateTemplate(
+            $this->templateRepository->findOrFail($block->template_id),
+        );
 
         $attributes = [];
         if ($dto->set_type) {
@@ -122,9 +178,19 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         return $updated;
     }
 
+    /**
+     * Elimina un bloque de una plantilla.
+     * 
+     * @param  string  $blockId
+     * @param  string  $userId
+     * @return void
+     */
     public function delete(string $blockId, string $userId): void
     {
         $block = $this->blockRepository->findOrFail($blockId);
+        $this->assertUserMayUpdateTemplate(
+            $this->templateRepository->findOrFail($block->template_id),
+        );
 
         $this->auditLogService->record(
             entityType:    'template',
@@ -143,10 +209,25 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $this->blockRepository->delete($block);
     }
 
+    /**
+     * Actualiza múltiples bloques de una plantilla.
+     * 
+     * @param  BulkUpdateTemplateBlocksDto  $dto
+     * @param  string  $userId
+     * @return Collection<int, TemplateBlock>
+     */
     public function bulkUpdate(BulkUpdateTemplateBlocksDto $dto, string $userId): Collection
     {
+        $uniqueIds = array_values(array_unique($dto->ids));
+
         // Capture previous states before the bulk update to identify actual changes
-        $before = $this->blockRepository->findByIds($dto->ids)->keyBy('id');
+        $before = $this->findBlocksByIdsOrFail($uniqueIds)->keyBy('id');
+
+        foreach ($before->pluck('template_id')->unique() as $templateId) {
+            $this->assertUserMayUpdateTemplate(
+                $this->templateRepository->findOrFail((string) $templateId),
+            );
+        }
 
         $attributes = [];
         if ($dto->set_block_state) {
@@ -185,5 +266,16 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         }
 
         return $updated;
+    }
+
+    /**
+     * Verifica si el usuario tiene permiso para actualizar una plantilla.
+     * 
+     * @param  Template  $template
+     * @return void
+     */
+    private function assertUserMayUpdateTemplate(Template $template): void
+    {
+        Gate::forUser(Auth::user())->authorize('update', $template);
     }
 }
