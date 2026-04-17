@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
-import { fetchGroups } from '../../../api/groups';
-import type { Group } from '../../../types/groups';
+import { fetchMe, type UserTeam } from '../../../api/users';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 
 type Props = {
@@ -21,8 +20,8 @@ type Props = {
   setStudyId: (v: string) => void;
   moduleId: string;
   setModuleId: (v: string) => void;
-  groupId: string;
-  setGroupId: (v: string) => void;
+  teamId: string;
+  setTeamId: (v: string) => void;
   errors: Record<string, string>;
 };
 
@@ -34,14 +33,14 @@ export function WizardStep1Properties({
   studyTypeId, setStudyTypeId,
   studyId, setStudyId,
   moduleId, setModuleId,
-  groupId, setGroupId,
+  teamId, setTeamId,
   errors,
 }: Props) {
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
-  const [groups, setGroups] = useState<Group[]>([]);
+  const [teams, setTeams] = useState<UserTeam[]>([]);
 
   useEffect(() => {
-    fetchGroups(200).then((res) => setGroups(res.data)).catch(() => undefined);
+    fetchMe().then((res) => setTeams(res.data.teams ?? [])).catch(() => undefined);
   }, []);
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
@@ -53,7 +52,7 @@ export function WizardStep1Properties({
     study_type: 'Tipo de Estudio',
     study: 'Estudio',
     module: 'Módulo',
-    group: 'Equipo',
+    team: 'Equipo',
   };
 
   return (
@@ -97,7 +96,7 @@ export function WizardStep1Properties({
                 setStudyTypeId('');
                 setStudyId('');
                 setModuleId('');
-                setGroupId('');
+                setTeamId('');
               }}
             >
               {VISIBILITY_OPTIONS.map((o) => (
@@ -199,23 +198,23 @@ export function WizardStep1Properties({
                 </div>
               )}
 
-              {visibility === 'group' && (
+              {visibility === 'team' && (
                 <div>
                   <FieldLabel required>Equipo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
-                    value={groupId}
-                    disabled={!groups.length}
-                    onChange={(e) => setGroupId(e.target.value)}
-                    error={!!errors.groupId}
+                    value={teamId}
+                    disabled={!teams.length}
+                    onChange={(e) => setTeamId(e.target.value)}
+                    error={!!errors.teamId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {groups.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
+                    {teams.map((team) => (
+                      <option key={team.id} value={team.id}>{team.name}</option>
                     ))}
                   </Select>
-                  {errors.groupId && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.groupId}</p>
+                  {errors.teamId && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.teamId}</p>
                   )}
                 </div>
               )}

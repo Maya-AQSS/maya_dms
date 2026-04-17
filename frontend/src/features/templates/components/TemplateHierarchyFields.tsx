@@ -1,11 +1,11 @@
 import { FieldLabel } from '../../../ui/FieldLabel';
 import { TextInput } from '../../../ui/TextInput';
 
-export type TemplateHierarchyFieldKey = 'study_type_id' | 'study_id' | 'module_id' | 'group_id';
+export type TemplateHierarchyFieldKey = 'study_type_id' | 'study_id' | 'module_id' | 'team_id';
 
 export type TemplateHierarchyValues = Record<TemplateHierarchyFieldKey, string>;
 
-const KEYS: TemplateHierarchyFieldKey[] = ['study_type_id', 'study_id', 'module_id', 'group_id'];
+const KEYS: TemplateHierarchyFieldKey[] = ['study_type_id', 'study_id', 'module_id', 'team_id'];
 
 type Props = {
   values: TemplateHierarchyValues;

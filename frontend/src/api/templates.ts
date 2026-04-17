@@ -18,7 +18,7 @@ export type CreateTemplatePayload = {
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;
-  group_id?: string | null;
+  team_id?: string | null;
   organization_id?: string | null;
   review_stages?: number;
   review_mode?: ReviewMode;
@@ -32,7 +32,7 @@ export type UpdateTemplatePayload = {
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;
-  group_id?: string | null;
+  team_id?: string | null;
   organization_id?: string | null;
   status?: TemplateStatus;
   review_stages?: number;
@@ -61,8 +61,8 @@ function buildListQuery(filters: TemplateListFilters): string {
   if (filters.module_id) {
     q.set('module_id', filters.module_id);
   }
-  if (filters.group_id) {
-    q.set('group_id', filters.group_id);
+  if (filters.team_id) {
+    q.set('team_id', filters.team_id);
   }
   const s = q.toString();
   return s ? `?${s}` : '';

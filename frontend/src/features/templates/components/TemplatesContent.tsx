@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import type { Template } from '../../../types/templates';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
 import { Button, FieldLabel, Select } from '../../../ui';
@@ -37,7 +36,7 @@ export function TemplatesContent() {
       studyTypeId: filters.study_type_id ?? '',
       studyId: filters.study_id ?? '',
       moduleId: filters.module_id ?? '',
-      groupId: filters.group_id ?? '',
+      teamId: filters.team_id ?? '',
     }),
     [filters],
   );
@@ -49,7 +48,7 @@ export function TemplatesContent() {
       study_type_id: undefined,
       study_id: undefined,
       module_id: undefined,
-      group_id: undefined,
+      team_id: undefined,
     });
   };
 
@@ -158,7 +157,7 @@ export function TemplatesContent() {
                     study_type_id: filterUi.studyTypeId,
                     study_id: filterUi.studyId,
                     module_id: filterUi.moduleId,
-                    group_id: filterUi.groupId,
+                    team_id: filterUi.teamId,
                   }}
                   onFieldChange={(key, value) =>
                     applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })

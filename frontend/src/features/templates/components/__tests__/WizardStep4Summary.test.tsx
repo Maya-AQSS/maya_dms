@@ -17,7 +17,7 @@ describe('WizardStep4Summary', () => {
     study_type_id: 'st1',
     study_id: null,
     module_id: null,
-    group_id: null,
+    team_id: null,
     organization_id: null,
     created_by: 'u1',
     status: 'draft',

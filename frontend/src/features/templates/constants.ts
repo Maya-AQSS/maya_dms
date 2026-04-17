@@ -6,7 +6,7 @@ export const VISIBILITY_OPTIONS: { value: TemplateVisibilityLevel; label: string
   { value: 'study_type', label: 'Tipo de Estudio' },
   { value: 'study', label: 'Estudio' },
   { value: 'module', label: 'Módulo' },
-  { value: 'group', label: 'Equipo' },
+  { value: 'team', label: 'Equipo' },
 ];
 
 export const STATUS_OPTIONS = [

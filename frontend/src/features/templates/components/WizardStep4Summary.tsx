@@ -71,7 +71,7 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
     { label: 'Tipo de Estudio', value: template.study_type_id },
     { label: 'Estudio', value: template.study_id },
     { label: 'Módulo', value: template.module_id },
-    { label: 'Equipo', value: template.group_id },
+    { label: 'Equipo', value: template.team_id },
   ].filter((f) => f.value);
 
   return (

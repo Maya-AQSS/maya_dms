@@ -35,7 +35,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const [studyTypeId, setStudyTypeId] = useState(initial?.study_type_id || '');
   const [studyId, setStudyId] = useState(initial?.study_id || '');
   const [moduleId, setModuleId] = useState(initial?.module_id || '');
-  const [groupId, setGroupId] = useState(initial?.group_id || '');
+  const [teamId, setTeamId] = useState(initial?.team_id || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Step 2: Blocks state
@@ -75,7 +75,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       if (visibility === 'study_type' && !studyTypeId) newErrors.studyTypeId = 'Obligatorio';
       if (visibility === 'study' && !studyId) newErrors.studyId = 'Obligatorio';
       if (visibility === 'module' && !moduleId) newErrors.moduleId = 'Obligatorio';
-      if (visibility === 'group' && !groupId) newErrors.groupId = 'Obligatorio';
+      if (visibility === 'team' && !teamId) newErrors.teamId = 'Obligatorio';
     }
 
     setErrors(newErrors);
@@ -94,7 +94,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         study_type_id: studyTypeId || null,
         study_id: studyId || null,
         module_id: moduleId || null,
-        group_id: groupId || null,
+        team_id: teamId || null,
       };
 
       let res;
@@ -254,7 +254,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             studyTypeId={studyTypeId} setStudyTypeId={setStudyTypeId}
             studyId={studyId} setStudyId={setStudyId}
             moduleId={moduleId} setModuleId={setModuleId}
-            groupId={groupId} setGroupId={setGroupId}
+            teamId={teamId} setTeamId={setTeamId}
             errors={errors}
           />
         )}

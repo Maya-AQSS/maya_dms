@@ -2,9 +2,9 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep1Properties } from '../WizardStep1Properties';
 
-vi.mock('../../../../api/groups', () => ({
-  fetchGroups: vi.fn().mockResolvedValue({
-    data: [],
+vi.mock('../../../../api/users', () => ({
+  fetchMe: vi.fn().mockResolvedValue({
+    data: { teams: [] },
   }),
 }));
 
@@ -29,8 +29,8 @@ describe('WizardStep1Properties', () => {
     setStudyId: vi.fn(),
     moduleId: '',
     setModuleId: vi.fn(),
-    groupId: '',
-    setGroupId: vi.fn(),
+    teamId: '',
+    setTeamId: vi.fn(),
     errors: {},
   };
 

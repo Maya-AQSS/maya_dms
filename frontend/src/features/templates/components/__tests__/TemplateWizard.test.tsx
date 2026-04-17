@@ -10,8 +10,8 @@ import { MemoryRouter } from 'react-router-dom';
 vi.mock('../../../../api/templates');
 vi.mock('../../../../api/blocks');
 vi.mock('../../../../api/users');
-vi.mock('../../../../api/groups', () => ({
-  fetchGroups: vi.fn().mockResolvedValue({ data: [] }),
+vi.mock('../../../../api/users', () => ({
+  fetchMe: vi.fn().mockResolvedValue({ data: { teams: [] } }),
 }));
 vi.mock('../../../../features/hierarchy', () => ({
   useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
@@ -60,7 +60,7 @@ describe('TemplateWizard Integration', () => {
     study_type_id: null,
     study_id: null,
     module_id: null,
-    group_id: null,
+    team_id: null,
     organization_id: null,
     created_by: 'u1',
     status: 'draft',

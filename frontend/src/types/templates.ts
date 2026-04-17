@@ -4,7 +4,7 @@ export type TemplateVisibilityLevel =
   | 'study_type'
   | 'study'
   | 'module'
-  | 'group'
+  | 'team'
   | 'personal';
 
 export type TemplateStatus = 'draft' | 'published' | 'archived';
@@ -20,7 +20,7 @@ export type Template = {
   study_type_id: string | null;
   study_id: string | null;
   module_id: string | null;
-  group_id: string | null;
+  team_id: string | null;
   organization_id: string | null;
   created_by: string;
   status: TemplateStatus;
@@ -49,7 +49,7 @@ export type TemplateListFilters = {
   study_type_id?: string;
   study_id?: string;
   module_id?: string;
-  group_id?: string;
+  team_id?: string;
   page?: number;
   per_page?: number;
 };
