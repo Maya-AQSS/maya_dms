@@ -143,7 +143,7 @@ class DocumentController extends Controller
     {
         // TODO: DocumentService::update(...)
         $document = $this->documentService->findOrFail($id);
-        $this->authorize('view', $document);
+        $this->authorize('update', $document);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -154,7 +154,7 @@ class DocumentController extends Controller
     public function destroy(string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
-        $this->authorize('view', $document);
+        $this->authorize('delete', $document);
         // TODO: borrado lógico / política propia
 
         return response()->json(['message' => 'Not implemented'], 501);

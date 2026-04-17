@@ -20,7 +20,8 @@ class CommentController extends Controller
      */
     public function index(string $document): JsonResponse
     {
-        $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findOrFail($document);
+        $this->authorize('view', $doc);
 
         return response()->json(['data' => []]);
     }
@@ -30,7 +31,8 @@ class CommentController extends Controller
      */
     public function store(Request $request, string $document): JsonResponse
     {
-        $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findOrFail($document);
+        $this->authorize('view', $doc);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -41,6 +43,8 @@ class CommentController extends Controller
     public function show(string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
+        $document     = $this->documentService->findOrFail($commentModel->document_id);
+        $this->authorize('view', $document);
 
         return response()->json(['data' => $commentModel]);
     }
@@ -50,7 +54,9 @@ class CommentController extends Controller
      */
     public function update(Request $request, string $comment): JsonResponse
     {
-        $this->commentService->findOrFail($comment);
+        $commentModel = $this->commentService->findOrFail($comment);
+        $document     = $this->documentService->findOrFail($commentModel->document_id);
+        $this->authorize('view', $document);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -60,7 +66,9 @@ class CommentController extends Controller
      */
     public function destroy(string $comment): JsonResponse
     {
-        $this->commentService->findOrFail($comment);
+        $commentModel = $this->commentService->findOrFail($comment);
+        $document     = $this->documentService->findOrFail($commentModel->document_id);
+        $this->authorize('view', $document);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -70,7 +78,9 @@ class CommentController extends Controller
      */
     public function resolve(Request $request, string $comment): JsonResponse
     {
-        $this->commentService->findOrFail($comment);
+        $commentModel = $this->commentService->findOrFail($comment);
+        $document     = $this->documentService->findOrFail($commentModel->document_id);
+        $this->authorize('view', $document);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
+
 class DocumentBlockController extends Controller
 {
     public function __construct(
@@ -41,7 +42,7 @@ class DocumentBlockController extends Controller
     public function update(string $document, string $_block): JsonResponse
     {
         $doc = $this->documentService->findOrFail($document);
-        $this->authorize('view', $doc);
+        $this->authorize('update', $doc);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }

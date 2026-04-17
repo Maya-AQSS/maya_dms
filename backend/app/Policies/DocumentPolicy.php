@@ -10,6 +10,9 @@ use App\Models\JwtUser;
  *
  * Creador y titular actual (owner tras delegación) no pueden revisar ni aprobar
  * el mismo artefacto. Solo comparación de IDs en memoria — sin consultas extra.
+ *
+ * Mutaciones de persistencia (`update`, `delete`) exigen los códigos JWT
+ * `documents.update` y `documents.delete` respectivamente.
  */
 class DocumentPolicy
 {
@@ -21,6 +24,22 @@ class DocumentPolicy
     public function view(JwtUser $user, Document $document): bool
     {
         return true;
+    }
+
+    /**
+     * Editar metadatos, bloques u otras mutaciones de contenido del documento.
+     */
+    public function update(JwtUser $user, Document $document): bool
+    {
+        return $user->hasPermission('documents.update');
+    }
+
+    /**
+     * Eliminar u operaciones de baja del documento.
+     */
+    public function delete(JwtUser $user, Document $document): bool
+    {
+        return $user->hasPermission('documents.delete');
     }
 
     /**

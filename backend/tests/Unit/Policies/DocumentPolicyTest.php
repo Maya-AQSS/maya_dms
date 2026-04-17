@@ -73,14 +73,45 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->submit($user, $doc));
     }
 
-    private function makeJwtUser(string $id): JwtUser
+    public function test_update_requires_documents_update_permission(): void
+    {
+        $user = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd');
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+
+        $this->assertFalse($this->policy->update($user, $doc));
+
+        $withPerm = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['documents.update']);
+        $this->assertTrue($this->policy->update($withPerm, $doc));
+    }
+
+    public function test_delete_requires_documents_delete_permission(): void
+    {
+        $user = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff');
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+
+        $this->assertFalse($this->policy->delete($user, $doc));
+
+        $withPerm = $this->makeJwtUser('99999999-9999-9999-9999-999999999999', ['documents.delete']);
+        $this->assertTrue($this->policy->delete($withPerm, $doc));
+    }
+
+    /**
+     * @param  list<string>  $permissions
+     */
+    private function makeJwtUser(string $id, array $permissions = []): JwtUser
     {
         return new JwtUser([
             'id'            => $id,
             'email'         => null,
             'name'          => null,
             'department'    => null,
-            'permissions'   => [],
+            'permissions'   => $permissions,
             'scope'         => '',
         ]);
     }

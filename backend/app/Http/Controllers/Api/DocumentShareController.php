@@ -24,7 +24,7 @@ class DocumentShareController extends Controller
     public function store(Request $request, string $document): JsonResponse
     {
         $doc = $this->documentService->findOrFail($document);
-        $this->authorize('view', $doc);
+        $this->authorize('update', $doc);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -41,7 +41,7 @@ class DocumentShareController extends Controller
     public function destroy(Request $request, string $document, string $userId): JsonResponse
     {
         $doc = $this->documentService->findOrFail($document);
-        $this->authorize('view', $doc);
+        $this->authorize('update', $doc);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
