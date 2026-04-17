@@ -4,6 +4,7 @@ import {
   createBlock as createBlockRequest,
   deleteBlock as deleteBlockRequest,
   fetchBlocks,
+  reorderBlocksForTemplate,
   updateBlock as updateBlockRequest,
 } from '../../../api/blocks';
 import { ApiHttpError } from '../../../api/http';
@@ -150,15 +151,17 @@ export function useTemplateBlocks(templateId: string) {
     reorderBlocks: async (draggedId: string, targetIndex: number) => {
       const sourceIndex = blocks.findIndex(b => b.id === draggedId);
       if (sourceIndex === -1) return;
+      const snapshot = blocks;
       const newBlocks = [...blocks];
       const [movedBlock] = newBlocks.splice(sourceIndex, 1);
       newBlocks.splice(targetIndex, 0, movedBlock);
-      setBlocks(newBlocks);
+      setBlocks(newBlocks); // optimistic update
       try {
-        await updateBlockRequest(draggedId, { sort_order: targetIndex });
+        await reorderBlocksForTemplate(templateId, newBlocks.map(b => b.id));
       } catch (e) {
         console.error('Failed to persist reorder:', e);
-        void load();
+        setBlocks(snapshot); // revert on failure
+        setError(formatError(e));
       }
     },
   };
