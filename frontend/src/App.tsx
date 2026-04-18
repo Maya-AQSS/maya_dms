@@ -11,11 +11,11 @@ import {
   TemplateNewPage,
   TemplatesPage,
 } from './pages';
-import { useAuth } from '@maya/shared-auth-react';
+import { useOidcSession } from './auth/useOidcSession';
 import { HierarchyProvider } from './features/hierarchy';
 
 function App() {
-  const { isLoading, isAuthenticated, login } = useAuth();
+  const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
   const [isDark, setIsDark] = useState(() => {
     return (
       localStorage.getItem('theme') === 'dark' ||
@@ -43,16 +43,16 @@ function App() {
   );
   const pageTitle = isEditorRoute ? 'Editor de Programación' : currentNav?.label ?? 'Maya DMS';
 
-  if (isLoading) {
+  if (isOidcLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
-        Autenticando con Keycloak...
+        Iniciando sesión…
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    login();
+  if (!isOidcSignedIn) {
+    beginSignIn();
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
         Redirigiendo al inicio de sesión...

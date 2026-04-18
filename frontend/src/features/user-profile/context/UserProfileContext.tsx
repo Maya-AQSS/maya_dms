@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useAuth } from '@maya/shared-auth-react';
+import { useOidcSession } from '../../../auth/useOidcSession';
 import { fetchMe } from '../../../api/users';
 import type { MeProfile } from '../../../types/users';
 
@@ -23,13 +23,13 @@ export type UserProfileContextValue = {
 const UserProfileContext = createContext<UserProfileContextValue | undefined>(undefined);
 
 export function UserProfileProvider({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { isOidcSignedIn } = useOidcSession();
   const [profile, setProfile] = useState<MeProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   const load = useCallback(async () => {
-    if (!isAuthenticated) {
+    if (!isOidcSignedIn) {
       setProfile(null);
       setError(null);
       return;
@@ -45,17 +45,17 @@ export function UserProfileProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated]);
+  }, [isOidcSignedIn]);
 
   useEffect(() => {
-    if (!isAuthenticated) {
+    if (!isOidcSignedIn) {
       setProfile(null);
       setError(null);
       setLoading(false);
       return;
     }
     void load();
-  }, [isAuthenticated, load]);
+  }, [isOidcSignedIn, load]);
 
   const hasPermission = useCallback(
     (code: string) => profile?.permissions.includes(code) ?? false,

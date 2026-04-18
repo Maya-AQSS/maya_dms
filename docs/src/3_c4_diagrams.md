@@ -118,6 +118,8 @@ C4Component
     Rel(hierarchy_store, api_client, "GET /api/hierarchy (una vez al inicio)")
 ```
 
+**Nota de implementación (auth en la SPA):** el diagrama anterior describe *Auth Context / Store* como *React Context + Zustand* con persistencia en `sessionStorage`. En el repositorio actual la sesión técnica OIDC (token para `Authorization: Bearer`) está **encapsulada** en `frontend/src/auth/` (adaptador + `OidcSessionProvider` / `useOidcSession`), y el **perfil de negocio** (nombre, equipos, `permissions`, …) se obtiene con **`GET /api/v1/me`** vía `UserProfileProvider` / `useUserProfile`. El contrato arquitectónico (JWT en cabecera, API zero trust, datos de usuario resueltos en servidor) se mantiene; la forma concreta de almacenar el token en cliente puede evolucionar (p. ej. Zustand) sin cambiar ese contrato.
+
 ---
 
 ### 1.3 Componentes — Queue Worker (Procesador Asíncrono)
