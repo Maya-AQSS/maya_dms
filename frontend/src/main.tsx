@@ -5,12 +5,15 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from '@maya/shared-auth-react'
 import { authService } from './lib/auth'
+import { UserProfileProvider } from './features/user-profile'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AuthProvider keycloak={authService.keycloak} enableLogging={import.meta.env.DEV}>
       <BrowserRouter>
-        <App />
+        <UserProfileProvider>
+          <App />
+        </UserProfileProvider>
       </BrowserRouter>
     </AuthProvider>
   </StrictMode>,

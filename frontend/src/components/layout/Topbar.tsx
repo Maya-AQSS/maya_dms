@@ -1,4 +1,5 @@
 import { Button } from '../../ui';
+import { useUserProfile, profileDisplayInitials } from '../../features/user-profile';
 import { HamburgerIcon, MoonIcon, SunIcon } from './navIcons';
 
 type Props = {
@@ -10,6 +11,13 @@ type Props = {
 };
 
 export function Topbar({ title, isDark, onToggleDark, onMobileMenuOpen }: Props) {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const initials = profileDisplayInitials(profile);
+  const avatarTitle =
+    profile?.name?.trim() ||
+    profile?.email?.trim() ||
+    (profileLoading ? 'Cargando perfil…' : 'Usuario');
+
   return (
     <header className="h-14 bg-ui-topbar dark:bg-ui-dark-topbar shadow-topbar flex items-center justify-between px-6 z-[200]">
       <div className="flex items-center gap-2">
@@ -42,9 +50,14 @@ export function Topbar({ title, isDark, onToggleDark, onMobileMenuOpen }: Props)
           {isDark ? <SunIcon /> : <MoonIcon />}
         </Button>
 
-        {/* Avatar — slightly larger on mobile for better tappability */}
-        <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-odoo-purple flex items-center justify-center">
-          <span className="text-xs font-bold text-white">U</span>
+        {/* Avatar — datos desde GET /api/v1/me (UserProfileProvider) */}
+        <div
+          className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-odoo-purple flex items-center justify-center"
+          title={avatarTitle}
+        >
+          <span className="text-xs font-bold text-white">
+            {profileLoading ? '…' : initials}
+          </span>
         </div>
       </div>
     </header>

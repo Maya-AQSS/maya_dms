@@ -12,6 +12,7 @@ import {
   fetchDocumentCreationOptions,
   type DocumentCreationOption,
 } from '../api/documents';
+import { useUserProfile } from '../features/user-profile';
 import type { DocumentStatus } from '../types/documents';
 import { Button, Select } from '../ui';
 
@@ -52,10 +53,17 @@ export function DocumentsContent() {
 
   const { documents, loading, error, reload } = useDocuments();
   const { hierarchy } = useHierarchy();
+  const { hasPermission, loading: profileLoading, profile } = useUserProfile();
   const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
   const selectedModuleId = activeFilters.moduleId;
 
   const newProgrammingDisabledReason = useMemo(() => {
+    if (profileLoading || profile === null) {
+      return 'Cargando perfil de usuario…';
+    }
+    if (!hasPermission('documents.create')) {
+      return 'No tienes permiso para crear programaciones (documents.create).';
+    }
     if (!selectedModuleId) {
       return 'Selecciona un módulo para crear una nueva programación.';
     }
@@ -66,7 +74,15 @@ export function DocumentsContent() {
       return creationMessage ?? 'No hay plantillas publicadas disponibles para este módulo.';
     }
     return null;
-  }, [selectedModuleId, loadingCreationOptions, creationMode, creationMessage]);
+  }, [
+    profile,
+    profileLoading,
+    hasPermission,
+    selectedModuleId,
+    loadingCreationOptions,
+    creationMode,
+    creationMessage,
+  ]);
 
   useEffect(() => {
     if (!selectedModuleId) {

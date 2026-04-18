@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button } from '../../../ui';
 import type { User } from '../../../types/users';
 import { searchUsers } from '../../../api/users';
+import { useUserProfile } from '../../../features/user-profile';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -196,6 +197,9 @@ export function WizardStep3Users({
   validationType,
   onValidationTypeChange,
 }: Props) {
+  const { hasPermission } = useUserProfile();
+  const canSearchUsers = hasPermission('users.search');
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<User[]>([]);
   const [searching, setSearching] = useState(false);
@@ -204,6 +208,12 @@ export function WizardStep3Users({
   const sensors = useSensors(useSensor(PointerSensor));
 
   useEffect(() => {
+    if (!canSearchUsers) {
+      setSearchResults([]);
+      setSearchError(null);
+      setSearching(false);
+      return;
+    }
     const timer = setTimeout(() => {
       if (searchQuery.trim().length < 2) {
         setSearchResults([]);
@@ -218,7 +228,7 @@ export function WizardStep3Users({
         .finally(() => setSearching(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, canSearchUsers]);
 
   const handleAdd = (user: User) => {
     if (validators.some(v => v.userId === user.id)) return;
@@ -312,11 +322,17 @@ export function WizardStep3Users({
       {/* Columna Derecha: Buscador */}
       <div className="md:w-1/2 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
         <div className="p-4 border-b border-ui-border dark:border-ui-dark-border shrink-0">
+          {!canSearchUsers && (
+            <p className="mb-3 text-xs text-text-muted dark:text-text-dark-muted">
+              No tienes permiso para buscar usuarios (users.search). Añade validadores solo si tu rol lo permite.
+            </p>
+          )}
           <div className="relative">
             <input
               id="search-input"
               type="text"
-              className="w-full bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple transition-all"
+              disabled={!canSearchUsers}
+              className="w-full bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-lg pl-10 pr-4 py-2.5 text-sm focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               placeholder="Buscar por nombre, rol o email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
