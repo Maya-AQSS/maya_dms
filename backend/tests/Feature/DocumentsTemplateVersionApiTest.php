@@ -170,7 +170,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
-        $reviewerId = 'usr_direction_demo';
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
@@ -252,7 +252,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
-        $reviewerId = 'usr_direction_demo';
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,

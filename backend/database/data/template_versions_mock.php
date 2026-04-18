@@ -23,7 +23,7 @@ return [
             ],
         ],
         'changelog' => 'Versión inicial (seed)',
-        'published_by' => 'usr_direction_demo',
+        'published_by' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
         'published_at' => null, // lo rellena el seeder con Carbon::now()
     ],
     [
@@ -42,7 +42,7 @@ return [
             ],
         ],
         'changelog' => 'Versión inicial (seed)',
-        'published_by' => 'usr_hierarchy_fp_demo',
+        'published_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'published_at' => null,
     ],
 ];

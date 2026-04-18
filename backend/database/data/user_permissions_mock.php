@@ -7,36 +7,33 @@
  * Idempotente: {@see \Database\Seeders\UserPermissionsSeeder} usa insertOrIgnore.
  */
 return [
-    // Dirección: CRUD plantillas y documentos (equipos sin permisos CRUD en catálogo)
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'templates.create'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'templates.update'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'templates.delete'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'documents.create'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'documents.read'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'documents.update'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'documents.delete'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'audit.read'],
-    ['user_id' => 'usr_direction_demo', 'permission_code' => 'users.search'],
-    ['user_id' => 'usr_javier_navarro', 'permission_code' => 'audit.read'],
+    // Dirección: CRUD plantillas y documentos + auditoría + búsqueda de usuarios
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'templates.create'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'templates.read'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'templates.update'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'templates.delete'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'documents.create'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'documents.read'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'documents.update'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'documents.delete'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'audit.read'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'users.search'],
 
-    ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'documents.read'],
-    ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'documents.create'],
-    ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'documents.update'],
-    ['user_id' => 'usr_secretariat_demo', 'permission_code' => 'users.search'],
+    // Secretaría: lectura plantillas, lectura/edición documentos, búsqueda usuarios
+    ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'templates.read'],
+    ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'documents.read'],
+    ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'documents.create'],
+    ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'documents.update'],
+    ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'users.search'],
 
-    ['user_id' => 'usr_hierarchy_eso_demo', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_hierarchy_eso_demo', 'permission_code' => 'documents.read'],
+    // Docentes por etapa: solo lectura catálogo que su JWT permita ver
+    ['user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165', 'permission_code' => 'templates.read'],
+    ['user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165', 'permission_code' => 'documents.read'],
+    ['user_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f', 'permission_code' => 'templates.read'],
+    ['user_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f', 'permission_code' => 'documents.read'],
+    ['user_id' => '50f503c6-cb63-466c-852d-0b30ae130e98', 'permission_code' => 'templates.read'],
+    ['user_id' => '50f503c6-cb63-466c-852d-0b30ae130e98', 'permission_code' => 'documents.read'],
 
-    ['user_id' => 'usr_hierarchy_bach_demo', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_hierarchy_bach_demo', 'permission_code' => 'documents.read'],
-
-    ['user_id' => 'usr_hierarchy_fp_demo', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_hierarchy_fp_demo', 'permission_code' => 'documents.read'],
-
-    ['user_id' => 'usr_ana_martinez', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_maria_garcia', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_juan_rodriguez', 'permission_code' => 'templates.read'],
-    ['user_id' => 'usr_juan_rodriguez', 'permission_code' => 'documents.read'],
+    // Rol solo auditoría (revisores en plantillas, sin CRUD)
+    ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'permission_code' => 'audit.read'],
 ];

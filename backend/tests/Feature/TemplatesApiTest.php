@@ -175,8 +175,8 @@ class TemplatesApiTest extends TestCase
 
     public function test_user_with_coordination_permissions_can_create_global_template(): void
     {
-        // `usr_direction_demo` tiene `templates.create`/`templates.update` en user_permissions (mock).
-        $userId = 'usr_direction_demo';
+        // `ed568442-ece5-4c90-97ca-12c8969bb3a2` tiene `templates.create`/`templates.update` en user_permissions (mock).
+        $userId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         $headers = $this->authHeaders($userId, []);
 
         $this->postJson('/api/v1/templates', [
@@ -245,7 +245,7 @@ class TemplatesApiTest extends TestCase
 
     public function test_store_study_visibility_requires_study_id(): void
     {
-        $userId = 'usr_direction_demo';
+        $userId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         $headers = $this->authHeaders($userId, []);
 
         $this->postJson('/api/v1/templates', [
@@ -421,7 +421,7 @@ class TemplatesApiTest extends TestCase
 
     public function test_team_visibility_requires_existing_team(): void
     {
-        $userId = 'usr_direction_demo';
+        $userId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         $headers = $this->authHeaders($userId, []);
 
         $gid = (string) Str::uuid();
@@ -612,7 +612,7 @@ class TemplatesApiTest extends TestCase
     public function test_template_publish_requires_changelog_when_in_review(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = 'usr_direction_demo';
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         $headersReviewer = $this->authHeaders($reviewerId, []);
 
         $tid = (string) Str::uuid();
@@ -656,7 +656,7 @@ class TemplatesApiTest extends TestCase
     public function test_template_review_flow_creates_snapshot_and_history(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = 'usr_direction_demo';
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
@@ -804,7 +804,7 @@ class TemplatesApiTest extends TestCase
     public function test_template_reject_review_returns_to_draft(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = 'usr_direction_demo';
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
@@ -840,7 +840,7 @@ class TemplatesApiTest extends TestCase
     public function test_template_second_publish_increments_version_after_reopen(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = 'usr_direction_demo';
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,

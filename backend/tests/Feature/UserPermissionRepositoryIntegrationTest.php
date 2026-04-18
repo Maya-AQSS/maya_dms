@@ -12,10 +12,21 @@ use Tests\TestCase;
 
 /**
  * Comportamiento del repositorio de asignaciones con datos de {@see database/data/user_permissions_mock.php}.
+ *
+ * IDs alineados con {@see database/data/users_mock.php} (UUIDs de Keycloak en entorno local).
  */
 class UserPermissionRepositoryIntegrationTest extends TestCase
 {
     use RefreshDatabase;
+
+    /** Docente ESO — templates.read + documents.read */
+    private const USER_ESO = 'cf8bb92a-0417-4a4c-918a-08dd3fd69165';
+
+    /** Sin filas en user_permissions_mock */
+    private const USER_WITHOUT_PERMISSIONS = '00000000-0000-0000-0000-000000000099';
+
+    /** Auditoría — solo audit.read */
+    private const USER_AUDITOR = 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc';
 
     protected function setUp(): void
     {
@@ -32,7 +43,7 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
     {
         $repo = app(UserPermissionRepositoryInterface::class);
 
-        $codes = $repo->findPermissionCodesByUserId('usr_juan_rodriguez');
+        $codes = $repo->findPermissionCodesByUserId(self::USER_ESO);
 
         $this->assertSame(['documents.read', 'templates.read'], $codes);
     }
@@ -41,16 +52,16 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
     {
         $repo = app(UserPermissionRepositoryInterface::class);
 
-        $codes = $repo->findPermissionCodesByUserId('usr_lucia_moreno');
+        $codes = $repo->findPermissionCodesByUserId(self::USER_WITHOUT_PERMISSIONS);
 
         $this->assertSame([], $codes);
     }
 
-    public function test_javier_navarro_mock_has_only_audit_read_assignment(): void
+    public function test_auditor_mock_has_only_audit_read_assignment(): void
     {
         $repo = app(UserPermissionRepositoryInterface::class);
 
-        $codes = $repo->findPermissionCodesByUserId('usr_javier_navarro');
+        $codes = $repo->findPermissionCodesByUserId(self::USER_AUDITOR);
 
         $this->assertSame(['audit.read'], $codes);
     }
@@ -59,19 +70,19 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
     {
         $repo = app(UserPermissionRepositoryInterface::class);
 
-        $this->assertNull(Cache::get('user_permission_codes:usr_juan_rodriguez'));
+        $this->assertNull(Cache::get('user_permission_codes:' . self::USER_ESO));
 
-        $first = $repo->findPermissionCodesByUserId('usr_juan_rodriguez');
-        $this->assertNotNull(Cache::get('user_permission_codes:usr_juan_rodriguez'));
+        $first = $repo->findPermissionCodesByUserId(self::USER_ESO);
+        $this->assertNotNull(Cache::get('user_permission_codes:' . self::USER_ESO));
 
-        $second = $repo->findPermissionCodesByUserId('usr_juan_rodriguez');
+        $second = $repo->findPermissionCodesByUserId(self::USER_ESO);
         $this->assertSame($first, $second);
 
-        $repo->forgetCachedCodesForUser('usr_juan_rodriguez');
-        $this->assertNull(Cache::get('user_permission_codes:usr_juan_rodriguez'));
+        $repo->forgetCachedCodesForUser(self::USER_ESO);
+        $this->assertNull(Cache::get('user_permission_codes:' . self::USER_ESO));
 
-        $third = $repo->findPermissionCodesByUserId('usr_juan_rodriguez');
+        $third = $repo->findPermissionCodesByUserId(self::USER_ESO);
         $this->assertSame($first, $third);
-        $this->assertNotNull(Cache::get('user_permission_codes:usr_juan_rodriguez'));
+        $this->assertNotNull(Cache::get('user_permission_codes:' . self::USER_ESO));
     }
 }
