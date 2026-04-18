@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Repositories\Contracts\UserPermissionRepositoryInterface;
+use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +39,16 @@ class UserPermissionsSeeder extends Seeder
         }, $assignments);
 
         DB::table($table)->insertOrIgnore($rows);
+
+        $userIds = array_values(array_unique(array_map(
+            static fn (array $row): string => (string) $row['user_id'],
+            $assignments,
+        )));
+
+        foreach ($userIds as $userId) {
+            app(UserPermissionRepositoryInterface::class)->forgetCachedCodesForUser($userId);
+            app(UserProfileServiceInterface::class)->invalidateCache($userId);
+        }
     }
 
     /**

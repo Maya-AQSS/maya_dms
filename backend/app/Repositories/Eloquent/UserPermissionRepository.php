@@ -25,19 +25,34 @@ class UserPermissionRepository implements UserPermissionRepositoryInterface
     {
         $cacheKey = self::CACHE_PREFIX.$userId;
 
-        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($userId): array {
-            if (! Schema::hasTable('user_permissions')) {
-                return [];
-            }
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached) && $cached !== []) {
+            return $cached;
+        }
 
-            return UserPermission::query()
-                ->where('user_id', '=', $userId)
-                ->orderBy('permission_code')
-                ->pluck('permission_code')
-                ->unique()
-                ->values()
-                ->all();
-        });
+        // No persistir listas vacías: si la primera petición fue antes del seed, el antiguo
+        // Cache::remember guardaba [] 15 min y bloqueaba permisos reales hasta expirar.
+        if (is_array($cached) && $cached === []) {
+            Cache::forget($cacheKey);
+        }
+
+        if (! $this->userPermissionsCatalogIsReadable()) {
+            return [];
+        }
+
+        $codes = UserPermission::query()
+            ->where('user_id', '=', $userId)
+            ->orderBy('permission_code')
+            ->pluck('permission_code')
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($codes !== []) {
+            Cache::put($cacheKey, $codes, self::CACHE_TTL_SECONDS);
+        }
+
+        return $codes;
     }
 
     /**
@@ -46,5 +61,31 @@ class UserPermissionRepository implements UserPermissionRepositoryInterface
     public function forgetCachedCodesForUser(string $userId): void
     {
         Cache::forget(self::CACHE_PREFIX.$userId);
+    }
+
+    /**
+     * En local/producción `user_permissions` es una vista PostgreSQL sobre FDW;
+     * {@see Schema::hasTable()} solo contempla tablas base y devuelve false, lo que
+     * hacía que nunca se consultaran filas (permisos siempre vacíos).
+     */
+    private function userPermissionsCatalogIsReadable(): bool
+    {
+        if (Schema::hasTable('user_permissions')) {
+            return true;
+        }
+
+        $connection = Schema::getConnection();
+
+        if ($connection->getDriverName() !== 'pgsql') {
+            return false;
+        }
+
+        $searchPath = (string) ($connection->getConfig('search_path') ?? 'public');
+        $schema = trim(explode(',', $searchPath)[0], '" ');
+
+        return $connection->selectOne(
+            'select 1 as x from information_schema.views where table_schema = ? and table_name = ? limit 1',
+            [$schema, 'user_permissions'],
+        ) !== null;
     }
 }

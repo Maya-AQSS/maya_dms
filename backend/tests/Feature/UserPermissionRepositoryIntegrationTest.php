@@ -55,6 +55,9 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
         $codes = $repo->findPermissionCodesByUserId(self::USER_WITHOUT_PERMISSIONS);
 
         $this->assertSame([], $codes);
+        $this->assertFalse(Cache::has('user_permission_codes:' . self::USER_WITHOUT_PERMISSIONS));
+
+        $this->assertSame([], $repo->findPermissionCodesByUserId(self::USER_WITHOUT_PERMISSIONS));
     }
 
     public function test_auditor_mock_has_only_audit_read_assignment(): void

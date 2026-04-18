@@ -5,6 +5,7 @@ namespace App\Http\Requests\Templates;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -13,6 +14,11 @@ class IndexTemplateRequest extends FormRequest
     public function authorize(): bool
     {
         return $this->user()->can('viewAny', Template::class);
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso.');
     }
 
     /**
