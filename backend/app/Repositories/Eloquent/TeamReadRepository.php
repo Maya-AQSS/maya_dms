@@ -3,10 +3,26 @@
 namespace App\Repositories\Eloquent;
 
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 class TeamReadRepository implements TeamReadRepositoryInterface
 {
+    /**
+     * En PostgreSQL el catálogo `teams` puede usar `uuid` para `id`; los bindings de Laravel
+     * llegan como texto y sin cast explícito falla `uuid = character varying`.
+     */
+    private function whereTeamIdMatches(Builder $query, string $qualifiedTeamIdColumn, string $teamId): void
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $query->whereRaw($qualifiedTeamIdColumn.' = ?::uuid', [$teamId]);
+
+            return;
+        }
+
+        $query->where($qualifiedTeamIdColumn, '=', $teamId);
+    }
+
     /**
      * Devuelve equipos visibles para el usuario.
      *
@@ -45,7 +61,7 @@ class TeamReadRepository implements TeamReadRepositoryInterface
     public function findVisibleTeamByIdForUser(string $userId, string $teamId): ?array
     {
         $row = DB::table('teams')
-            ->where('teams.id', '=', $teamId)
+            ->tap(fn (Builder $q) => $this->whereTeamIdMatches($q, 'teams.id', $teamId))
             ->whereNull('teams.deleted_at')
             ->where(function ($query) use ($userId) {
                 $query->where('teams.owner_id', '=', $userId)

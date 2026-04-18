@@ -9,7 +9,8 @@ use App\Models\Template;
 /**
  * Autorización sobre plantillas normativas y segregación de funciones (SoD).
  *
- * Listado y detalle confían en el global scope de {@see Template} (como {@see Team}).
+ * Listado y detalle exigen {@see self::viewAny} / {@see self::view} con permiso
+ * `templates.read`; el global scope de {@see Template} acota qué filas existen.
  *
  * - Alta con visibilidad no personal: {@see self::create} exige `templates.create`.
  * - Editar contenido ajeno (o propio con cambios que no sean solo visibilidad): `templates.update`.
@@ -23,21 +24,19 @@ use App\Models\Template;
 class TemplatePolicy
 {
     /**
-     * Listar plantillas (el alcance lo acota el modelo / repositorio).
-     * Los listados deben construirse con {@see Template::query()}, nunca sin scope.
+     * Listar plantillas: requiere `templates.read`; el alcance acota filas visibles.
      */
     public function viewAny(JwtUser $user): bool
     {
-        return true;
+        return $user->hasPermission('templates.read');
     }
 
     /**
-     * Ver una plantilla (el alcance impide cargar filas no visibles).
-     * Resolver siempre vía {@see Template::query()} antes de autorizar.
+     * Ver una plantilla: requiere `templates.read`; el alcance impide cargar filas ajenas.
      */
     public function view(JwtUser $user, Template $template): bool
     {
-        return true;
+        return $user->hasPermission('templates.read');
     }
 
     /**

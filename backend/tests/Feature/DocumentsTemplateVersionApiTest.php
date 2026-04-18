@@ -4,8 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Team;
+use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\TemplateReviewer;
 use Database\Seeders\PermissionsSeeder;
 use Database\Seeders\UserPermissionsSeeder;
 use Database\Seeders\UsersSourceSeeder;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -23,6 +26,7 @@ use Tests\TestCase;
  */
 class DocumentsTemplateVersionApiTest extends TestCase
 {
+    use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
 
@@ -50,6 +54,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
     private function authHeaders(string $sub, array $realmRoles = [], array $extraClaims = []): array
     {
         auth()->forgetUser();
+
+        $this->assignUserPermissions($sub, ['templates.read']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -82,6 +88,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         array $reviewerExtraClaims = [],
     ): array {
         auth()->forgetUser();
+
+        $this->assignUserPermissions($creatorSub, ['templates.read']);
+        $this->assignUserPermissions($reviewerSub, ['templates.read']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -120,7 +129,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     /**
      * @param  list<string>  $codes
      */
-    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'users.search']): void
+    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'templates.read', 'users.search']): void
     {
         $now = now();
         foreach ($codes as $code) {
@@ -207,6 +216,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
@@ -267,6 +283,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'is_department' => true,
         ]);
 
+        TeamMember::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'team_id' => $gid,
+            'user_id' => $reviewerId,
+            'role' => 'member',
+        ]);
+
         $tid = (string) Str::uuid();
         $b1 = (string) Str::uuid();
 
@@ -296,6 +319,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'block_state' => 'editable',
             'mandatory' => false,
             'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
         ]);
 
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();

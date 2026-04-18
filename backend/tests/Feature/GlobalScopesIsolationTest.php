@@ -7,17 +7,27 @@ use App\Models\Comment;
 use App\Models\Document;
 use App\Models\Team;
 use App\Models\Template;
+use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 class GlobalScopesIsolationTest extends TestCase
 {
+    use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(PermissionsSeeder::class);
+    }
 
     private function seedTemplateAndDocument(string $creatorId): array
     {
@@ -124,6 +134,8 @@ class GlobalScopesIsolationTest extends TestCase
 
         [$templateId] = $this->seedTemplateAndDocument($userA);
 
+        $this->assignUserPermissions($userA, ['templates.read']);
+
         $tokenA = $this->buildAuthTokensForUser($userA);
 
         // User A debe poder ver su propia plantilla
@@ -176,6 +188,8 @@ class GlobalScopesIsolationTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+
+        $this->assignUserPermissions($userA, ['templates.read']);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
         $this->getJson(

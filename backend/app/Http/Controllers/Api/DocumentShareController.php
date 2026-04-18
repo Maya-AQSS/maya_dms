@@ -7,6 +7,10 @@ use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * TODO(permisos): reglas por documento (titular vs colaborador read/edit en
+ * `document_shares`) y alinear con F-05.1; hoy se usa `authorize('update')` global.
+ */
 class DocumentShareController extends Controller
 {
     public function __construct(

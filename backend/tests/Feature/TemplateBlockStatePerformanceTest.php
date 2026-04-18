@@ -4,16 +4,19 @@ namespace Tests\Feature;
 
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use Database\Seeders\PermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Maya\Auth\Contracts\JwksServiceInterface;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 class TemplateBlockStatePerformanceTest extends TestCase
 {
+    use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
 
@@ -27,6 +30,8 @@ class TemplateBlockStatePerformanceTest extends TestCase
         ]);
 
         Cache::flush();
+
+        $this->seed(PermissionsSeeder::class);
     }
 
     private function authHeaders(string $sub, array $realmRoles = [], array $extraClaims = []): array
@@ -59,6 +64,7 @@ class TemplateBlockStatePerformanceTest extends TestCase
     public function test_block_state_update_performance(): void
     {
         $userId = (string) Str::uuid();
+        $this->assignUserPermissions($userId, ['templates.read']);
         $templateId = (string) Str::uuid();
 
         Template::query()->forceCreate([

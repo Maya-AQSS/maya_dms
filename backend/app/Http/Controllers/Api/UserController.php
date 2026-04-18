@@ -13,6 +13,9 @@ class UserController extends Controller
     /**
      * GET /api/v1/users?search={term}&per_page={n}
      *
+     * F-05.1 describe colaboradores/revisores pero no el endpoint `/users`; el acceso
+     * con `users.search` es decisión de producto hasta que el backlog lo cierre.
+     *
      * Búsqueda case-insensitive por nombre, email y departamento.
      * Devuelve { data: [...] } con el campo `role` mapeado desde `department`.
      *

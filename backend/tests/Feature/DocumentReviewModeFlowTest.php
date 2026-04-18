@@ -177,11 +177,11 @@ class DocumentReviewModeFlowTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($pub));
 
-        $hSub = $this->bearerFor($ctx['submitterId'], $priv, $pub, 'sub');
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
         $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
 
-        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hSub)->assertOk();
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
         $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
             ->assertOk()
@@ -218,11 +218,11 @@ class DocumentReviewModeFlowTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($pub));
 
-        $hSub = $this->bearerFor($ctx['submitterId'], $priv, $pub, 'sub');
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
         $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
 
-        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hSub)->assertOk();
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
         $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
             ->assertOk()
@@ -246,11 +246,11 @@ class DocumentReviewModeFlowTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($pub));
 
-        $hSub = $this->bearerFor($ctx['submitterId'], $priv, $pub, 'sub');
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
         $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
 
-        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hSub)->assertOk();
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
         $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
             ->assertOk()

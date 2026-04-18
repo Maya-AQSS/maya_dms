@@ -18,6 +18,26 @@ class TemplatePolicyTest extends TestCase
         $this->policy = new TemplatePolicy;
     }
 
+    public function test_view_any_requires_templates_read(): void
+    {
+        $sin = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+        $con = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['templates.read']);
+
+        $this->assertFalse($this->policy->viewAny($sin));
+        $this->assertTrue($this->policy->viewAny($con));
+    }
+
+    public function test_view_requires_templates_read(): void
+    {
+        $creatorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $sin       = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd');
+        $con       = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['templates.read']);
+        $template  = $this->makeTemplate($creatorId);
+
+        $this->assertFalse($this->policy->view($sin, $template));
+        $this->assertTrue($this->policy->view($con, $template));
+    }
+
     public function test_creator_cannot_review_template(): void
     {
         $creatorId = '11111111-1111-1111-1111-111111111111';

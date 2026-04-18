@@ -11,6 +11,7 @@ use Database\Seeders\UsersSourceSeeder;
 use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\TemplateReviewer;
 use App\Models\TemplateVersion;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -18,11 +19,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 class TemplatesApiTest extends TestCase
 {
+    use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
 
@@ -56,6 +59,8 @@ class TemplatesApiTest extends TestCase
     private function authHeaders(string $sub, array $realmRoles = [], array $extraClaims = []): array
     {
         auth()->forgetUser();
+
+        $this->assignUserPermissions($sub, ['templates.read']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -91,6 +96,9 @@ class TemplatesApiTest extends TestCase
     ): array {
         auth()->forgetUser();
 
+        $this->assignUserPermissions($creatorSub, ['templates.read']);
+        $this->assignUserPermissions($reviewerSub, ['templates.read']);
+
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
         $this->mock(JwksServiceInterface::class)
@@ -123,6 +131,16 @@ class TemplatesApiTest extends TestCase
             ['Authorization' => 'Bearer '.$tokenCreator],
             ['Authorization' => 'Bearer '.$tokenReviewer],
         ];
+    }
+
+    private function seedTemplateReviewer(string $templateId, string $userId, int $stage = 1): void
+    {
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $templateId,
+            'user_id' => $userId,
+            'stage' => $stage,
+        ]);
     }
 
     public function test_user_can_crud_personal_template_via_api(): void
@@ -644,6 +662,8 @@ class TemplatesApiTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        $this->seedTemplateReviewer($tid, $reviewerId);
+
         $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersReviewer)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['changelog']);
@@ -691,6 +711,8 @@ class TemplatesApiTest extends TestCase
             'mandatory' => true,
             'sort_order' => 0,
         ]);
+
+        $this->seedTemplateReviewer($tid, $reviewerId);
 
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)
             ->assertOk()
@@ -829,6 +851,8 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
+        $this->seedTemplateReviewer($tid, $reviewerId);
+
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/reject-review", [], $headersReviewer)
             ->assertOk()
@@ -875,6 +899,8 @@ class TemplatesApiTest extends TestCase
             'mandatory' => false,
             'sort_order' => 0,
         ]);
+
+        $this->seedTemplateReviewer($tid, $reviewerId);
 
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $headersReviewer)->assertOk();
 

@@ -7,6 +7,7 @@ use App\Events\DocumentStateChanged;
 use App\Models\CourseModule;
 use App\Models\Document;
 use App\Models\DocumentReview;
+use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
@@ -288,13 +289,14 @@ class DocumentService implements DocumentServiceInterface
         return DB::transaction(function () use ($documentId, $actorId, $document) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
 
-            $document->loadMissing('template.reviewers');
+            // Sin global scope: el titular puede no “ver” la plantilla en catálogo (p. ej. personal de otro
+            // usuario) pero debe poder generar revisiones a partir de `template_reviewers` de la plantilla anclada.
+            $template = Template::query()
+                ->withoutGlobalScopes(['user_access'])
+                ->with(['reviewers' => fn ($q) => $q->orderBy('stage')])
+                ->find($document->template_id);
 
-            $document = $this->transition($documentId, 'in_review', $actorId, [
-                'submitted_at' => now(),
-            ]);
-
-            $rows = $document->template?->reviewers
+            $rows = $template?->reviewers
                 ?->sortBy('stage')
                 ->map(fn ($r) => [
                     'reviewer_id' => $r->user_id,
@@ -302,6 +304,10 @@ class DocumentService implements DocumentServiceInterface
                 ])
                 ->values()
                 ->all() ?? [];
+
+            $document = $this->transition($documentId, 'in_review', $actorId, [
+                'submitted_at' => now(),
+            ]);
 
             if ($rows !== []) {
                 $this->documentRepository->createPendingReviews($documentId, $rows);

@@ -11,8 +11,12 @@ use App\Models\JwtUser;
  * Creador y titular actual (owner tras delegación) no pueden revisar ni aprobar
  * el mismo artefacto. Solo comparación de IDs en memoria — sin consultas extra.
  *
- * Mutaciones de persistencia (`update`, `delete`) exigen los códigos JWT
- * `documents.update` y `documents.delete` respectivamente.
+ * Envío a revisión ({@see self::submit}): solo el titular ({@see Document::$owner_id}),
+ * alineado con F-05.1 (autor principal).
+ *
+ * Mutaciones de persistencia: el creador o el titular pueden editar sin el permiso
+ * global; terceros requieren `documents.update`. `delete` sigue exigiendo
+ * `documents.delete`.
  */
 class DocumentPolicy
 {
@@ -31,6 +35,12 @@ class DocumentPolicy
      */
     public function update(JwtUser $user, Document $document): bool
     {
+        $id = $user->getAuthIdentifier();
+
+        if ($id === $document->created_by || $id === $document->owner_id) {
+            return true;
+        }
+
         return $user->hasPermission('documents.update');
     }
 
@@ -51,11 +61,11 @@ class DocumentPolicy
     }
 
     /**
-     * Envío a revisión (p. ej. transición draft → in_review).
+     * Envío a revisión (p. ej. transición draft → in_review): solo el titular actual.
      */
     public function submit(JwtUser $user, Document $document): bool
     {
-        return ! $this->violatesSegregation($user, $document);
+        return $user->getAuthIdentifier() === $document->owner_id;
     }
 
     private function violatesSegregation(JwtUser $user, Document $document): bool

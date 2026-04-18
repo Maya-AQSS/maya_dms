@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use Database\Seeders\PermissionsSeeder;
@@ -72,7 +73,7 @@ class TemplateBlocksApiTest extends TestCase
     /**
      * @return array{0: string, 1: string}
      */
-    private function seedTemplateAndBlock(string $userId): array
+    private function seedTemplateAndBlock(string $userId, bool $globalVisibility = false): array
     {
         $templateId = (string) Str::uuid();
         $blockId = (string) Str::uuid();
@@ -81,7 +82,9 @@ class TemplateBlocksApiTest extends TestCase
             'id' => $templateId,
             'name' => 'Plantilla bloques',
             'description' => null,
-            'visibility_level' => 'personal',
+            'visibility_level' => $globalVisibility
+                ? TemplateVisibilityLevel::Global->value
+                : 'personal',
             'delivery_deadline' => null,
             'study_type_id' => null,
             'study_id' => null,
@@ -160,7 +163,7 @@ class TemplateBlocksApiTest extends TestCase
         $this->grantTemplatesReadOnly($readerId);
 
         $readerHeaders = $this->authHeaders($readerId);
-        [, $blockId] = $this->seedTemplateAndBlock($ownerId);
+        [, $blockId] = $this->seedTemplateAndBlock($ownerId, true);
         $templateId = TemplateBlock::query()->findOrFail($blockId)->template_id;
 
         $this->putJson("/api/v1/blocks/{$blockId}", [

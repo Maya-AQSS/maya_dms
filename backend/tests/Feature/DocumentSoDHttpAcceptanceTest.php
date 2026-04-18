@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Document;
+use App\Models\DocumentShare;
 use App\Models\Template;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,10 +56,9 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     }
 
     /**
-     * Escenario 5: creador envía a revisión su documento → HTTP 403.
-     * Escenario 4: queda registro en audit_log (nivel WARNING en new_value).
+     * El titular puede enviar a revisión su documento (HTTP 200).
      */
-    public function test_creator_submit_own_document_returns_403_and_writes_audit_log(): void
+    public function test_owner_submit_own_document_returns_ok(): void
     {
         [$templateId, $documentId] = $this->seedTemplateAndDocument('creator-doc-uuid-01');
 
@@ -74,19 +74,80 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($publicPem));
 
-        $response = $this->postJson(
+        $this->postJson(
             "/api/v1/documents/{$documentId}/submit",
             [],
             ['Authorization' => 'Bearer '.$token],
-        );
+        )->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+    }
 
-        $response->assertForbidden();
+    /**
+     * Usuario compartido (no titular) no puede enviar a revisión → 403 y audit_log.
+     */
+    public function test_shared_user_submit_returns_403_and_writes_audit_log(): void
+    {
+        $ownerId = 'owner-sod-share-01';
+        $sharedId = 'shared-sod-share-02';
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'T',
+            'description' => null,
+            'study_id' => null,
+            'created_by' => $ownerId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'title' => 'Doc compartido',
+            'study_id' => null,
+            'created_by' => $ownerId,
+            'owner_id' => $ownerId,
+            'status' => 'draft',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => null,
+        ]);
+
+        DocumentShare::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'user_id' => $sharedId,
+            'permission' => 'read',
+            'granted_by' => $ownerId,
+        ]);
+
+        [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
+        $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-sh', $sharedId);
+
+        config([
+            'auth.jwt_issuer' => 'test-issuer',
+            'auth.jwt_audience' => 'test-audience',
+        ]);
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($publicPem));
+
+        $this->postJson(
+            "/api/v1/documents/{$documentId}/submit",
+            [],
+            ['Authorization' => 'Bearer '.$token],
+        )->assertForbidden();
 
         $this->assertDatabaseHas('audit_log', [
             'entity_type' => 'document',
             'entity_id' => $documentId,
             'action' => 'sod_violation',
-            'user_id' => 'creator-doc-uuid-01',
+            'user_id' => $sharedId,
         ]);
 
         $row = DB::table('audit_log')
@@ -109,7 +170,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     {
         $creatorId = 'creator-tpl-uuid-02';
         [$templateId] = $this->seedTemplateAndDocument($creatorId);
-        // Crea también un documento; no interfiere con la plantilla bajo prueba
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-tpl', $creatorId);
@@ -123,19 +183,17 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($publicPem));
 
-        $response = $this->postJson(
+        $this->postJson(
             "/api/v1/templates/{$templateId}/publish",
             ['changelog' => 'Versión inicial'],
             ['Authorization' => 'Bearer '.$token],
-        );
-
-        $response->assertForbidden();
+        )->assertForbidden();
     }
 
     /**
-     * Escenario 3: titular delegado (owner) no puede enviar a revisión.
+     * Tras delegación, el nuevo titular puede enviar a revisión.
      */
-    public function test_delegate_owner_cannot_submit_document(): void
+    public function test_delegate_owner_can_submit_document(): void
     {
         $creatorId = 'creator-deleg-uuid-03';
         $ownerId = 'owner-deleg-uuid-04';
@@ -184,6 +242,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             "/api/v1/documents/{$documentId}/submit",
             [],
             ['Authorization' => 'Bearer '.$token],
-        )->assertForbidden();
+        )->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
     }
 }

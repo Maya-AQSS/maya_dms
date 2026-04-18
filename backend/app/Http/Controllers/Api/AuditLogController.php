@@ -66,6 +66,8 @@ class AuditLogController extends Controller
 
     /**
      * Participante (alcance del modelo) o permiso `audit.read` en BD (lectura elevada).
+     *
+     * TODO(permisos): valorar restringir a solo `audit.read` (sin camino participante).
      */
     private function assertCanAccessDocumentAudit(string $documentId): void
     {

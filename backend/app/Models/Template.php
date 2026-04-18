@@ -16,11 +16,9 @@ class Template extends Model
     use HasUuids, SoftDeletes;
 
     /**
-     * Visibilidad efectiva:
-     * - Creador o revisor asignado.
-     * - Usuarios con algún permiso en {@see config('auth.template_catalog_access_codes')} ({@see JwtUser::hasPermission()}):
-     *   catálogo ampliado.
-     * - Resto: plantillas compartidas según nivel (global, tipo de estudio, estudio, módulo, equipo)
+     * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see \App\Policies\TemplatePolicy}):
+     * - Creador o revisor asignado en `template_reviewers` (acceso a esa plantilla concreta; editar/comentar se gobiernan aparte).
+     * - Plantillas compartidas según nivel (global, tipo de estudio, estudio, módulo, equipo)
      *   usando claims JWT opcionales y membresía en team_members.
      */
     protected static function booted(): void
@@ -50,29 +48,9 @@ class Template extends Model
                             ->where('template_reviewers.user_id', $userId);
                     });
 
-                if (self::userHasTemplateCatalogPermission($user)) {
-                    $outer->orWhereRaw('1 = 1');
-
-                    return;
-                }
-
                 $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $user, $userId));
             });
         });
-    }
-
-    /**
-     * Catálogo ampliado: al menos un código configurado coincide con permisos cargados desde BD en el guard.
-     */
-    private static function userHasTemplateCatalogPermission(JwtUser $user): bool
-    {
-        foreach (config('auth.template_catalog_access_codes', []) as $code) {
-            if ($user->hasPermission((string) $code)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     /**

@@ -140,27 +140,4 @@ return [
         ))
     ))),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Plantillas — catálogo ampliado por permisos (global scope Template)
-    |--------------------------------------------------------------------------
-    |
-    | Códigos de `permissions` (BD). Si el usuario tiene al menos uno, entra la
-    | rama de catálogo ampliado del global scope (p. ej. ver plantillas personales
-    | ajenas).
-    |
-    | Así se puede dar solo `templates.read` y `templates.delete` sin
-    | `templates.update` (quien ve y archiva pero no edita contenido ajeno).
-    |
-    | Crear con visibilidad no personal, editar o borrar ajenas se resuelven en
-    | {@see \App\Policies\TemplatePolicy} con `templates.create`, `templates.update`
-    | y `templates.delete` por separado.
-    |
-    */
-    'template_catalog_access_codes' => [
-        'templates.read',
-        'templates.update',
-        'templates.delete',
-    ],
-
 ];
