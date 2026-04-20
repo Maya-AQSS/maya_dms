@@ -2,30 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Asignación de un estudio a un usuario (identificador = claim `sub` de Keycloak o id mock FDW).
+ * Asignación de un estudio a un usuario.
  *
- * En `local` y producción la relación lógica es la vista `user_studies` (FDW sobre origen remoto
- * o `user_studies_source` en desarrollo). En `testing` es tabla física homónima.
+ * Tabla de solo lectura: en `local` y producción es la vista `user_studies` (FDW sobre
+ * origen remoto o `user_studies_source` en desarrollo). En `testing` es tabla física homónima.
+ * No admite escritura vía Eloquent.
  */
 class UserStudy extends Model
 {
-    use HasUuids;
-
     protected $table = 'user_studies';
-
-    protected $keyType = 'string';
 
     public $incrementing = false;
 
-    protected $fillable = [
-        'user_id',
-        'study_id',
-    ];
+    protected $keyType = 'string';
 
     public function study(): BelongsTo
     {
