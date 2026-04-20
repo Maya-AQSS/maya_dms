@@ -5,6 +5,7 @@ import { visibilityLabel } from '../constants';
 import type { ValidatorEntry } from './WizardStep3Users';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { TemplatePreviewModal } from './TemplatePreviewModal';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -39,6 +40,7 @@ export function WizardStep4Summary({ template, validators, validationType, docum
 
   const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
   const [activeTab, setActiveTab] = useState<PreviewTab>('Contenido');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (blocks.length > 0 && !selectedBlock) {
@@ -152,6 +154,7 @@ export function WizardStep4Summary({ template, validators, validationType, docum
           </span>
           <button
             type="button"
+            onClick={() => setShowPreview(true)}
             className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple transition-colors"
           >
             Previsualizar
@@ -237,6 +240,14 @@ export function WizardStep4Summary({ template, validators, validationType, docum
           </div>
         )}
       </div>
+
+      {showPreview && (
+        <TemplatePreviewModal
+          template={template}
+          blocks={blocks}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
 
     </div>
   );
