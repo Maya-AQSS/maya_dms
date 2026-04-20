@@ -44,14 +44,24 @@ class Team extends Model
             }
 
             $userId = auth()->id();
+            $isPgsql = DB::connection()->getDriverName() === 'pgsql';
 
-            $builder->where(function (Builder $query) use ($userId) {
-                $query->where('teams.owner_id', $userId)
-                    ->orWhereExists(function ($subQuery) use ($userId) {
+            $builder->where(function (Builder $query) use ($userId, $isPgsql) {
+                if ($isPgsql) {
+                    $query->whereRaw('teams.owner_id::text = ?::text', [$userId]);
+                } else {
+                    $query->where('teams.owner_id', $userId);
+                }
+                $query
+                    ->orWhereExists(function ($subQuery) use ($userId, $isPgsql) {
                         $subQuery->select(DB::raw(1))
                             ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id')
-                            ->where('team_members.user_id', $userId);
+                            ->whereColumn('team_members.team_id', 'teams.id');
+                        if ($isPgsql) {
+                            $subQuery->whereRaw('team_members.user_id::text = ?::text', [$userId]);
+                        } else {
+                            $subQuery->where('team_members.user_id', $userId);
+                        }
                     });
             });
         });

@@ -24,6 +24,20 @@ class TeamReadRepository implements TeamReadRepositoryInterface
     }
 
     /**
+     * Normaliza comparación de user_id entre catálogos FDW (`varchar`) y tablas locales (`uuid`).
+     */
+    private function whereUserIdMatches(Builder $query, string $qualifiedUserIdColumn, string $userId): void
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $query->whereRaw($qualifiedUserIdColumn.'::text = ?::text', [$userId]);
+
+            return;
+        }
+
+        $query->where($qualifiedUserIdColumn, '=', $userId);
+    }
+
+    /**
      * Devuelve equipos visibles para el usuario.
      *
      * @return list<array{id: string, name: string, is_department: bool}>
@@ -33,12 +47,17 @@ class TeamReadRepository implements TeamReadRepositoryInterface
         return DB::table('teams')
             ->whereNull('teams.deleted_at')
             ->where(function ($query) use ($userId) {
-                $query->where('teams.owner_id', '=', $userId)
+                $this->whereUserIdMatches($query, 'teams.owner_id', $userId);
+                $query
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
                             ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id')
-                            ->where('team_members.user_id', '=', $userId);
+                            ->whereColumn('team_members.team_id', 'teams.id');
+                        if (DB::connection()->getDriverName() === 'pgsql') {
+                            $sub->whereRaw('team_members.user_id::text = ?::text', [$userId]);
+                        } else {
+                            $sub->where('team_members.user_id', '=', $userId);
+                        }
                     });
             })
             ->select(['teams.id', 'teams.name', 'teams.is_department'])
@@ -64,12 +83,17 @@ class TeamReadRepository implements TeamReadRepositoryInterface
             ->tap(fn (Builder $q) => $this->whereTeamIdMatches($q, 'teams.id', $teamId))
             ->whereNull('teams.deleted_at')
             ->where(function ($query) use ($userId) {
-                $query->where('teams.owner_id', '=', $userId)
+                $this->whereUserIdMatches($query, 'teams.owner_id', $userId);
+                $query
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
                             ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id')
-                            ->where('team_members.user_id', '=', $userId);
+                            ->whereColumn('team_members.team_id', 'teams.id');
+                        if (DB::connection()->getDriverName() === 'pgsql') {
+                            $sub->whereRaw('team_members.user_id::text = ?::text', [$userId]);
+                        } else {
+                            $sub->where('team_members.user_id', '=', $userId);
+                        }
                     });
             })
             ->select(['teams.id', 'teams.name', 'teams.is_department'])
