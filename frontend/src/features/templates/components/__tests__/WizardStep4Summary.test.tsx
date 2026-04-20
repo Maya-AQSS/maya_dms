@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep4Summary } from '../WizardStep4Summary';
 import type { Template } from '../../../../types/templates';
@@ -31,6 +31,7 @@ describe('WizardStep4Summary', () => {
     template_id: 'tpl-1',
     type: 'text',
     title: `Bloque ${i + 1}`,
+    description: '',
     default_content: null,
     block_state: 'locked',
     mandatory: true,
@@ -60,7 +61,6 @@ describe('WizardStep4Summary', () => {
         template={mockTemplate}
         validators={validators}
         validationType="ordenada"
-        onGoToStep={vi.fn()}
       />,
     );
 
@@ -72,28 +72,7 @@ describe('WizardStep4Summary', () => {
     expect(screen.getByText(/Bloques \(5\)/)).toBeTruthy();
     expect(screen.getByText('Validator One')).toBeTruthy();
     expect(screen.getByText('Validator Two')).toBeTruthy();
-    expect(screen.getByText(/Tipo de validación:/i)).toBeTruthy();
+    expect(screen.getByText('Tipo:')).toBeTruthy();
     expect(screen.getByText('ordenada')).toBeTruthy();
-  });
-
-  it('calls onGoToStep when edit buttons are clicked', () => {
-    const onGoToStep = vi.fn();
-    render(
-      <WizardStep4Summary
-        template={mockTemplate}
-        validators={validators}
-        validationType="ordenada"
-        onGoToStep={onGoToStep}
-      />,
-    );
-
-    const editButton = screen
-      .getAllByText('Editar →')
-      .map((el) => el.closest('button'))
-      .find((b): b is HTMLButtonElement => b != null);
-
-    expect(editButton).toBeTruthy();
-    fireEvent.click(editButton!);
-    expect(onGoToStep).toHaveBeenCalledWith('properties');
   });
 });

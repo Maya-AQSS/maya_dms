@@ -4,6 +4,7 @@ namespace App\Http\Requests\Templates;
 
 use App\Models\Template;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class PublishTemplateRequest extends FormRequest
 {
@@ -13,8 +14,15 @@ class PublishTemplateRequest extends FormRequest
     public function authorize(): bool
     {
         $template = Template::query()->findOrFail($this->route('template'));
+        $user = $this->user();
 
-        return $this->user()->can('review', $template);
+        // Creator can publish their own template directly (no-reviewer workflow)
+        if ($user->getAuthIdentifier() === $template->created_by) {
+            return true;
+        }
+
+        // Non-creator: SoD applies (reviewer publishes after review)
+        return $user->can('review', $template);
     }
 
     /**
@@ -34,8 +42,15 @@ class PublishTemplateRequest extends FormRequest
      */
     public function rules(): array
     {
+        $template = Template::query()->findOrFail($this->route('template'));
+
         return [
-            'changelog' => ['required', 'string', 'min:1'],
+            'changelog' => [
+                Rule::requiredIf($template->status === 'in_review'),
+                'nullable',
+                'string',
+                'min:1',
+            ],
         ];
     }
 

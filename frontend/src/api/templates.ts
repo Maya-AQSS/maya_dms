@@ -110,3 +110,24 @@ export async function deleteTemplate(
 export async function cloneTemplate(id: string): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>(`templates/${id}/clone`, { method: 'POST', body: {} });
 }
+
+/** POST /api/v1/templates/{id}/publish */
+export async function publishTemplate(id: string): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, { method: 'POST', body: {} });
+}
+
+/** POST /api/v1/templates/{id}/submit-review */
+export async function submitTemplateForReview(id: string): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/submit-review`, { method: 'POST', body: {} });
+}
+
+/** POST /api/v1/templates/{id}/validators */
+export async function syncTemplateValidators(
+  templateId: string,
+  userIds: string[],
+): Promise<{ message: string }> {
+  return apiFetchJson<{ message: string }>(`templates/${templateId}/validators`, {
+    method: 'POST',
+    body: { user_ids: userIds },
+  });
+}

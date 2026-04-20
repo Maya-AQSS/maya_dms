@@ -18,6 +18,7 @@ class TemplateBlockResource extends JsonResource
             'type'            => $this->type,
             'title'           => $this->title,
             'default_content' => $this->default_content,
+            'description'     => $this->description,
             'block_state'     => $this->block_state,
             'mandatory'       => (bool) $this->mandatory,
             'sort_order'      => $this->sort_order,

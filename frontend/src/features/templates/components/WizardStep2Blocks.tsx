@@ -26,6 +26,8 @@ import {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type PanelMode = 'empty' | 'summary' | 'edit' | 'create' | 'multi';
+type TabId = 'properties' | 'content' | 'description';
+type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 type BlockItemState =
   | 'default'
@@ -83,9 +85,8 @@ function SortableBlockItem({
       )}
       {(itemState === 'multi-queued' || itemState === 'multi-current') && (
         <span
-          className={`shrink-0 w-2 h-2 rounded-full ${
-            itemState === 'multi-current' ? 'bg-odoo-purple' : 'bg-odoo-purple/40'
-          }`}
+          className={`shrink-0 w-2 h-2 rounded-full ${itemState === 'multi-current' ? 'bg-odoo-purple' : 'bg-odoo-purple/40'
+            }`}
         />
       )}
 
@@ -160,11 +161,10 @@ function BlockUiStateToggle({
 
 type Props = {
   template: Template;
-  onBlocksCountChange: (count: number) => void;
 };
 
-export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
-  const { blocks, loading, createBlock, updateBlock, deleteBlock, reorderBlocks } =
+export function WizardStep2Blocks({ template }: Props) {
+  const { blocks, createBlock, updateBlock, deleteBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
 
   const sensors = useSensors(useSensor(PointerSensor));
@@ -172,7 +172,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const newIndex = blocks.findIndex((b) => b.id === over.id);
+    const newIndex = blocks.findIndex((b: TemplateBlock) => b.id === over.id);
     void reorderBlocks(active.id.toString(), newIndex);
   };
 
@@ -185,6 +185,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
   const [multiIndex, setMultiIndex] = useState(0);
   const [multiSaved, setMultiSaved] = useState<Set<string>>(new Set());
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     return () => {
@@ -198,14 +199,34 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('properties');
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
+  const [tabIsDirty, setTabIsDirty] = useState(false);
+
 
   useEffect(() => {
-    if (!loading) onBlocksCountChange(blocks.length);
-  }, [blocks.length, loading, onBlocksCountChange]);
+    const tabs: TabId[] = ['properties', 'content', 'description'];
+    const handleKey = (e: KeyboardEvent) => {
+      if (!panelRef.current?.contains(document.activeElement)) return;
+      if (panelMode !== 'edit' && panelMode !== 'create') return;
+      const idx = tabs.indexOf(activeTab);
+      if (e.key === 'Home') {
+        e.preventDefault();
+        if (idx > 0) void handleTabChange(tabs[idx - 1]!);
+      }
+      if (e.key === 'End') {
+        e.preventDefault();
+        if (idx < tabs.length - 1) void handleTabChange(tabs[idx + 1]!);
+      }
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, activeSingleId, panelMode, tabIsDirty]);
 
   // Derived
-  const orderedSelection = blocks.filter((b) => selectedBlockIds.includes(b.id)).map((b) => b.id);
+  const orderedSelection = blocks.filter((b: TemplateBlock) => selectedBlockIds.includes(b.id)).map((b: TemplateBlock) => b.id);
   const currentMultiId = orderedSelection[multiIndex] ?? null;
   const currentMultiBlock = currentMultiId ? (blocks.find((b) => b.id === currentMultiId) ?? null) : null;
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
@@ -215,9 +236,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
-    setFormDesc(
-      Array.isArray(block.default_content) ? (block.default_content as string[]).join('\n') : '',
-    );
+    setFormDesc(block.description ?? '');
     setFormUiState(blockToUiState(block));
     setActionError(null);
   };
@@ -225,9 +244,39 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
   const resetForm = () => {
     setFormName('');
     setFormDesc('');
-    setFormUiState('editable');
+    setFormUiState('optional');
     setActionError(null);
-    setDeleteConfirm(false);
+    setDeleteModal(false);
+    setActiveTab('properties');
+    setTabIsDirty(false);
+    setSaveStatus('idle');
+  };
+
+  // ── Tab auto-save ─────────────────────────────────────────────────────────────
+
+  const saveCurrentTab = async () => {
+    if (!tabIsDirty || !activeSingleId) return;
+    setSaveStatus('saving');
+    try {
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      await updateBlock(activeSingleId, {
+        title: formName.trim() || undefined,
+        description: formDesc.trim() || null,
+        block_state,
+        mandatory,
+      });
+      setTabIsDirty(false);
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
+    } catch {
+      setSaveStatus('error');
+    }
+  };
+
+  const handleTabChange = async (newTab: TabId) => {
+    if (newTab === activeTab) return;
+    await saveCurrentTab();
+    setActiveTab(newTab);
   };
 
   // ── Click handlers ────────────────────────────────────────────────────────────
@@ -241,16 +290,16 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
       setPanelMode('summary');
       setMultiSaved(new Set());
       setActionError(null);
-      setDeleteConfirm(false);
+      setDeleteModal(false);
     }, 200);
   };
 
   const handleBlockDoubleClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
-    setSelectedBlockIds((prev) => {
+    setSelectedBlockIds((prev: string[]) => {
       const alreadySelected = prev.includes(blockId);
-      const newIds = alreadySelected ? prev.filter((id) => id !== blockId) : [...prev, blockId];
+      const newIds = alreadySelected ? prev.filter((id: string) => id !== blockId) : [...prev, blockId];
 
       if (newIds.length === 0) {
         setPanelMode('empty');
@@ -258,10 +307,10 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
       } else if (newIds.length === 1) {
         setActiveSingleId(newIds[0]);
         setPanelMode('summary');
-        const block = blocks.find((b) => b.id === newIds[0]);
+        const block = blocks.find((b: TemplateBlock) => b.id === newIds[0]);
         if (block) loadFormFromBlock(block);
       } else {
-        const ordered = blocks.filter((b) => newIds.includes(b.id)).map((b) => b.id);
+        const ordered = blocks.filter((b: TemplateBlock) => newIds.includes(b.id)).map((b: TemplateBlock) => b.id);
         setMultiIndex(0);
         setMultiSaved(new Set());
         const first = blocks.find((b) => b.id === ordered[0]);
@@ -272,7 +321,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
       return newIds;
     });
     setActionError(null);
-    setDeleteConfirm(false);
+    setDeleteModal(false);
   };
 
   const handleToggleSelectAll = () => {
@@ -281,7 +330,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
       setPanelMode('empty');
       setActiveSingleId(null);
     } else {
-      const allIds = blocks.map((b) => b.id);
+      const allIds = blocks.map((b: TemplateBlock) => b.id);
       setSelectedBlockIds(allIds);
       if (allIds.length === 1) {
         setActiveSingleId(allIds[0]);
@@ -297,10 +346,40 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
 
   // ── Single-block CRUD ────────────────────────────────────────────────────────
 
-  const openCreate = () => {
+  const saveCurrentIfValid = async () => {
+    if (!formName.trim() || busy) return;
+    try {
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      if (panelMode === 'create') {
+        await createBlock({
+          type: 'paragraph',
+          title: formName.trim(),
+          description: formDesc.trim() || null,
+          block_state,
+          mandatory,
+        });
+      } else if (panelMode === 'edit' && activeSingleId) {
+        await updateBlock(activeSingleId, {
+          title: formName.trim(),
+          description: formDesc.trim() || null,
+          block_state,
+          mandatory,
+        });
+      }
+    } catch (e) {
+      console.error('Auto-save failed:', e);
+    }
+  };
+
+  const openCreate = async () => {
+    if (busy) return;
+    if (formName.trim()) {
+      await saveCurrentIfValid();
+    }
     resetForm();
     setSelectedBlockIds([]);
     setActiveSingleId(null);
+    setActiveTab('properties');
     setPanelMode('create');
   };
 
@@ -308,12 +387,16 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
     setActiveSingleId(blockId);
     setSelectedBlockIds([blockId]);
     setPanelMode('summary');
-    setDeleteConfirm(false);
+    setDeleteModal(false);
     setActionError(null);
   };
 
   const openEdit = (block: TemplateBlock) => {
     loadFormFromBlock(block);
+    setActiveTab('properties');
+    setTabIsDirty(false);
+    setSaveStatus('idle');
+    setDeleteModal(false);
     setPanelMode('edit');
   };
 
@@ -322,11 +405,11 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
     setBusy(true);
     setActionError(null);
     try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
       const newBlock = await createBlock({
         type: 'paragraph',
         title: formName.trim(),
-        default_content: formDesc.trim() ? formDesc.split('\n').filter(Boolean) : null,
+        description: formDesc.trim() || null,
         block_state,
         mandatory,
       });
@@ -339,35 +422,28 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
     }
   };
 
-  const handleSaveEdit = async () => {
-    if (!formName.trim() || !activeSingleId) return;
-    setBusy(true);
-    setActionError(null);
-    try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
-      await updateBlock(activeSingleId, {
-        title: formName.trim(),
-        default_content: formDesc.trim() ? formDesc.split('\n').filter(Boolean) : null,
-        block_state,
-        mandatory,
-      });
-      setPanelMode('summary');
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Error al guardar el bloque');
-    } finally {
-      setBusy(false);
-    }
-  };
 
   const handleDelete = async () => {
     if (!activeSingleId) return;
     setBusy(true);
     try {
+      const remaining = blocks.filter((b: TemplateBlock) => b.id !== activeSingleId);
       await deleteBlock(activeSingleId);
-      setActiveSingleId(null);
-      setSelectedBlockIds([]);
-      setDeleteConfirm(false);
-      setPanelMode('empty');
+      setDeleteModal(false);
+      setTabIsDirty(false);
+      setSaveStatus('idle');
+      if (remaining.length > 0) {
+        const first = remaining[0]!;
+        setActiveSingleId(first.id);
+        setSelectedBlockIds([first.id]);
+        loadFormFromBlock(first);
+        setActiveTab('properties');
+        setPanelMode('summary');
+      } else {
+        setActiveSingleId(null);
+        setSelectedBlockIds([]);
+        setPanelMode('empty');
+      }
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Error al eliminar el bloque');
     } finally {
@@ -382,19 +458,19 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
     setBusy(true);
     setActionError(null);
     try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
       await updateBlock(currentMultiId, {
         title: formName.trim(),
-        default_content: formDesc.trim() ? formDesc.split('\n').filter(Boolean) : null,
+        description: formDesc.trim() || null,
         block_state,
         mandatory,
       });
-      setMultiSaved((prev) => new Set([...prev, currentMultiId]));
+      setMultiSaved((prev: Set<string>) => new Set([...prev, currentMultiId]));
 
       const nextIdx = multiIndex + 1;
       if (nextIdx < orderedSelection.length) {
         setMultiIndex(nextIdx);
-        const nextBlock = blocks.find((b) => b.id === orderedSelection[nextIdx]);
+        const nextBlock = blocks.find((b: TemplateBlock) => b.id === orderedSelection[nextIdx]);
         if (nextBlock) loadFormFromBlock(nextBlock);
       } else {
         // All done
@@ -413,7 +489,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
   const handleMultiNavigate = (newIdx: number) => {
     if (newIdx < 0 || newIdx >= orderedSelection.length) return;
     setMultiIndex(newIdx);
-    const target = blocks.find((b) => b.id === orderedSelection[newIdx]);
+    const target = blocks.find((b: TemplateBlock) => b.id === orderedSelection[newIdx]);
     if (target) loadFormFromBlock(target);
     setActionError(null);
   };
@@ -440,7 +516,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           type="text"
           fieldSize="comfortable"
           value={formName}
-          onChange={(e) => setFormName(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormName(e.target.value)}
           placeholder="Ej: Introducción"
         />
       </div>
@@ -450,7 +526,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           fieldSize="comfortable"
           rows={2}
           value={formDesc}
-          onChange={(e) => setFormDesc(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormDesc(e.target.value)}
           placeholder="Descripción del bloque…"
           style={{ minHeight: '52px' }}
         />
@@ -483,35 +559,13 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
 
   // ── Variant A — empty state ──────────────────────────────────────────────────
 
-  if (!loading && blocks.length === 0) {
-    return (
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-ui-body dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border mb-4">
-            <svg className="w-6 h-6 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-          </div>
-          <h3 className="text-sm font-bold text-text-primary dark:text-text-dark-primary">
-            Esta plantilla aún no tiene bloques
-          </h3>
-          <p className="text-xs text-text-muted mt-1 max-w-sm mx-auto">
-            Añade el primer bloque usando el formulario. Los bloques definen la estructura del documento.
-          </p>
-        </div>
-        <div className="w-full max-w-sm bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-6">
-          {renderBlockForm('Añadir bloque', handleAddBlock, resetForm)}
-        </div>
-      </div>
-    );
-  }
 
   // ── Variant B — two columns ──────────────────────────────────────────────────
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-      {/* Columna Izquierda */}
-      <div className="md:w-1/2 min-w-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
+      {/* Columna Izquierda — 25% */}
+      <div className="md:w-1/4 min-w-0 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
         <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50 flex items-center justify-between shrink-0">
           <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
             BLOQUES ({blocks.length})
@@ -521,9 +575,9 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+        <div className="flex-1 overflow-y-auto p-4 min-h-0">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={blocks.map((b) => b.id)} strategy={verticalListSortingStrategy}>
+            <SortableContext items={blocks.map((b: TemplateBlock) => b.id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2">
                 {blocks.map((block) => {
                   let itemState: BlockItemState = 'default';
@@ -539,27 +593,29 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
                       key={block.id}
                       block={block}
                       itemState={itemState}
-                      onClick={() => handleBlockClick(block.id)}
-                      onDoubleClick={() => handleBlockDoubleClick(block.id)}
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleBlockClick(block.id); }}
+                      onDoubleClick={(e: React.MouseEvent) => { e.stopPropagation(); handleBlockDoubleClick(block.id); }}
                     />
                   );
                 })}
               </div>
             </SortableContext>
           </DndContext>
+        </div>
 
+        <div className="shrink-0 p-4 border-t border-ui-border dark:border-ui-dark-border">
           <button
             type="button"
             onClick={openCreate}
-            className="w-full text-left rounded-lg px-3 py-3 flex items-center gap-2 border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted shrink-0 mt-2"
+            className="w-full text-center rounded-lg px-3 py-3 flex items-center justify-center border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted"
           >
             <span className="text-sm font-medium">+ Añadir bloque</span>
           </button>
         </div>
       </div>
 
-      {/* Columna Derecha: Panel */}
-      <div className="md:w-1/2 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
+      {/* Columna Derecha — 75% */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
 
         {/* empty */}
         {panelMode === 'empty' && (
@@ -581,19 +637,10 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
               <h3 className="text-sm font-bold text-text-primary truncate pr-4">{selectedBlock.title}</h3>
               <div className="flex gap-2">
                 <Button variant="outline" size="xs" onClick={() => openEdit(selectedBlock)}>Editar</Button>
-                <Button variant="outline" size="xs" className="text-danger" onClick={() => setDeleteConfirm(true)}>Eliminar</Button>
+                <Button variant="outline" size="xs" className="text-danger" onClick={() => setDeleteModal(true)}>Eliminar</Button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {deleteConfirm && (
-                <div className="p-3 bg-danger-light/20 border border-danger/30 rounded-md flex items-center justify-between gap-4 animate-in slide-in-from-top-1">
-                  <span className="text-xs text-danger-dark font-medium">¿Confirmas la eliminación permanente?</span>
-                  <div className="flex gap-2">
-                    <button className="text-xs font-bold underline" onClick={() => void handleDelete()}>Sí</button>
-                    <button className="text-xs underline" onClick={() => setDeleteConfirm(false)}>No</button>
-                  </div>
-                </div>
-              )}
               <dl className="grid grid-cols-1 gap-6">
                 <div>
                   <dt className="text-[10px] font-bold uppercase text-text-muted">Nombre</dt>
@@ -602,9 +649,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
                 <div>
                   <dt className="text-[10px] font-bold uppercase text-text-muted">Descripción</dt>
                   <dd className="mt-1 text-sm text-text-secondary">
-                    {Array.isArray(selectedBlock.default_content)
-                      ? (selectedBlock.default_content as string[]).join(' ')
-                      : '—'}
+                    {selectedBlock.description || '—'}
                   </dd>
                 </div>
                 <div>
@@ -623,7 +668,7 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
                 <div>
                   <dt className="text-[10px] font-bold uppercase text-text-muted">Orden</dt>
                   <dd className="mt-1 text-sm">
-                    {blocks.findIndex((b) => b.id === selectedBlock.id) + 1} de {blocks.length}
+                    {blocks.findIndex((b: TemplateBlock) => b.id === selectedBlock.id) + 1} de {blocks.length}
                   </dd>
                 </div>
               </dl>
@@ -634,21 +679,154 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           </div>
         )}
 
-        {/* edit / create */}
+        {/* edit / create — tabbed panel */}
         {(panelMode === 'create' || panelMode === 'edit') && (
-          <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
-            <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border shrink-0">
-              <h3 className="text-sm font-bold text-text-primary">
-                {panelMode === 'create' ? 'Nuevo bloque' : `Editando — ${selectedBlock?.title}`}
-              </h3>
+          <div ref={panelRef} className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
+            {/* Panel header */}
+            <div className="px-5 pt-3 border-b border-ui-border dark:border-ui-dark-border shrink-0">
+              <div className="flex items-center justify-between pb-1">
+                <h3 className="text-sm font-bold text-text-primary truncate">
+                  {panelMode === 'create' ? 'Nuevo bloque' : (selectedBlock?.title || 'Bloque sin nombre')}
+                </h3>
+                <div className="flex items-center gap-3 shrink-0">
+                  {panelMode === 'edit' && (
+                    <>
+                      {saveStatus === 'saving' && (
+                        <span className="text-[10px] text-text-muted">Guardando…</span>
+                      )}
+                      {saveStatus === 'saved' && (
+                        <span className="text-[10px] text-success font-medium">✓ Guardado</span>
+                      )}
+                      {saveStatus === 'error' && (
+                        <span className="text-[10px] text-danger-dark font-medium">Error al guardar</span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        className="text-danger"
+                        onClick={() => setDeleteModal(true)}
+                      >
+                        Eliminar
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {/* Tabs */}
+              <div className="flex gap-0 -mb-px">
+                {(['properties', 'content', 'description'] as TabId[]).map((tab) => {
+                  const labels: Record<TabId, string> = {
+                    properties: 'Propiedades',
+                    content: 'Contenido',
+                    description: 'Descripción',
+                  };
+                  const isActive = activeTab === tab;
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      disabled={isActive}
+                      onClick={() => void handleTabChange(tab)}
+                      className={[
+                        'px-4 py-2 text-xs border-b-2 transition-all',
+                        isActive
+                          ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
+                          : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
+                      ].join(' ')}
+                    >
+                      {labels[tab]}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            {/* Tab content */}
             <div className="flex-1 overflow-y-auto p-6">
-              {renderBlockForm(
-                panelMode === 'create' ? 'Añadir bloque' : 'Guardar bloque',
-                panelMode === 'create' ? handleAddBlock : handleSaveEdit,
-                () => (panelMode === 'create' ? setPanelMode('empty') : setPanelMode('summary')),
+              {activeTab === 'properties' && (
+                <div className="space-y-4">
+                  <div>
+                    <FieldLabel>Nombre del bloque</FieldLabel>
+                    <TextInput
+                      type="text"
+                      fieldSize="comfortable"
+                      value={formName}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }}
+                      placeholder="Ej. Introducción"
+                    />
+                  </div>
+                  <div>
+                    <FieldLabel required>Estado del bloque</FieldLabel>
+                    <div className="mt-1">
+                      <BlockUiStateToggle
+                        value={formUiState}
+                        onChange={(s) => { setFormUiState(s); setTabIsDirty(true); }}
+                        disabled={busy}
+                      />
+                    </div>
+                  </div>
+                  {panelMode === 'edit' && (
+                    <p className="text-[10px] text-text-muted italic">
+                      Se guarda automáticamente al cambiar de pestaña.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'content' && (
+                <div
+                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-ui-border dark:border-ui-dark-border bg-ui-body/50 dark:bg-ui-dark-bg/50"
+                  style={{ minHeight: '200px' }}
+                >
+                  <p className="text-sm text-text-muted text-center px-6">
+                    Editor de contenido — próximamente disponible.
+                  </p>
+                </div>
+              )}
+
+              {activeTab === 'description' && (
+                <div>
+                  <FieldLabel>Descripción del bloque</FieldLabel>
+                  <TextArea
+                    fieldSize="comfortable"
+                    value={formDesc}
+                    onChange={(e) => { setFormDesc(e.target.value); setTabIsDirty(true); }}
+                    placeholder="Describe el propósito normativo de este bloque..."
+                    style={{ minHeight: '120px' }}
+                  />
+                </div>
+              )}
+
+              {actionError && (
+                <p className="text-xs text-danger-dark animate-in fade-in mt-4">{actionError}</p>
               )}
             </div>
+
+            {/* Footer: only for create mode */}
+            {panelMode === 'create' && (
+              <div className="shrink-0 px-6 py-4 border-t border-ui-border dark:border-ui-dark-border flex gap-3">
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="md"
+                  className="flex-1"
+                  loading={busy}
+                  onClick={() => void handleAddBlock()}
+                  disabled={!formName.trim()}
+                >
+                  Guardar bloque
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  disabled={busy}
+                  onClick={() => setPanelMode('empty')}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -755,6 +933,57 @@ export function WizardStep2Blocks({ template, onBlocksCountChange }: Props) {
           </div>
         )}
       </div>
+
+      {/* Delete confirmation modal (Fix 5) */}
+      {deleteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in"
+          onClick={(e) => { if (e.target === e.currentTarget) setDeleteModal(false); }}
+        >
+          <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-xl p-6 max-w-sm mx-4 w-full animate-in zoom-in-95">
+            <div className="flex justify-center mb-4">
+              <span className="flex items-center justify-center w-14 h-14 rounded-full bg-danger/10 text-danger">
+                <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </span>
+            </div>
+            <h2 className="text-base font-bold text-text-primary dark:text-text-dark-primary text-center mb-2">
+              ¿Eliminar el bloque «{selectedBlock?.title || 'este bloque'}»?
+            </h2>
+            <p className="text-xs text-text-secondary dark:text-text-dark-secondary text-center mb-4">
+              Estás a punto de eliminar este bloque de la plantilla. Todo su contenido, descripción y configuración se perderán.
+            </p>
+            <div className="p-3 bg-danger/5 border border-danger/20 rounded-lg mb-5">
+              <p className="text-xs text-danger-dark font-bold text-center">
+                Esta acción es irreversible y no se puede deshacer.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                className="flex-1"
+                disabled={busy}
+                onClick={() => setDeleteModal(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="md"
+                className="flex-1 bg-danger border-danger hover:bg-red-700"
+                loading={busy}
+                onClick={() => void handleDelete()}
+              >
+                Eliminar definitivamente
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

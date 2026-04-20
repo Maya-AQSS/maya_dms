@@ -73,6 +73,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('view', $model);
+        $model->loadMissing('reviewers');
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
@@ -207,5 +208,23 @@ class TemplateController extends Controller
         $this->authorize('view', $template);
 
         return new TemplateVersionResource($version);
+    }
+
+    /**
+     * Sincroniza los validadores de la plantilla.
+     */
+    public function syncValidators(Request $request, string $template): JsonResponse
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', $model);
+
+        $request->validate([
+            'user_ids' => ['present', 'array'],
+            'user_ids.*' => ['required', 'string', 'exists:users,id'],
+        ]);
+
+        $this->templateService->syncValidators($model->id, $request->input('user_ids'));
+
+        return response()->json(['message' => 'Validadores sincronizados correctamente.']);
     }
 }

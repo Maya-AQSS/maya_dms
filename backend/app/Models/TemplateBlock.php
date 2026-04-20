@@ -17,6 +17,7 @@ class TemplateBlock extends Model
         'type',
         'title',
         'default_content',
+        'description',
         'block_state',
         'mandatory',
         'sort_order',
