@@ -187,6 +187,7 @@ class TemplateService implements TemplateServiceInterface
                 'id' => $b->id,
                 'type' => $b->type,
                 'title' => $b->title,
+                'description' => $b->description,
                 'default_content' => $b->default_content,
                 'block_state' => $b->block_state,
                 'mandatory' => $b->mandatory,
