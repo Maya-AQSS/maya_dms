@@ -24,6 +24,4 @@ interface AuditLogServiceInterface
         string $entityId,
         int $perPage = 25,
     ): LengthAwarePaginator;
-
-    public function canUserAccess(string $entityType, string $entityId, string $userId): bool;
 }

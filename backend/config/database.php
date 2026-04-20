@@ -163,6 +163,16 @@ return [
             'table'    => env('FDW_TEAMS_TABLE', 'teams'),
         ],
 
+        'user_permissions' => [
+            'host'     => env('FDW_USER_PERMISSIONS_HOST', '127.0.0.1'),
+            'port'     => env('FDW_USER_PERMISSIONS_PORT', '5432'),
+            'database' => env('FDW_USER_PERMISSIONS_DATABASE', 'main_db'),
+            'username' => env('FDW_USER_PERMISSIONS_USERNAME', 'readonly_user'),
+            'password' => env('FDW_USER_PERMISSIONS_PASSWORD', ''),
+            'schema'   => env('FDW_USER_PERMISSIONS_SCHEMA', 'public'),
+            'table'    => env('FDW_USER_PERMISSIONS_TABLE', 'user_permissions'),
+        ],
+
     ],
 
     /*

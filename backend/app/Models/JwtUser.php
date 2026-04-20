@@ -2,18 +2,19 @@
 
 namespace App\Models;
 
-use App\Enums\TemplateVisibilityLevel;
 use Illuminate\Contracts\Auth\Access\Authorizable as AuthorizableContract;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Auth\Access\Authorizable;
 
 /**
- * DTO que representa al usuario autenticado a partir de los claims JWT.
+ * DTO que representa al usuario autenticado a partir de los claims JWT
+ * más datos resueltos en el guard (p. ej. permisos desde BD).
+ *
  * No es un modelo Eloquent — no hay tabla 'jwt_users'.
  * Se construye en JwtMiddleware y se inyecta en el auth guard.
  *
- * Sin usuarios locales: Auth::user() siempre devuelve este objeto,
- * construido desde claims JWT + caché Redis.
+ * Los roles de realm (Keycloak) no se materializan aquí: la autorización de
+ * negocio usa {@see self::hasPermission()} y claims de ámbito académico cuando apliquen.
  */
 class JwtUser implements Authenticatable, AuthorizableContract
 {
@@ -27,37 +28,53 @@ class JwtUser implements Authenticatable, AuthorizableContract
 
     public readonly ?string $department;
 
-    public readonly ?string $organizationId;
-
-    public readonly array $roles;
+    /**
+     * Códigos de permiso desde BD (`user_permissions`), resueltos en el guard.
+     *
+     * @var list<string>
+     */
+    public readonly array $permissions;
 
     public readonly string $scope;
 
     /**
-     * IDs de contexto académico (claims JWT opcionales, p. ej. mappers Keycloak).
+     * IDs de contexto académico.
      *
      * @var list<string>
      */
     public readonly array $studyTypeIds;
 
     /**
+     * IDs de estudios.
+     *
      * @var list<string>
      */
     public readonly array $studyIds;
 
     /**
+     * IDs de módulos.
+     *
      * @var list<string>
      */
     public readonly array $moduleIds;
+
+    /**
+     * IDs de equipos.
+     *
+     * @var list<string>
+     */
+    public readonly array $teamIds;
 
     public function __construct(array $claims)
     {
         $this->id = $claims['id'];
         $this->email = $claims['email'] ?? null;
         $this->name = $claims['name'] ?? null;
-        $this->department = $claims['department'] ?? null;
-        $this->organizationId = $claims['organization_id'] ?? null;
-        $this->roles = $claims['roles'] ?? [];
+        $this->department = $claims['department'] ?? $claims['departamento'] ?? null;
+        $this->permissions = array_values(array_unique(array_map(
+            static fn ($c): string => (string) $c,
+            $claims['permissions'] ?? [],
+        )));
         $this->scope = $claims['scope'] ?? '';
 
         $this->studyTypeIds = self::mergeScopeIds(
@@ -72,29 +89,18 @@ class JwtUser implements Authenticatable, AuthorizableContract
             self::mergeScopeIds($claims['module_ids'] ?? null, $claims['module_id'] ?? null),
             self::mergeScopeIds($claims['course_module_ids'] ?? null, $claims['course_module_id'] ?? null),
         )));
+        $this->teamIds = self::mergeScopeIds(
+            $claims['team_ids'] ?? null,
+            $claims['team_id'] ?? null,
+        );
     }
 
     /**
-     * Verifica si el usuario tiene un rol específico.
+     * Comprueba si el usuario tiene un permiso concedido en BD.
      */
-    public function hasRole(string $role): bool
+    public function hasPermission(string $code): bool
     {
-        return in_array($role, $this->roles, strict: true);
-    }
-
-    /**
-     * Puede crear o fijar visibilidad de plantilla distinta de {@see TemplateVisibilityLevel::Personal}
-     * (global, tipo de estudio, estudio, módulo, equipo).
-     */
-    public function canManageSharedTemplateVisibility(): bool
-    {
-        foreach (config('auth.template_shared_visibility_roles', []) as $role) {
-            if ($this->hasRole((string) $role)) {
-                return true;
-            }
-        }
-
-        return false;
+        return in_array($code, $this->permissions, strict: true);
     }
 
     /**

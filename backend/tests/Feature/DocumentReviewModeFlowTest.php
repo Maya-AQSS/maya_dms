@@ -64,7 +64,6 @@ class DocumentReviewModeFlowTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-rm',
             'created_by' => $submitterId,
             'status' => 'draft',
             'version' => 1,
@@ -104,7 +103,6 @@ class DocumentReviewModeFlowTest extends TestCase
             'template_id' => $templateId,
             'template_version_id' => $versionId,
             'title' => 'Doc flujo',
-            'organization_id' => 'org-rm',
             'study_id' => null,
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
@@ -147,7 +145,7 @@ class DocumentReviewModeFlowTest extends TestCase
             'test-issuer',
             'test-audience',
             [],
-            ['organization_id' => 'org-rm'],
+            [],
         );
 
         return ['Authorization' => 'Bearer '.$token];
@@ -179,11 +177,11 @@ class DocumentReviewModeFlowTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($pub));
 
-        $hSub = $this->bearerFor($ctx['submitterId'], $priv, $pub, 'sub');
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
         $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
 
-        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hSub)->assertOk();
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
         $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
             ->assertOk()
@@ -220,11 +218,11 @@ class DocumentReviewModeFlowTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($pub));
 
-        $hSub = $this->bearerFor($ctx['submitterId'], $priv, $pub, 'sub');
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
         $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
 
-        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hSub)->assertOk();
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
         $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
             ->assertOk()
@@ -248,11 +246,11 @@ class DocumentReviewModeFlowTest extends TestCase
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($pub));
 
-        $hSub = $this->bearerFor($ctx['submitterId'], $priv, $pub, 'sub');
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
         $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
 
-        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hSub)->assertOk();
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
         $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
             ->assertOk()

@@ -3,10 +3,40 @@
 namespace App\Repositories\Eloquent;
 
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 class TeamReadRepository implements TeamReadRepositoryInterface
 {
+    /**
+     * En PostgreSQL el catálogo `teams` puede usar `uuid` para `id`; los bindings de Laravel
+     * llegan como texto y sin cast explícito falla `uuid = character varying`.
+     */
+    private function whereTeamIdMatches(Builder $query, string $qualifiedTeamIdColumn, string $teamId): void
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $query->whereRaw($qualifiedTeamIdColumn.'::text = ?::text', [$teamId]);
+
+            return;
+        }
+
+        $query->where($qualifiedTeamIdColumn, '=', $teamId);
+    }
+
+    /**
+     * Normaliza comparación de user_id entre catálogos FDW (`varchar`) y tablas locales (`uuid`).
+     */
+    private function whereUserIdMatches(Builder $query, string $qualifiedUserIdColumn, string $userId): void
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $query->whereRaw($qualifiedUserIdColumn.'::text = ?::text', [$userId]);
+
+            return;
+        }
+
+        $query->where($qualifiedUserIdColumn, '=', $userId);
+    }
+
     /**
      * Devuelve equipos visibles para el usuario.
      *
@@ -17,12 +47,18 @@ class TeamReadRepository implements TeamReadRepositoryInterface
         return DB::table('teams')
             ->whereNull('teams.deleted_at')
             ->where(function ($query) use ($userId) {
-                $query->where('teams.owner_id', '=', $userId)
+                $this->whereUserIdMatches($query, 'teams.owner_id', $userId);
+                $query
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
-                            ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id')
-                            ->where('team_members.user_id', '=', $userId);
+                            ->from('team_members');
+                        if (DB::connection()->getDriverName() === 'pgsql') {
+                            $sub->whereRaw('team_members.team_id::text = teams.id::text');
+                            $sub->whereRaw('team_members.user_id::text = ?::text', [$userId]);
+                        } else {
+                            $sub->whereColumn('team_members.team_id', 'teams.id');
+                            $sub->where('team_members.user_id', '=', $userId);
+                        }
                     });
             })
             ->select(['teams.id', 'teams.name', 'teams.is_department'])
@@ -45,15 +81,21 @@ class TeamReadRepository implements TeamReadRepositoryInterface
     public function findVisibleTeamByIdForUser(string $userId, string $teamId): ?array
     {
         $row = DB::table('teams')
-            ->where('teams.id', '=', $teamId)
+            ->tap(fn (Builder $q) => $this->whereTeamIdMatches($q, 'teams.id', $teamId))
             ->whereNull('teams.deleted_at')
             ->where(function ($query) use ($userId) {
-                $query->where('teams.owner_id', '=', $userId)
+                $this->whereUserIdMatches($query, 'teams.owner_id', $userId);
+                $query
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
-                            ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id')
-                            ->where('team_members.user_id', '=', $userId);
+                            ->from('team_members');
+                        if (DB::connection()->getDriverName() === 'pgsql') {
+                            $sub->whereRaw('team_members.team_id::text = teams.id::text');
+                            $sub->whereRaw('team_members.user_id::text = ?::text', [$userId]);
+                        } else {
+                            $sub->whereColumn('team_members.team_id', 'teams.id');
+                            $sub->where('team_members.user_id', '=', $userId);
+                        }
                     });
             })
             ->select(['teams.id', 'teams.name', 'teams.is_department'])

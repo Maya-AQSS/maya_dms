@@ -18,7 +18,7 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function findOrFail(string $id): Template
     {
-        return Template::findOrFail($id);
+        return Template::query()->findOrFail($id);
     }
 
     /**
@@ -58,7 +58,6 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.study_id',
                 'templates.module_id',
                 'templates.team_id',
-                'templates.organization_id',
                 'templates.created_by',
                 'templates.status',
                 'templates.version',

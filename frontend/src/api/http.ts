@@ -1,8 +1,8 @@
 /**
  * Cliente HTTP mínimo para la API Laravel (prefijo /api/v1).
- * El JWT se obtiene vía `@maya/shared-auth-react` (Keycloak SSO).
+ * El Bearer lo añade {@link ../auth/oidcAdapter} (sesión OIDC); el perfil de negocio es GET /me.
  */
-import { authService } from '../lib/auth';
+import { appendBearerAuthorization, triggerSignIn } from '../auth/oidcAdapter';
 
 const DEFAULT_BASE_URL = 'http://maya-dms-api.localhost/api/v1';
 
@@ -36,12 +36,7 @@ async function authHeaders(jsonBody: boolean): Promise<HeadersInit> {
     headers['Content-Type'] = 'application/json';
   }
 
-  if (authService.keycloak.authenticated) {
-    await authService.keycloak.updateToken(30).catch(() => authService.keycloak.login());
-    if (authService.keycloak.token) {
-      headers.Authorization = `Bearer ${authService.keycloak.token}`;
-    }
-  }
+  await appendBearerAuthorization(headers);
 
   return headers;
 }
@@ -77,7 +72,7 @@ export async function apiFetchJson<T>(path: string, options: ApiFetchOptions = {
 
   if (!response.ok) {
     if (response.status === 401) {
-      authService.keycloak.login();
+      triggerSignIn();
     }
     const msg = await parseErrorMessage(response);
     throw new ApiHttpError(msg || `HTTP ${response.status}`, response.status);

@@ -1,6 +1,27 @@
+import type { ReactElement } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentsContent } from './DocumentsContent';
+import { UserProfileProvider } from '../features/user-profile';
+import { fetchMe } from '../api/users';
+
+vi.mock('../api/users', () => ({
+  fetchMe: vi.fn().mockResolvedValue({
+    data: {
+      id: 'usr_docs_test',
+      email: null,
+      name: null,
+      department: null,
+      study_type_ids: [],
+      study_ids: [],
+      module_ids: [],
+      team_ids: [],
+      permissions: ['documents.create', 'documents.read'],
+      teams: [],
+      source: 'fdw' as const,
+    },
+  }),
+}));
 
 const mockUseDocuments = vi.fn();
 const mockUseFilteredDocuments = vi.fn();
@@ -39,11 +60,16 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+function renderWithProfile(ui: ReactElement) {
+  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+}
+
 const baseDocument = {
   id: 'd-1',
   template_id: 't-1',
+  template_version_id: null,
   title: 'Doc',
-  organization_id: 'org',
+  study_type_id: null,
   study_id: 's1',
   module_id: 'm1',
   created_by: 'u1',
@@ -61,6 +87,21 @@ describe('DocumentsContent creation flow', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(fetchMe).mockResolvedValue({
+      data: {
+        id: 'usr_docs_test',
+        email: null,
+        name: null,
+        department: null,
+        study_type_ids: [],
+        study_ids: [],
+        module_ids: [],
+        team_ids: [],
+        permissions: ['documents.create', 'documents.read'],
+        teams: [],
+        source: 'fdw',
+      },
+    });
     mockUseDocuments.mockReturnValue({
       documents: [baseDocument],
       loading: false,
@@ -71,14 +112,41 @@ describe('DocumentsContent creation flow', () => {
     mockUseHierarchy.mockReturnValue({ hierarchy: [], loading: false, error: null });
   });
 
-  it('deshabilita nueva programación sin módulo seleccionado', () => {
-    render(<DocumentsContent />);
+  it('deshabilita nueva programación sin permiso documents.create', async () => {
+    vi.mocked(fetchMe).mockResolvedValue({
+      data: {
+        id: 'usr_docs_test',
+        email: null,
+        name: null,
+        department: null,
+        study_type_ids: [],
+        study_ids: [],
+        module_ids: [],
+        team_ids: [],
+        permissions: ['documents.read'],
+        teams: [],
+        source: 'fdw',
+      },
+    });
+    renderWithProfile(<DocumentsContent />);
 
+    await waitFor(() => {
+      expect(screen.getByText(/documents\.create/i)).toBeTruthy();
+    });
     const button = screen.getByRole('button', { name: 'Nueva Programación' });
     expect(button).toHaveProperty('disabled', true);
-    expect(
-      screen.getByText('Selecciona un módulo para crear una nueva programación.'),
-    ).toBeTruthy();
+  });
+
+  it('deshabilita nueva programación sin módulo seleccionado', async () => {
+    renderWithProfile(<DocumentsContent />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Selecciona un módulo para crear una nueva programación.'),
+      ).toBeTruthy();
+    });
+    const button = screen.getByRole('button', { name: 'Nueva Programación' });
+    expect(button).toHaveProperty('disabled', true);
   });
 
   it('muestra estado none cuando no hay plantillas disponibles', async () => {
@@ -89,7 +157,7 @@ describe('DocumentsContent creation flow', () => {
       options: [],
     });
 
-    render(<DocumentsContent />);
+    renderWithProfile(<DocumentsContent />);
     fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
 
     await waitFor(() =>
@@ -124,7 +192,7 @@ describe('DocumentsContent creation flow', () => {
     });
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-new' });
 
-    render(<DocumentsContent />);
+    renderWithProfile(<DocumentsContent />);
     fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
 
     await waitFor(() =>
@@ -171,7 +239,7 @@ describe('DocumentsContent creation flow', () => {
     });
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-sel' });
 
-    render(<DocumentsContent />);
+    renderWithProfile(<DocumentsContent />);
     fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
 
     await waitFor(() =>

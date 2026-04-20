@@ -4,13 +4,28 @@ import { TemplateWizard } from '../TemplateWizard';
 import { createTemplate, updateTemplate, syncTemplateValidators, publishTemplate } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { MemoryRouter } from 'react-router-dom';
+import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
 
 vi.mock('../../../../api/templates');
 vi.mock('../../../../api/blocks');
 vi.mock('../../../../api/users', () => ({
-  fetchMe: vi.fn().mockResolvedValue({ data: { teams: [] } }),
+  fetchMe: vi.fn().mockResolvedValue({
+    data: {
+      id: 'usr_wizard_test',
+      email: null,
+      name: null,
+      department: null,
+      study_type_ids: [],
+      study_ids: [],
+      module_ids: [],
+      team_ids: [],
+      permissions: ['templates.create', 'templates.read', 'users.search'],
+      teams: [],
+      source: 'fdw' as const,
+    },
+  }),
 }));
 vi.mock('../../../../features/hierarchy', () => ({
   useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
@@ -60,7 +75,6 @@ describe('TemplateWizard Integration', () => {
     study_id: null,
     module_id: null,
     team_id: null,
-    organization_id: null,
     created_by: 'u1',
     status: 'draft',
     version: 1,
@@ -85,8 +99,10 @@ describe('TemplateWizard Integration', () => {
   const renderWizard = (props = {}) => {
     return render(
       <MemoryRouter>
-        <TemplateWizard {...props} />
-      </MemoryRouter>
+        <UserProfileProvider>
+          <TemplateWizard {...props} />
+        </UserProfileProvider>
+      </MemoryRouter>,
     );
   };
 

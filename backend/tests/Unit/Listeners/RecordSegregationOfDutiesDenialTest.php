@@ -15,20 +15,19 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
     public function test_persists_audit_when_document_submit_is_denied(): void
     {
         $user = new JwtUser([
-            'id'              => 'user-1',
-            'email'           => null,
-            'name'            => null,
-            'department'      => null,
-            'organization_id' => null,
-            'roles'           => [],
-            'scope'           => '',
+            'id'            => 'not-owner',
+            'email'         => null,
+            'name'          => null,
+            'department'    => null,
+            'permissions'   => [],
+            'scope'         => '',
         ]);
 
         $document = new Document;
         $document->forceFill([
             'id'         => 'doc-uuid-1',
-            'created_by' => 'user-1',
-            'owner_id'   => 'user-1',
+            'created_by' => 'owner-1',
+            'owner_id'   => 'owner-1',
             'status'     => 'draft',
         ]);
 
@@ -39,7 +38,7 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
                 'document',
                 'doc-uuid-1',
                 'sod_violation',
-                'user-1',
+                'not-owner',
                 null,
                 null,
                 $this->callback(fn (array $v) => ($v['ability'] ?? null) === 'submit'
@@ -59,13 +58,12 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
         $audit->expects($this->never())->method('record');
 
         $user = new JwtUser([
-            'id'              => 'reviewer',
-            'email'           => null,
-            'name'            => null,
-            'department'      => null,
-            'organization_id' => null,
-            'roles'           => [],
-            'scope'           => '',
+            'id'            => 'reviewer',
+            'email'         => null,
+            'name'          => null,
+            'department'    => null,
+            'permissions'   => [],
+            'scope'         => '',
         ]);
 
         $document = new Document;

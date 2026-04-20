@@ -18,6 +18,8 @@ class DatabaseSeeder extends Seeder
         // Este seeder solo prepara catálogo mock para local/testing.
         $this->call([
             UsersSourceSeeder::class,
+            PermissionsSeeder::class,
+            UserPermissionsSeeder::class,
             AcademicHierarchySeeder::class,
             TeamsSeeder::class,
             TemplatesSeeder::class,

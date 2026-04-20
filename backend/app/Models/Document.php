@@ -16,6 +16,8 @@ class Document extends Model
 
     protected static function booted(): void
     {
+        // TODO(permisos): ampliar visibilidad como en plantillas (ámbito académico
+        // / equipo en JWT) y enlazar `documents.read` en policy + scope; ver backlog.
         static::addGlobalScope('user_access', function (Builder $builder) {
             // Si no hay usuario autenticado, NO devolvemos nada (fail-closed)
             // Esto previene fugas de datos si el middleware aún no ha corrido
@@ -53,7 +55,6 @@ class Document extends Model
         'template_id',
         'template_version_id',
         'title',
-        'organization_id',
         'study_type_id',
         'study_id',
         'module_id',

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
@@ -16,10 +17,23 @@ use Illuminate\Database\Eloquent\Model;
  *     nunca puede enviarlo; siempre es el reloj del servidor.
  *   - No se exponen métodos de actualización ni borrado.
  *     A nivel de BD el usuario de app solo tiene INSERT + SELECT.
+ *
+ * Alcance global: fail-closed si no hay sesión autenticada (evita lecturas
+ * accidentales fuera de request HTTP). El filtrado por entidad lo aplica
+ * {@see \App\Repositories\Eloquent\AuditLogRepository::paginateByEntity()}.
  */
 class AuditLog extends Model
 {
     use HasUuids;
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('auth_present', function (Builder $builder): void {
+            if (! auth()->check()) {
+                $builder->whereRaw('1 = 0');
+            }
+        });
+    }
 
     public $timestamps = false;
 

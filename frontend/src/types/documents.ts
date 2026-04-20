@@ -3,8 +3,9 @@ export type DocumentStatus = 'draft' | 'in_review' | 'published';
 export type Document = {
   id: string;
   template_id: string;
+  template_version_id: string | null;
   title: string;
-  organization_id: string;
+  study_type_id: string | null;
   study_id: string | null;
   module_id: string | null;
   created_by: string;

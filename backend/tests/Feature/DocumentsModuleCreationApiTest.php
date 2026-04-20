@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Models\TemplateVersion;
+use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -26,10 +27,28 @@ class DocumentsModuleCreationApiTest extends TestCase
         config([
             'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
-            'auth.template_shared_visibility_roles' => ['department-head', 'director'],
         ]);
 
         Cache::flush();
+
+        $this->seed(PermissionsSeeder::class);
+    }
+
+    /**
+     * @param  list<string>  $codes
+     */
+    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'templates.read', 'users.search']): void
+    {
+        $now = now();
+        foreach ($codes as $code) {
+            DB::table('user_permissions')->insert([
+                'id' => (string) Str::uuid(),
+                'user_id' => $userId,
+                'permission_code' => $code,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
     }
 
     /**
@@ -99,7 +118,6 @@ class DocumentsModuleCreationApiTest extends TestCase
             'study_id' => 'STUDY-1',
             'module_id' => $moduleId,
             'team_id' => null,
-            'organization_id' => 'org-test',
             'created_by' => $creatorId,
             'status' => 'published',
             'version' => 1,
@@ -144,9 +162,8 @@ class DocumentsModuleCreationApiTest extends TestCase
     public function test_creation_options_returns_none_when_module_has_no_published_templates(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, [
-            'organization_id' => 'org-test',
-        ]);
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
         $this->seedAcademicHierarchy();
 
         $this->getJson('/api/v1/documents/creation-options?module_id=MOD-1', $headers)
@@ -159,9 +176,8 @@ class DocumentsModuleCreationApiTest extends TestCase
     public function test_creation_options_returns_auto_when_only_one_template_is_available(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, [
-            'organization_id' => 'org-test',
-        ]);
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
         $this->seedAcademicHierarchy();
 
         $version = $this->createPublishedTemplateWithVersion(
@@ -183,9 +199,8 @@ class DocumentsModuleCreationApiTest extends TestCase
     public function test_creation_options_returns_select_when_multiple_templates_are_available(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, [
-            'organization_id' => 'org-test',
-        ]);
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
         $this->seedAcademicHierarchy();
 
         $this->createPublishedTemplateWithVersion(
@@ -212,9 +227,8 @@ class DocumentsModuleCreationApiTest extends TestCase
     public function test_create_from_module_uses_sub_claim_as_creator_and_owner(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, [
-            'organization_id' => 'org-test',
-        ]);
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
         $this->seedAcademicHierarchy();
 
         $version = $this->createPublishedTemplateWithVersion(
@@ -251,9 +265,8 @@ class DocumentsModuleCreationApiTest extends TestCase
     public function test_create_from_module_requires_template_version_when_multiple_options_exist(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, [
-            'organization_id' => 'org-test',
-        ]);
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
         $this->seedAcademicHierarchy();
 
         $this->createPublishedTemplateWithVersion(
@@ -280,9 +293,8 @@ class DocumentsModuleCreationApiTest extends TestCase
     public function test_new_document_appears_first_in_documents_list(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, [
-            'organization_id' => 'org-test',
-        ]);
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
         $this->seedAcademicHierarchy();
 
         $version = $this->createPublishedTemplateWithVersion(

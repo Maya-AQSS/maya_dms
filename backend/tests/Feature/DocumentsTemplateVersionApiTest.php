@@ -4,13 +4,20 @@ namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Team;
+use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\TemplateReviewer;
+use Database\Seeders\PermissionsSeeder;
+use Database\Seeders\UserPermissionsSeeder;
+use Database\Seeders\UsersSourceSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -19,6 +26,7 @@ use Tests\TestCase;
  */
 class DocumentsTemplateVersionApiTest extends TestCase
 {
+    use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
 
@@ -29,10 +37,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
         config([
             'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
-            'auth.template_shared_visibility_roles' => ['department-head', 'director'],
         ]);
 
         Cache::flush();
+
+        $this->seed(UsersSourceSeeder::class);
+        $this->seed(PermissionsSeeder::class);
+        $this->seed(UserPermissionsSeeder::class);
     }
 
     /**
@@ -43,6 +54,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
     private function authHeaders(string $sub, array $realmRoles = [], array $extraClaims = []): array
     {
         auth()->forgetUser();
+
+        $this->assignUserPermissions($sub, ['templates.read']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -75,6 +88,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         array $reviewerExtraClaims = [],
     ): array {
         auth()->forgetUser();
+
+        $this->assignUserPermissions($creatorSub, ['templates.read']);
+        $this->assignUserPermissions($reviewerSub, ['templates.read']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -110,9 +126,27 @@ class DocumentsTemplateVersionApiTest extends TestCase
         ];
     }
 
+    /**
+     * @param  list<string>  $codes
+     */
+    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'templates.read', 'users.search']): void
+    {
+        $now = now();
+        foreach ($codes as $code) {
+            DB::table('user_permissions')->insert([
+                'id' => (string) Str::uuid(),
+                'user_id' => $userId,
+                'permission_code' => $code,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+        }
+    }
+
     public function test_store_document_requires_published_template_version(): void
     {
         $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId);
         $headers = $this->authHeaders($userId);
 
         $tid = (string) Str::uuid();
@@ -126,7 +160,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $userId,
             'status' => 'draft',
             'version' => 1,
@@ -137,7 +170,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Mi doc',
-            'organization_id' => 'org-x',
         ], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['template_id']);
@@ -146,12 +178,11 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_show_document_uses_v1_snapshot_after_template_publishes_v2(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
-            ['department-head'],
-            ['organization_id' => 'org-x'],
         );
 
         $tid = (string) Str::uuid();
@@ -167,7 +198,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',
             'version' => 1,
@@ -186,13 +216,19 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Expediente',
-            'organization_id' => 'org-x',
         ], $hCreator);
 
         $createDoc->assertCreated();
@@ -231,12 +267,11 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_show_document_includes_team_when_template_is_team_scoped(): void
     {
         $creatorId = (string) Str::uuid();
-        $reviewerId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
-            ['department-head'],
-            ['organization_id' => 'org-x'],
         );
 
         $gid = (string) Str::uuid();
@@ -246,6 +281,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'description' => null,
             'owner_id' => $creatorId,
             'is_department' => true,
+        ]);
+
+        TeamMember::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'team_id' => $gid,
+            'user_id' => $reviewerId,
+            'role' => 'member',
         ]);
 
         $tid = (string) Str::uuid();
@@ -261,7 +303,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'study_id' => null,
             'module_id' => null,
             'team_id' => $gid,
-            'organization_id' => 'org-x',
             'created_by' => $creatorId,
             'status' => 'draft',
             'version' => 1,
@@ -280,13 +321,19 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'sort_order' => 0,
         ]);
 
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Expediente equipo',
-            'organization_id' => 'org-x',
         ], $hCreator);
 
         $createDoc->assertCreated();

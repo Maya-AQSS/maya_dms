@@ -9,10 +9,12 @@ use App\Http\Requests\TemplateBlocks\BulkUpdateTemplateBlockRequest;
 use App\Http\Requests\TemplateBlocks\StoreTemplateBlockRequest;
 use App\Http\Requests\TemplateBlocks\UpdateTemplateBlockRequest;
 use App\Http\Resources\TemplateBlockResource;
+use App\Models\Template;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
 class TemplateBlockController extends Controller
@@ -26,6 +28,9 @@ class TemplateBlockController extends Controller
      */
     public function index(string $template): AnonymousResourceCollection
     {
+        $templateModel = Template::query()->findOrFail($template);
+        $this->authorize('view', $templateModel);
+
         $blocks = $this->blockService->listForTemplate($template);
 
         return TemplateBlockResource::collection($blocks);
@@ -50,7 +55,11 @@ class TemplateBlockController extends Controller
      */
     public function show(string $block): TemplateBlockResource
     {
-        return new TemplateBlockResource($this->blockService->findOrFail($block));
+        $blockModel = $this->blockService->findOrFail($block);
+        $templateModel = Template::query()->findOrFail($blockModel->template_id);
+        $this->authorize('view', $templateModel);
+
+        return new TemplateBlockResource($blockModel);
     }
 
     /**
@@ -88,7 +97,7 @@ class TemplateBlockController extends Controller
     /**
      * DELETE /api/v1/blocks/{block}
      */
-    public function destroy(string $block): \Illuminate\Http\Response
+    public function destroy(string $block): Response
     {
         $this->blockService->delete($block, (string) Auth::id());
 
@@ -134,18 +143,17 @@ class TemplateBlockController extends Controller
 
     /**
      * PUT /api/v1/blocks/bulk
-     * Actualización masiva de block_state (y opcionalmente mandatory) para múltiples bloques.
      */
     public function bulkUpdate(BulkUpdateTemplateBlockRequest $request): AnonymousResourceCollection
     {
         $validated = $request->validated();
-        
+
         $dto = new BulkUpdateTemplateBlocksDto(
-            ids:           $validated['ids'],
-            block_state:   $validated['block_state'] ?? null,
+            ids:             $validated['ids'],
+            block_state:     $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
-            mandatory:     $validated['mandatory'] ?? null,
-            set_mandatory: $request->has('mandatory'),
+            mandatory:       $validated['mandatory'] ?? null,
+            set_mandatory:   $request->has('mandatory'),
         );
 
         $blocks = $this->blockService->bulkUpdate(

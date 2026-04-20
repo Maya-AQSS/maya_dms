@@ -11,12 +11,12 @@ import {
   TemplateNewPage,
   TemplatesPage,
 } from './pages';
-import { useAuth } from '@maya/shared-auth-react';
+import { useOidcSession } from './auth/useOidcSession';
 import { HierarchyProvider } from './features/hierarchy';
 import { useDarkMode } from './hooks/useDarkMode';
 
 function App() {
-  const { isLoading, isAuthenticated, login, user, logout } = useAuth();
+  const { isOidcLoading, isOidcSignedIn, beginSignIn, logout } = useOidcSession();
   const { isDark, toggle: handleToggleDark } = useDarkMode();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -29,16 +29,16 @@ function App() {
   );
   const pageTitle = isEditorRoute ? 'Editor de Programación' : currentNav?.label ?? 'Maya DMS';
 
-  if (isLoading) {
+  if (isOidcLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
-        Autenticando con Keycloak...
+        Iniciando sesión…
       </div>
     );
   }
 
-  if (!isAuthenticated) {
-    login();
+  if (!isOidcSignedIn) {
+    beginSignIn();
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
         Redirigiendo al inicio de sesión...
@@ -61,7 +61,6 @@ function App() {
             title={pageTitle}
             isDark={isDark}
             onToggleDark={handleToggleDark}
-            user={user}
             onLogout={logout}
             onMobileMenuOpen={() => setMobileOpen(true)}
           />

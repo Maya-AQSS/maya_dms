@@ -1,9 +1,5 @@
+import { useUserProfile, profileDisplayInitials } from '../../features/user-profile';
 import { HamburgerIcon, MoonIcon, SunIcon } from './navIcons';
-
-type User = {
-  name?: string;
-  preferred_username?: string;
-};
 
 type Props = {
   title: string;
@@ -11,13 +7,17 @@ type Props = {
   onToggleDark: () => void;
   /** Opens the off-canvas sidebar drawer on mobile. */
   onMobileMenuOpen: () => void;
-  user?: User;
   onLogout: () => void;
 };
 
-export function Topbar({ title, isDark, onToggleDark, user, onLogout, onMobileMenuOpen }: Props) {
-  const displayName = user?.name ?? user?.preferred_username ?? '';
-  const initial = (displayName || 'U').charAt(0).toUpperCase();
+export function Topbar({ title, isDark, onToggleDark, onLogout, onMobileMenuOpen }: Props) {
+  const { profile, loading: profileLoading } = useUserProfile();
+  const initials = profileDisplayInitials(profile);
+  const displayName = profile?.name?.trim() ?? '';
+  const avatarTitle =
+    profile?.name?.trim() ||
+    profile?.email?.trim() ||
+    (profileLoading ? 'Cargando perfil…' : 'Usuario');
 
   return (
     <header className="relative h-14 bg-ui-topbar dark:bg-ui-dark-topbar border-b border-ui-border-l dark:border-ui-dark-border shadow-topbar flex items-center justify-between px-6 z-[200]">
@@ -52,9 +52,14 @@ export function Topbar({ title, isDark, onToggleDark, user, onLogout, onMobileMe
           {displayName}
         </span>
 
-        {/* Avatar — slightly larger on mobile for better tappability */}
-        <div className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-odoo-purple flex items-center justify-center">
-          <span className="text-xs font-bold text-white">{initial}</span>
+        {/* Avatar — datos desde GET /api/v1/me (UserProfileProvider) */}
+        <div
+          className="w-10 h-10 md:w-8 md:h-8 rounded-full bg-odoo-purple flex items-center justify-center"
+          title={avatarTitle}
+        >
+          <span className="text-xs font-bold text-white">
+            {profileLoading ? '…' : initials}
+          </span>
         </div>
 
         <button

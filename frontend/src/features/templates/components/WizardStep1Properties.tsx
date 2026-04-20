@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
 import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
-import { fetchMe, type UserTeam } from '../../../api/users';
+import { useUserProfile } from '../../../features/user-profile';
+import type { UserTeam } from '../../../api/users';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 
 type Props = {
@@ -37,25 +37,12 @@ export function WizardStep1Properties({
   errors,
 }: Props) {
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
-  const [teams, setTeams] = useState<UserTeam[]>([]);
-  const [teamsLoading, setTeamsLoading] = useState(false);
-  const [teamsError, setTeamsError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setTeamsLoading(true);
-    setTeamsError(null);
-    fetchMe()
-      .then((res) => {
-        setTeams(res.data.teams ?? []);
-      })
-      .catch(() => {
-        setTeams([]);
-        setTeamsError('No se pudieron cargar tus equipos. Revisa la sesión o inténtalo de nuevo.');
-      })
-      .finally(() => {
-        setTeamsLoading(false);
-      });
-  }, []);
+  const { profile, loading: profileLoading, error: profileError } = useUserProfile();
+  const teams: UserTeam[] = profile?.teams ?? [];
+  const teamsLoading = profileLoading;
+  const teamsError = profileError
+    ? 'No se pudo cargar el perfil (equipos). Revisa la sesión o inténtalo de nuevo.'
+    : null;
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
   const filteredStudies = studyTypeId

@@ -16,13 +16,12 @@ class DocumentPolicyPerformanceTest extends TestCase
     {
         $policy = new DocumentPolicy;
         $user   = new JwtUser([
-            'id'              => 'user-perf-1',
-            'email'           => null,
-            'name'            => null,
-            'department'      => null,
-            'organization_id' => null,
-            'roles'           => [],
-            'scope'           => '',
+            'id'            => 'user-perf-1',
+            'email'         => null,
+            'name'          => null,
+            'department'    => null,
+            'permissions'   => [],
+            'scope'         => '',
         ]);
         $doc = new Document;
         $doc->forceFill([

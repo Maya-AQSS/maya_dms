@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\JwtUser;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,9 @@ class UserController extends Controller
     /**
      * GET /api/v1/users?search={term}&per_page={n}
      *
+     * F-05.1 describe colaboradores/revisores pero no el endpoint `/users`; el acceso
+     * con `users.search` es decisión de producto hasta que el backlog lo cierre.
+     *
      * Búsqueda case-insensitive por nombre, email y departamento.
      * Devuelve { data: [...] } con el campo `role` mapeado desde `department`.
      *
@@ -19,6 +23,11 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
+        $user = $request->user();
+        if (! $user instanceof JwtUser || ! $user->hasPermission('users.search')) {
+            abort(403, 'No tienes permiso para buscar usuarios.');
+        }
+
         $search  = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
 

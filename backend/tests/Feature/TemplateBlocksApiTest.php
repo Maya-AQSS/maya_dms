@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use Database\Seeders\PermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -28,6 +30,19 @@ class TemplateBlocksApiTest extends TestCase
         ]);
 
         Cache::flush();
+
+        $this->seed(PermissionsSeeder::class);
+    }
+
+    private function grantTemplatesReadOnly(string $userId): void
+    {
+        DB::table('user_permissions')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $userId,
+            'permission_code' => 'templates.read',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     /**
@@ -58,7 +73,7 @@ class TemplateBlocksApiTest extends TestCase
     /**
      * @return array{0: string, 1: string}
      */
-    private function seedTemplateAndBlock(string $userId): array
+    private function seedTemplateAndBlock(string $userId, bool $globalVisibility = false): array
     {
         $templateId = (string) Str::uuid();
         $blockId = (string) Str::uuid();
@@ -67,13 +82,14 @@ class TemplateBlocksApiTest extends TestCase
             'id' => $templateId,
             'name' => 'Plantilla bloques',
             'description' => null,
-            'visibility_level' => 'personal',
+            'visibility_level' => $globalVisibility
+                ? TemplateVisibilityLevel::Global->value
+                : 'personal',
             'delivery_deadline' => null,
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
-            'organization_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
             'version' => 1,
@@ -138,6 +154,30 @@ class TemplateBlocksApiTest extends TestCase
         $this->assertSame('locked', $new['block_state'] ?? null);
         $this->assertSame(false, $new['mandatory'] ?? null);
         $this->assertNotNull($row->timestamp);
+    }
+
+    public function test_user_with_only_templates_read_cannot_mutate_blocks_on_foreign_template(): void
+    {
+        $ownerId = (string) Str::uuid();
+        $readerId = (string) Str::uuid();
+        $this->grantTemplatesReadOnly($readerId);
+
+        $readerHeaders = $this->authHeaders($readerId);
+        [, $blockId] = $this->seedTemplateAndBlock($ownerId, true);
+        $templateId = TemplateBlock::query()->findOrFail($blockId)->template_id;
+
+        $this->putJson("/api/v1/blocks/{$blockId}", [
+            'block_state' => 'locked',
+        ], $readerHeaders)->assertForbidden();
+
+        $this->putJson('/api/v1/blocks/bulk', [
+            'ids' => [$blockId],
+            'block_state' => 'locked',
+        ], $readerHeaders)->assertForbidden();
+
+        $this->postJson("/api/v1/templates/{$templateId}/blocks", [
+            'type' => 'paragraph',
+        ], $readerHeaders)->assertForbidden();
     }
 }
 

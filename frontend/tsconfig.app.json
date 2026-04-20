@@ -9,7 +9,9 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@maya/shared-auth-react": ["../maya_infra/packages/maya-shared-auth-react/src/index.ts"]
+      "@maya/shared-auth-react": [
+        "../../maya_infra/packages/maya-shared-auth-react/src/index.ts"
+      ]
     },
     
     /* Bundler mode */

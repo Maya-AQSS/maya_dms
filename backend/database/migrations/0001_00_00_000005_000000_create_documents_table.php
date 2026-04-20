@@ -11,9 +11,6 @@ return new class extends Migration
      *   draft → in_review → published
      *   in_review → draft  (si se rechaza)
      *
-     * La columna organization_id + el Global Scope garantizan
-     * que ningún usuario vea documentos de otra organización (IDOR).
-     *
      * template_version_id: ancla a la versión publicada de plantilla usada al crear el documento (nullable
      * si el documento se creó antes de fijar versión o en flujos legacy).
      * study_type_id / study_id / module_id: referencias lógicas al catálogo académico (FDW); sin FK en BD.
@@ -30,7 +27,6 @@ return new class extends Migration
                 ->constrained('template_versions')
                 ->restrictOnDelete();
             $table->string('title');
-            $table->string('organization_id');   // FK lógica → organización (FDW/contexto JWT)
             $table->string('study_type_id')->nullable();
             $table->string('study_id')->nullable();
             $table->string('module_id')->nullable();
@@ -43,7 +39,6 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['organization_id', 'status']);
             $table->index(['study_type_id', 'status']);
             $table->index(['study_id', 'status']);
             $table->index(['module_id', 'status']);

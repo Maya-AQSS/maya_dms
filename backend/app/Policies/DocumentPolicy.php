@@ -10,15 +10,46 @@ use App\Models\JwtUser;
  *
  * Creador y titular actual (owner tras delegación) no pueden revisar ni aprobar
  * el mismo artefacto. Solo comparación de IDs en memoria — sin consultas extra.
+ *
+ * Envío a revisión ({@see self::submit}): solo el titular ({@see Document::$owner_id}),
+ * alineado con F-05.1 (autor principal).
+ *
+ * Mutaciones de persistencia: el creador o el titular pueden editar sin el permiso
+ * global; terceros requieren `documents.update`. `delete` sigue exigiendo
+ * `documents.delete`.
  */
 class DocumentPolicy
 {
     /**
      * Ver documento: el alcance lo acota el global scope del modelo.
+     * Los controladores deben resolver el modelo con {@see Document::query()} (no sin scope)
+     * antes de delegar aquí.
      */
     public function view(JwtUser $user, Document $document): bool
     {
         return true;
+    }
+
+    /**
+     * Editar metadatos, bloques u otras mutaciones de contenido del documento.
+     */
+    public function update(JwtUser $user, Document $document): bool
+    {
+        $id = $user->getAuthIdentifier();
+
+        if ($id === $document->created_by || $id === $document->owner_id) {
+            return true;
+        }
+
+        return $user->hasPermission('documents.update');
+    }
+
+    /**
+     * Eliminar u operaciones de baja del documento.
+     */
+    public function delete(JwtUser $user, Document $document): bool
+    {
+        return $user->hasPermission('documents.delete');
     }
 
     /**
@@ -30,11 +61,11 @@ class DocumentPolicy
     }
 
     /**
-     * Envío a revisión (p. ej. transición draft → in_review).
+     * Envío a revisión (p. ej. transición draft → in_review): solo el titular actual.
      */
     public function submit(JwtUser $user, Document $document): bool
     {
-        return ! $this->violatesSegregation($user, $document);
+        return $user->getAuthIdentifier() === $document->owner_id;
     }
 
     private function violatesSegregation(JwtUser $user, Document $document): bool

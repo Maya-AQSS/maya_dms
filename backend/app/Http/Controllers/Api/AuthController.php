@@ -14,12 +14,7 @@ class AuthController extends Controller
     ) {}
 
     /**
-     * Devuelve el perfil completo del usuario autenticado.
-     *
-     * Escenarios cubiertos:
-     *   - Escenario 1: user_id se extrae del JWT (claim `sub`); la consulta siempre filtra por él.
-     *   - Escenario 2: Perfil servido desde caché Redis si disponible.
-     *   - Escenario 3: Si FDW no responde, retorna datos parciales del JWT.
+     * Devuelve el perfil del usuario autenticado (identidad, departamento, permisos, equipos).
      */
     public function me(Request $request): JsonResponse
     {

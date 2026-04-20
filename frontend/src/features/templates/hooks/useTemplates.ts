@@ -13,6 +13,10 @@ import type { Template, TemplateListFilters, TemplatesListMeta } from '../../../
 function formatActionError(err: unknown): string {
   if (err instanceof ApiHttpError) {
     if (err.status === 403) {
+      const fromApi = err.message?.trim();
+      if (fromApi) {
+        return fromApi;
+      }
       return 'No tienes permiso para esta acción (p. ej. visibilidad compartida solo para coordinación).';
     }
     if (err.status === 401) {

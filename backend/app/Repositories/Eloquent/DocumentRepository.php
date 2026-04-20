@@ -17,7 +17,7 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function findOrFail(string $id): Document
     {
-        return Document::findOrFail($id);
+        return Document::query()->findOrFail($id);
     }
 
     /**

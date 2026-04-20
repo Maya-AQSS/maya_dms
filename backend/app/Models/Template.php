@@ -16,11 +16,9 @@ class Template extends Model
     use HasUuids, SoftDeletes;
 
     /**
-     * Visibilidad efectiva:
-     * - Creador o revisor asignado.
-     * - Roles con {@see JwtUser::canManageSharedTemplateVisibility()}: plantillas de su organización
-     *   (organization_id NULL o igual al claim).
-     * - Resto: plantillas compartidas según nivel (global + org, tipo de estudio, estudio, módulo, equipo)
+     * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see \App\Policies\TemplatePolicy}):
+     * - Creador o revisor asignado en `template_reviewers` (acceso a esa plantilla concreta; editar/comentar se gobiernan aparte).
+     * - Plantillas compartidas según nivel (global, tipo de estudio, estudio, módulo, equipo)
      *   usando claims JWT opcionales y membresía en team_members.
      */
     protected static function booted(): void
@@ -50,32 +48,9 @@ class Template extends Model
                             ->where('template_reviewers.user_id', $userId);
                     });
 
-                if ($user->canManageSharedTemplateVisibility()) {
-                    $outer->orWhere(fn (Builder $coord) => self::scopeTemplatesInOrganization($coord, $user->organizationId));
-
-                    return;
-                }
-
                 $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $user, $userId));
             });
         });
-    }
-
-    /**
-     * Coordinación / dirección: todas las plantillas acotadas a la organización del usuario.
-     */
-    private static function scopeTemplatesInOrganization(Builder $q, ?string $userOrgId): void
-    {
-        if ($userOrgId !== null && $userOrgId !== '') {
-            $q->where(function (Builder $inner) use ($userOrgId) {
-                $inner->whereNull('templates.organization_id')
-                    ->orWhere('templates.organization_id', $userOrgId);
-            });
-
-            return;
-        }
-
-        $q->whereNull('templates.organization_id');
     }
 
     /**
@@ -84,34 +59,26 @@ class Template extends Model
     private static function scopeSharedTemplatesForTeacher(Builder $shared, JwtUser $user, string $userId): void
     {
         $shared->where(function (Builder $docente) use ($user, $userId) {
-            $orgId = $user->organizationId;
-
-            $docente->where(function (Builder $g) use ($orgId) {
-                $g->where('templates.visibility_level', TemplateVisibilityLevel::Global->value)
-                    ->where(fn (Builder $ogs) => self::scopeTemplatesInOrganization($ogs, $orgId));
-            });
+            $docente->where('templates.visibility_level', TemplateVisibilityLevel::Global->value);
 
             if ($user->studyTypeIds !== []) {
-                $docente->orWhere(function (Builder $st) use ($user, $orgId) {
+                $docente->orWhere(function (Builder $st) use ($user) {
                     $st->where('templates.visibility_level', TemplateVisibilityLevel::StudyType->value)
-                        ->whereIn('templates.study_type_id', $user->studyTypeIds)
-                        ->where(fn (Builder $ogs) => self::scopeTemplatesInOrganization($ogs, $orgId));
+                        ->whereIn('templates.study_type_id', $user->studyTypeIds);
                 });
             }
 
             if ($user->studyIds !== []) {
-                $docente->orWhere(function (Builder $s) use ($user, $orgId) {
+                $docente->orWhere(function (Builder $s) use ($user) {
                     $s->where('templates.visibility_level', TemplateVisibilityLevel::Study->value)
-                        ->whereIn('templates.study_id', $user->studyIds)
-                        ->where(fn (Builder $ogs) => self::scopeTemplatesInOrganization($ogs, $orgId));
+                        ->whereIn('templates.study_id', $user->studyIds);
                 });
             }
 
             if ($user->moduleIds !== []) {
-                $docente->orWhere(function (Builder $m) use ($user, $orgId) {
+                $docente->orWhere(function (Builder $m) use ($user) {
                     $m->where('templates.visibility_level', TemplateVisibilityLevel::Module->value)
-                        ->whereIn('templates.module_id', $user->moduleIds)
-                        ->where(fn (Builder $ogs) => self::scopeTemplatesInOrganization($ogs, $orgId));
+                        ->whereIn('templates.module_id', $user->moduleIds);
                 });
             }
 
@@ -140,7 +107,6 @@ class Template extends Model
         'study_id',
         'module_id',
         'team_id',
-        'organization_id',
         'created_by',
         'status',
         'version',

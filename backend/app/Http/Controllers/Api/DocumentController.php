@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
+use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
@@ -53,13 +55,9 @@ class DocumentController extends Controller
     /**
      * Opciones para crear una programación desde la vista de módulo.
      */
-    public function creationOptions(Request $request): JsonResponse
+    public function creationOptions(DocumentCreationOptionsRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'module_id' => ['required', 'string'],
-        ]);
-
-        $options = $this->documentService->creationOptionsForModule($validated['module_id']);
+        $options = $this->documentService->creationOptionsForModule($request->validated('module_id'));
         $count = count($options);
 
         if ($count === 0) {
@@ -86,18 +84,13 @@ class DocumentController extends Controller
     /**
      * Crear una programación desde módulo con selección opcional de versión de plantilla.
      */
-    public function createFromModule(Request $request): JsonResponse
+    public function createFromModule(DocumentCreateFromModuleRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'module_id' => ['required', 'string'],
-            'template_version_id' => ['sometimes', 'nullable', 'uuid'],
-        ]);
-
         $userId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->createFromModule(
-            $validated['module_id'],
+            $request->validated('module_id'),
             $userId,
-            $validated['template_version_id'] ?? null,
+            $request->validated('template_version_id') ?? null,
         );
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
@@ -137,7 +130,8 @@ class DocumentController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         // TODO: DocumentService::update(...)
-        $this->documentService->findOrFail($id);
+        $document = $this->documentService->findOrFail($id);
+        $this->authorize('update', $document);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -147,7 +141,8 @@ class DocumentController extends Controller
      */
     public function destroy(string $id): JsonResponse
     {
-        $this->documentService->findOrFail($id);
+        $document = $this->documentService->findOrFail($id);
+        $this->authorize('delete', $document);
         // TODO: borrado lógico / política propia
 
         return response()->json(['message' => 'Not implemented'], 501);
@@ -200,7 +195,8 @@ class DocumentController extends Controller
      */
     public function delegate(Request $request, string $id): JsonResponse
     {
-        $this->documentService->findOrFail($id);
+        $document = $this->documentService->findOrFail($id);
+        $this->authorize('view', $document);
 
         $validated = $request->validate([
             'new_owner_id' => ['required', 'string'],
