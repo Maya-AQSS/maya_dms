@@ -33,6 +33,8 @@ return [
     ['user_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f', 'permission_code' => 'documents.read'],
     ['user_id' => '50f503c6-cb63-466c-852d-0b30ae130e98', 'permission_code' => 'templates.read'],
     ['user_id' => '50f503c6-cb63-466c-852d-0b30ae130e98', 'permission_code' => 'documents.read'],
+    ['user_id' => '50f503c6-cb63-466c-852d-0b30ae130e98', 'permission_code' => 'templates.create'],
+    ['user_id' => '50f503c6-cb63-466c-852d-0b30ae130e98', 'permission_code' => 'templates.update'],
 
     // Rol solo auditoría (revisores en plantillas, sin CRUD)
     ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'permission_code' => 'audit.read'],
