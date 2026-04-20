@@ -82,7 +82,7 @@ services:
       VITE_REVERB_PORT: ${VITE_REVERB_PORT:-8082}
     volumes:
       - ./frontend:/app
-      - ../maya_infra/packages:/packages
+      - ../maya_infra/packages:/maya_infra/packages
       - ./.env:/app/.env
       - /app/node_modules
     ports:

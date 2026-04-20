@@ -12,7 +12,7 @@ readonly class CreateTemplateDto
         public ?string $studyTypeId,
         public ?string $studyId,
         public ?string $moduleId,
-        public ?string $groupId,
+        public ?string $teamId,
         public ?string $organizationId,
         public int $reviewStages,
         public string $reviewMode,

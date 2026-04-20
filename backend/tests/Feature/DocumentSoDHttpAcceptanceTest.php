@@ -105,9 +105,9 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     }
 
     /**
-     * Escenario 2: creador publica plantilla (revisión/aprobación) → HTTP 403.
+     * Escenario 2: creador publica plantilla en borrador sin validadores → HTTP 200.
      */
-    public function test_creator_publish_template_returns_403(): void
+    public function test_creator_publish_template_returns_200_when_no_reviewers(): void
     {
         $creatorId = 'creator-tpl-uuid-02';
         [$templateId] = $this->seedTemplateAndDocument($creatorId);
@@ -131,7 +131,8 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             ['Authorization' => 'Bearer '.$token],
         );
 
-        $response->assertForbidden();
+        $response->assertOk()
+            ->assertJsonPath('data.status', 'published');
     }
 
     /**

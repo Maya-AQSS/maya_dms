@@ -24,7 +24,7 @@ export type TemplateEditFields = {
   studyTypeId: string;
   studyId: string;
   moduleId: string;
-  groupId: string;
+  teamId: string;
   status: Template['status'];
   reviewStages: string;
   reviewMode: Template['review_mode'];
@@ -40,7 +40,7 @@ export function templateEditIsDirty(t: Template, fields: TemplateEditFields): bo
   if (fields.studyTypeId.trim() !== (t.study_type_id ?? '')) return true;
   if (fields.studyId.trim() !== (t.study_id ?? '')) return true;
   if (fields.moduleId.trim() !== (t.module_id ?? '')) return true;
-  if (fields.groupId.trim() !== (t.group_id ?? '')) return true;
+  if (fields.teamId.trim() !== (t.team_id ?? '')) return true;
   if (fields.status !== t.status) return true;
   if ((Number.parseInt(fields.reviewStages, 10) || 0) !== t.review_stages) return true;
   if (fields.reviewMode !== t.review_mode) return true;

@@ -8,8 +8,12 @@ set -e
 
 cd /app
 
-# Install dependencies if node_modules is missing or package.json changed
-if [ ! -d "node_modules" ] || [ "package.json" -nt "node_modules/.package-lock.json" ]; then
+# Install dependencies when node_modules is missing/stale or vite binary is absent.
+if [ ! -d "node_modules" ] \
+  || [ ! -f "node_modules/.package-lock.json" ] \
+  || [ "package.json" -nt "node_modules/.package-lock.json" ] \
+  || [ "package-lock.json" -nt "node_modules/.package-lock.json" ] \
+  || [ ! -x "node_modules/.bin/vite" ]; then
     echo "[entrypoint] Installing npm dependencies..."
     npm install
 else

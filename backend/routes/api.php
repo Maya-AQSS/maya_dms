@@ -9,11 +9,11 @@ use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentVersionController;
-use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\TemplateBlockController;
 use App\Http\Controllers\Api\TemplateController;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\Route;
 |
 | Sprints planificados:
 |   Sprint 0 — infraestructura (este archivo, health check)
-|   Sprint 1 — auth, groups, academic hierarchy
+|   Sprint 1 — auth, academic hierarchy
 |   Sprint 2 — templates CRUD
 |   Sprint 3 — documents CRUD + block editor
 |   Sprint 4 — review workflow
@@ -47,20 +47,16 @@ Route::prefix('v1')->group(function () {
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
 
-        // Sprint 1 — Grupos
-        Route::apiResource('groups', GroupController::class)
-            ->whereUuid('group');
-        Route::post('groups/{group}/members', [GroupController::class, 'addMember'])
-            ->whereUuid('group');
-        Route::delete('groups/{group}/members/{userId}', [GroupController::class, 'removeMember'])
-            ->whereUuid('group');
-
         // Sprint 2 — Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
         Route::apiResource('templates', TemplateController::class)
             ->whereUuid('template');
+        Route::post('templates/{template}/validators', [TemplateController::class, 'syncValidators'])
+            ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
-        
+        Route::patch('templates/{template}/blocks/reorder', [TemplateBlockController::class, 'reorder'])
+            ->whereUuid('template');
+
         Route::apiResource('templates.blocks', TemplateBlockController::class)
             ->shallow()
             ->whereUuid('template')
@@ -142,6 +138,9 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('comment');
         Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
             ->whereUuid('comment');
+
+        // Usuarios — búsqueda para asignación de validadores y compartición
+        Route::get('/users', [UserController::class, 'index']);
 
         // Sprint 6 — Dashboard BFF
         Route::get('/dashboard', [DashboardController::class, 'index']);

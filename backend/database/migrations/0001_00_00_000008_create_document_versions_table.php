@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Snapshots inmutables del documento completo (F-04.4).
+     * Snapshots inmutables del documento completo.
      * Se crean en eventos clave: submit_for_review, publish, reject.
      * snapshot_data contiene el JSON completo del documento (todos sus bloques)
      * para poder reconstruir cualquier versión pasada sin joins.

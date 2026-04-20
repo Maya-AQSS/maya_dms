@@ -6,8 +6,9 @@ import {
   DashboardPage,
   DocumentEditorPage,
   DocumentsPage,
-  GroupsPage,
   PlaceholderPage,
+  TemplateEditPage,
+  TemplateNewPage,
   TemplatesPage,
 } from './pages';
 import { useAuth } from '@maya/shared-auth-react';
@@ -21,6 +22,10 @@ function App() {
       (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
     );
   });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const location = useLocation();
 
   const handleToggleDark = () => {
     const next = !isDark;
@@ -31,7 +36,6 @@ function App() {
 
   if (isDark) document.documentElement.classList.add('dark');
 
-  const location = useLocation();
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
   const currentNav = useMemo(
     () => NAV_ITEMS.find((n) => location.pathname === n.path || location.pathname.startsWith(`${n.path}/`)),
@@ -58,11 +62,24 @@ function App() {
 
   return (
     <HierarchyProvider>
-      <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
-        <Sidebar />
+      <div className="h-screen overflow-hidden bg-ui-body dark:bg-ui-dark-bg">
+        <Sidebar
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed((prev) => !prev)}
+          mobileOpen={mobileOpen}
+          onMobileClose={() => setMobileOpen(false)}
+        />
 
-        <div className="ml-64 flex flex-col min-h-screen">
-          <Topbar title={pageTitle} isDark={isDark} onToggleDark={handleToggleDark} />
+        <div
+          className="flex flex-col h-full transition-[margin] duration-200"
+          style={{ marginLeft: mobileOpen ? '0' : sidebarCollapsed ? '3.5rem' : '16rem' }}
+        >
+          <Topbar
+            title={pageTitle}
+            isDark={isDark}
+            onToggleDark={handleToggleDark}
+            onMobileMenuOpen={() => setMobileOpen(true)}
+          />
 
           <main className="flex-1 overflow-auto">
             <Routes>
@@ -71,7 +88,8 @@ function App() {
               <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
-              <Route path="/groups" element={<GroupsPage />} />
+              <Route path="/templates/new" element={<TemplateNewPage />} />
+              <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
               <Route path="/upload" element={<PlaceholderPage />} />
               <Route path="/search" element={<PlaceholderPage />} />
               <Route path="*" element={<PlaceholderPage />} />

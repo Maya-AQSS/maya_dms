@@ -11,7 +11,7 @@ enum TemplateVisibilityLevel: string
     case StudyType = 'study_type';
     case Study = 'study';
     case Module = 'module';
-    case Group = 'group';
+    case Team = 'team';
     case Personal = 'personal';
 
     /**

@@ -78,4 +78,10 @@ interface TemplateServiceInterface
      * Clona una plantilla origen hacia una nueva destino.
      */
     public function clone(string $sourceTemplateId, string $actorId): Template;
+
+    /**
+     * Sincroniza los validadores de la plantilla.
+     * @param array<int, string> $userIds Lista ordenada de IDs de usuario.
+     */
+    public function syncValidators(string $templateId, array $userIds): void;
 }

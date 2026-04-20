@@ -20,8 +20,8 @@ class Template extends Model
      * - Creador o revisor asignado.
      * - Roles con {@see JwtUser::canManageSharedTemplateVisibility()}: plantillas de su organización
      *   (organization_id NULL o igual al claim).
-     * - Resto: plantillas compartidas según nivel (global + org, tipo de estudio, estudio, módulo, grupo)
-     *   usando claims JWT opcionales y membresía en group_members.
+     * - Resto: plantillas compartidas según nivel (global + org, tipo de estudio, estudio, módulo, equipo)
+     *   usando claims JWT opcionales y membresía en team_members.
      */
     protected static function booted(): void
     {
@@ -116,12 +116,12 @@ class Template extends Model
             }
 
             $docente->orWhere(function (Builder $gr) use ($userId) {
-                $gr->where('templates.visibility_level', TemplateVisibilityLevel::Group->value)
+                $gr->where('templates.visibility_level', TemplateVisibilityLevel::Team->value)
                     ->whereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
-                            ->from('group_members')
-                            ->whereColumn('group_members.group_id', 'templates.group_id')
-                            ->where('group_members.user_id', $userId);
+                            ->from('team_members')
+                            ->whereColumn('team_members.team_id', 'templates.team_id')
+                            ->where('team_members.user_id', $userId);
                     });
             });
         });
@@ -139,7 +139,7 @@ class Template extends Model
         'study_type_id',
         'study_id',
         'module_id',
-        'group_id',
+        'team_id',
         'organization_id',
         'created_by',
         'status',
@@ -158,9 +158,9 @@ class Template extends Model
         ];
     }
 
-    public function group(): BelongsTo
+    public function team(): BelongsTo
     {
-        return $this->belongsTo(Group::class);
+        return $this->belongsTo(Team::class);
     }
 
     public function blocks(): HasMany

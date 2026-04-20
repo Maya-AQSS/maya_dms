@@ -4,12 +4,17 @@ export type TemplateVisibilityLevel =
   | 'study_type'
   | 'study'
   | 'module'
-  | 'group'
+  | 'team'
   | 'personal';
 
-export type TemplateStatus = 'draft' | 'published' | 'archived';
+export type TemplateStatus = 'draft' | 'in_review' | 'published' | 'archived';
 
 export type ReviewMode = 'sequential' | 'parallel';
+
+export type TemplateReviewer = {
+  user_id: string;
+  stage: number;
+};
 
 export type Template = {
   id: string;
@@ -20,13 +25,14 @@ export type Template = {
   study_type_id: string | null;
   study_id: string | null;
   module_id: string | null;
-  group_id: string | null;
+  team_id: string | null;
   organization_id: string | null;
   created_by: string;
   status: TemplateStatus;
   version: number;
   review_stages: number;
   review_mode: ReviewMode;
+  reviewers?: TemplateReviewer[];
   created_at?: string;
   updated_at?: string;
 };
@@ -49,7 +55,7 @@ export type TemplateListFilters = {
   study_type_id?: string;
   study_id?: string;
   module_id?: string;
-  group_id?: string;
+  team_id?: string;
   page?: number;
   per_page?: number;
 };

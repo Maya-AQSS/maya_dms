@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Models\Document;
-use App\Models\Group;
+use App\Enums\TemplateVisibilityLevel;
 use App\Models\Comment;
+use App\Models\Document;
+use App\Models\Team;
 use App\Models\Template;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,10 +54,26 @@ class GlobalScopesIsolationTest extends TestCase
         return [$templateId, $documentId];
     }
 
-    private function buildAuthTokensForUser(string $userId): string
-    {
+    /**
+     * @param  list<string>  $realmRoles
+     * @param  array<string, mixed>  $extraClaims
+     */
+    private function buildAuthTokensForUser(
+        string $userId,
+        array $realmRoles = [],
+        array $extraClaims = [],
+    ): string {
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
-        $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-iso-'.$userId, $userId);
+        $token = $this->buildJwtForSub(
+            $privatePem,
+            $publicPem,
+            'kid-iso-'.$userId,
+            $userId,
+            'test-issuer',
+            'test-audience',
+            $realmRoles,
+            $extraClaims,
+        );
 
         config([
             'auth.jwt_issuer'   => 'test-issuer',
@@ -127,30 +144,53 @@ class GlobalScopesIsolationTest extends TestCase
         )->assertNotFound();
     }
 
-    public function test_user_b_accessing_user_a_group_returns_404(): void
+    /**
+     * Sin CRUD de equipos en API: el aislamiento se refleja vía plantillas de visibilidad por equipo.
+     */
+    public function test_teacher_without_team_membership_cannot_view_team_scoped_template(): void
     {
         $userA = 'user-a-uuid-123';
         $userB = 'user-b-uuid-999';
 
-        $groupId = (string) Str::uuid();
-        Group::query()->forceCreate([
-            'id'          => $groupId,
-            'name'        => 'Grupo Privado',
+        $teamId = (string) Str::uuid();
+        Team::query()->forceCreate([
+            'id' => $teamId,
+            'name' => 'Equipo privado',
             'description' => null,
-            'owner_id'    => $userA,
+            'owner_id' => $userA,
+            'is_department' => false,
+        ]);
+
+        $templateId = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Plantilla de equipo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Team->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => $teamId,
+            'organization_id' => null,
+            'created_by' => $userA,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
         $this->getJson(
-            "/api/v1/groups/{$groupId}",
+            "/api/v1/templates/{$templateId}",
             ['Authorization' => 'Bearer '.$tokenA],
         )->assertSuccessful();
 
-        $tokenB = $this->buildAuthTokensForUser($userB);
+        $tokenB = $this->buildAuthTokensForUser($userB, ['teacher']);
         auth()->forgetUser();
 
         $this->getJson(
-            "/api/v1/groups/{$groupId}",
+            "/api/v1/templates/{$templateId}",
             ['Authorization' => 'Bearer '.$tokenB],
         )->assertNotFound();
     }

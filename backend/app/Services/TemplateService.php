@@ -88,15 +88,15 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Publica la plantilla con un snapshot y emite el evento de dominio TemplatePublished.
      */
-    public function publishWithSnapshot(string $templateId, string $changelog, string $actorId): Template
+    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template
     {
         return DB::transaction(function () use ($templateId, $changelog, $actorId) {
             /** @var Template $template */
             $template = Template::query()->whereKey($templateId)->lockForUpdate()->firstOrFail();
 
-            if ($template->status !== 'in_review') {
+            if (! in_array($template->status, ['draft', 'in_review'], true)) {
                 throw ValidationException::withMessages([
-                    'status' => ['Solo se puede publicar una plantilla en revisión.'],
+                    'status' => ['Solo se puede publicar una plantilla en borrador o en revisión.'],
                 ]);
             }
 
@@ -118,7 +118,7 @@ class TemplateService implements TemplateServiceInterface
                 $templateId,
                 $next,
                 $blocksSnapshot,
-                $changelog,
+                $changelog ?? '',
                 $actorId,
             );
 
@@ -197,7 +197,7 @@ class TemplateService implements TemplateServiceInterface
             'study_type_id' => $dto->studyTypeId,
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,
-            'group_id' => $dto->groupId,
+            'team_id' => $dto->teamId,
             'organization_id' => $organizationId,
             'created_by' => (string) $userId,
             'status' => 'draft',
@@ -243,8 +243,8 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setModuleId) {
             $attributes['module_id'] = $dto->moduleId;
         }
-        if ($dto->setGroupId) {
-            $attributes['group_id'] = $dto->groupId;
+        if ($dto->setTeamId) {
+            $attributes['team_id'] = $dto->teamId;
         }
         if ($dto->setOrganizationId) {
             $attributes['organization_id'] = $dto->organizationId;
@@ -303,7 +303,7 @@ class TemplateService implements TemplateServiceInterface
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => $orgId,
             'created_by' => $actorId,
             'status' => 'draft',
@@ -332,5 +332,26 @@ class TemplateService implements TemplateServiceInterface
         ));
 
         return $updated;
+    }
+
+    /**
+     * Sincroniza los validadores de la plantilla.
+     */
+    public function syncValidators(string $templateId, array $userIds): void
+    {
+        DB::transaction(function () use ($templateId, $userIds) {
+            $template = $this->templateRepository->findOrFail($templateId);
+
+            // Eliminar revisores actuales
+            $template->reviewers()->delete();
+
+            // Insertar nuevos con orden (stage)
+            foreach ($userIds as $index => $userId) {
+                $template->reviewers()->create([
+                    'user_id' => $userId,
+                    'stage' => $index + 1,
+                ]);
+            }
+        });
     }
 }

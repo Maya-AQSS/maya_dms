@@ -6,7 +6,7 @@ use App\Enums\TemplateVisibilityLevel;
  * Datos mock de plantillas y revisores para local/testing.
  *
  * - Los user_id deben existir en database/data/users_mock.php
- * - Los group_id deben existir en database/data/groups_mock.php (si aplica)
+ * - Los team_id (FK a equipos) deben existir en database/data/teams_mock.php (si aplica)
  */
 return [
     'templates' => [
@@ -19,7 +19,7 @@ return [
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org_demo',
             'created_by' => 'usr_direction_demo',
             'status' => 'draft',
@@ -29,14 +29,14 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333302',
-            'name' => 'Plantilla mock — visibilidad por grupo',
-            'description' => 'Plantilla visible para miembros del grupo académico seed.',
-            'visibility_level' => TemplateVisibilityLevel::Group->value,
+            'name' => 'Plantilla mock — visibilidad por equipo',
+            'description' => 'Plantilla visible para miembros del equipo seed.',
+            'visibility_level' => TemplateVisibilityLevel::Team->value,
             'delivery_deadline' => null,
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
-            'group_id' => '11111111-1111-1111-1111-111111111102',
+            'team_id' => '11111111-1111-1111-1111-111111111102',
             'organization_id' => 'org_demo',
             'created_by' => 'usr_hierarchy_fp_demo',
             'status' => 'draft',

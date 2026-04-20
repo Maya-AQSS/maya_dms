@@ -12,8 +12,10 @@ use App\Http\Resources\TemplateResource;
 use App\Http\Resources\TemplateVersionResource;
 use App\Http\Resources\TemplateVersionSummaryResource;
 use App\Policies\TemplatePolicy;
+use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -28,6 +30,7 @@ class TemplateController extends Controller
 {
     public function __construct(
         private readonly TemplateServiceInterface $templateService,
+        private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
     ) {}
 
     /**
@@ -40,6 +43,11 @@ class TemplateController extends Controller
             $request->perPage(),
         );
 
+        $this->apiTeamEmbedService->embedOnTemplatePaginator(
+            $paginator,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
         return TemplateResource::collection($paginator);
     }
 
@@ -50,16 +58,27 @@ class TemplateController extends Controller
     {
         $template = $this->templateService->create($request->toCreateDto());
 
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $template,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
         return (new TemplateResource($template))->response()->setStatusCode(201);
     }
 
     /**
      * Mostrar plantilla.
      */
-    public function show(string $template): TemplateResource
+    public function show(Request $request, string $template): TemplateResource
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('view', $model);
+        $model->loadMissing('reviewers');
+
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $model,
+            (string) $request->user()->getAuthIdentifier(),
+        );
 
         return new TemplateResource($model);
     }
@@ -75,6 +94,11 @@ class TemplateController extends Controller
         $dto = $request->toUpdateDto();
 
         $updated = $this->templateService->update($model->id, $dto);
+
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
+        );
 
         return new TemplateResource($updated);
     }
@@ -99,7 +123,7 @@ class TemplateController extends Controller
     /**
      * Clonar plantilla en borrador personal con sufijo "(copia)" y mismos bloques.
      */
-    public function clone(CloneTemplateRequest $request, string $template): JsonResponse
+    public function clone(CloneTemplateRequest $_request, string $template): JsonResponse
     {
         $copy = $this->templateService->clone($template, (string) Auth::id());
 
@@ -184,5 +208,23 @@ class TemplateController extends Controller
         $this->authorize('view', $template);
 
         return new TemplateVersionResource($version);
+    }
+
+    /**
+     * Sincroniza los validadores de la plantilla.
+     */
+    public function syncValidators(Request $request, string $template): JsonResponse
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', $model);
+
+        $request->validate([
+            'user_ids' => ['present', 'array'],
+            'user_ids.*' => ['required', 'string', 'exists:users,id'],
+        ]);
+
+        $this->templateService->syncValidators($model->id, $request->input('user_ids'));
+
+        return response()->json(['message' => 'Validadores sincronizados correctamente.']);
     }
 }

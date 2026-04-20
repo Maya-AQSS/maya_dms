@@ -129,12 +129,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Grupos internos — roles con permiso de gestión (realm roles Keycloak)
+    | Equipos — roles con permiso de gestión de catálogo (realm roles Keycloak)
     |--------------------------------------------------------------------------
     */
-    'group_management_roles' => array_values(array_filter(array_map(
+    'team_management_roles' => array_values(array_filter(array_map(
         'trim',
-        explode(',', (string) env('GROUP_MANAGEMENT_ROLES', 'manager,super-admin,admin'))
+        explode(',', (string) env(
+            'TEAM_MANAGEMENT_ROLES',
+            env('GROUP_MANAGEMENT_ROLES', 'manager,super-admin,admin')
+        ))
     ))),
 
     /*
@@ -143,7 +146,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Solo estos roles pueden crear o asignar visibilidad distinta de
-    | "personal" (global, tipo de estudio, estudio, módulo, grupo).
+    | "personal" (global, tipo de estudio, estudio, módulo, equipo).
     | Los valores deben coincidir exactamente con los roles del JWT.
     |
     */

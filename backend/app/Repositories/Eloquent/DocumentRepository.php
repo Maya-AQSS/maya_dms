@@ -134,6 +134,7 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function listOrderedByCreatedAtDesc(): Collection
     {
         return Document::query()
+            ->with('template')
             ->orderByDesc('created_at')
             ->get();
     }

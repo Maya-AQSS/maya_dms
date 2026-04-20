@@ -9,6 +9,9 @@ use Illuminate\Support\Facades\Schema;
  * Plantillas normativas: datos base + visibilidad, plazo y claves de jerarquía.
  *
  * Los valores de visibility_level coinciden con {@see TemplateVisibilityLevel}.
+ *
+ * `team_id` guarda el id del equipo en el catálogo lógico `teams`.
+ * No hay FK física: en entornos con FDW `teams` es una vista; en `testing` es tabla (validación con exists:teams,id).
  */
 return new class extends Migration
 {
@@ -28,10 +31,8 @@ return new class extends Migration
             $table->string('study_type_id')->nullable();
             $table->string('module_id')->nullable();
 
-            $table->foreignUuid('group_id')
-                ->nullable()
-                ->constrained('groups')
-                ->nullOnDelete();
+            // Sin FK física hacia `teams` (vista FDW o tabla en testing); validación exists:teams,id en Form Requests.
+            $table->uuid('team_id')->nullable()->index();
 
             $table->string('organization_id')->nullable(); // FK lógica → organización
             $table->string('created_by');                  // FK lógica → users (FDW)

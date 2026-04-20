@@ -98,7 +98,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             'study_type_id' => 'TYPE-1',
             'study_id' => 'STUDY-1',
             'module_id' => $moduleId,
-            'group_id' => null,
+            'team_id' => null,
             'organization_id' => 'org-test',
             'created_by' => $creatorId,
             'status' => 'published',

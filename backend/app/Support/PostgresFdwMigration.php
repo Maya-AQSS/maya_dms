@@ -13,6 +13,65 @@ use Illuminate\Support\Facades\DB;
 final class PostgresFdwMigration
 {
     /**
+     * Activa postgres_fdw. Retorna false si no hay permisos (misma semántica que las migraciones de catálogo).
+     */
+    public static function ensurePostgresFdwExtension(?string $catalogLabel = null): bool
+    {
+        try {
+            DB::statement('CREATE EXTENSION IF NOT EXISTS postgres_fdw');
+
+            return true;
+        } catch (\Throwable $e) {
+            $suffix = $catalogLabel !== null && $catalogLabel !== '' ? " ({$catalogLabel})" : '';
+            logger()->error('No permission for postgres_fdw'.$suffix);
+
+            return false;
+        }
+    }
+
+    /**
+     * Crea servidor FDW y user mapping para CURRENT_USER (patrón users / teams).
+     *
+     * No usa `password_required 'false'`: en PostgreSQL solo un superusuario puede crear o modificar
+     * mappings con esa opción; las migraciones suelen ejecutarse con el usuario de aplicación (p. ej. Docker).
+     */
+    public static function createFdwServerWithUserMapping(
+        string $serverName,
+        string $host,
+        string $port,
+        string $database,
+        string $username,
+        string $password,
+    ): void {
+        $safeHost = self::escapeSqlLiteral($host);
+        $safePort = self::escapeSqlLiteral($port);
+        $safeDatabase = self::escapeSqlLiteral($database);
+        $safeUsername = self::escapeSqlLiteral($username);
+        $safePassword = self::escapeSqlLiteral($password);
+
+        DB::statement("
+            CREATE SERVER IF NOT EXISTS {$serverName}
+            FOREIGN DATA WRAPPER postgres_fdw
+            OPTIONS (host '{$safeHost}', port '{$safePort}', dbname '{$safeDatabase}')
+        ");
+
+        DB::statement("
+            CREATE USER MAPPING IF NOT EXISTS FOR CURRENT_USER
+            SERVER {$serverName}
+            OPTIONS (user '{$safeUsername}', password '{$safePassword}')
+        ");
+    }
+
+    /**
+     * Elimina user mapping y servidor FDW (no borra la extensión postgres_fdw).
+     */
+    public static function dropFdwServerAndUserMapping(string $serverName): void
+    {
+        DB::statement('DROP USER MAPPING IF EXISTS FOR CURRENT_USER SERVER '.$serverName);
+        DB::statement('DROP SERVER IF EXISTS '.$serverName.' CASCADE');
+    }
+
+    /**
      * Escapa literales interpolados en OPTIONS (schema_name, table_name, etc.).
      */
     public static function escapeSqlLiteral(string $value): string

@@ -1,16 +1,17 @@
-import { useMemo, useState } from 'react';
-import type { TemplateVisibilityLevel } from '../../../types/templates';
+import { useMemo } from 'react';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
-import { datetimeLocalToIso } from '../templateFormUtils';
-import { Button, FieldLabel, Select, TextInput } from '../../../ui';
+import { Button, FieldLabel, Select } from '../../../ui';
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
+import { useNavigate } from 'react-router-dom';
+
 
 /**
  * Gestión de plantillas normativas: datos vía {@link useTemplates}.
  */
 export function TemplatesContent() {
+  const navigate = useNavigate();
   const {
     templates,
     meta,
@@ -24,21 +25,9 @@ export function TemplatesContent() {
     refetch,
     applyFilters,
     goToPage,
-    createTemplate,
-    updateTemplate,
     deleteTemplate,
     cloneTemplate,
   } = useTemplates();
-
-  const [newName, setNewName] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [newVisibility, setNewVisibility] = useState<TemplateVisibilityLevel>('personal');
-  const [newDeadline, setNewDeadline] = useState('');
-  const [newStudyTypeId, setNewStudyTypeId] = useState('');
-  const [newStudyId, setNewStudyId] = useState('');
-  const [newModuleId, setNewModuleId] = useState('');
-  const [newGroupId, setNewGroupId] = useState('');
-  const [creating, setCreating] = useState(false);
 
   const filterUi = useMemo(
     () => ({
@@ -47,50 +36,22 @@ export function TemplatesContent() {
       studyTypeId: filters.study_type_id ?? '',
       studyId: filters.study_id ?? '',
       moduleId: filters.module_id ?? '',
-      groupId: filters.group_id ?? '',
+      teamId: filters.team_id ?? '',
     }),
     [filters],
   );
 
-  const hasHierarchyIdFilters = useMemo(
-    () =>
-      Boolean(
-        filterUi.studyTypeId.trim() ||
-          filterUi.studyId.trim() ||
-          filterUi.moduleId.trim() ||
-          filterUi.groupId.trim(),
-      ),
-    [filterUi],
-  );
-
-  const handleCreate = async () => {
-    if (!newName.trim()) return;
-    setCreating(true);
-    try {
-      await createTemplate({
-        name: newName.trim(),
-        description: newDesc.trim() === '' ? null : newDesc.trim(),
-        visibility_level: newVisibility,
-        delivery_deadline: datetimeLocalToIso(newDeadline),
-        study_type_id: newStudyTypeId.trim() === '' ? null : newStudyTypeId.trim(),
-        study_id: newStudyId.trim() === '' ? null : newStudyId.trim(),
-        module_id: newModuleId.trim() === '' ? null : newModuleId.trim(),
-        group_id: newGroupId.trim() === '' ? null : newGroupId.trim(),
-      });
-      setNewName('');
-      setNewDesc('');
-      setNewVisibility('personal');
-      setNewDeadline('');
-      setNewStudyTypeId('');
-      setNewStudyId('');
-      setNewModuleId('');
-      setNewGroupId('');
-    } catch {
-      /* el hook ya dejó el mensaje en actionError */
-    } finally {
-      setCreating(false);
-    }
+  const clearFilters = () => {
+    applyFilters({
+      visibility_level: undefined,
+      status: undefined,
+      study_type_id: undefined,
+      study_id: undefined,
+      module_id: undefined,
+      team_id: undefined,
+    });
   };
+
 
   return (
     <div className="p-6 space-y-6">
@@ -104,15 +65,26 @@ export function TemplatesContent() {
             requiere roles de coordinación.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => void refetch()}
-          disabled={loading}
-        >
-          Actualizar
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void refetch()}
+            disabled={loading}
+          >
+            Actualizar
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => navigate('/templates/new')}
+          >
+            Nueva Plantilla
+          </Button>
+        </div>
+
       </div>
 
       {listError && (
@@ -178,96 +150,33 @@ export function TemplatesContent() {
             </Select>
           </div>
           <div className="lg:col-span-3">
-            <TemplateHierarchyFields
-              values={{
-                study_type_id: filterUi.studyTypeId,
-                study_id: filterUi.studyId,
-                module_id: filterUi.moduleId,
-                group_id: filterUi.groupId,
-              }}
-              onFieldChange={(key, value) =>
-                applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
-              }
-              gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-            />
+            <div className="flex flex-col lg:flex-row items-end gap-3">
+              <div className="flex-1">
+                <TemplateHierarchyFields
+                  values={{
+                    study_type_id: filterUi.studyTypeId,
+                    study_id: filterUi.studyId,
+                    module_id: filterUi.moduleId,
+                    team_id: filterUi.teamId,
+                  }}
+                  onFieldChange={(key, value) =>
+                    applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
+                  }
+                  gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+                />
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={clearFilters}
+                className="h-9.5 whitespace-nowrap shrink-0"
+              >
+                Limpiar filtros
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-5">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary mb-3">
-          Nueva plantilla
-        </h3>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-          <div>
-            <FieldLabel>Nombre</FieldLabel>
-            <TextInput
-              type="text"
-              fieldSize="comfortable"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-            />
-          </div>
-          <div>
-            <FieldLabel>Visibilidad</FieldLabel>
-            <Select
-              fieldSize="comfortable"
-              value={newVisibility}
-              onChange={(e) => setNewVisibility(e.target.value as TemplateVisibilityLevel)}
-            >
-              {VISIBILITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="lg:col-span-2">
-            <FieldLabel>Descripción</FieldLabel>
-            <TextInput
-              type="text"
-              fieldSize="comfortable"
-              value={newDesc}
-              onChange={(e) => setNewDesc(e.target.value)}
-            />
-          </div>
-          <div>
-            <FieldLabel>Plazo de entrega (opcional)</FieldLabel>
-            <TextInput
-              type="datetime-local"
-              fieldSize="comfortable"
-              value={newDeadline}
-              onChange={(e) => setNewDeadline(e.target.value)}
-            />
-          </div>
-          <div className="lg:col-span-2">
-            <TemplateHierarchyFields
-              values={{
-                study_type_id: newStudyTypeId,
-                study_id: newStudyId,
-                module_id: newModuleId,
-                group_id: newGroupId,
-              }}
-              onFieldChange={(key, value) => {
-                if (key === 'study_type_id') setNewStudyTypeId(value);
-                else if (key === 'study_id') setNewStudyId(value);
-                else if (key === 'module_id') setNewModuleId(value);
-                else setNewGroupId(value);
-              }}
-            />
-          </div>
-        </div>
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          loading={creating}
-          disabled={!newName.trim()}
-          className="mt-3"
-          onClick={() => void handleCreate()}
-        >
-          {creating ? 'Creando…' : 'Crear plantilla'}
-        </Button>
       </div>
 
       {loading && templates.length === 0 ? (
@@ -279,14 +188,6 @@ export function TemplatesContent() {
           <p className="text-sm text-text-muted dark:text-text-dark-muted">
             No hay plantillas visibles con los filtros actuales.
           </p>
-          {hasHierarchyIdFilters ? (
-            <p className="text-xs text-text-muted dark:text-text-dark-muted leading-relaxed">
-              Si acabas de crear una plantilla, los filtros por <span className="font-mono">study_type_id</span>,{' '}
-              <span className="font-mono">study_id</span>, etc. deben coincidir con la plantilla. Si filtras por un ID
-              pero la creaste sin ese campo (p. ej. personal sin jerarquía), no aparecerá: vacía esos campos o repite
-              los mismos UUID que al crear.
-            </p>
-          ) : null}
         </div>
       ) : null}
 
@@ -323,14 +224,12 @@ export function TemplatesContent() {
           <TemplateCard
             key={t.id}
             template={t}
-            onUpdate={async (id, payload) => {
-              await updateTemplate(id, payload);
-            }}
             onDelete={deleteTemplate}
             onClone={cloneTemplate}
           />
         ))}
       </div>
     </div>
+
   );
 }
