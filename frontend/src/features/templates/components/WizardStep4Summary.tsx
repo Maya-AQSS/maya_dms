@@ -12,6 +12,7 @@ type Props = {
   template: Template;
   validators: ValidatorEntry[];
   validationType: 'libre' | 'ordenada';
+  documentValidators?: ValidatorEntry[];
 };
 
 type PreviewTab = 'Contenido' | 'Descripción';
@@ -33,7 +34,7 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function WizardStep4Summary({ template, validators, validationType }: Props) {
+export function WizardStep4Summary({ template, validators, validationType, documentValidators = [] }: Props) {
   const { blocks } = useTemplateBlocks(template.id);
 
   const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
@@ -82,41 +83,62 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
         </div>
 
         {/* Columna derecha — Usuarios y validación */}
-        <div className="px-5 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
-            Usuarios y validación
-          </p>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] font-bold uppercase text-text-secondary">Tipo:</span>
-            <span className="text-xs font-bold text-odoo-purple dark:text-odoo-dark-purple capitalize">
-              {validationType}
-            </span>
-          </div>
-          {validators.length === 0 ? (
-            <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
-          ) : (
-            <div className="space-y-2.5">
-              {validators.map((v, i) => {
-                const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
-                return (
-                  <div key={v.userId} className="flex items-center gap-2.5">
-                    {validationType === 'ordenada' && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
-                        {i + 1}
-                      </span>
-                    )}
-                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
-                      {initials}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
-                    </div>
-                  </div>
-                );
-              })}
+        <div className="px-5 py-4 space-y-4">
+          {/* Validadores de la plantilla */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                Validadores de la plantilla
+              </p>
+              <span className="text-[10px] font-bold text-odoo-purple capitalize">({validationType})</span>
             </div>
-          )}
+            {validators.length === 0 ? (
+              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-36">
+                {validators.map((v, i) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      {validationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                      )}
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">{initials}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Validadores del documento */}
+          <div className="pt-3 border-t border-ui-border dark:border-ui-dark-border">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
+              Validadores del documento
+            </p>
+            {documentValidators.length === 0 ? (
+              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-36">
+                {documentValidators.map((v) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-[10px] font-black border border-odoo-teal/20 flex items-center justify-center">{initials}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -132,7 +154,7 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
             type="button"
             className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple transition-colors"
           >
-            Previsualización PDF
+            Previsualizar
           </button>
         </div>
 
@@ -144,7 +166,7 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
           <div className="grid" style={{ gridTemplateColumns: '200px 1fr', minHeight: '200px' }}>
 
             {/* Lista de bloques */}
-            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto">
+            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto max-h-64">
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
                 Bloques ({blocks.length})
               </p>
