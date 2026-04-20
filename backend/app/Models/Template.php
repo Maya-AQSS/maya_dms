@@ -139,6 +139,11 @@ class Template extends Model
         return $this->hasMany(TemplateReviewer::class);
     }
 
+    public function documentReviewers(): HasMany
+    {
+        return $this->hasMany(TemplateDocumentReviewer::class);
+    }
+
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);

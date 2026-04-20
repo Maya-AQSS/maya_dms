@@ -211,20 +211,38 @@ class TemplateController extends Controller
     }
 
     /**
-     * Sincroniza los validadores de la plantilla.
+     * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncValidators(Request $request, string $template): JsonResponse
+    public function syncReviewers(Request $request, string $template): JsonResponse
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('update', $model);
 
         $request->validate([
-            'user_ids' => ['present', 'array'],
+            'user_ids'   => ['present', 'array'],
             'user_ids.*' => ['required', 'string', 'exists:users,id'],
         ]);
 
-        $this->templateService->syncValidators($model->id, $request->input('user_ids'));
+        $this->templateService->syncReviewers($model->id, $request->input('user_ids'));
 
-        return response()->json(['message' => 'Validadores sincronizados correctamente.']);
+        return response()->json(['message' => 'Revisores de plantilla sincronizados correctamente.']);
+    }
+
+    /**
+     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
+     */
+    public function syncDocumentReviewers(Request $request, string $template): JsonResponse
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', $model);
+
+        $request->validate([
+            'user_ids'   => ['present', 'array'],
+            'user_ids.*' => ['required', 'string', 'exists:users,id'],
+        ]);
+
+        $this->templateService->syncDocumentReviewers($model->id, $request->input('user_ids'));
+
+        return response()->json(['message' => 'Validadores de documento sincronizados correctamente.']);
     }
 }

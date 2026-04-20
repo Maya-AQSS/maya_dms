@@ -80,8 +80,14 @@ interface TemplateServiceInterface
     public function clone(string $sourceTemplateId, string $actorId): Template;
 
     /**
-     * Sincroniza los validadores de la plantilla.
+     * Sincroniza los revisores de la plantilla normativa.
      * @param array<int, string> $userIds Lista ordenada de IDs de usuario.
      */
-    public function syncValidators(string $templateId, array $userIds): void;
+    public function syncReviewers(string $templateId, array $userIds): void;
+
+    /**
+     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
+     * @param array<int, string> $userIds IDs de usuario elegibles como revisores de documentos.
+     */
+    public function syncDocumentReviewers(string $templateId, array $userIds): void;
 }

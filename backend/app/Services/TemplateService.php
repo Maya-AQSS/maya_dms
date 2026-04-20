@@ -320,21 +320,37 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Sincroniza los validadores de la plantilla.
+     * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncValidators(string $templateId, array $userIds): void
+    public function syncReviewers(string $templateId, array $userIds): void
     {
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
 
-            // Eliminar revisores actuales
             $template->reviewers()->delete();
 
-            // Insertar nuevos con orden (stage)
             foreach ($userIds as $index => $userId) {
                 $template->reviewers()->create([
                     'user_id' => $userId,
-                    'stage' => $index + 1,
+                    'stage'   => $index + 1,
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
+     */
+    public function syncDocumentReviewers(string $templateId, array $userIds): void
+    {
+        DB::transaction(function () use ($templateId, $userIds) {
+            $template = $this->templateRepository->findOrFail($templateId);
+
+            $template->documentReviewers()->delete();
+
+            foreach ($userIds as $userId) {
+                $template->documentReviewers()->create([
+                    'user_id' => $userId,
                 ]);
             }
         });

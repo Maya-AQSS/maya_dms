@@ -51,7 +51,9 @@ Route::prefix('v1')->group(function () {
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
         Route::apiResource('templates', TemplateController::class)
             ->whereUuid('template');
-        Route::post('templates/{template}/validators', [TemplateController::class, 'syncValidators'])
+        Route::post('templates/{template}/reviewers', [TemplateController::class, 'syncReviewers'])
+            ->whereUuid('template');
+        Route::post('templates/{template}/document-reviewers', [TemplateController::class, 'syncDocumentReviewers'])
             ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
         Route::patch('templates/{template}/blocks/reorder', [TemplateBlockController::class, 'reorder'])

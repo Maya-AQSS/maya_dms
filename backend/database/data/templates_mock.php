@@ -289,6 +289,29 @@ return [
             'review_mode' => 'sequential',
         ],
     ],
+    /**
+     * Pool de posibles validadores de documentos generados desde cada plantilla.
+     * Son usuarios distintos de los revisores de la plantilla normativa (template_reviewers).
+     * PK compuesta (template_id, user_id) → sin campo id.
+     */
+    'template_document_reviewers' => [
+        // Plantilla global 01 — doc reviewers: secretaria + docentes
+        ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165'],
+        ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f'],
+        // Plantilla equipo académico 02 — doc reviewers: dirección + secretaria
+        ['template_id' => '33333333-3333-3333-3333-333333333302', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333302', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        // Plantilla tipo BACH 08 — doc reviewers: dirección
+        ['template_id' => '33333333-3333-3333-3333-333333333308', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        // Plantilla tipo FP 09 — doc reviewers: dirección + secretaria
+        ['template_id' => '33333333-3333-3333-3333-333333333309', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333309', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        // Plantilla módulo DWES 11 — doc reviewers: dirección + secretaria
+        ['template_id' => '33333333-3333-3333-3333-333333333311', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333311', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+    ],
+
     'template_reviewers' => [
         [
             'id' => '44444444-4444-4444-4444-444444444401',
