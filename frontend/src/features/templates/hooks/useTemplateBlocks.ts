@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  bulkUpdateBlocks,
   createBlock as createBlockRequest,
   deleteBlock as deleteBlockRequest,
   fetchBlocks,
@@ -9,8 +8,6 @@ import {
 } from '../../../api/blocks';
 import { ApiHttpError } from '../../../api/http';
 import type {
-  BlockState,
-  BulkUpdateBlockPayload,
   CreateBlockPayload,
   TemplateBlock,
   UpdateBlockPayload,
@@ -54,7 +51,7 @@ export function useTemplateBlocks(templateId: string) {
   const createBlock = useCallback(
     async (payload: CreateBlockPayload) => {
       const res = await createBlockRequest(templateId, payload);
-      setBlocks((prev) => [...prev, res.data]);
+      setBlocks((prev: TemplateBlock[]) => [...prev, res.data]);
       return res.data;
     },
     [templateId],
@@ -63,7 +60,7 @@ export function useTemplateBlocks(templateId: string) {
   const updateBlock = useCallback(
     async (blockId: string, payload: UpdateBlockPayload) => {
       const res = await updateBlockRequest(blockId, payload);
-      setBlocks((prev) => prev.map((b) => (b.id === blockId ? res.data : b)));
+      setBlocks((prev: TemplateBlock[]) => prev.map((b: TemplateBlock) => (b.id === blockId ? res.data : b)));
       return res.data;
     },
     [],
@@ -71,56 +68,17 @@ export function useTemplateBlocks(templateId: string) {
 
   const deleteBlock = useCallback(async (blockId: string) => {
     await deleteBlockRequest(blockId);
-    setBlocks((prev) => prev.filter((b) => b.id !== blockId));
-    setSelectedIds((prev) => {
+    setBlocks((prev: TemplateBlock[]) => prev.filter((b: TemplateBlock) => b.id !== blockId));
+    setSelectedIds((prev: Set<string>) => {
       const next = new Set(prev);
       next.delete(blockId);
       return next;
     });
   }, []);
 
-  /**
-   * Cambia el block_state de los bloques seleccionados.
-   * Si hay múltiples seleccionados usa la ruta bulk; si hay uno solo usa la ruta individual.
-   */
-  const applyStateToSelected = useCallback(
-    async (state: BlockState) => {
-      const ids = Array.from(selectedIds);
-      if (ids.length === 0) return;
-
-      if (ids.length === 1) {
-        const res = await updateBlockRequest(ids[0], { block_state: state });
-        setBlocks((prev) => prev.map((b) => (b.id === ids[0] ? res.data : b)));
-      } else {
-        const payload: BulkUpdateBlockPayload = { ids, block_state: state };
-        const res = await bulkUpdateBlocks(payload);
-        const updated = new Map(res.data.map((b) => [b.id, b]));
-        setBlocks((prev) => prev.map((b) => updated.get(b.id) ?? b));
-      }
-    },
-    [selectedIds],
-  );
-
-  const applyMandatoryToSelected = useCallback(
-    async (mandatory: boolean) => {
-      const ids = Array.from(selectedIds);
-      if (ids.length === 0) return;
-
-      if (ids.length === 1) {
-        const res = await updateBlockRequest(ids[0], { mandatory });
-        setBlocks((prev) => prev.map((b) => (b.id === ids[0] ? res.data : b)));
-      } else {
-        const payload: BulkUpdateBlockPayload = { ids, mandatory };
-        const res = await bulkUpdateBlocks(payload);
-        const updated = new Map(res.data.map((b) => [b.id, b]));
-        setBlocks((prev) => prev.map((b) => updated.get(b.id) ?? b));
-      }
-    },
-    [selectedIds],
-  );
 
   const toggleSelect = useCallback((id: string) => {
-    setSelectedIds((prev) => {
+    setSelectedIds((prev: Set<string>) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -143,13 +101,12 @@ export function useTemplateBlocks(templateId: string) {
     createBlock,
     updateBlock,
     deleteBlock,
-    applyStateToSelected,
-    applyMandatoryToSelected,
+
     toggleSelect,
     selectOnly,
     clearSelection,
     reorderBlocks: async (draggedId: string, targetIndex: number) => {
-      const sourceIndex = blocks.findIndex(b => b.id === draggedId);
+      const sourceIndex = blocks.findIndex((b: TemplateBlock) => b.id === draggedId);
       if (sourceIndex === -1) return;
       const snapshot = blocks;
       const newBlocks = [...blocks];
@@ -157,7 +114,7 @@ export function useTemplateBlocks(templateId: string) {
       newBlocks.splice(targetIndex, 0, movedBlock);
       setBlocks(newBlocks); // optimistic update
       try {
-        await reorderBlocksForTemplate(templateId, newBlocks.map(b => b.id));
+        await reorderBlocksForTemplate(templateId, newBlocks.map((b: TemplateBlock) => b.id));
       } catch (e) {
         console.error('Failed to persist reorder:', e);
         setBlocks(snapshot); // revert on failure

@@ -1,11 +1,10 @@
 import React, {
-  Suspense,
-  lazy,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from 'react';
+import { ErrorBoundary } from '../../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,
@@ -30,8 +29,6 @@ import {
   BLOCK_UI_STATE_CONFIG,
   blockToUiState,
 } from '../blockUiState';
-
-const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel'));
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -166,9 +163,6 @@ export function TemplateEditor({ template }: Props) {
   const { blocks, loading, createBlock, updateBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
   const sensors = useSensors(useSensor(PointerSensor));
-
-  // Dark mode — read once at mount (follows <html class="dark">)
-  const isDark = document.documentElement.classList.contains('dark');
 
   // Right panel mode
   const [activeBlockId, setActiveBlockId] = useState<string | null>(null);
@@ -504,25 +498,23 @@ export function TemplateEditor({ template }: Props) {
           </div>
         )}
 
-        {/* right-editor (BlockNote, lazy-loaded) */}
-        <Suspense
+        {/* right-editor (placeholder hasta activar @blocknote/mantine) */}
+        <ErrorBoundary
           fallback={
-            <div className="flex-1 flex items-center justify-center text-xs text-text-muted dark:text-text-dark-muted">
-              Cargando editor…
+            <div className="flex-1 flex items-center justify-center p-6 text-sm text-danger-dark">
+              Error al cargar el editor. Recarga la página.
             </div>
           }
         >
-          <BlockNoteEditorPanel
-            key={activeBlockId!}
-            initialContent={activeBlock.default_content}
-            editable={!isBlockLocked}
-            isDark={isDark}
-            onChange={(content) => {
-              setLocalContent(content);
-              markDirty();
-            }}
-          />
-        </Suspense>
+          <div
+            className="flex-1 flex items-center justify-center rounded-lg border-2 border-dashed border-ui-border dark:border-ui-dark-border bg-ui-body/50 dark:bg-ui-dark-bg/50 mx-4 my-4"
+            style={{ minHeight: '200px' }}
+          >
+            <p className="text-sm text-text-muted text-center px-6">
+              Editor de contenido — próximamente disponible.
+            </p>
+          </div>
+        </ErrorBoundary>
       </div>
     );
   };

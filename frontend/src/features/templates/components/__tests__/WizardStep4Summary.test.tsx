@@ -1,17 +1,22 @@
 import { render, screen } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { WizardStep4Summary } from '../WizardStep4Summary';
 
 describe('WizardStep4Summary', () => {
   const mockData = {
-    name: 'Test Template',
-    description: 'This is a description',
-    visibility: 'study_type' as const,
-    studyTypeId: 'st1',
-    blocksCount: 5,
-    validatorsCount: 2,
+    template: {
+      id: 't1',
+      name: 'Test Template',
+      description: 'This is a description',
+      visibility_level: 'study_type',
+      study_type_id: 'st1',
+      review_mode: 'ordenada',
+    } as any,
+    validators: [
+      { userId: 'u1', name: 'Val 1' },
+      { userId: 'u2', name: 'Val 2' },
+    ],
     validationType: 'ordenada' as const,
-    onEditStep: vi.fn(),
   };
 
   it('renders summary data correctly', () => {
@@ -29,18 +34,12 @@ describe('WizardStep4Summary', () => {
     expect(screen.getByText(/Validación Ordenada/i)).toBeTruthy();
   });
 
-  it('calls onEditStep when edit buttons are clicked', () => {
-    const onEditStep = vi.fn();
-    render(<WizardStep4Summary {...mockData} onEditStep={onEditStep} />);
+  it('renders correctly', () => {
+    render(<WizardStep4Summary {...mockData} />);
     
-    // There are several "Editar" buttons in the summary
-    const editBtns = screen.getAllByRole('button', { name: /Editar/i });
-    
-    // Clicking the first one (Properties)
-    fireEvent.click(editBtns[0]);
-    expect(onEditStep).toHaveBeenCalledWith(1);
+    expect(screen.getByText('Test Template')).toBeTruthy();
+    expect(screen.getByText('This is a description')).toBeTruthy();
   });
 });
 
-// Import fireEvent since it was missing in the previous thought block
-import { fireEvent } from '@testing-library/react';
+

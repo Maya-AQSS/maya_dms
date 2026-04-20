@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TemplateWizard } from '../TemplateWizard';
-import { updateTemplate, createTemplate } from '../../../../api/templates';
+import { createTemplate } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { MemoryRouter } from 'react-router-dom';
 

@@ -83,6 +83,9 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         if ($dto->set_mandatory) {
             $attributes['mandatory'] = $dto->mandatory;
         }
+        if ($dto->set_description) {
+            $attributes['description'] = $dto->description;
+        }
 
         if ($attributes === []) {
             return $block;

@@ -54,13 +54,6 @@ export function WizardStep1Properties({
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
-  const BINDING_TITLES: Partial<Record<TemplateVisibilityLevel, string>> = {
-    study_type: 'Tipo de Estudio',
-    study: 'Estudio',
-    module: 'Módulo',
-    group: 'Equipo',
-  };
-
   return (
     <div className="flex-1 overflow-y-auto px-8 py-6">
       <div className="space-y-6">
@@ -126,9 +119,7 @@ export function WizardStep1Properties({
         {showAcademicBlock && (
           <div
             className="pt-5 border-t border-ui-border dark:border-ui-dark-border"
-            style={{
-              animation: 'wizardFadeSlide 150ms ease both',
-            }}
+            style={{ animation: 'wizardFadeSlide 150ms ease both' }}
           >
             <style>{`
               @keyframes wizardFadeSlide {
@@ -136,15 +127,15 @@ export function WizardStep1Properties({
                 to   { opacity: 1; transform: translateY(0); }
               }
             `}</style>
-            <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-4">
-              {BINDING_TITLES[visibility] ?? visibility}
-            </p>
 
-            <div className="max-w-sm space-y-4">
+            <div className={`grid gap-4 ${
+              visibility === 'module' ? 'grid-cols-3' :
+              visibility === 'study' ? 'grid-cols-2' :
+              'grid-cols-1'
+            }`}>
               {/* Tipo de Estudio — required parent context for study_type, study, module */}
               {(visibility === 'study_type' || visibility === 'study' || visibility === 'module') && (
                 <div>
-                  <FieldLabel required>Tipo de Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyTypeId}
@@ -170,7 +161,6 @@ export function WizardStep1Properties({
               {/* Estudio — filtered by Tipo de Estudio; required parent context for study, module */}
               {(visibility === 'study' || visibility === 'module') && (
                 <div>
-                  <FieldLabel required>Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyId}
@@ -195,7 +185,6 @@ export function WizardStep1Properties({
               {/* Módulo — filtered by Estudio */}
               {visibility === 'module' && (
                 <div>
-                  <FieldLabel required>Módulo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={moduleId}
@@ -217,7 +206,6 @@ export function WizardStep1Properties({
               {/* Equipo — standalone, no hierarchy */}
               {visibility === 'group' && (
                 <div>
-                  <FieldLabel required>Equipo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={groupId}

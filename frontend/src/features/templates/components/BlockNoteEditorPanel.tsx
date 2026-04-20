@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
-import { BlockNoteView } from '@blocknote/react';
+import { BlockNoteViewRaw as BlockNoteView } from '@blocknote/react';
 import '@blocknote/react/style.css';
 
 interface Props {

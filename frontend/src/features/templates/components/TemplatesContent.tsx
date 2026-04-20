@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import type { Template } from '../../../types/templates';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
 import { Button, FieldLabel, Select } from '../../../ui';

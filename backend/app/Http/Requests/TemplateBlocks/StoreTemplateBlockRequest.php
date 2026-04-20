@@ -18,6 +18,7 @@ class StoreTemplateBlockRequest extends FormRequest
             'type'            => ['required', 'string', 'max:50'],
             'title'           => ['nullable', 'string', 'max:255'],
             'default_content' => ['nullable', 'array'],
+            'description'     => ['nullable', 'string'],
             'block_state'     => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
             'mandatory'       => ['sometimes', 'boolean'],
             'sort_order'      => ['sometimes', 'integer', 'min:0'],
