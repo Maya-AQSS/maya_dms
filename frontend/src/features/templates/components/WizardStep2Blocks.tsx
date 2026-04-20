@@ -1,4 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import { useDarkMode } from '../../../hooks/useDarkMode';
+
+const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel'));
 import {
   DndContext,
   closestCenter,
@@ -135,7 +138,7 @@ function BlockUiStateToggle({
 }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {(['editable', 'modifiable', 'locked', 'optional'] as BlockUiState[]).map((s) => (
+      {(['optional', 'editable', 'modifiable', 'locked'] as BlockUiState[]).map((s) => (
         <button
           key={s}
           type="button"
@@ -164,6 +167,7 @@ type Props = {
 };
 
 export function WizardStep2Blocks({ template }: Props) {
+  const { isDark } = useDarkMode();
   const { blocks, createBlock, updateBlock, deleteBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
 
@@ -285,12 +289,13 @@ export function WizardStep2Blocks({ template }: Props) {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
     clickTimerRef.current = setTimeout(() => {
+      const block = blocks.find((b: TemplateBlock) => b.id === blockId);
+      if (!block) return;
       setSelectedBlockIds([blockId]);
-      setActiveSingleId(blockId);
-      setPanelMode('summary');
       setMultiSaved(new Set());
       setActionError(null);
       setDeleteModal(false);
+      openEdit(block);
     }, 200);
   };
 
@@ -305,10 +310,8 @@ export function WizardStep2Blocks({ template }: Props) {
         setPanelMode('empty');
         setActiveSingleId(null);
       } else if (newIds.length === 1) {
-        setActiveSingleId(newIds[0]);
-        setPanelMode('summary');
         const block = blocks.find((b: TemplateBlock) => b.id === newIds[0]);
-        if (block) loadFormFromBlock(block);
+        if (block) openEdit(block);
       } else {
         const ordered = blocks.filter((b: TemplateBlock) => newIds.includes(b.id)).map((b: TemplateBlock) => b.id);
         setMultiIndex(0);
@@ -384,9 +387,11 @@ export function WizardStep2Blocks({ template }: Props) {
   };
 
   const openSummary = (blockId: string) => {
+    const block = blocks.find((b: TemplateBlock) => b.id === blockId);
+    if (block) { openEdit(block); return; }
     setActiveSingleId(blockId);
     setSelectedBlockIds([blockId]);
-    setPanelMode('summary');
+    setPanelMode('edit');
     setDeleteModal(false);
     setActionError(null);
   };
@@ -742,11 +747,11 @@ export function WizardStep2Blocks({ template }: Props) {
             </div>
 
             {/* Tab content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
               {activeTab === 'properties' && (
                 <div className="space-y-4">
                   <div>
-                    <FieldLabel>Nombre del bloque</FieldLabel>
+                    <FieldLabel required>Nombre del bloque</FieldLabel>
                     <TextInput
                       type="text"
                       fieldSize="comfortable"
@@ -785,16 +790,15 @@ export function WizardStep2Blocks({ template }: Props) {
               )}
 
               {activeTab === 'description' && (
-                <div>
-                  <FieldLabel>Descripción del bloque</FieldLabel>
-                  <TextArea
-                    fieldSize="comfortable"
-                    value={formDesc}
-                    onChange={(e) => { setFormDesc(e.target.value); setTabIsDirty(true); }}
-                    placeholder="Describe el propósito normativo de este bloque..."
-                    style={{ minHeight: '120px' }}
+                <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
+                  <BlockNoteEditorPanel
+                    key={activeSingleId ?? 'new'}
+                    initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                    editable
+                    isDark={isDark}
+                    onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
                   />
-                </div>
+                </Suspense>
               )}
 
               {actionError && (
@@ -962,7 +966,7 @@ export function WizardStep2Blocks({ template }: Props) {
             <div className="flex gap-3">
               <Button
                 type="button"
-                variant="secondary"
+                variant="primary"
                 size="md"
                 className="flex-1"
                 disabled={busy}
@@ -972,9 +976,9 @@ export function WizardStep2Blocks({ template }: Props) {
               </Button>
               <Button
                 type="button"
-                variant="primary"
+                variant="outline"
                 size="md"
-                className="flex-1 bg-danger border-danger hover:bg-red-700"
+                className="flex-1 text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
                 loading={busy}
                 onClick={() => void handleDelete()}
               >
