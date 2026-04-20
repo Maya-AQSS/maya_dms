@@ -50,6 +50,7 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
             'type'            => $attributes['type'],
             'title'           => $attributes['title'] ?? null,
             'default_content' => $attributes['default_content'] ?? null,
+            'description'     => $attributes['description'] ?? null,
             'block_state'     => $attributes['block_state'] ?? 'editable',
             'mandatory'       => $attributes['mandatory'] ?? false,
             'sort_order'      => $attributes['sort_order'] ?? ($maxOrder + 1),

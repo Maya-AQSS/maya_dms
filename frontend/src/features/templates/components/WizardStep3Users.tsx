@@ -236,21 +236,21 @@ export function WizardStep3Users({
   };
 
   const handleRemove = (userId: string) => {
-    onValidatorsChange(validators.filter((v) => v.userId !== userId));
+    onValidatorsChange(validators.filter((v: ValidatorEntry) => v.userId !== userId));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = validators.findIndex((v) => v.userId === active.id);
-    const newIndex = validators.findIndex((v) => v.userId === over.id);
+    const oldIndex = validators.findIndex((v: ValidatorEntry) => v.userId === active.id);
+    const newIndex = validators.findIndex((v: ValidatorEntry) => v.userId === over.id);
     onValidatorsChange(arrayMove(validators, oldIndex, newIndex));
   };
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-      {/* Columna Izquierda: Validadores */}
-      <div className="md:w-1/2 min-w-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
+      {/* Columna Izquierda — 25%: Validadores */}
+      <div className="md:w-1/4 min-w-0 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
         <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary shrink-0">
@@ -299,7 +299,7 @@ export function WizardStep3Users({
               onDragEnd={handleDragEnd}
             >
               <SortableContext 
-                items={validators.map(v => v.userId)} 
+                items={validators.map((v: ValidatorEntry) => v.userId)} 
                 strategy={verticalListSortingStrategy}
               >
                 <div className="space-y-3">
@@ -319,8 +319,8 @@ export function WizardStep3Users({
         </div>
       </div>
 
-      {/* Columna Derecha: Buscador */}
-      <div className="md:w-1/2 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
+      {/* Columna Derecha — 75%: Buscador */}
+      <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
         <div className="p-4 border-b border-ui-border dark:border-ui-dark-border shrink-0">
           {!canSearchUsers && (
             <p className="mb-3 text-xs text-text-muted dark:text-text-dark-muted">
@@ -355,11 +355,11 @@ export function WizardStep3Users({
           {!searching && !searchError && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
             <p className="text-xs text-text-muted p-2">No se encontraron usuarios con ese término.</p>
           )}
-          {searchResults.map((u) => (
+          {searchResults.map((u: User) => (
             <UserSearchResult
               key={u.id}
               user={u}
-              alreadyAdded={validators.some((v) => v.userId === u.id)}
+              alreadyAdded={validators.some((v: ValidatorEntry) => v.userId === u.id)}
               onAdd={handleAdd}
             />
           ))}

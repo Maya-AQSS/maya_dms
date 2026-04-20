@@ -12,6 +12,7 @@ use App\Http\Resources\TemplateBlockResource;
 use App\Models\Template;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -80,6 +81,8 @@ class TemplateBlockController extends Controller
             set_block_state: $request->has('block_state'),
             mandatory:       $validated['mandatory'] ?? null,
             set_mandatory:   $request->has('mandatory'),
+            description:     $validated['description'] ?? null,
+            set_description: $request->has('description'),
         );
 
         $updated = $this->blockService->update(
@@ -97,6 +100,43 @@ class TemplateBlockController extends Controller
     public function destroy(string $block): Response
     {
         $this->blockService->delete($block, (string) Auth::id());
+
+        return response()->noContent();
+    }
+
+    /**
+     * PATCH /api/v1/templates/{template}/blocks/reorder
+     * Reordena todos los bloques de una plantilla. Recibe { block_ids: [...] } en el nuevo orden.
+     */
+    public function reorder(Request $request, string $template): \Illuminate\Http\Response
+    {
+        $blockIds = $request->validate([
+            'block_ids'   => ['required', 'array'],
+            'block_ids.*' => ['required', 'string', 'uuid'],
+        ])['block_ids'];
+
+        $userId = (string) Auth::id();
+
+        foreach ($blockIds as $index => $blockId) {
+            $this->blockService->update(
+                blockId: $blockId,
+                dto: new UpdateTemplateBlockDto(
+                    type:                null,
+                    set_type:            false,
+                    title:               null,
+                    set_title:           false,
+                    default_content:     null,
+                    set_default_content: false,
+                    sort_order:          $index + 1,
+                    set_sort_order:      true,
+                    block_state:         null,
+                    set_block_state:     false,
+                    mandatory:           null,
+                    set_mandatory:       false,
+                ),
+                userId: $userId,
+            );
+        }
 
         return response()->noContent();
     }

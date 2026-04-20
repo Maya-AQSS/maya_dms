@@ -7,9 +7,14 @@ export type TemplateVisibilityLevel =
   | 'team'
   | 'personal';
 
-export type TemplateStatus = 'draft' | 'published' | 'archived';
+export type TemplateStatus = 'draft' | 'in_review' | 'published' | 'archived';
 
 export type ReviewMode = 'sequential' | 'parallel';
+
+export type TemplateReviewer = {
+  user_id: string;
+  stage: number;
+};
 
 export type Template = {
   id: string;
@@ -26,6 +31,7 @@ export type Template = {
   version: number;
   review_stages: number;
   review_mode: ReviewMode;
+  reviewers?: TemplateReviewer[];
   created_at?: string;
   updated_at?: string;
 };

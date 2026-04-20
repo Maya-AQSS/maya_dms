@@ -25,7 +25,7 @@ export default defineConfig({
     }
   },
   optimizeDeps: {
-    include: ['keycloak-js', 'axios'],
+    include: ['keycloak-js', 'axios', '@blocknote/core', '@blocknote/react'],
     exclude: ['@maya/shared-auth-react'],
   },
   resolve: {

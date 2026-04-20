@@ -45,16 +45,14 @@ export function WizardStep1Properties({
     : null;
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
-  const allModules = allStudies.flatMap((s) => s.course_modules);
+  const filteredStudies = studyTypeId
+    ? (hierarchy.find((t) => String(t.id) === studyTypeId)?.studies ?? [])
+    : allStudies;
+  const filteredModules = studyId
+    ? (allStudies.find((s) => String(s.id) === studyId)?.course_modules ?? [])
+    : [];
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
-
-  const BINDING_TITLES: Partial<Record<TemplateVisibilityLevel, string>> = {
-    study_type: 'Tipo de Estudio',
-    study: 'Estudio',
-    module: 'Módulo',
-    team: 'Equipo',
-  };
 
   return (
     <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -121,9 +119,7 @@ export function WizardStep1Properties({
         {showAcademicBlock && (
           <div
             className="pt-5 border-t border-ui-border dark:border-ui-dark-border"
-            style={{
-              animation: 'wizardFadeSlide 150ms ease both',
-            }}
+            style={{ animation: 'wizardFadeSlide 150ms ease both' }}
           >
             <style>{`
               @keyframes wizardFadeSlide {
@@ -131,19 +127,24 @@ export function WizardStep1Properties({
                 to   { opacity: 1; transform: translateY(0); }
               }
             `}</style>
-            <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-4">
-              {BINDING_TITLES[visibility] ?? visibility}
-            </p>
 
-            <div className="max-w-sm">
-              {visibility === 'study_type' && (
+            <div className={`grid gap-4 ${
+              visibility === 'module' ? 'grid-cols-3' :
+              visibility === 'study' ? 'grid-cols-2' :
+              'grid-cols-1'
+            }`}>
+              {/* Tipo de Estudio — required parent context for study_type, study, module */}
+              {(visibility === 'study_type' || visibility === 'study' || visibility === 'module') && (
                 <div>
-                  <FieldLabel required>Tipo de Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyTypeId}
                     disabled={hierarchyLoading}
-                    onChange={(e) => setStudyTypeId(e.target.value)}
+                    onChange={(e) => {
+                      setStudyTypeId(e.target.value);
+                      setStudyId('');
+                      setModuleId('');
+                    }}
                     error={!!errors.studyTypeId}
                   >
                     <option value="">— Seleccionar —</option>
@@ -157,18 +158,21 @@ export function WizardStep1Properties({
                 </div>
               )}
 
-              {visibility === 'study' && (
+              {/* Estudio — filtered by Tipo de Estudio; required parent context for study, module */}
+              {(visibility === 'study' || visibility === 'module') && (
                 <div>
-                  <FieldLabel required>Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyId}
                     disabled={hierarchyLoading}
-                    onChange={(e) => setStudyId(e.target.value)}
+                    onChange={(e) => {
+                      setStudyId(e.target.value);
+                      setModuleId('');
+                    }}
                     error={!!errors.studyId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {allStudies.map((s) => (
+                    {filteredStudies.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </Select>
@@ -178,9 +182,9 @@ export function WizardStep1Properties({
                 </div>
               )}
 
+              {/* Módulo — filtered by Estudio */}
               {visibility === 'module' && (
                 <div>
-                  <FieldLabel required>Módulo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={moduleId}
@@ -189,7 +193,7 @@ export function WizardStep1Properties({
                     error={!!errors.moduleId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {allModules.map((m) => (
+                    {filteredModules.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </Select>
@@ -201,7 +205,6 @@ export function WizardStep1Properties({
 
               {visibility === 'team' && (
                 <div>
-                  <FieldLabel required>Equipo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={teamId}

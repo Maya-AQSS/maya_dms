@@ -1,5 +1,5 @@
-import type { ReactNode } from 'react';
-import { Button } from '../../../ui';
+import { useState, useEffect } from 'react';
+import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { visibilityLabel } from '../constants';
 import type { ValidatorEntry } from './WizardStep3Users';
@@ -8,54 +8,23 @@ import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type WizardStep = 'properties' | 'blocks' | 'users' | 'summary';
-
 type Props = {
   template: Template;
   validators: ValidatorEntry[];
   validationType: 'libre' | 'ordenada';
-  onGoToStep: (step: WizardStep) => void;
 };
 
-// ── Summary card ─────────────────────────────────────────────────────────────
+type PreviewTab = 'Contenido' | 'Descripción';
 
-function SummaryCard({
-  title,
-  children,
-  onEdit,
-}: {
-  title: string;
-  children: ReactNode;
-  onEdit: () => void;
-}) {
-  return (
-    <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1">
-      <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between bg-ui-card/50 dark:bg-ui-dark-card/50">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-          {title}
-        </span>
-        <Button 
-          type="button" 
-          variant="secondary" 
-          size="xs" 
-          onClick={onEdit}
-          className="hover:text-odoo-purple"
-        >
-          Editar →
-        </Button>
-      </div>
-      <div className="p-5">{children}</div>
-    </div>
-  );
-}
+// ── SummaryRow helper ─────────────────────────────────────────────────────────
 
-function SummaryRow({ label, value }: { label: string; value: ReactNode }) {
+function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row sm:gap-4 py-2 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
-      <dt className="sm:w-32 shrink-0 text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mt-0.5">
+    <div className="flex flex-col py-1.5 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
+      <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
         {label}
       </dt>
-      <dd className="flex-1 text-sm font-medium text-text-primary dark:text-text-dark-primary">
+      <dd className="mt-0.5 text-xs font-medium text-text-primary dark:text-text-dark-primary">
         {value || <span className="text-text-muted italic">—</span>}
       </dd>
     </div>
@@ -64,8 +33,17 @@ function SummaryRow({ label, value }: { label: string; value: ReactNode }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function WizardStep4Summary({ template, validators, validationType, onGoToStep }: Props) {
+export function WizardStep4Summary({ template, validators, validationType }: Props) {
   const { blocks } = useTemplateBlocks(template.id);
+
+  const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
+  const [activeTab, setActiveTab] = useState<PreviewTab>('Contenido');
+
+  useEffect(() => {
+    if (blocks.length > 0 && !selectedBlock) {
+      setSelectedBlock(blocks[0]);
+    }
+  }, [blocks, selectedBlock]);
 
   const hierarchyFields = [
     { label: 'Tipo de Estudio', value: template.study_type_id },
@@ -75,92 +53,169 @@ export function WizardStep4Summary({ template, validators, validationType, onGoT
   ].filter((f) => f.value);
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-6 bg-ui-body/30">
-      <div className="space-y-4">
+    <div className="flex-1 overflow-y-auto px-6 py-5 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
 
-        <p className="text-xs text-text-muted text-center animate-in fade-in">
-          Revisa todos los datos antes de publicar la plantilla. Puedes editar cualquier sección volviendo al paso correspondiente.
-        </p>
+      <p className="text-xs text-text-muted text-center">
+        Revisa todos los datos antes de publicar. Usa el stepper para volver a cualquier paso.
+      </p>
 
-        {/* Sección 1: Propiedades */}
-        <SummaryCard title="Propiedades" onEdit={() => onGoToStep('properties')}>
-          <dl className="divide-y divide-ui-border/20">
+      {/* ── Fila superior: Propiedades + Usuarios ──────────────────────────── */}
+      <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1">
+
+        {/* Columna izquierda — Propiedades */}
+        <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
+            Propiedades
+          </p>
+          <dl className="space-y-0">
             <SummaryRow label="Nombre" value={template.name} />
-            <SummaryRow label="Descripción" value={template.description} />
             <SummaryRow label="Visibilidad" value={visibilityLabel(template.visibility_level)} />
             {hierarchyFields.map((f) => (
               <SummaryRow key={f.label} label={f.label} value={f.value} />
             ))}
-            <SummaryRow 
-              label="Plazo de entrega" 
-              value={template.delivery_deadline ? new Date(template.delivery_deadline).toLocaleDateString() : null} 
+            <SummaryRow label="Descripción" value={template.description} />
+            <SummaryRow
+              label="Plazo de entrega"
+              value={template.delivery_deadline ? new Date(template.delivery_deadline).toLocaleDateString() : null}
             />
           </dl>
-        </SummaryCard>
+        </div>
 
-        {/* Sección 2: Bloques */}
-        <SummaryCard title={`Bloques (${blocks.length})`} onEdit={() => onGoToStep('blocks')}>
-          {blocks.length === 0 ? (
-            <p className="text-xs text-warning-dark italic">Aún no se han añadido bloques.</p>
+        {/* Columna derecha — Usuarios y validación */}
+        <div className="px-5 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
+            Usuarios y validación
+          </p>
+          <div className="flex items-center gap-2 mb-3">
+            <span className="text-[10px] font-bold uppercase text-text-secondary">Tipo:</span>
+            <span className="text-xs font-bold text-odoo-purple dark:text-odoo-dark-purple capitalize">
+              {validationType}
+            </span>
+          </div>
+          {validators.length === 0 ? (
+            <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
           ) : (
-            <div className="space-y-3">
-              {blocks.map((block, i) => {
-                const cfg = BLOCK_UI_STATE_CONFIG[blockToUiState(block)];
+            <div className="space-y-2.5">
+              {validators.map((v, i) => {
+                const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
                 return (
-                  <div key={block.id} className="flex items-center gap-3 p-2 rounded border border-ui-border dark:border-ui-dark-border/50 bg-white dark:bg-ui-dark-card shadow-sm">
-                    <span className="text-[10px] font-bold text-text-secondary w-5 text-right">{i + 1}.</span>
-                    <span className="flex-1 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">{block.title}</span>
-                    <span className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}>
-                      {cfg.label}
+                  <div key={v.userId} className="flex items-center gap-2.5">
+                    {validationType === 'ordenada' && (
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                    )}
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
+                      {initials}
                     </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                    </div>
                   </div>
                 );
               })}
             </div>
           )}
-        </SummaryCard>
+        </div>
+      </div>
 
-        {/* Sección 3: Usuarios y validación */}
-        <SummaryCard title="Usuarios y validación" onEdit={() => onGoToStep('users')}>
-          <div className="space-y-6">
-            <div className="bg-ui-body/30 dark:bg-ui-dark-bg/50 border border-ui-border dark:border-ui-dark-border rounded-lg p-3">
-              <span className="text-[10px] font-bold uppercase text-text-secondary">Tipo de validación:</span>
-              <span className="ml-2 text-xs font-bold text-text-primary dark:text-text-dark-primary capitalize">{validationType}</span>
-            </div>
+      {/* ── Fila inferior: Plantilla (bloques + preview) ──────────────────── */}
+      <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1">
 
-            {validators.length === 0 ? (
-              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
-            ) : (
-              <div className="space-y-2">
-                {validators.map((v, i) => {
-                  const initials = v.name
-                    .split(' ')
-                    .filter(Boolean)
-                    .slice(0, 2)
-                    .map((w) => w[0]?.toUpperCase() ?? '')
-                    .join('');
+        {/* Cabecera */}
+        <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+            Plantilla — {blocks.length} bloque{blocks.length !== 1 ? 's' : ''}
+          </span>
+          <button
+            type="button"
+            className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple transition-colors"
+          >
+            Previsualización PDF
+          </button>
+        </div>
+
+        {blocks.length === 0 ? (
+          <div className="p-5">
+            <p className="text-xs text-warning-dark italic">Aún no se han añadido bloques.</p>
+          </div>
+        ) : (
+          <div className="grid" style={{ gridTemplateColumns: '200px 1fr', minHeight: '200px' }}>
+
+            {/* Lista de bloques */}
+            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
+                Bloques ({blocks.length})
+              </p>
+              <div className="space-y-1">
+                {blocks.map((block, i) => {
+                  const cfg = BLOCK_UI_STATE_CONFIG[blockToUiState(block)];
+                  const isSelected = selectedBlock?.id === block.id;
                   return (
-                    <div key={v.userId} className="flex items-center gap-3 p-2 rounded border border-ui-border dark:border-ui-dark-border/50 bg-white dark:bg-ui-dark-card shadow-sm">
-                      {validationType === 'ordenada' && (
-                        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold">
-                          {i + 1}
-                        </span>
-                      )}
-                      <span className="shrink-0 flex items-center justify-center w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple dark:text-odoo-dark-purple text-[10px] font-black border border-odoo-purple/20">
-                        {initials}
+                    <button
+                      key={block.id}
+                      type="button"
+                      onClick={() => setSelectedBlock(block)}
+                      className={[
+                        'w-full text-left flex items-center gap-2 px-2.5 py-2 rounded-lg border transition-all',
+                        isSelected
+                          ? 'bg-odoo-purple/10 border-odoo-purple/30 dark:bg-odoo-dark-purple/15'
+                          : 'bg-transparent border-ui-border dark:border-ui-dark-border/50 hover:bg-ui-body dark:hover:bg-ui-dark-bg hover:border-ui-border',
+                      ].join(' ')}
+                    >
+                      <span className="shrink-0 text-[10px] font-bold text-text-muted w-4 text-right">{i + 1}</span>
+                      <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
+                        {block.title || 'Sin nombre'}
                       </span>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary block truncate">{v.name}</span>
-                        {v.role && <span className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{v.role}</span>}
-                      </div>
-                    </div>
+                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}>
+                        {cfg.label}
+                      </span>
+                    </button>
                   );
                 })}
               </div>
-            )}
+            </div>
+
+            {/* Panel de preview con tabs */}
+            <div className="flex flex-col min-w-0">
+              {/* Tabs */}
+              <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0">
+                {(['Contenido', 'Descripción'] as PreviewTab[]).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={[
+                      'px-4 py-2.5 text-xs border-b-2 -mb-px transition-all',
+                      activeTab === tab
+                        ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
+                        : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
+                    ].join(' ')}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {/* Contenido del tab */}
+              <div className="flex-1 p-4 text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed overflow-y-auto">
+                {activeTab === 'Descripción' ? (
+                  selectedBlock?.description
+                    ? selectedBlock.description
+                    : <span className="text-text-muted italic">Este bloque no tiene descripción.</span>
+                ) : (
+                  selectedBlock?.default_content
+                    ? <span className="text-text-muted italic">Contenido guardado — visualización disponible próximamente.</span>
+                    : <span className="text-text-muted italic">Este bloque no tiene contenido.</span>
+                )}
+              </div>
+            </div>
+
           </div>
-        </SummaryCard>
+        )}
       </div>
+
     </div>
   );
 }

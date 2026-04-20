@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TemplateWizard } from '../TemplateWizard';
-import { updateTemplate, createTemplate } from '../../../../api/templates';
+import { createTemplate, updateTemplate, syncTemplateValidators, publishTemplate } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { MemoryRouter } from 'react-router-dom';
 import { UserProfileProvider } from '../../../../features/user-profile';
@@ -86,9 +86,14 @@ describe('TemplateWizard Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (fetchBlocks as any).mockResolvedValue({ data: [] });
+    (createTemplate as any).mockImplementation(async (payload: { name?: string }) => ({
+      data: fullTemplate({ id: 't123', name: payload.name ?? 'Existing' }),
+    }));
     (updateTemplate as any).mockImplementation(async (_id: string, payload: { name?: string }) => ({
       data: fullTemplate({ name: payload.name ?? 'Existing' }),
     }));
+    (syncTemplateValidators as any).mockResolvedValue({ data: [] });
+    (publishTemplate as any).mockResolvedValue({ data: { success: true } });
   });
 
   const renderWizard = (props = {}) => {
@@ -144,8 +149,10 @@ describe('TemplateWizard Integration', () => {
 
     // Step 4: Summary -> Finish
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
-    
-    expect(mockNavigate).toHaveBeenCalledWith('/templates');
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith('/templates');
+    });
   });
 
   it('handles Step 1 validation errors', async () => {
@@ -183,8 +190,8 @@ describe('TemplateWizard Integration', () => {
       expect(screen.getByText('BLOQUES (1)')).toBeTruthy();
     });
 
-    // Now go back
-    fireEvent.click(screen.getByRole('button', { name: /Volver a Propiedades/i }));
+    // Now go back using the stepper
+    fireEvent.click(screen.getByRole('button', { name: /Propiedades/i }));
     
     expect(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0]).toBeTruthy();
   });

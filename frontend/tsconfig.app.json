@@ -7,14 +7,14 @@
     "module": "ESNext",
     "types": ["vite/client"],
     "skipLibCheck": true,
-
-    /* Bundler mode */
     "baseUrl": ".",
     "paths": {
       "@maya/shared-auth-react": [
         "../../maya_infra/packages/maya-shared-auth-react/src/index.ts"
       ]
     },
+    
+    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,

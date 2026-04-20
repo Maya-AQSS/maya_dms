@@ -48,3 +48,14 @@ export async function bulkUpdateBlocks(
     body: payload,
   });
 }
+
+/** PATCH /api/v1/templates/{templateId}/blocks/reorder */
+export async function reorderBlocksForTemplate(
+  templateId: string,
+  blockIds: string[],
+): Promise<void> {
+  await apiFetchJson<void>(`templates/${templateId}/blocks/reorder`, {
+    method: 'PATCH',
+    body: { block_ids: blockIds },
+  });
+}
