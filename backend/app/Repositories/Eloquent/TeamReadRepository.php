@@ -15,7 +15,7 @@ class TeamReadRepository implements TeamReadRepositoryInterface
     private function whereTeamIdMatches(Builder $query, string $qualifiedTeamIdColumn, string $teamId): void
     {
         if (DB::connection()->getDriverName() === 'pgsql') {
-            $query->whereRaw($qualifiedTeamIdColumn.' = ?::uuid', [$teamId]);
+            $query->whereRaw($qualifiedTeamIdColumn.'::text = ?::text', [$teamId]);
 
             return;
         }
@@ -51,11 +51,12 @@ class TeamReadRepository implements TeamReadRepositoryInterface
                 $query
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
-                            ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id');
+                            ->from('team_members');
                         if (DB::connection()->getDriverName() === 'pgsql') {
+                            $sub->whereRaw('team_members.team_id::text = teams.id::text');
                             $sub->whereRaw('team_members.user_id::text = ?::text', [$userId]);
                         } else {
+                            $sub->whereColumn('team_members.team_id', 'teams.id');
                             $sub->where('team_members.user_id', '=', $userId);
                         }
                     });
@@ -87,11 +88,12 @@ class TeamReadRepository implements TeamReadRepositoryInterface
                 $query
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
-                            ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id');
+                            ->from('team_members');
                         if (DB::connection()->getDriverName() === 'pgsql') {
+                            $sub->whereRaw('team_members.team_id::text = teams.id::text');
                             $sub->whereRaw('team_members.user_id::text = ?::text', [$userId]);
                         } else {
+                            $sub->whereColumn('team_members.team_id', 'teams.id');
                             $sub->where('team_members.user_id', '=', $userId);
                         }
                     });

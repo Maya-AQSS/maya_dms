@@ -55,16 +55,46 @@ class Team extends Model
                 $query
                     ->orWhereExists(function ($subQuery) use ($userId, $isPgsql) {
                         $subQuery->select(DB::raw(1))
-                            ->from('team_members')
-                            ->whereColumn('team_members.team_id', 'teams.id');
+                            ->from('team_members');
                         if ($isPgsql) {
+                            $subQuery->whereRaw('team_members.team_id::text = teams.id::text');
                             $subQuery->whereRaw('team_members.user_id::text = ?::text', [$userId]);
                         } else {
+                            $subQuery->whereColumn('team_members.team_id', 'teams.id');
                             $subQuery->where('team_members.user_id', $userId);
                         }
                     });
             });
         });
+    }
+
+    public function newEloquentBuilder($query): Builder
+    {
+        $isPgsql = DB::connection()->getDriverName() === 'pgsql';
+
+        if (! $isPgsql) {
+            return parent::newEloquentBuilder($query);
+        }
+
+        return new class($query) extends Builder {
+            public function whereKey($id): static
+            {
+                if (is_array($id) || $id instanceof \Illuminate\Contracts\Support\Arrayable) {
+                    $ids = collect($id)->map(fn ($v) => (string) $v)->all();
+                    $this->query->whereIn(
+                        DB::raw($this->model->getQualifiedKeyName().'::text'),
+                        $ids
+                    );
+
+                    return $this;
+                }
+
+                return $this->whereRaw(
+                    $this->model->getQualifiedKeyName().'::text = ?::text',
+                    [(string) $id]
+                );
+            }
+        };
     }
 
     public function members(): HasMany
