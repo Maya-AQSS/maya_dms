@@ -69,6 +69,8 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::post('templates/{template}/reject-review', [TemplateController::class, 'rejectReview'])
             ->whereUuid('template');
+        Route::post('templates/{template}/approve-review', [TemplateController::class, 'approveReview'])
+            ->whereUuid('template');
         Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
             ->whereUuid('template');
         Route::post('templates/{template}/reopen-draft', [TemplateController::class, 'reopenDraft'])
@@ -141,8 +143,9 @@ Route::prefix('v1')->group(function () {
         Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
             ->whereUuid('comment');
 
-        // Usuarios — búsqueda para asignación de validadores y compartición
+        // Usuarios — búsqueda para asignación de revisores y compartición
         Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);
 
         // Sprint 6 — Dashboard BFF
         Route::get('/dashboard', [DashboardController::class, 'index']);

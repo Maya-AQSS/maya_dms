@@ -80,6 +80,15 @@ interface TemplateServiceInterface
     public function clone(string $sourceTemplateId, string $actorId): Template;
 
     /**
+     * Registra la aprobación del revisor activo. Si todos los revisores han aprobado,
+     * publica la plantilla automáticamente con un snapshot.
+     *
+     * En modo secuencial verifica que los stages anteriores estén aprobados antes
+     * de permitir que el actor apruebe.
+     */
+    public function approveReview(string $templateId, string $actorId): Template;
+
+    /**
      * Sincroniza los revisores de la plantilla normativa.
      * @param array<int, string> $userIds Lista ordenada de IDs de usuario.
      */

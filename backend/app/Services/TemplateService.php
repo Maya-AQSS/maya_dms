@@ -54,6 +54,11 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Envia el borrador a revisión (autor o quien puede editar la plantilla).
+     *
+     * - Sin revisores asignados → publica automáticamente.
+     * - Con revisores → resetea sus estados a `pending` (necesario para rondas
+     *   sucesivas: en draft post-rechazo los estados quedan visibles para el autor,
+     *   y solo se limpian al reenviar) y transiciona a `in_review`.
      */
     public function submitForReview(string $templateId, string $actorId): Template
     {
@@ -65,11 +70,21 @@ class TemplateService implements TemplateServiceInterface
             ]);
         }
 
+        if ($template->reviewers()->doesntExist()) {
+            return $this->publishWithSnapshot($templateId, null, $actorId);
+        }
+
+        $template->reviewers()->update(['status' => 'pending']);
+
         return $this->updateTemplateStatusWithEvent($template, 'in_review', $actorId);
     }
 
     /**
-     * Rechaza la revisión de la plantilla (autor o quien puede editar la plantilla).
+     * Rechaza la revisión de la plantilla.
+     *
+     * Registra el rechazo del actor en `template_reviewers` (auditoría de quién rechazó)
+     * y transiciona la plantilla a borrador. Los estados quedan visibles en draft
+     * para que el autor sepa quién rechazó; se limpian al reenviar.
      */
     public function rejectReview(string $templateId, string $actorId): Template
     {
@@ -81,7 +96,74 @@ class TemplateService implements TemplateServiceInterface
             ]);
         }
 
+        $template->reviewers()
+            ->where('user_id', $actorId)
+            ->update(['status' => 'rejected']);
+
         return $this->updateTemplateStatusWithEvent($template, 'draft', $actorId);
+    }
+
+    /**
+     * Registra la aprobación del revisor activo.
+     *
+     * En modo secuencial exige que todos los stages anteriores estén aprobados.
+     * Si tras esta aprobación todos los revisores están en `approved`, publica
+     * la plantilla automáticamente con un snapshot.
+     */
+    public function approveReview(string $templateId, string $actorId): Template
+    {
+        return DB::transaction(function () use ($templateId, $actorId) {
+            $template = Template::query()->whereKey($templateId)->lockForUpdate()->firstOrFail();
+
+            if ($template->status !== 'in_review') {
+                throw ValidationException::withMessages([
+                    'status' => ['Solo se puede aprobar una plantilla en revisión.'],
+                ]);
+            }
+
+            $reviewer = $template->reviewers()
+                ->where('user_id', $actorId)
+                ->first();
+
+            if (! $reviewer) {
+                throw ValidationException::withMessages([
+                    'user' => ['No estás asignado como revisor de esta plantilla.'],
+                ]);
+            }
+
+            if ($reviewer->status === 'approved') {
+                throw ValidationException::withMessages([
+                    'status' => ['Ya has aprobado esta plantilla.'],
+                ]);
+            }
+
+            if ($template->review_mode === 'sequential') {
+                $pendingPreviousStage = $template->reviewers()
+                    ->where('stage', '<', $reviewer->stage)
+                    ->where('status', '!=', 'approved')
+                    ->exists();
+
+                if ($pendingPreviousStage) {
+                    throw ValidationException::withMessages([
+                        'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
+                    ]);
+                }
+            }
+
+            $template->reviewers()
+                ->where('user_id', $actorId)
+                ->update(['status' => 'approved']);
+
+            $allApproved = $template->reviewers()
+                ->where('status', '!=', 'approved')
+                ->doesntExist();
+
+            if ($allApproved) {
+                return $this->publishWithSnapshot($templateId, 'Aprobado por todos los revisores.', $actorId);
+            }
+
+            return $template->fresh();
+        });
     }
 
     /**

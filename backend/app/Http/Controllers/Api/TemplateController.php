@@ -157,11 +157,28 @@ class TemplateController extends Controller
     }
 
     /**
+     * En revisión → aprobación del revisor activo.
+     *
+     * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
+     * En modo secuencial verifica que los stages anteriores estén aprobados.
+     */
+    public function approveReview(string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('review', $model);
+
+        $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
+
+        return new TemplateResource($updated);
+    }
+
+    /**
      * En revisión → publicado + snapshot (revisor; changelog obligatorio).
      */
     public function publish(PublishTemplateRequest $request, string $template): TemplateResource
     {
         $model = $this->templateService->findOrFail($template);
+        $this->authorize('review', $model);
 
         $updated = $this->templateService->publishWithSnapshot(
             $model->id,

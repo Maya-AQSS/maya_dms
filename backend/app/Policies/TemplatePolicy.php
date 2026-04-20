@@ -90,11 +90,18 @@ class TemplatePolicy
     }
 
     /**
-     * Revisión / aprobación en el flujo de plantilla (SoD: el creador no aprueba la suya).
+     * Revisión / aprobación en el flujo de plantilla.
+     *
+     * Solo los usuarios explícitamente asignados como revisores en `template_reviewers`
+     * pueden aprobar o rechazar la plantilla. La segregación de funciones (el creador
+     * no puede ser revisor de la suya) se garantiza en {@see self::syncReviewers} o
+     * en la validación del wizard, no aquí.
      */
     public function review(JwtUser $user, Template $template): bool
     {
-        return $user->getAuthIdentifier() !== $template->created_by;
+        return $template->reviewers()
+            ->where('user_id', $user->getAuthIdentifier())
+            ->exists();
     }
 
     /**
