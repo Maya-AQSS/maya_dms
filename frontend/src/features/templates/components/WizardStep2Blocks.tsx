@@ -200,6 +200,7 @@ export function WizardStep2Blocks({ template }: Props) {
   // Form state (shared: create / edit / multi)
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
+  const [formContent, setFormContent] = useState('');
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -241,6 +242,7 @@ export function WizardStep2Blocks({ template }: Props) {
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
     setFormDesc(block.description ?? '');
+    setFormContent(block.default_content ? JSON.stringify(block.default_content) : '');
     setFormUiState(blockToUiState(block));
     setActionError(null);
   };
@@ -248,6 +250,7 @@ export function WizardStep2Blocks({ template }: Props) {
   const resetForm = () => {
     setFormName('');
     setFormDesc('');
+    setFormContent('');
     setFormUiState('optional');
     setActionError(null);
     setDeleteModal(false);
@@ -263,9 +266,11 @@ export function WizardStep2Blocks({ template }: Props) {
     setSaveStatus('saving');
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
       await updateBlock(activeSingleId, {
         title: formName.trim() || undefined,
         description: formDesc.trim() || null,
+        default_content: parsedContent,
         block_state,
         mandatory,
       });
@@ -353,11 +358,13 @@ export function WizardStep2Blocks({ template }: Props) {
     if (!formName.trim() || busy) return;
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
       if (panelMode === 'create') {
         await createBlock({
           type: 'paragraph',
           title: formName.trim(),
           description: formDesc.trim() || null,
+          default_content: parsedContent,
           block_state,
           mandatory,
         });
@@ -365,6 +372,7 @@ export function WizardStep2Blocks({ template }: Props) {
         await updateBlock(activeSingleId, {
           title: formName.trim(),
           description: formDesc.trim() || null,
+          default_content: parsedContent,
           block_state,
           mandatory,
         });
@@ -411,10 +419,12 @@ export function WizardStep2Blocks({ template }: Props) {
     setActionError(null);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
       const newBlock = await createBlock({
         type: 'paragraph',
         title: formName.trim(),
         description: formDesc.trim() || null,
+        default_content: parsedContent,
         block_state,
         mandatory,
       });
@@ -747,7 +757,7 @@ export function WizardStep2Blocks({ template }: Props) {
             </div>
 
             {/* Tab content */}
-            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' || activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
               {activeTab === 'properties' && (
                 <div className="space-y-4">
                   <div>
@@ -779,14 +789,15 @@ export function WizardStep2Blocks({ template }: Props) {
               )}
 
               {activeTab === 'content' && (
-                <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-ui-border dark:border-ui-dark-border bg-ui-body/50 dark:bg-ui-dark-bg/50"
-                  style={{ minHeight: '200px' }}
-                >
-                  <p className="text-sm text-text-muted text-center px-6">
-                    Editor de contenido — próximamente disponible.
-                  </p>
-                </div>
+                <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
+                  <BlockNoteEditorPanel
+                    key={(activeSingleId ?? 'new') + '-content'}
+                    initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                    editable
+                    isDark={isDark}
+                    onChange={(content: unknown) => { setFormContent(JSON.stringify(content)); setTabIsDirty(true); }}
+                  />
+                </Suspense>
               )}
 
               {activeTab === 'description' && (
