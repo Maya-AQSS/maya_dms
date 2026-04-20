@@ -1,18 +1,11 @@
-import type { FC } from 'react';
+import type { NavItem } from '@maya/shared-layout-react';
 import {
   FolderIcon,
   HomeIcon,
   SearchIcon,
   TemplateIcon,
   UploadIcon,
-} from './navIcons';
-
-export type NavItem = {
-  id: string;
-  label: string;
-  icon: FC;
-  path: string;
-};
+} from '@maya/shared-layout-react';
 
 export const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: HomeIcon, path: '/dashboard' },
