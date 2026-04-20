@@ -22,5 +22,7 @@ export function useAuth() {
     isLoading: false,
     isAuthenticated: true,
     login: () => undefined,
+    logout: () => undefined,
+    user: null as { sub: string; email: string; name: string; preferred_username: string } | null,
   };
 }

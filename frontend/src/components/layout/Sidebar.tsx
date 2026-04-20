@@ -44,7 +44,7 @@ export function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose }: Side
           'fixed inset-y-0 left-0 bg-ui-sidebar flex flex-col z-[100] overflow-hidden',
           // Mobile: slide off-canvas when closed, slide in when open.
           // Desktop (md+): permanently visible.
-          mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+          mobileOpen ? 'translate-x-0 pointer-events-auto' : '-translate-x-full md:translate-x-0 pointer-events-none md:pointer-events-auto',
         ].join(' ')}
         style={{
           width: effectiveCollapsed ? '3.5rem' : '16rem',

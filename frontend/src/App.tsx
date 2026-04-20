@@ -13,29 +13,15 @@ import {
 } from './pages';
 import { useOidcSession } from './auth/useOidcSession';
 import { HierarchyProvider } from './features/hierarchy';
+import { useDarkMode } from './hooks/useDarkMode';
 
 function App() {
-  const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
-  const [isDark, setIsDark] = useState(() => {
-    return (
-      localStorage.getItem('theme') === 'dark' ||
-      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)
-    );
-  });
+  const { isOidcLoading, isOidcSignedIn, beginSignIn, logout } = useOidcSession();
+  const { isDark, toggle: handleToggleDark } = useDarkMode();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const location = useLocation();
-
-  const handleToggleDark = () => {
-    const next = !isDark;
-    setIsDark(next);
-    document.documentElement.classList.toggle('dark', next);
-    localStorage.setItem('theme', next ? 'dark' : 'light');
-  };
-
-  if (isDark) document.documentElement.classList.add('dark');
-
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
   const currentNav = useMemo(
     () => NAV_ITEMS.find((n) => location.pathname === n.path || location.pathname.startsWith(`${n.path}/`)),
@@ -62,7 +48,7 @@ function App() {
 
   return (
     <HierarchyProvider>
-      <div className="h-screen overflow-hidden bg-ui-body dark:bg-ui-dark-bg">
+      <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
         <Sidebar
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed((prev) => !prev)}
@@ -70,14 +56,12 @@ function App() {
           onMobileClose={() => setMobileOpen(false)}
         />
 
-        <div
-          className="flex flex-col h-full transition-[margin] duration-200"
-          style={{ marginLeft: mobileOpen ? '0' : sidebarCollapsed ? '3.5rem' : '16rem' }}
-        >
+        <div className={`flex flex-col min-h-screen transition-[margin] duration-200 ${sidebarCollapsed ? 'md:ml-14' : 'md:ml-64'}`}>
           <Topbar
             title={pageTitle}
             isDark={isDark}
             onToggleDark={handleToggleDark}
+            onLogout={logout}
             onMobileMenuOpen={() => setMobileOpen(true)}
           />
 
