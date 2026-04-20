@@ -11,6 +11,11 @@ export type TemplateStatus = 'draft' | 'published' | 'archived';
 
 export type ReviewMode = 'sequential' | 'parallel';
 
+export type TemplateReviewer = {
+  user_id: string;
+  stage: number;
+};
+
 export type Template = {
   id: string;
   name: string;
@@ -27,6 +32,7 @@ export type Template = {
   version: number;
   review_stages: number;
   review_mode: ReviewMode;
+  reviewers?: TemplateReviewer[];
   created_at?: string;
   updated_at?: string;
 };

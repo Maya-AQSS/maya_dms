@@ -14,6 +14,7 @@ use App\Http\Resources\TemplateVersionSummaryResource;
 use App\Policies\TemplatePolicy;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
@@ -60,6 +61,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('view', $model);
+        $model->loadMissing('reviewers');
 
         return new TemplateResource($model);
     }
@@ -184,5 +186,23 @@ class TemplateController extends Controller
         $this->authorize('view', $template);
 
         return new TemplateVersionResource($version);
+    }
+
+    /**
+     * Sincroniza los validadores de la plantilla.
+     */
+    public function syncValidators(Request $request, string $template): JsonResponse
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', $model);
+
+        $request->validate([
+            'user_ids' => ['present', 'array'],
+            'user_ids.*' => ['required', 'string', 'exists:users,id'],
+        ]);
+
+        $this->templateService->syncValidators($model->id, $request->input('user_ids'));
+
+        return response()->json(['message' => 'Validadores sincronizados correctamente.']);
     }
 }

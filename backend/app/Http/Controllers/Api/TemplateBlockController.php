@@ -72,6 +72,8 @@ class TemplateBlockController extends Controller
             set_block_state: $request->has('block_state'),
             mandatory:       $validated['mandatory'] ?? null,
             set_mandatory:   $request->has('mandatory'),
+            description:     $validated['description'] ?? null,
+            set_description: $request->has('description'),
         );
 
         $updated = $this->blockService->update(

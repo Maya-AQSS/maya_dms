@@ -30,6 +30,11 @@ class TemplateResource extends JsonResource
             'version'            => $this->version,
             'review_stages'      => $this->review_stages,
             'review_mode'        => $this->review_mode,
+            'reviewers'          => $this->whenLoaded('reviewers', fn () => $this->reviewers
+                ->sortBy('stage')
+                ->values()
+                ->map(fn ($r) => ['user_id' => $r->user_id, 'stage' => $r->stage])
+                ->all()),
             'created_at'         => $this->created_at?->toIso8601String(),
             'updated_at'         => $this->updated_at?->toIso8601String(),
         ];

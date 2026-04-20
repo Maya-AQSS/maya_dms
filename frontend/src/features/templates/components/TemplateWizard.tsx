@@ -1,7 +1,12 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
-import { updateTemplate as apiUpdateTemplate, createTemplate as apiCreateTemplate } from '../../../api/templates';
+import {
+  updateTemplate as apiUpdateTemplate,
+  createTemplate as apiCreateTemplate,
+  publishTemplate as apiPublishTemplate,
+  syncTemplateValidators,
+} from '../../../api/templates';
 import { ApiHttpError } from '../../../api/http';
 import { Button } from '../../../ui';
 import { WizardStep1Properties } from './WizardStep1Properties';
@@ -22,7 +27,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // Step state
   const [step, setStep] = useState<Step>('properties');
-  const [completedSteps, setCompletedSteps] = useState<Step[]>([]);
+  const [completedSteps, setCompletedSteps] = useState<Step[]>(
+    initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
+  );
   const [leaveGuard, setLeaveGuard] = useState(false);
 
   // Template state (synchronized with API)
@@ -40,15 +47,18 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // Step 2: Blocks state
-  const [blocksCount, setBlocksCount] = useState(0);
+
 
   // Step 3: Users state
   const [validators, setValidators] = useState<ValidatorEntry[]>([]);
-  const [validationType, setValidationType] = useState<'libre' | 'ordenada'>('libre');
+  const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
+    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
+  );
 
   // UI state
   const [saving, setSaving] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
+  const [showValidationModal, setShowValidationModal] = useState(false);
 
   // Dirty check
   const isDirty = useMemo(() => {
@@ -112,7 +122,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         res = await apiCreateTemplate(payload);
       }
       setTemplate(res.data);
-      setCompletedSteps(prev => Array.from(new Set([...prev, 'properties'])) as Step[]);
+      setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
     } catch (e) {
       if (e instanceof ApiHttpError && (e.status === 401 || e.status === 403)) {
@@ -127,18 +137,48 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setSaving(false);
     }
   };
+  const handlePublish = async () => {
+    if (!template?.id) return;
+    setSaving(true);
+    try {
+      await apiPublishTemplate(template.id);
+      navigate('/templates');
+    } catch (e) {
+      setErrors({ api: e instanceof Error ? e.message : 'Error al publicar la plantilla' });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveUsers = async () => {
+    if (!template?.id) return;
+    setSaving(true);
+    setErrors({});
+    try {
+      // 1. Guardar modo de revisión (libre/ordenada -> parallel/sequential)
+      const reviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
+      await apiUpdateTemplate(template.id, { review_mode: reviewMode as any });
+
+      // 2. Sincronizar validadores
+      const userIds = validators.map((v: ValidatorEntry) => v.userId);
+      await syncTemplateValidators(template.id, userIds);
+
+      setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
+      setStep('summary');
+    } catch (e) {
+      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar los validadores' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleContinue = () => {
     if (step === 'properties') {
       void saveProperties();
     } else if (step === 'blocks') {
-      if (blocksCount > 0) {
-        setCompletedSteps(prev => Array.from(new Set([...prev, 'blocks'])) as Step[]);
-        setStep('users');
-      }
+      setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
+      setStep('users');
     } else if (step === 'users') {
-      setCompletedSteps(prev => Array.from(new Set([...prev, 'users'])) as Step[]);
-      setStep('summary');
+      void saveUsers();
     } else if (step === 'summary') {
       navigate('/templates');
     }
@@ -213,21 +253,65 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   return (
     <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <button
-          type="button"
-          onClick={handleBackArrow}
-          className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95"
-          aria-label="Volver"
-        >
-          ←
-        </button>
-        <span className="text-sm text-text-secondary">
-          Plantillas /{' '}
-          <span className="font-bold text-text-primary dark:text-text-dark-primary">
-            {template ? `Editando «${template.name}»` : 'Nueva plantilla'}
+      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={handleBackArrow}
+            className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95 shrink-0"
+            aria-label="Volver"
+          >
+            ←
+          </button>
+          <span className="text-sm text-text-secondary truncate">
+            Plantillas /{' '}
+            <span className="font-bold text-text-primary dark:text-text-dark-primary">
+              {template ? `Editando «${template.name}»` : 'Nueva plantilla'}
+            </span>
           </span>
-        </span>
+        </div>
+
+        {/* Topbar actions */}
+        <div className="flex items-center gap-2 shrink-0">
+          {step === 'summary' && (
+            <Button variant="ghost" size="sm" onClick={() => navigate('/templates')}>
+              {validators.length > 0 ? 'Salir sin validar' : 'Salir sin publicar'}
+            </Button>
+          )}
+
+          {step !== 'summary' && (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={saving}
+              onClick={handleContinue}
+              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+            >
+              Guardar y continuar →
+            </Button>
+          )}
+          {step === 'summary' && validators.length > 0 && (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => setShowValidationModal(true)}
+              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+            >
+              Validar plantilla →
+            </Button>
+          )}
+          {step === 'summary' && validators.length === 0 && (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={saving}
+              onClick={() => void handlePublish()}
+              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm bg-success border-success hover:bg-success-dark"
+            >
+              Publicar plantilla ✓
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Leave guard confirmation */}
@@ -255,6 +339,21 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         </div>
       )}
 
+      {/* Permission / API error banner */}
+      {step === 'properties' && permissionError && (
+        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
+          <button
+            type="button"
+            onClick={() => setPermissionError(null)}
+            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Stepper */}
       {renderStepper()}
 
@@ -276,7 +375,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         {step === 'blocks' && template && (
           <WizardStep2Blocks
             template={template}
-            onBlocksCountChange={setBlocksCount}
           />
         )}
         {step === 'users' && (
@@ -292,79 +390,65 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             template={template}
             validators={validators}
             validationType={validationType}
-            onGoToStep={handleGoToStep}
           />
         )}
       </div>
 
-      {/* Permission / API error banner */}
-      {step === 'properties' && permissionError && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
-          <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
-          <button
-            type="button"
-            onClick={() => setPermissionError(null)}
-            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
-            aria-label="Cerrar"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Footer — outside the scroll area, always visible */}
-      <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-6 py-4 flex items-center justify-between gap-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
-          <div className="flex-1">
-            {step === 'properties' && (
-              <span className="text-[10px] text-text-muted italic opacity-70">
-                Los cambios no se guardan hasta pulsar «Guardar y continuar»
-              </span>
-            )}
-            {step === 'blocks' && (
-              <Button variant="ghost" size="sm" onClick={() => setStep('properties')} className="text-odoo-purple font-bold">
-                ← Volver a Propiedades
-              </Button>
-            )}
-            {step === 'users' && (
-              <Button variant="ghost" size="sm" onClick={() => setStep('blocks')} className="text-odoo-purple font-bold">
-                ← Volver a Bloques
-              </Button>
-            )}
-            {step === 'summary' && (
-              <Button variant="ghost" size="sm" onClick={() => setStep('users')} className="text-odoo-purple font-bold">
-                ← Volver a Usuarios
-              </Button>
-            )}
-          </div>
-
-          <div className="flex items-end gap-3">
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={handleBackArrow}
-              className="text-[10px] font-black uppercase tracking-widest px-8 rounded-full"
-            >
-              Cancelar
-            </Button>
-            <div className="flex flex-col items-end gap-1">
-              <Button
-                variant="primary"
-                size="md"
-                loading={saving}
-                disabled={step === 'blocks' && blocksCount === 0}
-                onClick={handleContinue}
-                className={`text-[10px] font-black uppercase tracking-widest px-8 rounded-full shadow-sm ${step === 'summary' ? 'bg-success border-success hover:bg-success-dark' : ''}`}
+      {/* Validation modal */}
+      {showValidationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in">
+          <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-xl border border-ui-border dark:border-ui-dark-border w-full max-w-md mx-4 animate-in zoom-in-95">
+            <div className="px-6 py-5 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3">
+              <span className="text-2xl">✉️</span>
+              <div>
+                <p className="text-sm font-bold text-text-primary dark:text-text-dark-primary">Enviar a validación</p>
+                <p className="text-xs text-text-muted">Se notificará a los validadores asignados.</p>
+              </div>
+            </div>
+            <div className="px-6 py-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
+                Validadores ({validators.length})
+              </p>
+              {validators.map((v, i) => {
+                const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                return (
+                  <div key={v.userId} className="flex items-center gap-2.5">
+                    {validationType === 'ordenada' && (
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                    )}
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
+                      {initials}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="px-6 py-4 border-t border-ui-border dark:border-ui-dark-border flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="px-4 py-1.5 rounded border border-ui-border text-[10px] font-black uppercase tracking-wider text-text-secondary hover:bg-ui-body transition-colors"
+                onClick={() => setShowValidationModal(false)}
               >
-                {step === 'summary' ? 'Publicar plantilla ✓' : 'Guardar y continuar →'}
-              </Button>
-              {step === 'blocks' && blocksCount === 0 && (
-                <span className="text-[10px] text-text-muted italic">
-                  Añade al menos un bloque para continuar
-                </span>
-              )}
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="px-4 py-1.5 rounded bg-odoo-purple text-white text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-odoo-purple/90 transition-colors"
+                onClick={() => navigate('/templates')}
+              >
+                Confirmar y salir →
+              </button>
             </div>
           </div>
         </div>
+      )}
+
     </div>
   );
 }
