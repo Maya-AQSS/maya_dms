@@ -1,7 +1,7 @@
 <?php
-
+ 
 namespace Tests\Feature;
-
+ 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use Database\Seeders\PermissionsSeeder;
@@ -15,44 +15,44 @@ use Maya\Auth\Contracts\JwksServiceInterface;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
-
+ 
 class DashboardApiTest extends TestCase
 {
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
-
+ 
     protected function setUp(): void
     {
         parent::setUp();
-
+ 
         config([
             'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
-
+ 
         Cache::flush();
-
+ 
         $this->seed(UsersSourceSeeder::class);
         $this->seed(PermissionsSeeder::class);
         $this->seed(UserPermissionsSeeder::class);
     }
-
+ 
     /**
      * @return array<string, string>
      */
     private function authHeaders(string $sub): array
     {
         auth()->forgetUser();
-
+ 
         $this->assignUserPermissions($sub, ['templates.read']);
-
+ 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
-
+ 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
             ->andReturn(InMemory::plainText($publicPem));
-
+ 
         $token = $this->buildJwtForSub(
             $privatePem,
             $publicPem,
@@ -61,21 +61,21 @@ class DashboardApiTest extends TestCase
             'test-issuer',
             'test-audience',
         );
-
+ 
         return ['Authorization' => 'Bearer '.$token];
     }
-
+ 
     public function test_dashboard_returns_pending_template_review_inbox_sorted_by_deadline(): void
     {
         $reviewerId = (string) Str::uuid();
         $otherReviewerId = (string) Str::uuid();
         $headers = $this->authHeaders($reviewerId);
-
+ 
         $urgentTemplateId = (string) Str::uuid();
         $normalTemplateId = (string) Str::uuid();
         $noDeadlineTemplateId = (string) Str::uuid();
         $ignoredTemplateId = (string) Str::uuid();
-
+ 
         Template::query()->forceCreate([
             'id' => $urgentTemplateId,
             'name' => 'Urgente',
@@ -92,7 +92,7 @@ class DashboardApiTest extends TestCase
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
-
+ 
         Template::query()->forceCreate([
             'id' => $normalTemplateId,
             'name' => 'Normal',
@@ -109,7 +109,7 @@ class DashboardApiTest extends TestCase
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
-
+ 
         Template::query()->forceCreate([
             'id' => $noDeadlineTemplateId,
             'name' => 'Sin fecha',
@@ -126,7 +126,7 @@ class DashboardApiTest extends TestCase
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
-
+ 
         Template::query()->forceCreate([
             'id' => $ignoredTemplateId,
             'name' => 'Ignorada por estado',
@@ -143,7 +143,7 @@ class DashboardApiTest extends TestCase
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
-
+ 
         \DB::table('template_reviewers')->insert([
             [
                 'id' => (string) Str::uuid(),
@@ -193,16 +193,16 @@ class DashboardApiTest extends TestCase
             [
                 'id' => (string) Str::uuid(),
                 'template_id' => $normalTemplateId,
-                'user_id' => $reviewerId,
+                'user_id' => $otherReviewerId,
                 'stage' => 2,
                 'status' => 'approved',
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
         ]);
-
+ 
         $response = $this->getJson('/api/v1/dashboard', $headers);
-
+ 
         $response->assertOk()
             ->assertJsonPath('data.stats', [])
             ->assertJsonPath('data.recent_documents', [])
