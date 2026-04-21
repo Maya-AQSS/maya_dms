@@ -5,3 +5,4 @@ export { TextArea } from './TextArea';
 export { Select } from './Select';
 export { Button, type ButtonVariant, type ButtonSize } from './Button';
 export { ConfirmDialog, type ConfirmDialogVariant } from './ConfirmDialog';
+export { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from './Table';
