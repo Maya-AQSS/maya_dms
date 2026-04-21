@@ -121,7 +121,7 @@ class DocumentController extends Controller
     }
 
     /**
-     * Mostrar documento con bloques según la versión de plantilla anclada (F-03.4).
+     * Mostrar documento con bloques según la versión de plantilla anclada.
      */
     public function show(Request $request, string $id): JsonResponse
     {

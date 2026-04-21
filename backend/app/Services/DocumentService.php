@@ -245,6 +245,63 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
+     *
+     * @return array{user_id: string, permission: string, granted_by: string}
+     */
+    public function upsertDocumentShare(
+        string $documentId,
+        string $targetUserId,
+        string $permission,
+        string $actorId,
+    ): array {
+        $document = $this->documentRepository->findOrFail($documentId);
+
+        if ($document->owner_id !== $actorId) {
+            abort(403, 'Solo el titular puede gestionar colaboradores.');
+        }
+
+        if ($targetUserId === $actorId) {
+            throw ValidationException::withMessages([
+                'user_id' => ['No puedes compartir el documento contigo mismo.'],
+            ]);
+        }
+
+        if ($targetUserId === $document->owner_id) {
+            throw ValidationException::withMessages([
+                'user_id' => ['El titular ya tiene acceso completo al documento.'],
+            ]);
+        }
+
+        $this->documentRepository->upsertDocumentShare(
+            $documentId,
+            $targetUserId,
+            $permission,
+            $actorId,
+        );
+
+        return [
+            'user_id' => $targetUserId,
+            'permission' => $permission,
+            'granted_by' => $actorId,
+        ];
+    }
+
+    /**
+     * Elimina un compartido (idempotente si no existía).
+     */
+    public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void
+    {
+        $document = $this->documentRepository->findOrFail($documentId);
+
+        if ($document->owner_id !== $actorId) {
+            abort(403, 'Solo el titular puede gestionar colaboradores.');
+        }
+
+        $this->documentRepository->deleteDocumentShare($documentId, $targetUserId);
+    }
+
+    /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
      * 
      * @return Collection<int, Document>

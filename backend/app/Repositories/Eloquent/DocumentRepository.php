@@ -5,6 +5,7 @@ namespace App\Repositories\Eloquent;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
+use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Support\Collection;
@@ -230,5 +231,42 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('document_id', $documentId)
             ->where('id', $versionId)
             ->firstOrFail();
+    }
+
+    public function upsertDocumentShare(
+        string $documentId,
+        string $userId,
+        string $permission,
+        string $grantedBy,
+    ): void {
+        $existing = DocumentShare::query()
+            ->where('document_id', $documentId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($existing !== null) {
+            $existing->update([
+                'permission' => $permission,
+                'granted_by' => $grantedBy,
+            ]);
+
+            return;
+        }
+
+        DocumentShare::forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'user_id' => $userId,
+            'permission' => $permission,
+            'granted_by' => $grantedBy,
+        ]);
+    }
+
+    public function deleteDocumentShare(string $documentId, string $userId): void
+    {
+        DocumentShare::query()
+            ->where('document_id', $documentId)
+            ->where('user_id', $userId)
+            ->delete();
     }
 }

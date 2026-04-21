@@ -23,7 +23,7 @@ use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 /**
- * F-03.4 Escenario 4: documento anclado a template_version_id; al abrir, estructura de esa versión.
+ * Documento anclado a template_version_id; al abrir, estructura de esa versión.
  */
 class DocumentsTemplateVersionApiTest extends TestCase
 {
@@ -932,7 +932,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertOk();
 
         // Tras borrar revisiones el revisor deja de entrar por `document_reviews` en el scope del modelo;
-        // un share mantiene acceso de lectura coherente con F-05.1 para poder publicar sin filas pendientes.
+        // un share de lectura mantiene visibilidad para publicar sin filas pendientes.
         DocumentShare::query()->forceCreate([
             'id' => (string) Str::uuid(),
             'document_id' => $docId,
@@ -971,7 +971,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'Plantilla F-04.6',
+            'name' => 'Plantilla estado versión',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,

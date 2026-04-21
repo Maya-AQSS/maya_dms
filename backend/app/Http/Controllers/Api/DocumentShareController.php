@@ -3,13 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Documents\StoreDocumentShareRequest;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 /**
- * TODO(permisos): reglas por documento (titular vs colaborador read/edit en
- * `document_shares`) y alinear con F-05.1; hoy se usa `authorize('update')` global.
+ * Compartición: alta/revocación gestionada solo por el titular ({@see \App\Policies\DocumentPolicy::share}).
  */
 class DocumentShareController extends Controller
 {
@@ -19,34 +20,41 @@ class DocumentShareController extends Controller
 
     /**
      * POST /api/v1/documents/{document}/shares
-     * 
-     * Comparte un documento con un usuario.
-     * 
-     * @param  string  $document
-     * @return JsonResponse
+     *
+     * Comparte un documento con un usuario (permiso read o edit).
      */
-    public function store(Request $request, string $document): JsonResponse
+    public function store(StoreDocumentShareRequest $request, string $document): JsonResponse
     {
         $doc = $this->documentService->findOrFail($document);
-        $this->authorize('update', $doc);
+        $this->authorize('share', $doc);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $actorId = (string) $request->user()->getAuthIdentifier();
+        $data = $this->documentService->upsertDocumentShare(
+            $doc->id,
+            $request->validated('user_id'),
+            $request->validated('permission'),
+            $actorId,
+        );
+
+        return response()->json(['data' => $data], 201);
     }
 
     /**
      * DELETE /api/v1/documents/{document}/shares/{userId}
-     * 
-     * Elimina un usuario de la lista de compartición de un documento.
-     * 
-     * @param  string  $document
-     * @param  string  $userId
-     * @return JsonResponse
+     *
+     * Revoca el acceso de un colaborador (idempotente).
      */
-    public function destroy(Request $request, string $document, string $userId): JsonResponse
+    public function destroy(Request $request, string $document, string $userId): Response
     {
         $doc = $this->documentService->findOrFail($document);
-        $this->authorize('update', $doc);
+        $this->authorize('share', $doc);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $this->documentService->removeDocumentShare(
+            $doc->id,
+            $userId,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return response()->noContent();
     }
 }

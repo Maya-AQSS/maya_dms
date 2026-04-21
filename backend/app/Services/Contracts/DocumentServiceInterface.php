@@ -128,4 +128,21 @@ interface DocumentServiceInterface
      * }
      */
     public function templateVersionStatus(string $documentId): array;
+
+    /**
+     * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
+     *
+     * @return array{user_id: string, permission: string, granted_by: string}
+     */
+    public function upsertDocumentShare(
+        string $documentId,
+        string $targetUserId,
+        string $permission,
+        string $actorId,
+    ): array;
+
+    /**
+     * Elimina un compartido (idempotente si no existía).
+     */
+    public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void;
 }

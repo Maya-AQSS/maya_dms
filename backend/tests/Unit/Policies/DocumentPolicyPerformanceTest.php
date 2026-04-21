@@ -8,7 +8,7 @@ use App\Policies\DocumentPolicy;
 use Tests\TestCase;
 
 /**
- * Requisito técnico F-01.3: verificación SoD sin consultas a BD (comparación de IDs en memoria).
+ * Verificación SoD sin consultas a BD (comparación de IDs en memoria).
  */
 class DocumentPolicyPerformanceTest extends TestCase
 {

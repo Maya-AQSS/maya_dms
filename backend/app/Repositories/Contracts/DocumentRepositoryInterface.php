@@ -108,4 +108,19 @@ interface DocumentRepositoryInterface
      * Localiza una fila de document_versions por id dentro del documento.
      */
     public function findDocumentVersionInDocumentOrFail(string $documentId, string $versionId): DocumentVersion;
+
+    /**
+     * Crea o actualiza un compartido (document_id, user_id) único.
+     */
+    public function upsertDocumentShare(
+        string $documentId,
+        string $userId,
+        string $permission,
+        string $grantedBy,
+    ): void;
+
+    /**
+     * Elimina un compartido; no lanza si no existía.
+     */
+    public function deleteDocumentShare(string $documentId, string $userId): void;
 }
