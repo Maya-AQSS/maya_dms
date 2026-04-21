@@ -143,7 +143,7 @@ function ValidatorSection({
         <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary flex-1 min-w-0">
           {title} ({validators.length})
         </span>
-        {target === 'template' && validationType && onValidationTypeChange && (
+        {validationType && onValidationTypeChange && (
           <div className="flex gap-1 shrink-0">
             {(['libre', 'ordenada'] as const).map((t) => (
               <button
@@ -163,7 +163,7 @@ function ValidatorSection({
         )}
       </div>
 
-      {target === 'template' && validationType === 'ordenada' && (
+      {validationType === 'ordenada' && (
         <div className="px-4 py-1 border-b border-warning/20 bg-warning-light/10 shrink-0">
           <p className="text-[10px] text-warning-dark font-bold">Validación ordenada — arrastra para reordenar.</p>
         </div>
@@ -277,6 +277,8 @@ type Props = {
   onValidationTypeChange: (type: 'libre' | 'ordenada') => void;
   documentValidators: ValidatorEntry[];
   onDocumentValidatorsChange: (validators: ValidatorEntry[]) => void;
+  documentValidationType: 'libre' | 'ordenada';
+  onDocumentValidationTypeChange: (type: 'libre' | 'ordenada') => void;
 };
 
 export function WizardStep3Users({
@@ -286,6 +288,8 @@ export function WizardStep3Users({
   onValidationTypeChange,
   documentValidators,
   onDocumentValidatorsChange,
+  documentValidationType,
+  onDocumentValidationTypeChange,
 }: Props) {
   const { hasPermission } = useUserProfile();
   const canSearchUsers = hasPermission('users.search');
@@ -364,6 +368,8 @@ export function WizardStep3Users({
           title="Validadores del documento"
           validators={documentValidators}
           onValidatorsChange={onDocumentValidatorsChange}
+          validationType={documentValidationType}
+          onValidationTypeChange={onDocumentValidationTypeChange}
           target="document"
         />
       </div>

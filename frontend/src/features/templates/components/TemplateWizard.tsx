@@ -55,6 +55,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
     initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
   );
+  const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -395,6 +396,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             onValidationTypeChange={setValidationType}
             documentValidators={documentValidators}
             onDocumentValidatorsChange={setDocumentValidators}
+            documentValidationType={documentValidationType}
+            onDocumentValidationTypeChange={setDocumentValidationType}
           />
         )}
         {step === 'summary' && template && (
