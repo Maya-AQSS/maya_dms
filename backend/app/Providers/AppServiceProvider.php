@@ -40,6 +40,7 @@ use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
 use Maya\Auth\Contracts\JwksServiceInterface;
+use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
@@ -47,6 +48,7 @@ use App\Services\DocumentService;
 use App\Services\DashboardService;
 use App\Services\HealthCheckService;
 use App\Services\TeamReadService;
+use App\Services\SnapshotService;
 use App\Services\TemplateBlockService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
@@ -73,6 +75,7 @@ class AppServiceProvider extends ServiceProvider
         // Service bindings
         $this->app->bind(AuditLogServiceInterface::class, AuditLogService::class);
         $this->app->bind(ApiTeamEmbedServiceInterface::class, ApiTeamEmbedService::class);
+        $this->app->bind(SnapshotServiceInterface::class, SnapshotService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(TeamReadServiceInterface::class, TeamReadService::class);
         $this->app->bind(CommentServiceInterface::class, CommentService::class);

@@ -5,6 +5,7 @@ namespace App\Repositories\Contracts;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
+use App\Models\DocumentVersion;
 use Illuminate\Support\Collection;
 
 interface DocumentRepositoryInterface
@@ -102,4 +103,9 @@ interface DocumentRepositoryInterface
         array $snapshotData,
         ?string $notes = null,
     ): void;
+
+    /**
+     * Localiza una fila de document_versions por id dentro del documento.
+     */
+    public function findDocumentVersionInDocumentOrFail(string $documentId, string $versionId): DocumentVersion;
 }

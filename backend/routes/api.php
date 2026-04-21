@@ -108,6 +108,12 @@ Route::prefix('v1')->group(function () {
 
         Route::get('documents/{document}/versions', [DocumentVersionController::class, 'index'])
             ->whereUuid('document');
+        Route::get('documents/{document}/versions/{version}', [DocumentVersionController::class, 'show'])
+            ->whereUuid('document')
+            ->whereUuid('version');
+        Route::match(['put', 'patch', 'delete'], 'documents/{document}/versions/{version}', fn () => abort(403, 'Los snapshots de documento son de solo inserción (append-only).'))
+            ->whereUuid('document')
+            ->whereUuid('version');
 
         // Auditoría
         Route::get('documents/{document}/audit', [AuditLogController::class, 'indexForDocument'])

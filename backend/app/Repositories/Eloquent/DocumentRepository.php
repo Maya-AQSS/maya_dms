@@ -216,7 +216,19 @@ class DocumentRepository implements DocumentRepositoryInterface
             'triggered_by' => $triggeredBy,
             'snapshot_data' => $snapshotData,
             'notes' => $notes,
+            'is_immutable' => true,
             'created_at' => now(),
         ]);
+    }
+
+    /**
+     * Busca una versión de documento por su ID dentro del documento o lanza ModelNotFoundException.
+     */
+    public function findDocumentVersionInDocumentOrFail(string $documentId, string $versionId): DocumentVersion
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->where('id', $versionId)
+            ->firstOrFail();
     }
 }

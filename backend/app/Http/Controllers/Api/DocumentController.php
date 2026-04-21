@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
+use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
@@ -172,13 +173,17 @@ class DocumentController extends Controller
     /**
      * Publicar documento.
      */
-    public function publish(Request $request, string $id): JsonResponse
+    public function publish(PublishDocumentRequest $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('review', $document);
 
         $actorId = $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->publishDocument($document->id, $actorId);
+        $updated = $this->documentService->publishDocument(
+            $document->id,
+            $actorId,
+            $request->validated('changelog'),
+        );
 
         return response()->json(['data' => $updated]);
     }

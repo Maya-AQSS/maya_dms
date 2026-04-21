@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\DocumentShare;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Template;
@@ -524,8 +525,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
             'content' => [['type' => 'paragraph', 'content' => 'No debería guardar']],
         ], $hCreator)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['block']);
+            ->assertForbidden();
     }
 
     public function test_update_document_updates_title(): void
@@ -840,7 +840,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertNotEmpty($reviews);
         $reviewId = (string) $reviews[0]['id'];
 
-        $this->postJson("/api/v1/documents/{$docId}/reviews/{$reviewId}/approve", [], $hReviewer)
+        $this->postJson("/api/v1/documents/{$docId}/reviews/{$reviewId}/approve", [
+            'changelog' => 'Cierre v1 liberado',
+        ], $hReviewer)
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
@@ -849,6 +851,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertSame(1, (int) $row->version_number);
         $this->assertSame('published', $row->trigger_event);
         $this->assertSame($reviewerId, $row->triggered_by);
+        $this->assertSame('Cierre v1 liberado', $row->notes);
 
         $raw = $row->snapshot_data;
         $snapshot = is_string($raw) ? json_decode($raw, true) : $raw;
@@ -860,5 +863,99 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertNotEmpty($snapshot['blocks']);
 
         $this->assertSame(1, (int) DB::table('documents')->where('id', $docId)->value('current_version'));
+
+        $versionId = (string) $row->id;
+        $show = $this->getJson("/api/v1/documents/{$docId}/versions/{$versionId}", $hCreator)
+            ->assertOk()
+            ->json('data');
+        $this->assertSame($versionId, $show['id']);
+        $this->assertArrayHasKey('snapshot_data', $show);
+        $this->assertSame('Cierre v1 liberado', $show['changelog']);
+    }
+
+    public function test_publish_document_requires_changelog(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla publish changelog',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'type' => 'paragraph',
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'mandatory' => false,
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc publish',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk();
+
+        // Tras borrar revisiones el revisor deja de entrar por `document_reviews` en el scope del modelo;
+        // un share mantiene acceso de lectura coherente con F-05.1 para poder publicar sin filas pendientes.
+        DocumentShare::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $docId,
+            'user_id' => $reviewerId,
+            'permission' => 'read',
+            'granted_by' => $creatorId,
+        ]);
+
+        DB::table('document_reviews')->where('document_id', $docId)->delete();
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [], $hReviewer)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['changelog']);
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => 'Publicación directa con notas',
+        ], $hReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->assertSame(
+            'Publicación directa con notas',
+            (string) DB::table('document_versions')->where('document_id', $docId)->value('notes'),
+        );
     }
 }

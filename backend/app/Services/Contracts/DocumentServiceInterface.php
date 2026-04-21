@@ -6,6 +6,7 @@ use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentReview;
+use App\Models\DocumentVersion;
 use Illuminate\Support\Collection;
 
 interface DocumentServiceInterface
@@ -59,7 +60,7 @@ interface DocumentServiceInterface
     /**
      * Publica el documento.
      */
-    public function publishDocument(string $documentId, string $actorId): Document;
+    public function publishDocument(string $documentId, string $actorId, string $changelog): Document;
 
     /**
      * Rechaza el documento.
@@ -81,7 +82,12 @@ interface DocumentServiceInterface
     /**
      * Aprueba una revisión del documento.
      */
-    public function approveReview(string $documentId, string $reviewId, string $actorId): Document;
+    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document;
+
+    /**
+     * Localiza una versión snapshot del documento por id.
+     */
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
 
     /**
      * Rechaza una revisión del documento.

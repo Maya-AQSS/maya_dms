@@ -3,16 +3,19 @@
 namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Events\DocumentStateChanged;
 use App\Models\CourseModule;
 use App\Models\Document;
 use App\Models\DocumentReview;
+use App\Models\DocumentVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +26,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
+        private readonly SnapshotServiceInterface $snapshotService,
     ) {}
 
     /**
@@ -253,9 +257,7 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($dto->documentId);
         if ($document->status !== 'draft') {
-            throw ValidationException::withMessages([
-                'status' => ['Solo se pueden editar bloques de documentos en borrador.'],
-            ]);
+            abort(403, 'Solo se pueden editar bloques de documentos en borrador.');
         }
 
         $block = $this->documentRepository->findBlockInDocumentOrFail(
@@ -268,9 +270,7 @@ class DocumentService implements DocumentServiceInterface
         $definition = $definitions->get((string) $block->template_block_id);
 
         if (($definition['block_state'] ?? 'editable') === 'locked') {
-            throw ValidationException::withMessages([
-                'block' => ['Este bloque está bloqueado y no admite edición.'],
-            ]);
+            abort(403, 'Este bloque está bloqueado y no admite edición.');
         }
 
         $block->content = $dto->content;
@@ -396,7 +396,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Publica el documento.
      */
-    public function publishDocument(string $documentId, string $actorId): Document
+    public function publishDocument(string $documentId, string $actorId, string $changelog): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
@@ -412,11 +412,16 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return DB::transaction(function () use ($documentId, $actorId) {
+        return DB::transaction(function () use ($documentId, $actorId, $changelog) {
             $this->transition($documentId, 'published', $actorId, [
                 'published_at' => now(),
             ]);
-            $this->recordPublishedDocumentVersion($documentId, $actorId);
+            $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
+                documentId: $documentId,
+                triggerEvent: 'published',
+                triggeredBy: $actorId,
+                notes: $changelog,
+            ));
 
             return $this->documentRepository->findOrFail($documentId);
         });
@@ -484,9 +489,9 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Aprueba una revisión del documento.
      */
-    public function approveReview(string $documentId, string $reviewId, string $actorId): Document
+    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document
     {
-        return DB::transaction(function () use ($documentId, $reviewId, $actorId) {
+        return DB::transaction(function () use ($documentId, $reviewId, $actorId, $publicationChangelog) {
             $document = $this->documentRepository->findOrFail($documentId);
 
             if ($document->status !== 'in_review') {
@@ -521,7 +526,15 @@ class DocumentService implements DocumentServiceInterface
                 $this->transition($documentId, 'published', $actorId, [
                     'published_at' => now(),
                 ]);
-                $this->recordPublishedDocumentVersion($documentId, $actorId);
+                $changelog = $publicationChangelog !== null && trim($publicationChangelog) !== ''
+                    ? trim($publicationChangelog)
+                    : 'Publicado tras aprobación de revisión.';
+                $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
+                    documentId: $documentId,
+                    triggerEvent: 'published',
+                    triggeredBy: $actorId,
+                    notes: $changelog,
+                ));
 
                 return $this->documentRepository->findOrFail($documentId);
             }
@@ -624,6 +637,9 @@ class DocumentService implements DocumentServiceInterface
         return true;
     }
 
+    /**
+     * Verifica que todos los bloques obligatorios estén completos.
+     */
     private function assertMandatoryBlocksAreFilled(Document $document): void
     {
         $definitions = collect($this->blockDefinitionsForDocument($document))
@@ -663,62 +679,12 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
-     * Persiste snapshot append-only en document_versions y alinea current_version.
+     * Localiza una versión de documento por su ID.
      */
-    private function recordPublishedDocumentVersion(string $documentId, string $actorId): void
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion
     {
-        $document = $this->documentRepository->findOrFail($documentId);
-        $nextNumber = $this->documentRepository->maxDocumentVersionNumber($documentId) + 1;
-        $snapshot = $this->buildDocumentVersionSnapshot($document, $nextNumber);
+        $this->documentRepository->findOrFail($documentId);
 
-        $this->documentRepository->insertDocumentVersion(
-            $documentId,
-            $nextNumber,
-            'published',
-            $actorId,
-            $snapshot,
-            null,
-        );
-
-        $document->update(['current_version' => $nextNumber]);
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array
-    {
-        $document->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
-
-        return [
-            'snapshot_version_number' => $snapshotVersionNumber,
-            'document' => [
-                'id' => $document->id,
-                'template_id' => $document->template_id,
-                'template_version_id' => $document->template_version_id,
-                'title' => $document->title,
-                'study_type_id' => $document->study_type_id,
-                'study_id' => $document->study_id,
-                'module_id' => $document->module_id,
-                'created_by' => $document->created_by,
-                'owner_id' => $document->owner_id,
-                'status' => $document->status,
-                'current_version' => (int) $document->current_version,
-                'submitted_at' => $document->submitted_at?->toIso8601String(),
-                'published_at' => $document->published_at?->toIso8601String(),
-            ],
-            'blocks' => $document->blocks->map(static function ($b): array {
-                return [
-                    'id' => $b->id,
-                    'template_block_id' => $b->template_block_id,
-                    'content' => $b->content,
-                    'is_filled' => (bool) $b->is_filled,
-                    'sort_order' => (int) $b->sort_order,
-                    'last_edited_by' => $b->last_edited_by,
-                    'locked_by' => $b->locked_by,
-                    'locked_at' => $b->locked_at?->toIso8601String(),
-                ];
-            })->values()->all(),
-        ];
+        return $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
     }
 }
