@@ -2,9 +2,12 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\BlockVersion;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
+use App\Models\DocumentShare;
+use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -49,6 +52,25 @@ class DocumentRepository implements DocumentRepositoryInterface
 
             return $document->fresh(['blocks']);
         });
+    }
+
+    /**
+     * Busca un bloque por su ID dentro del documento o lanza ModelNotFoundException.
+     */
+    public function findBlockInDocumentOrFail(string $documentId, string $blockId): DocumentBlock
+    {
+        return DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->where('id', $blockId)
+            ->firstOrFail();
+    }
+
+    /**
+     * Guarda un bloque del documento.
+     */
+    public function saveBlock(DocumentBlock $block): void
+    {
+        $block->save();
     }
 
     /**
@@ -161,5 +183,160 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('document_id', $documentId)
             ->where('reviewer_id', $userId)
             ->exists();
+    }
+
+    /**
+     * Mayor número de versión de snapshot guardado para el documento.
+     */
+    public function maxDocumentVersionNumber(string $documentId): int
+    {
+        $max = DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->max('version_number');
+
+        return $max !== null ? (int) $max : 0;
+    }
+
+    /**
+     * Inserta un registro append-only en document_versions.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     */
+    public function insertDocumentVersion(
+        string $documentId,
+        int $versionNumber,
+        string $triggerEvent,
+        string $triggeredBy,
+        array $snapshotData,
+        ?string $notes = null,
+    ): void {
+        DocumentVersion::forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'version_number' => $versionNumber,
+            'trigger_event' => $triggerEvent,
+            'triggered_by' => $triggeredBy,
+            'snapshot_data' => $snapshotData,
+            'notes' => $notes,
+            'is_immutable' => true,
+            'created_at' => now(),
+        ]);
+    }
+
+    /**
+     * Busca una versión de documento por su ID dentro del documento o lanza ModelNotFoundException.
+     */
+    public function findDocumentVersionInDocumentOrFail(string $documentId, string $versionId): DocumentVersion
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->where('id', $versionId)
+            ->firstOrFail();
+    }
+
+    /**
+     * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
+     */
+    public function upsertDocumentShare(
+        string $documentId,
+        string $userId,
+        string $permission,
+        string $grantedBy,
+    ): void {
+        $existing = DocumentShare::query()
+            ->where('document_id', $documentId)
+            ->where('user_id', $userId)
+            ->first();
+
+        if ($existing !== null) {
+            $existing->update([
+                'permission' => $permission,
+                'granted_by' => $grantedBy,
+            ]);
+
+            return;
+        }
+
+        DocumentShare::forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'user_id' => $userId,
+            'permission' => $permission,
+            'granted_by' => $grantedBy,
+        ]);
+    }
+
+    /**
+     * Elimina un compartido; no lanza si no existía.
+     */
+    public function deleteDocumentShare(string $documentId, string $userId): void
+    {
+        DocumentShare::query()
+            ->where('document_id', $documentId)
+            ->where('user_id', $userId)
+            ->delete();
+    }
+
+    /**
+     * Permisos de compartición del usuario sobre los documentos indicados.
+     *
+     * @param  list<string>  $documentIds
+     * @return array<string, string> mapa document_id => permission (read|edit)
+     */
+    public function sharePermissionsForViewer(array $documentIds, string $userId): array
+    {
+        $documentIds = array_values(array_unique(array_filter($documentIds)));
+        if ($documentIds === []) {
+            return [];
+        }
+
+        $rows = DocumentShare::query()
+            ->whereIn('document_id', $documentIds)
+            ->where('user_id', $userId)
+            ->get(['document_id', 'permission']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(string) $row->document_id] = (string) $row->permission;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Mayor número de versión de snapshot guardado para el bloque del documento.
+     */
+    public function maxBlockVersionNumberForDocumentBlock(string $documentBlockId): int
+    {
+        $max = BlockVersion::query()
+            ->where('document_block_id', $documentBlockId)
+            ->max('version_number');
+
+        return $max !== null ? (int) $max : 0;
+    }
+
+    /**
+     * Inserta un registro append-only en block_versions.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     */
+    public function insertDocumentBlockVersion(
+        string $documentBlockId,
+        string $documentId,
+        int $versionNumber,
+        array $content,
+        ?array $diff,
+        string $editedBy,
+    ): void {
+        BlockVersion::forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_block_id' => $documentBlockId,
+            'document_id' => $documentId,
+            'version_number' => $versionNumber,
+            'content' => $content,
+            'diff' => $diff,
+            'edited_by' => $editedBy,
+            'created_at' => now(),
+        ]);
     }
 }

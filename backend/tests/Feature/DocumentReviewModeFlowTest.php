@@ -16,7 +16,7 @@ use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 /**
- * Modo secuencial vs paralelo en aprobación/rechazo por revisión (F-06.1).
+ * Modo secuencial vs paralelo en aprobación/rechazo por revisión.
  */
 class DocumentReviewModeFlowTest extends TestCase
 {

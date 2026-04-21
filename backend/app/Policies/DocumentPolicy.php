@@ -11,12 +11,14 @@ use App\Models\JwtUser;
  * Creador y titular actual (owner tras delegación) no pueden revisar ni aprobar
  * el mismo artefacto. Solo comparación de IDs en memoria — sin consultas extra.
  *
- * Envío a revisión ({@see self::submit}): solo el titular ({@see Document::$owner_id}),
- * alineado con F-05.1 (autor principal).
+ * Envío a revisión ({@see self::submit}): solo el titular ({@see Document::$owner_id}).
  *
  * Mutaciones de persistencia: el creador o el titular pueden editar sin el permiso
- * global; terceros requieren `documents.update`. `delete` sigue exigiendo
- * `documents.delete`.
+ * global; un colaborador con share `edit` puede mutar contenido; el resto
+ * requiere `documents.update`. `delete` sigue exigiendo `documents.delete`.
+ *
+ * Compartición ({@see self::share}): solo el titular actual gestiona filas en
+ * `document_shares`.
  */
 class DocumentPolicy
 {
@@ -41,7 +43,37 @@ class DocumentPolicy
             return true;
         }
 
+        if ($this->hasEditShare($document, (string) $id)) {
+            return true;
+        }
+
         return $user->hasPermission('documents.update');
+    }
+
+    /**
+     * Alta o modificación de compartidos del documento (POST shares).
+     */
+    public function share(JwtUser $user, Document $document): bool
+    {
+        return $user->getAuthIdentifier() === $document->owner_id;
+    }
+
+    private function hasEditShare(Document $document, string $userId): bool
+    {
+        if ($document->relationLoaded('shares')) {
+            return $document->shares->contains(
+                fn ($share) => (string) $share->user_id === $userId && $share->permission === 'edit',
+            );
+        }
+
+        if ($document->getKey() === null) {
+            return false;
+        }
+
+        return $document->shares()
+            ->where('user_id', $userId)
+            ->where('permission', 'edit')
+            ->exists();
     }
 
     /**

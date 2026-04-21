@@ -37,8 +37,17 @@ class ReviewController extends Controller
         $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
 
+        $validated = $request->validate([
+            'changelog' => ['nullable', 'string', 'max:5000'],
+        ]);
+
         $actorId = $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->approveReview($document->id, $reviewId, $actorId);
+        $updated = $this->documentService->approveReview(
+            $document->id,
+            $reviewId,
+            $actorId,
+            $validated['changelog'] ?? null,
+        );
 
         return response()->json(['data' => $updated]);
     }

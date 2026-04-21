@@ -111,7 +111,7 @@ class TemplatePolicy
     }
 
     /**
-     * Revisión / aprobación (SoD — F-01.3).
+     * Revisión / aprobación (SoD).
      *
      * Requiere estar asignado en `template_reviewers` Y no ser el creador de la plantilla.
      * El creador nunca puede aprobar o rechazar su propia plantilla.
