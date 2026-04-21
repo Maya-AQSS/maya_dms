@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
-import { BlockNoteViewRaw as BlockNoteView } from '@blocknote/react';
-import '@blocknote/react/style.css';
+import { BlockNoteView } from '@blocknote/ariakit';
+import '@blocknote/ariakit/style.css';
 
 interface Props {
   initialContent: unknown;
