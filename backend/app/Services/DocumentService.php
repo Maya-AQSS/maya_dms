@@ -307,8 +307,12 @@ class DocumentService implements DocumentServiceInterface
             }
         }
 
-        $template = $this->templateRepository->findOrFail($document->template_id);
-        $template->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+        // Sin global scope: durante submit/revisión el titular puede no tener visibilidad
+        // de catálogo sobre la plantilla, pero el documento ya está anclado a ella.
+        $template = Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order')])
+            ->findOrFail($document->template_id);
 
         return $template->blocks->map(fn ($b) => [
             'id' => $b->id,
@@ -355,6 +359,8 @@ class DocumentService implements DocumentServiceInterface
                 'status' => ['Solo los documentos en borrador pueden enviarse a revisión.'],
             ]);
         }
+
+        $this->assertMandatoryBlocksAreFilled($document);
 
         return DB::transaction(function () use ($documentId, $actorId, $document) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
@@ -608,5 +614,43 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return true;
+    }
+
+    private function assertMandatoryBlocksAreFilled(Document $document): void
+    {
+        $definitions = collect($this->blockDefinitionsForDocument($document))
+            ->filter(fn (array $def) => (bool) ($def['mandatory'] ?? false));
+
+        if ($definitions->isEmpty()) {
+            return;
+        }
+
+        $document->loadMissing('blocks');
+        $blocksByTemplateBlockId = $document->blocks->keyBy('template_block_id');
+        $missing = [];
+
+        foreach ($definitions as $definition) {
+            $templateBlockId = (string) ($definition['id'] ?? '');
+            if ($templateBlockId === '') {
+                continue;
+            }
+
+            $block = $blocksByTemplateBlockId->get($templateBlockId);
+            if ($block === null) {
+                $missing[] = $templateBlockId;
+                continue;
+            }
+
+            if (! ((bool) $block->is_filled) && ! $this->isContentFilled($block->content)) {
+                $missing[] = $templateBlockId;
+            }
+        }
+
+        if ($missing !== []) {
+            throw ValidationException::withMessages([
+                'blocks' => ['Debes completar todos los bloques obligatorios antes de enviar a revisión.'],
+                'missing_template_block_ids' => $missing,
+            ]);
+        }
     }
 }
