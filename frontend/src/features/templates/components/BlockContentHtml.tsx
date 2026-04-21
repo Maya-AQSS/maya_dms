@@ -22,8 +22,11 @@ function ensureStyles() {
     .bn-doc-content h2 { font-size: 1.5rem; font-weight: 600; margin: 1em 0 0.3em; line-height: 1.3; }
     .bn-doc-content h3 { font-size: 1.25rem; font-weight: 600; margin: 0.9em 0 0.25em; }
     .bn-doc-content p { margin: 0.5em 0; }
-    .bn-doc-content ul, .bn-doc-content ol { padding-left: 1.5em; margin: 0.5em 0; }
-    .bn-doc-content li { margin: 0.2em 0; }
+    .bn-doc-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+    .bn-doc-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+    .bn-doc-content ul ul { list-style: circle; }
+    .bn-doc-content ul ul ul { list-style: square; }
+    .bn-doc-content li { margin: 0.2em 0; display: list-item; }
     .bn-doc-content strong { font-weight: 700; }
     .bn-doc-content em { font-style: italic; }
     .bn-doc-content u { text-decoration: underline; }
@@ -37,6 +40,9 @@ function ensureStyles() {
     .bn-doc-content th, .bn-doc-content td { border: 1px solid #e5e7eb; padding: 0.5em 0.75em; }
     .bn-doc-content tr:nth-child(even) td { background: #fafafa; }
     .bn-doc-content img { max-width: 100%; height: auto; margin: 0.75em auto; display: block; border-radius: 4px; }
+    .preview-content ul { list-style: disc; padding-left: 1.5em; margin: 0.5em 0; }
+    .preview-content ol { list-style: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+    .preview-content li { margin: 0.2em 0; display: list-item; }
   `;
   document.head.appendChild(el);
 }
