@@ -47,7 +47,8 @@ export function WizardStep4Summary({ template, validators, validationType, docum
     if (blocks.length > 0 && !selectedBlock) {
       setSelectedBlock(blocks[0]);
     }
-  }, [blocks, selectedBlock]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks]);
 
   const hierarchyFields = [
     { label: 'Tipo de Estudio', value: template.study_type_id },
