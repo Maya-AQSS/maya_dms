@@ -164,9 +164,12 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     }
 
     /**
-     * Escenario 2: creador publica plantilla en borrador sin validadores → HTTP 200.
+     * Escenario 2: creador envía a revisión una plantilla sin revisores → se publica automáticamente.
+     *
+     * El endpoint `publish` exige ser revisor asignado (SoD). Cuando no hay revisores,
+     * la publicación es automática al llamar a `submit-review`.
      */
-    public function test_creator_publish_template_returns_200_when_no_reviewers(): void
+    public function test_creator_submit_review_auto_publishes_when_no_reviewers(): void
     {
         $creatorId = 'creator-tpl-uuid-02';
         [$templateId] = $this->seedTemplateAndDocument($creatorId);
@@ -184,8 +187,8 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             ->andReturn(InMemory::plainText($publicPem));
 
         $response = $this->postJson(
-            "/api/v1/templates/{$templateId}/publish",
-            ['changelog' => 'Versión inicial'],
+            "/api/v1/templates/{$templateId}/submit-review",
+            [],
             ['Authorization' => 'Bearer '.$token],
         );
 

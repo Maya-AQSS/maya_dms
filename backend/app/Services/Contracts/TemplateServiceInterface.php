@@ -43,11 +43,6 @@ interface TemplateServiceInterface
     public function publishWithSnapshot(string $templateId, string $changelog, string $actorId): Template;
 
     /**
-     * Reabre el borrador de la plantilla (autor o quien puede editar la plantilla).
-     */
-    public function reopenDraft(string $templateId, string $actorId): Template;
-
-    /**
      * @return Collection<int, TemplateVersion>
      */
     public function listPublishedVersions(string $templateId): Collection;

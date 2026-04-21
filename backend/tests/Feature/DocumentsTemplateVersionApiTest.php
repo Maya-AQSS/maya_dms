@@ -175,7 +175,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonValidationErrors(['template_id']);
     }
 
-    public function test_show_document_uses_v1_snapshot_after_template_publishes_v2(): void
+    public function test_show_document_references_snapshot_from_publish_time(): void
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
@@ -209,7 +209,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'type' => 'heading',
-            'title' => 'Solo v1',
+            'title' => 'Bloque publicado',
             'default_content' => null,
             'block_state' => 'editable',
             'mandatory' => false,
@@ -237,30 +237,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertNotEmpty($versionIdV1);
         $createDoc->assertJsonCount(1, 'data.blocks');
         $createDoc->assertJsonPath('data.blocks.0.type', 'heading');
-        $createDoc->assertJsonPath('data.blocks.0.title', 'Solo v1');
-
-        $b2 = (string) Str::uuid();
-        TemplateBlock::query()->forceCreate([
-            'id' => $b2,
-            'template_id' => $tid,
-            'type' => 'paragraph',
-            'title' => 'Añadido en v2',
-            'default_content' => ['x' => 1],
-            'block_state' => 'editable',
-            'mandatory' => false,
-            'sort_order' => 1,
-        ]);
-
-        $this->postJson("/api/v1/templates/{$tid}/reopen-draft", [], $hCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v2 segundo bloque'], $hReviewer)->assertOk();
+        $createDoc->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
         $show->assertOk();
         $show->assertJsonPath('data.template_version_id', $versionIdV1);
         $show->assertJsonCount(1, 'data.blocks');
-        $show->assertJsonPath('data.blocks.0.type', 'heading');
-        $show->assertJsonPath('data.blocks.0.title', 'Solo v1');
+        $show->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
         $show->assertJsonPath('data.team', null);
     }
 

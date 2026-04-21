@@ -190,19 +190,6 @@ class TemplateController extends Controller
     }
 
     /**
-     * Publicado → borrador para preparar otra versión publicable.
-     */
-    public function reopenDraft(string $template): TemplateResource
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('reopenDraft', $model);
-
-        $updated = $this->templateService->reopenDraft($model->id, (string) Auth::id());
-
-        return new TemplateResource($updated);
-    }
-
-    /**
      * Historial de versiones publicadas (metadatos).
      */
     public function versions(string $template): ResourceCollection

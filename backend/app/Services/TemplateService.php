@@ -222,22 +222,6 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Reabre el borrador de la plantilla (autor o quien puede editar la plantilla).
-     */
-    public function reopenDraft(string $templateId, string $actorId): Template
-    {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        if ($template->status !== 'published') {
-            throw ValidationException::withMessages([
-                'status' => ['Solo las plantillas publicadas pueden reabrirse a borrador para una nueva versión.'],
-            ]);
-        }
-
-        return $this->updateTemplateStatusWithEvent($template, 'draft', $actorId);
-    }
-
-    /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
      * @return Collection<int, TemplateVersion>

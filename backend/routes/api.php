@@ -73,8 +73,6 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
             ->whereUuid('template');
-        Route::post('templates/{template}/reopen-draft', [TemplateController::class, 'reopenDraft'])
-            ->whereUuid('template');
         Route::get('templates/{template}/versions', [TemplateController::class, 'versions'])
             ->whereUuid('template');
         Route::get('template-versions/{template_version}', [TemplateController::class, 'showVersion'])
