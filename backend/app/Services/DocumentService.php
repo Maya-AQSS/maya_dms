@@ -302,6 +302,27 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Anota en cada documento si el visor accede vía `document_shares` y con qué permiso (listado / detalle).
+     * 
+     * @param  Collection<int, Document>  $documents
+     */
+    public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $ids = $documents->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
+        $byDoc = $this->documentRepository->sharePermissionsForViewer($ids, $viewerId);
+
+        foreach ($documents as $document) {
+            $permission = $byDoc[(string) $document->getKey()] ?? null;
+            $document->setAttribute('viewer_share_permission', $permission);
+            $document->setAttribute('is_shared_with_me', $permission !== null);
+        }
+    }
+
+    /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
      * 
      * @return Collection<int, Document>

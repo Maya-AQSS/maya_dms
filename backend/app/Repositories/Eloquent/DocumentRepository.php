@@ -233,6 +233,9 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->firstOrFail();
     }
 
+    /**
+     * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
+     */
     public function upsertDocumentShare(
         string $documentId,
         string $userId,
@@ -262,11 +265,40 @@ class DocumentRepository implements DocumentRepositoryInterface
         ]);
     }
 
+    /**
+     * Elimina un compartido; no lanza si no existía.
+     */
     public function deleteDocumentShare(string $documentId, string $userId): void
     {
         DocumentShare::query()
             ->where('document_id', $documentId)
             ->where('user_id', $userId)
             ->delete();
+    }
+
+    /**
+     * Permisos de compartición del usuario sobre los documentos indicados.
+     *
+     * @param  list<string>  $documentIds
+     * @return array<string, string> mapa document_id => permission (read|edit)
+     */
+    public function sharePermissionsForViewer(array $documentIds, string $userId): array
+    {
+        $documentIds = array_values(array_unique(array_filter($documentIds)));
+        if ($documentIds === []) {
+            return [];
+        }
+
+        $rows = DocumentShare::query()
+            ->whereIn('document_id', $documentIds)
+            ->where('user_id', $userId)
+            ->get(['document_id', 'permission']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(string) $row->document_id] = (string) $row->permission;
+        }
+
+        return $out;
     }
 }

@@ -321,4 +321,60 @@ class DocumentShareApiTest extends TestCase
         $this->assertNotNull($row);
         $this->assertSame('edit', $row->permission);
     }
+
+    public function test_documents_index_sets_is_shared_with_me_for_collaborator(): void
+    {
+        $ctx = $this->seedDraftDocumentWithEditableBlock();
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read', 'documents.read']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
+            'user_id' => $ctx['collabId'],
+            'permission' => 'read',
+        ], $hOwner)->assertCreated();
+
+        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read', 'documents.read']);
+
+        $list = $this->getJson('/api/v1/documents', $hCollab)->assertOk();
+        $items = $list->json('data');
+        $this->assertIsArray($items);
+        $row = collect($items)->firstWhere('id', $ctx['documentId']);
+        $this->assertNotNull($row);
+        $this->assertTrue($row['is_shared_with_me']);
+        $this->assertSame('read', $row['share_permission']);
+    }
+
+    public function test_documents_index_sets_is_shared_with_me_false_for_owner(): void
+    {
+        $ctx = $this->seedDraftDocumentWithEditableBlock();
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read', 'documents.read']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
+            'user_id' => $ctx['collabId'],
+            'permission' => 'read',
+        ], $hOwner)->assertCreated();
+
+        $list = $this->getJson('/api/v1/documents', $hOwner)->assertOk();
+        $row = collect($list->json('data'))->firstWhere('id', $ctx['documentId']);
+        $this->assertNotNull($row);
+        $this->assertFalse($row['is_shared_with_me']);
+        $this->assertNull($row['share_permission']);
+    }
+
+    public function test_document_show_includes_share_metadata_for_collaborator(): void
+    {
+        $ctx = $this->seedDraftDocumentWithEditableBlock();
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read', 'documents.read']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
+            'user_id' => $ctx['collabId'],
+            'permission' => 'edit',
+        ], $hOwner)->assertCreated();
+
+        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read', 'documents.read']);
+
+        $this->getJson("/api/v1/documents/{$ctx['documentId']}", $hCollab)
+            ->assertOk()
+            ->assertJsonPath('data.is_shared_with_me', true)
+            ->assertJsonPath('data.share_permission', 'edit');
+    }
 }

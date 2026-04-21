@@ -145,4 +145,11 @@ interface DocumentServiceInterface
      * Elimina un compartido (idempotente si no existía).
      */
     public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void;
+
+    /**
+     * Anota en cada documento si el visor accede vía `document_shares` y con qué permiso (listado / detalle).
+     *
+     * @param  Collection<int, Document>  $documents
+     */
+    public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void;
 }

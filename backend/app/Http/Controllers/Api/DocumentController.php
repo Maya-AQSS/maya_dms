@@ -27,10 +27,12 @@ class DocumentController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        $viewerId = (string) $request->user()->getAuthIdentifier();
         $documents = $this->documentService->listOrderedByCreatedAtDesc();
+        $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
         );
 
         return DocumentResource::collection($documents);
@@ -125,11 +127,13 @@ class DocumentController extends Controller
      */
     public function show(Request $request, string $id): JsonResponse
     {
+        $viewerId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+        $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $this->apiTeamEmbedService->embedOnDocument(
             $document,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
         );
         $blocks = $this->documentService->blocksForDisplay($document);
 

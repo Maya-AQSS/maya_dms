@@ -123,4 +123,12 @@ interface DocumentRepositoryInterface
      * Elimina un compartido; no lanza si no existía.
      */
     public function deleteDocumentShare(string $documentId, string $userId): void;
+
+    /**
+     * Permisos de compartición del usuario sobre los documentos indicados.
+     *
+     * @param  list<string>  $documentIds
+     * @return array<string, string> mapa document_id => permission (read|edit)
+     */
+    public function sharePermissionsForViewer(array $documentIds, string $userId): array;
 }
