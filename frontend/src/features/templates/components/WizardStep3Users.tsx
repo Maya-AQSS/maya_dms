@@ -114,14 +114,12 @@ function ValidatorSection({
   onValidatorsChange,
   validationType,
   onValidationTypeChange,
-  target,
 }: {
   title: string;
   validators: ValidatorEntry[];
   onValidatorsChange: (v: ValidatorEntry[]) => void;
   validationType?: 'libre' | 'ordenada';
   onValidationTypeChange?: (t: 'libre' | 'ordenada') => void;
-  target: 'template' | 'document';
 }) {
   const sensors = useSensors(useSensor(PointerSensor));
 
@@ -362,7 +360,6 @@ export function WizardStep3Users({
           onValidatorsChange={onValidatorsChange}
           validationType={validationType}
           onValidationTypeChange={onValidationTypeChange}
-          target="template"
         />
         <ValidatorSection
           title="Validadores del documento"
@@ -370,7 +367,6 @@ export function WizardStep3Users({
           onValidatorsChange={onDocumentValidatorsChange}
           validationType={documentValidationType}
           onValidationTypeChange={onDocumentValidationTypeChange}
-          target="document"
         />
       </div>
 
