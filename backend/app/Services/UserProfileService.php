@@ -51,8 +51,6 @@ class UserProfileService implements UserProfileServiceInterface
 
             $teams = $this->repository->findTeamsByUserId($userId);
 
-            $jwtScopes = $this->scopeListsFromJwtProfile($jwtProfile);
-
             $profile = [
                 'id'             => $fdwUser['id'],
                 'email'          => $fdwUser['email'] ?? null,
@@ -61,7 +59,7 @@ class UserProfileService implements UserProfileServiceInterface
                 'study_type_ids' => $this->repository->findStudyTypeIdsByUserId($userId),
                 'study_ids'      => $this->repository->findStudyIdsByUserId($userId),
                 'module_ids'     => $this->repository->findModuleIdsByUserId($userId),
-                'team_ids'       => $this->mergeFdwScopeListOrJwt($fdwUser, 'team_ids', 'team_id', $jwtScopes['team_ids']),
+                'team_ids'       => array_column($teams, 'id'),
                 'permissions'    => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
                 'teams'          => $teams,
                 'source'         => 'fdw',
@@ -104,7 +102,7 @@ class UserProfileService implements UserProfileServiceInterface
             'study_type_ids' => $scopes['study_type_ids'],
             'study_ids'      => $scopes['study_ids'],
             'module_ids'     => $scopes['module_ids'],
-            'team_ids'       => $scopes['team_ids'],
+            'team_ids'       => [],
             'permissions'    => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
             'teams'          => [],
             'source'         => 'jwt_fallback',
@@ -112,46 +110,21 @@ class UserProfileService implements UserProfileServiceInterface
     }
 
     /**
-     * Listas de ámbito académico / equipos en JWT, misma normalización que {@see JwtUser}.
+     * Listas de ámbito académico extraídas del JWT para el perfil de fallback.
+     * Solo jerarquía: los equipos no viajan en el token.
      *
-     * @return array{study_type_ids: list<string>, study_ids: list<string>, module_ids: list<string>, team_ids: list<string>}
+     * @return array{study_type_ids: list<string>, study_ids: list<string>, module_ids: list<string>}
      */
     private function scopeListsFromJwtProfile(array $jwtProfile): array
     {
         return [
             'study_type_ids' => JwtUser::mergeScopeIds($jwtProfile['study_type_ids'] ?? null, $jwtProfile['study_type_id'] ?? null),
-            'study_ids' => JwtUser::mergeScopeIds($jwtProfile['study_ids'] ?? null, $jwtProfile['study_id'] ?? null),
-            'module_ids' => array_values(array_unique(array_merge(
+            'study_ids'      => JwtUser::mergeScopeIds($jwtProfile['study_ids'] ?? null, $jwtProfile['study_id'] ?? null),
+            'module_ids'     => array_values(array_unique(array_merge(
                 JwtUser::mergeScopeIds($jwtProfile['module_ids'] ?? null, $jwtProfile['module_id'] ?? null),
                 JwtUser::mergeScopeIds($jwtProfile['course_module_ids'] ?? null, $jwtProfile['course_module_id'] ?? null),
             ))),
-            'team_ids' => JwtUser::mergeScopeIds($jwtProfile['team_ids'] ?? null, $jwtProfile['team_id'] ?? null),
         ];
     }
 
-    /**
-     * @param  list<string>  $jwtFallback
-     * @return list<string>
-     */
-    private function mergeFdwScopeListOrJwt(array $fdwUser, string $listKey, ?string $scalarKey, array $jwtFallback): array
-    {
-        $scalar = $scalarKey !== null ? ($fdwUser[$scalarKey] ?? null) : null;
-        $fromFdw = JwtUser::mergeScopeIds($fdwUser[$listKey] ?? null, $scalar);
-
-        return $fromFdw !== [] ? $fromFdw : $jwtFallback;
-    }
-
-    /**
-     * @param  list<string>  $jwtFallbackModuleIds
-     * @return list<string>
-     */
-    private function moduleIdsFromFdwOrJwt(array $fdwUser, array $jwtFallbackModuleIds): array
-    {
-        $fromFdw = array_values(array_unique(array_merge(
-            JwtUser::mergeScopeIds($fdwUser['module_ids'] ?? null, $fdwUser['module_id'] ?? null),
-            JwtUser::mergeScopeIds($fdwUser['course_module_ids'] ?? null, $fdwUser['course_module_id'] ?? null),
-        )));
-
-        return $fromFdw !== [] ? $fromFdw : $jwtFallbackModuleIds;
-    }
 }

@@ -2,30 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * Asignación de un módulo de curso a un usuario (identificador = claim `sub` de Keycloak o id mock FDW).
+ * Asignación de un módulo de curso a un usuario.
  *
- * En `local` y producción la relación lógica es la vista `user_course_modules` (FDW sobre origen remoto
- * o `user_course_modules_source` en desarrollo). En `testing` es tabla física homónima.
+ * Tabla de solo lectura: en `local` y producción es la vista `user_course_modules` (FDW sobre
+ * origen remoto o `user_course_modules_source` en desarrollo). En `testing` es tabla física homónima.
+ * No admite escritura vía Eloquent.
  */
 class UserCourseModule extends Model
 {
-    use HasUuids;
-
     protected $table = 'user_course_modules';
-
-    protected $keyType = 'string';
 
     public $incrementing = false;
 
-    protected $fillable = [
-        'user_id',
-        'module_id',
-    ];
+    protected $keyType = 'string';
 
     public function courseModule(): BelongsTo
     {

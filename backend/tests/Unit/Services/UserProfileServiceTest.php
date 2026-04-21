@@ -85,7 +85,7 @@ it('queries FDW filtered by user id from JWT', function () {
         ->and($profile['study_type_ids'])->toBe([])
         ->and($profile['study_ids'])->toBe([])
         ->and($profile['module_ids'])->toBe([])
-        ->and($profile['team_ids'])->toBe([])
+        ->and($profile['team_ids'])->toBe(['g1'])
         ->and($profile['teams'])->toHaveCount(1)
         ->and($profile['permissions'])->toBe(['templates.read']);
 });

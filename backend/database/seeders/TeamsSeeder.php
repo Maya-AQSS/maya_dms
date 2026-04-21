@@ -31,7 +31,8 @@ class TeamsSeeder extends Seeder
             DB::table($teamsWrittable)->insertOrIgnore($teams);
         }
 
-        if (Schema::hasTable('team_members') && isset($data['members'])) {
+        $membersWritable = $this->writableTeamMembersTable();
+        if ($membersWritable !== null && isset($data['members'])) {
             $members = array_map(static function (array $row) use ($now): array {
                 $row['created_at'] ??= $now;
                 $row['updated_at'] ??= $now;
@@ -39,7 +40,7 @@ class TeamsSeeder extends Seeder
                 return $row;
             }, $data['members']);
 
-            DB::table('team_members')->insertOrIgnore($members);
+            DB::table($membersWritable)->insertOrIgnore($members);
         }
     }
 
@@ -84,6 +85,25 @@ class TeamsSeeder extends Seeder
         }
 
         return strtoupper((string) $row->table_type) === 'BASE TABLE';
+    }
+
+    /**
+     * Tabla donde se pueden insertar membresías mock.
+     * - Local FDW: `team_members_source`.
+     * - Testing: `team_members` (tabla física).
+     * - Producción con solo vista `team_members`: null (datos remotos, sin mocks desde aquí).
+     */
+    private function writableTeamMembersTable(): ?string
+    {
+        if (Schema::hasTable('team_members_source')) {
+            return 'team_members_source';
+        }
+
+        if (! Schema::hasTable('team_members')) {
+            return null;
+        }
+
+        return $this->teamsCatalogIsPhysicalTable('team_members') ? 'team_members' : null;
     }
 
     /**
