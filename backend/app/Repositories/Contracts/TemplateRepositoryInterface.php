@@ -55,4 +55,11 @@ interface TemplateRepositoryInterface
      * @return \Illuminate\Support\Collection<int, Template>
      */
     public function listPublishedByModule(string $moduleId): \Illuminate\Support\Collection;
+
+    /**
+     * Bandeja de revisión de plantillas pendientes para un revisor.
+     *
+     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     */
+    public function listPendingReviewInboxForUser(string $userId): \Illuminate\Support\Collection;
 }

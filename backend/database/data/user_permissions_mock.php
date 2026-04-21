@@ -18,9 +18,11 @@ return [
     ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'documents.delete'],
     ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'audit.read'],
     ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'users.search'],
+    ['user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2', 'permission_code' => 'templates.review'],
 
     // Secretaría: lectura plantillas, lectura/edición documentos, búsqueda usuarios
     ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'templates.read'],
+    ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'templates.review'],
     ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'documents.read'],
     ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'documents.create'],
     ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'permission_code' => 'documents.update'],
