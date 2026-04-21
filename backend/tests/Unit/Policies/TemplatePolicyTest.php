@@ -47,15 +47,10 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->review($user, $template));
     }
 
-    public function test_non_creator_can_review_template(): void
-    {
-        $creatorId  = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $reviewerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-        $user       = $this->makeJwtUser($reviewerId);
-        $template   = $this->makeTemplate(createdBy: $creatorId);
-
-        $this->assertTrue($this->policy->review($user, $template));
-    }
+    // Los casos "revisor asignado puede revisar" y "usuario no asignado no puede revisar"
+    // requieren consulta a BD (template_reviewers) y están cubiertos por los feature tests
+    // TemplatesApiTest::test_template_review_flow_creates_snapshot_and_history y
+    // TemplatesApiTest::test_template_reject_review_returns_to_draft.
 
     public function test_create_defaults_to_personal_and_allows_any_authenticated_user(): void
     {
@@ -87,12 +82,12 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->update($user, $template));
     }
 
-    public function test_update_allowed_for_coordinator_on_foreign_template(): void
+    public function test_update_denied_for_coordinator_on_foreign_template(): void
     {
         $user     = $this->makeJwtUser('11111111-2222-3333-4444-555555555555', ['templates.update']);
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
-        $this->assertTrue($this->policy->update($user, $template));
+        $this->assertFalse($this->policy->update($user, $template));
     }
 
     public function test_update_with_target_shared_visibility_denied_without_role(): void
@@ -153,4 +148,6 @@ class TemplatePolicyTest extends TestCase
 
         return $t;
     }
+
 }
+

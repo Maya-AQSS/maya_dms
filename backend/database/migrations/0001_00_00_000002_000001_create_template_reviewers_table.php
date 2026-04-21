@@ -19,7 +19,9 @@ return new class extends Migration
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
             $table->string('user_id');    // FK lógica → users (FDW)
             $table->integer('stage');     // orden de revisión (1, 2, 3...)
+            $table->string('status')->default('pending'); // pending | approved | rejected
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['template_id', 'user_id'], 'template_reviewers_template_id_user_id_unique');
         });

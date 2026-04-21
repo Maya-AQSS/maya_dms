@@ -25,6 +25,7 @@ class DatabaseSeeder extends Seeder
             TeamsSeeder::class,
             TemplatesSeeder::class,
             TemplateReviewersSeeder::class,
+            TemplateDocumentReviewersSeeder::class,
             TemplateBlocksSeeder::class,
             TemplateVersionsSeeder::class,
             DocumentsSeeder::class,

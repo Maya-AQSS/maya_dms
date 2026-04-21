@@ -7,24 +7,28 @@ use App\Models\JwtUser;
 use App\Models\Template;
 
 /**
- * Autorización sobre plantillas normativas y segregación de funciones (SoD).
+ * Autorización sobre plantillas normativas y Segregación de Funciones (SoD).
  *
- * Listado y detalle exigen {@see self::viewAny} / {@see self::view} con permiso
- * `templates.read`; el global scope de {@see Template} acota qué filas existen.
+ * REGLAS DE EDICIÓN:
+ * - Solo el creador puede editar una plantilla, y únicamente cuando está en borrador (`draft`).
+ * - La visibilidad no personal (compartida) exige además `templates.create`.
  *
- * - Alta con visibilidad no personal: {@see self::create} exige `templates.create`.
- * - Editar contenido ajeno (o propio con cambios que no sean solo visibilidad): `templates.update`.
- * - Borrar / archivar ajena: `templates.delete`.
- * - Subir visibilidad a no personal en PATCH: además de poder editar, {@see self::create} con el nivel objetivo.
+ * REGLAS DE BORRADO:
+ * - El creador puede borrar su propia plantilla.
+ * - Cualquier usuario con `templates.delete` puede borrar cualquier plantilla.
  *
- * En controladores:
+ * REGLAS DE REVISIÓN:
+ * - Solo los revisores explícitamente asignados en `template_reviewers` pueden aprobar/rechazar.
+ * - El creador nunca puede ser revisor de su propia plantilla.
+ *
+ * Uso en controladores:
  *   $this->authorize('create', [Template::class, $visibilityLevelString]);
- *   $this->authorize('update', [$template, $targetVisibilityLevelString]); // opcional 2.º arg si se envía visibility_level
+ *   $this->authorize('update', [$template, $targetVisibilityLevelString]);
  */
 class TemplatePolicy
 {
     /**
-     * Listar plantillas: requiere `templates.read`; el alcance acota filas visibles.
+     * Listar plantillas: requiere `templates.read`; el global scope acota filas visibles.
      */
     public function viewAny(JwtUser $user): bool
     {
@@ -32,7 +36,7 @@ class TemplatePolicy
     }
 
     /**
-     * Ver una plantilla: requiere `templates.read`; el alcance impide cargar filas ajenas.
+     * Ver una plantilla: requiere `templates.read`; el scope impide cargar filas ajenas.
      */
     public function view(JwtUser $user, Template $template): bool
     {
@@ -40,9 +44,12 @@ class TemplatePolicy
     }
 
     /**
-     * Crear plantilla. Si el segundo argumento se omite (solo clase), se asume visibilidad personal.
+     * Crear plantilla.
      *
-     * @param  string|null  $visibilityLevel  Valor de {@see TemplateVisibilityLevel} (p. ej. tras array_shift del FQCN).
+     * Visibilidad personal: cualquier usuario autenticado.
+     * Visibilidad compartida: requiere `templates.create`.
+     *
+     * @param  string|null  $visibilityLevel  Valor de {@see TemplateVisibilityLevel}.
      */
     public function create(JwtUser $user, ?string $visibilityLevel = null): bool
     {
@@ -56,13 +63,20 @@ class TemplatePolicy
     }
 
     /**
-     * Actualizar plantilla. Si se pasa el nivel de visibilidad objetivo, aplica la misma regla que en {@see create}.
+     * Editar una plantilla.
      *
-     * @param  string|null  $targetVisibilityLevel  Valor pretendido de visibility_level en el body, si viene en la petición.
+     * Solo el creador puede editar, y únicamente cuando la plantilla está en borrador.
+     * Si se cambia la visibilidad a no personal, aplica además la regla de {@see self::create}.
+     *
+     * @param  string|null  $targetVisibilityLevel  Nivel de visibilidad pretendido, si viene en el body.
      */
     public function update(JwtUser $user, Template $template, ?string $targetVisibilityLevel = null): bool
     {
-        if (! $this->userCanEditTemplate($user, $template)) {
+        if ($user->getAuthIdentifier() !== $template->created_by) {
+            return false;
+        }
+
+        if ($template->status !== 'draft') {
             return false;
         }
 
@@ -75,14 +89,21 @@ class TemplatePolicy
 
     /**
      * Eliminar o archivar plantilla.
+     *
+     * El creador puede borrar su propia plantilla.
+     * Cualquier usuario con `templates.delete` puede borrar cualquier plantilla.
      */
     public function delete(JwtUser $user, Template $template): bool
     {
-        return $this->userCanDeleteTemplate($user, $template);
+        if ($user->getAuthIdentifier() === $template->created_by) {
+            return true;
+        }
+
+        return $user->hasPermission('templates.delete');
     }
 
     /**
-     * Generar copia en borrador; quien puede ver la plantilla puede clonarla.
+     * Clonar plantilla: cualquier usuario que pueda verla puede clonarla.
      */
     public function clone(JwtUser $user, Template $template): bool
     {
@@ -90,31 +111,30 @@ class TemplatePolicy
     }
 
     /**
-     * Revisión / aprobación en el flujo de plantilla (SoD: el creador no aprueba la suya).
+     * Revisión / aprobación (SoD — F-01.3).
+     *
+     * Requiere estar asignado en `template_reviewers` Y no ser el creador de la plantilla.
+     * El creador nunca puede aprobar o rechazar su propia plantilla.
      */
     public function review(JwtUser $user, Template $template): bool
     {
-        return $user->getAuthIdentifier() !== $template->created_by;
-    }
+        $userId = $user->getAuthIdentifier();
 
-    /**
-     * Enviar borrador a revisión (autor o quien puede editar la plantilla).
-     */
-    public function submitForReview(JwtUser $user, Template $template): bool
-    {
-        return $this->userCanEditTemplate($user, $template);
-    }
-
-    /**
-     * Volver a borrador una plantilla publicada para preparar una nueva versión.
-     */
-    public function reopenDraft(JwtUser $user, Template $template): bool
-    {
-        if ($template->status !== 'published') {
+        if ($userId === $template->created_by) {
             return false;
         }
 
-        return $this->userCanEditTemplate($user, $template);
+        return $template->reviewers()
+            ->where('user_id', $userId)
+            ->exists();
+    }
+
+    /**
+     * Enviar borrador a revisión: solo el creador.
+     */
+    public function submitForReview(JwtUser $user, Template $template): bool
+    {
+        return $user->getAuthIdentifier() === $template->created_by;
     }
 
     /**
@@ -128,29 +148,5 @@ class TemplatePolicy
 
         return TemplateVisibilityLevel::tryFrom($visibilityLevel)
             ?? TemplateVisibilityLevel::Personal;
-    }
-
-    /**
-     * Verifica si el usuario puede editar la plantilla (contenido, metadatos, flujo salvo borrado).
-     */
-    private function userCanEditTemplate(JwtUser $user, Template $template): bool
-    {
-        if ($user->getAuthIdentifier() === $template->created_by) {
-            return true;
-        }
-
-        return $user->hasPermission('templates.update');
-    }
-
-    /**
-     * Creador siempre puede borrar; terceros solo con permiso explícito de borrado.
-     */
-    private function userCanDeleteTemplate(JwtUser $user, Template $template): bool
-    {
-        if ($user->getAuthIdentifier() === $template->created_by) {
-            return true;
-        }
-
-        return $user->hasPermission('templates.delete');
     }
 }

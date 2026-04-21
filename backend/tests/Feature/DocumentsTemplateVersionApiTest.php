@@ -175,7 +175,71 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonValidationErrors(['template_id']);
     }
 
-    public function test_show_document_uses_v1_snapshot_after_template_publishes_v2(): void
+    public function test_store_document_can_be_created_with_template_version_only(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+        );
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Normativa',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'type' => 'heading',
+            'title' => 'Bloque publicado',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'mandatory' => false,
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $versionId = (string) DB::table('template_versions')
+            ->where('template_id', $tid)
+            ->value('id');
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_version_id' => $versionId,
+            'title' => 'Expediente',
+        ], $hCreator);
+
+        $createDoc->assertCreated()
+            ->assertJsonPath('data.template_id', $tid)
+            ->assertJsonPath('data.template_version_id', $versionId);
+    }
+
+    public function test_show_document_references_snapshot_from_publish_time(): void
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
@@ -209,7 +273,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'type' => 'heading',
-            'title' => 'Solo v1',
+            'title' => 'Bloque publicado',
             'default_content' => null,
             'block_state' => 'editable',
             'mandatory' => false,
@@ -237,30 +301,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertNotEmpty($versionIdV1);
         $createDoc->assertJsonCount(1, 'data.blocks');
         $createDoc->assertJsonPath('data.blocks.0.type', 'heading');
-        $createDoc->assertJsonPath('data.blocks.0.title', 'Solo v1');
-
-        $b2 = (string) Str::uuid();
-        TemplateBlock::query()->forceCreate([
-            'id' => $b2,
-            'template_id' => $tid,
-            'type' => 'paragraph',
-            'title' => 'Añadido en v2',
-            'default_content' => ['x' => 1],
-            'block_state' => 'editable',
-            'mandatory' => false,
-            'sort_order' => 1,
-        ]);
-
-        $this->postJson("/api/v1/templates/{$tid}/reopen-draft", [], $hCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v2 segundo bloque'], $hReviewer)->assertOk();
+        $createDoc->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
         $show->assertOk();
         $show->assertJsonPath('data.template_version_id', $versionIdV1);
         $show->assertJsonCount(1, 'data.blocks');
-        $show->assertJsonPath('data.blocks.0.type', 'heading');
-        $show->assertJsonPath('data.blocks.0.title', 'Solo v1');
+        $show->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
         $show->assertJsonPath('data.team', null);
     }
 

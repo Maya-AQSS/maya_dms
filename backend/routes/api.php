@@ -51,7 +51,9 @@ Route::prefix('v1')->group(function () {
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
         Route::apiResource('templates', TemplateController::class)
             ->whereUuid('template');
-        Route::post('templates/{template}/validators', [TemplateController::class, 'syncValidators'])
+        Route::post('templates/{template}/reviewers', [TemplateController::class, 'syncReviewers'])
+            ->whereUuid('template');
+        Route::post('templates/{template}/document-reviewers', [TemplateController::class, 'syncDocumentReviewers'])
             ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
         Route::patch('templates/{template}/blocks/reorder', [TemplateBlockController::class, 'reorder'])
@@ -67,9 +69,9 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::post('templates/{template}/reject-review', [TemplateController::class, 'rejectReview'])
             ->whereUuid('template');
-        Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
+        Route::post('templates/{template}/approve-review', [TemplateController::class, 'approveReview'])
             ->whereUuid('template');
-        Route::post('templates/{template}/reopen-draft', [TemplateController::class, 'reopenDraft'])
+        Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
             ->whereUuid('template');
         Route::get('templates/{template}/versions', [TemplateController::class, 'versions'])
             ->whereUuid('template');
@@ -139,8 +141,9 @@ Route::prefix('v1')->group(function () {
         Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
             ->whereUuid('comment');
 
-        // Usuarios — búsqueda para asignación de validadores y compartición
+        // Usuarios — búsqueda para asignación de revisores y compartición
         Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);
 
         // Sprint 6 — Dashboard BFF
         Route::get('/dashboard', [DashboardController::class, 'index']);

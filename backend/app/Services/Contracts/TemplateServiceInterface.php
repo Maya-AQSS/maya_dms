@@ -43,11 +43,6 @@ interface TemplateServiceInterface
     public function publishWithSnapshot(string $templateId, string $changelog, string $actorId): Template;
 
     /**
-     * Reabre el borrador de la plantilla (autor o quien puede editar la plantilla).
-     */
-    public function reopenDraft(string $templateId, string $actorId): Template;
-
-    /**
      * @return Collection<int, TemplateVersion>
      */
     public function listPublishedVersions(string $templateId): Collection;
@@ -80,8 +75,23 @@ interface TemplateServiceInterface
     public function clone(string $sourceTemplateId, string $actorId): Template;
 
     /**
-     * Sincroniza los validadores de la plantilla.
+     * Registra la aprobación del revisor activo. Si todos los revisores han aprobado,
+     * publica la plantilla automáticamente con un snapshot.
+     *
+     * En modo secuencial verifica que los stages anteriores estén aprobados antes
+     * de permitir que el actor apruebe.
+     */
+    public function approveReview(string $templateId, string $actorId): Template;
+
+    /**
+     * Sincroniza los revisores de la plantilla normativa.
      * @param array<int, string> $userIds Lista ordenada de IDs de usuario.
      */
-    public function syncValidators(string $templateId, array $userIds): void;
+    public function syncReviewers(string $templateId, array $userIds): void;
+
+    /**
+     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
+     * @param array<int, string> $userIds IDs de usuario elegibles como revisores de documentos.
+     */
+    public function syncDocumentReviewers(string $templateId, array $userIds): void;
 }
