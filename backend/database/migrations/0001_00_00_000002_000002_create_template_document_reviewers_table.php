@@ -24,10 +24,12 @@ return new class extends Migration
     {
         Schema::create('template_document_reviewers', function (Blueprint $table) {
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
+            $table->uuid('template_version_id')->nullable();
             $table->string('user_id'); // FK lógica → users (FDW)
             $table->timestamps();
 
             $table->primary(['template_id', 'user_id']);
+            $table->index('template_version_id');
             $table->index('user_id');
         });
     }

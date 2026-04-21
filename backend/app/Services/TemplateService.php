@@ -196,13 +196,16 @@ class TemplateService implements TemplateServiceInterface
 
             $next = $this->templateVersionRepository->nextVersionNumber($templateId);
 
-            $this->templateVersionRepository->createSnapshot(
+            $snapshot = $this->templateVersionRepository->createSnapshot(
                 $templateId,
                 $next,
                 $blocksSnapshot,
                 $changelog ?? '',
                 $actorId,
             );
+
+            $template->reviewers()->update(['template_version_id' => $snapshot->id]);
+            $template->documentReviewers()->update(['template_version_id' => $snapshot->id]);
 
             $oldStatus = $template->status;
             $updated = $this->templateRepository->update($template, [
@@ -351,15 +354,17 @@ class TemplateService implements TemplateServiceInterface
         $target = $this->templateRepository->create([
             'name' => $source->name.' (copia)',
             'description' => $source->description,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
-            'study_type_id' => null,
-            'study_id' => null,
-            'module_id' => null,
-            'team_id' => null,
+            'visibility_level' => $source->visibility_level instanceof TemplateVisibilityLevel
+                ? $source->visibility_level->value
+                : $source->visibility_level,
+            'delivery_deadline' => $source->delivery_deadline,
+            'study_type_id' => $source->study_type_id,
+            'study_id' => $source->study_id,
+            'module_id' => $source->module_id,
+            'team_id' => $source->team_id,
             'created_by' => $actorId,
             'status' => 'draft',
-            'version' => 1,
+            'version' => ((int) $source->version) + 1,
             'review_stages' => $source->review_stages,
             'review_mode' => $source->review_mode,
         ]);
@@ -393,12 +398,15 @@ class TemplateService implements TemplateServiceInterface
     {
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
+            $latestVersionId = $this->templateVersionRepository
+                ->findLatestPublishedForTemplate($templateId)?->id;
 
             $template->reviewers()->delete();
 
             foreach ($userIds as $index => $userId) {
                 $template->reviewers()->create([
                     'user_id' => $userId,
+                    'template_version_id' => $latestVersionId,
                     'stage'   => $index + 1,
                 ]);
             }
@@ -412,12 +420,15 @@ class TemplateService implements TemplateServiceInterface
     {
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
+            $latestVersionId = $this->templateVersionRepository
+                ->findLatestPublishedForTemplate($templateId)?->id;
 
             $template->documentReviewers()->delete();
 
             foreach ($userIds as $userId) {
                 $template->documentReviewers()->create([
                     'user_id' => $userId,
+                    'template_version_id' => $latestVersionId,
                 ]);
             }
         });

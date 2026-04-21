@@ -300,7 +300,7 @@ class TemplatesApiTest extends TestCase
         ], $headers)->assertForbidden();
     }
 
-    public function test_clone_creates_draft_personal_copy_with_suffix_and_blocks(): void
+    public function test_clone_creates_draft_copy_preserving_visibility_with_suffix_and_blocks(): void
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
@@ -351,7 +351,8 @@ class TemplatesApiTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.name', 'Original (copia)')
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Personal->value)
+            ->assertJsonPath('data.version', 3)
+            ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value)
             ->assertJsonPath('data.review_stages', 1)
             ->assertJsonPath('data.review_mode', 'parallel');
 
