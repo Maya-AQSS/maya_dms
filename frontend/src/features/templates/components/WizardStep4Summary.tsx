@@ -5,6 +5,8 @@ import { visibilityLabel } from '../constants';
 import type { ValidatorEntry } from './WizardStep3Users';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { TemplatePreviewModal } from './TemplatePreviewModal';
+import { BlockContentHtml } from './BlockContentHtml';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -12,6 +14,8 @@ type Props = {
   template: Template;
   validators: ValidatorEntry[];
   validationType: 'libre' | 'ordenada';
+  documentValidators?: ValidatorEntry[];
+  documentValidationType?: 'libre' | 'ordenada';
 };
 
 type PreviewTab = 'Contenido' | 'Descripción';
@@ -33,11 +37,12 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function WizardStep4Summary({ template, validators, validationType }: Props) {
+export function WizardStep4Summary({ template, validators, validationType, documentValidators = [], documentValidationType = 'libre' }: Props) {
   const { blocks } = useTemplateBlocks(template.id);
 
   const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
   const [activeTab, setActiveTab] = useState<PreviewTab>('Contenido');
+  const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
     if (blocks.length > 0 && !selectedBlock) {
@@ -82,41 +87,68 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
         </div>
 
         {/* Columna derecha — Usuarios y validación */}
-        <div className="px-5 py-4">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
-            Usuarios y validación
-          </p>
-          <div className="flex items-center gap-2 mb-3">
-            <span className="text-[10px] font-bold uppercase text-text-secondary">Tipo:</span>
-            <span className="text-xs font-bold text-odoo-purple dark:text-odoo-dark-purple capitalize">
-              {validationType}
-            </span>
-          </div>
-          {validators.length === 0 ? (
-            <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
-          ) : (
-            <div className="space-y-2.5">
-              {validators.map((v, i) => {
-                const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
-                return (
-                  <div key={v.userId} className="flex items-center gap-2.5">
-                    {validationType === 'ordenada' && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
-                        {i + 1}
-                      </span>
-                    )}
-                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
-                      {initials}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
-                    </div>
-                  </div>
-                );
-              })}
+        <div className="px-5 py-4 space-y-4">
+          {/* Validadores de la plantilla */}
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                Validadores de la plantilla
+              </p>
+              <span className="text-[10px] font-bold text-odoo-purple capitalize">({validationType})</span>
             </div>
-          )}
+            {validators.length === 0 ? (
+              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-36">
+                {validators.map((v, i) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      {validationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                      )}
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">{initials}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Validadores del documento */}
+          <div className="pt-3 border-t border-ui-border dark:border-ui-dark-border">
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                Validadores del documento
+              </p>
+              <span className="text-[10px] font-bold text-odoo-teal capitalize">({documentValidationType})</span>
+            </div>
+            {documentValidators.length === 0 ? (
+              <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
+            ) : (
+              <div className="space-y-2 overflow-y-auto max-h-36">
+                {documentValidators.map((v, i) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      {documentValidationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                      )}
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-[10px] font-black border border-odoo-teal/20 flex items-center justify-center">{initials}</span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -130,9 +162,10 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
           </span>
           <button
             type="button"
+            onClick={() => setShowPreview(true)}
             className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple transition-colors"
           >
-            Previsualización PDF
+            Previsualizar
           </button>
         </div>
 
@@ -144,7 +177,7 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
           <div className="grid" style={{ gridTemplateColumns: '200px 1fr', minHeight: '200px' }}>
 
             {/* Lista de bloques */}
-            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto">
+            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto max-h-64">
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
                 Bloques ({blocks.length})
               </p>
@@ -199,15 +232,21 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
               </div>
 
               {/* Contenido del tab */}
-              <div className="flex-1 p-4 text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed overflow-y-auto">
+              <div className="flex-1 p-4 overflow-y-auto">
                 {activeTab === 'Descripción' ? (
-                  selectedBlock?.description
-                    ? selectedBlock.description
-                    : <span className="text-text-muted italic">Este bloque no tiene descripción.</span>
+                  (() => {
+                    const desc = selectedBlock?.description;
+                    if (!desc) return <span className="text-xs text-text-muted italic">Sin descripción.</span>;
+                    let parsed: unknown[] | null = null;
+                    try { const p = JSON.parse(desc); if (Array.isArray(p) && p.length > 0) parsed = p; } catch { /* plain text */ }
+                    return parsed
+                      ? <BlockContentHtml content={parsed} />
+                      : <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{desc}</p>;
+                  })()
                 ) : (
-                  selectedBlock?.default_content
-                    ? <span className="text-text-muted italic">Contenido guardado — visualización disponible próximamente.</span>
-                    : <span className="text-text-muted italic">Este bloque no tiene contenido.</span>
+                  Array.isArray(selectedBlock?.default_content) && (selectedBlock.default_content as unknown[]).length > 0
+                    ? <BlockContentHtml content={selectedBlock.default_content as unknown[]} />
+                    : <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>
                 )}
               </div>
             </div>
@@ -215,6 +254,14 @@ export function WizardStep4Summary({ template, validators, validationType }: Pro
           </div>
         )}
       </div>
+
+      {showPreview && (
+        <TemplatePreviewModal
+          template={template}
+          blocks={blocks}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
 
     </div>
   );

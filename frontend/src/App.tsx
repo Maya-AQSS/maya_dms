@@ -56,7 +56,7 @@ function App() {
           onMobileClose={() => setMobileOpen(false)}
         />
 
-        <div className={`flex flex-col min-h-screen transition-[margin] duration-200 ${sidebarCollapsed ? 'md:ml-14' : 'md:ml-64'}`}>
+        <div className={`flex flex-col h-screen transition-[margin] duration-200 ${sidebarCollapsed ? 'md:ml-14' : 'md:ml-64'}`}>
           <Topbar
             title={pageTitle}
             isDark={isDark}

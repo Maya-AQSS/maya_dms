@@ -1,4 +1,7 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import { useDarkMode } from '../../../hooks/useDarkMode';
+
+const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel'));
 import {
   DndContext,
   closestCenter,
@@ -135,7 +138,7 @@ function BlockUiStateToggle({
 }) {
   return (
     <div className="flex flex-wrap gap-2">
-      {(['editable', 'modifiable', 'locked', 'optional'] as BlockUiState[]).map((s) => (
+      {(['optional', 'editable', 'modifiable', 'locked'] as BlockUiState[]).map((s) => (
         <button
           key={s}
           type="button"
@@ -164,6 +167,7 @@ type Props = {
 };
 
 export function WizardStep2Blocks({ template }: Props) {
+  const { isDark } = useDarkMode();
   const { blocks, createBlock, updateBlock, deleteBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
 
@@ -196,6 +200,7 @@ export function WizardStep2Blocks({ template }: Props) {
   // Form state (shared: create / edit / multi)
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
+  const [formContent, setFormContent] = useState('');
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -203,7 +208,17 @@ export function WizardStep2Blocks({ template }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [tabIsDirty, setTabIsDirty] = useState(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+
+  // Autosave: 600ms after last form change in edit mode
+  useEffect(() => {
+    if (panelMode !== 'edit' || !activeSingleId || !tabIsDirty) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => { void saveCurrentTab(); }, 600);
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]);
 
   useEffect(() => {
     const tabs: TabId[] = ['properties', 'content', 'description'];
@@ -237,6 +252,7 @@ export function WizardStep2Blocks({ template }: Props) {
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
     setFormDesc(block.description ?? '');
+    setFormContent(block.default_content ? JSON.stringify(block.default_content) : '');
     setFormUiState(blockToUiState(block));
     setActionError(null);
   };
@@ -244,6 +260,7 @@ export function WizardStep2Blocks({ template }: Props) {
   const resetForm = () => {
     setFormName('');
     setFormDesc('');
+    setFormContent('');
     setFormUiState('optional');
     setActionError(null);
     setDeleteModal(false);
@@ -259,9 +276,11 @@ export function WizardStep2Blocks({ template }: Props) {
     setSaveStatus('saving');
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
       await updateBlock(activeSingleId, {
         title: formName.trim() || undefined,
         description: formDesc.trim() || null,
+        default_content: parsedContent,
         block_state,
         mandatory,
       });
@@ -284,13 +303,15 @@ export function WizardStep2Blocks({ template }: Props) {
   const handleBlockClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
-    clickTimerRef.current = setTimeout(() => {
+    clickTimerRef.current = setTimeout(async () => {
+      if (tabIsDirty && activeSingleId) await saveCurrentTab();
+      const block = blocks.find((b: TemplateBlock) => b.id === blockId);
+      if (!block) return;
       setSelectedBlockIds([blockId]);
-      setActiveSingleId(blockId);
-      setPanelMode('summary');
       setMultiSaved(new Set());
       setActionError(null);
       setDeleteModal(false);
+      openEdit(block);
     }, 200);
   };
 
@@ -305,10 +326,8 @@ export function WizardStep2Blocks({ template }: Props) {
         setPanelMode('empty');
         setActiveSingleId(null);
       } else if (newIds.length === 1) {
-        setActiveSingleId(newIds[0]);
-        setPanelMode('summary');
         const block = blocks.find((b: TemplateBlock) => b.id === newIds[0]);
-        if (block) loadFormFromBlock(block);
+        if (block) openEdit(block);
       } else {
         const ordered = blocks.filter((b: TemplateBlock) => newIds.includes(b.id)).map((b: TemplateBlock) => b.id);
         setMultiIndex(0);
@@ -350,11 +369,13 @@ export function WizardStep2Blocks({ template }: Props) {
     if (!formName.trim() || busy) return;
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
       if (panelMode === 'create') {
         await createBlock({
           type: 'paragraph',
           title: formName.trim(),
           description: formDesc.trim() || null,
+          default_content: parsedContent,
           block_state,
           mandatory,
         });
@@ -362,6 +383,7 @@ export function WizardStep2Blocks({ template }: Props) {
         await updateBlock(activeSingleId, {
           title: formName.trim(),
           description: formDesc.trim() || null,
+          default_content: parsedContent,
           block_state,
           mandatory,
         });
@@ -384,9 +406,11 @@ export function WizardStep2Blocks({ template }: Props) {
   };
 
   const openSummary = (blockId: string) => {
+    const block = blocks.find((b: TemplateBlock) => b.id === blockId);
+    if (block) { openEdit(block); return; }
     setActiveSingleId(blockId);
     setSelectedBlockIds([blockId]);
-    setPanelMode('summary');
+    setPanelMode('edit');
     setDeleteModal(false);
     setActionError(null);
   };
@@ -398,6 +422,7 @@ export function WizardStep2Blocks({ template }: Props) {
     setSaveStatus('idle');
     setDeleteModal(false);
     setPanelMode('edit');
+    setActiveSingleId(block.id);
   };
 
   const handleAddBlock = async () => {
@@ -406,10 +431,12 @@ export function WizardStep2Blocks({ template }: Props) {
     setActionError(null);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
       const newBlock = await createBlock({
         type: 'paragraph',
         title: formName.trim(),
         description: formDesc.trim() || null,
+        default_content: parsedContent,
         block_state,
         mandatory,
       });
@@ -742,11 +769,11 @@ export function WizardStep2Blocks({ template }: Props) {
             </div>
 
             {/* Tab content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' || activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
               {activeTab === 'properties' && (
                 <div className="space-y-4">
                   <div>
-                    <FieldLabel>Nombre del bloque</FieldLabel>
+                    <FieldLabel required>Nombre del bloque</FieldLabel>
                     <TextInput
                       type="text"
                       fieldSize="comfortable"
@@ -767,34 +794,34 @@ export function WizardStep2Blocks({ template }: Props) {
                   </div>
                   {panelMode === 'edit' && (
                     <p className="text-[10px] text-text-muted italic">
-                      Se guarda automáticamente al cambiar de pestaña.
+                      Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
                     </p>
                   )}
                 </div>
               )}
 
               {activeTab === 'content' && (
-                <div
-                  className="flex items-center justify-center rounded-lg border-2 border-dashed border-ui-border dark:border-ui-dark-border bg-ui-body/50 dark:bg-ui-dark-bg/50"
-                  style={{ minHeight: '200px' }}
-                >
-                  <p className="text-sm text-text-muted text-center px-6">
-                    Editor de contenido — próximamente disponible.
-                  </p>
-                </div>
+                <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
+                  <BlockNoteEditorPanel
+                    key={(activeSingleId ?? 'new') + '-content'}
+                    initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                    editable
+                    isDark={isDark}
+                    onChange={(content: unknown) => { setFormContent(JSON.stringify(content)); setTabIsDirty(true); }}
+                  />
+                </Suspense>
               )}
 
               {activeTab === 'description' && (
-                <div>
-                  <FieldLabel>Descripción del bloque</FieldLabel>
-                  <TextArea
-                    fieldSize="comfortable"
-                    value={formDesc}
-                    onChange={(e) => { setFormDesc(e.target.value); setTabIsDirty(true); }}
-                    placeholder="Describe el propósito normativo de este bloque..."
-                    style={{ minHeight: '120px' }}
+                <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
+                  <BlockNoteEditorPanel
+                    key={activeSingleId ?? 'new'}
+                    initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                    editable
+                    isDark={isDark}
+                    onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
                   />
-                </div>
+                </Suspense>
               )}
 
               {actionError && (
@@ -962,7 +989,7 @@ export function WizardStep2Blocks({ template }: Props) {
             <div className="flex gap-3">
               <Button
                 type="button"
-                variant="secondary"
+                variant="primary"
                 size="md"
                 className="flex-1"
                 disabled={busy}
@@ -972,9 +999,9 @@ export function WizardStep2Blocks({ template }: Props) {
               </Button>
               <Button
                 type="button"
-                variant="primary"
+                variant="outline"
                 size="md"
-                className="flex-1 bg-danger border-danger hover:bg-red-700"
+                className="flex-1 text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
                 loading={busy}
                 onClick={() => void handleDelete()}
               >

@@ -51,14 +51,17 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // Step 3: Users state
   const [validators, setValidators] = useState<ValidatorEntry[]>([]);
+  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
     initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
   );
+  const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
 
   // UI state
   const [saving, setSaving] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [confirmRemoveAllValidators, setConfirmRemoveAllValidators] = useState(false);
 
   // Dirty check
   const isDirty = useMemo(() => {
@@ -104,10 +107,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     setSaving(true);
     setPermissionError(null);
     try {
+      const isUpdate = !!template?.id;
+      const visibilityChanged = !isUpdate || visibility !== template.visibility_level;
+
       const payload = {
         name: name.trim(),
         description: description.trim() || null,
-        visibility_level: visibility,
+        ...(visibilityChanged ? { visibility_level: visibility } : {}),
         delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
         study_type_id: studyTypeId || null,
         study_id: studyId || null,
@@ -116,10 +122,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       };
 
       let res;
-      if (template?.id) {
+      if (isUpdate) {
         res = await apiUpdateTemplate(template.id, payload);
       } else {
-        res = await apiCreateTemplate(payload);
+        res = await apiCreateTemplate({ ...payload, visibility_level: visibility });
       }
       setTemplate(res.data);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
@@ -151,6 +157,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   };
   const saveUsers = async () => {
     if (!template?.id) return;
+
+    const userIds = validators.map((v: ValidatorEntry) => v.userId);
+    const hadValidators = (initial?.reviewers?.length ?? 0) > 0;
+    if (userIds.length === 0 && hadValidators && !confirmRemoveAllValidators) {
+      setConfirmRemoveAllValidators(true);
+      return;
+    }
+    setConfirmRemoveAllValidators(false);
+
     setSaving(true);
     setErrors({});
     try {
@@ -159,7 +174,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       await apiUpdateTemplate(template.id, { review_mode: reviewMode as any });
 
       // 2. Sincronizar validadores
-      const userIds = validators.map((v: ValidatorEntry) => v.userId);
       await syncTemplateValidators(template.id, userIds);
 
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
@@ -274,8 +288,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         {/* Topbar actions */}
         <div className="flex items-center gap-2 shrink-0">
           {step === 'summary' && (
-            <Button variant="ghost" size="sm" onClick={() => navigate('/templates')}>
-              {validators.length > 0 ? 'Salir sin validar' : 'Salir sin publicar'}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/templates')}
+              className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
+            >
+              Guardar y salir
             </Button>
           )}
 
@@ -290,25 +309,25 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               Guardar y continuar →
             </Button>
           )}
-          {step === 'summary' && validators.length > 0 && (
+          {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
             <Button
               variant="primary"
               size="sm"
               onClick={() => setShowValidationModal(true)}
               className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
-              Validar plantilla →
+              Enviar a validar
             </Button>
           )}
-          {step === 'summary' && validators.length === 0 && (
+          {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
             <Button
               variant="primary"
               size="sm"
               loading={saving}
               onClick={() => void handlePublish()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm bg-success border-success hover:bg-success-dark"
+              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
-              Publicar plantilla ✓
+              Publicar plantilla
             </Button>
           )}
         </div>
@@ -336,6 +355,22 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               Cancelar
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Remove-all validators confirmation */}
+      {confirmRemoveAllValidators && (
+        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-warning/30 bg-warning-light/40 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-warning-dark">
+            ⚠️ Vas a quitar todos los validadores de plantilla existentes. Haz clic en «Guardar y continuar» de nuevo para confirmar.
+          </span>
+          <button
+            type="button"
+            className="bg-white border border-ui-border px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider text-text-secondary active:scale-95 transition-transform"
+            onClick={() => setConfirmRemoveAllValidators(false)}
+          >
+            Cancelar
+          </button>
         </div>
       )}
 
@@ -370,6 +405,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             moduleId={moduleId} setModuleId={setModuleId}
             teamId={teamId} setTeamId={setTeamId}
             errors={errors}
+            templateStatus={template?.status}
           />
         )}
         {step === 'blocks' && template && (
@@ -383,6 +419,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             onValidatorsChange={setValidators}
             validationType={validationType}
             onValidationTypeChange={setValidationType}
+            documentValidators={documentValidators}
+            onDocumentValidatorsChange={setDocumentValidators}
+            documentValidationType={documentValidationType}
+            onDocumentValidationTypeChange={setDocumentValidationType}
           />
         )}
         {step === 'summary' && template && (
@@ -390,6 +430,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             template={template}
             validators={validators}
             validationType={validationType}
+            documentValidators={documentValidators}
+            documentValidationType={documentValidationType}
           />
         )}
       </div>
