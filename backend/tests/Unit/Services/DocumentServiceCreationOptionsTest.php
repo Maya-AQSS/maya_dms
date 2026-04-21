@@ -7,6 +7,7 @@ use App\Models\TemplateVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentService;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -58,7 +59,8 @@ class DocumentServiceCreationOptionsTest extends TestCase
             ->with('tpl-2')
             ->andReturn(null);
 
-        $service = new DocumentService($docRepo, $tplRepo, $verRepo);
+        $snap = Mockery::mock(SnapshotServiceInterface::class);
+        $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap);
 
         $out = $service->creationOptionsForModule('MOD-1');
 
@@ -78,7 +80,8 @@ class DocumentServiceCreationOptionsTest extends TestCase
             ->with('MOD-1')
             ->andReturn(collect());
 
-        $service = new DocumentService($docRepo, $tplRepo, $verRepo);
+        $snap = Mockery::mock(SnapshotServiceInterface::class);
+        $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap);
 
         $this->expectException(ValidationException::class);
 

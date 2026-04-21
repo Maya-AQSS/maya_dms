@@ -3,6 +3,7 @@
 namespace Tests\Unit\Policies;
 
 use App\Models\Document;
+use App\Models\DocumentShare;
 use App\Models\JwtUser;
 use App\Policies\DocumentPolicy;
 use Tests\TestCase;
@@ -18,7 +19,7 @@ class DocumentPolicyTest extends TestCase
     }
 
     /**
-     * SoD (F-01.3): creador/titular no pueden actuar como revisor del mismo documento.
+     * SoD: creador/titular no pueden actuar como revisor del mismo documento.
      */
     public function test_creator_owner_cannot_review(): void
     {
@@ -40,7 +41,7 @@ class DocumentPolicyTest extends TestCase
     }
 
     /**
-     * Solo el titular puede enviar a revisión (F-05.1).
+     * Solo el titular puede enviar a revisión.
      */
     public function test_owner_can_submit(): void
     {
@@ -112,6 +113,51 @@ class DocumentPolicyTest extends TestCase
         );
 
         $this->assertFalse($this->policy->update($user, $doc));
+    }
+
+    public function test_update_allows_collaborator_with_edit_share_when_shares_relation_loaded(): void
+    {
+        $collabId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $user     = $this->makeJwtUser($collabId);
+        $doc      = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+        $share = new DocumentShare;
+        $share->forceFill(['user_id' => $collabId, 'permission' => 'edit']);
+        $doc->setRelation('shares', collect([$share]));
+
+        $this->assertTrue($this->policy->update($user, $doc));
+    }
+
+    public function test_update_denies_collaborator_with_read_share_when_shares_relation_loaded(): void
+    {
+        $collabId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $user     = $this->makeJwtUser($collabId);
+        $doc      = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+        $share = new DocumentShare;
+        $share->forceFill(['user_id' => $collabId, 'permission' => 'read']);
+        $doc->setRelation('shares', collect([$share]));
+
+        $this->assertFalse($this->policy->update($user, $doc));
+    }
+
+    public function test_share_allows_only_owner(): void
+    {
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $owner   = $this->makeJwtUser($ownerId);
+        $doc     = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: $ownerId,
+        );
+
+        $this->assertTrue($this->policy->share($owner, $doc));
+
+        $creator = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+        $this->assertFalse($this->policy->share($creator, $doc));
     }
 
     public function test_delete_requires_documents_delete_permission(): void

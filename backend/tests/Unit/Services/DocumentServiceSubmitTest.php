@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentService;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -35,8 +36,9 @@ class DocumentServiceSubmitTest extends TestCase
 
         $tplRepo = Mockery::mock(TemplateRepositoryInterface::class);
         $verRepo = Mockery::mock(TemplateVersionRepositoryInterface::class);
+        $snap = Mockery::mock(SnapshotServiceInterface::class);
 
-        $service = new DocumentService($repo, $tplRepo, $verRepo);
+        $service = new DocumentService($repo, $tplRepo, $verRepo, $snap);
 
         $this->expectException(ValidationException::class);
 

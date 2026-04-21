@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Documents\UpdateDocumentBlockRequest;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 
@@ -39,11 +40,19 @@ class DocumentBlockController extends Controller
      * @param  string  $block
      * @return JsonResponse
      */
-    public function update(string $document, string $_block): JsonResponse
+    public function update(UpdateDocumentBlockRequest $request, string $document, string $block): JsonResponse
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('update', $doc);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $updated = $this->documentService->updateBlock(
+            $request->toDto(
+                documentId: $document,
+                documentBlockId: $block,
+                actorId: (string) $request->user()->getAuthIdentifier(),
+            ),
+        );
+
+        return response()->json(['data' => $updated]);
     }
 }

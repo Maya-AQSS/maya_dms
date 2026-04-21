@@ -13,9 +13,6 @@ class UserController extends Controller
     /**
      * GET /api/v1/users?search={term}&per_page={n}
      *
-     * F-05.1 describe colaboradores/revisores pero no el endpoint `/users`; el acceso
-     * con `users.search` es decisión de producto hasta que el backlog lo cierre.
-     *
      * Búsqueda case-insensitive por nombre, email y departamento.
      * Devuelve { data: [...] } con el campo `role` mapeado desde `department`.
      *
@@ -37,7 +34,6 @@ class UserController extends Controller
 
         $term = '%' . mb_strtolower($search) . '%';
 
-        // DB::table evita que Eloquent castee el id (string) a int.
         $users = DB::table('users')
             ->where(function ($query) use ($term) {
                 $query->whereRaw('LOWER(name) LIKE ?', [$term])
@@ -51,7 +47,53 @@ class UserController extends Controller
                 'id'    => $u->id,
                 'name'  => $u->name,
                 'email' => $u->email,
-                'role'  => $u->department, // department → role para el frontend
+                'role'  => $u->department,
+            ]);
+
+        return response()->json(['data' => $users]);
+    }
+
+    /**
+     * GET /api/v1/users/reviewer-candidates?search={term}&per_page={n}
+     *
+     * Devuelve los usuarios que tienen el permiso `templates.review` y, por tanto,
+     * pueden ser seleccionados como revisores de una plantilla normativa.
+     * El front no necesita conocer el código de permiso interno.
+     *
+     * `search` es opcional; si se omite devuelve todos los candidatos (hasta per_page).
+     */
+    public function reviewerCandidates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof JwtUser || ! $user->hasPermission('users.search')) {
+            abort(403, 'No tienes permiso para buscar usuarios.');
+        }
+
+        $search  = trim((string) $request->get('search', ''));
+        $perPage = min((int) $request->get('per_page', 20), 50);
+
+        $query = DB::table('users')
+            ->join('user_permissions', 'users.id', '=', 'user_permissions.user_id')
+            ->where('user_permissions.permission_code', 'templates.review');
+
+        if (mb_strlen($search) >= 2) {
+            $term = '%' . mb_strtolower($search) . '%';
+            $query->where(function ($q) use ($term) {
+                $q->whereRaw('LOWER(users.name) LIKE ?', [$term])
+                  ->orWhereRaw('LOWER(users.email) LIKE ?', [$term])
+                  ->orWhereRaw('LOWER(users.department) LIKE ?', [$term]);
+            });
+        }
+
+        $users = $query
+            ->select('users.id', 'users.name', 'users.email', 'users.department')
+            ->limit($perPage)
+            ->get()
+            ->map(static fn (object $u): array => [
+                'id'    => $u->id,
+                'name'  => $u->name,
+                'email' => $u->email,
+                'role'  => $u->department,
             ]);
 
         return response()->json(['data' => $users]);

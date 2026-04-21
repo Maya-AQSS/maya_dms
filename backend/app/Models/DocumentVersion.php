@@ -26,6 +26,7 @@ class DocumentVersion extends Model
         'triggered_by',
         'snapshot_data',
         'notes',
+        'is_immutable',
         'created_at',
     ];
 
@@ -34,6 +35,7 @@ class DocumentVersion extends Model
         return [
             'snapshot_data'  => 'array',
             'version_number' => 'integer',
+            'is_immutable'   => 'boolean',
             'created_at'     => 'datetime',
         ];
     }

@@ -30,6 +30,8 @@ class DocumentResource extends JsonResource
             'published_at' => $this->published_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+            'is_shared_with_me' => (bool) ($this->resource->getAttribute('is_shared_with_me') ?? false),
+            'share_permission' => $this->resource->getAttribute('viewer_share_permission'),
         ];
     }
 }

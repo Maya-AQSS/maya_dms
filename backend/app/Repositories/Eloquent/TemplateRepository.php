@@ -8,6 +8,7 @@ use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -140,6 +141,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                     'template_id' => $target->getKey(),
                     'type' => $block->type,
                     'title' => $block->title,
+                    'description' => $block->description,
                     'default_content' => $block->default_content,
                     'block_state' => $block->block_state,
                     'mandatory' => $block->mandatory,
@@ -159,5 +161,50 @@ class TemplateRepository implements TemplateRepositoryInterface
             ->where('module_id', $moduleId)
             ->orderByDesc('updated_at')
             ->get();
+    }
+
+    /**
+     * Bandeja de revisión de plantillas pendientes para un revisor.
+     */
+    public function listPendingReviewInboxForUser(string $userId): Collection
+    {
+        $rows = DB::table('template_reviewers')
+            ->join('templates', 'templates.id', '=', 'template_reviewers.template_id')
+            ->where('template_reviewers.user_id', $userId)
+            ->where('template_reviewers.status', 'pending')
+            ->where('templates.status', 'in_review')
+            ->orderByRaw('CASE WHEN templates.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
+            ->orderBy('templates.delivery_deadline', 'asc')
+            ->orderBy('templates.updated_at', 'desc')
+            ->get([
+                'templates.id',
+                'templates.name',
+                'templates.created_by',
+                'templates.delivery_deadline',
+                'templates.status',
+                'template_reviewers.stage',
+            ]);
+
+        $today = Carbon::today();
+
+        return $rows->map(function (object $row) use ($today): array {
+            $deadlineIso = null;
+            $daysRemaining = null;
+            if ($row->delivery_deadline !== null) {
+                $deadline = Carbon::parse((string) $row->delivery_deadline);
+                $deadlineIso = $deadline->toIso8601String();
+                $daysRemaining = $today->diffInDays($deadline, false);
+            }
+
+            return [
+                'template_id' => (string) $row->id,
+                'title' => (string) $row->name,
+                'author_id' => (string) $row->created_by,
+                'delivery_deadline' => $deadlineIso,
+                'days_remaining' => $daysRemaining,
+                'status' => (string) $row->status,
+                'review_stage' => (int) $row->stage,
+            ];
+        })->values();
     }
 }

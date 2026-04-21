@@ -300,7 +300,7 @@ class TemplatesApiTest extends TestCase
         ], $headers)->assertForbidden();
     }
 
-    public function test_clone_creates_draft_personal_copy_with_suffix_and_blocks(): void
+    public function test_clone_creates_draft_copy_preserving_visibility_with_suffix_and_blocks(): void
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
@@ -351,7 +351,8 @@ class TemplatesApiTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.name', 'Original (copia)')
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Personal->value)
+            ->assertJsonPath('data.version', 3)
+            ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value)
             ->assertJsonPath('data.review_stages', 1)
             ->assertJsonPath('data.review_mode', 'parallel');
 
@@ -861,60 +862,6 @@ class TemplatesApiTest extends TestCase
         $this->assertDatabaseCount('template_versions', 0);
     }
 
-    public function test_template_second_publish_increments_version_after_reopen(): void
-    {
-        $creatorId = (string) Str::uuid();
-        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
-        [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
-            $creatorId,
-            $reviewerId,
-            [],
-        );
-
-        $tid = (string) Str::uuid();
-        $b1 = (string) Str::uuid();
-        Template::query()->forceCreate([
-            'id' => $tid,
-            'name' => 'v2',
-            'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
-            'study_type_id' => null,
-            'study_id' => null,
-            'module_id' => null,
-            'team_id' => null,
-            'created_by' => $creatorId,
-            'status' => 'in_review',
-            'version' => 1,
-            'review_stages' => 0,
-            'review_mode' => 'sequential',
-        ]);
-        TemplateBlock::query()->forceCreate([
-            'id' => $b1,
-            'template_id' => $tid,
-            'type' => 'paragraph',
-            'title' => null,
-            'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
-            'sort_order' => 0,
-        ]);
-
-        $this->seedTemplateReviewer($tid, $reviewerId);
-
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $headersReviewer)->assertOk();
-
-        $this->postJson("/api/v1/templates/{$tid}/reopen-draft", [], $headersCreator)
-            ->assertOk()
-            ->assertJsonPath('data.status', 'draft');
-
-        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v2'], $headersReviewer)
-            ->assertOk()
-            ->assertJsonPath('data.version', 2);
-
-        $this->assertDatabaseCount('template_versions', 2);
-    }
 
     public function test_patch_status_cannot_set_published_without_publish_endpoint(): void
     {

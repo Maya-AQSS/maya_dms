@@ -15,6 +15,20 @@ interface TemplateVersionRepositoryInterface
     public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion;
 
     /**
+     * Metadatos de una versión publicada por id (sin cargar blocks_snapshot).
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    public function findPublishedMetaById(string $versionId): ?array;
+
+    /**
+     * Metadatos de la versión publicada más reciente de la plantilla (sin blocks_snapshot).
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    public function findLatestPublishedMetaForTemplate(string $templateId): ?array;
+
+    /**
      * Lista todas las versiones de una plantilla ordenadas por número de versión.
      *
      * @return Collection<int, TemplateVersion>

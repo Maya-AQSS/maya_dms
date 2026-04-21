@@ -10,6 +10,7 @@ return [
     ['code' => 'templates.read', 'name' => 'Plantillas — leer', 'description' => 'Listar y ver plantillas visibles.'],
     ['code' => 'templates.update', 'name' => 'Plantillas — actualizar', 'description' => 'Editar plantillas permitidas.'],
     ['code' => 'templates.delete', 'name' => 'Plantillas — eliminar', 'description' => 'Eliminar o archivar plantillas permitidas.'],
+    ['code' => 'templates.review', 'name' => 'Plantillas — revisar', 'description' => 'Puede ser seleccionado como revisor de una plantilla normativa y aprobar o rechazar su publicación.'],
 
     ['code' => 'documents.create', 'name' => 'Documentos — crear', 'description' => 'Crear documentos.'],
     ['code' => 'documents.read', 'name' => 'Documentos — leer', 'description' => 'Ver documentos visibles.'],

@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TemplateReviewer extends Model
 {
-    use HasUuids;
+    use HasUuids, SoftDeletes;
 
     protected $keyType = 'string';
 
@@ -18,6 +19,7 @@ class TemplateReviewer extends Model
         'template_id',
         'user_id',
         'stage',
+        'status',
     ];
 
     protected function casts(): array
@@ -31,4 +33,5 @@ class TemplateReviewer extends Model
     {
         return $this->belongsTo(Template::class);
     }
+
 }

@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
+use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
+use App\Http\Requests\Documents\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -25,10 +27,12 @@ class DocumentController extends Controller
      */
     public function index(Request $request): AnonymousResourceCollection
     {
+        $viewerId = (string) $request->user()->getAuthIdentifier();
         $documents = $this->documentService->listOrderedByCreatedAtDesc();
+        $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
         );
 
         return DocumentResource::collection($documents);
@@ -104,15 +108,32 @@ class DocumentController extends Controller
     }
 
     /**
-     * Mostrar documento con bloques según la versión de plantilla anclada (F-03.4).
+     * GET /api/v1/documents/{document}/template-version-status
+     *
+     * Indica si existe una versión de plantilla publicada más reciente que la anclada al documento.
      */
-    public function show(Request $request, string $id): JsonResponse
+    public function templateVersionStatus(Request $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+
+        return response()->json([
+            'data' => $this->documentService->templateVersionStatus($document->id),
+        ]);
+    }
+
+    /**
+     * Mostrar documento con bloques según la versión de plantilla anclada.
+     */
+    public function show(Request $request, string $id): JsonResponse
+    {
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $document = $this->documentService->findOrFail($id);
+        $this->authorize('view', $document);
+        $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $this->apiTeamEmbedService->embedOnDocument(
             $document,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
         );
         $blocks = $this->documentService->blocksForDisplay($document);
 
@@ -127,25 +148,31 @@ class DocumentController extends Controller
     /**
      * Actualizar documento.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateDocumentRequest $request, string $id): JsonResponse
     {
-        // TODO: DocumentService::update(...)
         $document = $this->documentService->findOrFail($id);
         $this->authorize('update', $document);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $updated = $this->documentService->update($id, $request->validated());
+        $this->apiTeamEmbedService->embedOnDocument(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
     }
 
     /**
      * Eliminar documento.
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('delete', $document);
-        // TODO: borrado lógico / política propia
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $this->documentService->delete($id);
+
+        return response()->json([], 204);
     }
 
     /**
@@ -165,13 +192,17 @@ class DocumentController extends Controller
     /**
      * Publicar documento.
      */
-    public function publish(Request $request, string $id): JsonResponse
+    public function publish(PublishDocumentRequest $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('review', $document);
 
         $actorId = $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->publishDocument($document->id, $actorId);
+        $updated = $this->documentService->publishDocument(
+            $document->id,
+            $actorId,
+            $request->validated('changelog'),
+        );
 
         return response()->json(['data' => $updated]);
     }
