@@ -208,7 +208,17 @@ export function WizardStep2Blocks({ template }: Props) {
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [tabIsDirty, setTabIsDirty] = useState(false);
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+
+  // Autosave: 600ms after last form change in edit mode
+  useEffect(() => {
+    if (panelMode !== 'edit' || !activeSingleId || !tabIsDirty) return;
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    autosaveTimerRef.current = setTimeout(() => { void saveCurrentTab(); }, 600);
+    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]);
 
   useEffect(() => {
     const tabs: TabId[] = ['properties', 'content', 'description'];
@@ -293,7 +303,8 @@ export function WizardStep2Blocks({ template }: Props) {
   const handleBlockClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
 
-    clickTimerRef.current = setTimeout(() => {
+    clickTimerRef.current = setTimeout(async () => {
+      if (tabIsDirty && activeSingleId) await saveCurrentTab();
       const block = blocks.find((b: TemplateBlock) => b.id === blockId);
       if (!block) return;
       setSelectedBlockIds([blockId]);
@@ -781,7 +792,7 @@ export function WizardStep2Blocks({ template }: Props) {
                 </div>
                 {panelMode === 'edit' && (
                   <p className="text-[10px] text-text-muted italic">
-                    Se guarda automáticamente al cambiar de pestaña.
+                    Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
                   </p>
                 )}
               </div>
