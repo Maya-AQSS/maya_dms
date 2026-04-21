@@ -25,28 +25,25 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
       {/* Overlay */}
       <div className="fixed inset-0 z-50 overflow-y-auto bg-[#ddd9d3]">
 
-        {/* Sticky close bar */}
-        <div className="sticky top-0 z-10 bg-[#ddd9d3]/95 backdrop-blur-sm border-b border-black/10 flex items-center justify-between px-6 py-2.5">
+        {/* Sticky nav bar */}
+        <div className="sticky top-0 z-20 bg-white border-b border-gray-200 flex items-center gap-4 px-6 h-[52px]">
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-gray-600 hover:bg-black/10 transition-colors"
+            className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors"
           >
             ← Volver al resumen
           </button>
-          <span className="text-xs font-semibold text-gray-600 truncate px-4">{template.name}</span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:bg-black/10 transition-colors text-sm"
-            aria-label="Cerrar"
-          >
-            ✕
-          </button>
+          <span className="flex-1 text-xs font-semibold text-gray-500 truncate">
+            {template.name} — Previsualización
+          </span>
         </div>
 
         {/* Paper */}
-        <div className="max-w-200 mx-auto my-8 mb-16 bg-white rounded shadow-xl" style={{ padding: '48px 64px' }}>
+        <div
+          className="mx-auto bg-white shadow-xl"
+          style={{ maxWidth: '960px', minHeight: 'calc(100vh - 52px)', padding: '64px 80px' }}
+        >
 
           {/* Document title */}
           <h1 className="text-3xl font-bold text-gray-900 pb-5 mb-8 border-b border-gray-200">

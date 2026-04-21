@@ -17,10 +17,10 @@ function ensureStyles() {
   const el = document.createElement('style');
   el.dataset.id = 'bn-doc-content-styles';
   el.textContent = `
-    .bn-doc-content { font-family: system-ui, -apple-system, sans-serif; font-size: 15px; line-height: 1.75; color: #1a1a1a; }
-    .bn-doc-content h1 { font-size: 1.75em; font-weight: 700; margin: 1em 0 0.35em; line-height: 1.25; }
-    .bn-doc-content h2 { font-size: 1.35em; font-weight: 600; margin: 1em 0 0.3em; line-height: 1.3; }
-    .bn-doc-content h3 { font-size: 1.1em; font-weight: 600; margin: 0.9em 0 0.25em; }
+    .bn-doc-content { font-family: system-ui, -apple-system, sans-serif; font-size: 16px; line-height: 1.8; color: #1a1a1a; }
+    .bn-doc-content h1 { font-size: 2rem; font-weight: 600; margin: 1em 0 0.35em; line-height: 1.25; }
+    .bn-doc-content h2 { font-size: 1.5rem; font-weight: 600; margin: 1em 0 0.3em; line-height: 1.3; }
+    .bn-doc-content h3 { font-size: 1.25rem; font-weight: 600; margin: 0.9em 0 0.25em; }
     .bn-doc-content p { margin: 0.5em 0; }
     .bn-doc-content ul, .bn-doc-content ol { padding-left: 1.5em; margin: 0.5em 0; }
     .bn-doc-content li { margin: 0.2em 0; }
