@@ -15,6 +15,7 @@ type Props = {
   validators: ValidatorEntry[];
   validationType: 'libre' | 'ordenada';
   documentValidators?: ValidatorEntry[];
+  documentValidationType?: 'libre' | 'ordenada';
 };
 
 type PreviewTab = 'Contenido' | 'Descripción';
@@ -36,7 +37,7 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function WizardStep4Summary({ template, validators, validationType, documentValidators = [] }: Props) {
+export function WizardStep4Summary({ template, validators, validationType, documentValidators = [], documentValidationType = 'libre' }: Props) {
   const { blocks } = useTemplateBlocks(template.id);
 
   const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
@@ -121,17 +122,23 @@ export function WizardStep4Summary({ template, validators, validationType, docum
 
           {/* Validadores del documento */}
           <div className="pt-3 border-t border-ui-border dark:border-ui-dark-border">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
-              Validadores del documento
-            </p>
+            <div className="flex items-center gap-2 mb-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                Validadores del documento
+              </p>
+              <span className="text-[10px] font-bold text-odoo-teal capitalize">({documentValidationType})</span>
+            </div>
             {documentValidators.length === 0 ? (
               <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
             ) : (
               <div className="space-y-2 overflow-y-auto max-h-36">
-                {documentValidators.map((v) => {
+                {documentValidators.map((v, i) => {
                   const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
                   return (
                     <div key={v.userId} className="flex items-center gap-2.5">
+                      {documentValidationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                      )}
                       <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-[10px] font-black border border-odoo-teal/20 flex items-center justify-center">{initials}</span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>

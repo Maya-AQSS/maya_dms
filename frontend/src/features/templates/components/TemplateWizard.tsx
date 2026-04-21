@@ -300,7 +300,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               Guardar y continuar →
             </Button>
           )}
-          {step === 'summary' && validators.length > 0 && (
+          {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
             <Button
               variant="primary"
               size="sm"
@@ -310,7 +310,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               Enviar a validar
             </Button>
           )}
-          {step === 'summary' && validators.length === 0 && (
+          {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
             <Button
               variant="primary"
               size="sm"
@@ -318,7 +318,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               onClick={() => void handlePublish()}
               className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
-              Enviar a validar
+              Publicar plantilla
             </Button>
           )}
         </div>
@@ -406,6 +406,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             validators={validators}
             validationType={validationType}
             documentValidators={documentValidators}
+            documentValidationType={documentValidationType}
           />
         )}
       </div>
