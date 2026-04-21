@@ -180,7 +180,7 @@ function ValidatorSection({
                   key={v.userId}
                   entry={v}
                   index={i}
-                  isOrdered={target === 'template' && validationType === 'ordenada'}
+                  isOrdered={validationType === 'ordenada'}
                   onRemove={handleRemove}
                 />
               ))}
