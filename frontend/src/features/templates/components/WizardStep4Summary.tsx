@@ -6,6 +6,7 @@ import type { ValidatorEntry } from './WizardStep3Users';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
+import { BlockContentHtml } from './BlockContentHtml';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -224,15 +225,15 @@ export function WizardStep4Summary({ template, validators, validationType, docum
               </div>
 
               {/* Contenido del tab */}
-              <div className="flex-1 p-4 text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed overflow-y-auto">
+              <div className="flex-1 p-4 overflow-y-auto">
                 {activeTab === 'Descripción' ? (
-                  selectedBlock?.description
-                    ? selectedBlock.description
-                    : <span className="text-text-muted italic">Este bloque no tiene descripción.</span>
+                  <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">
+                    {selectedBlock?.description || <span className="text-text-muted italic">Sin descripción.</span>}
+                  </p>
                 ) : (
-                  selectedBlock?.default_content
-                    ? <span className="text-text-muted italic">Contenido guardado — visualización disponible próximamente.</span>
-                    : <span className="text-text-muted italic">Este bloque no tiene contenido.</span>
+                  Array.isArray(selectedBlock?.default_content) && (selectedBlock.default_content as unknown[]).length > 0
+                    ? <BlockContentHtml content={selectedBlock.default_content as unknown[]} />
+                    : <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>
                 )}
               </div>
             </div>
