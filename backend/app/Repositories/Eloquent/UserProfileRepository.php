@@ -46,6 +46,54 @@ class UserProfileRepository implements UserProfileRepositoryInterface
     }
 
     /**
+     * IDs de tipos de estudio asignados al usuario.
+     * SIEMPRE filtra por user_id.
+     *
+     * @return list<string>
+     */
+    public function findStudyTypeIdsByUserId(string $userId): array
+    {
+        return DB::table('user_study_types')
+            ->where('user_id', '=', $userId)
+            ->pluck('study_type_id')
+            ->map(static fn ($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * IDs de estudios asignados al usuario.
+     * SIEMPRE filtra por user_id.
+     *
+     * @return list<string>
+     */
+    public function findStudyIdsByUserId(string $userId): array
+    {
+        return DB::table('user_studies')
+            ->where('user_id', '=', $userId)
+            ->pluck('study_id')
+            ->map(static fn ($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * IDs de módulos de curso asignados al usuario.
+     * SIEMPRE filtra por user_id.
+     *
+     * @return list<string>
+     */
+    public function findModuleIdsByUserId(string $userId): array
+    {
+        return DB::table('user_course_modules')
+            ->where('user_id', '=', $userId)
+            ->pluck('module_id')
+            ->map(static fn ($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Obtiene los equipos a los que pertenece el usuario.
      * SIEMPRE filtra por user_id — nunca ejecuta JOIN sin filtro del usuario activo.
      */

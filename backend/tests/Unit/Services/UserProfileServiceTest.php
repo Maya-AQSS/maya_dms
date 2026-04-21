@@ -14,6 +14,10 @@ beforeEach(function () {
     $this->userPermissionRepository = Mockery::mock(UserPermissionRepositoryInterface::class);
     $this->userPermissionRepository->shouldReceive('findPermissionCodesByUserId')->andReturn([])->byDefault();
     $this->userPermissionRepository->shouldReceive('forgetCachedCodesForUser')->byDefault();
+
+    $this->repository->shouldReceive('findStudyTypeIdsByUserId')->andReturn([])->byDefault();
+    $this->repository->shouldReceive('findStudyIdsByUserId')->andReturn([])->byDefault();
+    $this->repository->shouldReceive('findModuleIdsByUserId')->andReturn([])->byDefault();
     $this->service = new UserProfileService($this->repository, $this->userPermissionRepository);
 
     $this->jwtProfile = [
@@ -273,7 +277,7 @@ it('invalidates cache for a specific user', function () {
 
 // ── Perfil completo incluye datos FDW + JWT + equipos ───────────────────
 
-it('fills scope lists from JWT when FDW row has no scope columns', function () {
+it('returns empty scope lists when user has no hierarchy assigned in DB', function () {
     Cache::shouldReceive('get')->once()->andReturnNull();
 
     $this->repository->shouldReceive('findById')->once()->andReturn($this->fdwUser);
@@ -285,8 +289,10 @@ it('fills scope lists from JWT when FDW row has no scope columns', function () {
 
     $profile = $this->service->getProfile('user-uuid-123', $jwt);
 
-    expect($profile['study_ids'])->toBe(['ST-1'])
-        ->and($profile['module_ids'])->toBe(['M-1', 'M-2']);
+    // Si el usuario no tiene asignaciones, los arrays quedan vacíos.
+    expect($profile['study_type_ids'])->toBe([])
+        ->and($profile['study_ids'])->toBe([])
+        ->and($profile['module_ids'])->toBe([]);
 });
 
 it('merges FDW data, JWT claims, and teams into complete profile', function () {

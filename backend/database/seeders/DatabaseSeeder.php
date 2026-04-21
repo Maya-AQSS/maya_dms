@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             PermissionsSeeder::class,
             UserPermissionsSeeder::class,
             AcademicHierarchySeeder::class,
+            UserHierarchySeeder::class,
             TeamsSeeder::class,
             TemplatesSeeder::class,
             TemplateReviewersSeeder::class,
