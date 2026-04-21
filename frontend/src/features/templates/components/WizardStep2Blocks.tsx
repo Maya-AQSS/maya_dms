@@ -756,39 +756,37 @@ export function WizardStep2Blocks({ template }: Props) {
               </div>
             </div>
 
-            {/* Tab content */}
-            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' || activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
-              {activeTab === 'properties' && (
-                <div className="space-y-4">
-                  <div>
-                    <FieldLabel required>Nombre del bloque</FieldLabel>
-                    <TextInput
-                      type="text"
-                      fieldSize="comfortable"
-                      value={formName}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }}
-                      placeholder="Ej. Introducción"
+            {/* Tab content — all three panels stay mounted to preserve editor state */}
+            <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className={activeTab === 'properties' ? 'flex-1 overflow-y-auto p-6 space-y-4' : 'hidden'}>
+                <div>
+                  <FieldLabel required>Nombre del bloque</FieldLabel>
+                  <TextInput
+                    type="text"
+                    fieldSize="comfortable"
+                    value={formName}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }}
+                    placeholder="Ej. Introducción"
+                  />
+                </div>
+                <div>
+                  <FieldLabel required>Estado del bloque</FieldLabel>
+                  <div className="mt-1">
+                    <BlockUiStateToggle
+                      value={formUiState}
+                      onChange={(s) => { setFormUiState(s); setTabIsDirty(true); }}
+                      disabled={busy}
                     />
                   </div>
-                  <div>
-                    <FieldLabel required>Estado del bloque</FieldLabel>
-                    <div className="mt-1">
-                      <BlockUiStateToggle
-                        value={formUiState}
-                        onChange={(s) => { setFormUiState(s); setTabIsDirty(true); }}
-                        disabled={busy}
-                      />
-                    </div>
-                  </div>
-                  {panelMode === 'edit' && (
-                    <p className="text-[10px] text-text-muted italic">
-                      Se guarda automáticamente al cambiar de pestaña.
-                    </p>
-                  )}
                 </div>
-              )}
+                {panelMode === 'edit' && (
+                  <p className="text-[10px] text-text-muted italic">
+                    Se guarda automáticamente al cambiar de pestaña.
+                  </p>
+                )}
+              </div>
 
-              {activeTab === 'content' && (
+              <div className={activeTab === 'content' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
                 <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
                   <BlockNoteEditorPanel
                     key={(activeSingleId ?? 'new') + '-content'}
@@ -798,9 +796,9 @@ export function WizardStep2Blocks({ template }: Props) {
                     onChange={(content: unknown) => { setFormContent(JSON.stringify(content)); setTabIsDirty(true); }}
                   />
                 </Suspense>
-              )}
+              </div>
 
-              {activeTab === 'description' && (
+              <div className={activeTab === 'description' ? 'flex-1 flex flex-col min-h-0' : 'hidden'}>
                 <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
                   <BlockNoteEditorPanel
                     key={activeSingleId ?? 'new'}
@@ -810,10 +808,10 @@ export function WizardStep2Blocks({ template }: Props) {
                     onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
                   />
                 </Suspense>
-              )}
+              </div>
 
               {actionError && (
-                <p className="text-xs text-danger-dark animate-in fade-in mt-4">{actionError}</p>
+                <p className="text-xs text-danger-dark animate-in fade-in mt-4 px-6">{actionError}</p>
               )}
             </div>
 
