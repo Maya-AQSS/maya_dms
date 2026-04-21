@@ -774,4 +774,91 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'in_review');
     }
+
+    public function test_approve_last_review_persists_published_document_version_snapshot(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla snapshot doc',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'type' => 'paragraph',
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'mandatory' => false,
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc snapshot',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+
+        $reviews = $this->getJson("/api/v1/documents/{$docId}/reviews", $hCreator)
+            ->assertOk()
+            ->json('data');
+        $this->assertNotEmpty($reviews);
+        $reviewId = (string) $reviews[0]['id'];
+
+        $this->postJson("/api/v1/documents/{$docId}/reviews/{$reviewId}/approve", [], $hReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $row = DB::table('document_versions')->where('document_id', $docId)->first();
+        $this->assertNotNull($row);
+        $this->assertSame(1, (int) $row->version_number);
+        $this->assertSame('published', $row->trigger_event);
+        $this->assertSame($reviewerId, $row->triggered_by);
+
+        $raw = $row->snapshot_data;
+        $snapshot = is_string($raw) ? json_decode($raw, true) : $raw;
+        $this->assertIsArray($snapshot);
+        $this->assertArrayHasKey('document', $snapshot);
+        $this->assertArrayHasKey('blocks', $snapshot);
+        $this->assertSame($docId, $snapshot['document']['id']);
+        $this->assertSame('published', $snapshot['document']['status']);
+        $this->assertNotEmpty($snapshot['blocks']);
+
+        $this->assertSame(1, (int) DB::table('documents')->where('id', $docId)->value('current_version'));
+    }
 }

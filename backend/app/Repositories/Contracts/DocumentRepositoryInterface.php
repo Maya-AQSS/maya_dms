@@ -83,4 +83,23 @@ interface DocumentRepositoryInterface
      * @return Collection<int, Document>
      */
     public function listOrderedByCreatedAtDesc(): Collection;
+
+    /**
+     * Mayor número de versión de snapshot guardado para el documento (0 si no hay ninguna).
+     */
+    public function maxDocumentVersionNumber(string $documentId): int;
+
+    /**
+     * Inserta un registro append-only en document_versions.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     */
+    public function insertDocumentVersion(
+        string $documentId,
+        int $versionNumber,
+        string $triggerEvent,
+        string $triggeredBy,
+        array $snapshotData,
+        ?string $notes = null,
+    ): void;
 }

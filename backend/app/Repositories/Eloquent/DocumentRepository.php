@@ -5,6 +5,7 @@ namespace App\Repositories\Eloquent;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
+use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -180,5 +181,42 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('document_id', $documentId)
             ->where('reviewer_id', $userId)
             ->exists();
+    }
+
+    /**
+     * Mayor número de versión de snapshot guardado para el documento.
+     */
+    public function maxDocumentVersionNumber(string $documentId): int
+    {
+        $max = DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->max('version_number');
+
+        return $max !== null ? (int) $max : 0;
+    }
+
+    /**
+     * Inserta un registro append-only en document_versions.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     */
+    public function insertDocumentVersion(
+        string $documentId,
+        int $versionNumber,
+        string $triggerEvent,
+        string $triggeredBy,
+        array $snapshotData,
+        ?string $notes = null,
+    ): void {
+        DocumentVersion::forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'version_number' => $versionNumber,
+            'trigger_event' => $triggerEvent,
+            'triggered_by' => $triggeredBy,
+            'snapshot_data' => $snapshotData,
+            'notes' => $notes,
+            'created_at' => now(),
+        ]);
     }
 }

@@ -412,9 +412,14 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->transition($documentId, 'published', $actorId, [
-            'published_at' => now(),
-        ]);
+        return DB::transaction(function () use ($documentId, $actorId) {
+            $this->transition($documentId, 'published', $actorId, [
+                'published_at' => now(),
+            ]);
+            $this->recordPublishedDocumentVersion($documentId, $actorId);
+
+            return $this->documentRepository->findOrFail($documentId);
+        });
     }
 
     /**
@@ -513,9 +518,12 @@ class DocumentService implements DocumentServiceInterface
             $this->documentRepository->saveReview($review);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
-                return $this->transition($documentId, 'published', $actorId, [
+                $this->transition($documentId, 'published', $actorId, [
                     'published_at' => now(),
                 ]);
+                $this->recordPublishedDocumentVersion($documentId, $actorId);
+
+                return $this->documentRepository->findOrFail($documentId);
             }
 
             return $this->documentRepository->findOrFail($documentId);
@@ -652,5 +660,65 @@ class DocumentService implements DocumentServiceInterface
                 'missing_template_block_ids' => $missing,
             ]);
         }
+    }
+
+    /**
+     * Persiste snapshot append-only en document_versions y alinea current_version.
+     */
+    private function recordPublishedDocumentVersion(string $documentId, string $actorId): void
+    {
+        $document = $this->documentRepository->findOrFail($documentId);
+        $nextNumber = $this->documentRepository->maxDocumentVersionNumber($documentId) + 1;
+        $snapshot = $this->buildDocumentVersionSnapshot($document, $nextNumber);
+
+        $this->documentRepository->insertDocumentVersion(
+            $documentId,
+            $nextNumber,
+            'published',
+            $actorId,
+            $snapshot,
+            null,
+        );
+
+        $document->update(['current_version' => $nextNumber]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array
+    {
+        $document->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+
+        return [
+            'snapshot_version_number' => $snapshotVersionNumber,
+            'document' => [
+                'id' => $document->id,
+                'template_id' => $document->template_id,
+                'template_version_id' => $document->template_version_id,
+                'title' => $document->title,
+                'study_type_id' => $document->study_type_id,
+                'study_id' => $document->study_id,
+                'module_id' => $document->module_id,
+                'created_by' => $document->created_by,
+                'owner_id' => $document->owner_id,
+                'status' => $document->status,
+                'current_version' => (int) $document->current_version,
+                'submitted_at' => $document->submitted_at?->toIso8601String(),
+                'published_at' => $document->published_at?->toIso8601String(),
+            ],
+            'blocks' => $document->blocks->map(static function ($b): array {
+                return [
+                    'id' => $b->id,
+                    'template_block_id' => $b->template_block_id,
+                    'content' => $b->content,
+                    'is_filled' => (bool) $b->is_filled,
+                    'sort_order' => (int) $b->sort_order,
+                    'last_edited_by' => $b->last_edited_by,
+                    'locked_by' => $b->locked_by,
+                    'locked_at' => $b->locked_at?->toIso8601String(),
+                ];
+            })->values()->all(),
+        ];
     }
 }
