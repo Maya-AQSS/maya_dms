@@ -234,9 +234,15 @@ export function WizardStep4Summary({ template, validators, validationType, docum
               {/* Contenido del tab */}
               <div className="flex-1 p-4 overflow-y-auto">
                 {activeTab === 'Descripción' ? (
-                  <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">
-                    {selectedBlock?.description || <span className="text-text-muted italic">Sin descripción.</span>}
-                  </p>
+                  (() => {
+                    const desc = selectedBlock?.description;
+                    if (!desc) return <span className="text-xs text-text-muted italic">Sin descripción.</span>;
+                    let parsed: unknown[] | null = null;
+                    try { const p = JSON.parse(desc); if (Array.isArray(p) && p.length > 0) parsed = p; } catch { /* plain text */ }
+                    return parsed
+                      ? <BlockContentHtml content={parsed} />
+                      : <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{desc}</p>;
+                  })()
                 ) : (
                   Array.isArray(selectedBlock?.default_content) && (selectedBlock.default_content as unknown[]).length > 0
                     ? <BlockContentHtml content={selectedBlock.default_content as unknown[]} />
