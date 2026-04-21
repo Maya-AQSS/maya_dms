@@ -422,6 +422,7 @@ export function WizardStep2Blocks({ template }: Props) {
     setSaveStatus('idle');
     setDeleteModal(false);
     setPanelMode('edit');
+    setActiveSingleId(block.id);
   };
 
   const handleAddBlock = async () => {
