@@ -3,9 +3,15 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\Contracts\DashboardServiceInterface;
 use Illuminate\Http\JsonResponse;
+
 class DashboardController extends Controller
 {
+    public function __construct(
+        private readonly DashboardServiceInterface $dashboardService,
+    ) {}
+
     /**
      * GET /api/v1/dashboard
      * 
@@ -16,10 +22,9 @@ class DashboardController extends Controller
     public function index(): JsonResponse
     {
         return response()->json([
-            'data' => [
-                'stats'             => [],
-                'recent_documents'  => [],
-            ],
+            'data' => $this->dashboardService->buildForUser(
+                (string) request()->user()->getAuthIdentifier(),
+            ),
         ]);
     }
 }
