@@ -52,6 +52,25 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
+     * Busca un bloque por su ID dentro del documento o lanza ModelNotFoundException.
+     */
+    public function findBlockInDocumentOrFail(string $documentId, string $blockId): DocumentBlock
+    {
+        return DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->where('id', $blockId)
+            ->firstOrFail();
+    }
+
+    /**
+     * Guarda un bloque del documento.
+     */
+    public function saveBlock(DocumentBlock $block): void
+    {
+        $block->save();
+    }
+
+    /**
      * Listado de revisiones del documento ordenadas por etapa.
      */
     public function listReviewsForDocument(string $documentId): Collection

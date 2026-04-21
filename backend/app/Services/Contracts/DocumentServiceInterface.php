@@ -3,6 +3,7 @@
 namespace App\Services\Contracts;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use Illuminate\Support\Collection;
@@ -25,6 +26,11 @@ interface DocumentServiceInterface
      * @return list<array<string, mixed>>
      */
     public function blocksForDisplay(Document $document): array;
+
+    /**
+     * Actualiza el contenido de un bloque de documento.
+     */
+    public function updateBlock(UpdateDocumentBlockDto $dto): array;
 
     /**
      * Transiciona el documento a un nuevo estado y emite el evento de dominio DocumentStateChanged.

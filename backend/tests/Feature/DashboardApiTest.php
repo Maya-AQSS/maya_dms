@@ -193,7 +193,7 @@ class DashboardApiTest extends TestCase
             [
                 'id' => (string) Str::uuid(),
                 'template_id' => $normalTemplateId,
-                'user_id' => $reviewerId,
+                'user_id' => $otherReviewerId,
                 'stage' => 2,
                 'status' => 'approved',
                 'created_at' => now(),

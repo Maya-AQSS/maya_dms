@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Events\DocumentStateChanged;
 use App\Models\CourseModule;
 use App\Models\Document;
@@ -216,6 +217,50 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $out;
+    }
+
+    /**
+     * Actualiza el contenido de un bloque de documento.
+     *
+     * @return array<string, mixed>
+     */
+    public function updateBlock(UpdateDocumentBlockDto $dto): array
+    {
+        $document = $this->documentRepository->findOrFail($dto->documentId);
+        if ($document->status !== 'draft') {
+            throw ValidationException::withMessages([
+                'status' => ['Solo se pueden editar bloques de documentos en borrador.'],
+            ]);
+        }
+
+        $block = $this->documentRepository->findBlockInDocumentOrFail(
+            $dto->documentId,
+            $dto->documentBlockId,
+        );
+
+        $definitions = collect($this->blockDefinitionsForDocument($document))
+            ->keyBy(fn (array $def) => (string) $def['id']);
+        $definition = $definitions->get((string) $block->template_block_id);
+
+        if (($definition['block_state'] ?? 'editable') === 'locked') {
+            throw ValidationException::withMessages([
+                'block' => ['Este bloque está bloqueado y no admite edición.'],
+            ]);
+        }
+
+        $block->content = $dto->content;
+        $block->is_filled = $this->isContentFilled($dto->content);
+        $block->last_edited_by = $dto->actorId;
+        $this->documentRepository->saveBlock($block);
+
+        return [
+            'document_block_id' => (string) $block->id,
+            'template_block_id' => (string) $block->template_block_id,
+            'content' => $block->content,
+            'is_filled' => (bool) $block->is_filled,
+            'last_edited_by' => (string) $block->last_edited_by,
+            'updated_at' => $block->updated_at?->toIso8601String(),
+        ];
     }
 
     /**
@@ -515,5 +560,28 @@ class DocumentService implements DocumentServiceInterface
                 'review' => ['En revisión secuencial, solo puede actuar la etapa pendiente más baja.'],
             ]);
         }
+    }
+
+    private function isContentFilled(mixed $content): bool
+    {
+        if ($content === null) {
+            return false;
+        }
+
+        if (is_string($content)) {
+            return trim($content) !== '';
+        }
+
+        if (is_array($content)) {
+            if ($content === []) {
+                return false;
+            }
+
+            $encoded = json_encode($content);
+
+            return $encoded !== false && $encoded !== '[]' && $encoded !== '{}' && $encoded !== 'null';
+        }
+
+        return true;
     }
 }

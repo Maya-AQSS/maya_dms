@@ -3,6 +3,7 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use Illuminate\Support\Collection;
 
@@ -20,6 +21,16 @@ interface DocumentRepositoryInterface
      * @param  list<array{template_block_id: string, content: mixed, sort_order: int}>  $blockRows
      */
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document;
+
+    /**
+     * Localiza un bloque por su ID dentro del documento o lanza ModelNotFoundException.
+     */
+    public function findBlockInDocumentOrFail(string $documentId, string $blockId): DocumentBlock;
+
+    /**
+     * Persiste un bloque del documento.
+     */
+    public function saveBlock(DocumentBlock $block): void;
 
     /**
      * Indica si el usuario es autor (owner_id / created_by) o revisor asignado
