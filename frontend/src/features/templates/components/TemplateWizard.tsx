@@ -50,7 +50,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
 
   // Step 3: Users state
-  const [validators, setValidators] = useState<ValidatorEntry[]>([]);
+  const [validators, setValidators] = useState<ValidatorEntry[]>(
+    initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_id })) ?? [],
+  );
   const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
     initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
