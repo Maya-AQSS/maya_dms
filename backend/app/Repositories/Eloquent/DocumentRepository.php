@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\BlockVersion;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
@@ -300,5 +301,42 @@ class DocumentRepository implements DocumentRepositoryInterface
         }
 
         return $out;
+    }
+
+    /**
+     * Mayor número de versión de snapshot guardado para el bloque del documento.
+     */
+    public function maxBlockVersionNumberForDocumentBlock(string $documentBlockId): int
+    {
+        $max = BlockVersion::query()
+            ->where('document_block_id', $documentBlockId)
+            ->max('version_number');
+
+        return $max !== null ? (int) $max : 0;
+    }
+
+    /**
+     * Inserta un registro append-only en block_versions.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     */
+    public function insertDocumentBlockVersion(
+        string $documentBlockId,
+        string $documentId,
+        int $versionNumber,
+        array $content,
+        ?array $diff,
+        string $editedBy,
+    ): void {
+        BlockVersion::forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_block_id' => $documentBlockId,
+            'document_id' => $documentId,
+            'version_number' => $versionNumber,
+            'content' => $content,
+            'diff' => $diff,
+            'edited_by' => $editedBy,
+            'created_at' => now(),
+        ]);
     }
 }

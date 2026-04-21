@@ -8,6 +8,7 @@ use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Events\DocumentStateChanged;
 use App\Models\CourseModule;
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Models\Template;
@@ -373,37 +374,52 @@ class DocumentService implements DocumentServiceInterface
      */
     public function updateBlock(UpdateDocumentBlockDto $dto): array
     {
-        $document = $this->documentRepository->findOrFail($dto->documentId);
-        if ($document->status !== 'draft') {
-            abort(403, 'Solo se pueden editar bloques de documentos en borrador.');
-        }
+        return DB::transaction(function () use ($dto) {
+            $document = $this->documentRepository->findOrFail($dto->documentId);
+            if ($document->status !== 'draft') {
+                abort(403, 'Solo se pueden editar bloques de documentos en borrador.');
+            }
 
-        $block = $this->documentRepository->findBlockInDocumentOrFail(
-            $dto->documentId,
-            $dto->documentBlockId,
-        );
+            $block = $this->documentRepository->findBlockInDocumentOrFail(
+                $dto->documentId,
+                $dto->documentBlockId,
+            );
 
-        $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->keyBy(fn (array $def) => (string) $def['id']);
-        $definition = $definitions->get((string) $block->template_block_id);
+            $definitions = collect($this->blockDefinitionsForDocument($document))
+                ->keyBy(fn (array $def) => (string) $def['id']);
+            $definition = $definitions->get((string) $block->template_block_id) ?? [];
 
-        if (($definition['block_state'] ?? 'editable') === 'locked') {
-            abort(403, 'Este bloque está bloqueado y no admite edición.');
-        }
+            if (($definition['block_state'] ?? 'editable') === 'locked') {
+                abort(403, 'Este bloque está bloqueado y no admite edición.');
+            }
 
-        $block->content = $dto->content;
-        $block->is_filled = $this->isContentFilled($dto->content);
-        $block->last_edited_by = $dto->actorId;
-        $this->documentRepository->saveBlock($block);
+            if ($this->documentBlockContentEquals($block->content, $dto->content)) {
+                return [
+                    'document_block_id' => (string) $block->id,
+                    'template_block_id' => (string) $block->template_block_id,
+                    'content' => $block->content,
+                    'is_filled' => (bool) $block->is_filled,
+                    'last_edited_by' => (string) $block->last_edited_by,
+                    'updated_at' => $block->updated_at?->toIso8601String(),
+                ];
+            }
 
-        return [
-            'document_block_id' => (string) $block->id,
-            'template_block_id' => (string) $block->template_block_id,
-            'content' => $block->content,
-            'is_filled' => (bool) $block->is_filled,
-            'last_edited_by' => (string) $block->last_edited_by,
-            'updated_at' => $block->updated_at?->toIso8601String(),
-        ];
+            $this->appendModifiableBlockVersionSnapshotsIfNeeded($document, $block, $definition, $dto);
+
+            $block->content = $dto->content;
+            $block->is_filled = $this->isContentFilled($dto->content);
+            $block->last_edited_by = $dto->actorId;
+            $this->documentRepository->saveBlock($block);
+
+            return [
+                'document_block_id' => (string) $block->id,
+                'template_block_id' => (string) $block->template_block_id,
+                'content' => $block->content,
+                'is_filled' => (bool) $block->is_filled,
+                'last_edited_by' => (string) $block->last_edited_by,
+                'updated_at' => $block->updated_at?->toIso8601String(),
+            ];
+        });
     }
 
     /**
@@ -732,6 +748,9 @@ class DocumentService implements DocumentServiceInterface
         }
     }
 
+    /**
+     * Verifica si el contenido del bloque está completado.
+     */
     private function isContentFilled(mixed $content): bool
     {
         if ($content === null) {
@@ -804,5 +823,109 @@ class DocumentService implements DocumentServiceInterface
         $this->documentRepository->findOrFail($documentId);
 
         return $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
+    }
+
+    /**
+     * Compara dos valores JSON canónicamente.
+     */
+    private function documentBlockContentEquals(mixed $a, mixed $b): bool
+    {
+        return $this->jsonEncodeCanonical($a) === $this->jsonEncodeCanonical($b);
+    }
+
+    /**
+     * Codifica un valor JSON canónicamente.
+     */
+    private function jsonEncodeCanonical(mixed $value): string
+    {
+        try {
+            $normalized = $this->normalizeKeysForCanonicalJson($value);
+
+            return json_encode(
+                $normalized,
+                \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRESERVE_ZERO_FRACTION,
+            );
+        } catch (\JsonException) {
+            return '';
+        }
+    }
+
+    /**
+     * Ordena claves de objetos JSON (arrays asociativos) de forma recursiva; preserva el orden de listas.
+     */
+    private function normalizeKeysForCanonicalJson(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+
+        if ($value === [] || array_is_list($value)) {
+            return array_map(fn (mixed $item): mixed => $this->normalizeKeysForCanonicalJson($item), $value);
+        }
+
+        ksort($value);
+
+        foreach ($value as $k => $nested) {
+            $value[$k] = $this->normalizeKeysForCanonicalJson($nested);
+        }
+
+        return $value;
+    }
+
+    /**
+     * Si el bloque es editable y modificable, crea una nueva versión del bloque.
+     * 
+     * @param  array<string, mixed>  $definition
+     */
+    private function appendModifiableBlockVersionSnapshotsIfNeeded(
+        Document $document,
+        DocumentBlock $block,
+        array $definition,
+        UpdateDocumentBlockDto $dto,
+    ): void {
+        if (($definition['block_state'] ?? 'editable') !== 'modifiable') {
+            return;
+        }
+
+        $blockId = (string) $block->id;
+        $documentId = (string) $document->id;
+        $max = $this->documentRepository->maxBlockVersionNumberForDocumentBlock($blockId);
+
+        if ($max === 0) {
+            $baseline = $this->normalizeBlockVersionPayload($definition['default_content'] ?? null);
+            $baselineEditor = (string) ($document->created_by ?? $document->owner_id ?? $dto->actorId);
+            $this->documentRepository->insertDocumentBlockVersion(
+                $blockId,
+                $documentId,
+                1,
+                $baseline,
+                null,
+                $baselineEditor,
+            );
+            $max = 1;
+        }
+
+        $this->documentRepository->insertDocumentBlockVersion(
+            $blockId,
+            $documentId,
+            $max + 1,
+            $this->normalizeBlockVersionPayload($dto->content),
+            null,
+            $dto->actorId,
+        );
+    }
+
+    /**
+     * Normaliza el payload del bloque para la versión.
+     * 
+     * @return array<string, mixed>
+     */
+    private function normalizeBlockVersionPayload(mixed $value): array
+    {
+        if ($value === null) {
+            return [];
+        }
+
+        return is_array($value) ? $value : [];
     }
 }

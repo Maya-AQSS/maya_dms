@@ -131,4 +131,24 @@ interface DocumentRepositoryInterface
      * @return array<string, string> mapa document_id => permission (read|edit)
      */
     public function sharePermissionsForViewer(array $documentIds, string $userId): array;
+
+    /**
+     * Mayor número de versión de bloque guardado (0 si no hay filas).
+     */
+    public function maxBlockVersionNumberForDocumentBlock(string $documentBlockId): int;
+
+    /**
+     * Inserta una fila append-only en block_versions.
+     *
+     * @param  array<string, mixed>  $content
+     * @param  array<string, mixed>|null  $diff
+     */
+    public function insertDocumentBlockVersion(
+        string $documentBlockId,
+        string $documentId,
+        int $versionNumber,
+        array $content,
+        ?array $diff,
+        string $editedBy,
+    ): void;
 }
