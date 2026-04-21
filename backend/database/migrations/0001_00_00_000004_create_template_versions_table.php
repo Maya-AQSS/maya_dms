@@ -27,20 +27,6 @@ return new class extends Migration
             $table->unique(['template_id', 'version_number']);
         });
 
-        Schema::table('template_reviewers', function (Blueprint $table) {
-            $table->foreign('template_version_id')
-                ->references('id')
-                ->on('template_versions')
-                ->nullOnDelete();
-        });
-
-        Schema::table('template_document_reviewers', function (Blueprint $table) {
-            $table->foreign('template_version_id')
-                ->references('id')
-                ->on('template_versions')
-                ->nullOnDelete();
-        });
-
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::unprepared(<<<'SQL'
 CREATE OR REPLACE FUNCTION forbid_append_only_mutation() RETURNS trigger AS $$
@@ -58,14 +44,6 @@ SQL);
 
     public function down(): void
     {
-        Schema::table('template_document_reviewers', function (Blueprint $table) {
-            $table->dropForeign(['template_version_id']);
-        });
-
-        Schema::table('template_reviewers', function (Blueprint $table) {
-            $table->dropForeign(['template_version_id']);
-        });
-
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::unprepared('DROP TRIGGER IF EXISTS template_versions_append_only ON template_versions;');
             DB::unprepared('DROP FUNCTION IF EXISTS forbid_append_only_mutation();');

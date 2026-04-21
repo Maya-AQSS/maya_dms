@@ -17,7 +17,6 @@ class TemplateReviewer extends Model
 
     protected $fillable = [
         'template_id',
-        'template_version_id',
         'user_id',
         'stage',
         'status',
@@ -35,8 +34,4 @@ class TemplateReviewer extends Model
         return $this->belongsTo(Template::class);
     }
 
-    public function templateVersion(): BelongsTo
-    {
-        return $this->belongsTo(TemplateVersion::class);
-    }
 }

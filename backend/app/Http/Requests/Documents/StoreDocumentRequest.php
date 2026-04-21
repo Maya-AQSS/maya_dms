@@ -5,8 +5,8 @@ namespace App\Http\Requests\Documents;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\Models\JwtUser;
 use App\Models\Template;
+use App\Models\TemplateVersion;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreDocumentRequest extends FormRequest
 {
@@ -20,11 +20,21 @@ class StoreDocumentRequest extends FormRequest
             return false;
         }
 
-        if (! $this->filled('template_id')) {
+        if (! $this->filled('template_id') && ! $this->filled('template_version_id')) {
             return true;
         }
 
-        $template = Template::query()->find($this->input('template_id'));
+        $template = null;
+        if ($this->filled('template_id')) {
+            $template = Template::query()->find($this->input('template_id'));
+        } elseif ($this->filled('template_version_id')) {
+            $templateId = TemplateVersion::query()
+                ->whereKey($this->input('template_version_id'))
+                ->value('template_id');
+            if (is_string($templateId)) {
+                $template = Template::query()->find($templateId);
+            }
+        }
 
         return $template !== null && $user->can('view', $template);
     }
@@ -37,18 +47,15 @@ class StoreDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'template_id' => ['required', 'uuid', 'exists:templates,id'],
+            'template_id' => ['sometimes', 'nullable', 'uuid', 'exists:templates,id'],
             'title' => ['required', 'string', 'max:255'],
             'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'template_version_id' => [
-                'sometimes',
-                'nullable',
+                'required_without:template_id',
                 'uuid',
-                Rule::exists('template_versions', 'id')->where(
-                    fn ($q) => $q->where('template_id', $this->input('template_id')),
-                ),
+                'exists:template_versions,id',
             ],
         ];
     }
@@ -58,15 +65,24 @@ class StoreDocumentRequest extends FormRequest
      */
     public function toDto(string $createdBy, string $ownerId): CreateDocumentDto
     {
+        $templateVersionId = $this->validated('template_version_id');
+        $templateId = $this->validated('template_id');
+
+        if (! is_string($templateId) && is_string($templateVersionId)) {
+            $templateId = (string) TemplateVersion::query()
+                ->whereKey($templateVersionId)
+                ->value('template_id');
+        }
+
         return new CreateDocumentDto(
-            templateId: $this->validated('template_id'),
+            templateId: (string) $templateId,
             title: $this->validated('title'),
             createdBy: $createdBy,
             ownerId: $ownerId,
             studyTypeId: $this->validated('study_type_id') ?? null,
             studyId: $this->validated('study_id') ?? null,
             moduleId: $this->validated('module_id') ?? null,
-            templateVersionId: $this->validated('template_version_id') ?? null,
+            templateVersionId: $templateVersionId ?? null,
         );
     }
 }

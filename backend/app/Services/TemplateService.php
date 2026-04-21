@@ -196,16 +196,13 @@ class TemplateService implements TemplateServiceInterface
 
             $next = $this->templateVersionRepository->nextVersionNumber($templateId);
 
-            $snapshot = $this->templateVersionRepository->createSnapshot(
+            $this->templateVersionRepository->createSnapshot(
                 $templateId,
                 $next,
                 $blocksSnapshot,
                 $changelog ?? '',
                 $actorId,
             );
-
-            $template->reviewers()->update(['template_version_id' => $snapshot->id]);
-            $template->documentReviewers()->update(['template_version_id' => $snapshot->id]);
 
             $oldStatus = $template->status;
             $updated = $this->templateRepository->update($template, [
@@ -398,15 +395,12 @@ class TemplateService implements TemplateServiceInterface
     {
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
-            $latestVersionId = $this->templateVersionRepository
-                ->findLatestPublishedForTemplate($templateId)?->id;
 
             $template->reviewers()->delete();
 
             foreach ($userIds as $index => $userId) {
                 $template->reviewers()->create([
                     'user_id' => $userId,
-                    'template_version_id' => $latestVersionId,
                     'stage'   => $index + 1,
                 ]);
             }
@@ -420,15 +414,12 @@ class TemplateService implements TemplateServiceInterface
     {
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
-            $latestVersionId = $this->templateVersionRepository
-                ->findLatestPublishedForTemplate($templateId)?->id;
 
             $template->documentReviewers()->delete();
 
             foreach ($userIds as $userId) {
                 $template->documentReviewers()->create([
                     'user_id' => $userId,
-                    'template_version_id' => $latestVersionId,
                 ]);
             }
         });
