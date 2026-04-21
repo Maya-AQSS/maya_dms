@@ -85,6 +85,8 @@ Route::prefix('v1')->group(function () {
         Route::post('documents/create-from-module', [DocumentController::class, 'createFromModule']);
         Route::get('documents', [DocumentController::class, 'index']);
         Route::post('documents', [DocumentController::class, 'store']);
+        Route::get('documents/{document}/template-version-status', [DocumentController::class, 'templateVersionStatus'])
+            ->whereUuid('document');
         Route::get('documents/{document}', [DocumentController::class, 'show'])
             ->whereUuid('document');
         Route::match(['put', 'patch'], 'documents/{document}', [DocumentController::class, 'update'])

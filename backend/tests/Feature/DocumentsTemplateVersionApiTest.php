@@ -958,4 +958,145 @@ class DocumentsTemplateVersionApiTest extends TestCase
             (string) DB::table('document_versions')->where('document_id', $docId)->value('notes'),
         );
     }
+
+    public function test_template_version_status_reports_update_when_newer_published_template_version_exists(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla F-04.6',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'type' => 'paragraph',
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'mandatory' => false,
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1 plantilla'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc banner',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $v2Id = (string) Str::uuid();
+        $now = now();
+        DB::table('template_versions')->insert([
+            'id' => $v2Id,
+            'template_id' => $tid,
+            'version_number' => 2,
+            'blocks_snapshot' => json_encode([]),
+            'changelog' => 'Normativa v2 publicada',
+            'published_by' => $reviewerId,
+            'published_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->getJson("/api/v1/documents/{$docId}/template-version-status", $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.has_update', true)
+            ->assertJsonPath('data.changelog', 'Normativa v2 publicada')
+            ->assertJsonPath('data.current_version.version_number', 1)
+            ->assertJsonPath('data.latest_version.version_number', 2)
+            ->assertJsonPath('data.latest_version.id', $v2Id);
+    }
+
+    public function test_template_version_status_has_no_update_when_document_on_latest_template_version(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla al día',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'type' => 'paragraph',
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'mandatory' => false,
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc al día',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->getJson("/api/v1/documents/{$docId}/template-version-status", $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.has_update', false)
+            ->assertJsonPath('data.changelog', null)
+            ->assertJsonPath('data.current_version.version_number', 1)
+            ->assertJsonPath('data.latest_version.version_number', 1);
+    }
 }

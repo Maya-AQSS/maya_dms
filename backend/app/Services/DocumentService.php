@@ -205,6 +205,46 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Comparación ligera entre la versión de plantilla anclada al documento y la última publicada.
+     *
+     * @return array{
+     *   current_version: ?array{id: string, version_number: int},
+     *   latest_version: ?array{id: string, version_number: int, changelog: string},
+     *   has_update: bool,
+     *   changelog: ?string
+     * }
+     */
+    public function templateVersionStatus(string $documentId): array
+    {
+        $document = $this->documentRepository->findOrFail($documentId);
+        $versionId = $document->template_version_id;
+
+        $currentFull = is_string($versionId)
+            ? $this->templateVersionRepository->findPublishedMetaById($versionId)
+            : null;
+
+        $latestFull = $this->templateVersionRepository->findLatestPublishedMetaForTemplate((string) $document->template_id);
+
+        $current = $currentFull !== null
+            ? [
+                'id' => $currentFull['id'],
+                'version_number' => $currentFull['version_number'],
+            ]
+            : null;
+
+        $hasUpdate = $currentFull !== null
+            && $latestFull !== null
+            && $latestFull['version_number'] > $currentFull['version_number'];
+
+        return [
+            'current_version' => $current,
+            'latest_version' => $latestFull,
+            'has_update' => $hasUpdate,
+            'changelog' => $hasUpdate ? $latestFull['changelog'] : null,
+        ];
+    }
+
+    /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
      * 
      * @return Collection<int, Document>

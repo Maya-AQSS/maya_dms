@@ -116,4 +116,16 @@ interface DocumentServiceInterface
         string $creatorId,
         ?string $templateVersionId = null,
     ): Document;
+
+    /**
+     * Comparación ligera entre la versión de plantilla anclada al documento y la última publicada.
+     *
+     * @return array{
+     *   current_version: ?array{id: string, version_number: int},
+     *   latest_version: ?array{id: string, version_number: int, changelog: string},
+     *   has_update: bool,
+     *   changelog: ?string
+     * }
+     */
+    public function templateVersionStatus(string $documentId): array;
 }

@@ -106,6 +106,21 @@ class DocumentController extends Controller
     }
 
     /**
+     * GET /api/v1/documents/{document}/template-version-status
+     *
+     * Indica si existe una versión de plantilla publicada más reciente que la anclada al documento.
+     */
+    public function templateVersionStatus(Request $request, string $id): JsonResponse
+    {
+        $document = $this->documentService->findOrFail($id);
+        $this->authorize('view', $document);
+
+        return response()->json([
+            'data' => $this->documentService->templateVersionStatus($document->id),
+        ]);
+    }
+
+    /**
      * Mostrar documento con bloques según la versión de plantilla anclada (F-03.4).
      */
     public function show(Request $request, string $id): JsonResponse
