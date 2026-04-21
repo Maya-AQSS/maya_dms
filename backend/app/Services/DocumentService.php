@@ -90,6 +90,31 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Actualiza metadatos editables del documento.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function update(string $documentId, array $attributes): Document
+    {
+        $document = $this->documentRepository->findOrFail($documentId);
+
+        $document->update([
+            'title' => $attributes['title'],
+        ]);
+
+        return $document->fresh();
+    }
+
+    /**
+     * Borrado lógico del documento.
+     */
+    public function delete(string $documentId): void
+    {
+        $document = $this->documentRepository->findOrFail($documentId);
+        $document->delete();
+    }
+
+    /**
      * Opciones de creación de documento disponibles para un módulo.
      * 
      * @return list<array{template_id: string, template_version_id: string, name: string, description: ?string}>

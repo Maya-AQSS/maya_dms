@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
+use App\Http\Requests\Documents\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -127,25 +128,31 @@ class DocumentController extends Controller
     /**
      * Actualizar documento.
      */
-    public function update(Request $request, string $id): JsonResponse
+    public function update(UpdateDocumentRequest $request, string $id): JsonResponse
     {
-        // TODO: DocumentService::update(...)
         $document = $this->documentService->findOrFail($id);
         $this->authorize('update', $document);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $updated = $this->documentService->update($id, $request->validated());
+        $this->apiTeamEmbedService->embedOnDocument(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
     }
 
     /**
      * Eliminar documento.
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('delete', $document);
-        // TODO: borrado lógico / política propia
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $this->documentService->delete($id);
+
+        return response()->json([], 204);
     }
 
     /**

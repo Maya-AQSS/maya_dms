@@ -21,6 +21,18 @@ interface DocumentServiceInterface
     public function create(CreateDocumentDto $dto): Document;
 
     /**
+     * Actualiza metadatos editables del documento.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function update(string $documentId, array $attributes): Document;
+
+    /**
+     * Borrado lógico del documento.
+     */
+    public function delete(string $documentId): void;
+
+    /**
      * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
      *
      * @return list<array<string, mixed>>
