@@ -107,7 +107,7 @@ describe('WizardStep3Users', () => {
     const removeBtn = screen.getByText('✕');
     fireEvent.click(removeBtn);
     expect(screen.getByText(/¿Eliminar a/i)).toBeTruthy();
-    const confirmBtn = screen.getByRole('button', { name: 'Eliminar' });
+    const confirmBtn = screen.getByRole('button', { name: 'Eliminar definitivamente' });
     fireEvent.click(confirmBtn);
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([]);
   });
