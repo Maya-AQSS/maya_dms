@@ -130,53 +130,55 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
         </Select>
       </div>
 
-      <div className="flex-1">
-        <label
-          htmlFor={studySelectId}
-          className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1"
-        >
-          Estudio
-        </label>
-        <Select
-          id={studySelectId}
-          fieldSize="comfortable"
-          className="focus:ring-2 focus:ring-odoo-purple outline-none"
-          value={selectedStudy}
-          onChange={handleStudyChange}
-          disabled={!selectedType}
-        >
-          <option value="">Todos los estudios</option>
-          {studies.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </Select>
-      </div>
+      {selectedType && (
+        <div className="flex-1">
+          <label
+            htmlFor={studySelectId}
+            className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1"
+          >
+            Estudio
+          </label>
+          <Select
+            id={studySelectId}
+            fieldSize="comfortable"
+            className="focus:ring-2 focus:ring-odoo-purple outline-none"
+            value={selectedStudy}
+            onChange={handleStudyChange}
+          >
+            <option value="">Todos los estudios</option>
+            {studies.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
-      <div className="flex-1">
-        <label
-          htmlFor={moduleSelectId}
-          className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1"
-        >
-          Módulo
-        </label>
-        <Select
-          id={moduleSelectId}
-          fieldSize="comfortable"
-          className="focus:ring-2 focus:ring-odoo-purple outline-none"
-          value={selectedModule}
-          onChange={handleModuleChange}
-          disabled={!selectedStudy}
-        >
-          <option value="">Todos los módulos</option>
-          {modules.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </Select>
-      </div>
+      {selectedStudy && (
+        <div className="flex-1">
+          <label
+            htmlFor={moduleSelectId}
+            className="block text-xs font-semibold text-text-secondary dark:text-text-dark-secondary mb-1"
+          >
+            Módulo
+          </label>
+          <Select
+            id={moduleSelectId}
+            fieldSize="comfortable"
+            className="focus:ring-2 focus:ring-odoo-purple outline-none"
+            value={selectedModule}
+            onChange={handleModuleChange}
+          >
+            <option value="">Todos los módulos</option>
+            {modules.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       <div className="flex items-end">
         <Button

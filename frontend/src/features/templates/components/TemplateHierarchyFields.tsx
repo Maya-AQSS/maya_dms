@@ -64,50 +64,56 @@ export function TemplateHierarchyFields({
 
   return (
     <div className={gridClassName}>
-      <div className={isTeamVisibility ? 'opacity-50 pointer-events-none' : ''}>
-        <FieldLabel>Tipo de Estudio</FieldLabel>
-        <Select
-          fieldSize="sm"
-          value={values.study_type_id}
-          disabled={hierarchyLoading || isTeamVisibility}
-          onChange={(e) => handleStudyTypeChange(e.target.value)}
-        >
-          <option value="">Todos</option>
-          {hierarchy.map((t) => (
-            <option key={t.id} value={t.id}>{t.name}</option>
-          ))}
-        </Select>
-      </div>
+      {!isTeamVisibility && (
+        <div>
+          <FieldLabel>Tipo de Estudio</FieldLabel>
+          <Select
+            fieldSize="sm"
+            value={values.study_type_id}
+            disabled={hierarchyLoading}
+            onChange={(e) => handleStudyTypeChange(e.target.value)}
+          >
+            <option value="">Todos</option>
+            {hierarchy.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </Select>
+        </div>
+      )}
 
-      <div className={isTeamVisibility ? 'opacity-50 pointer-events-none' : ''}>
-        <FieldLabel>Estudio</FieldLabel>
-        <Select
-          fieldSize="sm"
-          value={values.study_id}
-          disabled={hierarchyLoading || !values.study_type_id || isTeamVisibility}
-          onChange={(e) => handleStudyChange(e.target.value)}
-        >
-          <option value="">Todos</option>
-          {filteredStudies.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </Select>
-      </div>
+      {!isTeamVisibility && values.study_type_id && (
+        <div>
+          <FieldLabel>Estudio</FieldLabel>
+          <Select
+            fieldSize="sm"
+            value={values.study_id}
+            disabled={hierarchyLoading}
+            onChange={(e) => handleStudyChange(e.target.value)}
+          >
+            <option value="">Todos</option>
+            {filteredStudies.map((s) => (
+              <option key={s.id} value={s.id}>{s.name}</option>
+            ))}
+          </Select>
+        </div>
+      )}
 
-      <div className={isTeamVisibility ? 'opacity-50 pointer-events-none' : ''}>
-        <FieldLabel>Módulo</FieldLabel>
-        <Select
-          fieldSize="sm"
-          value={values.module_id}
-          disabled={hierarchyLoading || !values.study_id || isTeamVisibility}
-          onChange={(e) => handleModuleChange(e.target.value)}
-        >
-          <option value="">Todos</option>
-          {filteredModules.map((m) => (
-            <option key={m.id} value={m.id}>{m.name}</option>
-          ))}
-        </Select>
-      </div>
+      {!isTeamVisibility && values.study_id && (
+        <div>
+          <FieldLabel>Módulo</FieldLabel>
+          <Select
+            fieldSize="sm"
+            value={values.module_id}
+            disabled={hierarchyLoading}
+            onChange={(e) => handleModuleChange(e.target.value)}
+          >
+            <option value="">Todos</option>
+            {filteredModules.map((m) => (
+              <option key={m.id} value={m.id}>{m.name}</option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       {isTeamVisibility && (
         <div>
