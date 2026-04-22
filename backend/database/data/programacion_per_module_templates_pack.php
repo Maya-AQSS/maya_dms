@@ -7,6 +7,8 @@ declare(strict_types=1);
  *
  * Contenido en formato **array de bloques BlockNote** (compatible con BlockContentHtml / editor).
  * Estados de bloque variados (locked | editable | modifiable | optional) con reparto pseudoaleatorio.
+ * Módulos **FP** (ST_FP): plantilla base genérica de programación didáctica (identificación, objetivos,
+ * unidades, metodología, evaluación, recursos), reutilizable en cualquier módulo del ciclo.
  *
  * @return array{
  *   templates: list<array<string, mixed>>,
@@ -91,6 +93,102 @@ return (static function (): array {
                 $para('Registro de incidencias y acuerdos con el departamento didáctico.'),
             ],
         };
+    };
+
+    /**
+     * Denominación larga del ciclo GS a partir del study_id del seed (FP).
+     */
+    $fpCycleLongLabel = static function (string $studyId): string {
+        return match (true) {
+            str_contains($studyId, 'FP_DAW') => 'Grado Superior en Desarrollo de Aplicaciones Web (DAW)',
+            str_contains($studyId, 'FP_ASIR') => 'Grado Superior en Administración de Sistemas Informáticos en Red (ASIR)',
+            str_contains($studyId, 'FP_SMR') => 'Grado Superior en Sistemas Microinformáticos en Red (SMR)',
+            default => 'Ciclo formativo de grado superior (indicar denominación oficial del título)',
+        };
+    };
+
+    /**
+     * Seis bloques base de programación didáctica **genérica** para cualquier módulo FP.
+     * Sustituir en el centro nombres de módulo, códigos oficiales, horas y unidades concretas.
+     *
+     * @return list<array{db_type: string, title: string, mandatory: bool, sort: int, default_content: list<array<string, mixed>>}>
+     */
+    $fpGenericProgramacionLayout = static function (int $si, string $short, string $studyId) use ($heading, $para, $fpCycleLongLabel): array {
+        $cycle = $fpCycleLongLabel($studyId);
+        $ctx = match ($si) {
+            0 => 'Borrador en elaboración por Dirección: sustituir el texto genérico por el definitivo del centro.',
+            1 => 'Plantilla en circuito de revisión administrativa y académica antes de publicarse.',
+            2 => 'Borrador del docente: personalizar contenidos según grupo, aula y recursos disponibles.',
+            3 => 'Plantilla publicada (modelo A) lista para generar programaciones en el DMS.',
+            default => 'Plantilla publicada (modelo B): misma estructura pedagógica con énfasis en trazabilidad y revisión.',
+        };
+
+        $L = static fn (string $dbType, string $title, bool $mand, int $sort, array $bn) => [
+            'db_type' => $dbType,
+            'title' => $title.' · '.$short,
+            'mandatory' => $mand,
+            'sort' => $sort,
+            'default_content' => $bn,
+        ];
+
+        return [
+            $L('heading', 'Identificación y contextualización', true, 0, [
+                $heading(2, '1. Identificación y contextualización'),
+                $para($ctx),
+                $para("Ciclo formativo: {$cycle}."),
+                $para('Módulo: indicar el nombre oficial del módulo según el currículo autonómico y el catálogo del centro (referencia de plantilla: '.$short.').'),
+                $para('Código del módulo: indicar la codificación oficial publicada en la normativa de la comunidad autónoma (ejemplo orientativo: 0612 u otra según título y módulo).'),
+                $para('Duración total del módulo: orientativamente entre 160 y 180 horas lectivas, según decreto autonómico y distribución horaria del centro.'),
+                $para('Curso de impartición: indicar 1.º, 2.º u otra modalidad (intensiva, semipresencial, etc.) según la programación general del ciclo.'),
+            ]),
+            $L('heading', 'Objetivos generales y competencias', true, 1, [
+                $heading(2, '2. Objetivos generales y competencias'),
+                $para('Objetivo general del módulo (redactar al inicio del curso): describir qué debe ser capaz de hacer el alumnado al finalizar, en contextos profesionales o de aprendizaje supervisado, alineado con el perfil de salida del ciclo y con los resultados de aprendizaje del módulo.'),
+                $heading(3, 'Competencias y resultados de aprendizaje (ajustar al RD del módulo)'),
+                $para('• Analizar y aplicar los fundamentos teórico-prácticos propios del ámbito del módulo en supuestos reales o simulados.'),
+                $para('• Diseñar, implementar y documentar soluciones que respondan a requisitos funcionales y no funcionales (calidad, seguridad, accesibilidad).'),
+                $para('• Gestionar datos, recursos y entornos de trabajo de forma segura, trazable y colaborativa (control de versiones, copias de seguridad, buenas prácticas).'),
+            ]),
+            $L('heading', 'Unidades didácticas (cronograma sugerido)', true, 2, [
+                $heading(2, '3. Unidades didácticas (cronograma sugerido)'),
+                $para('La secuencia, los títulos y la carga horaria son orientativos: el departamento las adaptará al calendario escolar, al proyecto común del ciclo y a la realidad del alumnado.'),
+                $heading(3, 'UT 1 — Puesta en marcha y entorno de trabajo'),
+                $para('Contenidos clave: normativa del aula o taller, estándares básicos, entorno de desarrollo o laboratorio y revisión de prerrequisitos. Duración orientativa: 15–20 h.'),
+                $heading(3, 'UT 2 — Fundamentos técnicos del ámbito del módulo'),
+                $para('Núcleo conceptual y habilidades instrumentales que sustentan el resto del curso (sintaxis, modelos, protocolos o herramientas base según el módulo). Duración orientativa: 18–25 h.'),
+                $heading(3, 'UT 3 — Diseño e implementación de soluciones'),
+                $para('Desarrollo de casos y mini-proyectos que integren los contenidos centrales del módulo. Duración orientativa: 28–38 h.'),
+                $heading(3, 'UT 4 — Persistencia, datos o sistemas (según perfil del módulo)'),
+                $para('Gestión de información persistente, configuración de servicios o tratamiento de datos de acuerdo con el enfoque del módulo. Duración orientativa: 22–35 h.'),
+                $heading(3, 'UT 5 — Calidad, pruebas y buenas prácticas'),
+                $para('Pruebas, revisión de código o procedimientos, documentación técnica y criterios de calidad. Duración orientativa: 20–28 h.'),
+                $heading(3, 'UT 6 — Integración, despliegue o comunicaciones'),
+                $para('Integración con otros componentes del sistema, despliegue controlado, APIs o comunicaciones según corresponda al módulo. Duración orientativa: 22–32 h.'),
+                $heading(3, 'UT 7 — Proyecto integrador, seguridad y cierre'),
+                $para('Proyecto que articula contenidos previos; repaso de seguridad, sesiones, permisos o aspectos críticos del ámbito. Duración orientativa: 25–35 h.'),
+            ]),
+            $L('paragraph', 'Metodología', true, 3, [
+                $heading(2, '4. Metodología'),
+                $para('Se recomienda un enfoque práctico y orientado a proyectos (ABP u otras metodologías activas acordadas en el departamento).'),
+                $para('• Explicación teórica breve apoyada en ejemplos resueltos o demostraciones guiadas en el aula o laboratorio.'),
+                $para('• Retos o tareas cortas frecuentes para fijar procedimientos y criterios de calidad.'),
+                $para('• Proyecto final o integrador que recoja competencias de varias unidades y favorezca el trabajo colaborativo y la autonomía.'),
+            ]),
+            $L('paragraph', 'Evaluación', false, 4, [
+                $heading(2, '5. Evaluación'),
+                $para('Evaluación continua y alineada con los resultados de aprendizaje del módulo. Las ponderaciones son orientativas y deben consensuarse en el departamento y publicarse según normativa del centro.'),
+                $para('• Pruebas prácticas o escritas con enfoque en resolución de problemas: orientativamente 40 % (ajustar).'),
+                $para('• Proyectos, prácticas de unidad o entregas evaluables (calidad, seguridad, funcionalidad): orientativamente 50 % (ajustar).'),
+                $para('• Actitud, participación y hábitos de trabajo (repositorio, plazos, colaboración): orientativamente 10 % (ajustar).'),
+                $para('Nota importante: consignar en esta plantilla la norma del centro sobre superación de unidades o notas mínimas para la evaluación global del módulo (ej. exigencia de mínimo en cada unidad).'),
+            ]),
+            $L('paragraph', 'Recursos necesarios', false, 5, [
+                $heading(2, '6. Recursos necesarios'),
+                $para('Software: entorno de desarrollo o de prácticas acorde con el módulo, control de versiones, herramientas de pruebas o monitorización, y gestor de bases de datos o equivalente si aplica al ciclo.'),
+                $para('Hardware: equipos del aula o portátiles del alumnado con capacidad suficiente para los laboratorios previstos (indicar requisitos mínimos del centro).'),
+                $para('Plataforma: aula virtual (Moodle, Google Classroom u otra) para materiales, entregas y comunicación con el alumnado.'),
+            ]),
+        ];
     };
 
     $statePool = ['locked', 'editable', 'modifiable', 'optional'];
@@ -238,7 +336,9 @@ return (static function (): array {
                 'review_mode' => $slot['review_mode'],
             ];
 
-            $layoutRows = $slotLayout($si, $short);
+            $layoutRows = $stype === 'ST_FP'
+                ? $fpGenericProgramacionLayout($si, $short, $studyId)
+                : $slotLayout($si, $short);
             $snapshot = [];
             foreach ($layoutRows as $bi => $row) {
                 $blockUuid = sprintf('55555555-5555-5555-5555-%012x', $blockHex++);
