@@ -11,14 +11,11 @@ type Props = {
   cancelLabel?: string;
   variant?: ConfirmDialogVariant;
   loading?: boolean;
+  icon?: ReactNode;
   onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 };
 
-/**
- * Diálogo modal de confirmación al estilo Odoo / Maya DMS:
- * cabecera morada corporativa, cuerpo claro, pie con botones compactos.
- */
 export function ConfirmDialog({
   open,
   title,
@@ -27,6 +24,7 @@ export function ConfirmDialog({
   cancelLabel = 'Cancelar',
   variant = 'primary',
   loading = false,
+  icon = '⚠️',
   onConfirm,
   onCancel,
 }: Props) {
@@ -63,28 +61,21 @@ export function ConfirmDialog({
 
   if (!open) return null;
 
+  const headerBg = variant === 'danger' ? 'bg-danger/5' : variant === 'teal' ? 'bg-odoo-teal/5' : 'bg-odoo-purple/5';
+
   return (
-    <div className="fixed inset-0 z-[400] flex items-center justify-center p-4" role="presentation">
-      <Button
-        type="button"
-        variant="unstyled"
-        className="absolute inset-0 z-0 min-h-0 w-full cursor-pointer bg-ui-sidebar/50 dark:bg-black/50 focus-visible:ring-inset focus-visible:ring-white/40"
-        aria-label="Cerrar diálogo"
-        disabled={loading}
-        onClick={() => {
-          if (!loading) onCancel();
-        }}
-      />
+    <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in" role="presentation">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className="relative w-full max-w-[28rem] rounded-lg border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card shadow-dropdown overflow-hidden flex flex-col"
+        className="relative w-full max-w-md rounded-xl border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center min-h-10 px-3 py-2 bg-odoo-purple dark:bg-odoo-dark-purple-d border-b border-odoo-purple-d dark:border-odoo-dark-purple-l">
-          <h2 id={titleId} className="text-sm font-semibold text-text-inverse tracking-tight">
+        <div className={`px-6 py-5 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 ${headerBg}`}>
+          {icon && <span className="text-2xl">{icon}</span>}
+          <h2 id={titleId} className="text-lg font-bold text-text-primary dark:text-text-dark-primary tracking-tight">
             {title}
           </h2>
         </div>
@@ -92,23 +83,30 @@ export function ConfirmDialog({
         {description ? (
           <div
             id={descId}
-            className="px-4 py-3 text-sm text-text-secondary dark:text-text-dark-secondary leading-snug border-b border-ui-border-l dark:border-ui-dark-border-l bg-ui-card dark:bg-ui-dark-card"
+            className="px-6 py-6 text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed"
           >
             {description}
           </div>
         ) : null}
 
-        <div className="flex flex-row flex-wrap justify-end gap-2 px-3 py-2.5 bg-ui-body dark:bg-ui-dark-bg/90 border-t border-ui-border-l dark:border-ui-dark-border-l">
-          <Button type="button" variant="secondary" size="sm" disabled={loading} onClick={onCancel}>
+        <div className="flex items-center justify-end gap-3 px-6 py-4 bg-ui-body/50 dark:bg-ui-dark-bg/50 border-t border-ui-border dark:border-ui-dark-border">
+          <Button
+            type="button"
+            variant="primary"
+            size="md"
+            className="flex-1"
+            disabled={loading}
+            onClick={onCancel}
+          >
             {cancelLabel}
           </Button>
           <Button
             ref={confirmRef}
             type="button"
-            variant={variant}
-            size="sm"
+            variant={variant === 'danger' ? 'outline' : variant}
+            size="md"
             loading={loading}
-            className="min-w-[5.5rem]"
+            className={`flex-1 ${variant === 'danger' ? 'text-danger border-danger/40 hover:border-danger hover:bg-danger/5' : ''}`}
             onClick={() => void onConfirm()}
           >
             {confirmLabel}

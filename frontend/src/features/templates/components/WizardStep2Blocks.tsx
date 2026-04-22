@@ -16,7 +16,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, FieldLabel, TextArea, TextInput } from '../../../ui';
+import { Button, ConfirmDialog, FieldLabel, TextArea, TextInput } from '../../../ui';
 import type { TemplateBlock } from '../../../types/blocks';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import type { Template } from '../../../types/templates';
@@ -902,44 +902,21 @@ export const WizardStep2Blocks = forwardRef<WizardStep2BlocksRef, Props>(
         </div>
 
         {/* Delete confirmation modal */}
-        {deleteModal && (
-          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in">
-            <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-2xl border border-ui-border dark:border-ui-dark-border w-full max-w-md overflow-hidden animate-in zoom-in-95">
-              <div className="px-6 py-5 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 bg-danger/5">
-                <span className="text-2xl">⚠️</span>
-                <h3 className="text-lg font-bold text-text-primary dark:text-text-dark-primary">¿Eliminar bloque?</h3>
-              </div>
-              <div className="p-6">
-                <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed">
-                  Estás a punto de eliminar el bloque «<span className="font-bold text-text-primary dark:text-text-dark-primary">{selectedBlock?.title}</span>».
-                  Esta acción no se puede deshacer y el contenido se perderá permanentemente.
-                </p>
-              </div>
-              <div className="px-6 py-4 bg-ui-body/50 dark:bg-ui-dark-bg/50 border-t border-ui-border dark:border-ui-dark-border flex items-center justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  className="flex-1"
-                  disabled={busy}
-                  onClick={() => setDeleteModal(false)}
-                >
-                  Cancelar
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  className="flex-1 text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                  loading={busy}
-                  onClick={() => void handleDelete()}
-                >
-                  Eliminar definitivamente
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        <ConfirmDialog
+          open={deleteModal}
+          title="¿Eliminar bloque?"
+          description={
+            <>
+              Estás a punto de eliminar el bloque «<span className="font-bold text-text-primary dark:text-text-dark-primary">{selectedBlock?.title}</span>».
+              Esta acción no se puede deshacer y el contenido se perderá permanentemente.
+            </>
+          }
+          confirmLabel="Eliminar definitivamente"
+          variant="danger"
+          loading={busy}
+          onCancel={() => setDeleteModal(false)}
+          onConfirm={handleDelete}
+        />
       </div>
     );
   }
