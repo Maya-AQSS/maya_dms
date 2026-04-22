@@ -159,6 +159,7 @@ export function TemplatesContent() {
                     module_id: filterUi.moduleId,
                     team_id: filterUi.teamId,
                   }}
+                  visibility={filterUi.visibility}
                   onFieldChange={(key, value) =>
                     applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
                   }
