@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
 import { searchUsers } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
+import { ConfirmDialog } from '../../../ui';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,8 +43,6 @@ function SortableValidatorItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.userId,
   });
-  const [removeConfirm, setRemoveConfirm] = useState(false);
-
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -92,27 +91,13 @@ function SortableValidatorItem({
         )}
       </div>
       <div className="flex items-center gap-1">
-        {removeConfirm ? (
-          <div className="flex items-center gap-1.5 px-2 py-1 bg-danger-light/20 rounded border border-danger/20 animate-in fade-in">
-            <span className="text-[10px] text-danger-dark font-bold">¿Eliminar a {entry.name}?</span>
-            <button
-              type="button"
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger text-white hover:bg-danger/90 transition-colors"
-              onClick={() => onRemove(entry.userId)}
-            >
-              Eliminar
-            </button>
-            <button
-              type="button"
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-ui-border text-text-secondary hover:bg-ui-body transition-colors"
-              onClick={() => setRemoveConfirm(false)}
-            >
-              Cancelar
-            </button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => setRemoveConfirm(true)} className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-danger/10 text-text-muted hover:text-danger transition-colors text-xs">✕</button>
-        )}
+        <button
+          type="button"
+          onClick={() => onRemove(entry.userId)}
+          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-danger/10 text-text-muted hover:text-danger transition-colors text-xs"
+        >
+          ✕
+        </button>
       </div>
     </div>
   );
@@ -134,9 +119,19 @@ function ValidatorSection({
   onValidationTypeChange?: (t: 'libre' | 'ordenada') => void;
 }) {
   const sensors = useSensors(useSensor(PointerSensor));
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
-  const handleRemove = (userId: string) => {
-    onValidatorsChange(validators.filter((v) => v.userId !== userId));
+  const pendingValidator = validators.find((v) => v.userId === confirmDelete) ?? null;
+
+  const handleRequestRemove = (userId: string) => {
+    setConfirmDelete(userId);
+  };
+
+  const handleConfirmRemove = () => {
+    if (confirmDelete) {
+      onValidatorsChange(validators.filter((v) => v.userId !== confirmDelete));
+    }
+    setConfirmDelete(null);
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -191,13 +186,23 @@ function ValidatorSection({
                   entry={v}
                   index={i}
                   isOrdered={validationType === 'ordenada'}
-                  onRemove={handleRemove}
+                  onRemove={handleRequestRemove}
                 />
               ))}
             </SortableContext>
           </DndContext>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmDelete !== null}
+        title={`¿Eliminar a ${pendingValidator?.name ?? 'este validador'}?`}
+        description="Estás a punto de eliminar este validador de la plantilla. Esta acción es irreversible y no se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="danger"
+        onConfirm={handleConfirmRemove}
+        onCancel={() => setConfirmDelete(null)}
+      />
     </div>
   );
 }
