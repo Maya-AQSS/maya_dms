@@ -16,6 +16,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
 
 class TemplateBlockController extends Controller
 {
@@ -110,10 +111,21 @@ class TemplateBlockController extends Controller
      */
     public function reorder(Request $request, string $template): \Illuminate\Http\Response
     {
+        $templateModel = Template::query()->findOrFail($template);
+        $this->authorize('update', $templateModel);
+
         $blockIds = $request->validate([
             'block_ids'   => ['required', 'array'],
             'block_ids.*' => ['required', 'string', 'uuid'],
         ])['block_ids'];
+
+        $blocks = $this->blockService->findBlocksByIdsOrFail($blockIds);
+        $invalid = $blocks->first(fn ($block) => (string) $block->template_id !== $template);
+        if ($invalid !== null) {
+            throw ValidationException::withMessages([
+                'block_ids' => ['Todos los bloques deben pertenecer a la plantilla indicada.'],
+            ]);
+        }
 
         $userId = (string) Auth::id();
 
