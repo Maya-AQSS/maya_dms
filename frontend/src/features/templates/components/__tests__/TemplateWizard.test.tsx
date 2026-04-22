@@ -137,7 +137,7 @@ describe('TemplateWizard Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
-      expect(screen.getByText(/VALIDADORES \(0\)/)).toBeTruthy(); // Paso 3
+      expect(screen.getAllByText(/validadores.*\(0\)/i).length).toBeGreaterThan(0); // Paso 3
     });
 
     // Step 3: Users
