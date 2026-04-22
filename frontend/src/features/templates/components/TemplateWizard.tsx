@@ -11,7 +11,7 @@ import {
   syncDocumentReviewers,
 } from '../../../api/templates';
 import { ApiHttpError } from '../../../api/http';
-import { Button, ConfirmDialog } from '../../../ui';
+import { Button } from '../../../ui';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
@@ -448,16 +448,62 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         )}
       </div>
 
-      <ConfirmDialog
-        open={showValidationModal}
-        title="Enviar plantilla a validación"
-        description="Se notificará a los validadores asignados. La plantilla pasará a estado «en revisión»."
-        confirmLabel="Confirmar y enviar"
-        variant="primary"
-        loading={saving}
-        onConfirm={() => void handleSubmitForReview()}
-        onCancel={() => setShowValidationModal(false)}
-      />
+      {/* Validation modal */}
+      {showValidationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in">
+          <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-xl border border-ui-border dark:border-ui-dark-border w-full max-w-md mx-4 animate-in zoom-in-95">
+            <div className="px-6 py-5 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3">
+              <span className="text-2xl">✉️</span>
+              <div>
+                <p className="text-sm font-bold text-text-primary dark:text-text-dark-primary">Enviar a validación</p>
+                <p className="text-xs text-text-muted">Se notificará a los validadores asignados.</p>
+              </div>
+            </div>
+            <div className="px-6 py-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
+                Validadores ({validators.length})
+              </p>
+              {validators.map((v, i) => {
+                const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                return (
+                  <div key={v.userId} className="flex items-center gap-2.5">
+                    {validationType === 'ordenada' && (
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
+                        {i + 1}
+                      </span>
+                    )}
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
+                      {initials}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="px-6 py-4 border-t border-ui-border dark:border-ui-dark-border flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={saving}
+                className="px-4 py-1.5 rounded border border-ui-border text-[10px] font-black uppercase tracking-wider text-text-secondary hover:bg-ui-body transition-colors disabled:opacity-50"
+                onClick={() => setShowValidationModal(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                className="px-4 py-1.5 rounded bg-odoo-purple text-white text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-odoo-purple/90 transition-colors disabled:opacity-50"
+                onClick={() => void handleSubmitForReview()}
+              >
+                {saving ? 'Enviando…' : 'Confirmar y salir →'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
