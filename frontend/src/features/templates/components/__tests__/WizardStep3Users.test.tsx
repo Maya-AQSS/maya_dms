@@ -64,6 +64,10 @@ describe('WizardStep3Users', () => {
     onValidatorsChange: vi.fn(),
     validationType: 'libre' as const,
     onValidationTypeChange: vi.fn(),
+    documentValidators: [],
+    onDocumentValidatorsChange: vi.fn(),
+    documentValidationType: 'libre' as const,
+    onDocumentValidationTypeChange: vi.fn(),
   };
 
   beforeEach(() => {
