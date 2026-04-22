@@ -6,6 +6,7 @@ import {
   createTemplate as apiCreateTemplate,
   publishTemplate as apiPublishTemplate,
   syncTemplateValidators,
+  syncDocumentReviewers,
 } from '../../../api/templates';
 import { ApiHttpError } from '../../../api/http';
 import { Button } from '../../../ui';
@@ -166,8 +167,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       const reviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
       await apiUpdateTemplate(template.id, { review_mode: reviewMode as any });
 
-      // 2. Sincronizar validadores
+      // 2. Sincronizar validadores de plantilla y de documento
+      const docUserIds = documentValidators.map((v: ValidatorEntry) => v.userId);
       await syncTemplateValidators(template.id, userIds);
+      await syncDocumentReviewers(template.id, docUserIds);
 
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
       setStep('summary');

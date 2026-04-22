@@ -119,12 +119,23 @@ export async function submitTemplateForReview(id: string): Promise<{ data: Templ
   return apiFetchJson<{ data: Template }>(`templates/${id}/submit-review`, { method: 'POST', body: {} });
 }
 
-/** POST /api/v1/templates/{id}/validators */
+/** POST /api/v1/templates/{id}/reviewers */
 export async function syncTemplateValidators(
   templateId: string,
   userIds: string[],
 ): Promise<{ message: string }> {
-  return apiFetchJson<{ message: string }>(`templates/${templateId}/validators`, {
+  return apiFetchJson<{ message: string }>(`templates/${templateId}/reviewers`, {
+    method: 'POST',
+    body: { user_ids: userIds },
+  });
+}
+
+/** POST /api/v1/templates/{id}/document-reviewers */
+export async function syncDocumentReviewers(
+  templateId: string,
+  userIds: string[],
+): Promise<{ message: string }> {
+  return apiFetchJson<{ message: string }>(`templates/${templateId}/document-reviewers`, {
     method: 'POST',
     body: { user_ids: userIds },
   });
