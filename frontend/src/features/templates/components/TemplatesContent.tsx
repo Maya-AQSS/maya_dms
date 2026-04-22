@@ -149,33 +149,32 @@ export function TemplatesContent() {
               ))}
             </Select>
           </div>
+          <div>
+            <FieldLabel className="invisible">Acciones</FieldLabel>
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={clearFilters}
+              className="w-full h-9.5 whitespace-nowrap shrink-0"
+            >
+              Limpiar filtros
+            </Button>
+          </div>
           <div className="lg:col-span-3">
-            <div className="flex flex-col lg:flex-row items-end gap-3">
-              <div className="flex-1">
-                <TemplateHierarchyFields
-                  values={{
-                    study_type_id: filterUi.studyTypeId,
-                    study_id: filterUi.studyId,
-                    module_id: filterUi.moduleId,
-                    team_id: filterUi.teamId,
-                  }}
-                  visibility={filterUi.visibility}
-                  onFieldChange={(key, value) =>
-                    applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
-                  }
-                  gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-                />
-              </div>
-              <Button
-                type="button"
-                variant="secondary"
-                size="md"
-                onClick={clearFilters}
-                className="h-9.5 whitespace-nowrap shrink-0"
-              >
-                Limpiar filtros
-              </Button>
-            </div>
+            <TemplateHierarchyFields
+              values={{
+                study_type_id: filterUi.studyTypeId,
+                study_id: filterUi.studyId,
+                module_id: filterUi.moduleId,
+                team_id: filterUi.teamId,
+              }}
+              visibility={filterUi.visibility}
+              onFieldChange={(key, value) =>
+                applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
+              }
+              gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+            />
           </div>
         </div>
       </div>
