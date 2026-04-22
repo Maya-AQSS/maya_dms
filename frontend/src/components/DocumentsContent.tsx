@@ -254,9 +254,11 @@ export function DocumentsContent() {
             </p>
           )}
           {filtered.map((doc) => (
-            <div
+            <button
               key={doc.id}
-              className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors"
+              type="button"
+              onClick={() => navigate(`/documents/${doc.id}`)}
+              className="w-full text-left px-5 py-3 flex items-center justify-between gap-4 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer"
             >
               <div className="min-w-0">
                 <p className="text-sm font-medium text-text-primary dark:text-text-dark-primary truncate">
@@ -271,7 +273,7 @@ export function DocumentsContent() {
               >
                 {STATUS_LABELS[doc.status]}
               </span>
-            </div>
+            </button>
           ))}
         </div>
       </div>

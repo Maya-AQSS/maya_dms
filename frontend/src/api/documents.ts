@@ -1,7 +1,8 @@
-import type { Document } from '../types/documents';
+import type { Document, DocumentDetail } from '../types/documents';
 import { apiFetchJson, apiGetJson } from './http';
 
 type DocumentsApiResponse = { data: Document[] };
+type DocumentDetailApiResponse = { data: DocumentDetail };
 type CreationMode = 'none' | 'auto' | 'select';
 
 export type DocumentCreationOption = {
@@ -27,6 +28,14 @@ type CreateFromModuleResponse = { data: Document };
  */
 export async function fetchDocuments(): Promise<Document[]> {
   const body = await apiGetJson<DocumentsApiResponse>('documents');
+  return body.data;
+}
+
+/**
+ * GET /api/v1/documents/{id} — detalle con bloques para previsualización / editor.
+ */
+export async function fetchDocument(documentId: string): Promise<DocumentDetail> {
+  const body = await apiGetJson<DocumentDetailApiResponse>(`documents/${encodeURIComponent(documentId)}`);
   return body.data;
 }
 

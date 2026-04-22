@@ -5,6 +5,7 @@ import { NAV_ITEMS, Sidebar, Topbar } from './components/layout';
 import {
   DashboardPage,
   DocumentEditorPage,
+  DocumentPreviewPage,
   DocumentsPage,
   PlaceholderPage,
   TemplateEditPage,
@@ -23,11 +24,16 @@ function App() {
 
   const location = useLocation();
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
+  const isDocumentPreviewRoute = /^\/documents\/[^/]+$/.test(location.pathname);
   const currentNav = useMemo(
     () => NAV_ITEMS.find((n) => location.pathname === n.path || location.pathname.startsWith(`${n.path}/`)),
     [location.pathname],
   );
-  const pageTitle = isEditorRoute ? 'Editor de Programación' : currentNav?.label ?? 'Maya DMS';
+  const pageTitle = isEditorRoute
+    ? 'Editor de Programación'
+    : isDocumentPreviewRoute
+      ? 'Previsualización'
+      : currentNav?.label ?? 'Maya DMS';
 
   if (isOidcLoading) {
     return (
@@ -71,6 +77,7 @@ function App() {
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/documents" element={<DocumentsPage />} />
               <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
+              <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
               <Route path="/templates" element={<TemplatesPage />} />
               <Route path="/templates/new" element={<TemplateNewPage />} />
               <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
