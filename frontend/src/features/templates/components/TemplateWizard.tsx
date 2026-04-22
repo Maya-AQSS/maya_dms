@@ -175,7 +175,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
       setStep('summary');
     } catch (e) {
-      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar los validadores' });
+      console.error('[saveUsers]', e);
+      setErrors({ api: 'Error al guardar los validadores' });
     } finally {
       setSaving(false);
     }
