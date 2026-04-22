@@ -6,7 +6,7 @@ import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
   publishTemplate as apiPublishTemplate,
-  submitTemplateForReview,
+  submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
 } from '../../../api/templates';
@@ -158,12 +158,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const handleSubmitForReview = async () => {
     if (!template?.id) return;
     setSaving(true);
+    setErrors({});
     try {
-      await submitTemplateForReview(template.id);
-      navigate('/templates');
-    } catch {
+      const res = await apiSubmitTemplateForReview(template.id);
+      setTemplate(res.data);
       setShowValidationModal(false);
-      setErrors({ api: 'Error al enviar a revisión' });
+      navigate('/templates');
+    } catch (e) {
+      setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
     } finally {
       setSaving(false);
     }
@@ -319,7 +321,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               Guardar y continuar →
             </Button>
           )}
-          {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
+          {step === 'summary' && validators.length > 0 && (
             <Button
               variant="primary"
               size="sm"

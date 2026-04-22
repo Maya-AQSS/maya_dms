@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmDialog } from '../../../ui';
 import type { Template } from '../../../types/templates';
 import { visibilityLabel } from '../constants';
+import { useUserProfile } from '../../../features/user-profile';
 
 type Props = {
   template: Template;
@@ -12,8 +13,12 @@ type Props = {
 
 export function TemplateCard({ template: t, onDelete, onClone }: Props) {
   const navigate = useNavigate();
+  const { profile, hasPermission } = useUserProfile();
   const [dialog, setDialog] = useState<'delete' | 'clone' | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
+  const canClone = t.status === 'published';
+  const canEdit = t.status === 'draft' && profile?.id === t.created_by;
+  const canDelete = profile?.id === t.created_by || hasPermission('templates.delete');
 
   const closeDialog = () => {
     if (dialogLoading) return;
@@ -48,9 +53,9 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
     <div
       className={[
         'rounded-lg border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-4 shadow-card',
-        dialog === null ? 'cursor-pointer hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors' : '',
+        dialog === null && canEdit ? 'cursor-pointer hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors' : '',
       ].join(' ')}
-      onClick={dialog === null ? () => navigate(`/templates/${t.id}/edit`) : undefined}
+      onClick={dialog === null && canEdit ? () => navigate(`/templates/${t.id}/edit`) : undefined}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
@@ -72,24 +77,28 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
           className="flex flex-wrap gap-2"
           onClick={(e) => e.stopPropagation()}
         >
-          <Button
-            type="button"
-            variant="outlineTeal"
-            size="xs"
-            disabled={dialog !== null}
-            onClick={() => setDialog('clone')}
-          >
-            Clonar
-          </Button>
-          <Button
-            type="button"
-            variant="outlineWarning"
-            size="xs"
-            disabled={dialog !== null}
-            onClick={() => setDialog('delete')}
-          >
-            Eliminar
-          </Button>
+          {canClone && (
+            <Button
+              type="button"
+              variant="outlineTeal"
+              size="xs"
+              disabled={dialog !== null}
+              onClick={() => setDialog('clone')}
+            >
+              Clonar
+            </Button>
+          )}
+          {canDelete && (
+            <Button
+              type="button"
+              variant="outlineWarning"
+              size="xs"
+              disabled={dialog !== null}
+              onClick={() => setDialog('delete')}
+            >
+              Eliminar
+            </Button>
+          )}
         </div>
       </div>
 

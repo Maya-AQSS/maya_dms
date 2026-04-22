@@ -31,7 +31,26 @@ class TemplatesSeeder extends Seeder
             return $row;
         }, $templates);
 
-        DB::table('templates')->insertOrIgnore($rows);
+        DB::table('templates')->upsert(
+            $rows,
+            ['id'],
+            [
+                'name',
+                'description',
+                'visibility_level',
+                'delivery_deadline',
+                'study_id',
+                'study_type_id',
+                'module_id',
+                'team_id',
+                'created_by',
+                'status',
+                'version',
+                'review_stages',
+                'review_mode',
+                'updated_at',
+            ]
+        );
     }
 
     /**
