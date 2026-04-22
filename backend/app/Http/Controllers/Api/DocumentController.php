@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
+use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
@@ -224,19 +225,15 @@ class DocumentController extends Controller
     /**
      * Delegar documento a otro usuario.
      */
-    public function delegate(Request $request, string $id): JsonResponse
+    public function delegate(DelegateDocumentRequest $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
 
-        $validated = $request->validate([
-            'new_owner_id' => ['required', 'string'],
-        ]);
-
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->delegateOwner(
             $id,
-            $validated['new_owner_id'],
+            (string) $request->validated('new_owner_id'),
             $actorId,
         );
 
