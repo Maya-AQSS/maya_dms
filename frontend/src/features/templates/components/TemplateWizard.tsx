@@ -61,7 +61,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const [saving, setSaving] = useState(false);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
-  const [confirmRemoveAllValidators, setConfirmRemoveAllValidators] = useState(false);
 
   // Dirty check
   const isDirty = useMemo(() => {
@@ -159,12 +158,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     if (!template?.id) return;
 
     const userIds = validators.map((v: ValidatorEntry) => v.userId);
-    const hadValidators = (initial?.reviewers?.length ?? 0) > 0;
-    if (userIds.length === 0 && hadValidators && !confirmRemoveAllValidators) {
-      setConfirmRemoveAllValidators(true);
-      return;
-    }
-    setConfirmRemoveAllValidators(false);
 
     setSaving(true);
     setErrors({});
@@ -358,21 +351,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         </div>
       )}
 
-      {/* Remove-all validators confirmation */}
-      {confirmRemoveAllValidators && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-warning/30 bg-warning-light/40 animate-in slide-in-from-top-1">
-          <span className="flex-1 text-xs font-bold text-warning-dark">
-            ⚠️ Vas a quitar todos los validadores de plantilla existentes. Haz clic en «Guardar y continuar» de nuevo para confirmar.
-          </span>
-          <button
-            type="button"
-            className="bg-white border border-ui-border px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider text-text-secondary active:scale-95 transition-transform"
-            onClick={() => setConfirmRemoveAllValidators(false)}
-          >
-            Cancelar
-          </button>
-        </div>
-      )}
 
       {/* Permission / API error banner — step 1 */}
       {step === 'properties' && permissionError && (
