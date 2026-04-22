@@ -25,33 +25,33 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
     <div className="fixed inset-0 overflow-y-auto bg-[#ddd9d3]" style={{ zIndex: 9999 }}>
 
       {/* Sticky nav bar */}
-      <header className="sticky top-0 bg-white border-b border-gray-200 flex items-center gap-4 px-6 h-[52px]" style={{ zIndex: 100 }}>
+      <header className="sticky top-0 bg-ui-card border-b border-ui-border flex items-center gap-4 px-6 h-[52px]" style={{ zIndex: 100 }}>
         <button
           type="button"
           onClick={onClose}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-gray-700 bg-gray-100 hover:bg-gray-200 transition-colors cursor-pointer"
+          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary bg-ui-body hover:bg-ui-border transition-colors cursor-pointer"
         >
           ← Volver al resumen
         </button>
-        <span className="flex-1 text-xs font-semibold text-gray-500 truncate">
+        <span className="flex-1 text-xs font-semibold text-text-muted truncate">
           {template.name} — Previsualización
         </span>
       </header>
 
       {/* Paper */}
       <article
-        className="mx-auto bg-white shadow-xl preview-content"
+        className="mx-auto bg-ui-card shadow-xl preview-content"
         style={{ maxWidth: '960px', minHeight: 'calc(100vh - 52px)', padding: '64px 80px' }}
       >
 
         {/* Document title */}
-        <h1 className="text-3xl font-bold text-gray-900 pb-5 mb-8 border-b border-gray-200">
+        <h1 className="text-3xl font-bold text-text-primary pb-5 mb-8 border-b border-ui-border">
           {template.name}
         </h1>
 
         {/* Blocks */}
         {blocks.length === 0 ? (
-          <p className="text-sm text-gray-400 italic">Esta plantilla no tiene bloques.</p>
+          <p className="text-sm text-text-muted italic">Esta plantilla no tiene bloques.</p>
         ) : (
           <div className="space-y-10">
             {blocks.map((block) => {
@@ -64,7 +64,7 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
                   {hasContent ? (
                     <BlockContentHtml content={block.default_content as unknown[]} />
                   ) : (
-                    <p className="text-sm text-gray-400 italic">
+                    <p className="text-sm text-text-muted italic">
                       Este bloque no tiene contenido predeterminado.
                     </p>
                   )}
