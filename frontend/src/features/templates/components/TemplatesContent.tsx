@@ -154,9 +154,9 @@ export function TemplatesContent() {
             <Button
               type="button"
               variant="secondary"
-              size="md"
+              size="sm"
               onClick={clearFilters}
-              className="w-full h-9.5 whitespace-nowrap shrink-0"
+              className="w-full whitespace-nowrap shrink-0"
             >
               Limpiar filtros
             </Button>
