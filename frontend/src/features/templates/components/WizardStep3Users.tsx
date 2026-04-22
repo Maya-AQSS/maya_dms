@@ -93,10 +93,22 @@ function SortableValidatorItem({
       </div>
       <div className="flex items-center gap-1">
         {removeConfirm ? (
-          <div className="flex items-center gap-1 px-2 py-1 bg-danger-light/20 rounded border border-danger/20 animate-in fade-in">
-            <span className="text-[10px] text-danger-dark font-bold">¿Eliminar?</span>
-            <button type="button" className="text-[10px] font-bold underline text-danger-dark" onClick={() => onRemove(entry.userId)}>Sí</button>
-            <button type="button" className="text-[10px] underline text-text-secondary" onClick={() => setRemoveConfirm(false)}>No</button>
+          <div className="flex items-center gap-1.5 px-2 py-1 bg-danger-light/20 rounded border border-danger/20 animate-in fade-in">
+            <span className="text-[10px] text-danger-dark font-bold">¿Eliminar a {entry.name}?</span>
+            <button
+              type="button"
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-danger text-white hover:bg-danger/90 transition-colors"
+              onClick={() => onRemove(entry.userId)}
+            >
+              Eliminar
+            </button>
+            <button
+              type="button"
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded border border-ui-border text-text-secondary hover:bg-ui-body transition-colors"
+              onClick={() => setRemoveConfirm(false)}
+            >
+              Cancelar
+            </button>
           </div>
         ) : (
           <button type="button" onClick={() => setRemoveConfirm(true)} className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-danger/10 text-text-muted hover:text-danger transition-colors text-xs">✕</button>

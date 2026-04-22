@@ -106,9 +106,9 @@ describe('WizardStep3Users', () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} />);
     const removeBtn = screen.getByText('✕');
     fireEvent.click(removeBtn);
-    expect(screen.getByText('¿Eliminar?')).toBeTruthy();
-    const confirmYes = screen.getByText('Sí');
-    fireEvent.click(confirmYes);
+    expect(screen.getByText(/¿Eliminar a/i)).toBeTruthy();
+    const confirmBtn = screen.getByRole('button', { name: 'Eliminar' });
+    fireEvent.click(confirmBtn);
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([]);
   });
 
