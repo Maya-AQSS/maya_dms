@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
@@ -13,7 +13,7 @@ import {
 import { ApiHttpError } from '../../../api/http';
 import { Button } from '../../../ui';
 import { WizardStep1Properties } from './WizardStep1Properties';
-import { WizardStep2Blocks } from './WizardStep2Blocks';
+import { WizardStep2Blocks, type WizardStep2BlocksRef } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
 import { WizardStep4Summary } from './WizardStep4Summary';
 
@@ -30,6 +30,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // Step state
   const [step, setStep] = useState<Step>('properties');
+  const blocksRef = useRef<WizardStep2BlocksRef>(null);
   const [completedSteps, setCompletedSteps] = useState<Step[]>(
     initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
   );
@@ -197,10 +198,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (step === 'properties') {
       void saveProperties();
     } else if (step === 'blocks') {
+      if (blocksRef.current) {
+        await blocksRef.current.saveCurrent();
+      }
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
       setStep('users');
     } else if (step === 'users') {
@@ -424,6 +428,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         )}
         {step === 'blocks' && template && (
           <WizardStep2Blocks
+            ref={blocksRef}
             template={template}
           />
         )}
