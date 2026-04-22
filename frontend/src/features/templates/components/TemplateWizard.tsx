@@ -374,13 +374,30 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         </div>
       )}
 
-      {/* Permission / API error banner */}
+      {/* Permission / API error banner — step 1 */}
       {step === 'properties' && permissionError && (
         <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
           <button
             type="button"
             onClick={() => setPermissionError(null)}
+            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* API error banner — steps 2, 3, 4 (step 1 shows errors.api inline) */}
+      {errors.api && step !== 'properties' && (
+        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">
+            ⚠️ {errors.api}. Inténtalo de nuevo.
+          </span>
+          <button
+            type="button"
+            onClick={() => setErrors({})}
             className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
             aria-label="Cerrar"
           >
