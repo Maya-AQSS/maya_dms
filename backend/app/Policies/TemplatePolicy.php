@@ -103,11 +103,13 @@ class TemplatePolicy
     }
 
     /**
-     * Clonar plantilla: cualquier usuario que pueda verla puede clonarla.
+     * Clonar plantilla.
+     *
+     * Solo se permite clonar plantillas publicadas que el usuario pueda ver.
      */
     public function clone(JwtUser $user, Template $template): bool
     {
-        return $this->view($user, $template);
+        return $this->view($user, $template) && $template->status === 'published';
     }
 
     /**

@@ -185,6 +185,7 @@ export function TemplateEditor({ template }: Props) {
   const [newBlockName, setNewBlockName] = useState('');
   const [newBlockUiState, setNewBlockUiState] = useState<BlockUiState>('editable');
   const [creatingBlock, setCreatingBlock] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   // ── Auto-select first block after load ───────────────────────────────────────
   useEffect(() => {
@@ -263,6 +264,7 @@ export function TemplateEditor({ template }: Props) {
   const handleCreateBlock = async () => {
     if (!newBlockName.trim()) return;
     setCreatingBlock(true);
+    setCreateError(null);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[newBlockUiState].payload;
       const block = await createBlock({
@@ -280,6 +282,8 @@ export function TemplateEditor({ template }: Props) {
       setLocalContent(block.default_content);
       setIsDirty(false);
       setSaveStatus('idle');
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : 'Error al crear el bloque');
     } finally {
       setCreatingBlock(false);
     }
@@ -426,6 +430,9 @@ export function TemplateEditor({ template }: Props) {
                 </Button>
               )}
             </div>
+            {createError && (
+              <p className="text-xs text-danger-dark animate-in fade-in">{createError}</p>
+            )}
           </div>
         </div>
       );

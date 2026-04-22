@@ -396,7 +396,9 @@ class TemplateService implements TemplateServiceInterface
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
 
-            $template->reviewers()->delete();
+            // TemplateReviewer uses SoftDeletes; forceDelete removes rows physically
+            // so the unique constraint (template_id, user_id) is not violated on re-insert.
+            $template->reviewers()->withTrashed()->forceDelete();
 
             foreach ($userIds as $index => $userId) {
                 $template->reviewers()->create([

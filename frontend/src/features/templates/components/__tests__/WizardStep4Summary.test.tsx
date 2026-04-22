@@ -71,7 +71,6 @@ describe('WizardStep4Summary', () => {
     expect(screen.getByText(/Bloques \(5\)/)).toBeTruthy();
     expect(screen.getByText('Validator One')).toBeTruthy();
     expect(screen.getByText('Validator Two')).toBeTruthy();
-    expect(screen.getByText('Tipo:')).toBeTruthy();
-    expect(screen.getByText('ordenada')).toBeTruthy();
+    expect(screen.getByText(/ordenada/i)).toBeTruthy();
   });
 });

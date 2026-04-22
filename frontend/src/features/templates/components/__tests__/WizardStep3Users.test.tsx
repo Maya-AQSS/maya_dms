@@ -64,6 +64,10 @@ describe('WizardStep3Users', () => {
     onValidatorsChange: vi.fn(),
     validationType: 'libre' as const,
     onValidationTypeChange: vi.fn(),
+    documentValidators: [],
+    onDocumentValidatorsChange: vi.fn(),
+    documentValidationType: 'libre' as const,
+    onDocumentValidationTypeChange: vi.fn(),
   };
 
   beforeEach(() => {
@@ -93,7 +97,7 @@ describe('WizardStep3Users', () => {
 
   it('switches between Libre and Ordenada', () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} />);
-    const orderedBtn = screen.getByRole('button', { name: 'Ordenada' });
+    const orderedBtn = screen.getAllByRole('button', { name: 'Ordenada' })[0];
     fireEvent.click(orderedBtn);
     expect(defaultProps.onValidationTypeChange).toHaveBeenCalledWith('ordenada');
   });
@@ -102,9 +106,9 @@ describe('WizardStep3Users', () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} />);
     const removeBtn = screen.getByText('✕');
     fireEvent.click(removeBtn);
-    expect(screen.getByText('¿Eliminar?')).toBeTruthy();
-    const confirmYes = screen.getByText('Sí');
-    fireEvent.click(confirmYes);
+    expect(screen.getByText(/¿Eliminar a/i)).toBeTruthy();
+    const confirmBtn = screen.getByRole('button', { name: 'Eliminar definitivamente' });
+    fireEvent.click(confirmBtn);
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([]);
   });
 
@@ -126,28 +130,24 @@ describe('WizardStep3Users', () => {
     });
     renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
-    const searchInput = screen.getByPlaceholderText(/Buscar por nombre, rol o email/i);
+    const searchInput = screen.getAllByPlaceholderText('Filtrar usuarios...')[0];
     expect(searchInput).toHaveProperty('disabled', true);
-    expect(screen.getByText(/users\.search/i)).toBeTruthy();
+    expect(screen.getAllByText(/users\.search/i).length).toBeGreaterThan(0);
     expect(searchUsers).not.toHaveBeenCalled();
   });
 
   it('searches and adds a new validator', async () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
-    const addBtn = screen.getByText('+ Añadir');
-    fireEvent.click(addBtn);
-
-    const searchInput = screen.getByPlaceholderText(/Buscar por nombre, rol o email/i);
-    fireEvent.change(searchInput, { target: { value: 'User 2' } });
+    const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
+    fireEvent.change(searchInputs[0], { target: { value: 'User 2' } });
 
     await waitFor(() => {
       expect(searchUsers).toHaveBeenCalledWith('User 2');
-      expect(screen.getByText('User 2')).toBeTruthy();
+      expect(screen.getAllByText('User 2').length).toBeGreaterThan(0);
     });
 
-    const addButtons = screen.getAllByText('+ Añadir');
-    fireEvent.click(addButtons[addButtons.length - 1]);
+    fireEvent.click(screen.getAllByText('User 2')[0].closest('button')!);
 
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([
       { userId: 'u2', name: 'User 2', role: 'Staff' }

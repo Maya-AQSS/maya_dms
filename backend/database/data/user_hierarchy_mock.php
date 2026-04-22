@@ -12,7 +12,7 @@
  * cf8bb92a  → Docente ESPA Demo  → solo ST_ESPA / S_ESPA
  * 53bc5feb  → Docente Bach Demo  → solo ST_BACH / S_BACH
  * 50f503c6  → Docente FP Demo    → solo ST_CF / S_CF_DAW / M_DAW_DWES
- * f6bbe247  → Auditoría Demo     → sin asignación de jerarquía académica
+ * f6bbe247  → Auditoría Demo     → acceso global (todos los tipos, estudios y módulos)
  */
 return [
 
@@ -27,6 +27,11 @@ return [
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'study_type_id' => 'ST_ESPA'],
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'study_type_id' => 'ST_BACH'],
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'study_type_id' => 'ST_FP'],
+
+        // Auditoría: acceso global
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_type_id' => 'ST_ESPA'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_type_id' => 'ST_BACH'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_type_id' => 'ST_FP'],
 
         // Docente ESPA
         ['user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165', 'study_type_id' => 'ST_ESPA'],
@@ -58,6 +63,15 @@ return [
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'study_id' => 'S_FP_ASIR'],
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'study_id' => 'S_FP_SMR_1'],
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'study_id' => 'S_FP_SMR_2'],
+
+        // Auditoría: todos los estudios
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_id' => 'S_ESPA'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_id' => 'S_BACH_1_C'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_id' => 'S_BACH_2_C'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_id' => 'S_FP_DAW'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_id' => 'S_FP_ASIR'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_id' => 'S_FP_SMR_1'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'study_id' => 'S_FP_SMR_2'],
 
         // Docente ESPA
         ['user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165', 'study_id' => 'S_ESPA'],
@@ -101,6 +115,20 @@ return [
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'module_id' => 'M_ASIR_SAD'],
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'module_id' => 'M_SMR_MME'],
         ['user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664', 'module_id' => 'M_SMR_PAR'],
+
+        // Auditoría: todos los módulos
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_MAT_1'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_ENG_1'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_LEN_2'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_FIS_1C'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_BIO_2C'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_DAW_DWECL'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_DAW_DWES'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_DAW_DIW'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_ASIR_SRI'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_ASIR_SAD'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_SMR_MME'],
+        ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'module_id' => 'M_SMR_PAR'],
 
         // Docente ESPA
         ['user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165', 'module_id' => 'M_MAT_1'],
