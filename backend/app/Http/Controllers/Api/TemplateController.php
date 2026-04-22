@@ -90,6 +90,7 @@ class TemplateController extends Controller
     public function update(UpdateTemplateRequest $request, string $template): TemplateResource
     {
         $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', [$model, $request->input('visibility_level')]);
 
         $dto = $request->toUpdateDto();
 

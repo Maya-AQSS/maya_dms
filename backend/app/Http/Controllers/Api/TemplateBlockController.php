@@ -16,7 +16,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 
 class TemplateBlockController extends Controller
 {
@@ -122,9 +121,7 @@ class TemplateBlockController extends Controller
         $blocks = $this->blockService->findBlocksByIdsOrFail($blockIds);
         $invalid = $blocks->first(fn ($block) => (string) $block->template_id !== $template);
         if ($invalid !== null) {
-            throw ValidationException::withMessages([
-                'block_ids' => ['Todos los bloques deben pertenecer a la plantilla indicada.'],
-            ]);
+            abort(403, 'No tienes permiso para reordenar bloques fuera de la plantilla indicada.');
         }
 
         $userId = (string) Auth::id();
