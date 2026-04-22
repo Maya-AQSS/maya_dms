@@ -39,6 +39,16 @@ type BlockItemState =
   | 'multi-current'
   | 'multi-saved';
 
+function parseEditorJson(raw: string): unknown | null {
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
 // ── Sortable block item ───────────────────────────────────────────────────────
 
 function SortableBlockItem({
@@ -211,14 +221,22 @@ export function WizardStep2Blocks({ template }: Props) {
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 
-  // Autosave: 600ms after last form change in edit mode
+  // Autosave: 600ms after last form change in edit/create mode
   useEffect(() => {
-    if (panelMode !== 'edit' || !activeSingleId || !tabIsDirty) return;
+    if (busy || !tabIsDirty) return;
     if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => { void saveCurrentTab(); }, 600);
+
+    if (panelMode === 'edit' && activeSingleId) {
+      autosaveTimerRef.current = setTimeout(() => { void saveCurrentTab(); }, 600);
+    } else if (panelMode === 'create' && formName.trim()) {
+      autosaveTimerRef.current = setTimeout(() => { void handleAddBlock(); }, 600);
+    } else {
+      return;
+    }
+
     return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]);
+  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId, busy]);
 
   useEffect(() => {
     const tabs: TabId[] = ['properties', 'content', 'description'];
@@ -276,7 +294,7 @@ export function WizardStep2Blocks({ template }: Props) {
     setSaveStatus('saving');
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
+      const parsedContent = parseEditorJson(formContent);
       await updateBlock(activeSingleId, {
         title: formName.trim() || undefined,
         description: formDesc.trim() || null,
@@ -369,7 +387,7 @@ export function WizardStep2Blocks({ template }: Props) {
     if (!formName.trim() || busy) return;
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
+      const parsedContent = parseEditorJson(formContent);
       if (panelMode === 'create') {
         await createBlock({
           type: 'paragraph',
@@ -428,10 +446,11 @@ export function WizardStep2Blocks({ template }: Props) {
   const handleAddBlock = async () => {
     if (!formName.trim()) return;
     setBusy(true);
+    setSaveStatus('saving');
     setActionError(null);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
+      const parsedContent = parseEditorJson(formContent);
       const newBlock = await createBlock({
         type: 'paragraph',
         title: formName.trim(),
@@ -440,9 +459,12 @@ export function WizardStep2Blocks({ template }: Props) {
         block_state,
         mandatory,
       });
+      setSaveStatus('saved');
+      setTimeout(() => setSaveStatus('idle'), 3000);
       resetForm();
       openSummary(newBlock.id);
     } catch (e) {
+      setSaveStatus('error');
       setActionError(e instanceof Error ? e.message : 'Error al crear el bloque');
     } finally {
       setBusy(false);
@@ -716,7 +738,7 @@ export function WizardStep2Blocks({ template }: Props) {
                   {panelMode === 'create' ? 'Nuevo bloque' : (selectedBlock?.title || 'Bloque sin nombre')}
                 </h3>
                 <div className="flex items-center gap-3 shrink-0">
-                  {panelMode === 'edit' && (
+                  {(panelMode === 'edit' || panelMode === 'create') && (
                     <>
                       {saveStatus === 'saving' && (
                         <span className="text-[10px] text-text-muted">Guardando…</span>
@@ -727,14 +749,16 @@ export function WizardStep2Blocks({ template }: Props) {
                       {saveStatus === 'error' && (
                         <span className="text-[10px] text-danger-dark font-medium">Error al guardar</span>
                       )}
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="text-danger"
-                        onClick={() => setDeleteModal(true)}
-                      >
-                        Eliminar
-                      </Button>
+                      {panelMode === 'edit' && (
+                        <Button
+                          variant="outline"
+                          size="xs"
+                          className="text-danger"
+                          onClick={() => setDeleteModal(true)}
+                        >
+                          Eliminar
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -792,7 +816,7 @@ export function WizardStep2Blocks({ template }: Props) {
                       />
                     </div>
                   </div>
-                  {panelMode === 'edit' && (
+                  {(panelMode === 'edit' || panelMode === 'create') && (
                     <p className="text-[10px] text-text-muted italic">
                       Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
                     </p>

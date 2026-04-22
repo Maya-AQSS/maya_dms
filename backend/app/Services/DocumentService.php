@@ -762,16 +762,53 @@ class DocumentService implements DocumentServiceInterface
         }
 
         if (is_array($content)) {
-            if ($content === []) {
-                return false;
-            }
-
-            $encoded = json_encode($content);
-
-            return $encoded !== false && $encoded !== '[]' && $encoded !== '{}' && $encoded !== 'null';
+            return $this->hasMeaningfulArrayContent($content);
         }
 
         return true;
+    }
+
+    /**
+     * Determina si un payload JSON (p. ej. BlockNote) contiene texto o datos útiles.
+     *
+     * Ignora metadatos estructurales como `type`/`id` para evitar falsos positivos
+     * cuando solo se enviaron espacios o saltos de línea.
+     *
+     * @param  array<string|int, mixed>  $content
+     */
+    private function hasMeaningfulArrayContent(array $content): bool
+    {
+        if ($content === []) {
+            return false;
+        }
+
+        foreach ($content as $key => $value) {
+            if (is_string($value)) {
+                $normalizedKey = is_string($key) ? $key : '';
+                if (in_array($normalizedKey, ['type', 'id'], true)) {
+                    continue;
+                }
+
+                if (trim($value) !== '') {
+                    return true;
+                }
+                continue;
+            }
+
+            if (is_array($value) && $this->hasMeaningfulArrayContent($value)) {
+                return true;
+            }
+
+            if (is_int($value) || is_float($value)) {
+                return true;
+            }
+
+            if (is_bool($value) && $value === true) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
