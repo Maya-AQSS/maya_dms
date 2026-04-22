@@ -304,6 +304,7 @@ class TemplatesApiTest extends TestCase
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
+        $this->assignUserPermissions($userId, ['templates.read', 'templates.create']);
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
