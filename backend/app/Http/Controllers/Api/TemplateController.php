@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
 use App\Http\Requests\Templates\PublishTemplateRequest;
+use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
@@ -221,17 +222,12 @@ class TemplateController extends Controller
     /**
      * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncReviewers(Request $request, string $template): JsonResponse
+    public function syncReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('update', $model);
 
-        $request->validate([
-            'user_ids'   => ['present', 'array'],
-            'user_ids.*' => ['required', 'string', 'exists:users,id'],
-        ]);
-
-        $this->templateService->syncReviewers($model->id, $request->input('user_ids'));
+        $this->templateService->syncReviewers($model->id, $request->validated('user_ids'));
 
         return response()->json(['message' => 'Revisores de plantilla sincronizados correctamente.']);
     }
@@ -239,17 +235,12 @@ class TemplateController extends Controller
     /**
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
      */
-    public function syncDocumentReviewers(Request $request, string $template): JsonResponse
+    public function syncDocumentReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('update', $model);
 
-        $request->validate([
-            'user_ids'   => ['present', 'array'],
-            'user_ids.*' => ['required', 'string', 'exists:users,id'],
-        ]);
-
-        $this->templateService->syncDocumentReviewers($model->id, $request->input('user_ids'));
+        $this->templateService->syncDocumentReviewers($model->id, $request->validated('user_ids'));
 
         return response()->json(['message' => 'Validadores de documento sincronizados correctamente.']);
     }
