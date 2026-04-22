@@ -16,6 +16,7 @@ return [
     ['code' => 'documents.read', 'name' => 'Documentos — leer', 'description' => 'Ver documentos visibles.'],
     ['code' => 'documents.update', 'name' => 'Documentos — actualizar', 'description' => 'Editar documentos.'],
     ['code' => 'documents.delete', 'name' => 'Documentos — eliminar', 'description' => 'Eliminar documentos.'],
+    ['code' => 'documents.review', 'name' => 'Documentos — revisar', 'description' => 'Puede ser seleccionado como revisor de documentos generados a partir de plantillas y aprobar o rechazar su publicación.'],
 
     ['code' => 'users.search', 'name' => 'Usuarios — buscar', 'description' => 'Búsqueda de usuarios del catálogo (asignación de validadores, compartición, etc.).'],
 

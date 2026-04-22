@@ -4,12 +4,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\JwtUser;
+use App\Services\Contracts\UserDirectoryServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class UserController extends Controller
 {
+    public function __construct(
+        private readonly UserDirectoryServiceInterface $userDirectoryService,
+    ) {}
+
     /**
      * GET /api/v1/users?search={term}&per_page={n}
      *
@@ -32,23 +36,7 @@ class UserController extends Controller
             return response()->json(['data' => []]);
         }
 
-        $term = '%' . mb_strtolower($search) . '%';
-
-        $users = DB::table('users')
-            ->where(function ($query) use ($term) {
-                $query->whereRaw('LOWER(name) LIKE ?', [$term])
-                      ->orWhereRaw('LOWER(email) LIKE ?', [$term])
-                      ->orWhereRaw('LOWER(department) LIKE ?', [$term]);
-            })
-            ->select('id', 'name', 'email', 'department')
-            ->limit($perPage)
-            ->get()
-            ->map(static fn (object $u): array => [
-                'id'    => $u->id,
-                'name'  => $u->name,
-                'email' => $u->email,
-                'role'  => $u->department,
-            ]);
+        $users = $this->userDirectoryService->searchUsers($search, $perPage);
 
         return response()->json(['data' => $users]);
     }
@@ -72,29 +60,31 @@ class UserController extends Controller
         $search  = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
 
-        $query = DB::table('users')
-            ->join('user_permissions', 'users.id', '=', 'user_permissions.user_id')
-            ->where('user_permissions.permission_code', 'templates.review');
+        $users = $this->userDirectoryService->searchTemplateReviewerCandidates($search, $perPage);
 
-        if (mb_strlen($search) >= 2) {
-            $term = '%' . mb_strtolower($search) . '%';
-            $query->where(function ($q) use ($term) {
-                $q->whereRaw('LOWER(users.name) LIKE ?', [$term])
-                  ->orWhereRaw('LOWER(users.email) LIKE ?', [$term])
-                  ->orWhereRaw('LOWER(users.department) LIKE ?', [$term]);
-            });
+        return response()->json(['data' => $users]);
+    }
+
+    /**
+     * GET /api/v1/users/document-reviewer-candidates?search={term}&per_page={n}
+     *
+     * Devuelve los usuarios que tienen el permiso `documents.review` y, por tanto,
+     * pueden ser seleccionados como revisores de documentos en la plantilla.
+     * El front no necesita conocer el código de permiso interno.
+     *
+     * `search` es opcional; si se omite devuelve todos los candidatos (hasta per_page).
+     */
+    public function documentReviewerCandidates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof JwtUser || ! $user->hasPermission('users.search')) {
+            abort(403, 'No tienes permiso para buscar usuarios.');
         }
 
-        $users = $query
-            ->select('users.id', 'users.name', 'users.email', 'users.department')
-            ->limit($perPage)
-            ->get()
-            ->map(static fn (object $u): array => [
-                'id'    => $u->id,
-                'name'  => $u->name,
-                'email' => $u->email,
-                'role'  => $u->department,
-            ]);
+        $search  = trim((string) $request->get('search', ''));
+        $perPage = min((int) $request->get('per_page', 20), 50);
+
+        $users = $this->userDirectoryService->searchDocumentReviewerCandidates($search, $perPage);
 
         return response()->json(['data' => $users]);
     }
