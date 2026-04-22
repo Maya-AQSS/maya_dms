@@ -90,6 +90,22 @@ interface DocumentServiceInterface
     public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
 
     /**
+     * Metadatos de versiones del documento ordenados descendentemente.
+     *
+     * @return list<array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   notes: ?string,
+     *   created_at: ?string
+     * }>
+     */
+    public function listDocumentVersions(string $documentId): array;
+
+    /**
      * Rechaza una revisión del documento.
      */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document;

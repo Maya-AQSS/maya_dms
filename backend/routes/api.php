@@ -143,6 +143,7 @@ Route::prefix('v1')->group(function () {
         // Usuarios — búsqueda para asignación de revisores y compartición
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);
+        Route::get('/users/document-reviewer-candidates', [UserController::class, 'documentReviewerCandidates']);
 
         // Dashboard (BFF)
         Route::get('/dashboard', [DashboardController::class, 'index']);

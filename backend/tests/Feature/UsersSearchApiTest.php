@@ -98,4 +98,51 @@ class UsersSearchApiTest extends TestCase
         $this->assertIsArray($data);
         $this->assertNotEmpty($data);
     }
+
+    public function test_document_reviewer_candidates_returns_403_without_users_search_permission(): void
+    {
+        $userId = (string) Str::uuid();
+
+        $response = $this->getJson(
+            '/api/v1/users/document-reviewer-candidates',
+            $this->authHeaders($userId, ['documents.create']),
+        );
+
+        $response->assertForbidden();
+    }
+
+    public function test_document_reviewer_candidates_returns_users_with_documents_review_permission(): void
+    {
+        $callerId = (string) Str::uuid();
+        $reviewerId = (string) Str::uuid();
+
+        DB::table('users')->insert([
+            'id' => $reviewerId,
+            'name' => 'Doc Reviewer Candidate',
+            'email' => 'doc.reviewer.candidate@maya.test',
+            'department' => 'Secretaría',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $now = now();
+        DB::table('user_permissions')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $reviewerId,
+            'permission_code' => 'documents.review',
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $response = $this->getJson(
+            '/api/v1/users/document-reviewer-candidates?search=doc',
+            $this->authHeaders($callerId, ['users.search']),
+        );
+
+        $response->assertOk();
+        $data = $response->json('data');
+        $this->assertIsArray($data);
+        $ids = array_column($data, 'id');
+        $this->assertContains($reviewerId, $ids);
+    }
 }

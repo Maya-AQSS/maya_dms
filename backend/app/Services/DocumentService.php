@@ -826,6 +826,43 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Metadatos de versiones del documento (sin snapshot completo).
+     *
+     * @return list<array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   notes: ?string,
+     *   created_at: ?string
+     * }>
+     */
+    public function listDocumentVersions(string $documentId): array
+    {
+        $document = $this->documentRepository->findOrFail($documentId);
+
+        return $document->versions()
+            ->orderByDesc('version_number')
+            ->get()
+            ->map(static function (DocumentVersion $v): array {
+                return [
+                    'id' => $v->id,
+                    'document_id' => $v->document_id,
+                    'version_number' => $v->version_number,
+                    'trigger_event' => $v->trigger_event,
+                    'triggered_by' => $v->triggered_by,
+                    'changelog' => $v->notes,
+                    'notes' => $v->notes,
+                    'created_at' => $v->created_at?->toIso8601String(),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
      * Compara dos valores JSON canónicamente.
      */
     private function documentBlockContentEquals(mixed $a, mixed $b): bool

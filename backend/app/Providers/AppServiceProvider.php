@@ -17,6 +17,7 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\CommentRepository;
@@ -27,6 +28,7 @@ use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\TemplateVersionRepository;
 use App\Repositories\Eloquent\UserPermissionRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
+use App\Repositories\Eloquent\UserDirectoryRepository;
 use App\Services\AcademicHierarchyService;
 use App\Services\AuditLogService;
 use App\Services\CommentService;
@@ -44,6 +46,7 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
+use App\Services\Contracts\UserDirectoryServiceInterface;
 use App\Services\DocumentService;
 use App\Services\DashboardService;
 use App\Services\HealthCheckService;
@@ -52,6 +55,7 @@ use App\Services\SnapshotService;
 use App\Services\TemplateBlockService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
+use App\Services\UserDirectoryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
@@ -69,6 +73,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateVersionRepositoryInterface::class, TemplateVersionRepository::class);
         $this->app->bind(CommentRepositoryInterface::class, CommentRepository::class);
         $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
+        $this->app->bind(UserDirectoryRepositoryInterface::class, UserDirectoryRepository::class);
         $this->app->bind(UserPermissionRepositoryInterface::class, UserPermissionRepository::class);
         $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
 
@@ -84,6 +89,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateBlockServiceInterface::class, TemplateBlockService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
+        $this->app->bind(UserDirectoryServiceInterface::class, UserDirectoryService::class);
         $this->app->bind(AcademicHierarchyServiceInterface::class, AcademicHierarchyService::class);
     }
 

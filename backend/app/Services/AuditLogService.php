@@ -3,6 +3,10 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
+use App\Models\Comment;
+use App\Models\Document;
+use App\Models\JwtUser;
+use App\Models\Template;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Repositories\Contracts\AuditLogRepositoryInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -52,5 +56,65 @@ class AuditLogService implements AuditLogServiceInterface
         int $perPage = 25,
     ): LengthAwarePaginator {
         return $this->auditLogRepository->paginateByEntity($entityType, $entityId, $perPage);
+    }
+
+    /**
+     * Verifica si un usuario tiene acceso a la auditoría de un documento.
+     * 
+     * @param string $documentId
+     * @param JwtUser $user
+     * @return void
+     */
+    public function assertCanAccessDocumentAudit(string $documentId, JwtUser $user): void
+    {
+        if (Document::query()->whereKey($documentId)->exists()) {
+            return;
+        }
+
+        if (! $user->hasPermission('audit.read')) {
+            abort(404);
+        }
+
+        Document::query()->withoutGlobalScopes(['user_access'])->findOrFail($documentId);
+    }
+
+    /**
+     * Verifica si un usuario tiene acceso a la auditoría de una plantilla.
+     * 
+     * @param string $templateId
+     * @param JwtUser $user
+     * @return void
+     */
+    public function assertCanAccessTemplateAudit(string $templateId, JwtUser $user): void
+    {
+        if (Template::query()->whereKey($templateId)->exists()) {
+            return;
+        }
+
+        if (! $user->hasPermission('audit.read')) {
+            abort(404);
+        }
+
+        Template::query()->withoutGlobalScopes(['user_access'])->findOrFail($templateId);
+    }
+
+    /**
+     * Verifica si un usuario tiene acceso a la auditoría de un comentario.
+     * 
+     * @param string $commentId
+     * @param JwtUser $user
+     * @return void
+     */
+    public function assertCanAccessCommentAudit(string $commentId, JwtUser $user): void
+    {
+        if (Comment::query()->whereKey($commentId)->exists()) {
+            return;
+        }
+
+        if (! $user->hasPermission('audit.read')) {
+            abort(404);
+        }
+
+        Comment::query()->withoutGlobalScopes(['user_access'])->findOrFail($commentId);
     }
 }
