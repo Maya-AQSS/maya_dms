@@ -125,6 +125,9 @@ class TemplateController extends Controller
      */
     public function clone(CloneTemplateRequest $_request, string $template): JsonResponse
     {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('clone', $model);
+
         $copy = $this->templateService->clone($template, (string) Auth::id());
 
         return (new TemplateResource($copy))->response()->setStatusCode(201);

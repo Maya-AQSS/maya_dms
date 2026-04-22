@@ -105,11 +105,18 @@ class TemplatePolicy
     /**
      * Clonar plantilla.
      *
-     * Solo se permite clonar plantillas publicadas que el usuario pueda ver.
+     * Solo se permite clonar plantillas publicadas que el usuario pueda ver
+     * y para las cuales tenga permiso de creación en la visibilidad origen.
      */
     public function clone(JwtUser $user, Template $template): bool
     {
-        return $this->view($user, $template) && $template->status === 'published';
+        $visibility = $template->visibility_level instanceof TemplateVisibilityLevel
+            ? $template->visibility_level->value
+            : (string) $template->visibility_level;
+
+        return $this->view($user, $template)
+            && $template->status === 'published'
+            && $this->create($user, $visibility);
     }
 
     /**
