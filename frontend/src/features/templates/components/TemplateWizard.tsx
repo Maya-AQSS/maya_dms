@@ -53,7 +53,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const [validators, setValidators] = useState<ValidatorEntry[]>([]);
   const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
-    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
+    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre'
   );
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
 

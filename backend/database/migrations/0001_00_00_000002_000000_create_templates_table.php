@@ -40,7 +40,7 @@ return new class extends Migration
 
             // Configuración del flujo de revisión
             $table->integer('review_stages')->default(0);  // 0 = sin revisión
-            $table->string('review_mode')->default('sequential'); // sequential | parallel
+            $table->string('review_mode')->default('parallel'); // sequential | parallel
 
             $table->timestamps();
             $table->softDeletes();
