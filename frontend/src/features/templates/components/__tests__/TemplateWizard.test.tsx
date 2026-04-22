@@ -26,6 +26,7 @@ vi.mock('../../../../api/users', () => ({
       source: 'fdw' as const,
     },
   }),
+  searchUsers: vi.fn().mockResolvedValue({ data: [] }),
 }));
 vi.mock('../../../../features/hierarchy', () => ({
   useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
