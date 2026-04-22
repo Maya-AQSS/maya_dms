@@ -140,7 +140,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
         <Select
           id={studySelectId}
           fieldSize="comfortable"
-          className="focus:ring-2 focus:ring-odoo-purple outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          className="focus:ring-2 focus:ring-odoo-purple outline-none"
           value={selectedStudy}
           onChange={handleStudyChange}
           disabled={!selectedType}
@@ -164,7 +164,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
         <Select
           id={moduleSelectId}
           fieldSize="comfortable"
-          className="focus:ring-2 focus:ring-odoo-purple outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+          className="focus:ring-2 focus:ring-odoo-purple outline-none"
           value={selectedModule}
           onChange={handleModuleChange}
           disabled={!selectedStudy}
