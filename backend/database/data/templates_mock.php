@@ -14,8 +14,10 @@ use App\Enums\TemplateVisibilityLevel;
  * `study_type_ids`, `study_ids`, `module_ids` del token (y equipos vía team_members).
  * Clientes de realm distintos pueden mapear esos claims para probar visibilidad sin tocar código.
  */
+$programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
+
 return [
-    'templates' => [
+    'templates' => array_merge([
         [
             'id' => '33333333-3333-3333-3333-333333333301',
             'name' => 'Plantilla mock — visibilidad global',
@@ -320,13 +322,13 @@ return [
             'review_stages' => 1,
             'review_mode' => 'parallel',
         ],
-    ],
+    ], $programacionPack['templates']),
     /**
      * Pool de posibles validadores de documentos generados desde cada plantilla.
      * Son usuarios distintos de los revisores de la plantilla normativa (template_reviewers).
      * PK compuesta (template_id, user_id) → sin campo id.
      */
-    'template_document_reviewers' => [
+    'template_document_reviewers' => array_merge([
         // Plantilla global 01 — doc reviewers: secretaria + docentes
         ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
         ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165'],
@@ -342,9 +344,9 @@ return [
         // Plantilla módulo DWES 11 — doc reviewers: dirección + secretaria
         ['template_id' => '33333333-3333-3333-3333-333333333311', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
         ['template_id' => '33333333-3333-3333-3333-333333333311', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
-    ],
+    ], $programacionPack['template_document_reviewers']),
 
-    'template_reviewers' => [
+    'template_reviewers' => array_merge([
         [
             'id' => '44444444-4444-4444-4444-444444444401',
             'template_id' => '33333333-3333-3333-3333-333333333301',
@@ -430,6 +432,12 @@ return [
             'stage' => 1,
         ],
         [
+            'id' => '44444444-4444-4444-4444-444444444421',
+            'template_id' => '33333333-3333-3333-3333-333333333311',
+            'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
+            'stage' => 2,
+        ],
+        [
             'id' => '44444444-4444-4444-4444-444444444415',
             'template_id' => '33333333-3333-3333-3333-333333333312',
             'user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc',
@@ -465,5 +473,5 @@ return [
             'user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
             'stage' => 1,
         ],
-    ],
+    ], $programacionPack['template_reviewers']),
 ];

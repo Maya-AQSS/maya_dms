@@ -6,7 +6,9 @@
  * - document_id en documents_mock.php
  * - template_block_id en template_blocks_mock.php
  */
-return [
+$programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
+
+return array_merge([
     [
         'id' => '88888888-8888-8888-8888-888888888801',
         'document_id' => '77777777-7777-7777-7777-777777777701',
@@ -29,4 +31,4 @@ return [
         'locked_at' => null,
         'sort_order' => 0,
     ],
-];
+], $programacionPack['document_blocks'] ?? []);

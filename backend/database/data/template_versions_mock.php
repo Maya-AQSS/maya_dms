@@ -6,7 +6,9 @@
  * blocks_snapshot replica el shape que genera {@see TemplateService::publishWithSnapshot()}.
  * Los template_id deben existir en database/data/templates_mock.php.
  */
-return [
+$programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
+
+return array_merge([
     [
         'id' => '66666666-6666-6666-6666-666666666601',
         'template_id' => '33333333-3333-3333-3333-333333333301',
@@ -83,4 +85,4 @@ return [
         'published_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'published_at' => null,
     ],
-];
+], $programacionPack['template_versions']);

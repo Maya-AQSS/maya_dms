@@ -7,7 +7,9 @@
  * - created_by / owner_id deben existir en users_mock.php.
  * - study_* / module_id alineados con academic_hierarchy_mock.php cuando el catálogo esté sembrado (opcional).
  */
-return [
+$programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
+
+return array_merge([
     [
         'id' => '77777777-7777-7777-7777-777777777701',
         'template_id' => '33333333-3333-3333-3333-333333333301',
@@ -38,4 +40,4 @@ return [
         'submitted_at' => null,
         'published_at' => null,
     ],
-];
+], $programacionPack['documents'] ?? []);
