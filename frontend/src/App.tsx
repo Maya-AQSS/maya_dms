@@ -5,6 +5,7 @@ import { NAV_ITEMS, Sidebar, Topbar } from './components/layout';
 import {
   DashboardPage,
   DocumentEditorPage,
+  DocumentValidationPage,
   DocumentPreviewPage,
   DocumentsPage,
   PlaceholderPage,
@@ -24,6 +25,7 @@ function App() {
 
   const location = useLocation();
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
+  const isDocumentValidateRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/validate');
   const isDocumentPreviewRoute = /^\/documents\/[^/]+$/.test(location.pathname);
   const currentNav = useMemo(
     () => NAV_ITEMS.find((n) => location.pathname === n.path || location.pathname.startsWith(`${n.path}/`)),
@@ -31,9 +33,11 @@ function App() {
   );
   const pageTitle = isEditorRoute
     ? 'Editor de Programación'
-    : isDocumentPreviewRoute
-      ? 'Previsualización'
-      : currentNav?.label ?? 'Maya DMS';
+    : isDocumentValidateRoute
+      ? 'Validación de programación'
+      : isDocumentPreviewRoute
+        ? 'Previsualización'
+        : currentNav?.label ?? 'Maya DMS';
 
   if (isOidcLoading) {
     return (
@@ -76,6 +80,7 @@ function App() {
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/documents" element={<DocumentsPage />} />
+              <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
               <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
               <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
               <Route path="/templates" element={<TemplatesPage />} />

@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentsContent } from './DocumentsContent';
 import { UserProfileProvider } from '../features/user-profile';
@@ -71,7 +72,11 @@ vi.mock('react-router-dom', async () => {
 });
 
 function renderWithProfile(ui: ReactElement) {
-  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+  return render(
+    <MemoryRouter>
+      <UserProfileProvider>{ui}</UserProfileProvider>
+    </MemoryRouter>,
+  );
 }
 
 const baseDocument = {

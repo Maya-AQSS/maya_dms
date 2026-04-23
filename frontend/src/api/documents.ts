@@ -79,6 +79,19 @@ export async function createDocumentFromModule(payload: {
 type DocumentMutationApiResponse = { data: Document };
 type DocumentSubmitApiResponse = { data: Document };
 
+/** Fila de `document_reviews` (GET documents/{id}/reviews). */
+export type DocumentReview = {
+  id: string;
+  document_id: string;
+  reviewer_id: string;
+  stage: number;
+  status: string;
+  rejection_reason?: string | null;
+  reviewed_at?: string | null;
+};
+
+type DocumentReviewsApiResponse = { data: DocumentReview[] };
+
 /**
  * PATCH /api/v1/documents/{id} — hoy el backend valida al menos `title`.
  * 
@@ -102,6 +115,40 @@ export async function submitDocumentForReview(documentId: string): Promise<Docum
   const body = await apiFetchJson<DocumentSubmitApiResponse>(
     `documents/${encodeURIComponent(documentId)}/submit`,
     { method: 'POST', body: {} },
+  );
+  return body.data;
+}
+
+/** GET /api/v1/documents/{id}/reviews */
+export async function fetchDocumentReviews(documentId: string): Promise<DocumentReview[]> {
+  const body = await apiGetJson<DocumentReviewsApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/reviews`,
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/reviews/{review}/approve */
+export async function approveDocumentReview(
+  documentId: string,
+  reviewId: string,
+  changelog?: string | null,
+): Promise<Document> {
+  const body = await apiFetchJson<DocumentMutationApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/approve`,
+    { method: 'POST', body: { changelog: changelog ?? null } },
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/reviews/{review}/reject */
+export async function rejectDocumentReview(
+  documentId: string,
+  reviewId: string,
+  rejectionReason?: string | null,
+): Promise<Document> {
+  const body = await apiFetchJson<DocumentMutationApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/reject`,
+    { method: 'POST', body: { rejection_reason: rejectionReason ?? null } },
   );
   return body.data;
 }

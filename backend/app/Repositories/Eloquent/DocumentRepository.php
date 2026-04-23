@@ -181,6 +181,7 @@ class DocumentRepository implements DocumentRepositoryInterface
         $rows = DB::table('document_reviews as dr')
             ->join('documents as d', 'd.id', '=', 'dr.document_id')
             ->join('templates as t', 't.id', '=', 'd.template_id')
+            ->leftJoin('users as owner_user', 'owner_user.id', '=', 'd.owner_id')
             ->leftJoinSub($minPendingByDocument, 'ps', function ($join) {
                 $join->on('ps.document_id', '=', 'd.id');
             })
@@ -207,6 +208,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                 'dr.id as review_id',
                 'dr.stage',
                 't.review_mode',
+                'owner_user.name as owner_name',
             ]);
 
         $today = Carbon::today();
@@ -217,7 +219,7 @@ class DocumentRepository implements DocumentRepositoryInterface
             if ($row->delivery_deadline !== null) {
                 $deadline = Carbon::parse((string) $row->delivery_deadline);
                 $deadlineIso = $deadline->toIso8601String();
-                $daysRemaining = $today->diffInDays($deadline, false);
+                $daysRemaining = (int) round((float) $today->diffInDays($deadline, false));
             }
 
             return [
@@ -225,6 +227,9 @@ class DocumentRepository implements DocumentRepositoryInterface
                 'review_id' => (string) $row->review_id,
                 'title' => (string) $row->title,
                 'owner_id' => (string) $row->owner_id,
+                'owner_name' => $row->owner_name !== null && $row->owner_name !== ''
+                    ? (string) $row->owner_name
+                    : null,
                 'delivery_deadline' => $deadlineIso,
                 'days_remaining' => $daysRemaining,
                 'status' => (string) $row->status,

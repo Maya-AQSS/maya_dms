@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CascadeFilters } from './CascadeFilters';
 import {
   useDocuments,
@@ -51,6 +51,8 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
  */
 export function DocumentsContent() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showSubmittedForReviewBanner, setShowSubmittedForReviewBanner] = useState(false);
   const [activeFilters, setActiveFilters] = useState<CascadeDocumentFilters>({
     studyTypeId: '',
     studyId: '',
@@ -146,6 +148,14 @@ export function DocumentsContent() {
     };
   }, [selectedModuleId]);
 
+  useEffect(() => {
+    const state = location.state as { documentSubmittedForReview?: boolean } | null;
+    if (!state?.documentSubmittedForReview) return;
+    setShowSubmittedForReviewBanner(true);
+    void reload();
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigate, reload]);
+
   const handleClear = () =>
     startTransition(() =>
       setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' })
@@ -219,6 +229,26 @@ export function DocumentsContent() {
   return (
     <div className="p-6">
       <CascadeFilters onClear={handleClear} onFilterChange={handleChange} />
+
+      {showSubmittedForReviewBanner && (
+        <div
+          className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3 dark:bg-success/15 dark:border-success/40"
+          role="status"
+        >
+          <p className="text-sm font-medium text-success-dark dark:text-success">
+            Documento enviado a validar.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-success-dark dark:text-success"
+            onClick={() => setShowSubmittedForReviewBanner(false)}
+          >
+            Cerrar
+          </Button>
+        </div>
+      )}
 
       <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l flex items-center justify-between">

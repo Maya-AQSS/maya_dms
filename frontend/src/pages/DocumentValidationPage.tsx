@@ -3,9 +3,9 @@ import { DocumentWizard } from '../features/documents/components/DocumentWizard'
 import { Button } from '../ui';
 
 /**
- * Editor de programación: asistente de 3 pasos (propiedades, bloques, resumen), sin paso de usuarios.
+ * Validación de programación: misma vista de resumen que el editor, con acciones Aprobar / Rechazar.
  */
-export function DocumentEditorPage() {
+export function DocumentValidationPage() {
   const { documentId } = useParams<{ documentId: string }>();
 
   if (!documentId) {
@@ -19,5 +19,5 @@ export function DocumentEditorPage() {
     );
   }
 
-  return <DocumentWizard documentId={documentId} mode="edit" />;
+  return <DocumentWizard documentId={documentId} mode="validate" />;
 }

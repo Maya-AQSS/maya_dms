@@ -1,5 +1,6 @@
 export { DashboardPage } from './DashboardPage';
 export { DocumentEditorPage } from './DocumentEditorPage';
+export { DocumentValidationPage } from './DocumentValidationPage';
 export { DocumentPreviewPage } from './DocumentPreviewPage';
 export { DocumentsPage } from './DocumentsPage';
 export { PlaceholderPage } from './PlaceholderPage';

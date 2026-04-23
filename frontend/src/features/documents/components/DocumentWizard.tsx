@@ -1,20 +1,33 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type ReactNode,
+} from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
+  approveDocumentReview,
   fetchDocument,
+  fetchDocumentReviews,
+  rejectDocumentReview,
   submitDocumentForReview,
   updateDocument,
   updateDocumentBlock,
+  type DocumentReview,
 } from '../../../api/documents';
 import { ApiHttpError } from '../../../api/http';
 import { fetchTemplate } from '../../../api/templates';
-import { searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
+import { fetchMe, searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
 import { useDarkMode } from '../../../hooks/useDarkMode';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
-import { Button, ConfirmDialog, TextInput } from '../../../ui';
+import { Button, ConfirmDialog, TextArea, TextInput } from '../../../ui';
 
 const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
 
@@ -65,15 +78,45 @@ function blockEditorContent(block: DocumentDisplayBlock): unknown[] {
   return normalizeBlockContentForEditor(block.default_content);
 }
 
+function validationSuccessBannerMessage(
+  updated: { title: string; status: DocumentStatus },
+  action: 'approve' | 'reject',
+): string {
+  if (action === 'reject') {
+    return 'Rechazo registrado. El documento ha vuelto a borrador para que el titular pueda corregirlo.';
+  }
+  if (updated.status === 'published') {
+    return `Validación realizada. El documento «${updated.title}» ha sido publicado.`;
+  }
+  return 'Validación realizada. Este documento se ha pasado al siguiente validador.';
+}
+
+function pickActionableDocumentReview(
+  reviews: DocumentReview[],
+  reviewerUserId: string,
+  reviewMode: 'sequential' | 'parallel',
+): DocumentReview | null {
+  const pending = reviews.filter((r) => r.status === 'pending');
+  if (pending.length === 0) return null;
+  const mine = pending.filter((r) => r.reviewer_id === reviewerUserId);
+  if (mine.length === 0) return null;
+  if (reviewMode !== 'sequential') {
+    return mine[0] ?? null;
+  }
+  const minStage = Math.min(...pending.map((r) => r.stage));
+  return mine.find((r) => r.stage === minStage) ?? null;
+}
+
 type Props = {
   documentId: string;
+  mode?: 'edit' | 'validate';
 };
 
 /**
  * Asistente de edición de documento (3 pasos, sin usuarios/validadores).
  * Reutiliza estética y piezas de plantillas (BlockNote, preview HTML) sin acoplar al flujo de TemplateWizard.
  */
-export function DocumentWizard({ documentId }: Props) {
+export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark } = useDarkMode();
@@ -101,7 +144,15 @@ export function DocumentWizard({ documentId }: Props) {
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
   const [templateName, setTemplateName] = useState<string | null>(null);
   const [blockViewTab, setBlockViewTab] = useState<BlockViewTab>('content');
+  const [validationReviewLoading, setValidationReviewLoading] = useState(false);
+  const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
+  const [actionableReviewId, setActionableReviewId] = useState<string | null>(null);
+  const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
+  const [validationActionLoading, setValidationActionLoading] = useState(false);
+  const [validationModalError, setValidationModalError] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
+  const isValidateMode = mode === 'validate';
   const isDraft = detail?.status === 'draft';
   const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
 
@@ -151,23 +202,85 @@ export function DocumentWizard({ documentId }: Props) {
   }, [reload]);
 
   useEffect(() => {
-    setStep('properties');
-    setCompletedSteps([]);
     setFormError(null);
     setBlockSaveError(null);
-  }, [documentId]);
+    setValidationSetupError(null);
+    setActionableReviewId(null);
+    setValidateConfirm(null);
+    setValidationModalError(null);
+    setRejectReason('');
+    if (mode === 'validate') {
+      setStep('summary');
+      setCompletedSteps(['properties', 'blocks', 'summary']);
+    } else {
+      setStep('properties');
+      setCompletedSteps([]);
+    }
+  }, [documentId, mode]);
 
   useEffect(() => {
+    if (mode === 'validate') return;
     if (!detail || detail.status === 'draft') return;
     setCompletedSteps(['properties', 'blocks']);
     setStep('blocks');
-  }, [detail?.id, detail?.status]);
+  }, [detail?.id, detail?.status, mode]);
 
   useEffect(() => {
+    if (mode === 'validate') return;
     if (!detail || !returnToSummary) return;
     setCompletedSteps(['properties', 'blocks']);
     setStep('summary');
-  }, [detail, returnToSummary]);
+  }, [detail, returnToSummary, mode]);
+
+  useEffect(() => {
+    if (!isValidateMode) {
+      setValidationReviewLoading(false);
+      setValidationSetupError(null);
+      setActionableReviewId(null);
+      return;
+    }
+    if (!detail || detail.status !== 'in_review') {
+      return;
+    }
+    let cancelled = false;
+    setValidationReviewLoading(true);
+    setValidationSetupError(null);
+    setActionableReviewId(null);
+    void (async () => {
+      try {
+        const [reviews, meRes, templateResp] = await Promise.all([
+          fetchDocumentReviews(detail.id),
+          fetchMe(),
+          fetchTemplate(detail.template_id),
+        ]);
+        if (cancelled) return;
+        const userId = meRes.data.id;
+        const reviewMode = templateResp.data.review_mode === 'sequential' ? 'sequential' : 'parallel';
+        const actionable = pickActionableDocumentReview(reviews, userId, reviewMode);
+        if (!actionable) {
+          setValidationSetupError(
+            'No tienes una revisión pendiente que puedas tramitar para este documento.',
+          );
+          setActionableReviewId(null);
+        } else {
+          setActionableReviewId(actionable.id);
+          setValidationSetupError(null);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setValidationSetupError(
+            e instanceof ApiHttpError ? e.message : 'No se pudo cargar la información de validación.',
+          );
+          setActionableReviewId(null);
+        }
+      } finally {
+        if (!cancelled) setValidationReviewLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isValidateMode, detail?.id, detail?.status]);
 
   const sortedBlocks = useMemo(
     () => [...(detail?.blocks ?? [])].sort((a, b) => a.sort_order - b.sort_order),
@@ -373,7 +486,7 @@ export function DocumentWizard({ documentId }: Props) {
     try {
       const updated = await submitDocumentForReview(detail.id);
       setDetail((prev) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
-      navigate(`/documents/${detail.id}`);
+      navigate('/documents', { state: { documentSubmittedForReview: true } });
     } catch (e) {
       setSummaryError(e instanceof Error ? e.message : 'No se pudo enviar el documento a validar.');
     } finally {
@@ -393,7 +506,59 @@ export function DocumentWizard({ documentId }: Props) {
     }
   };
 
+  const handleApproveValidation = async () => {
+    if (!actionableReviewId) {
+      setValidationModalError('No hay una revisión pendiente que puedas tramitar.');
+      return;
+    }
+    setValidationModalError(null);
+    setSummaryError(null);
+    setValidationActionLoading(true);
+    try {
+      const updated = await approveDocumentReview(documentId, actionableReviewId, null);
+      setValidateConfirm(null);
+      navigate('/dashboard', {
+        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve') },
+      });
+    } catch (e) {
+      setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo aprobar la revisión.');
+    } finally {
+      setValidationActionLoading(false);
+    }
+  };
+
+  const handleRejectValidation = async () => {
+    if (!actionableReviewId) {
+      setValidationModalError('No hay una revisión pendiente que puedas tramitar.');
+      return;
+    }
+    setValidationModalError(null);
+    setSummaryError(null);
+    setValidationActionLoading(true);
+    try {
+      const updated = await rejectDocumentReview(documentId, actionableReviewId, rejectReason.trim() || null);
+      setValidateConfirm(null);
+      setRejectReason('');
+      navigate('/dashboard', {
+        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject') },
+      });
+    } catch (e) {
+      setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo rechazar la revisión.');
+    } finally {
+      setValidationActionLoading(false);
+    }
+  };
+
   const renderStepper = () => {
+    if (isValidateMode) {
+      return (
+        <div className="flex items-center justify-center px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
+          <p className="text-xs font-semibold text-text-secondary dark:text-text-dark-secondary text-center">
+            Validación — resumen del documento
+          </p>
+        </div>
+      );
+    }
     const stepsData: { id: Step; label: string; sub: string }[] = [
       { id: 'properties', label: 'Propiedades', sub: 'Título y metadatos' },
       { id: 'blocks', label: 'Bloques', sub: 'Contenido de la programación' },
@@ -461,9 +626,41 @@ export function DocumentWizard({ documentId }: Props) {
     return (
       <div className="p-6 space-y-3">
         <p className="text-sm text-warning-dark dark:text-warning-light">{loadError ?? 'Documento no encontrado.'}</p>
-        <Button type="button" variant="secondary" onClick={() => navigate('/documents')}>
-          Volver al listado
+        <Button type="button" variant="secondary" onClick={() => navigate(isValidateMode ? '/dashboard' : '/documents')}>
+          {isValidateMode ? 'Volver al panel' : 'Volver al listado'}
         </Button>
+      </div>
+    );
+  }
+
+  if (isValidateMode && detail.status !== 'in_review') {
+    return (
+      <div className="p-6 space-y-3">
+        <p className="text-sm text-warning-dark dark:text-warning-light">
+          Este documento no está en revisión. Solo puedes validar programaciones enviadas a revisión.
+        </p>
+        <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
+          Volver al panel
+        </Button>
+      </div>
+    );
+  }
+
+  if (isValidateMode && !validationReviewLoading && validationSetupError && !actionableReviewId) {
+    return (
+      <div className="p-6 space-y-3">
+        <p className="text-sm text-warning-dark dark:text-warning-light">{validationSetupError}</p>
+        <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
+          Volver al panel
+        </Button>
+      </div>
+    );
+  }
+
+  if (isValidateMode && detail.status === 'in_review' && validationReviewLoading) {
+    return (
+      <div className="flex flex-col h-[calc(100dvh-7rem)] items-center justify-center overflow-hidden bg-ui-body dark:bg-ui-dark-bg px-6">
+        <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando datos de validación…</p>
       </div>
     );
   }
@@ -474,9 +671,9 @@ export function DocumentWizard({ documentId }: Props) {
         <div className="flex items-center gap-3 min-w-0">
           <button
             type="button"
-            onClick={() => navigate(`/documents/${documentId}`)}
+            onClick={() => navigate(isValidateMode ? '/dashboard' : `/documents/${documentId}`)}
             className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95 shrink-0"
-            aria-label="Volver a la previsualización"
+            aria-label={isValidateMode ? 'Volver al panel principal' : 'Volver a la previsualización'}
           >
             ←
           </button>
@@ -486,7 +683,35 @@ export function DocumentWizard({ documentId }: Props) {
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {step === 'summary' && (
+          {isValidateMode && (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!actionableReviewId || validationReviewLoading}
+                onClick={() => {
+                  setValidationModalError(null);
+                  setValidateConfirm('reject');
+                }}
+              >
+                Rechazar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={!actionableReviewId || validationReviewLoading}
+                onClick={() => {
+                  setValidationModalError(null);
+                  setValidateConfirm('approve');
+                }}
+              >
+                Aprobar
+              </Button>
+            </>
+          )}
+          {!isValidateMode && step === 'summary' && (
             <>
               <Button
                 type="button"
@@ -508,7 +733,7 @@ export function DocumentWizard({ documentId }: Props) {
               </Button>
             </>
           )}
-          {step !== 'summary' && (
+          {!isValidateMode && step !== 'summary' && (
             <Button
               type="button"
               variant="primary"
@@ -523,7 +748,7 @@ export function DocumentWizard({ documentId }: Props) {
         </div>
       </div>
 
-      {!isDraft && (
+      {!isDraft && !isValidateMode && (
         <p className="shrink-0 px-6 py-2 text-xs bg-warning-light/20 text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light border-b border-warning/20">
           Este documento no está en borrador: la edición de bloques está deshabilitada; solo puedes revisar el contenido.
         </p>
@@ -531,7 +756,7 @@ export function DocumentWizard({ documentId }: Props) {
 
       {renderStepper()}
 
-      {step === 'properties' && (
+      {!isValidateMode && step === 'properties' && (
         <div className="flex-1 overflow-y-auto px-4 py-4 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
           {formError && (
             <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
@@ -597,7 +822,7 @@ export function DocumentWizard({ documentId }: Props) {
         </div>
       )}
 
-      {step === 'blocks' && (
+      {!isValidateMode && step === 'blocks' && (
         <div className="flex-1 min-h-0 flex overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
           <aside className="w-[280px] shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-y-auto p-3 space-y-1">
             {sortedBlocks.length === 0 ? (
@@ -726,8 +951,14 @@ export function DocumentWizard({ documentId }: Props) {
       {step === 'summary' && detail && (
         <div className="flex-1 overflow-y-auto px-4 py-4 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
           <p className="text-xs text-text-muted text-center">
-            Cambia todos los datos antes de publicar. Puedes volver atrás con el stepper. Al salir, el documento
-            permanece en su estado actual.
+            {isValidateMode
+              ? 'Revisa el resumen del documento y confirma si lo apruebas o lo rechazas.'
+              : (
+                  <>
+                    Cambia todos los datos antes de publicar. Puedes volver atrás con el stepper. Al salir, el documento
+                    permanece en su estado actual.
+                  </>
+                )}
           </p>
 
           <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 w-full">
@@ -803,7 +1034,9 @@ export function DocumentWizard({ documentId }: Props) {
                 variant="outline"
                 size="sm"
                 onClick={() =>
-                  navigate(`/documents/${documentId}`, { state: { returnToStep: 'summary' } })
+                  navigate(`/documents/${documentId}`, {
+                    state: { returnToStep: 'summary', returnToValidate: isValidateMode },
+                  })
                 }
               >
                 PREVISUALIZAR
@@ -909,6 +1142,47 @@ export function DocumentWizard({ documentId }: Props) {
 
         </div>
       )}
+      <ConfirmDialog
+        open={validateConfirm === 'approve'}
+        title="Confirmar aprobación"
+        description="Se registrará tu aprobación. Si eres el último validador pendiente, el documento pasará a publicado."
+        confirmLabel="Aprobar"
+        error={validationModalError}
+        loading={validationActionLoading}
+        onCancel={() => {
+          setValidateConfirm(null);
+          setValidationModalError(null);
+        }}
+        onConfirm={() => void handleApproveValidation()}
+      />
+      <ConfirmDialog
+        open={validateConfirm === 'reject'}
+        title="Confirmar rechazo"
+        description={
+          <div className="space-y-2 text-left">
+            <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
+              El documento volverá a borrador para que el titular pueda corregirlo.
+            </p>
+            <TextArea
+              fieldSize="comfortable"
+              rows={3}
+              value={rejectReason}
+              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setRejectReason(e.target.value)}
+              placeholder="Motivo del rechazo (opcional)"
+            />
+          </div>
+        }
+        confirmLabel="Rechazar"
+        variant="danger"
+        error={validationModalError}
+        loading={validationActionLoading}
+        onCancel={() => {
+          setValidateConfirm(null);
+          setValidationModalError(null);
+          setRejectReason('');
+        }}
+        onConfirm={() => void handleRejectValidation()}
+      />
       <ConfirmDialog
         open={summaryConfirmAction !== null}
         title={summaryConfirmAction === 'submit' ? 'Confirmar envío a validar' : 'Confirmar guardado'}

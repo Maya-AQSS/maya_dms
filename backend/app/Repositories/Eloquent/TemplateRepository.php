@@ -168,6 +168,7 @@ class TemplateRepository implements TemplateRepositoryInterface
     {
         $rows = DB::table('template_reviewers')
             ->join('templates', 'templates.id', '=', 'template_reviewers.template_id')
+            ->leftJoin('users as author_user', 'author_user.id', '=', 'templates.created_by')
             ->where('template_reviewers.user_id', $userId)
             ->where('template_reviewers.status', 'pending')
             ->where('templates.status', 'in_review')
@@ -181,6 +182,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.delivery_deadline',
                 'templates.status',
                 'template_reviewers.stage',
+                'author_user.name as author_name',
             ]);
 
         $today = Carbon::today();
@@ -191,13 +193,16 @@ class TemplateRepository implements TemplateRepositoryInterface
             if ($row->delivery_deadline !== null) {
                 $deadline = Carbon::parse((string) $row->delivery_deadline);
                 $deadlineIso = $deadline->toIso8601String();
-                $daysRemaining = $today->diffInDays($deadline, false);
+                $daysRemaining = (int) round((float) $today->diffInDays($deadline, false));
             }
 
             return [
                 'template_id' => (string) $row->id,
                 'title' => (string) $row->name,
                 'author_id' => (string) $row->created_by,
+                'author_name' => $row->author_name !== null && $row->author_name !== ''
+                    ? (string) $row->author_name
+                    : null,
                 'delivery_deadline' => $deadlineIso,
                 'days_remaining' => $daysRemaining,
                 'status' => (string) $row->status,

@@ -7,6 +7,7 @@ type Props = {
   open: boolean;
   title: string;
   description?: ReactNode;
+  error?: string | null;
   confirmLabel: string;
   cancelLabel?: string;
   variant?: ConfirmDialogVariant;
@@ -23,6 +24,7 @@ export function ConfirmDialog({
   open,
   title,
   description,
+  error = null,
   confirmLabel,
   cancelLabel = 'Cancelar',
   variant = 'primary',
@@ -95,6 +97,15 @@ export function ConfirmDialog({
             className="px-4 py-3 text-sm text-text-secondary dark:text-text-dark-secondary leading-snug border-b border-ui-border-l dark:border-ui-dark-border-l bg-ui-card dark:bg-ui-dark-card"
           >
             {description}
+          </div>
+        ) : null}
+
+        {error ? (
+          <div
+            className="px-4 py-2.5 border-b border-ui-border-l dark:border-ui-dark-border-l bg-error-light/15 dark:bg-error-dark/20"
+            role="alert"
+          >
+            <p className="text-xs font-medium text-danger-dark dark:text-danger">{error}</p>
           </div>
         ) : null}
 
