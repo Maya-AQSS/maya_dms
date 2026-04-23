@@ -193,12 +193,24 @@ class TemplateService implements TemplateServiceInterface
             ])->values()->all();
 
             $next = $this->templateVersionRepository->nextVersionNumber($templateId);
+            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
+            $resolvedChangelog = $trimmedChangelog;
+
+            if ($resolvedChangelog === '') {
+                if ($next === 1) {
+                    $resolvedChangelog = 'Versión inicial';
+                } else {
+                    throw ValidationException::withMessages([
+                        'changelog' => ['El changelog es obligatorio al publicar una plantilla.'],
+                    ]);
+                }
+            }
 
             $this->templateVersionRepository->createSnapshot(
                 $templateId,
                 $next,
                 $blocksSnapshot,
-                $changelog ?? '',
+                $resolvedChangelog,
                 $actorId,
             );
 

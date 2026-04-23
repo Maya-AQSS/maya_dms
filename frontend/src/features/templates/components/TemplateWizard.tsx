@@ -148,8 +148,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     try {
       await apiPublishTemplate(template.id);
       navigate('/templates');
-    } catch {
-      setErrors({ api: 'Error al publicar la plantilla' });
+    } catch (e) {
+      setErrors({ api: e instanceof Error ? e.message : 'Error al publicar la plantilla' });
     } finally {
       setSaving(false);
     }

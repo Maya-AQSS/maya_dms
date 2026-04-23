@@ -625,7 +625,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.team.is_department', false);
     }
 
-    public function test_template_publish_requires_changelog_when_in_review(): void
+    public function test_template_first_publish_in_review_autofills_changelog_when_missing(): void
     {
         $creatorId = (string) Str::uuid();
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
@@ -656,6 +656,108 @@ class TemplatesApiTest extends TestCase
             'default_content' => ['k' => 'v'],
             'block_state' => 'editable',
             'sort_order' => 0,
+        ]);
+
+        $this->seedTemplateReviewer($tid, $reviewerId);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->assertDatabaseHas('template_versions', [
+            'template_id' => $tid,
+            'version_number' => 1,
+            'changelog' => 'Versión inicial',
+        ]);
+    }
+
+    public function test_template_creator_can_publish_draft_without_reviewers_and_autofills_v1_changelog(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headersCreator = $this->authHeaders($creatorId, []);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft directo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.version', 1);
+
+        $this->assertDatabaseHas('template_versions', [
+            'template_id' => $tid,
+            'version_number' => 1,
+            'changelog' => 'Versión inicial',
+            'published_by' => $creatorId,
+        ]);
+    }
+
+    public function test_template_publish_requires_changelog_from_second_version_onward(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $headersReviewer = $this->authHeaders($reviewerId, []);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'En revisión v2',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'in_review',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        // Existe versión previa publicada -> próximo publish será v2 y requiere changelog.
+        TemplateVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'version_number' => 1,
+            'blocks_snapshot' => [],
+            'changelog' => 'Versión inicial',
+            'published_by' => $creatorId,
+            'published_at' => now(),
         ]);
 
         $this->seedTemplateReviewer($tid, $reviewerId);

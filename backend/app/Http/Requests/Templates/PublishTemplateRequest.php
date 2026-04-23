@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Templates;
 
 use App\Models\Template;
+use App\Models\TemplateVersion;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,10 +44,13 @@ class PublishTemplateRequest extends FormRequest
     public function rules(): array
     {
         $template = Template::query()->findOrFail($this->route('template'));
+        $hasPublishedVersions = TemplateVersion::query()
+            ->where('template_id', $template->id)
+            ->exists();
 
         return [
             'changelog' => [
-                Rule::requiredIf($template->status === 'in_review'),
+                Rule::requiredIf($template->status === 'in_review' && $hasPublishedVersions),
                 'nullable',
                 'string',
                 'min:1',
