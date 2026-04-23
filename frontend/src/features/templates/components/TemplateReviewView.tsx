@@ -17,6 +17,7 @@ type TemplateComment = {
   id: string;
   template_block_id: string | null;
   author_id: string;
+  author?: { id: string; name: string };
   body: string;
   created_at: string;
 };
@@ -356,36 +357,51 @@ export function TemplateReviewView({ template }: Props) {
         {/* Sidebar Unificada (Comentarios o Info) */}
         <aside 
           className={[
-            'w-[350px] bg-white dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border flex flex-col shadow-xl transition-transform duration-300 z-10',
-            sidebarMode ? 'translate-x-0' : 'translate-x-full'
+            'w-[380px] bg-white dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border flex flex-col transition-all duration-400 ease-out z-30',
+            sidebarMode ? 'translate-x-0 shadow-[-10px_0_30px_rgba(0,0,0,0.05)]' : 'translate-x-full'
           ].join(' ')}
         >
           {selectedBlock ? (
             <>
-              {/* Header de la Sidebar */}
-              <div className="px-5 py-4 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between bg-ui-body/30 dark:bg-ui-dark-bg/30">
-                <div className="min-w-0">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-text-primary dark:text-text-dark-primary truncate">
-                    {sidebarMode === 'info' ? 'Descripción del bloque' : 'Comentarios'}
-                  </h3>
-                  <p className="text-[10px] text-text-muted truncate">
-                    Bloque: {selectedBlock.title ? String(selectedBlock.title) : `#${selectedBlock.sort_order}`}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1">
-                  {/* Selector de modo */}
-                  <button 
-                    onClick={() => setSidebarMode(sidebarMode === 'info' ? 'comments' : 'info')}
-                    className="p-1.5 rounded-md hover:bg-ui-border dark:hover:bg-ui-dark-border text-text-muted transition-colors text-[10px] font-bold uppercase tracking-tighter"
-                    title={sidebarMode === 'info' ? 'Ver comentarios' : 'Ver descripción'}
-                  >
-                    {sidebarMode === 'info' ? '💬' : 'ℹ️'}
-                  </button>
+              {/* Header de la Sidebar Minimalista */}
+              <div className="shrink-0 px-8 py-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="min-w-0">
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary dark:text-text-dark-primary">
+                      {sidebarMode === 'info' ? 'Información' : 'Revisión'}
+                    </h3>
+                  </div>
                   <button 
                     onClick={() => { setSidebarMode(null); }}
-                    className="p-1.5 rounded-md hover:bg-ui-border dark:hover:bg-ui-dark-border flex items-center justify-center text-text-muted transition-colors"
+                    className="group p-1.5 -mr-1.5 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-muted transition-all"
                   >
-                    ✕
+                    <span className="block w-4 h-4 text-sm group-hover:rotate-90 transition-transform">✕</span>
+                  </button>
+                </div>
+
+                {/* Tabs Minimalistas (Underline style) */}
+                <div className="flex gap-6 border-b border-ui-border dark:border-ui-dark-border">
+                  <button
+                    onClick={() => setSidebarMode('comments')}
+                    className={[
+                      'pb-3 text-[10px] font-bold uppercase tracking-widest transition-all relative',
+                      sidebarMode === 'comments' 
+                        ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-odoo-purple' 
+                        : 'text-text-muted hover:text-text-primary'
+                    ].join(' ')}
+                  >
+                    Feedback
+                  </button>
+                  <button
+                    onClick={() => setSidebarMode('info')}
+                    className={[
+                      'pb-3 text-[10px] font-bold uppercase tracking-widest transition-all relative',
+                      sidebarMode === 'info' 
+                        ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-odoo-purple' 
+                        : 'text-text-muted hover:text-text-primary'
+                    ].join(' ')}
+                  >
+                    Detalles
                   </button>
                 </div>
               </div>
@@ -397,23 +413,30 @@ export function TemplateReviewView({ template }: Props) {
                 <>
                   <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
                     {blockComments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-40 text-center space-y-3 opacity-40">
-                        <span className="text-3xl">💬</span>
-                        <p className="text-xs font-medium text-text-muted">
-                          No hay comentarios en este bloque.<br/>Haz una sugerencia o corrección.
+                      <div className="flex flex-col items-center justify-center h-40 text-center opacity-30">
+                        <p className="text-xs font-medium text-text-muted leading-relaxed">
+                          No hay actividad en este bloque.
                         </p>
                       </div>
                     ) : (
-                      blockComments.map((comment) => (
-                        <div key={comment.id} className="bg-ui-body/40 dark:bg-ui-dark-bg/40 p-3 rounded-lg border border-ui-border dark:border-ui-dark-border text-xs animate-in fade-in">
-                          <p className="text-text-primary dark:text-text-dark-primary leading-relaxed whitespace-pre-wrap">
-                            {comment.body}
-                          </p>
-                          <div className="mt-2 text-[9px] font-bold text-text-muted uppercase tracking-tight">
-                            {new Date(comment.created_at).toLocaleString()}
+                      <div className="space-y-8">
+                        {blockComments.map((comment) => (
+                          <div key={comment.id} className="group relative pl-4 animate-in fade-in slide-in-from-right-1">
+                            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/30 transition-colors" />
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-[10px] font-bold text-text-primary dark:text-text-dark-primary">
+                                {comment.author?.name || 'Validador'}
+                              </span>
+                              <span className="text-[9px] text-text-muted opacity-60">
+                                {new Date(comment.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">
+                              {comment.body}
+                            </p>
                           </div>
-                        </div>
-                      ))
+                        ))}
+                      </div>
                     )}
                   </div>
 
