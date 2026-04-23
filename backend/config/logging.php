@@ -58,6 +58,13 @@ return [
             'ignore_exceptions' => false,
         ],
 
+        'rabbit' => [
+            'driver' => 'custom',
+            'via'    => \Maya\Messaging\Logging\RabbitMQLogChannel::class,
+            'level'  => env('LOG_RABBIT_LEVEL', 'warning'),
+            'name'   => 'maya-dms-rabbit',
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
