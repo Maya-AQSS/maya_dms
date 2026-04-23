@@ -14,16 +14,22 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
      * @param int $limit
      * @return array
      */
-    public function searchUsers(string $search, int $limit): array
+    public function searchUsers(string $search, int $limit, ?string $excludeUserId = null): array
     {
         $term = '%' . mb_strtolower($search) . '%';
 
-        return DB::table('users')
+        $query = DB::table('users')
             ->where(function ($query) use ($term) {
                 $query->whereRaw('LOWER(name) LIKE ?', [$term])
                     ->orWhereRaw('LOWER(email) LIKE ?', [$term])
                     ->orWhereRaw('LOWER(department) LIKE ?', [$term]);
-            })
+            });
+
+        if ($excludeUserId !== null && $excludeUserId !== '') {
+            $query->where('id', '!=', $excludeUserId);
+        }
+
+        return $query
             ->select('id', 'name', 'email', 'department')
             ->limit($limit)
             ->get()
@@ -44,9 +50,9 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
      * @param int $limit
      * @return array
      */
-    public function searchTemplateReviewerCandidates(string $search, int $limit): array
+    public function searchTemplateReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        return $this->searchReviewerCandidatesByPermission('templates.review', $search, $limit);
+        return $this->searchReviewerCandidatesByPermission('templates.review', $search, $limit, $excludeUserId);
     }
 
     /**
@@ -56,9 +62,9 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
      * @param int $limit
      * @return array
      */
-    public function searchDocumentReviewerCandidates(string $search, int $limit): array
+    public function searchDocumentReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        return $this->searchReviewerCandidatesByPermission('documents.review', $search, $limit);
+        return $this->searchReviewerCandidatesByPermission('documents.review', $search, $limit, $excludeUserId);
     }
 
     /**
@@ -70,11 +76,19 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
      * @return array
      * @return list<array{id: string, name: ?string, email: ?string, role: ?string}>
      */
-    private function searchReviewerCandidatesByPermission(string $permissionCode, string $search, int $limit): array
-    {
+    private function searchReviewerCandidatesByPermission(
+        string $permissionCode,
+        string $search,
+        int $limit,
+        ?string $excludeUserId = null,
+    ): array {
         $query = DB::table('users')
             ->join('user_permissions', 'users.id', '=', 'user_permissions.user_id')
             ->where('user_permissions.permission_code', $permissionCode);
+
+        if ($excludeUserId !== null && $excludeUserId !== '') {
+            $query->where('users.id', '!=', $excludeUserId);
+        }
 
         if (mb_strlen($search) >= 2) {
             $term = '%' . mb_strtolower($search) . '%';

@@ -18,9 +18,9 @@ class UserDirectoryService implements UserDirectoryServiceInterface
      * @param int $limit
      * @return array
      */
-    public function searchUsers(string $search, int $limit): array
+    public function searchUsers(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        return $this->repository->searchUsers($search, $limit);
+        return $this->repository->searchUsers($search, $limit, $excludeUserId);
     }
 
     /**
@@ -30,9 +30,9 @@ class UserDirectoryService implements UserDirectoryServiceInterface
      * @param int $limit
      * @return array
      */
-    public function searchTemplateReviewerCandidates(string $search, int $limit): array
+    public function searchTemplateReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        return $this->repository->searchTemplateReviewerCandidates($search, $limit);
+        return $this->repository->searchTemplateReviewerCandidates($search, $limit, $excludeUserId);
     }
 
     /**
@@ -42,8 +42,8 @@ class UserDirectoryService implements UserDirectoryServiceInterface
      * @param int $limit
      * @return array
      */
-    public function searchDocumentReviewerCandidates(string $search, int $limit): array
+    public function searchDocumentReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        return $this->repository->searchDocumentReviewerCandidates($search, $limit);
+        return $this->repository->searchDocumentReviewerCandidates($search, $limit, $excludeUserId);
     }
 }
