@@ -20,6 +20,7 @@ const BlockNoteEditorPanel = lazy(() => import('../../templates/components/Block
 
 type Step = 'properties' | 'blocks' | 'summary';
 type SummaryConfirmAction = 'save' | 'submit' | null;
+type BlockViewTab = 'content' | 'description';
 type ReviewModeView = 'sequential' | 'parallel';
 type ReviewerView = {
   id: string;
@@ -92,11 +93,14 @@ export function DocumentWizard({ documentId }: Props) {
 
   const [activeBlockKey, setActiveBlockKey] = useState<string | null>(null);
   const [summaryBlockKey, setSummaryBlockKey] = useState<string | null>(null);
+  const [summaryBlockTab, setSummaryBlockTab] = useState<BlockViewTab>('content');
   const [blockSaveError, setBlockSaveError] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
+  const [templateName, setTemplateName] = useState<string | null>(null);
+  const [blockViewTab, setBlockViewTab] = useState<BlockViewTab>('content');
 
   const isDraft = detail?.status === 'draft';
   const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
@@ -198,6 +202,10 @@ export function DocumentWizard({ documentId }: Props) {
   }, [step, sortedBlocks]);
 
   useEffect(() => {
+    setSummaryBlockTab('content');
+  }, [summaryBlockKey]);
+
+  useEffect(() => {
     if (step !== 'summary' || !detail) {
       return;
     }
@@ -260,8 +268,36 @@ export function DocumentWizard({ documentId }: Props) {
     };
   }, [step, detail]);
 
+  useEffect(() => {
+    if (!detail?.template_id) {
+      setTemplateName(null);
+      return;
+    }
+    let cancelled = false;
+    const loadTemplateName = async () => {
+      try {
+        const templateResp = await fetchTemplate(detail.template_id);
+        if (!cancelled) {
+          setTemplateName(templateResp.data.name || null);
+        }
+      } catch {
+        if (!cancelled) {
+          setTemplateName(null);
+        }
+      }
+    };
+    void loadTemplateName();
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.template_id]);
+
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
   const canClearOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
+
+  useEffect(() => {
+    setBlockViewTab('content');
+  }, [activeBlockKey]);
 
   const persistBlockContent = useCallback(
     async (block: DocumentDisplayBlock, content: unknown) => {
@@ -433,7 +469,7 @@ export function DocumentWizard({ documentId }: Props) {
   }
 
   return (
-    <div className="flex flex-col min-h-[calc(100dvh-7rem)] bg-ui-body dark:bg-ui-dark-bg">
+    <div className="flex flex-col h-[calc(100dvh-7rem)] overflow-hidden bg-ui-body dark:bg-ui-dark-bg">
       <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
         <div className="flex items-center gap-3 min-w-0">
           <button
@@ -496,29 +532,21 @@ export function DocumentWizard({ documentId }: Props) {
       {renderStepper()}
 
       {step === 'properties' && (
-        <div className="flex-1 overflow-y-auto px-6 py-5 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
-          <p className="text-xs text-text-muted text-center">
-            Define los datos base del documento antes de editar los bloques.
-          </p>
-
+        <div className="flex-1 overflow-y-auto px-4 py-4 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
           {formError && (
-            <div className="max-w-5xl mx-auto rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
+            <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
               {formError}
             </div>
           )}
 
-          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 max-w-5xl mx-auto">
-            <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-                Propiedades editables
-              </p>
-
+          <div className="space-y-5 animate-in fade-in slide-in-from-top-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label
                   htmlFor="doc-title-input"
                   className="block text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1"
                 >
-                  Título *
+                  Título <span className="text-danger-dark dark:text-danger">*</span>
                 </label>
                 <TextInput
                   id="doc-title-input"
@@ -546,27 +574,23 @@ export function DocumentWizard({ documentId }: Props) {
                   onChange={(e) => setDeliveryDeadline(e.target.value)}
                   disabled={!isDraft}
                 />
-                <p className="mt-1 text-[10px] text-text-muted">
-                  Esta fecha guía la planificación del documento y se guarda en el propio borrador.
-                </p>
               </div>
             </div>
 
-            <div className="px-5 py-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
-                Datos del documento
-              </p>
-              <dl className="space-y-0">
-                <DocSummaryRow
-                  label="Estado"
-                  value={DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status}
-                />
-                <DocSummaryRow
-                  label="Fecha de entrega"
-                  value={deliveryDeadline ? new Date(`${deliveryDeadline}T00:00:00`).toLocaleDateString() : '—'}
-                />
-                <DocSummaryRow label="Plantilla" value={detail.template_id} />
-                <DocSummaryRow label="Versión de plantilla" value={detail.template_version_id ?? '—'} />
+            <div className="pt-4 border-t border-ui-border dark:border-ui-dark-border">
+              <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <DocSummaryRow label="Plantilla" value={templateName ?? detail.template_id} />
+                </div>
+                <div>
+                  <DocSummaryRow label="Versión de plantilla" value={detail.template_version_id ?? '—'} />
+                </div>
+                <div>
+                  <DocSummaryRow
+                    label="Estado"
+                    value={DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status}
+                  />
+                </div>
               </dl>
             </div>
           </div>
@@ -574,7 +598,7 @@ export function DocumentWizard({ documentId }: Props) {
       )}
 
       {step === 'blocks' && (
-        <div className="flex-1 flex min-h-0 min-h-[420px] overflow-hidden">
+        <div className="flex-1 min-h-0 flex overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
           <aside className="w-[280px] shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-y-auto p-3 space-y-1">
             {sortedBlocks.length === 0 ? (
               <p className="text-xs text-text-muted">No hay bloques.</p>
@@ -624,34 +648,72 @@ export function DocumentWizard({ documentId }: Props) {
                       </Button>
                     )}
                   </div>
+                  <div className="flex gap-0 -mb-px mt-2">
+                    {([
+                      { id: 'content', label: 'Contenido' },
+                      { id: 'description', label: 'Descripción' },
+                    ] as const).map((tab) => {
+                      const isActive = blockViewTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          onClick={() => setBlockViewTab(tab.id)}
+                          className={[
+                            'px-3 py-1.5 text-xs border-b-2 transition-all',
+                            isActive
+                              ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
+                              : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
+                          ].join(' ')}
+                          disabled={isActive}
+                        >
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                   {blockSaveError && (
                     <p className="text-xs text-danger-dark dark:text-danger mt-1">{blockSaveError}</p>
                   )}
                 </div>
                 <div className="flex-1 min-h-0 flex flex-col">
-                  {canEditBlocks ? (
-                    <Suspense
-                      fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
-                      key={activeBlockKey ?? 'none'}
-                    >
-                      <BlockNoteEditorPanel
-                        initialContent={blockEditorContent(activeBlock)}
-                        editable
-                        isDark={isDark}
-                        onChange={(content) => void persistBlockContent(activeBlock, content)}
-                      />
-                    </Suspense>
+                  {blockViewTab === 'content' ? (
+                    canEditBlocks ? (
+                      <Suspense
+                        fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
+                        key={activeBlockKey ?? 'none'}
+                      >
+                        <BlockNoteEditorPanel
+                          initialContent={blockEditorContent(activeBlock)}
+                          editable
+                          isDark={isDark}
+                          onChange={(content) => void persistBlockContent(activeBlock, content)}
+                        />
+                      </Suspense>
+                    ) : (
+                      <div className="flex-1 overflow-y-auto p-4">
+                        {(() => {
+                          const nodes = blockEditorContent(activeBlock);
+                          const hasNodes = nodes.length > 0;
+                          return hasNodes ? (
+                            <BlockContentHtml content={nodes} />
+                          ) : (
+                            <p className="text-sm text-text-muted italic">Sin contenido en este bloque.</p>
+                          );
+                        })()}
+                      </div>
+                    )
                   ) : (
                     <div className="flex-1 overflow-y-auto p-4">
-                      {(() => {
-                        const nodes = blockEditorContent(activeBlock);
-                        const hasNodes = nodes.length > 0;
-                        return hasNodes ? (
-                          <BlockContentHtml content={nodes} />
-                        ) : (
-                          <p className="text-sm text-text-muted italic">Sin contenido en este bloque.</p>
-                        );
-                      })()}
+                      {activeBlock.description ? (
+                        <p className="text-sm text-text-secondary dark:text-text-dark-secondary whitespace-pre-wrap">
+                          {activeBlock.description}
+                        </p>
+                      ) : (
+                        <p className="text-sm text-text-muted italic">
+                          Este bloque no tiene descripción/instrucciones.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -662,13 +724,13 @@ export function DocumentWizard({ documentId }: Props) {
       )}
 
       {step === 'summary' && detail && (
-        <div className="flex-1 overflow-y-auto px-6 py-5 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
+        <div className="flex-1 overflow-y-auto px-4 py-4 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
           <p className="text-xs text-text-muted text-center">
-            Revisa el título y el contenido de cada bloque. Puedes volver atrás con el stepper. Al salir, el documento
+            Cambia todos los datos antes de publicar. Puedes volver atrás con el stepper. Al salir, el documento
             permanece en su estado actual.
           </p>
 
-          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 max-w-5xl mx-auto">
+          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 w-full">
             <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Propiedades</p>
               <dl className="space-y-0">
@@ -678,21 +740,36 @@ export function DocumentWizard({ documentId }: Props) {
                   value={DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status}
                 />
                 <DocSummaryRow label="Versión" value={`v${detail.current_version}`} />
-                {detail.study_type_id ? (
-                  <DocSummaryRow label="Tipo de estudio" value={detail.study_type_id} />
-                ) : null}
-                {detail.study_id ? <DocSummaryRow label="Estudio" value={detail.study_id} /> : null}
-                {detail.module_id ? <DocSummaryRow label="Módulo" value={detail.module_id} /> : null}
               </dl>
             </div>
             <div className="px-5 py-4">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Documento</p>
               <dl className="space-y-0">
-                <DocSummaryRow label="Bloques" value={String(sortedBlocks.length)} />
-                <DocSummaryRow
-                  label="Bloques con contenido"
-                  value={String(sortedBlocks.filter((b) => b.is_filled).length)}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-2 border-b border-ui-border dark:border-ui-dark-border/30">
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+                      Tipo de estudio
+                    </dt>
+                    <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
+                      {detail.study_type_id ?? '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+                      Estudio
+                    </dt>
+                    <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
+                      {detail.study_id ?? '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+                      Módulo
+                    </dt>
+                    <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
+                      {detail.module_id ?? '—'}
+                    </dd>
+                  </div>
+                </div>
                 <DocSummaryRow
                   label="Validadores del documento"
                   value={
@@ -716,7 +793,7 @@ export function DocumentWizard({ documentId }: Props) {
             </div>
           </div>
 
-          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1 max-w-5xl mx-auto">
+          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1 w-full">
             <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                 Contenido — {sortedBlocks.length} bloque{sortedBlocks.length !== 1 ? 's' : ''}
@@ -729,7 +806,7 @@ export function DocumentWizard({ documentId }: Props) {
                   navigate(`/documents/${documentId}`, { state: { returnToStep: 'summary' } })
                 }
               >
-                Previsualizar
+                PREVISUALIZAR
               </Button>
             </div>
             {sortedBlocks.length === 0 ? (
@@ -775,18 +852,56 @@ export function DocumentWizard({ documentId }: Props) {
                     })}
                   </div>
                 </div>
-                <div className="flex flex-col min-w-0 p-4 overflow-y-auto max-h-80 preview-content">
-                  {selectedSummaryBlock ? (
-                    (() => {
-                      const nodes = blockEditorContent(selectedSummaryBlock);
-                      const hasNodes = nodes.length > 0;
-                      return hasNodes ? (
-                        <BlockContentHtml content={nodes} />
+                <div className="flex flex-col min-w-0 max-h-80 preview-content">
+                  <div className="shrink-0 px-4 pt-3 border-b border-ui-border dark:border-ui-dark-border">
+                    <div className="flex gap-0 -mb-px">
+                      {([
+                        { id: 'content', label: 'Contenido' },
+                        { id: 'description', label: 'Descripción' },
+                      ] as const).map((tab) => {
+                        const isActive = summaryBlockTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setSummaryBlockTab(tab.id)}
+                            className={[
+                              'px-3 py-1.5 text-xs border-b-2 transition-all',
+                              isActive
+                                ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
+                                : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
+                            ].join(' ')}
+                            disabled={isActive}
+                          >
+                            {tab.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto p-4">
+                    {selectedSummaryBlock ? (
+                      summaryBlockTab === 'content' ? (
+                        (() => {
+                          const nodes = blockEditorContent(selectedSummaryBlock);
+                          const hasNodes = nodes.length > 0;
+                          return hasNodes ? (
+                            <BlockContentHtml content={nodes} />
+                          ) : (
+                            <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>
+                          );
+                        })()
+                      ) : selectedSummaryBlock.description ? (
+                        <p className="text-sm text-text-secondary dark:text-text-dark-secondary whitespace-pre-wrap">
+                          {selectedSummaryBlock.description}
+                        </p>
                       ) : (
-                        <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>
-                      );
-                    })()
-                  ) : null}
+                        <span className="text-xs text-text-muted italic">
+                          Este bloque no tiene descripción.
+                        </span>
+                      )
+                    ) : null}
+                  </div>
                 </div>
               </div>
             )}

@@ -33,6 +33,7 @@ export type DocumentDisplayBlock = {
   template_block_id: string;
   type: string;
   title: string | null;
+  description?: string | null;
   default_content: unknown | null;
   block_state: BlockState;
   mandatory: boolean;
