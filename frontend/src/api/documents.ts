@@ -85,7 +85,10 @@ type DocumentMutationApiResponse = { data: Document };
  * @param payload - Datos para actualizar el documento.
  * @returns Documento actualizado.
  */
-export async function updateDocument(documentId: string, payload: { title: string }): Promise<Document> {
+export async function updateDocument(documentId: string, payload: {
+  title: string;
+  delivery_deadline?: string | null;
+}): Promise<Document> {
   const body = await apiFetchJson<DocumentMutationApiResponse>(
     `documents/${encodeURIComponent(documentId)}`,
     { method: 'PATCH', body: payload },

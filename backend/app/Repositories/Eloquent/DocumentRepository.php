@@ -12,6 +12,7 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use JsonException;
 
 class DocumentRepository implements DocumentRepositoryInterface
 {
@@ -40,7 +41,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                     'id' => (string) Str::uuid(),
                     'document_id' => $document->getKey(),
                     'template_block_id' => $row['template_block_id'],
-                    'content' => $row['content'],
+                    'content' => $this->encodeDocumentBlockContentForInsert($row['content']),
                     'is_filled' => false,
                     'sort_order' => $row['sort_order'],
                     'created_at' => $now,
@@ -338,5 +339,22 @@ class DocumentRepository implements DocumentRepositoryInterface
             'edited_by' => $editedBy,
             'created_at' => now(),
         ]);
+    }
+
+    /**
+     * Serializa contenido para columnas JSON en insert masivo (insert() no aplica casts de Eloquent).
+     *
+     * @throws JsonException
+     */
+    private function encodeDocumentBlockContentForInsert(mixed $content): ?string
+    {
+        if ($content === null) {
+            return null;
+        }
+        if (is_string($content)) {
+            return $content;
+        }
+
+        return json_encode($content, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 }

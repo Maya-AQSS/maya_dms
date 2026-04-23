@@ -1,20 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { fetchDocument } from '../api/documents';
+import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { Button } from '../ui';
 
 function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
-  const c = block.content;
-  if (Array.isArray(c) && c.length > 0) {
-    return c;
+  const fromContent = normalizeBlockContentForEditor(block.content);
+  if (fromContent.length > 0) {
+    return fromContent;
   }
-  const d = block.default_content;
-  if (Array.isArray(d) && d.length > 0) {
-    return d;
-  }
-  return [];
+  return normalizeBlockContentForEditor(block.default_content);
 }
 
 /**
@@ -98,9 +95,6 @@ export function DocumentPreviewPage() {
         )}
         {!loading && !error && detail && (
           <>
-            <h1 className="text-3xl font-bold text-text-primary dark:text-text-dark-primary pb-5 mb-8 border-b border-ui-border dark:border-ui-dark-border">
-              {detail.title}
-            </h1>
             {detail.blocks.length === 0 ? (
               <p className="text-sm text-text-muted dark:text-text-dark-muted italic">Este documento no tiene bloques.</p>
             ) : (
@@ -111,11 +105,6 @@ export function DocumentPreviewPage() {
 
                   return (
                     <section key={block.template_block_id}>
-                      {block.title && (
-                        <h2 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary mb-2">
-                          {block.title}
-                        </h2>
-                      )}
                       {hasContent ? (
                         <BlockContentHtml content={nodes as unknown[]} />
                       ) : (
