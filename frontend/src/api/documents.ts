@@ -140,15 +140,15 @@ export async function approveDocumentReview(
   return body.data;
 }
 
-/** POST /api/v1/documents/{id}/reviews/{review}/reject */
+/** POST /api/v1/documents/{id}/reviews/{review}/reject — `rejection_reason` obligatorio (mín. 5 caracteres). */
 export async function rejectDocumentReview(
   documentId: string,
   reviewId: string,
-  rejectionReason?: string | null,
+  rejectionReason: string,
 ): Promise<Document> {
   const body = await apiFetchJson<DocumentMutationApiResponse>(
     `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/reject`,
-    { method: 'POST', body: { rejection_reason: rejectionReason ?? null } },
+    { method: 'POST', body: { rejection_reason: rejectionReason } },
   );
   return body.data;
 }

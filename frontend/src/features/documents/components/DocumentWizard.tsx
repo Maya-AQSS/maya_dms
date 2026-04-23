@@ -47,6 +47,9 @@ const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   published: 'Publicado',
 };
 
+/** Alineado con `RejectDocumentReviewRequest` (backend): motivo obligatorio no trivial. */
+const DOCUMENT_REJECT_REASON_MIN_LEN = 5;
+
 function DocSummaryRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col py-1.5 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
@@ -580,11 +583,18 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
       setValidationModalError('No hay una revisión pendiente que puedas tramitar.');
       return;
     }
+    const reason = rejectReason.trim();
+    if (reason.length < DOCUMENT_REJECT_REASON_MIN_LEN) {
+      setValidationModalError(
+        `Indica un motivo de rechazo de al menos ${DOCUMENT_REJECT_REASON_MIN_LEN} caracteres (obligatorio).`,
+      );
+      return;
+    }
     setValidationModalError(null);
     setSummaryError(null);
     setValidationActionLoading(true);
     try {
-      const updated = await rejectDocumentReview(documentId, actionableReviewId, rejectReason.trim() || null);
+      const updated = await rejectDocumentReview(documentId, actionableReviewId, reason);
       setValidateConfirm(null);
       setRejectReason('');
       navigate('/dashboard', {
@@ -1232,14 +1242,15 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
         description={
           <div className="space-y-2 text-left">
             <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-              El documento volverá a borrador para que el titular pueda corregirlo.
+              El documento volverá a borrador para que el titular pueda corregirlo. El resto de validadores dejarán
+              de tener esta revisión asignada.
             </p>
             <TextArea
               fieldSize="comfortable"
               rows={3}
               value={rejectReason}
               onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setRejectReason(e.target.value)}
-              placeholder="Motivo del rechazo (opcional)"
+              placeholder={`Motivo del rechazo (obligatorio, mín. ${DOCUMENT_REJECT_REASON_MIN_LEN} caracteres)`}
             />
           </div>
         }
