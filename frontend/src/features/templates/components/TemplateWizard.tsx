@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
@@ -13,7 +13,7 @@ import {
 import { ApiHttpError } from '../../../api/http';
 import { Button } from '../../../ui';
 import { WizardStep1Properties } from './WizardStep1Properties';
-import { WizardStep2Blocks } from './WizardStep2Blocks';
+import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
 import { WizardStep4Summary } from './WizardStep4Summary';
 
@@ -59,6 +59,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // UI state
   const [saving, setSaving] = useState(false);
+  const blocksRef = useRef<WizardStep2BlocksHandle>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
 
@@ -197,12 +198,20 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     }
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (step === 'properties') {
       void saveProperties();
     } else if (step === 'blocks') {
-      setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
-      setStep('users');
+      setSaving(true);
+      try {
+        await blocksRef.current?.saveIfPending();
+        setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
+        setStep('users');
+      } catch {
+        // block save failed; error already shown in the panel
+      } finally {
+        setSaving(false);
+      }
     } else if (step === 'users') {
       void saveUsers();
     } else if (step === 'summary') {
@@ -315,7 +324,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               variant="primary"
               size="sm"
               loading={saving}
-              onClick={handleContinue}
+              onClick={() => void handleContinue()}
               className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
               Guardar y continuar →
@@ -424,6 +433,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         )}
         {step === 'blocks' && template && (
           <WizardStep2Blocks
+            ref={blocksRef}
             template={template}
           />
         )}

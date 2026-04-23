@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, lazy, Suspense } from 'react';
+import { useEffect, useState, useRef, lazy, Suspense, forwardRef, useImperativeHandle } from 'react';
 import { useDarkMode } from '../../../hooks/useDarkMode';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel'));
@@ -166,7 +166,12 @@ type Props = {
   template: Template;
 };
 
-export function WizardStep2Blocks({ template }: Props) {
+export type WizardStep2BlocksHandle = {
+  saveIfPending: () => Promise<void>;
+};
+
+export const WizardStep2Blocks = forwardRef<WizardStep2BlocksHandle, Props>(
+function WizardStep2Blocks({ template }, ref) {
   const { isDark } = useDarkMode();
   const { blocks, createBlock, updateBlock, deleteBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
@@ -425,8 +430,8 @@ export function WizardStep2Blocks({ template }: Props) {
     setActiveSingleId(block.id);
   };
 
-  const handleAddBlock = async () => {
-    if (!formName.trim()) return;
+  const handleAddBlock = async (): Promise<boolean> => {
+    if (!formName.trim()) return false;
     setBusy(true);
     setActionError(null);
     try {
@@ -442,12 +447,23 @@ export function WizardStep2Blocks({ template }: Props) {
       });
       resetForm();
       openSummary(newBlock.id);
+      return true;
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Error al crear el bloque');
+      return false;
     } finally {
       setBusy(false);
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    saveIfPending: async () => {
+      if (panelMode === 'create' && formName.trim()) {
+        const ok = await handleAddBlock();
+        if (!ok) throw new Error('block-save-failed');
+      }
+    },
+  }));
 
 
   const handleDelete = async () => {
@@ -1013,4 +1029,4 @@ export function WizardStep2Blocks({ template }: Props) {
       )}
     </div>
   );
-}
+});
