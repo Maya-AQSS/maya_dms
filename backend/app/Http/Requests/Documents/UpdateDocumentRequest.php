@@ -18,6 +18,7 @@ class UpdateDocumentRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
+            'delivery_deadline' => ['nullable', 'date'],
         ];
     }
 }

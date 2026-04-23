@@ -105,6 +105,7 @@ class DocumentService implements DocumentServiceInterface
 
         $document->update([
             'title' => $attributes['title'],
+            'delivery_deadline' => $attributes['delivery_deadline'] ?? null,
         ]);
 
         return $document->fresh();

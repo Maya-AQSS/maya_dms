@@ -58,6 +58,7 @@ class Document extends Model
         'study_type_id',
         'study_id',
         'module_id',
+        'delivery_deadline',
         'created_by',
         'owner_id',
         'status',
@@ -69,6 +70,7 @@ class Document extends Model
     protected function casts(): array
     {
         return [
+            'delivery_deadline' => 'datetime',
             'submitted_at' => 'datetime',
             'published_at' => 'datetime',
             'current_version' => 'integer',
