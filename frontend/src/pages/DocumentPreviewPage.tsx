@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { fetchDocument } from '../api/documents';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
@@ -21,6 +21,7 @@ function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
 export function DocumentPreviewPage() {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,16 +61,23 @@ export function DocumentPreviewPage() {
   }, [documentId]);
 
   const canEdit = detail?.status === 'draft';
+  const cameFromSummary = (location.state as { returnToStep?: string } | null)?.returnToStep === 'summary';
 
   return (
     <div className="min-h-full overflow-y-auto bg-[#ddd9d3] dark:bg-ui-dark-bg">
       <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-4 px-6 h-[52px]">
         <button
           type="button"
-          onClick={() => navigate('/documents')}
+          onClick={() => {
+            if (cameFromSummary && documentId) {
+              navigate(`/documents/${documentId}/editor`, { state: { step: 'summary' } });
+              return;
+            }
+            navigate('/documents');
+          }}
           className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary dark:text-text-dark-secondary bg-ui-body dark:bg-ui-dark-bg hover:bg-ui-border dark:hover:bg-ui-dark-border transition-colors cursor-pointer"
         >
-          ← Volver al listado
+          {cameFromSummary ? '← Volver al resumen' : '← Volver al listado'}
         </button>
         <span className="flex-1 text-xs font-semibold text-text-muted dark:text-text-dark-muted truncate">
           {detail?.title ?? 'Programación'} — Previsualización

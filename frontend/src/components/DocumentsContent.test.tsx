@@ -279,6 +279,7 @@ describe('DocumentsContent creation flow', () => {
     expect(
       screen.getByText('Elige una plantilla para verla en previsualización'),
     ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', true);
 
     fireEvent.click(screen.getByRole('button', { name: /Plantilla B/i }));
 
@@ -341,7 +342,7 @@ describe('DocumentsContent creation flow', () => {
 
     await waitFor(() => expect(mockFetchTemplateVersion).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole('button', { name: '← Elegir otra plantilla' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir otra plantilla' }));
 
     await waitFor(() => {
       expect(screen.getByText('Elige una plantilla para verla en previsualización')).toBeTruthy();

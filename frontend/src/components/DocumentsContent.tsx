@@ -74,6 +74,7 @@ export function DocumentsContent() {
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
   const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
   const selectedModuleId = activeFilters.moduleId;
+  const isSelectingTemplate = showSelector && creationMode === 'select';
 
   const newProgrammingDisabledReason = useMemo(() => {
     if (profileLoading || profile === null) {
@@ -234,9 +235,13 @@ export function DocumentsContent() {
               type="button"
               size="sm"
               loading={creatingDocument}
-              disabled={newProgrammingDisabledReason !== null}
+              disabled={newProgrammingDisabledReason !== null || isSelectingTemplate}
               onClick={() => void handleNewProgrammingClick()}
-              title={newProgrammingDisabledReason ?? undefined}
+              title={
+                isSelectingTemplate
+                  ? 'Ya estás eligiendo una plantilla.'
+                  : newProgrammingDisabledReason ?? undefined
+              }
             >
               Nueva Programación
             </Button>
@@ -294,17 +299,6 @@ export function DocumentsContent() {
               </>
             ) : (
               <>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={backToTemplateList}
-                    disabled={creatingDocument || previewLoading}
-                  >
-                    ← Elegir otra plantilla
-                  </Button>
-                </div>
                 <div className="rounded-md border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-4 max-h-[min(70vh,520px)] overflow-y-auto">
                   <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary mb-1">
                     {previewOption.name}

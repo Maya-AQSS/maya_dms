@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   fetchDocument,
   submitDocumentForReview,
@@ -8,17 +8,24 @@ import {
 } from '../../../api/documents';
 import { ApiHttpError } from '../../../api/http';
 import { fetchTemplate } from '../../../api/templates';
-import { searchDocumentReviewerCandidates } from '../../../api/users';
+import { searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
 import { useDarkMode } from '../../../hooks/useDarkMode';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
-import { Button, TextInput } from '../../../ui';
+import { Button, ConfirmDialog, TextInput } from '../../../ui';
 
 const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
 
 type Step = 'properties' | 'blocks' | 'summary';
+type SummaryConfirmAction = 'save' | 'submit' | null;
+type ReviewModeView = 'sequential' | 'parallel';
+type ReviewerView = {
+  id: string;
+  name: string;
+  resolved: boolean;
+};
 
 const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   draft: 'Borrador',
@@ -67,6 +74,7 @@ type Props = {
  */
 export function DocumentWizard({ documentId }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDark } = useDarkMode();
 
   const [step, setStep] = useState<Step>('properties');
@@ -86,9 +94,12 @@ export function DocumentWizard({ documentId }: Props) {
   const [summaryBlockKey, setSummaryBlockKey] = useState<string | null>(null);
   const [blockSaveError, setBlockSaveError] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [documentReviewerNames, setDocumentReviewerNames] = useState<string[]>([]);
+  const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
+  const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
+  const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
 
   const isDraft = detail?.status === 'draft';
+  const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -148,6 +159,12 @@ export function DocumentWizard({ documentId }: Props) {
     setStep('blocks');
   }, [detail?.id, detail?.status]);
 
+  useEffect(() => {
+    if (!detail || !returnToSummary) return;
+    setCompletedSteps(['properties', 'blocks']);
+    setStep('summary');
+  }, [detail, returnToSummary]);
+
   const sortedBlocks = useMemo(
     () => [...(detail?.blocks ?? [])].sort((a, b) => a.sort_order - b.sort_order),
     [detail?.blocks],
@@ -193,19 +210,47 @@ export function DocumentWizard({ documentId }: Props) {
           searchDocumentReviewerCandidates(),
         ]);
         if (cancelled) return;
+        setDocumentReviewMode(templateResp.data.review_mode ?? 'parallel');
         const ids = templateResp.data.document_reviewers ?? [];
         if (ids.length === 0) {
-          setDocumentReviewerNames([]);
+          setDocumentReviewers([]);
           return;
         }
         const byId = new Map(usersResp.data.map((u) => [u.id, u.name] as const));
-        setDocumentReviewerNames(
-          ids.map((id) => byId.get(id) ?? id),
+        const initial = ids.map((id) => ({
+          id,
+          name: byId.get(id) ?? '',
+          resolved: byId.has(id),
+        }));
+        const missing = initial.filter((r) => !r.resolved);
+        if (missing.length === 0) {
+          setDocumentReviewers(initial);
+          return;
+        }
+        const lookedUp = await Promise.all(
+          missing.map(async (r) => {
+            try {
+              const resp = await searchUsers(r.id);
+              const exact = resp.data.find((u) => u.id === r.id);
+              if (exact?.name) {
+                return { ...r, name: exact.name, resolved: true };
+              }
+            } catch {
+              // noop: fallback below
+            }
+            return {
+              ...r,
+              name: `Usuario no encontrado (${r.id.slice(0, 8)}...)`,
+              resolved: false,
+            };
+          }),
         );
+        const lookedUpById = new Map(lookedUp.map((r) => [r.id, r] as const));
+        setDocumentReviewers(initial.map((r) => lookedUpById.get(r.id) ?? r));
       } catch (e) {
         if (!cancelled) {
           setSummaryError(e instanceof Error ? e.message : 'No se pudieron cargar los validadores de documento.');
-          setDocumentReviewerNames([]);
+          setDocumentReviewers([]);
         }
       }
     };
@@ -297,6 +342,18 @@ export function DocumentWizard({ documentId }: Props) {
       setSummaryError(e instanceof Error ? e.message : 'No se pudo enviar el documento a validar.');
     } finally {
       setSubmittingForReview(false);
+    }
+  };
+
+  const handleConfirmSummaryAction = async () => {
+    if (summaryConfirmAction === 'save') {
+      setSummaryConfirmAction(null);
+      navigate('/documents');
+      return;
+    }
+    if (summaryConfirmAction === 'submit') {
+      await handleSubmitForReview();
+      setSummaryConfirmAction(null);
     }
   };
 
@@ -395,10 +452,12 @@ export function DocumentWizard({ documentId }: Props) {
         <div className="flex items-center gap-2 shrink-0">
           {step === 'summary' && (
             <>
-              <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/documents/${documentId}`)}>
-                Previsualizar
-              </Button>
-              <Button type="button" variant="secondary" size="sm" onClick={() => navigate('/documents')}>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setSummaryConfirmAction('save')}
+              >
                 Guardar sin enviar
               </Button>
               <Button
@@ -407,7 +466,7 @@ export function DocumentWizard({ documentId }: Props) {
                 size="sm"
                 loading={submittingForReview}
                 disabled={!isDraft}
-                onClick={() => void handleSubmitForReview()}
+                onClick={() => setSummaryConfirmAction('submit')}
               >
                 Enviar a validar
               </Button>
@@ -635,10 +694,18 @@ export function DocumentWizard({ documentId }: Props) {
                   value={String(sortedBlocks.filter((b) => b.is_filled).length)}
                 />
                 <DocSummaryRow
-                  label="Validadores del documento (plantilla)"
+                  label="Validadores del documento"
                   value={
-                    documentReviewerNames.length > 0
-                      ? documentReviewerNames.join(', ')
+                    documentReviewers.length > 0
+                      ? (
+                          <ul className="mt-1 space-y-1">
+                            {documentReviewers.map((reviewer) => (
+                              <li key={reviewer.id}>
+                                • {reviewer.name}
+                              </li>
+                            ))}
+                          </ul>
+                        )
                       : 'Sin validadores asignados en plantilla'
                   }
                 />
@@ -646,10 +713,6 @@ export function DocumentWizard({ documentId }: Props) {
               {summaryError && (
                 <p className="mt-2 text-xs text-danger-dark dark:text-danger">{summaryError}</p>
               )}
-              <p className="mt-4 text-[10px] text-text-muted leading-relaxed">
-                La revisión por usuarios o validadores se configura desde la plantilla normativa; este asistente solo
-                edita el borrador del documento.
-              </p>
             </div>
           </div>
 
@@ -658,6 +721,16 @@ export function DocumentWizard({ documentId }: Props) {
               <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
                 Contenido — {sortedBlocks.length} bloque{sortedBlocks.length !== 1 ? 's' : ''}
               </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() =>
+                  navigate(`/documents/${documentId}`, { state: { returnToStep: 'summary' } })
+                }
+              >
+                Previsualizar
+              </Button>
             </div>
             {sortedBlocks.length === 0 ? (
               <div className="p-5">
@@ -666,9 +739,6 @@ export function DocumentWizard({ documentId }: Props) {
             ) : (
               <div className="grid" style={{ gridTemplateColumns: '200px 1fr', minHeight: '200px' }}>
                 <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto max-h-80">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
-                    Bloques ({sortedBlocks.length})
-                  </p>
                   <div className="space-y-1">
                     {sortedBlocks.map((block, i) => {
                       const key = block.document_block_id ?? block.template_block_id;
@@ -724,6 +794,49 @@ export function DocumentWizard({ documentId }: Props) {
 
         </div>
       )}
+      <ConfirmDialog
+        open={summaryConfirmAction !== null}
+        title={summaryConfirmAction === 'submit' ? 'Confirmar envío a validar' : 'Confirmar guardado'}
+        description={
+          summaryConfirmAction === 'submit'
+            ? (
+                <div className="space-y-2">
+                  <p>Se enviará una notificación a los validadores del documento.</p>
+                  {documentReviewers.length > 0 ? (
+                    <>
+                      <p>
+                        Tipo de revisión:{' '}
+                        <strong>{documentReviewMode === 'sequential' ? 'Ordenada' : 'Libre'}</strong>
+                      </p>
+                      {documentReviewMode === 'sequential' ? (
+                        <ol className="list-decimal pl-4 space-y-1">
+                          {documentReviewers.map((reviewer) => (
+                            <li key={reviewer.id}>{reviewer.name}</li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <ul className="space-y-1">
+                          {documentReviewers.map((reviewer) => (
+                            <li key={reviewer.id}>• {reviewer.name}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
+                  ) : (
+                    <p>No hay validadores configurados en la plantilla.</p>
+                  )}
+                  <p>Después no se podrá seguir editando como borrador.</p>
+                </div>
+              )
+            : '¿Quieres guardar y salir sin enviar? El documento permanecerá en estado borrador.'
+        }
+        confirmLabel={summaryConfirmAction === 'submit' ? 'Sí, enviar a validar' : 'Sí, guardar y salir'}
+        cancelLabel="Cancelar"
+        variant={summaryConfirmAction === 'submit' ? 'primary' : 'teal'}
+        loading={summaryConfirmAction === 'submit' && submittingForReview}
+        onCancel={() => setSummaryConfirmAction(null)}
+        onConfirm={() => void handleConfirmSummaryAction()}
+      />
     </div>
   );
 }
