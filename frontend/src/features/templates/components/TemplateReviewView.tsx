@@ -46,14 +46,14 @@ function InfoBlockDescription({ description }: { description: unknown }) {
 
   if (parsed) {
     return (
-      <div className="flex-1 overflow-y-auto p-5 custom-scrollbar prose prose-sm dark:prose-invert max-w-none">
+      <div className="prose prose-sm dark:prose-invert max-w-none">
         <BlockContentHtml content={parsed as any} />
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
+    <div className="">
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
         {String(description) as any}
       </p>
@@ -296,13 +296,6 @@ export function TemplateReviewView({ template }: Props) {
                           : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card'
                       ].join(' ')}
                     >
-                      {/* Indicador de comentarios */}
-                      {hasComments && (
-                        <div className="absolute -right-10 top-0 w-6 h-6 bg-odoo-purple text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm">
-                          {comments.filter(c => c.template_block_id === block.id).length}
-                        </div>
-                      )}
-
                       {/* Badge del bloque */}
                       <div className={[
                         'absolute -left-12 top-0 text-[10px] font-black uppercase tracking-tighter transition-opacity duration-200',
@@ -311,28 +304,63 @@ export function TemplateReviewView({ template }: Props) {
                          #{(block.sort_order ?? '?') as any}
                       </div>
 
-                      {/* Título del bloque (opcional) + botón de descripción */}
-                      {(block.title || block.description) && (
-                        <div className="flex items-center gap-2 mb-3">
-                          <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                            {(block.title ? String(block.title) : '') as any}
-                          </h3>
-                          {block.description && (
-                            <div
-                              role="button"
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                setSelectedBlockId(block.id);
-                                setSidebarMode(prev => (prev === 'info' && selectedBlockId === block.id) ? 'comments' : 'info'); 
-                              }}
-                              className="shrink-0 w-[18px] h-[18px] rounded-full border border-text-muted flex items-center justify-center text-[10px] font-black text-text-muted opacity-50 hover:opacity-100 hover:text-odoo-purple hover:border-odoo-purple transition-all cursor-pointer"
-                              aria-label="Ver descripción del bloque"
-                            >
-                              i
-                            </div>
-                          )}
+                      {/* Cabecera del bloque: Título y botones de acción */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
+                          {(block.title ? String(block.title) : 'Bloque sin título') as any}
+                        </h3>
+                        
+                        <div className="flex items-center gap-2">
+                          {/* Botón de Descripción (i) */}
+                          <button
+                            type="button"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setSelectedBlockId(block.id);
+                              setSidebarMode('info'); 
+                            }}
+                            className={[
+                              "shrink-0 w-6 h-6 rounded-full border flex items-center justify-center transition-all cursor-pointer",
+                              sidebarMode === 'info' && isSelected
+                                ? "border-odoo-purple text-odoo-purple bg-odoo-purple/10"
+                                : "border-text-muted text-text-muted opacity-40 hover:opacity-100 hover:text-odoo-purple hover:border-odoo-purple hover:bg-odoo-purple/5"
+                            ].join(' ')}
+                            title="Ver descripción del bloque"
+                            aria-label="Ver descripción del bloque"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                          </button>
+
+                          {/* Botón de Mensaje (Comentarios) */}
+                          <button
+                            type="button"
+                            onClick={(e) => { 
+                              e.stopPropagation(); 
+                              setSelectedBlockId(block.id);
+                              setSidebarMode('comments'); 
+                            }}
+                            className={[
+                              "shrink-0 w-6 h-6 rounded-full border flex items-center justify-center transition-all cursor-pointer relative",
+                              sidebarMode === 'comments' && isSelected
+                                ? "border-odoo-purple text-odoo-purple bg-odoo-purple/10"
+                                : "border-text-muted text-text-muted opacity-40 hover:opacity-100 hover:text-odoo-purple hover:border-odoo-purple hover:bg-odoo-purple/5"
+                            ].join(' ')}
+                            title="Ver comentarios del bloque"
+                            aria-label="Ver comentarios del bloque"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            {hasComments && (
+                              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-odoo-purple text-white rounded-full flex items-center justify-center text-[9px] font-bold shadow-sm">
+                                {comments.filter(c => c.template_block_id === block.id).length}
+                              </span>
+                            )}
+                          </button>
                         </div>
-                      )}
+                      </div>
 
                       {/* Contenido renderizado */}
                       <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -354,131 +382,147 @@ export function TemplateReviewView({ template }: Props) {
           </article>
         </div>
 
-        {/* Sidebar Unificada (Comentarios o Info) */}
+        {/* Panel derecho Unificado (Comentarios o Info) */}
         <aside 
           className={[
-            'w-[380px] bg-white dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border flex flex-col transition-all duration-400 ease-out z-30',
-            sidebarMode ? 'translate-x-0 shadow-[-10px_0_30px_rgba(0,0,0,0.05)]' : 'translate-x-full'
+            'transition-all duration-400 ease-out z-30 flex flex-col overflow-hidden',
+            sidebarMode ? 'w-[45%] max-w-[850px] min-w-[500px]' : 'w-0'
           ].join(' ')}
         >
-          {selectedBlock ? (
-            <>
-              {/* Header de la Sidebar Minimalista */}
-              <div className="shrink-0 px-8 py-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="min-w-0">
-                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-text-primary dark:text-text-dark-primary">
-                      {sidebarMode === 'info' ? 'Información' : 'Revisión'}
-                    </h3>
-                  </div>
-                  <button 
-                    onClick={() => { setSidebarMode(null); }}
-                    className="group p-1.5 -mr-1.5 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-muted transition-all"
-                  >
-                    <span className="block w-4 h-4 text-sm group-hover:rotate-90 transition-transform">✕</span>
-                  </button>
-                </div>
-
-                {/* Tabs Minimalistas (Underline style) */}
-                <div className="flex gap-6 border-b border-ui-border dark:border-ui-dark-border">
-                  <button
-                    onClick={() => setSidebarMode('comments')}
-                    className={[
-                      'pb-3 text-[10px] font-bold uppercase tracking-widest transition-all relative',
-                      sidebarMode === 'comments' 
-                        ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-odoo-purple' 
-                        : 'text-text-muted hover:text-text-primary'
-                    ].join(' ')}
-                  >
-                    Feedback
-                  </button>
-                  <button
-                    onClick={() => setSidebarMode('info')}
-                    className={[
-                      'pb-3 text-[10px] font-bold uppercase tracking-widest transition-all relative',
-                      sidebarMode === 'info' 
-                        ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-0.5 after:bg-odoo-purple' 
-                        : 'text-text-muted hover:text-text-primary'
-                    ].join(' ')}
-                  >
-                    Detalles
-                  </button>
-                </div>
-              </div>
-
-              {/* Contenido de la Sidebar */}
-              {sidebarMode === 'info' ? (
-                <InfoBlockDescription description={selectedBlock.description} />
-              ) : (
+          <div className="flex-1 overflow-y-auto p-8 scroll-smooth custom-scrollbar w-full relative">
+            <article
+              className="mx-auto bg-white dark:bg-ui-card shadow-2xl rounded-sm transition-all duration-300 flex flex-col h-full"
+              style={{ padding: '60px 70px' }}
+            >
+              {selectedBlock ? (
                 <>
-                  <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-                    {blockComments.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-40 text-center opacity-30">
-                        <p className="text-xs font-medium text-text-muted leading-relaxed">
-                          No hay actividad en este bloque.
+                  {/* Header de la Sidebar */}
+                  <div className="shrink-0 mb-8">
+                    <div className="flex items-center justify-between mb-8">
+                      <div className="min-w-0">
+                        <h3 className="text-2xl font-black text-text-primary dark:text-text-dark-primary leading-tight">
+                          {sidebarMode === 'info' ? 'Información del Bloque' : 'Comentarios de Revisión'}
+                        </h3>
+                        <p className="text-xs uppercase tracking-widest text-text-muted mt-2 font-bold">
+                          Bloque #{(selectedBlock.sort_order ?? '?') as any}
                         </p>
                       </div>
-                    ) : (
-                      <div className="space-y-8">
-                        {blockComments.map((comment) => (
-                          <div key={comment.id} className="group relative pl-4 animate-in fade-in slide-in-from-right-1">
-                            <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/30 transition-colors" />
-                            <div className="flex items-center justify-between mb-1.5">
-                              <span className="text-[10px] font-bold text-text-primary dark:text-text-dark-primary">
-                                {comment.author?.name || 'Validador'}
-                              </span>
-                              <span className="text-[9px] text-text-muted opacity-60">
-                                {new Date(comment.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">
-                              {comment.body}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                      <button 
+                        onClick={() => { setSidebarMode(null); }}
+                        className="group w-10 h-10 -mr-4 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
+                        title="Cerrar panel"
+                      >
+                        <span className="block text-xl group-hover:rotate-90 transition-transform">✕</span>
+                      </button>
+                    </div>
+
+                    {/* Tabs Minimalistas (Underline style) */}
+                    <div className="flex gap-8 border-b border-ui-border dark:border-ui-dark-border pb-px">
+                      <button
+                        onClick={() => setSidebarMode('comments')}
+                        className={[
+                          'pb-4 text-[11px] font-bold uppercase tracking-widest transition-all relative',
+                          sidebarMode === 'comments' 
+                            ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple' 
+                            : 'text-text-muted hover:text-text-primary'
+                        ].join(' ')}
+                      >
+                        Mensajes
+                      </button>
+                      <button
+                        onClick={() => setSidebarMode('info')}
+                        className={[
+                          'pb-4 text-[11px] font-bold uppercase tracking-widest transition-all relative',
+                          sidebarMode === 'info' 
+                            ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple' 
+                            : 'text-text-muted hover:text-text-primary'
+                        ].join(' ')}
+                      >
+                        Descripción
+                      </button>
+                    </div>
                   </div>
 
-                  {!isAlreadyValidated ? (
-                    <div className="p-4 border-t border-ui-border dark:border-ui-dark-border bg-ui-body/10">
-                      <textarea
-                        value={newCommentBody}
-                        onChange={(e) => setNewCommentBody(e.target.value)}
-                        placeholder="Añade un comentario de revisión..."
-                        className="w-full h-24 p-3 text-xs rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-1 focus:ring-odoo-purple focus:border-odoo-purple outline-none transition-all resize-none"
-                      />
-                      <div className="mt-3 flex justify-end">
-                        <Button 
-                          variant="primary" 
-                          size="sm" 
-                          className="text-[10px] font-bold uppercase"
-                          onClick={handleAddComment}
-                          loading={commentLoading}
-                          disabled={!newCommentBody.trim() || commentLoading}
-                        >
-                          Enviar comentario
-                        </Button>
-                      </div>
+                  {/* Contenido de la Sidebar */}
+                  {sidebarMode === 'info' ? (
+                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
+                      <InfoBlockDescription description={selectedBlock.description} />
                     </div>
                   ) : (
-                    <div className="p-6 border-t border-ui-border dark:border-ui-dark-border bg-ui-body/5 text-center">
-                      <p className="text-[10px] text-text-muted italic">
-                        No puedes añadir más comentarios porque ya has finalizado tu validación.
-                      </p>
+                    <div className="flex flex-col flex-1 overflow-hidden">
+                      <div className="flex-1 overflow-y-auto pr-4 space-y-6 custom-scrollbar pb-6">
+                        {blockComments.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center h-40 text-center opacity-40 mt-10">
+                            <svg className="w-12 h-12 mb-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            <p className="text-sm font-medium text-text-muted leading-relaxed">
+                              No hay mensajes en este bloque.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-8 mt-2">
+                            {blockComments.map((comment) => (
+                              <div key={comment.id} className="group relative pl-6 animate-in fade-in slide-in-from-right-2">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
+                                <div className="flex items-center justify-between mb-2">
+                                  <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
+                                    {comment.author?.name || 'Validador'}
+                                  </span>
+                                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
+                                    {new Date(comment.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/30 p-5 rounded-xl border border-ui-border/50 shadow-sm">
+                                  {comment.body}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {!isAlreadyValidated ? (
+                        <div className="mt-4 pt-6 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                          <textarea
+                            value={newCommentBody}
+                            onChange={(e) => setNewCommentBody(e.target.value)}
+                            placeholder="Escribe un mensaje de revisión..."
+                            className="w-full h-32 p-4 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
+                          />
+                          <div className="mt-4 flex justify-end">
+                            <Button 
+                              variant="primary" 
+                              size="md" 
+                              className="text-[11px] font-black uppercase tracking-widest px-8 py-2.5"
+                              onClick={handleAddComment}
+                              loading={commentLoading}
+                              disabled={!newCommentBody.trim() || commentLoading}
+                            >
+                              Enviar mensaje
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-4 p-6 border border-ui-border dark:border-ui-dark-border rounded-xl bg-ui-body/5 text-center shrink-0">
+                          <p className="text-sm text-text-muted italic font-medium">
+                            No puedes añadir más mensajes porque ya has finalizado tu validación.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-6 opacity-30">
+                  <span className="text-6xl grayscale">📄</span>
+                  <p className="text-base font-medium text-text-muted max-w-sm leading-relaxed">
+                    Selecciona un bloque en el documento de la izquierda para ver su descripción o sus mensajes.
+                  </p>
+                </div>
               )}
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-4 opacity-30">
-              <span className="text-5xl">📄</span>
-              <p className="text-sm font-medium text-text-muted">
-                Selecciona un bloque en el documento para ver comentarios o descripción.
-              </p>
-            </div>
-          )}
+            </article>
+          </div>
         </aside>
       </div>
 
