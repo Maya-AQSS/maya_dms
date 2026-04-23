@@ -123,16 +123,6 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
               Clonar
             </Button>
           )}
-          {t.status === 'in_review' && isReviewer && (
-            <Button
-              type="button"
-              variant="primary"
-              size="xs"
-              onClick={() => navigate(`/templates/${t.id}/review`)}
-            >
-              Validar
-            </Button>
-          )}
           {canDelete && (
             <Button
               type="button"
