@@ -152,11 +152,11 @@ export function DashboardPage() {
                   <TableRow
                     key={item.template_id}
                     className="cursor-pointer hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors"
-                    onClick={() => navigate(`/templates/${item.template_id}/edit`)}
+                    onClick={() => navigate(`/templates/${item.template_id}/review`)}
                   >
                     <TableCell className="px-4 py-3 text-sm font-medium text-text-primary dark:text-text-dark-primary">
                       <Link
-                        to={`/templates/${item.template_id}/edit`}
+                        to={`/templates/${item.template_id}/review`}
                         className="hover:underline"
                         onClick={(e: MouseEvent<HTMLAnchorElement>) => e.stopPropagation()}
                       >

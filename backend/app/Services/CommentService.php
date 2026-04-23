@@ -19,4 +19,20 @@ class CommentService implements CommentServiceInterface
     {
         return $this->commentRepository->findOrFail($id);
     }
+
+    public function listForTemplate(string $templateId): \Illuminate\Support\Collection
+    {
+        return Comment::where('template_id', $templateId)->orderBy('created_at', 'asc')->get();
+    }
+
+    public function createForTemplate(string $templateId, string $authorId, array $data): Comment
+    {
+        return Comment::create([
+            'template_id' => $templateId,
+            'template_block_id' => $data['template_block_id'] ?? null,
+            'author_id' => $authorId,
+            'body' => $data['body'],
+            'type' => $data['type'] ?? 'general',
+        ]);
+    }
 }

@@ -56,6 +56,8 @@ class Comment extends Model
     protected $fillable = [
         'document_id',
         'document_block_id',
+        'template_id',
+        'template_block_id',
         'parent_id',
         'author_id',
         'body',
@@ -81,6 +83,16 @@ class Comment extends Model
     public function documentBlock(): BelongsTo
     {
         return $this->belongsTo(DocumentBlock::class);
+    }
+
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(Template::class);
+    }
+
+    public function templateBlock(): BelongsTo
+    {
+        return $this->belongsTo(TemplateBlock::class);
     }
 
     public function parent(): BelongsTo

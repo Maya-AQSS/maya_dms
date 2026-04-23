@@ -88,6 +88,7 @@ class TemplateRepository implements TemplateRepositoryInterface
         }
 
         return $query
+            ->with('reviewers')
             ->orderByDesc('templates.updated_at')
             ->paginate($perPage);
     }

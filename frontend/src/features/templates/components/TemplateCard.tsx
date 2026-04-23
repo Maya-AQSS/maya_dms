@@ -49,13 +49,27 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
     }
   };
 
+  const isReviewer = t.reviewers?.some((r) => r.user_id === profile?.id);
+  const canValidate = t.status === 'in_review' && isReviewer;
+
   return (
     <div
       className={[
-        'rounded-lg border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-4 shadow-card',
-        dialog === null && canEdit ? 'cursor-pointer hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors' : '',
+        'rounded-lg border p-4 shadow-card transition-all duration-200',
+        canValidate 
+          ? 'border-odoo-teal dark:border-odoo-dark-teal bg-odoo-teal/5 dark:bg-odoo-dark-teal/10 cursor-pointer hover:shadow-card-md' 
+          : 'border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card',
+        dialog === null && (canEdit || canValidate) ? 'cursor-pointer hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors' : '',
       ].join(' ')}
-      onClick={dialog === null && canEdit ? () => navigate(`/templates/${t.id}/edit`) : undefined}
+      onClick={
+        dialog === null 
+          ? canValidate 
+            ? () => navigate(`/templates/${t.id}/review`) 
+            : canEdit 
+              ? () => navigate(`/templates/${t.id}/edit`) 
+              : undefined
+          : undefined
+      }
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 flex-1 space-y-2">
@@ -86,6 +100,16 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
               onClick={() => setDialog('clone')}
             >
               Clonar
+            </Button>
+          )}
+          {t.status === 'in_review' && isReviewer && (
+            <Button
+              type="button"
+              variant="primary"
+              size="xs"
+              onClick={() => navigate(`/templates/${t.id}/review`)}
+            >
+              Validar
             </Button>
           )}
           {canDelete && (
