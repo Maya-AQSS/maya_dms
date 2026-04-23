@@ -15,7 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
-import { searchUsers } from '../../../api/users';
+import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
 import { Button } from '../../../ui';
 
@@ -293,9 +293,19 @@ function UserAddPanel({
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5">
         {searching && <p className="text-xs text-text-muted italic p-2">Cargando usuarios…</p>}
         {searchError && <p className="text-xs text-danger-dark p-2">{searchError}</p>}
-        {!searching && !searchError && searchQuery.trim().length > 0 && filteredUsers.length === 0 && (
-          <p className="text-xs text-text-muted italic p-2">No se encontraron usuarios.</p>
-        )}
+        {!searching &&
+          !searchError &&
+          canSearchUsers &&
+          searchQuery.trim().length > 0 &&
+          searchQuery.trim().length < 2 && (
+            <p className="text-xs text-text-muted italic p-2">Escribe al menos 2 caracteres para buscar.</p>
+          )}
+        {!searching &&
+          !searchError &&
+          searchQuery.trim().length >= 2 &&
+          filteredUsers.length === 0 && (
+            <p className="text-xs text-text-muted italic p-2">No se encontraron usuarios con permiso de revisión.</p>
+          )}
         {!searching && !searchError && filteredUsers.map((u) => {
           const initials = u.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
           return (
@@ -324,6 +334,8 @@ function UserAddPanel({
 // ── Main component ────────────────────────────────────────────────────────────
 
 type Props = {
+  /** Creador de la plantilla: no se ofrece en los listados de candidatos a validador (SoD). */
+  templateCreatedBy?: string | null;
   validators: ValidatorEntry[];
   onValidatorsChange: (validators: ValidatorEntry[]) => void;
   validationType: 'libre' | 'ordenada';
@@ -335,6 +347,7 @@ type Props = {
 };
 
 export function WizardStep3Users({
+  templateCreatedBy = null,
   validators,
   onValidatorsChange,
   validationType,
@@ -360,30 +373,48 @@ export function WizardStep3Users({
   const [searchErrorDocument, setSearchErrorDocument] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!canSearchUsers) { setSearchResultsTemplate([]); return; }
+    if (!canSearchUsers) {
+      setSearchResultsTemplate([]);
+      return;
+    }
+    const q = searchQueryTemplate.trim();
+    if (q.length < 2) {
+      setSearchResultsTemplate([]);
+      return;
+    }
     const timer = setTimeout(() => {
       setSearchingTemplate(true);
       setSearchErrorTemplate(null);
-      searchUsers(searchQueryTemplate.trim())
+      const exclude = templateCreatedBy?.trim() || undefined;
+      searchTemplateReviewerCandidates(q, exclude)
         .then((res) => setSearchResultsTemplate(res.data))
         .catch(() => setSearchErrorTemplate('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingTemplate(false));
-    }, searchQueryTemplate.trim().length === 0 ? 0 : 300);
+    }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryTemplate, canSearchUsers]);
+  }, [searchQueryTemplate, canSearchUsers, templateCreatedBy]);
 
   useEffect(() => {
-    if (!canSearchUsers) { setSearchResultsDocument([]); return; }
+    if (!canSearchUsers) {
+      setSearchResultsDocument([]);
+      return;
+    }
+    const q = searchQueryDocument.trim();
+    if (q.length < 2) {
+      setSearchResultsDocument([]);
+      return;
+    }
     const timer = setTimeout(() => {
       setSearchingDocument(true);
       setSearchErrorDocument(null);
-      searchUsers(searchQueryDocument.trim())
+      const exclude = templateCreatedBy?.trim() || undefined;
+      searchDocumentReviewerCandidates(q, exclude)
         .then((res) => setSearchResultsDocument(res.data))
         .catch(() => setSearchErrorDocument('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingDocument(false));
-    }, searchQueryDocument.trim().length === 0 ? 0 : 300);
+    }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryDocument, canSearchUsers]);
+  }, [searchQueryDocument, canSearchUsers, templateCreatedBy]);
 
   const handleAddToTemplate = (user: User) => {
     if (!validators.some((v) => v.userId === user.id)) {
