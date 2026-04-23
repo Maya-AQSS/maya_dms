@@ -19,10 +19,36 @@ class DocumentRepository implements DocumentRepositoryInterface
 {
     /**
      * Busca un documento por su ID o lanza ModelNotFoundException.
+     *
+     * El alcance global `user_access` incluye revisores en `document_reviews`; si por cualquier
+     * desajuste el documento no entra en la consulta acotada, se comprueba una asignación pendiente
+     * explícita y se carga sin ese alcance (misma condición que usa la bandeja del dashboard).
      */
     public function findOrFail(string $id): Document
     {
-        return Document::query()->findOrFail($id);
+        $scoped = Document::query()->whereKey($id)->first();
+        if ($scoped !== null) {
+            return $scoped;
+        }
+
+        if (auth()->check()) {
+            $uid = (string) auth()->user()->getAuthIdentifier();
+            if ($uid !== '') {
+                $assigned = DocumentReview::query()
+                    ->where('document_id', $id)
+                    ->where('reviewer_id', $uid)
+                    ->where('status', 'pending')
+                    ->exists();
+
+                if ($assigned) {
+                    return Document::withoutGlobalScopes(['user_access'])
+                        ->whereKey($id)
+                        ->firstOrFail();
+                }
+            }
+        }
+
+        return Document::query()->whereKey($id)->firstOrFail();
     }
 
     /**

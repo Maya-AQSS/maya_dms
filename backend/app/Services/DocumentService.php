@@ -618,12 +618,13 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return DB::transaction(function () use ($documentId, $actorId) {
-            $this->documentRepository->deleteReviewsForDocument($documentId);
-
-            return $this->transition($documentId, 'draft', $actorId, [
+            $updated = $this->transition($documentId, 'draft', $actorId, [
                 'submitted_at' => null,
                 'published_at' => null,
             ]);
+            $this->documentRepository->deleteReviewsForDocument($documentId);
+
+            return $updated;
         });
     }
 
@@ -757,12 +758,15 @@ class DocumentService implements DocumentServiceInterface
             $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
 
-            $this->documentRepository->deleteReviewsForDocument($documentId);
 
-            return $this->transition($documentId, 'draft', $actorId, [
+            $updated = $this->transition($documentId, 'draft', $actorId, [
                 'submitted_at' => null,
                 'published_at' => null,
             ]);
+
+            $this->documentRepository->deleteReviewsForDocument($documentId);
+
+            return $updated;
         });
     }
 

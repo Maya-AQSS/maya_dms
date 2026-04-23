@@ -140,6 +140,11 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   const [blockSaveError, setBlockSaveError] = useState<string | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
+  /** IDs de `template_document_reviewers` (vacío si la plantilla no define pool de documento). */
+  const [documentReviewerPoolIds, setDocumentReviewerPoolIds] = useState<string[]>([]);
+  /** IDs de `template_reviewers` (revisores normativos; el backend los usa si no hay pool de documento). */
+  const [templateReviewerPoolIds, setTemplateReviewerPoolIds] = useState<string[]>([]);
+  const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
   const [templateName, setTemplateName] = useState<string | null>(null);
@@ -155,6 +160,27 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   const isValidateMode = mode === 'validate';
   const isDraft = detail?.status === 'draft';
   const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
+
+  /**
+   * Misma regla que el envío a revisión en backend: se excluye titular y creador del documento.
+   * Si el pool efectivo queda vacío pero había candidatos, el envío fallaría (SoD).
+   */
+  const reviewerSubmitBlocked = useMemo(() => {
+    if (!detail || detail.status !== 'draft') {
+      return false;
+    }
+    const owner = detail.owner_id;
+    const created = detail.created_by;
+    const pool =
+      documentReviewerPoolIds.length > 0 ? documentReviewerPoolIds : templateReviewerPoolIds;
+    const filtered = pool.filter((id) => id !== owner && id !== created);
+    return pool.length > 0 && filtered.length === 0;
+  }, [detail, documentReviewerPoolIds, templateReviewerPoolIds]);
+
+  const reviewerSubmitBlockedMessage =
+    'No se puede enviar a validar: los revisores configurados en la plantilla coinciden todos contigo '
+    + '(titular o creador del documento). Pide que en la plantilla se definan validadores de documento distintos '
+    + 'del titular, o que los revisores normativos de la plantilla no sean solo el titular.';
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -325,6 +351,9 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
     let cancelled = false;
     const loadDocumentReviewers = async () => {
       setSummaryError(null);
+      setDocumentReviewerPoolIds([]);
+      setTemplateReviewerPoolIds([]);
+      setReviewerListKind('none');
       try {
         const [templateResp, usersResp] = await Promise.all([
           fetchTemplate(detail.template_id),
@@ -332,13 +361,29 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
         ]);
         if (cancelled) return;
         setDocumentReviewMode(templateResp.data.review_mode ?? 'parallel');
-        const ids = templateResp.data.document_reviewers ?? [];
-        if (ids.length === 0) {
+
+        const docIds = templateResp.data.document_reviewers ?? [];
+        const tplRows = templateResp.data.reviewers ?? [];
+        const tplUserIds = tplRows.map((r) => r.user_id);
+        setDocumentReviewerPoolIds(docIds);
+        setTemplateReviewerPoolIds(tplUserIds);
+
+        const displayIds = docIds.length > 0 ? docIds : tplUserIds;
+        if (docIds.length > 0) {
+          setReviewerListKind('document');
+        } else if (tplUserIds.length > 0) {
+          setReviewerListKind('template_fallback');
+        } else {
+          setReviewerListKind('none');
+        }
+
+        if (displayIds.length === 0) {
           setDocumentReviewers([]);
           return;
         }
+
         const byId = new Map(usersResp.data.map((u) => [u.id, u.name] as const));
-        const initial = ids.map((id) => ({
+        const initial = displayIds.map((id) => ({
           id,
           name: byId.get(id) ?? '',
           resolved: byId.has(id),
@@ -372,6 +417,9 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
         if (!cancelled) {
           setSummaryError(e instanceof Error ? e.message : 'No se pudieron cargar los validadores de documento.');
           setDocumentReviewers([]);
+          setDocumentReviewerPoolIds([]);
+          setTemplateReviewerPoolIds([]);
+          setReviewerListKind('none');
         }
       }
     };
@@ -726,7 +774,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                 variant="primary"
                 size="sm"
                 loading={submittingForReview}
-                disabled={!isDraft}
+                disabled={!isDraft || reviewerSubmitBlocked}
                 onClick={() => setSummaryConfirmAction('submit')}
               >
                 Enviar a validar
@@ -1002,22 +1050,45 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                   </div>
                 </div>
                 <DocSummaryRow
-                  label="Validadores del documento"
+                  label={
+                    reviewerListKind === 'document'
+                      ? 'Validadores del documento'
+                      : reviewerListKind === 'template_fallback'
+                        ? 'Quién validará (revisores de plantilla)'
+                        : 'Revisores / validadores'
+                  }
                   value={
                     documentReviewers.length > 0
                       ? (
-                          <ul className="mt-1 space-y-1">
-                            {documentReviewers.map((reviewer) => (
-                              <li key={reviewer.id}>
-                                • {reviewer.name}
-                              </li>
-                            ))}
-                          </ul>
+                          <div className="space-y-1">
+                            {reviewerListKind === 'template_fallback' && (
+                              <p className="text-[10px] text-text-muted dark:text-text-dark-muted leading-snug">
+                                La plantilla no define validadores de documento; al enviar se usarán los revisores
+                                normativos de la plantilla (misma prioridad que en el servidor).
+                              </p>
+                            )}
+                            <ul className="mt-1 space-y-1">
+                              {documentReviewers.map((reviewer) => (
+                                <li key={reviewer.id}>
+                                  • {reviewer.name}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
                         )
-                      : 'Sin validadores asignados en plantilla'
+                      : (
+                          <span className="text-text-muted italic">
+                            {reviewerListKind === 'none'
+                              ? 'La plantilla no tiene revisores ni validadores de documento configurados.'
+                              : '—'}
+                          </span>
+                        )
                   }
                 />
               </dl>
+              {reviewerSubmitBlocked && (
+                <p className="mt-2 text-xs text-danger-dark dark:text-danger">{reviewerSubmitBlockedMessage}</p>
+              )}
               {summaryError && (
                 <p className="mt-2 text-xs text-danger-dark dark:text-danger">{summaryError}</p>
               )}
@@ -1190,7 +1261,13 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
           summaryConfirmAction === 'submit'
             ? (
                 <div className="space-y-2">
-                  <p>Se enviará una notificación a los validadores del documento.</p>
+                  <p>
+                    {reviewerListKind === 'document'
+                      ? 'Se enviará una notificación a los validadores del documento configurados en la plantilla.'
+                      : reviewerListKind === 'template_fallback'
+                        ? 'La plantilla no tiene validadores de documento; se notificará según los revisores normativos de la plantilla listados abajo.'
+                        : 'No hay revisores configurados en la plantilla para este envío.'}
+                  </p>
                   {documentReviewers.length > 0 ? (
                     <>
                       <p>
@@ -1212,7 +1289,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                       )}
                     </>
                   ) : (
-                    <p>No hay validadores configurados en la plantilla.</p>
+                    <p>No hay personas en la lista de revisión para mostrar.</p>
                   )}
                   <p>Después no se podrá seguir editando como borrador.</p>
                 </div>
