@@ -27,7 +27,14 @@ class Document extends Model
                 return;
             }
 
-            $userId = auth()->id();
+            $rawId = auth()->user()?->getAuthIdentifier();
+            if ($rawId === null || $rawId === '') {
+                $builder->whereRaw('1 = 0');
+
+                return;
+            }
+
+            $userId = (string) $rawId;
             $builder->where(function ($query) use ($userId) {
                 $query->where('documents.created_by', $userId)
                     ->orWhere('documents.owner_id', $userId)
