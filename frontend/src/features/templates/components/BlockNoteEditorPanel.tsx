@@ -1,7 +1,8 @@
 import { useRef } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
-import { BlockNoteViewRaw as BlockNoteView } from '@blocknote/react';
-import '@blocknote/react/style.css';
+import { BlockNoteView } from '@blocknote/ariakit';
+import '@blocknote/ariakit/style.css';
+import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 
 interface Props {
   initialContent: unknown;
@@ -15,10 +16,11 @@ interface Props {
 export default function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const normalized = normalizeBlockContentForEditor(initialContent);
   const safeContent =
-    Array.isArray(initialContent) && initialContent.length > 0
+    normalized.length > 0
       ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (initialContent as any)
+        (normalized as any)
       : undefined;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

@@ -79,7 +79,7 @@ export function TemplateHierarchyFields({
         <Select
           fieldSize="sm"
           value={values.study_id}
-          disabled={hierarchyLoading}
+          disabled={hierarchyLoading || !values.study_type_id}
           onChange={(e) => handleStudyChange(e.target.value)}
         >
           <option value="">Todos</option>
@@ -94,7 +94,7 @@ export function TemplateHierarchyFields({
         <Select
           fieldSize="sm"
           value={values.module_id}
-          disabled={hierarchyLoading}
+          disabled={hierarchyLoading || !values.study_id}
           onChange={(e) => handleModuleChange(e.target.value)}
         >
           <option value="">Todos</option>

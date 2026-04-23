@@ -3,7 +3,7 @@ import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
 import type { UserTeam } from '../../../api/users';
-import type { TemplateVisibilityLevel } from '../../../types/templates';
+import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 
 type Props = {
   name: string;
@@ -23,6 +23,7 @@ type Props = {
   teamId: string;
   setTeamId: (v: string) => void;
   errors: Record<string, string>;
+  templateStatus?: TemplateStatus;
 };
 
 export function WizardStep1Properties({
@@ -35,7 +36,9 @@ export function WizardStep1Properties({
   moduleId, setModuleId,
   teamId, setTeamId,
   errors,
+  templateStatus,
 }: Props) {
+  const deadlineLocked = templateStatus === 'in_review' || templateStatus === 'published';
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const { profile, loading: profileLoading, error: profileError } = useUserProfile();
   const teams: UserTeam[] = profile?.teams ?? [];
@@ -57,6 +60,11 @@ export function WizardStep1Properties({
   return (
     <div className="flex-1 overflow-y-auto px-8 py-6">
       <div className="space-y-6">
+        {errors.api && (
+          <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
+            {errors.api}
+          </div>
+        )}
 
         {/* Campos generales — grid sin card wrapper */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -111,7 +119,13 @@ export function WizardStep1Properties({
               fieldSize="comfortable"
               value={deliveryDeadline}
               onChange={(e) => setDeliveryDeadline(e.target.value)}
+              disabled={deadlineLocked}
             />
+            {deadlineLocked && (
+              <p className="mt-1 text-[10px] text-text-muted italic">
+                No editable en estado actual.
+              </p>
+            )}
           </div>
         </div>
 

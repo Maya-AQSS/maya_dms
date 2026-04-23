@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Document;
-use App\Models\DocumentReview;
+use App\Http\Requests\Documents\ApproveDocumentReviewRequest;
+use App\Http\Requests\Documents\RejectDocumentReviewRequest;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,13 +32,18 @@ class ReviewController extends Controller
     /**
      * Aprobar revisión de un documento.
      */
-    public function approve(Request $request, string $documentId, string $reviewId): JsonResponse
+    public function approve(ApproveDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
     {
         $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
 
-        $actorId = $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->approveReview($document->id, $reviewId, $actorId);
+        $actorId = (string) $request->user()->getAuthIdentifier();
+        $updated = $this->documentService->approveReview(
+            $document->id,
+            $reviewId,
+            $actorId,
+            $request->validated('changelog'),
+        );
 
         return response()->json(['data' => $updated]);
     }
@@ -46,21 +51,17 @@ class ReviewController extends Controller
     /**
      * Rechazar revisión de un documento.
      */
-    public function reject(Request $request, string $documentId, string $reviewId): JsonResponse
+    public function reject(RejectDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
     {
         $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
 
-        $validated = $request->validate([
-            'rejection_reason' => ['nullable', 'string'],
-        ]);
-
-        $actorId = $request->user()->getAuthIdentifier();
+        $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->rejectReview(
             $document->id,
             $reviewId,
             $actorId,
-            $validated['rejection_reason'] ?? null,
+            $request->validated('rejection_reason'),
         );
 
         return response()->json(['data' => $updated]);

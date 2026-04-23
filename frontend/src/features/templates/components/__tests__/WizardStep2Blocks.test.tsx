@@ -67,12 +67,12 @@ describe('WizardStep2Blocks', () => {
     expect(screen.getByText('Bloque 2')).toBeTruthy();
   });
 
-  it('opens summary panel when a block is clicked', async () => {
+  it('opens edit panel when a block is clicked', async () => {
     render(<WizardStep2Blocks {...defaultProps} />);
     const blockButton = screen.getByRole('button', { name: /Bloque 1/i });
     fireEvent.click(blockButton);
     await waitFor(() => {
-      expect(screen.getByText('Editar')).toBeTruthy();
+      expect(screen.getByText('Propiedades')).toBeTruthy();
       expect(screen.getByText('Eliminar')).toBeTruthy();
     });
   });

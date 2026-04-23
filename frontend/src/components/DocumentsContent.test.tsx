@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentsContent } from './DocumentsContent';
 import { UserProfileProvider } from '../features/user-profile';
@@ -52,6 +53,16 @@ vi.mock('../api/documents', () => ({
   createDocumentFromModule: (...args: unknown[]) => mockCreateDocumentFromModule(...args),
 }));
 
+const mockFetchTemplateVersion = vi.fn();
+
+vi.mock('../api/templates', () => ({
+  fetchTemplateVersion: (...args: unknown[]) => mockFetchTemplateVersion(...args),
+}));
+
+vi.mock('../features/templates/components/BlockContentHtml', () => ({
+  BlockContentHtml: () => <div data-testid="mock-block-html" />,
+}));
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');
   return {
@@ -61,7 +72,11 @@ vi.mock('react-router-dom', async () => {
 });
 
 function renderWithProfile(ui: ReactElement) {
-  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+  return render(
+    <MemoryRouter>
+      <UserProfileProvider>{ui}</UserProfileProvider>
+    </MemoryRouter>,
+  );
 }
 
 const baseDocument = {
@@ -210,7 +225,7 @@ describe('DocumentsContent creation flow', () => {
     expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-new/editor');
   });
 
-  it('muestra selector y crea con la plantilla elegida en modo select', async () => {
+  it('muestra listado, previsualiza y crea con la plantilla elegida en modo select', async () => {
     const reload = vi.fn().mockResolvedValue(undefined);
     mockUseDocuments.mockReturnValue({
       documents: [baseDocument],
@@ -237,6 +252,25 @@ describe('DocumentsContent creation flow', () => {
         },
       ],
     });
+    mockFetchTemplateVersion.mockResolvedValue({
+      id: 'ver-2',
+      template_id: 'tpl-2',
+      version_number: 1,
+      blocks_snapshot: [
+        {
+          id: 'blk-1',
+          type: 'paragraph',
+          title: 'Bloque demo',
+          default_content: [],
+          sort_order: 0,
+          mandatory: true,
+          block_state: 'editable',
+        },
+      ],
+      changelog: 'Seed',
+      published_by: null,
+      published_at: null,
+    });
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-sel' });
 
     renderWithProfile(<DocumentsContent />);
@@ -248,12 +282,19 @@ describe('DocumentsContent creation flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
     expect(
-      screen.getByText('Selecciona una plantilla para esta programación'),
+      screen.getByText('Elige una plantilla para verla en previsualización'),
     ).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', true);
 
-    const select = screen.getByRole('combobox');
-    fireEvent.change(select, { target: { value: 'ver-2' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Crear' }));
+    fireEvent.click(screen.getByRole('button', { name: /Plantilla B/i }));
+
+    await waitFor(() => expect(mockFetchTemplateVersion).toHaveBeenCalledWith('ver-2'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Usar esta plantilla' })).toHaveProperty('disabled', false);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Usar esta plantilla' }));
 
     await waitFor(() =>
       expect(mockCreateDocumentFromModule).toHaveBeenCalledWith({
@@ -263,6 +304,55 @@ describe('DocumentsContent creation flow', () => {
     );
     expect(reload).toHaveBeenCalled();
     expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-sel/editor');
+  });
+
+  it('vuelve al listado desde la previsualización con Elegir otra plantilla', async () => {
+    mockFetchDocumentCreationOptions.mockResolvedValue({
+      can_create: true,
+      mode: 'select',
+      message: null,
+      options: [
+        {
+          template_id: 'tpl-1',
+          template_version_id: 'ver-1',
+          name: 'Plantilla A',
+          description: null,
+        },
+        {
+          template_id: 'tpl-2',
+          template_version_id: 'ver-2',
+          name: 'Plantilla B',
+          description: null,
+        },
+      ],
+    });
+    mockFetchTemplateVersion.mockResolvedValue({
+      id: 'ver-1',
+      template_id: 'tpl-1',
+      version_number: 1,
+      blocks_snapshot: [],
+      changelog: null,
+      published_by: null,
+      published_at: null,
+    });
+
+    renderWithProfile(<DocumentsContent />);
+    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
+    fireEvent.click(screen.getByRole('button', { name: /Plantilla A/i }));
+
+    await waitFor(() => expect(mockFetchTemplateVersion).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir otra plantilla' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Elige una plantilla para verla en previsualización')).toBeTruthy();
+    });
+    expect(screen.getByRole('button', { name: /Plantilla B/i })).toBeTruthy();
   });
 });
 

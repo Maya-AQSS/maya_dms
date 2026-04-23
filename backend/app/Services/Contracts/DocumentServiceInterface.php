@@ -3,8 +3,10 @@
 namespace App\Services\Contracts;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentReview;
+use App\Models\DocumentVersion;
 use Illuminate\Support\Collection;
 
 interface DocumentServiceInterface
@@ -20,11 +22,28 @@ interface DocumentServiceInterface
     public function create(CreateDocumentDto $dto): Document;
 
     /**
+     * Actualiza metadatos editables del documento.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function update(string $documentId, array $attributes): Document;
+
+    /**
+     * Borrado lógico del documento.
+     */
+    public function delete(string $documentId): void;
+
+    /**
      * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
      *
      * @return list<array<string, mixed>>
      */
     public function blocksForDisplay(Document $document): array;
+
+    /**
+     * Actualiza el contenido de un bloque de documento.
+     */
+    public function updateBlock(UpdateDocumentBlockDto $dto): array;
 
     /**
      * Transiciona el documento a un nuevo estado y emite el evento de dominio DocumentStateChanged.
@@ -41,7 +60,7 @@ interface DocumentServiceInterface
     /**
      * Publica el documento.
      */
-    public function publishDocument(string $documentId, string $actorId): Document;
+    public function publishDocument(string $documentId, string $actorId, string $changelog): Document;
 
     /**
      * Rechaza el documento.
@@ -63,7 +82,28 @@ interface DocumentServiceInterface
     /**
      * Aprueba una revisión del documento.
      */
-    public function approveReview(string $documentId, string $reviewId, string $actorId): Document;
+    public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document;
+
+    /**
+     * Localiza una versión snapshot del documento por id.
+     */
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
+
+    /**
+     * Metadatos de versiones del documento ordenados descendentemente.
+     *
+     * @return list<array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   notes: ?string,
+     *   created_at: ?string
+     * }>
+     */
+    public function listDocumentVersions(string $documentId): array;
 
     /**
      * Rechaza una revisión del documento.
@@ -92,4 +132,40 @@ interface DocumentServiceInterface
         string $creatorId,
         ?string $templateVersionId = null,
     ): Document;
+
+    /**
+     * Comparación ligera entre la versión de plantilla anclada al documento y la última publicada.
+     *
+     * @return array{
+     *   current_version: ?array{id: string, version_number: int},
+     *   latest_version: ?array{id: string, version_number: int, changelog: string},
+     *   has_update: bool,
+     *   changelog: ?string
+     * }
+     */
+    public function templateVersionStatus(string $documentId): array;
+
+    /**
+     * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
+     *
+     * @return array{user_id: string, permission: string, granted_by: string}
+     */
+    public function upsertDocumentShare(
+        string $documentId,
+        string $targetUserId,
+        string $permission,
+        string $actorId,
+    ): array;
+
+    /**
+     * Elimina un compartido (idempotente si no existía).
+     */
+    public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void;
+
+    /**
+     * Anota en cada documento si el visor accede vía `document_shares` y con qué permiso (listado / detalle).
+     *
+     * @param  Collection<int, Document>  $documents
+     */
+    public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void;
 }

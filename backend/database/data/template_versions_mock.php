@@ -6,7 +6,9 @@
  * blocks_snapshot replica el shape que genera {@see TemplateService::publishWithSnapshot()}.
  * Los template_id deben existir en database/data/templates_mock.php.
  */
-return [
+$programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
+
+return array_merge([
     [
         'id' => '66666666-6666-6666-6666-666666666601',
         'template_id' => '33333333-3333-3333-3333-333333333301',
@@ -45,4 +47,98 @@ return [
         'published_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'published_at' => null,
     ],
-];
+    [
+        'id' => '66666666-6666-6666-6666-666666666603',
+        'template_id' => '33333333-3333-3333-3333-333333333306',
+        'version_number' => 1,
+        'blocks_snapshot' => [
+            [
+                'id' => '55555555-5555-5555-5555-555555555506',
+                'type' => 'heading',
+                'title' => 'Objetivos del módulo',
+                'default_content' => null,
+                'block_state' => 'editable',
+                'mandatory' => true,
+                'sort_order' => 0,
+            ],
+        ],
+        'changelog' => 'Publicación inicial para creación de documentos por módulo',
+        'published_by' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
+        'published_at' => null,
+    ],
+    [
+        'id' => '66666666-6666-6666-6666-666666666604',
+        'template_id' => '33333333-3333-3333-3333-333333333311',
+        'version_number' => 1,
+        'blocks_snapshot' => [
+            [
+                'id' => '55555555-5555-5555-5555-555555555511',
+                'type' => 'paragraph',
+                'title' => 'Criterios de evaluación',
+                'default_content' => ['type' => 'doc', 'content' => []],
+                'block_state' => 'editable',
+                'mandatory' => false,
+                'sort_order' => 0,
+            ],
+        ],
+        'changelog' => 'Publicación inicial para creación de documentos por módulo',
+        'published_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'published_at' => null,
+    ],
+    [
+        'id' => '66666666-6666-6666-6666-666666666605',
+        'template_id' => '33333333-3333-3333-3333-333333333318',
+        'version_number' => 1,
+        'blocks_snapshot' => [
+            [
+                'id' => '55555555-5555-5555-5555-555555555518',
+                'type' => 'paragraph',
+                'title' => 'Programación didáctica — DWES (oficial, catálogo global)',
+                'default_content' => require __DIR__.'/dwes_official_programacion_blocknote.php',
+                'block_state' => 'editable',
+                'mandatory' => false,
+                'sort_order' => 0,
+            ],
+        ],
+        'changelog' => 'Publicación oficial — programación DWES (catálogo global, Dirección)',
+        'published_by' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
+        'published_at' => null,
+    ],
+    [
+        'id' => '66666666-6666-6666-6666-666666666606',
+        'template_id' => '33333333-3333-3333-3333-333333333319',
+        'version_number' => 1,
+        'blocks_snapshot' => [
+            [
+                'id' => '55555555-5555-5555-5555-555555555519',
+                'type' => 'paragraph',
+                'title' => 'Descripción (plantilla personal Secretaría, publicada)',
+                'default_content' => [
+                    'type' => 'doc',
+                    'content' => [
+                        [
+                            'type' => 'paragraph',
+                            'props' => [
+                                'textColor' => 'default',
+                                'backgroundColor' => 'default',
+                                'textAlignment' => 'left',
+                            ],
+                            'content' => [[
+                                'type' => 'text',
+                                'text' => 'Plantilla de referencia publicada por Secretaría (seed). Los documentos generados se validan con Dirección y Auditoría según la configuración de revisores.',
+                                'styles' => [],
+                            ]],
+                            'children' => [],
+                        ],
+                    ],
+                ],
+                'block_state' => 'editable',
+                'mandatory' => false,
+                'sort_order' => 0,
+            ],
+        ],
+        'changelog' => 'Publicación inicial (plantilla personal Secretaría)',
+        'published_by' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
+        'published_at' => null,
+    ],
+], $programacionPack['template_versions']);

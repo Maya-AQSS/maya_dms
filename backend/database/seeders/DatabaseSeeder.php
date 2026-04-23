@@ -21,13 +21,16 @@ class DatabaseSeeder extends Seeder
             PermissionsSeeder::class,
             UserPermissionsSeeder::class,
             AcademicHierarchySeeder::class,
+            UserHierarchySeeder::class,
             TeamsSeeder::class,
             TemplatesSeeder::class,
             TemplateReviewersSeeder::class,
+            TemplateDocumentReviewersSeeder::class,
             TemplateBlocksSeeder::class,
             TemplateVersionsSeeder::class,
             DocumentsSeeder::class,
             DocumentBlocksSeeder::class,
+            DocumentReviewsSeeder::class,
             CommentsSeeder::class,
         ]);
     }

@@ -22,6 +22,7 @@ class DocumentResource extends JsonResource
             'study_type_id' => $this->study_type_id,
             'study_id' => $this->study_id,
             'module_id' => $this->module_id,
+            'delivery_deadline' => $this->delivery_deadline?->toIso8601String(),
             'created_by' => $this->created_by,
             'owner_id' => $this->owner_id,
             'status' => $this->status,
@@ -30,6 +31,8 @@ class DocumentResource extends JsonResource
             'published_at' => $this->published_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
+            'is_shared_with_me' => (bool) ($this->resource->getAttribute('is_shared_with_me') ?? false),
+            'share_permission' => $this->resource->getAttribute('viewer_share_permission'),
         ];
     }
 }

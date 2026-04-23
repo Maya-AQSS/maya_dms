@@ -6,6 +6,7 @@ use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TemplateBlocks\BulkUpdateTemplateBlockRequest;
+use App\Http\Requests\TemplateBlocks\ReorderTemplateBlocksRequest;
 use App\Http\Requests\TemplateBlocks\StoreTemplateBlockRequest;
 use App\Http\Requests\TemplateBlocks\UpdateTemplateBlockRequest;
 use App\Http\Resources\TemplateBlockResource;
@@ -69,8 +70,6 @@ class TemplateBlockController extends Controller
     {
         $validated = $request->validated();
         $dto = new UpdateTemplateBlockDto(
-            type:            $validated['type'] ?? null,
-            set_type:        $request->has('type'),
             title:           $validated['title'] ?? null,
             set_title:       $request->has('title'),
             default_content: $validated['default_content'] ?? null,
@@ -79,8 +78,6 @@ class TemplateBlockController extends Controller
             set_sort_order:  $request->has('sort_order'),
             block_state:     $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
-            mandatory:       $validated['mandatory'] ?? null,
-            set_mandatory:   $request->has('mandatory'),
             description:     $validated['description'] ?? null,
             set_description: $request->has('description'),
         );
@@ -108,12 +105,18 @@ class TemplateBlockController extends Controller
      * PATCH /api/v1/templates/{template}/blocks/reorder
      * Reordena todos los bloques de una plantilla. Recibe { block_ids: [...] } en el nuevo orden.
      */
-    public function reorder(Request $request, string $template): \Illuminate\Http\Response
+    public function reorder(ReorderTemplateBlocksRequest $request, string $template): \Illuminate\Http\Response
     {
-        $blockIds = $request->validate([
-            'block_ids'   => ['required', 'array'],
-            'block_ids.*' => ['required', 'string', 'uuid'],
-        ])['block_ids'];
+        $templateModel = Template::query()->findOrFail($template);
+        $this->authorize('update', $templateModel);
+
+        $blockIds = $request->validated('block_ids');
+
+        $blocks = $this->blockService->findBlocksByIdsOrFail($blockIds);
+        $invalid = $blocks->first(fn ($block) => (string) $block->template_id !== $template);
+        if ($invalid !== null) {
+            abort(403, 'No tienes permiso para reordenar bloques fuera de la plantilla indicada.');
+        }
 
         $userId = (string) Auth::id();
 
@@ -121,8 +124,6 @@ class TemplateBlockController extends Controller
             $this->blockService->update(
                 blockId: $blockId,
                 dto: new UpdateTemplateBlockDto(
-                    type:                null,
-                    set_type:            false,
                     title:               null,
                     set_title:           false,
                     default_content:     null,
@@ -131,8 +132,6 @@ class TemplateBlockController extends Controller
                     set_sort_order:      true,
                     block_state:         null,
                     set_block_state:     false,
-                    mandatory:           null,
-                    set_mandatory:       false,
                 ),
                 userId: $userId,
             );
@@ -152,8 +151,6 @@ class TemplateBlockController extends Controller
             ids:             $validated['ids'],
             block_state:     $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
-            mandatory:       $validated['mandatory'] ?? null,
-            set_mandatory:   $request->has('mandatory'),
         );
 
         $blocks = $this->blockService->bulkUpdate(

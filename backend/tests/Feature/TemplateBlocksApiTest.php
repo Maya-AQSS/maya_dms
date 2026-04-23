@@ -100,11 +100,9 @@ class TemplateBlocksApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $blockId,
             'template_id' => $templateId,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -150,9 +148,7 @@ class TemplateBlocksApiTest extends TestCase
         $new = json_decode((string) $row->new_value, true);
 
         $this->assertSame('editable', $previous['block_state'] ?? null);
-        $this->assertSame(false, $previous['mandatory'] ?? null);
         $this->assertSame('locked', $new['block_state'] ?? null);
-        $this->assertSame(false, $new['mandatory'] ?? null);
         $this->assertNotNull($row->timestamp);
     }
 

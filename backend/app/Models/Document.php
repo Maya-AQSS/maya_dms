@@ -17,7 +17,7 @@ class Document extends Model
     protected static function booted(): void
     {
         // TODO(permisos): ampliar visibilidad como en plantillas (ámbito académico
-        // / equipo en JWT) y enlazar `documents.read` en policy + scope; ver backlog.
+        // / equipo en JWT) y enlazar `documents.read` en policy + scope.
         static::addGlobalScope('user_access', function (Builder $builder) {
             // Si no hay usuario autenticado, NO devolvemos nada (fail-closed)
             // Esto previene fugas de datos si el middleware aún no ha corrido
@@ -58,6 +58,7 @@ class Document extends Model
         'study_type_id',
         'study_id',
         'module_id',
+        'delivery_deadline',
         'created_by',
         'owner_id',
         'status',
@@ -69,6 +70,7 @@ class Document extends Model
     protected function casts(): array
     {
         return [
+            'delivery_deadline' => 'datetime',
             'submitted_at' => 'datetime',
             'published_at' => 'datetime',
             'current_version' => 'integer',

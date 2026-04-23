@@ -4,10 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AuditLogResource;
-use App\Models\Comment;
-use App\Models\Document;
 use App\Models\JwtUser;
-use App\Models\Template;
 use App\Services\Contracts\AuditLogServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\ResourceCollection;
@@ -23,7 +20,7 @@ class AuditLogController extends Controller
      */
     public function indexForDocument(string $documentId): ResourceCollection|JsonResponse
     {
-        $this->assertCanAccessDocumentAudit($documentId);
+        $this->auditLogService->assertCanAccessDocumentAudit($documentId, $this->jwtUser());
 
         return AuditLogResource::collection(
             $this->auditLogService->historyFor('document', $documentId)
@@ -35,7 +32,7 @@ class AuditLogController extends Controller
      */
     public function indexForTemplate(string $templateId): ResourceCollection|JsonResponse
     {
-        $this->assertCanAccessTemplateAudit($templateId);
+        $this->auditLogService->assertCanAccessTemplateAudit($templateId, $this->jwtUser());
 
         return AuditLogResource::collection(
             $this->auditLogService->historyFor('template', $templateId)
@@ -47,7 +44,7 @@ class AuditLogController extends Controller
      */
     public function indexForComment(string $commentId): ResourceCollection|JsonResponse
     {
-        $this->assertCanAccessCommentAudit($commentId);
+        $this->auditLogService->assertCanAccessCommentAudit($commentId, $this->jwtUser());
 
         return AuditLogResource::collection(
             $this->auditLogService->historyFor('comment', $commentId)
@@ -62,49 +59,5 @@ class AuditLogController extends Controller
         }
 
         return $user;
-    }
-
-    /**
-     * Participante (alcance del modelo) o permiso `audit.read` en BD (lectura elevada).
-     *
-     * TODO(permisos): valorar restringir a solo `audit.read` (sin camino participante).
-     */
-    private function assertCanAccessDocumentAudit(string $documentId): void
-    {
-        if (Document::query()->whereKey($documentId)->exists()) {
-            return;
-        }
-
-        if (! $this->jwtUser()->hasPermission('audit.read')) {
-            abort(404);
-        }
-
-        Document::query()->withoutGlobalScopes(['user_access'])->findOrFail($documentId);
-    }
-
-    private function assertCanAccessTemplateAudit(string $templateId): void
-    {
-        if (Template::query()->whereKey($templateId)->exists()) {
-            return;
-        }
-
-        if (! $this->jwtUser()->hasPermission('audit.read')) {
-            abort(404);
-        }
-
-        Template::query()->withoutGlobalScopes(['user_access'])->findOrFail($templateId);
-    }
-
-    private function assertCanAccessCommentAudit(string $commentId): void
-    {
-        if (Comment::query()->whereKey($commentId)->exists()) {
-            return;
-        }
-
-        if (! $this->jwtUser()->hasPermission('audit.read')) {
-            abort(404);
-        }
-
-        Comment::query()->withoutGlobalScopes(['user_access'])->findOrFail($commentId);
     }
 }

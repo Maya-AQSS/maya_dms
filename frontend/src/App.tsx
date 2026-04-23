@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './index.css';
 import { AppLayout } from '@maya/shared-layout-react';
@@ -6,6 +5,8 @@ import { NAV_ITEMS } from './components/layout/navItems';
 import {
   DashboardPage,
   DocumentEditorPage,
+  DocumentValidationPage,
+  DocumentPreviewPage,
   DocumentsPage,
   PlaceholderPage,
   TemplateEditPage,
@@ -23,6 +24,8 @@ function AppRoutes() {
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/documents" element={<DocumentsPage />} />
       <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
+      <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
+      <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
       <Route path="/templates" element={<TemplatesPage />} />
       <Route path="/templates/new" element={<TemplateNewPage />} />
       <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
@@ -39,7 +42,15 @@ function AppWithLayout() {
   const location = useLocation();
 
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
-  const titleOverride = isEditorRoute ? 'Editor de Programación' : undefined;
+  const isDocumentValidateRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/validate');
+  const isDocumentPreviewRoute = /^\/documents\/[^/]+$/.test(location.pathname);
+  const titleOverride = isEditorRoute
+    ? 'Editor de Programación'
+    : isDocumentValidateRoute
+      ? 'Validación de programación'
+      : isDocumentPreviewRoute
+        ? 'Previsualización'
+        : undefined;
 
   const userName = profile?.name?.trim() ?? '';
   const userInitials = profileDisplayInitials(profile);

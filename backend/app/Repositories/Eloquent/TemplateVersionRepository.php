@@ -5,6 +5,7 @@ namespace App\Repositories\Eloquent;
 use App\Models\TemplateVersion;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class TemplateVersionRepository implements TemplateVersionRepositoryInterface
@@ -26,6 +27,53 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
             ->where('template_id', $templateId)
             ->orderByDesc('version_number')
             ->first();
+    }
+
+    /**
+     * Metadatos de una versión por id (consulta ligera, sin JSON de bloques).
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    public function findPublishedMetaById(string $versionId): ?array
+    {
+        $row = DB::table('template_versions')
+            ->where('id', $versionId)
+            ->select(['id', 'version_number', 'changelog'])
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row->id,
+            'version_number' => (int) $row->version_number,
+            'changelog' => (string) $row->changelog,
+        ];
+    }
+
+    /**
+     * Metadatos de la versión publicada más reciente (consulta ligera).
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    public function findLatestPublishedMetaForTemplate(string $templateId): ?array
+    {
+        $row = DB::table('template_versions')
+            ->where('template_id', $templateId)
+            ->orderByDesc('version_number')
+            ->select(['id', 'version_number', 'changelog'])
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row->id,
+            'version_number' => (int) $row->version_number,
+            'changelog' => (string) $row->changelog,
+        ];
     }
 
     /**

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { CascadeFilters } from './CascadeFilters';
 import {
   useDocuments,
@@ -12,9 +12,24 @@ import {
   fetchDocumentCreationOptions,
   type DocumentCreationOption,
 } from '../api/documents';
+import { fetchTemplateVersion, type TemplateVersionSnapshotBlock } from '../api/templates';
+import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
+import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { useUserProfile } from '../features/user-profile';
 import type { DocumentStatus } from '../types/documents';
-import { Button, Select } from '../ui';
+import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
+import { Button } from '../ui';
+
+function snapshotBlockStateLabel(raw: string | undefined): string {
+  if (raw != null && raw in BLOCK_STATE_LABELS) {
+    return BLOCK_STATE_LABELS[raw as BlockState];
+  }
+  return BLOCK_STATE_LABELS.editable;
+}
+
+function snapshotNodesForPreview(block: TemplateVersionSnapshotBlock): unknown[] {
+  return normalizeBlockContentForEditor(block.default_content);
+}
 
 const STATUS_LABELS: Record<DocumentStatus, string> = {
   draft: 'Borrador',
@@ -36,6 +51,8 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
  */
 export function DocumentsContent() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [showSubmittedForReviewBanner, setShowSubmittedForReviewBanner] = useState(false);
   const [activeFilters, setActiveFilters] = useState<CascadeDocumentFilters>({
     studyTypeId: '',
     studyId: '',
@@ -48,7 +65,10 @@ export function DocumentsContent() {
   const [creatingDocument, setCreatingDocument] = useState(false);
   const [creationError, setCreationError] = useState<string | null>(null);
   const [showSelector, setShowSelector] = useState(false);
-  const [selectedTemplateVersionId, setSelectedTemplateVersionId] = useState('');
+  const [previewOption, setPreviewOption] = useState<DocumentCreationOption | null>(null);
+  const [previewBlocks, setPreviewBlocks] = useState<TemplateVersionSnapshotBlock[]>([]);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const { documents, loading, error, reload } = useDocuments();
@@ -56,6 +76,7 @@ export function DocumentsContent() {
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
   const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
   const selectedModuleId = activeFilters.moduleId;
+  const isSelectingTemplate = showSelector && creationMode === 'select';
 
   const newProgrammingDisabledReason = useMemo(() => {
     if (profileLoading || profile === null) {
@@ -89,8 +110,11 @@ export function DocumentsContent() {
       setCreationOptions([]);
       setCreationMode(null);
       setCreationMessage(null);
-      setSelectedTemplateVersionId('');
       setShowSelector(false);
+      setPreviewOption(null);
+      setPreviewBlocks([]);
+      setPreviewLoading(false);
+      setPreviewError(null);
       setCreationError(null);
       return;
     }
@@ -105,7 +129,6 @@ export function DocumentsContent() {
         setCreationOptions(data.options);
         setCreationMode(data.mode);
         setCreationMessage(data.message);
-        setSelectedTemplateVersionId(data.options[0]?.template_version_id ?? '');
       } catch (err) {
         if (!cancelled) {
           setCreationError(err instanceof Error ? err.message : 'No se pudieron cargar las plantillas.');
@@ -124,6 +147,14 @@ export function DocumentsContent() {
       cancelled = true;
     };
   }, [selectedModuleId]);
+
+  useEffect(() => {
+    const state = location.state as { documentSubmittedForReview?: boolean } | null;
+    if (!state?.documentSubmittedForReview) return;
+    setShowSubmittedForReviewBanner(true);
+    void reload();
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigate, reload]);
 
   const handleClear = () =>
     startTransition(() =>
@@ -151,6 +182,39 @@ export function DocumentsContent() {
     }
   };
 
+  const closeSelector = () => {
+    setShowSelector(false);
+    setPreviewOption(null);
+    setPreviewBlocks([]);
+    setPreviewLoading(false);
+    setPreviewError(null);
+  };
+
+  const openTemplatePreview = async (option: DocumentCreationOption) => {
+    setPreviewOption(option);
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewBlocks([]);
+    try {
+      const version = await fetchTemplateVersion(option.template_version_id);
+      const snap = Array.isArray(version.blocks_snapshot) ? [...version.blocks_snapshot] : [];
+      snap.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      setPreviewBlocks(snap);
+    } catch (e) {
+      setPreviewError(e instanceof Error ? e.message : 'No se pudo cargar la vista previa.');
+      setPreviewBlocks([]);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const backToTemplateList = () => {
+    setPreviewOption(null);
+    setPreviewBlocks([]);
+    setPreviewError(null);
+    setPreviewLoading(false);
+  };
+
   const handleNewProgrammingClick = async () => {
     if (!selectedModuleId || loadingCreationOptions || creatingDocument) return;
     if (creationMode === 'none') return;
@@ -165,6 +229,26 @@ export function DocumentsContent() {
   return (
     <div className="p-6">
       <CascadeFilters onClear={handleClear} onFilterChange={handleChange} />
+
+      {showSubmittedForReviewBanner && (
+        <div
+          className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3 dark:bg-success/15 dark:border-success/40"
+          role="status"
+        >
+          <p className="text-sm font-medium text-success-dark dark:text-success">
+            Documento enviado a validar.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-success-dark dark:text-success"
+            onClick={() => setShowSubmittedForReviewBanner(false)}
+          >
+            Cerrar
+          </Button>
+        </div>
+      )}
 
       <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
         <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l flex items-center justify-between">
@@ -181,9 +265,13 @@ export function DocumentsContent() {
               type="button"
               size="sm"
               loading={creatingDocument}
-              disabled={newProgrammingDisabledReason !== null}
+              disabled={newProgrammingDisabledReason !== null || isSelectingTemplate}
               onClick={() => void handleNewProgrammingClick()}
-              title={newProgrammingDisabledReason ?? undefined}
+              title={
+                isSelectingTemplate
+                  ? 'Ya estás eligiendo una plantilla.'
+                  : newProgrammingDisabledReason ?? undefined
+              }
             >
               Nueva Programación
             </Button>
@@ -201,79 +289,160 @@ export function DocumentsContent() {
           </p>
         )}
         {showSelector && creationMode === 'select' && (
-          <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l bg-ui-body dark:bg-ui-dark-bg flex flex-col gap-2">
-            <p className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
-              Selecciona una plantilla para esta programación
-            </p>
-            <Select
-              value={selectedTemplateVersionId}
-              onChange={(e) => setSelectedTemplateVersionId(e.target.value)}
-            >
-              {creationOptions.map((option) => (
-                <option key={option.template_version_id} value={option.template_version_id}>
-                  {option.name}
-                  {option.description ? ` — ${option.description}` : ''}
-                </option>
-              ))}
-            </Select>
-            <div className="flex items-center justify-end gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setShowSelector(false)}
-                disabled={creatingDocument}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                loading={creatingDocument}
-                disabled={!selectedTemplateVersionId}
-                onClick={() => void handleCreateFromModule(selectedTemplateVersionId)}
-              >
-                Crear
-              </Button>
-            </div>
+          <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l bg-ui-body dark:bg-ui-dark-bg flex flex-col gap-3">
+            {!previewOption ? (
+              <>
+                <p className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
+                  Elige una plantilla para verla en previsualización
+                </p>
+                <ul className="flex flex-col gap-2 rounded-md border border-ui-border dark:border-ui-dark-border divide-y divide-ui-border-l dark:divide-ui-dark-border-l overflow-hidden bg-ui-card dark:bg-ui-dark-card">
+                  {creationOptions.map((option) => (
+                    <li key={option.template_version_id}>
+                      <button
+                        type="button"
+                        onClick={() => void openTemplatePreview(option)}
+                        disabled={creatingDocument}
+                        className="w-full text-left px-4 py-3 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary block">
+                          {option.name}
+                        </span>
+                        {option.description ? (
+                          <span className="text-xs text-text-muted dark:text-text-dark-muted mt-1 block line-clamp-2">
+                            {option.description}
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={closeSelector}
+                    disabled={creatingDocument}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-md border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-4 max-h-[min(70vh,520px)] overflow-y-auto">
+                  <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary mb-1">
+                    {previewOption.name}
+                  </h3>
+                  {previewOption.description ? (
+                    <p className="text-xs text-text-muted dark:text-text-dark-muted mb-4">
+                      {previewOption.description}
+                    </p>
+                  ) : null}
+                  {previewLoading && (
+                    <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando vista previa…</p>
+                  )}
+                  {previewError && !previewLoading && (
+                    <p className="text-sm text-warning-dark dark:text-warning-light">{previewError}</p>
+                  )}
+                  {!previewLoading && !previewError && previewBlocks.length === 0 && (
+                    <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                      Esta plantilla no tiene bloques en el snapshot publicado.
+                    </p>
+                  )}
+                  {!previewLoading && !previewError && previewBlocks.length > 0 && (
+                    <div className="space-y-8 preview-content">
+                      {previewBlocks.map((block) => {
+                        const nodes = snapshotNodesForPreview(block);
+                        const hasContent = nodes.length > 0;
+                        return (
+                          <section key={block.id}>
+                            <div className="flex flex-wrap items-baseline gap-2 mb-2">
+                              {block.title ? (
+                                <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
+                                  {block.title}
+                                </h4>
+                              ) : null}
+                              <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                                {snapshotBlockStateLabel(block.block_state)}
+                              </span>
+                            </div>
+                            {hasContent ? (
+                              <BlockContentHtml content={nodes as unknown[]} />
+                            ) : (
+                              <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                                Sin contenido por defecto en este bloque.
+                              </p>
+                            )}
+                          </section>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={backToTemplateList}
+                    disabled={creatingDocument || previewLoading}
+                  >
+                    Elegir otra plantilla
+                  </Button>
+                  <Button
+                    type="button"
+                    loading={creatingDocument}
+                    disabled={previewLoading || !!previewError || !previewOption}
+                    onClick={() => void handleCreateFromModule(previewOption.template_version_id)}
+                  >
+                    Usar esta plantilla
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
-        <div className="divide-y divide-ui-border-l dark:divide-ui-dark-border-l">
-          {loading && (
-            <p className="px-5 py-4 text-sm text-text-muted dark:text-text-dark-muted">
-              Cargando documentos…
-            </p>
-          )}
-          {error && (
-            <p className="px-5 py-4 text-sm text-warning-dark dark:text-warning-light">
-              Error al cargar documentos: {error.message}
-            </p>
-          )}
-          {!loading && !error && filtered.length === 0 && (
-            <p className="px-5 py-8 text-sm text-center text-text-muted dark:text-text-dark-muted">
-              No hay programaciones didácticas con los filtros actuales.
-            </p>
-          )}
-          {filtered.map((doc) => (
-            <div
-              key={doc.id}
-              className="px-5 py-3 flex items-center justify-between gap-4 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors"
-            >
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-primary dark:text-text-dark-primary truncate">
-                  {doc.title}
-                </p>
-                <p className="text-xs text-text-muted dark:text-text-dark-muted mt-0.5">
-                  v{doc.current_version}
-                </p>
-              </div>
-              <span
-                className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[doc.status]}`}
+        {!(showSelector && creationMode === 'select') && (
+          <div className="divide-y divide-ui-border-l dark:divide-ui-dark-border-l">
+            {loading && (
+              <p className="px-5 py-4 text-sm text-text-muted dark:text-text-dark-muted">
+                Cargando documentos…
+              </p>
+            )}
+            {error && (
+              <p className="px-5 py-4 text-sm text-warning-dark dark:text-warning-light">
+                Error al cargar documentos: {error.message}
+              </p>
+            )}
+            {!loading && !error && filtered.length === 0 && (
+              <p className="px-5 py-8 text-sm text-center text-text-muted dark:text-text-dark-muted">
+                No hay programaciones didácticas con los filtros actuales.
+              </p>
+            )}
+            {filtered.map((doc) => (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={() => navigate(`/documents/${doc.id}`)}
+                className="w-full text-left px-5 py-3 flex items-center justify-between gap-4 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer"
               >
-                {STATUS_LABELS[doc.status]}
-              </span>
-            </div>
-          ))}
-        </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-text-primary dark:text-text-dark-primary truncate">
+                    {doc.title}
+                  </p>
+                  <p className="text-xs text-text-muted dark:text-text-dark-muted mt-0.5">
+                    v{doc.current_version}
+                  </p>
+                </div>
+                <span
+                  className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[doc.status]}`}
+                >
+                  {STATUS_LABELS[doc.status]}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

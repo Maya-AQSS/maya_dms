@@ -3,7 +3,9 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
+use App\Models\DocumentVersion;
 use Illuminate\Support\Collection;
 
 interface DocumentRepositoryInterface
@@ -20,6 +22,16 @@ interface DocumentRepositoryInterface
      * @param  list<array{template_block_id: string, content: mixed, sort_order: int}>  $blockRows
      */
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document;
+
+    /**
+     * Localiza un bloque por su ID dentro del documento o lanza ModelNotFoundException.
+     */
+    public function findBlockInDocumentOrFail(string $documentId, string $blockId): DocumentBlock;
+
+    /**
+     * Persiste un bloque del documento.
+     */
+    public function saveBlock(DocumentBlock $block): void;
 
     /**
      * Indica si el usuario es autor (owner_id / created_by) o revisor asignado
@@ -72,4 +84,80 @@ interface DocumentRepositoryInterface
      * @return Collection<int, Document>
      */
     public function listOrderedByCreatedAtDesc(): Collection;
+
+    /**
+     * Bandeja de validación de documentos pendiente para un revisor (documento en revisión y fila
+     * `document_reviews` pending). En modo secuencial de la plantilla solo entran revisiones cuya
+     * etapa coincide con la menor etapa aún pendiente del documento.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function listPendingDocumentReviewInboxForUser(string $userId): Collection;
+
+    /**
+     * Mayor número de versión de snapshot guardado para el documento (0 si no hay ninguna).
+     */
+    public function maxDocumentVersionNumber(string $documentId): int;
+
+    /**
+     * Inserta un registro append-only en document_versions.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     */
+    public function insertDocumentVersion(
+        string $documentId,
+        int $versionNumber,
+        string $triggerEvent,
+        string $triggeredBy,
+        array $snapshotData,
+        ?string $notes = null,
+    ): void;
+
+    /**
+     * Localiza una fila de document_versions por id dentro del documento.
+     */
+    public function findDocumentVersionInDocumentOrFail(string $documentId, string $versionId): DocumentVersion;
+
+    /**
+     * Crea o actualiza un compartido (document_id, user_id) único.
+     */
+    public function upsertDocumentShare(
+        string $documentId,
+        string $userId,
+        string $permission,
+        string $grantedBy,
+    ): void;
+
+    /**
+     * Elimina un compartido; no lanza si no existía.
+     */
+    public function deleteDocumentShare(string $documentId, string $userId): void;
+
+    /**
+     * Permisos de compartición del usuario sobre los documentos indicados.
+     *
+     * @param  list<string>  $documentIds
+     * @return array<string, string> mapa document_id => permission (read|edit)
+     */
+    public function sharePermissionsForViewer(array $documentIds, string $userId): array;
+
+    /**
+     * Mayor número de versión de bloque guardado (0 si no hay filas).
+     */
+    public function maxBlockVersionNumberForDocumentBlock(string $documentBlockId): int;
+
+    /**
+     * Inserta una fila append-only en block_versions.
+     *
+     * @param  array<string, mixed>  $content
+     * @param  array<string, mixed>|null  $diff
+     */
+    public function insertDocumentBlockVersion(
+        string $documentBlockId,
+        string $documentId,
+        int $versionNumber,
+        array $content,
+        ?array $diff,
+        string $editedBy,
+    ): void;
 }

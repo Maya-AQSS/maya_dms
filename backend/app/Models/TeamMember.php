@@ -2,25 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Membresía de un usuario en un equipo.
+ *
+ * Tabla de solo lectura: en `local` y producción es la vista `team_members` (FDW sobre
+ * origen remoto o `team_members_source` en desarrollo). En `testing` es tabla física homónima.
+ * No admite escritura vía Eloquent.
+ */
 class TeamMember extends Model
 {
-    use HasUuids;
-
     protected $table = 'team_members';
-
-    protected $keyType = 'string';
 
     public $incrementing = false;
 
-    protected $fillable = [
-        'team_id',
-        'user_id',
-        'role',
-    ];
+    protected $keyType = 'string';
 
     public function team(): BelongsTo
     {

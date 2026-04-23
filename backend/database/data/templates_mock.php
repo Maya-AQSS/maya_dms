@@ -14,8 +14,10 @@ use App\Enums\TemplateVisibilityLevel;
  * `study_type_ids`, `study_ids`, `module_ids` del token (y equipos vía team_members).
  * Clientes de realm distintos pueden mapear esos claims para probar visibilidad sin tocar código.
  */
+$programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
+
 return [
-    'templates' => [
+    'templates' => array_merge([
         [
             'id' => '33333333-3333-3333-3333-333333333301',
             'name' => 'Plantilla mock — visibilidad global',
@@ -50,7 +52,7 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333303',
-            'name' => 'Plantilla mock — visibilidad personal (docente ESO)',
+            'name' => 'Plantilla mock — visibilidad personal (docente ESPA)',
             'description' => 'Solo usr_hierarchy_eso_demo (creador) + catálogo ampliado vía permisos.',
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
@@ -66,12 +68,12 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333304',
-            'name' => 'Plantilla mock — visibilidad por tipo de estudio (ESO)',
-            'description' => 'Visible si el JWT incluye study_type_ids con ST_ESO (p. ej. cliente/realm docente ESO).',
+            'name' => 'Plantilla mock — visibilidad por tipo de estudio (ESPA)',
+            'description' => 'Visible si el JWT incluye study_type_ids con ST_ESPA (p. ej. cliente/realm docente ESPA).',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
             'delivery_deadline' => null,
             'study_id' => null,
-            'study_type_id' => 'ST_ESO',
+            'study_type_id' => 'ST_ESPA',
             'module_id' => null,
             'team_id' => null,
             'created_by' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
@@ -82,12 +84,12 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333305',
-            'name' => 'Plantilla mock — visibilidad por estudio (1º ESO)',
-            'description' => 'Visible con study_ids que incluyan S_ESO_1 (programación concreta).',
+            'name' => 'Plantilla mock — visibilidad por estudio (ESPA)',
+            'description' => 'Visible con study_ids que incluyan S_ESPA (programación concreta).',
             'visibility_level' => TemplateVisibilityLevel::Study->value,
             'delivery_deadline' => null,
-            'study_id' => 'S_ESO_1',
-            'study_type_id' => 'ST_ESO',
+            'study_id' => 'S_ESPA',
+            'study_type_id' => 'ST_ESPA',
             'module_id' => null,
             'team_id' => null,
             'created_by' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
@@ -98,16 +100,16 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333306',
-            'name' => 'Plantilla mock — visibilidad por módulo (Matemáticas 1º ESO)',
+            'name' => 'Plantilla mock — visibilidad por módulo (Matemáticas ESPA)',
             'description' => 'Visible con module_ids que incluyan M_MAT_1. Útil para clientes Keycloak por módulo.',
             'visibility_level' => TemplateVisibilityLevel::Module->value,
             'delivery_deadline' => null,
-            'study_id' => 'S_ESO_1',
-            'study_type_id' => 'ST_ESO',
+            'study_id' => 'S_ESPA',
+            'study_type_id' => 'ST_ESPA',
             'module_id' => 'M_MAT_1',
             'team_id' => null,
             'created_by' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
-            'status' => 'draft',
+            'status' => 'published',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'parallel',
@@ -133,13 +135,13 @@ return [
             'name' => 'Plantilla mock — tipo Bachillerato (ST_BACH)',
             'description' => 'Visible si el token incluye study_type_ids con ST_BACH.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDays(2)->toDateTimeString(),
             'study_id' => null,
             'study_type_id' => 'ST_BACH',
             'module_id' => null,
             'team_id' => null,
             'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
-            'status' => 'draft',
+            'status' => 'in_review',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
@@ -149,13 +151,13 @@ return [
             'name' => 'Plantilla mock — tipo FP (ST_FP)',
             'description' => 'Visible si el token incluye study_type_ids con ST_FP.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDays(6)->toDateTimeString(),
             'study_id' => null,
             'study_type_id' => 'ST_FP',
             'module_id' => null,
             'team_id' => null,
             'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-            'status' => 'draft',
+            'status' => 'in_review',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
@@ -187,7 +189,7 @@ return [
             'module_id' => 'M_DAW_DWES',
             'team_id' => null,
             'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-            'status' => 'draft',
+            'status' => 'published',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'parallel',
@@ -235,7 +237,7 @@ return [
             'module_id' => null,
             'team_id' => null,
             'created_by' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
-            'status' => 'draft',
+            'status' => 'in_review',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
@@ -258,12 +260,12 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333316',
-            'name' => 'Plantilla mock — estudio 2º ESO',
-            'description' => 'Requiere study_ids con S_ESO_2.',
+            'name' => 'Plantilla mock — estudio ESPA',
+            'description' => 'Requiere study_ids con S_ESPA.',
             'visibility_level' => TemplateVisibilityLevel::Study->value,
             'delivery_deadline' => null,
-            'study_id' => 'S_ESO_2',
-            'study_type_id' => 'ST_ESO',
+            'study_id' => 'S_ESPA',
+            'study_type_id' => 'ST_ESPA',
             'module_id' => null,
             'team_id' => null,
             'created_by' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
@@ -274,12 +276,12 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333317',
-            'name' => 'Plantilla mock — módulo Inglés 1º ESO',
+            'name' => 'Plantilla mock — módulo Inglés ESPA',
             'description' => 'module_ids debe incluir M_ENG_1.',
             'visibility_level' => TemplateVisibilityLevel::Module->value,
             'delivery_deadline' => null,
-            'study_id' => 'S_ESO_1',
-            'study_type_id' => 'ST_ESO',
+            'study_id' => 'S_ESPA_1',
+            'study_type_id' => 'ST_ESPA',
             'module_id' => 'M_ENG_1',
             'team_id' => null,
             'created_by' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
@@ -288,8 +290,72 @@ return [
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ],
-    ],
-    'template_reviewers' => [
+        [
+            'id' => '33333333-3333-3333-3333-333333333318',
+            'name' => 'Programación didáctica — DWES (catálogo global, Dirección)',
+            'description' => 'Plantilla global publicada por Dirección con el contenido oficial de referencia para el módulo DWES (DAW). Validación de documentos: Secretaría y Auditoría.',
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => null,
+            'study_id' => null,
+            'study_type_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 2,
+            'review_mode' => 'sequential',
+        ],
+        [
+            'id' => '33333333-3333-3333-3333-333333333319',
+            'name' => 'Plantilla mock — personal (Secretaría) publicada',
+            'description' => 'Visible para usr_secretariat_demo y lista para clonado/uso en pruebas.',
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_id' => null,
+            'study_type_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 2,
+            'review_mode' => 'sequential',
+        ],
+    ], $programacionPack['templates']),
+    /**
+     * Pool de posibles validadores de documentos generados desde cada plantilla.
+     * Son usuarios distintos de los revisores de la plantilla normativa (template_reviewers).
+     * PK compuesta (template_id, user_id) → sin campo id.
+     */
+    'template_document_reviewers' => array_merge([
+        // Plantilla global 01 — doc reviewers: secretaria + docentes
+        ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165'],
+        ['template_id' => '33333333-3333-3333-3333-333333333301', 'user_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f'],
+        // Plantilla equipo académico 02 — doc reviewers: dirección + secretaria
+        ['template_id' => '33333333-3333-3333-3333-333333333302', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333302', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        // Plantilla tipo BACH 08 — doc reviewers: dirección
+        ['template_id' => '33333333-3333-3333-3333-333333333308', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        // Plantilla tipo FP 09 — doc reviewers: dirección + secretaria
+        ['template_id' => '33333333-3333-3333-3333-333333333309', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333309', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        // Plantilla módulo Matemáticas ESPA 306 (publicada) — validadores de documento
+        ['template_id' => '33333333-3333-3333-3333-333333333306', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333306', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        // Plantilla módulo DWES 11 — doc reviewers: dirección + secretaria
+        ['template_id' => '33333333-3333-3333-3333-333333333311', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333311', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        // Global DWES 318 — validadores de documento: secretaría, luego auditoría (orden = etapas al enviar)
+        ['template_id' => '33333333-3333-3333-3333-333333333318', 'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664'],
+        ['template_id' => '33333333-3333-3333-3333-333333333318', 'user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc'],
+        // Personal Secretaría publicada 319 — dirección + auditoría
+        ['template_id' => '33333333-3333-3333-3333-333333333319', 'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2'],
+        ['template_id' => '33333333-3333-3333-3333-333333333319', 'user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc'],
+    ], $programacionPack['template_document_reviewers']),
+
+    'template_reviewers' => array_merge([
         [
             'id' => '44444444-4444-4444-4444-444444444401',
             'template_id' => '33333333-3333-3333-3333-333333333301',
@@ -375,6 +441,12 @@ return [
             'stage' => 1,
         ],
         [
+            'id' => '44444444-4444-4444-4444-444444444421',
+            'template_id' => '33333333-3333-3333-3333-333333333311',
+            'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
+            'stage' => 2,
+        ],
+        [
             'id' => '44444444-4444-4444-4444-444444444415',
             'template_id' => '33333333-3333-3333-3333-333333333312',
             'user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc',
@@ -410,5 +482,29 @@ return [
             'user_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
             'stage' => 1,
         ],
-    ],
+        [
+            'id' => '44444444-4444-4444-4444-444444444422',
+            'template_id' => '33333333-3333-3333-3333-333333333318',
+            'user_id' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
+            'stage' => 1,
+        ],
+        [
+            'id' => '44444444-4444-4444-4444-444444444423',
+            'template_id' => '33333333-3333-3333-3333-333333333318',
+            'user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc',
+            'stage' => 2,
+        ],
+        [
+            'id' => '44444444-4444-4444-4444-444444444424',
+            'template_id' => '33333333-3333-3333-3333-333333333319',
+            'user_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
+            'stage' => 1,
+        ],
+        [
+            'id' => '44444444-4444-4444-4444-444444444425',
+            'template_id' => '33333333-3333-3333-3333-333333333319',
+            'user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc',
+            'stage' => 2,
+        ],
+    ], $programacionPack['template_reviewers']),
 ];

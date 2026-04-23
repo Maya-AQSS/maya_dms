@@ -32,6 +32,7 @@ export type Template = {
   review_stages: number;
   review_mode: ReviewMode;
   reviewers?: TemplateReviewer[];
+  document_reviewers?: string[];
   created_at?: string;
   updated_at?: string;
 };

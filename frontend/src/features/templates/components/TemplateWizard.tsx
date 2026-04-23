@@ -1,11 +1,14 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
+import type { ReviewMode } from '../../../types/templates';
 import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
   publishTemplate as apiPublishTemplate,
+  submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
+  syncDocumentReviewers,
 } from '../../../api/templates';
 import { ApiHttpError } from '../../../api/http';
 import { Button } from '../../../ui';
@@ -46,14 +49,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const [teamId, setTeamId] = useState(initial?.team_id || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Step 2: Blocks state
-
-
   // Step 3: Users state
   const [validators, setValidators] = useState<ValidatorEntry[]>([]);
+  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
     initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
   );
+  const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -104,10 +106,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     setSaving(true);
     setPermissionError(null);
     try {
+      const isUpdate = !!template?.id;
+      const visibilityChanged = !isUpdate || visibility !== template.visibility_level;
+
       const payload = {
         name: name.trim(),
         description: description.trim() || null,
-        visibility_level: visibility,
+        ...(visibilityChanged ? { visibility_level: visibility } : {}),
         delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
         study_type_id: studyTypeId || null,
         study_id: studyId || null,
@@ -116,10 +121,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       };
 
       let res;
-      if (template?.id) {
+      if (isUpdate) {
         res = await apiUpdateTemplate(template.id, payload);
       } else {
-        res = await apiCreateTemplate(payload);
+        res = await apiCreateTemplate({ ...payload, visibility_level: visibility });
       }
       setTemplate(res.data);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
@@ -149,23 +154,44 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setSaving(false);
     }
   };
-  const saveUsers = async () => {
+
+  const handleSubmitForReview = async () => {
     if (!template?.id) return;
     setSaving(true);
     setErrors({});
     try {
-      // 1. Guardar modo de revisión (libre/ordenada -> parallel/sequential)
-      const reviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
-      await apiUpdateTemplate(template.id, { review_mode: reviewMode as any });
+      const res = await apiSubmitTemplateForReview(template.id);
+      setTemplate(res.data);
+      setShowValidationModal(false);
+      navigate('/templates');
+    } catch (e) {
+      setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveUsers = async () => {
+    if (!template?.id) return;
 
-      // 2. Sincronizar validadores
-      const userIds = validators.map((v: ValidatorEntry) => v.userId);
+    const userIds = validators.map((v: ValidatorEntry) => v.userId);
+
+    setSaving(true);
+    setErrors({});
+    try {
+      // 1. Guardar modo de revisión (libre/ordenada -> parallel/sequential)
+      const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
+      await apiUpdateTemplate(template.id, { review_mode: reviewMode });
+
+      // 2. Sincronizar validadores de plantilla y de documento
+      const docUserIds = documentValidators.map((v: ValidatorEntry) => v.userId);
       await syncTemplateValidators(template.id, userIds);
+      await syncDocumentReviewers(template.id, docUserIds);
 
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
       setStep('summary');
     } catch (e) {
-      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar los validadores' });
+      console.error('[saveUsers]', e);
+      setErrors({ api: 'Error al guardar los validadores' });
     } finally {
       setSaving(false);
     }
@@ -274,8 +300,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         {/* Topbar actions */}
         <div className="flex items-center gap-2 shrink-0">
           {step === 'summary' && (
-            <Button variant="ghost" size="sm" onClick={() => navigate('/templates')}>
-              {validators.length > 0 ? 'Salir sin validar' : 'Salir sin publicar'}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/templates')}
+              className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
+            >
+              Guardar y salir
             </Button>
           )}
 
@@ -297,18 +328,18 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               onClick={() => setShowValidationModal(true)}
               className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
-              Validar plantilla →
+              Enviar a validar
             </Button>
           )}
-          {step === 'summary' && validators.length === 0 && (
+          {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
             <Button
               variant="primary"
               size="sm"
               loading={saving}
               onClick={() => void handlePublish()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm bg-success border-success hover:bg-success-dark"
+              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
-              Publicar plantilla ✓
+              Publicar plantilla
             </Button>
           )}
         </div>
@@ -339,13 +370,31 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         </div>
       )}
 
-      {/* Permission / API error banner */}
+
+      {/* Permission / API error banner — step 1 */}
       {step === 'properties' && permissionError && (
         <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
           <button
             type="button"
             onClick={() => setPermissionError(null)}
+            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* API error banner — steps 2, 3, 4 (step 1 shows errors.api inline) */}
+      {errors.api && step !== 'properties' && (
+        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">
+            ⚠️ {errors.api}. Inténtalo de nuevo.
+          </span>
+          <button
+            type="button"
+            onClick={() => setErrors({})}
             className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
             aria-label="Cerrar"
           >
@@ -370,6 +419,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             moduleId={moduleId} setModuleId={setModuleId}
             teamId={teamId} setTeamId={setTeamId}
             errors={errors}
+            templateStatus={template?.status}
           />
         )}
         {step === 'blocks' && template && (
@@ -379,10 +429,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         )}
         {step === 'users' && (
           <WizardStep3Users
+            templateCreatedBy={template?.created_by ?? null}
             validators={validators}
             onValidatorsChange={setValidators}
             validationType={validationType}
             onValidationTypeChange={setValidationType}
+            documentValidators={documentValidators}
+            onDocumentValidatorsChange={setDocumentValidators}
+            documentValidationType={documentValidationType}
+            onDocumentValidationTypeChange={setDocumentValidationType}
           />
         )}
         {step === 'summary' && template && (
@@ -390,6 +445,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             template={template}
             validators={validators}
             validationType={validationType}
+            documentValidators={documentValidators}
+            documentValidationType={documentValidationType}
           />
         )}
       </div>
@@ -432,17 +489,19 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             <div className="px-6 py-4 border-t border-ui-border dark:border-ui-dark-border flex items-center justify-end gap-2">
               <button
                 type="button"
-                className="px-4 py-1.5 rounded border border-ui-border text-[10px] font-black uppercase tracking-wider text-text-secondary hover:bg-ui-body transition-colors"
+                disabled={saving}
+                className="px-4 py-1.5 rounded border border-ui-border text-[10px] font-black uppercase tracking-wider text-text-secondary hover:bg-ui-body transition-colors disabled:opacity-50"
                 onClick={() => setShowValidationModal(false)}
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                className="px-4 py-1.5 rounded bg-odoo-purple text-white text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-odoo-purple/90 transition-colors"
-                onClick={() => navigate('/templates')}
+                disabled={saving}
+                className="px-4 py-1.5 rounded bg-odoo-purple text-white text-[10px] font-black uppercase tracking-wider shadow-sm hover:bg-odoo-purple/90 transition-colors disabled:opacity-50"
+                onClick={() => void handleSubmitForReview()}
               >
-                Confirmar y salir →
+                {saving ? 'Enviando…' : 'Confirmar y salir →'}
               </button>
             </div>
           </div>

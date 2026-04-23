@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -26,6 +27,7 @@ class DocumentVersion extends Model
         'triggered_by',
         'snapshot_data',
         'notes',
+        'is_immutable',
         'created_at',
     ];
 
@@ -34,8 +36,20 @@ class DocumentVersion extends Model
         return [
             'snapshot_data'  => 'array',
             'version_number' => 'integer',
+            'is_immutable'   => 'boolean',
             'created_at'     => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function () {
+            throw new AuthorizationException('Los snapshots de documento son inmutables.');
+        });
+
+        static::deleting(function () {
+            throw new AuthorizationException('No se pueden eliminar snapshots de documento.');
+        });
     }
 
     public function document(): BelongsTo

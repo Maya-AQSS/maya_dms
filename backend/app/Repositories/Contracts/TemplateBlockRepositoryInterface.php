@@ -34,7 +34,7 @@ interface TemplateBlockRepositoryInterface
     public function delete(TemplateBlock $block): void;
 
     /**
-     * Actualiza block_state (y opcionalmente mandatory) en múltiples bloques.
+     * Actualiza block_state en múltiples bloques.
      * Devuelve los bloques actualizados en el mismo orden que $ids.
      *
      * @param  list<string>  $ids

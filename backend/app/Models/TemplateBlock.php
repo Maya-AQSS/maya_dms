@@ -14,12 +14,10 @@ class TemplateBlock extends Model
 
     protected $fillable = [
         'template_id',
-        'type',
         'title',
         'default_content',
         'description',
         'block_state',
-        'mandatory',
         'sort_order',
     ];
 
@@ -27,7 +25,6 @@ class TemplateBlock extends Model
     {
         return [
             'default_content' => 'array',
-            'mandatory'       => 'boolean',
             'sort_order'      => 'integer',
         ];
     }

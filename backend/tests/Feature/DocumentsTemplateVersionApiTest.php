@@ -3,11 +3,15 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Document;
+use App\Models\DocumentVersion;
+use App\Models\DocumentShare;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Models\TemplateReviewer;
+use Illuminate\Auth\Access\AuthorizationException;
 use Database\Seeders\PermissionsSeeder;
 use Database\Seeders\UserPermissionsSeeder;
 use Database\Seeders\UsersSourceSeeder;
@@ -22,7 +26,7 @@ use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 /**
- * F-03.4 Escenario 4: documento anclado a template_version_id; al abrir, estructura de esa versión.
+ * Documento anclado a template_version_id; al abrir, estructura de esa versión.
  */
 class DocumentsTemplateVersionApiTest extends TestCase
 {
@@ -175,7 +179,69 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonValidationErrors(['template_id']);
     }
 
-    public function test_show_document_uses_v1_snapshot_after_template_publishes_v2(): void
+    public function test_store_document_can_be_created_with_template_version_only(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+        );
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Normativa',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque publicado',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $versionId = (string) DB::table('template_versions')
+            ->where('template_id', $tid)
+            ->value('id');
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_version_id' => $versionId,
+            'title' => 'Expediente',
+        ], $hCreator);
+
+        $createDoc->assertCreated()
+            ->assertJsonPath('data.template_id', $tid)
+            ->assertJsonPath('data.template_version_id', $versionId);
+    }
+
+    public function test_show_document_references_snapshot_from_publish_time(): void
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
@@ -208,11 +274,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'heading',
-            'title' => 'Solo v1',
+            'title' => 'Bloque publicado',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -236,31 +300,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $versionIdV1 = $createDoc->json('data.template_version_id');
         $this->assertNotEmpty($versionIdV1);
         $createDoc->assertJsonCount(1, 'data.blocks');
-        $createDoc->assertJsonPath('data.blocks.0.type', 'heading');
-        $createDoc->assertJsonPath('data.blocks.0.title', 'Solo v1');
-
-        $b2 = (string) Str::uuid();
-        TemplateBlock::query()->forceCreate([
-            'id' => $b2,
-            'template_id' => $tid,
-            'type' => 'paragraph',
-            'title' => 'Añadido en v2',
-            'default_content' => ['x' => 1],
-            'block_state' => 'editable',
-            'mandatory' => false,
-            'sort_order' => 1,
-        ]);
-
-        $this->postJson("/api/v1/templates/{$tid}/reopen-draft", [], $hCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v2 segundo bloque'], $hReviewer)->assertOk();
+        $createDoc->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
         $show->assertOk();
         $show->assertJsonPath('data.template_version_id', $versionIdV1);
         $show->assertJsonCount(1, 'data.blocks');
-        $show->assertJsonPath('data.blocks.0.type', 'heading');
-        $show->assertJsonPath('data.blocks.0.title', 'Solo v1');
+        $show->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
         $show->assertJsonPath('data.team', null);
     }
 
@@ -313,11 +359,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'Bloque',
             'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
+            'block_state' => 'optional',
             'sort_order' => 0,
         ]);
 
@@ -347,5 +391,807 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $show->assertJsonPath('data.team.id', $gid);
         $show->assertJsonPath('data.team.name', 'Equipo doc');
         $show->assertJsonPath('data.team.is_department', true);
+    }
+
+    public function test_update_document_block_persists_content_in_draft(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla editable',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque editable',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc editable',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $payload = [
+            'content' => [
+                ['type' => 'paragraph', 'content' => 'Contenido actualizado'],
+            ],
+        ];
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", $payload, $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.document_block_id', $documentBlockId)
+            ->assertJsonPath('data.is_filled', true)
+            ->assertJsonPath('data.last_edited_by', $creatorId);
+    }
+
+    public function test_update_document_block_rejects_locked_blocks(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla bloqueada',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque bloqueado',
+            'default_content' => null,
+            'block_state' => 'locked',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc bloqueado',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [['type' => 'paragraph', 'content' => 'No debería guardar']],
+        ], $hCreator)
+            ->assertForbidden();
+    }
+
+    public function test_update_document_updates_title(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla update título',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Título inicial',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->putJson("/api/v1/documents/{$docId}", [
+            'title' => 'Título actualizado',
+        ], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.title', 'Título actualizado');
+    }
+
+    public function test_destroy_document_soft_deletes_record(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId, ['documents.create', 'documents.delete', 'templates.read', 'users.search']);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla delete',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Documento borrable',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->deleteJson("/api/v1/documents/{$docId}", [], $hCreator)->assertNoContent();
+
+        $this->assertSoftDeleted('documents', ['id' => $docId]);
+    }
+
+    public function test_submit_document_fails_when_mandatory_block_is_empty(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla mandatory',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque obligatorio',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc mandatory',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['blocks']);
+    }
+
+    public function test_submit_document_succeeds_when_mandatory_block_is_filled(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla mandatory ok',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque obligatorio',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc mandatory ok',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [['type' => 'paragraph', 'content' => 'Contenido obligatorio cumplido']],
+        ], $hCreator)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+    }
+
+    public function test_approve_last_review_persists_published_document_version_snapshot(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla snapshot doc',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc snapshot',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+
+        $reviews = $this->getJson("/api/v1/documents/{$docId}/reviews", $hCreator)
+            ->assertOk()
+            ->json('data');
+        $this->assertNotEmpty($reviews);
+        $reviewId = (string) $reviews[0]['id'];
+
+        $this->postJson("/api/v1/documents/{$docId}/reviews/{$reviewId}/approve", [
+            'changelog' => 'Cierre v1 liberado',
+        ], $hReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $row = DB::table('document_versions')->where('document_id', $docId)->first();
+        $this->assertNotNull($row);
+        $this->assertSame(1, (int) $row->version_number);
+        $this->assertSame('published', $row->trigger_event);
+        $this->assertSame($reviewerId, $row->triggered_by);
+        $this->assertSame('Cierre v1 liberado', $row->notes);
+
+        $raw = $row->snapshot_data;
+        $snapshot = is_string($raw) ? json_decode($raw, true) : $raw;
+        $this->assertIsArray($snapshot);
+        $this->assertArrayHasKey('document', $snapshot);
+        $this->assertArrayHasKey('blocks', $snapshot);
+        $this->assertSame($docId, $snapshot['document']['id']);
+        $this->assertSame('published', $snapshot['document']['status']);
+        $this->assertNotEmpty($snapshot['blocks']);
+
+        $this->assertSame(1, (int) DB::table('documents')->where('id', $docId)->value('current_version'));
+
+        $versionId = (string) $row->id;
+        $show = $this->getJson("/api/v1/documents/{$docId}/versions/{$versionId}", $hCreator)
+            ->assertOk()
+            ->json('data');
+        $this->assertSame($versionId, $show['id']);
+        $this->assertArrayHasKey('snapshot_data', $show);
+        $this->assertSame('Cierre v1 liberado', $show['changelog']);
+    }
+
+    public function test_publish_document_requires_changelog(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla publish changelog',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc publish',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk();
+
+        // Tras borrar revisiones el revisor deja de entrar por `document_reviews` en el scope del modelo;
+        // un share de lectura mantiene visibilidad para publicar sin filas pendientes.
+        DocumentShare::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $docId,
+            'user_id' => $reviewerId,
+            'permission' => 'read',
+            'granted_by' => $creatorId,
+        ]);
+
+        DB::table('document_reviews')->where('document_id', $docId)->delete();
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [], $hReviewer)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['changelog']);
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => 'Publicación directa con notas',
+        ], $hReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->assertSame(
+            'Publicación directa con notas',
+            (string) DB::table('document_versions')->where('document_id', $docId)->value('notes'),
+        );
+    }
+
+    public function test_document_version_snapshot_cannot_be_updated_via_eloquent(): void
+    {
+        $userId = (string) Str::uuid();
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $versionId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Doc snapshot',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc snapshot',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => now(),
+            'published_at' => now(),
+        ]);
+
+        DocumentVersion::query()->forceCreate([
+            'id' => $versionId,
+            'document_id' => $documentId,
+            'version_number' => 1,
+            'trigger_event' => 'published',
+            'triggered_by' => $userId,
+            'snapshot_data' => ['document' => ['id' => $documentId], 'blocks' => []],
+            'notes' => 'v1',
+            'is_immutable' => true,
+            'created_at' => now(),
+        ]);
+
+        $version = DocumentVersion::query()->findOrFail($versionId);
+        $this->expectException(AuthorizationException::class);
+        $version->update(['notes' => 'hack']);
+    }
+
+    public function test_document_version_snapshot_mutation_via_http_returns_403(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $versionId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Doc snapshot HTTP',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc snapshot HTTP',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => now(),
+            'published_at' => now(),
+        ]);
+
+        DocumentVersion::query()->forceCreate([
+            'id' => $versionId,
+            'document_id' => $documentId,
+            'version_number' => 1,
+            'trigger_event' => 'published',
+            'triggered_by' => $userId,
+            'snapshot_data' => ['document' => ['id' => $documentId], 'blocks' => []],
+            'notes' => 'v1',
+            'is_immutable' => true,
+            'created_at' => now(),
+        ]);
+
+        $this->putJson("/api/v1/documents/{$documentId}/versions/{$versionId}", ['notes' => 'hack'], $headers)->assertForbidden();
+        $this->patchJson("/api/v1/documents/{$documentId}/versions/{$versionId}", ['notes' => 'hack'], $headers)->assertForbidden();
+        $this->deleteJson("/api/v1/documents/{$documentId}/versions/{$versionId}", [], $headers)->assertForbidden();
+    }
+
+    public function test_template_version_status_reports_update_when_newer_published_template_version_exists(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla estado versión',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1 plantilla'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc banner',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $v2Id = (string) Str::uuid();
+        $now = now();
+        DB::table('template_versions')->insert([
+            'id' => $v2Id,
+            'template_id' => $tid,
+            'version_number' => 2,
+            'blocks_snapshot' => json_encode([]),
+            'changelog' => 'Normativa v2 publicada',
+            'published_by' => $reviewerId,
+            'published_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->getJson("/api/v1/documents/{$docId}/template-version-status", $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.has_update', true)
+            ->assertJsonPath('data.changelog', 'Normativa v2 publicada')
+            ->assertJsonPath('data.current_version.version_number', 1)
+            ->assertJsonPath('data.latest_version.version_number', 2)
+            ->assertJsonPath('data.latest_version.id', $v2Id);
+    }
+
+    public function test_template_version_status_has_no_update_when_document_on_latest_template_version(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla al día',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc al día',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->getJson("/api/v1/documents/{$docId}/template-version-status", $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.has_update', false)
+            ->assertJsonPath('data.changelog', null)
+            ->assertJsonPath('data.current_version.version_number', 1)
+            ->assertJsonPath('data.latest_version.version_number', 1);
     }
 }

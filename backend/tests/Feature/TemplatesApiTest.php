@@ -300,10 +300,11 @@ class TemplatesApiTest extends TestCase
         ], $headers)->assertForbidden();
     }
 
-    public function test_clone_creates_draft_personal_copy_with_suffix_and_blocks(): void
+    public function test_clone_creates_draft_copy_preserving_visibility_with_suffix_and_blocks(): void
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
+        $this->assignUserPermissions($userId, ['templates.read', 'templates.create']);
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -328,21 +329,17 @@ class TemplatesApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'B1',
             'default_content' => ['x' => 1],
             'block_state' => 'editable',
-            'mandatory' => true,
             'sort_order' => 0,
         ]);
         TemplateBlock::query()->forceCreate([
             'id' => $b2,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'B2',
             'default_content' => null,
             'block_state' => 'locked',
-            'mandatory' => false,
             'sort_order' => 1,
         ]);
 
@@ -351,7 +348,8 @@ class TemplatesApiTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.name', 'Original (copia)')
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Personal->value)
+            ->assertJsonPath('data.version', 3)
+            ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value)
             ->assertJsonPath('data.review_stages', 1)
             ->assertJsonPath('data.review_mode', 'parallel');
 
@@ -627,7 +625,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.team.is_department', false);
     }
 
-    public function test_template_publish_requires_changelog_when_in_review(): void
+    public function test_template_first_publish_in_review_autofills_changelog_when_missing(): void
     {
         $creatorId = (string) Str::uuid();
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
@@ -654,12 +652,112 @@ class TemplatesApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'B',
             'default_content' => ['k' => 'v'],
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
+        ]);
+
+        $this->seedTemplateReviewer($tid, $reviewerId);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->assertDatabaseHas('template_versions', [
+            'template_id' => $tid,
+            'version_number' => 1,
+            'changelog' => 'Versión inicial',
+        ]);
+    }
+
+    public function test_template_creator_can_publish_draft_without_reviewers_and_autofills_v1_changelog(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headersCreator = $this->authHeaders($creatorId, []);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft directo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.version', 1);
+
+        $this->assertDatabaseHas('template_versions', [
+            'template_id' => $tid,
+            'version_number' => 1,
+            'changelog' => 'Versión inicial',
+            'published_by' => $creatorId,
+        ]);
+    }
+
+    public function test_template_publish_requires_changelog_from_second_version_onward(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $headersReviewer = $this->authHeaders($reviewerId, []);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'En revisión v2',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'in_review',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        // Existe versión previa publicada -> próximo publish será v2 y requiere changelog.
+        TemplateVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'version_number' => 1,
+            'blocks_snapshot' => [],
+            'changelog' => 'Versión inicial',
+            'published_by' => $creatorId,
+            'published_at' => now(),
         ]);
 
         $this->seedTemplateReviewer($tid, $reviewerId);
@@ -704,11 +802,9 @@ class TemplatesApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'T',
             'default_content' => null,
             'block_state' => 'locked',
-            'mandatory' => true,
             'sort_order' => 0,
         ]);
 
@@ -743,8 +839,7 @@ class TemplatesApiTest extends TestCase
         $this->getJson("/api/v1/template-versions/{$vid}", $headersCreator)
             ->assertOk()
             ->assertJsonPath('data.version_number', 1)
-            ->assertJsonPath('data.blocks_snapshot.0.id', $bid)
-            ->assertJsonPath('data.blocks_snapshot.0.type', 'heading');
+            ->assertJsonPath('data.blocks_snapshot.0.id', $bid);
     }
 
     public function test_template_version_snapshot_cannot_be_updated_via_eloquent(): void
@@ -861,60 +956,6 @@ class TemplatesApiTest extends TestCase
         $this->assertDatabaseCount('template_versions', 0);
     }
 
-    public function test_template_second_publish_increments_version_after_reopen(): void
-    {
-        $creatorId = (string) Str::uuid();
-        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
-        [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
-            $creatorId,
-            $reviewerId,
-            [],
-        );
-
-        $tid = (string) Str::uuid();
-        $b1 = (string) Str::uuid();
-        Template::query()->forceCreate([
-            'id' => $tid,
-            'name' => 'v2',
-            'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
-            'study_type_id' => null,
-            'study_id' => null,
-            'module_id' => null,
-            'team_id' => null,
-            'created_by' => $creatorId,
-            'status' => 'in_review',
-            'version' => 1,
-            'review_stages' => 0,
-            'review_mode' => 'sequential',
-        ]);
-        TemplateBlock::query()->forceCreate([
-            'id' => $b1,
-            'template_id' => $tid,
-            'type' => 'paragraph',
-            'title' => null,
-            'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
-            'sort_order' => 0,
-        ]);
-
-        $this->seedTemplateReviewer($tid, $reviewerId);
-
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $headersReviewer)->assertOk();
-
-        $this->postJson("/api/v1/templates/{$tid}/reopen-draft", [], $headersCreator)
-            ->assertOk()
-            ->assertJsonPath('data.status', 'draft');
-
-        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v2'], $headersReviewer)
-            ->assertOk()
-            ->assertJsonPath('data.version', 2);
-
-        $this->assertDatabaseCount('template_versions', 2);
-    }
 
     public function test_patch_status_cannot_set_published_without_publish_endpoint(): void
     {
@@ -942,5 +983,67 @@ class TemplatesApiTest extends TestCase
         $this->patchJson("/api/v1/templates/{$tid}", ['status' => 'published'], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['status']);
+    }
+
+    public function test_sync_template_reviewers_rejects_when_creator_included(): void
+    {
+        $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $otherId = '2ead4bf3-574c-41b4-95ca-cac7daed0664';
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft revisores',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/reviewers", [
+            'user_ids' => [$creatorId, $otherId],
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user_ids']);
+    }
+
+    public function test_sync_template_document_reviewers_rejects_when_creator_included(): void
+    {
+        $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $otherId = '2ead4bf3-574c-41b4-95ca-cac7daed0664';
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft validadores doc',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'parallel',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/document-reviewers", [
+            'user_ids' => [$otherId, $creatorId],
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user_ids']);
     }
 }

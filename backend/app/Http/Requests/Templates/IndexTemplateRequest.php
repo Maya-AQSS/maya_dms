@@ -30,7 +30,7 @@ class IndexTemplateRequest extends FormRequest
     {
         return [
             'visibility_level' => ['sometimes', 'nullable', Rule::enum(TemplateVisibilityLevel::class)],
-            'status'           => ['sometimes', 'nullable', 'string', 'in:draft,published,archived'],
+            'status'           => ['sometimes', 'nullable', 'string', 'in:draft,in_review,published,archived'],
             'study_type_id'    => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id'         => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id'        => ['sometimes', 'nullable', 'string', 'max:255'],

@@ -16,7 +16,7 @@ use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 /**
- * Modo secuencial vs paralelo en aprobación/rechazo por revisión (F-06.1).
+ * Modo secuencial vs paralelo en aprobación/rechazo por revisión.
  */
 class DocumentReviewModeFlowTest extends TestCase
 {
@@ -77,11 +77,9 @@ class DocumentReviewModeFlowTest extends TestCase
             'version_number' => 1,
             'blocks_snapshot' => [[
                 'id' => $blockSnapId,
-                'type' => 'heading',
                 'title' => 'Bloque',
                 'default_content' => null,
-                'block_state' => 'editable',
-                'mandatory' => false,
+                'block_state' => 'optional',
                 'sort_order' => 0,
             ]],
             'changelog' => 'v1',

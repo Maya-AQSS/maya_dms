@@ -54,6 +54,11 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Envia el borrador a revisión (autor o quien puede editar la plantilla).
+     *
+     * - Sin revisores asignados → publica automáticamente.
+     * - Con revisores → resetea sus estados a `pending` (necesario para rondas
+     *   sucesivas: en draft post-rechazo los estados quedan visibles para el autor,
+     *   y solo se limpian al reenviar) y transiciona a `in_review`.
      */
     public function submitForReview(string $templateId, string $actorId): Template
     {
@@ -65,11 +70,21 @@ class TemplateService implements TemplateServiceInterface
             ]);
         }
 
+        if ($template->reviewers()->doesntExist()) {
+            return $this->publishWithSnapshot($templateId, null, $actorId);
+        }
+
+        $template->reviewers()->update(['status' => 'pending']);
+
         return $this->updateTemplateStatusWithEvent($template, 'in_review', $actorId);
     }
 
     /**
-     * Rechaza la revisión de la plantilla (autor o quien puede editar la plantilla).
+     * Rechaza la revisión de la plantilla.
+     *
+     * Registra el rechazo del actor en `template_reviewers` (auditoría de quién rechazó)
+     * y transiciona la plantilla a borrador. Los estados quedan visibles en draft
+     * para que el autor sepa quién rechazó; se limpian al reenviar.
      */
     public function rejectReview(string $templateId, string $actorId): Template
     {
@@ -81,7 +96,74 @@ class TemplateService implements TemplateServiceInterface
             ]);
         }
 
+        $template->reviewers()
+            ->where('user_id', $actorId)
+            ->update(['status' => 'rejected']);
+
         return $this->updateTemplateStatusWithEvent($template, 'draft', $actorId);
+    }
+
+    /**
+     * Registra la aprobación del revisor activo.
+     *
+     * En modo secuencial exige que todos los stages anteriores estén aprobados.
+     * Si tras esta aprobación todos los revisores están en `approved`, publica
+     * la plantilla automáticamente con un snapshot.
+     */
+    public function approveReview(string $templateId, string $actorId): Template
+    {
+        return DB::transaction(function () use ($templateId, $actorId) {
+            $template = Template::query()->whereKey($templateId)->lockForUpdate()->firstOrFail();
+
+            if ($template->status !== 'in_review') {
+                throw ValidationException::withMessages([
+                    'status' => ['Solo se puede aprobar una plantilla en revisión.'],
+                ]);
+            }
+
+            $reviewer = $template->reviewers()
+                ->where('user_id', $actorId)
+                ->first();
+
+            if (! $reviewer) {
+                throw ValidationException::withMessages([
+                    'user' => ['No estás asignado como revisor de esta plantilla.'],
+                ]);
+            }
+
+            if ($reviewer->status === 'approved') {
+                throw ValidationException::withMessages([
+                    'status' => ['Ya has aprobado esta plantilla.'],
+                ]);
+            }
+
+            if ($template->review_mode === 'sequential') {
+                $pendingPreviousStage = $template->reviewers()
+                    ->where('stage', '<', $reviewer->stage)
+                    ->where('status', '!=', 'approved')
+                    ->exists();
+
+                if ($pendingPreviousStage) {
+                    throw ValidationException::withMessages([
+                        'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
+                    ]);
+                }
+            }
+
+            $template->reviewers()
+                ->where('user_id', $actorId)
+                ->update(['status' => 'approved']);
+
+            $allApproved = $template->reviewers()
+                ->where('status', '!=', 'approved')
+                ->doesntExist();
+
+            if ($allApproved) {
+                return $this->publishWithSnapshot($templateId, 'Aprobado por todos los revisores.', $actorId);
+            }
+
+            return $template->fresh();
+        });
     }
 
     /**
@@ -103,21 +185,32 @@ class TemplateService implements TemplateServiceInterface
 
             $blocksSnapshot = $template->blocks->map(fn ($b) => [
                 'id' => $b->id,
-                'type' => $b->type,
                 'title' => $b->title,
+                'description' => $b->description,
                 'default_content' => $b->default_content,
                 'block_state' => $b->block_state,
-                'mandatory' => $b->mandatory,
                 'sort_order' => $b->sort_order,
             ])->values()->all();
 
             $next = $this->templateVersionRepository->nextVersionNumber($templateId);
+            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
+            $resolvedChangelog = $trimmedChangelog;
+
+            if ($resolvedChangelog === '') {
+                if ($next === 1) {
+                    $resolvedChangelog = 'Versión inicial';
+                } else {
+                    throw ValidationException::withMessages([
+                        'changelog' => ['El changelog es obligatorio al publicar una plantilla.'],
+                    ]);
+                }
+            }
 
             $this->templateVersionRepository->createSnapshot(
                 $templateId,
                 $next,
                 $blocksSnapshot,
-                $changelog ?? '',
+                $resolvedChangelog,
                 $actorId,
             );
 
@@ -136,22 +229,6 @@ class TemplateService implements TemplateServiceInterface
 
             return $updated;
         });
-    }
-
-    /**
-     * Reabre el borrador de la plantilla (autor o quien puede editar la plantilla).
-     */
-    public function reopenDraft(string $templateId, string $actorId): Template
-    {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        if ($template->status !== 'published') {
-            throw ValidationException::withMessages([
-                'status' => ['Solo las plantillas publicadas pueden reabrirse a borrador para una nueva versión.'],
-            ]);
-        }
-
-        return $this->updateTemplateStatusWithEvent($template, 'draft', $actorId);
     }
 
     /**
@@ -284,15 +361,17 @@ class TemplateService implements TemplateServiceInterface
         $target = $this->templateRepository->create([
             'name' => $source->name.' (copia)',
             'description' => $source->description,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
-            'study_type_id' => null,
-            'study_id' => null,
-            'module_id' => null,
-            'team_id' => null,
+            'visibility_level' => $source->visibility_level instanceof TemplateVisibilityLevel
+                ? $source->visibility_level->value
+                : $source->visibility_level,
+            'delivery_deadline' => $source->delivery_deadline,
+            'study_type_id' => $source->study_type_id,
+            'study_id' => $source->study_id,
+            'module_id' => $source->module_id,
+            'team_id' => $source->team_id,
             'created_by' => $actorId,
             'status' => 'draft',
-            'version' => 1,
+            'version' => ((int) $source->version) + 1,
             'review_stages' => $source->review_stages,
             'review_mode' => $source->review_mode,
         ]);
@@ -303,7 +382,28 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Actualiza solo el estado de la plantilla vía repositorio y emite {@see TemplateStateChanged}.
+     * SoD plantilla: el creador no puede asignarse como revisor (alineado con {@see \App\Policies\TemplatePolicy::review}).
+     *
+     * @param  list<string>  $userIds
+     */
+    private function assertTemplateCreatorNotAmongReviewerUserIds(Template $template, array $userIds, string $message): void
+    {
+        $creatorId = (string) ($template->created_by ?? '');
+        if ($creatorId === '') {
+            return;
+        }
+
+        foreach ($userIds as $userId) {
+            if ((string) $userId === $creatorId) {
+                throw ValidationException::withMessages([
+                    'user_ids' => [$message],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Actualiza el estado de la plantilla y emite el evento de dominio TemplateStateChanged.
      */
     private function updateTemplateStatusWithEvent(Template $template, string $newStatus, string $actorId): Template
     {
@@ -320,21 +420,51 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Sincroniza los validadores de la plantilla.
+     * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncValidators(string $templateId, array $userIds): void
+    public function syncReviewers(string $templateId, array $userIds): void
     {
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
 
-            // Eliminar revisores actuales
-            $template->reviewers()->delete();
+            $this->assertTemplateCreatorNotAmongReviewerUserIds(
+                $template,
+                $userIds,
+                'El creador de la plantilla no puede figurar como revisor normativo de la misma.',
+            );
 
-            // Insertar nuevos con orden (stage)
+            // TemplateReviewer uses SoftDeletes; forceDelete removes rows physically
+            // so the unique constraint (template_id, user_id) is not violated on re-insert.
+            $template->reviewers()->withTrashed()->forceDelete();
+
             foreach ($userIds as $index => $userId) {
                 $template->reviewers()->create([
                     'user_id' => $userId,
-                    'stage' => $index + 1,
+                    'stage'   => $index + 1,
+                ]);
+            }
+        });
+    }
+
+    /**
+     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
+     */
+    public function syncDocumentReviewers(string $templateId, array $userIds): void
+    {
+        DB::transaction(function () use ($templateId, $userIds) {
+            $template = $this->templateRepository->findOrFail($templateId);
+
+            $this->assertTemplateCreatorNotAmongReviewerUserIds(
+                $template,
+                $userIds,
+                'El creador de la plantilla no puede figurar como validador de documentos derivados de la misma.',
+            );
+
+            $template->documentReviewers()->delete();
+
+            foreach ($userIds as $userId) {
+                $template->documentReviewers()->create([
+                    'user_id' => $userId,
                 ]);
             }
         });

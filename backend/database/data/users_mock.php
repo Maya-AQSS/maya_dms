@@ -15,11 +15,11 @@
  * | id lógico              | study_type_ids | study_ids | module_ids |
  * |------------------------|----------------|-----------|------------|
  * | usr_direction_demo     | ST_ESO, ST_BACH, ST_FP | (todos los studies del mock de jerarquía) | (todos los módulos del mock) |
- * | usr_secretariat_demo   | ST_ESO | S_ESO_1, S_ESO_2 | M_MAT_1, M_ENG_1 |
+ * | usr_secretariat_demo   | ST_ESPA, ST_BACH, ST_FP | (todos los studies del mock) | (todos los módulos del mock) |
  * | usr_hierarchy_eso_demo | ST_ESO | S_ESO_1, S_ESO_2 | M_MAT_1, M_ENG_1, M_LEN_2 |
  * | usr_hierarchy_bach_demo| ST_BACH | S_BACH_1_C, S_BACH_2_C | M_FIS_1C, M_BIO_2C |
  * | usr_hierarchy_fp_demo  | ST_FP | S_FP_DAW, S_FP_ASIR | M_DAW_DWECL, M_DAW_DWES, M_ASIR_SRI |
- * | usr_auditor_demo       | (opcional) | (opcional) | (opcional) |
+ * | usr_auditor_demo       | (ninguno en user_hierarchy mock) | (ninguno) | (ninguno) |
  */
 return [
     [

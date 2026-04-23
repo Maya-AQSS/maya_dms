@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { fetchDocuments } from '../../../api/documents';
 import type { Document } from '../../../types/documents';
 
@@ -16,7 +16,7 @@ export function useDocuments(): {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       const data = await fetchDocuments();
@@ -27,32 +27,11 @@ export function useDocuments(): {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadOnMount = async () => {
-      try {
-        setLoading(true);
-        const data = await fetchDocuments();
-        if (!cancelled) {
-          setDocuments(data);
-          setError(null);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err : new Error('Unknown error'));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void loadOnMount();
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+    void load();
+  }, [load]);
 
   return {
     documents,

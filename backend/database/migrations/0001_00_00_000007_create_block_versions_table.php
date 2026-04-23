@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Versionado append-only de bloques (F-04.4).
+     * Versionado append-only de bloques.
      * NUNCA se actualiza un registro existente: solo INSERT.
      * En PostgreSQL se reutiliza la función forbid_append_only_mutation() creada en create_template_versions.
      *
      * El diff entre versiones consecutivas se calcula en la capa de aplicación
-     * y se muestra en el drawer de revisión (F-06.3).
+     * y se muestra en el drawer de revisión.
      */
     public function up(): void
     {

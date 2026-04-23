@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Http\Requests\TemplateBlocks;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class ReorderTemplateBlocksRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Reglas de validación para el reordenamiento de bloques de una plantilla.
+     * 
+     * @return array<string, mixed>
+     */
+    public function rules(): array
+    {
+        return [
+            'block_ids' => ['required', 'array'],
+            'block_ids.*' => ['required', 'string', 'uuid'],
+        ];
+    }
+}

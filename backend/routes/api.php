@@ -22,15 +22,6 @@ use Illuminate\Support\Facades\Route;
 |--------------------------------------------------------------------------
 | Todas las rutas bajo /api/v1 están protegidas por JwtMiddleware (RS256).
 | Los controladores son deliberadamente delgados: delegan a Services.
-|
-| Sprints planificados:
-|   Sprint 0 — infraestructura (este archivo, health check)
-|   Sprint 1 — auth, academic hierarchy
-|   Sprint 2 — templates CRUD
-|   Sprint 3 — documents CRUD + block editor
-|   Sprint 4 — review workflow
-|   Sprint 5 — comments + collaboration
-|   Sprint 6 — dashboard BFF
 */
 
 Route::prefix('v1')->group(function () {
@@ -43,15 +34,17 @@ Route::prefix('v1')->group(function () {
     // ── Rutas protegidas por JWT ───────────────────────────────
     Route::middleware('jwt')->group(function () {
 
-        // Sprint 1 — Auth / sesión
+        // Autenticación y sesión
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
 
-        // Sprint 2 — Plantillas
+        // Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
         Route::apiResource('templates', TemplateController::class)
             ->whereUuid('template');
-        Route::post('templates/{template}/validators', [TemplateController::class, 'syncValidators'])
+        Route::post('templates/{template}/reviewers', [TemplateController::class, 'syncReviewers'])
+            ->whereUuid('template');
+        Route::post('templates/{template}/document-reviewers', [TemplateController::class, 'syncDocumentReviewers'])
             ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
         Route::patch('templates/{template}/blocks/reorder', [TemplateBlockController::class, 'reorder'])
@@ -67,9 +60,9 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::post('templates/{template}/reject-review', [TemplateController::class, 'rejectReview'])
             ->whereUuid('template');
-        Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
+        Route::post('templates/{template}/approve-review', [TemplateController::class, 'approveReview'])
             ->whereUuid('template');
-        Route::post('templates/{template}/reopen-draft', [TemplateController::class, 'reopenDraft'])
+        Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
             ->whereUuid('template');
         Route::get('templates/{template}/versions', [TemplateController::class, 'versions'])
             ->whereUuid('template');
@@ -78,11 +71,13 @@ Route::prefix('v1')->group(function () {
         Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, 'Los snapshots de plantilla son de solo inserción (append-only).'))
             ->whereUuid('template_version');
 
-        // Sprint 3 — Documentos
+        // Documentos
         Route::get('documents/creation-options', [DocumentController::class, 'creationOptions']);
         Route::post('documents/create-from-module', [DocumentController::class, 'createFromModule']);
         Route::get('documents', [DocumentController::class, 'index']);
         Route::post('documents', [DocumentController::class, 'store']);
+        Route::get('documents/{document}/template-version-status', [DocumentController::class, 'templateVersionStatus'])
+            ->whereUuid('document');
         Route::get('documents/{document}', [DocumentController::class, 'show'])
             ->whereUuid('document');
         Route::match(['put', 'patch'], 'documents/{document}', [DocumentController::class, 'update'])
@@ -106,6 +101,12 @@ Route::prefix('v1')->group(function () {
 
         Route::get('documents/{document}/versions', [DocumentVersionController::class, 'index'])
             ->whereUuid('document');
+        Route::get('documents/{document}/versions/{version}', [DocumentVersionController::class, 'show'])
+            ->whereUuid('document')
+            ->whereUuid('version');
+        Route::match(['put', 'patch', 'delete'], 'documents/{document}/versions/{version}', fn () => abort(403, 'Los snapshots de documento son de solo inserción (append-only).'))
+            ->whereUuid('document')
+            ->whereUuid('version');
 
         // Auditoría
         Route::get('documents/{document}/audit', [AuditLogController::class, 'indexForDocument'])
@@ -115,13 +116,13 @@ Route::prefix('v1')->group(function () {
         Route::get('comments/{comment}/audit', [AuditLogController::class, 'indexForComment'])
             ->whereUuid('comment');
 
-        // Sprint 3 — Compartición
+        // Compartición de documentos
         Route::post('documents/{document}/shares', [DocumentShareController::class, 'store'])
             ->whereUuid('document');
         Route::delete('documents/{document}/shares/{userId}', [DocumentShareController::class, 'destroy'])
             ->whereUuid('document');
 
-        // Sprint 4 — Revisión
+        // Revisión de documentos
         Route::get('documents/{document}/reviews', [ReviewController::class, 'index'])
             ->whereUuid('document');
         Route::post('documents/{document}/reviews/{review}/approve', [ReviewController::class, 'approve'])
@@ -131,7 +132,7 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('document')
             ->whereUuid('review');
 
-        // Sprint 5 — Comentarios
+        // Comentarios
         Route::apiResource('documents.comments', CommentController::class)
             ->shallow()
             ->whereUuid('document')
@@ -139,10 +140,12 @@ Route::prefix('v1')->group(function () {
         Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
             ->whereUuid('comment');
 
-        // Usuarios — búsqueda para asignación de validadores y compartición
+        // Usuarios — búsqueda para asignación de revisores y compartición
         Route::get('/users', [UserController::class, 'index']);
+        Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);
+        Route::get('/users/document-reviewer-candidates', [UserController::class, 'documentReviewerCandidates']);
 
-        // Sprint 6 — Dashboard BFF
+        // Dashboard (BFF)
         Route::get('/dashboard', [DashboardController::class, 'index']);
 
     });

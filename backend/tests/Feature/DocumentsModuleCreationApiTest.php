@@ -128,11 +128,9 @@ class DocumentsModuleCreationApiTest extends TestCase
         DB::table('template_blocks')->insert([
             'id' => $templateBlockId,
             'template_id' => $templateId,
-            'type' => 'paragraph',
             'title' => 'Objetivos',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => 0,
             'sort_order' => 1,
             'created_at' => now(),
             'updated_at' => now(),
@@ -144,11 +142,9 @@ class DocumentsModuleCreationApiTest extends TestCase
             'version_number' => 1,
             'blocks_snapshot' => [[
                 'id' => $templateBlockId,
-                'type' => 'paragraph',
                 'title' => 'Objetivos',
                 'default_content' => null,
                 'block_state' => 'editable',
-                'mandatory' => false,
                 'sort_order' => 1,
             ]],
             'changelog' => 'Versión inicial',

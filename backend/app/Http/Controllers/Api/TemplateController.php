@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
 use App\Http\Requests\Templates\PublishTemplateRequest;
+use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
@@ -73,7 +74,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('view', $model);
-        $model->loadMissing('reviewers');
+        $model->loadMissing(['reviewers', 'documentReviewers']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
@@ -90,6 +91,7 @@ class TemplateController extends Controller
     public function update(UpdateTemplateRequest $request, string $template): TemplateResource
     {
         $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', [$model, $request->input('visibility_level')]);
 
         $dto = $request->toUpdateDto();
 
@@ -125,6 +127,9 @@ class TemplateController extends Controller
      */
     public function clone(CloneTemplateRequest $_request, string $template): JsonResponse
     {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('clone', $model);
+
         $copy = $this->templateService->clone($template, (string) Auth::id());
 
         return (new TemplateResource($copy))->response()->setStatusCode(201);
@@ -157,6 +162,22 @@ class TemplateController extends Controller
     }
 
     /**
+     * En revisión → aprobación del revisor activo.
+     *
+     * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
+     * En modo secuencial verifica que los stages anteriores estén aprobados.
+     */
+    public function approveReview(string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('review', $model);
+
+        $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
+
+        return new TemplateResource($updated);
+    }
+
+    /**
      * En revisión → publicado + snapshot (revisor; changelog obligatorio).
      */
     public function publish(PublishTemplateRequest $request, string $template): TemplateResource
@@ -168,19 +189,6 @@ class TemplateController extends Controller
             $request->validated('changelog'),
             (string) Auth::id(),
         );
-
-        return new TemplateResource($updated);
-    }
-
-    /**
-     * Publicado → borrador para preparar otra versión publicable.
-     */
-    public function reopenDraft(string $template): TemplateResource
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('reopenDraft', $model);
-
-        $updated = $this->templateService->reopenDraft($model->id, (string) Auth::id());
 
         return new TemplateResource($updated);
     }
@@ -211,20 +219,28 @@ class TemplateController extends Controller
     }
 
     /**
-     * Sincroniza los validadores de la plantilla.
+     * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncValidators(Request $request, string $template): JsonResponse
+    public function syncReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('update', $model);
 
-        $request->validate([
-            'user_ids' => ['present', 'array'],
-            'user_ids.*' => ['required', 'string', 'exists:users,id'],
-        ]);
+        $this->templateService->syncReviewers($model->id, $request->validated('user_ids'));
 
-        $this->templateService->syncValidators($model->id, $request->input('user_ids'));
+        return response()->json(['message' => 'Revisores de plantilla sincronizados correctamente.']);
+    }
 
-        return response()->json(['message' => 'Validadores sincronizados correctamente.']);
+    /**
+     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
+     */
+    public function syncDocumentReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', $model);
+
+        $this->templateService->syncDocumentReviewers($model->id, $request->validated('user_ids'));
+
+        return response()->json(['message' => 'Validadores de documento sincronizados correctamente.']);
     }
 }
