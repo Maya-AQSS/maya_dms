@@ -1,10 +1,16 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { fetchDocument, updateDocument, updateDocumentBlock } from '../../../api/documents';
+import {
+  fetchDocument,
+  submitDocumentForReview,
+  updateDocument,
+  updateDocumentBlock,
+} from '../../../api/documents';
 import { ApiHttpError } from '../../../api/http';
+import { fetchTemplate } from '../../../api/templates';
+import { searchDocumentReviewerCandidates } from '../../../api/users';
 import { useDarkMode } from '../../../hooks/useDarkMode';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
-import { BLOCK_STATE_LABELS } from '../../../types/blocks';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
@@ -73,11 +79,14 @@ export function DocumentWizard({ documentId }: Props) {
   const [title, setTitle] = useState('');
   const [deliveryDeadline, setDeliveryDeadline] = useState('');
   const [saving, setSaving] = useState(false);
+  const [submittingForReview, setSubmittingForReview] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const [activeBlockKey, setActiveBlockKey] = useState<string | null>(null);
   const [summaryBlockKey, setSummaryBlockKey] = useState<string | null>(null);
   const [blockSaveError, setBlockSaveError] = useState<string | null>(null);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [documentReviewerNames, setDocumentReviewerNames] = useState<string[]>([]);
 
   const isDraft = detail?.status === 'draft';
 
@@ -148,6 +157,7 @@ export function DocumentWizard({ documentId }: Props) {
     () => sortedBlocks.find((b) => (b.document_block_id ?? b.template_block_id) === activeBlockKey) ?? null,
     [sortedBlocks, activeBlockKey],
   );
+  const activeBlockUiState = activeBlock ? blockToUiState(activeBlock) : null;
 
   const selectedSummaryBlock = useMemo(
     () =>
@@ -170,11 +180,47 @@ export function DocumentWizard({ documentId }: Props) {
     });
   }, [step, sortedBlocks]);
 
-  const canEditBlocks = isDraft && activeBlock !== null && activeBlock.block_state !== 'locked';
+  useEffect(() => {
+    if (step !== 'summary' || !detail) {
+      return;
+    }
+    let cancelled = false;
+    const loadDocumentReviewers = async () => {
+      setSummaryError(null);
+      try {
+        const [templateResp, usersResp] = await Promise.all([
+          fetchTemplate(detail.template_id),
+          searchDocumentReviewerCandidates(),
+        ]);
+        if (cancelled) return;
+        const ids = templateResp.data.document_reviewers ?? [];
+        if (ids.length === 0) {
+          setDocumentReviewerNames([]);
+          return;
+        }
+        const byId = new Map(usersResp.data.map((u) => [u.id, u.name] as const));
+        setDocumentReviewerNames(
+          ids.map((id) => byId.get(id) ?? id),
+        );
+      } catch (e) {
+        if (!cancelled) {
+          setSummaryError(e instanceof Error ? e.message : 'No se pudieron cargar los validadores de documento.');
+          setDocumentReviewerNames([]);
+        }
+      }
+    };
+    void loadDocumentReviewers();
+    return () => {
+      cancelled = true;
+    };
+  }, [step, detail]);
+
+  const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
+  const canClearOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
 
   const persistBlockContent = useCallback(
     async (block: DocumentDisplayBlock, content: unknown) => {
-      if (!isDraft || block.block_state === 'locked') return;
+      if (!isDraft || blockToUiState(block) === 'locked') return;
       const blockId = block.document_block_id;
       if (!blockId) {
         setBlockSaveError('Este bloque aún no tiene fila de documento; no se puede guardar.');
@@ -234,6 +280,23 @@ export function DocumentWizard({ documentId }: Props) {
     }
     if (step === 'summary') {
       navigate('/documents');
+    }
+  };
+
+  const handleSubmitForReview = async () => {
+    if (!detail || detail.status !== 'draft') {
+      return;
+    }
+    setSummaryError(null);
+    setSubmittingForReview(true);
+    try {
+      const updated = await submitDocumentForReview(detail.id);
+      setDetail((prev) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
+      navigate(`/documents/${detail.id}`);
+    } catch (e) {
+      setSummaryError(e instanceof Error ? e.message : 'No se pudo enviar el documento a validar.');
+    } finally {
+      setSubmittingForReview(false);
     }
   };
 
@@ -331,9 +394,24 @@ export function DocumentWizard({ documentId }: Props) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {step === 'summary' && (
-            <Button type="button" variant="outline" size="sm" onClick={() => navigate('/documents')}>
-              Guardar y salir
-            </Button>
+            <>
+              <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/documents/${documentId}`)}>
+                Previsualizar
+              </Button>
+              <Button type="button" variant="secondary" size="sm" onClick={() => navigate('/documents')}>
+                Guardar sin enviar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                loading={submittingForReview}
+                disabled={!isDraft}
+                onClick={() => void handleSubmitForReview()}
+              >
+                Enviar a validar
+              </Button>
+            </>
           )}
           {step !== 'summary' && (
             <Button
@@ -458,8 +536,10 @@ export function DocumentWizard({ documentId }: Props) {
                   >
                     <span className="block font-medium truncate">{b.title || 'Sin título'}</span>
                     <span className="block text-[10px] text-text-muted mt-0.5">
-                      {BLOCK_STATE_LABELS[b.block_state]}
-                      {b.mandatory ? ' · Obligatorio' : ''}
+                      {(() => {
+                        const ui = blockToUiState(b);
+                        return BLOCK_UI_STATE_CONFIG[ui].label;
+                      })()}
                     </span>
                   </button>
                 );
@@ -470,9 +550,21 @@ export function DocumentWizard({ documentId }: Props) {
             {activeBlock && (
               <>
                 <div className="shrink-0 px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
-                  <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-                    {activeBlock.title || 'Bloque'}
-                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
+                      {activeBlock.title || 'Bloque'}
+                    </p>
+                    {canClearOptionalBlock && (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => void persistBlockContent(activeBlock, [])}
+                      >
+                        Eliminar bloque opcional
+                      </Button>
+                    )}
+                  </div>
                   {blockSaveError && (
                     <p className="text-xs text-danger-dark dark:text-danger mt-1">{blockSaveError}</p>
                   )}
@@ -542,7 +634,18 @@ export function DocumentWizard({ documentId }: Props) {
                   label="Bloques con contenido"
                   value={String(sortedBlocks.filter((b) => b.is_filled).length)}
                 />
+                <DocSummaryRow
+                  label="Validadores del documento (plantilla)"
+                  value={
+                    documentReviewerNames.length > 0
+                      ? documentReviewerNames.join(', ')
+                      : 'Sin validadores asignados en plantilla'
+                  }
+                />
               </dl>
+              {summaryError && (
+                <p className="mt-2 text-xs text-danger-dark dark:text-danger">{summaryError}</p>
+              )}
               <p className="mt-4 text-[10px] text-text-muted leading-relaxed">
                 La revisión por usuarios o validadores se configura desde la plantilla normativa; este asistente solo
                 edita el borrador del documento.
@@ -619,11 +722,6 @@ export function DocumentWizard({ documentId }: Props) {
             )}
           </div>
 
-          <div className="flex justify-center pt-2">
-            <Button type="button" variant="primary" onClick={() => navigate('/documents')}>
-              Finalizar
-            </Button>
-          </div>
         </div>
       )}
     </div>

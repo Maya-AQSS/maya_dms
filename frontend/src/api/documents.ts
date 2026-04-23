@@ -77,6 +77,7 @@ export async function createDocumentFromModule(payload: {
 }
 
 type DocumentMutationApiResponse = { data: Document };
+type DocumentSubmitApiResponse = { data: Document };
 
 /**
  * PATCH /api/v1/documents/{id} — hoy el backend valida al menos `title`.
@@ -92,6 +93,15 @@ export async function updateDocument(documentId: string, payload: {
   const body = await apiFetchJson<DocumentMutationApiResponse>(
     `documents/${encodeURIComponent(documentId)}`,
     { method: 'PATCH', body: payload },
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/submit */
+export async function submitDocumentForReview(documentId: string): Promise<Document> {
+  const body = await apiFetchJson<DocumentSubmitApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/submit`,
+    { method: 'POST', body: {} },
   );
   return body.data;
 }
