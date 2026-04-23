@@ -116,6 +116,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
         loading={dialogLoading}
         onCancel={closeDialog}
         onConfirm={confirmDelete}
+        icon="🗑️"
       />
       <ConfirmDialog
         open={dialog === 'clone'}
@@ -132,6 +133,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
         loading={dialogLoading}
         onCancel={closeDialog}
         onConfirm={confirmClone}
+        icon="📋"
       />
     </div>
   );
