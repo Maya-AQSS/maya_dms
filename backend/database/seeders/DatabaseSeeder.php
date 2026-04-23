@@ -17,7 +17,7 @@ class DatabaseSeeder extends Seeder
         // Users vienen de un origen externo (FDW en local/prod).
         // Este seeder solo prepara catálogo mock para local/testing.
         $this->call([
-            // UsersSourceSeeder::class,
+            UsersSourceSeeder::class,
             PermissionsSeeder::class,
             UserPermissionsSeeder::class,
             AcademicHierarchySeeder::class,

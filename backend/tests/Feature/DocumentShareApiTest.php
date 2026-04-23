@@ -125,12 +125,10 @@ class DocumentShareApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $blockSnapId,
             'template_id' => $templateId,
-            'type' => 'paragraph',
             'title' => 'B1',
             'default_content' => null,
             'description' => null,
             'block_state' => BlockState::Editable->value,
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -140,11 +138,9 @@ class DocumentShareApiTest extends TestCase
             'version_number' => 1,
             'blocks_snapshot' => [[
                 'id' => $blockSnapId,
-                'type' => 'paragraph',
                 'title' => 'B1',
                 'default_content' => null,
                 'block_state' => 'editable',
-                'mandatory' => false,
                 'sort_order' => 0,
             ]],
             'changelog' => 'v1',

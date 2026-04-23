@@ -139,12 +139,10 @@ class TemplateRepository implements TemplateRepositoryInterface
                 TemplateBlock::query()->forceCreate([
                     'id' => (string) Str::uuid(),
                     'template_id' => $target->getKey(),
-                    'type' => $block->type,
                     'title' => $block->title,
                     'description' => $block->description,
                     'default_content' => $block->default_content,
                     'block_state' => $block->block_state,
-                    'mandatory' => $block->mandatory,
                     'sort_order' => $block->sort_order,
                 ]);
             }

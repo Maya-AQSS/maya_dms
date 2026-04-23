@@ -77,11 +77,9 @@ class DocumentReviewModeFlowTest extends TestCase
             'version_number' => 1,
             'blocks_snapshot' => [[
                 'id' => $blockSnapId,
-                'type' => 'heading',
                 'title' => 'Bloque',
                 'default_content' => null,
-                'block_state' => 'editable',
-                'mandatory' => false,
+                'block_state' => 'optional',
                 'sort_order' => 0,
             ]],
             'changelog' => 'v1',

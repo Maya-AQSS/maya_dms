@@ -74,7 +74,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('view', $model);
-        $model->loadMissing('reviewers');
+        $model->loadMissing(['reviewers', 'documentReviewers']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,

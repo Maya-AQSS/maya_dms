@@ -350,6 +350,8 @@ class DocumentService implements DocumentServiceInterface
         foreach ($definitions as $def) {
             $tid = (string) $def['id'];
             $row = $byTemplateBlockId->get($tid);
+            $mandatory = (bool) ($def['mandatory'] ?? false);
+            $state = (string) ($def['block_state'] ?? 'editable');
 
             $out[] = [
                 'document_block_id' => $row?->id,
@@ -357,8 +359,8 @@ class DocumentService implements DocumentServiceInterface
                 'type' => $def['type'] ?? '',
                 'title' => $def['title'] ?? null,
                 'default_content' => $def['default_content'] ?? null,
-                'block_state' => $def['block_state'] ?? 'editable',
-                'mandatory' => (bool) ($def['mandatory'] ?? false),
+                'block_state' => $state,
+                'mandatory' => $mandatory,
                 'sort_order' => (int) ($def['sort_order'] ?? 0),
                 'content' => $row?->content,
                 'is_filled' => (bool) ($row?->is_filled ?? false),
@@ -390,7 +392,9 @@ class DocumentService implements DocumentServiceInterface
                 ->keyBy(fn (array $def) => (string) $def['id']);
             $definition = $definitions->get((string) $block->template_block_id) ?? [];
 
-            if (($definition['block_state'] ?? 'editable') === 'locked') {
+            $state = (string) ($definition['block_state'] ?? 'editable');
+
+            if ($state === 'locked') {
                 abort(403, 'Este bloque está bloqueado y no admite edición.');
             }
 
@@ -776,12 +780,12 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
-     * Verifica que todos los bloques obligatorios estén completos.
+     * Verifica que todos los bloques no opcionales estén completos.
      */
     private function assertMandatoryBlocksAreFilled(Document $document): void
     {
         $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->filter(fn (array $def) => (bool) ($def['mandatory'] ?? false));
+            ->filter(fn (array $def) => ($def['block_state'] ?? 'editable') !== 'optional');
 
         if ($definitions->isEmpty()) {
             return;
@@ -810,7 +814,7 @@ class DocumentService implements DocumentServiceInterface
 
         if ($missing !== []) {
             throw ValidationException::withMessages([
-                'blocks' => ['Debes completar todos los bloques obligatorios antes de enviar a revisión.'],
+                'blocks' => ['Debes completar todos los bloques no opcionales antes de enviar a revisión.'],
                 'missing_template_block_ids' => $missing,
             ]);
         }

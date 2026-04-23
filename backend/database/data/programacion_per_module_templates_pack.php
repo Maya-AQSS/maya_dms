@@ -343,6 +343,9 @@ return (static function (): array {
             foreach ($layoutRows as $bi => $row) {
                 $blockUuid = sprintf('55555555-5555-5555-5555-%012x', $blockHex++);
                 $state = $pickState($mi, $si, $bi);
+                if (($row['mandatory'] ?? false) && $state === 'optional') {
+                    $state = 'editable';
+                }
                 $seed = $mi * 31 + $si * 13 + $bi;
                 $content = $row['default_content'];
                 if ($content === []) {

@@ -185,12 +185,10 @@ class TemplateService implements TemplateServiceInterface
 
             $blocksSnapshot = $template->blocks->map(fn ($b) => [
                 'id' => $b->id,
-                'type' => $b->type,
                 'title' => $b->title,
                 'description' => $b->description,
                 'default_content' => $b->default_content,
                 'block_state' => $b->block_state,
-                'mandatory' => $b->mandatory,
                 'sort_order' => $b->sort_order,
             ])->values()->all();
 

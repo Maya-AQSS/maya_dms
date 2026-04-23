@@ -329,21 +329,17 @@ class TemplatesApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'B1',
             'default_content' => ['x' => 1],
             'block_state' => 'editable',
-            'mandatory' => true,
             'sort_order' => 0,
         ]);
         TemplateBlock::query()->forceCreate([
             'id' => $b2,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'B2',
             'default_content' => null,
             'block_state' => 'locked',
-            'mandatory' => false,
             'sort_order' => 1,
         ]);
 
@@ -656,11 +652,9 @@ class TemplatesApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'B',
             'default_content' => ['k' => 'v'],
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -706,11 +700,9 @@ class TemplatesApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'T',
             'default_content' => null,
             'block_state' => 'locked',
-            'mandatory' => true,
             'sort_order' => 0,
         ]);
 
@@ -745,8 +737,7 @@ class TemplatesApiTest extends TestCase
         $this->getJson("/api/v1/template-versions/{$vid}", $headersCreator)
             ->assertOk()
             ->assertJsonPath('data.version_number', 1)
-            ->assertJsonPath('data.blocks_snapshot.0.id', $bid)
-            ->assertJsonPath('data.blocks_snapshot.0.type', 'heading');
+            ->assertJsonPath('data.blocks_snapshot.0.id', $bid);
     }
 
     public function test_template_version_snapshot_cannot_be_updated_via_eloquent(): void

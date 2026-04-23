@@ -70,8 +70,6 @@ class TemplateBlockController extends Controller
     {
         $validated = $request->validated();
         $dto = new UpdateTemplateBlockDto(
-            type:            $validated['type'] ?? null,
-            set_type:        $request->has('type'),
             title:           $validated['title'] ?? null,
             set_title:       $request->has('title'),
             default_content: $validated['default_content'] ?? null,
@@ -80,8 +78,6 @@ class TemplateBlockController extends Controller
             set_sort_order:  $request->has('sort_order'),
             block_state:     $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
-            mandatory:       $validated['mandatory'] ?? null,
-            set_mandatory:   $request->has('mandatory'),
             description:     $validated['description'] ?? null,
             set_description: $request->has('description'),
         );
@@ -128,8 +124,6 @@ class TemplateBlockController extends Controller
             $this->blockService->update(
                 blockId: $blockId,
                 dto: new UpdateTemplateBlockDto(
-                    type:                null,
-                    set_type:            false,
                     title:               null,
                     set_title:           false,
                     default_content:     null,
@@ -138,8 +132,6 @@ class TemplateBlockController extends Controller
                     set_sort_order:      true,
                     block_state:         null,
                     set_block_state:     false,
-                    mandatory:           null,
-                    set_mandatory:       false,
                 ),
                 userId: $userId,
             );
@@ -159,8 +151,6 @@ class TemplateBlockController extends Controller
             ids:             $validated['ids'],
             block_state:     $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
-            mandatory:       $validated['mandatory'] ?? null,
-            set_mandatory:   $request->has('mandatory'),
         );
 
         $blocks = $this->blockService->bulkUpdate(
