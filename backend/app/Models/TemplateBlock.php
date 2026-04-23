@@ -27,6 +27,7 @@ class TemplateBlock extends Model
     {
         return [
             'default_content' => 'array',
+            'description'     => 'array',
             'mandatory'       => 'boolean',
             'sort_order'      => 'integer',
         ];

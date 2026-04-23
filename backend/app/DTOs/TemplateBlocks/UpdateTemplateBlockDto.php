@@ -17,7 +17,7 @@ readonly class UpdateTemplateBlockDto
         public bool $set_block_state = false,
         public ?bool $mandatory = null,
         public bool $set_mandatory = false,
-        public ?string $description = null,
+        public ?array $description = null,
         public bool $set_description = false,
     ) {}
 }

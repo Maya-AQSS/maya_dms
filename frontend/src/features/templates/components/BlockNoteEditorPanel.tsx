@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { useCreateBlockNote } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
+import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
 import '@blocknote/ariakit/style.css';
 
 interface Props {
@@ -21,8 +22,11 @@ export default function BlockNoteEditorPanel({ initialContent, editable, isDark,
         (initialContent as any)
       : undefined;
 
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editor = useCreateBlockNote({ initialContent: safeContent } as any);
+  const editor = useCreateBlockNote({
+    initialContent: safeContent ? repairBlockNoteBlocks(safeContent) : undefined,
+  } as any);
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
@@ -40,7 +44,7 @@ export default function BlockNoteEditorPanel({ initialContent, editable, isDark,
             if (debounceRef.current) clearTimeout(debounceRef.current);
             debounceRef.current = setTimeout(() => {
               onChange(editor.document);
-            }, 500);
+            }, 200);
           }}
         />
       </div>

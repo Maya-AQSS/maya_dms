@@ -18,6 +18,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button, FieldLabel, TextArea, TextInput } from '../../../ui';
 import type { TemplateBlock } from '../../../types/blocks';
+import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import type { Template } from '../../../types/templates';
 import {
@@ -256,7 +257,7 @@ function WizardStep2Blocks({ template }, ref) {
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
-    setFormDesc(block.description ?? '');
+    setFormDesc(block.description ? JSON.stringify(block.description) : '');
     setFormContent(block.default_content ? JSON.stringify(block.default_content) : '');
     setFormUiState(blockToUiState(block));
     setActionError(null);
@@ -281,10 +282,11 @@ function WizardStep2Blocks({ template }, ref) {
     setSaveStatus('saving');
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
+      const parsedContent = formContent ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formContent)); } catch { return null; } })() : null;
+      const parsedDesc = formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null;
       await updateBlock(activeSingleId, {
         title: formName.trim() || undefined,
-        description: formDesc.trim() || null,
+        description: parsedDesc,
         default_content: parsedContent,
         block_state,
         mandatory,
@@ -379,16 +381,16 @@ function WizardStep2Blocks({ template }, ref) {
         await createBlock({
           type: 'paragraph',
           title: formName.trim(),
-          description: formDesc.trim() || null,
-          default_content: parsedContent,
+          description: formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null,
+          default_content: parsedContent ? repairBlockNoteBlocks(parsedContent) : null,
           block_state,
           mandatory,
         });
       } else if (panelMode === 'edit' && activeSingleId) {
         await updateBlock(activeSingleId, {
           title: formName.trim(),
-          description: formDesc.trim() || null,
-          default_content: parsedContent,
+          description: formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null,
+          default_content: parsedContent ? repairBlockNoteBlocks(parsedContent) : null,
           block_state,
           mandatory,
         });
@@ -410,15 +412,6 @@ function WizardStep2Blocks({ template }, ref) {
     setPanelMode('create');
   };
 
-  const openSummary = (blockId: string) => {
-    const block = blocks.find((b: TemplateBlock) => b.id === blockId);
-    if (block) { openEdit(block); return; }
-    setActiveSingleId(blockId);
-    setSelectedBlockIds([blockId]);
-    setPanelMode('edit');
-    setDeleteModal(false);
-    setActionError(null);
-  };
 
   const openEdit = (block: TemplateBlock) => {
     loadFormFromBlock(block);
@@ -440,13 +433,14 @@ function WizardStep2Blocks({ template }, ref) {
       const newBlock = await createBlock({
         type: 'paragraph',
         title: formName.trim(),
-        description: formDesc.trim() || null,
-        default_content: parsedContent,
+        description: formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null,
+        default_content: parsedContent ? repairBlockNoteBlocks(parsedContent) : null,
         block_state,
         mandatory,
       });
       resetForm();
-      openSummary(newBlock.id);
+      // Use the returned block directly to avoid sync issues with the hook
+      openEdit(newBlock);
       return true;
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Error al crear el bloque');
@@ -502,9 +496,10 @@ function WizardStep2Blocks({ template }, ref) {
     setActionError(null);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
+      const parsedDesc = formDesc ? [{ type: 'paragraph', content: [{ type: 'text', text: formDesc, styles: {} }] }] : null;
       await updateBlock(currentMultiId, {
         title: formName.trim(),
-        description: formDesc.trim() || null,
+        description: parsedDesc,
         block_state,
         mandatory,
       });
@@ -547,58 +542,6 @@ function WizardStep2Blocks({ template }, ref) {
 
   // ── Block form (create / edit) ───────────────────────────────────────────────
 
-  const renderBlockForm = (
-    submitLabel: string,
-    onSubmit: () => Promise<void>,
-    onCancel: () => void,
-  ) => (
-    <div className="space-y-4">
-      <div>
-        <FieldLabel required>Nombre</FieldLabel>
-        <TextInput
-          type="text"
-          fieldSize="comfortable"
-          value={formName}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormName(e.target.value)}
-          placeholder="Ej: Introducción"
-        />
-      </div>
-      <div>
-        <FieldLabel>Descripción</FieldLabel>
-        <TextArea
-          fieldSize="comfortable"
-          rows={2}
-          value={formDesc}
-          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormDesc(e.target.value)}
-          placeholder="Descripción del bloque…"
-          style={{ minHeight: '52px' }}
-        />
-      </div>
-      <div>
-        <FieldLabel required>Estado del bloque</FieldLabel>
-        <div className="mt-1">
-          <BlockUiStateToggle value={formUiState} onChange={setFormUiState} disabled={busy} />
-        </div>
-      </div>
-      <div className="flex gap-2 pt-2">
-        <Button
-          type="button"
-          variant="primary"
-          size="md"
-          className="flex-1"
-          loading={busy}
-          onClick={() => void onSubmit()}
-          disabled={!formName.trim()}
-        >
-          {submitLabel}
-        </Button>
-        <Button type="button" variant="outline" size="md" disabled={busy} onClick={onCancel}>
-          Cancelar
-        </Button>
-      </div>
-      {actionError && <p className="text-xs text-danger-dark animate-in fade-in">{actionError}</p>}
-    </div>
-  );
 
   // ── Variant A — empty state ──────────────────────────────────────────────────
 
@@ -692,7 +635,13 @@ function WizardStep2Blocks({ template }, ref) {
                 <div>
                   <dt className="text-[10px] font-bold uppercase text-text-muted">Descripción</dt>
                   <dd className="mt-1 text-sm text-text-secondary">
-                    {selectedBlock.description || '—'}
+                    {(() => {
+                      const desc = selectedBlock.description;
+                      if (!desc) return '—';
+                      if (typeof desc === 'string') return desc;
+                      if (Array.isArray(desc)) return 'Contenido enriquecido';
+                      return '—';
+                    })()}
                   </dd>
                 </div>
                 <div>

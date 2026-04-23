@@ -18,7 +18,7 @@ class UpdateTemplateBlockRequest extends FormRequest
             'type'            => ['sometimes', 'string', 'max:50'],
             'title'           => ['sometimes', 'nullable', 'string', 'max:255'],
             'default_content' => ['sometimes', 'nullable', 'array'],
-            'description'     => ['sometimes', 'nullable', 'string'],
+            'description'     => ['sometimes', 'nullable', 'array'],
             'block_state'     => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
             'mandatory'       => ['sometimes', 'boolean'],
             'sort_order'      => ['sometimes', 'integer', 'min:0'],
@@ -35,8 +35,8 @@ class UpdateTemplateBlockRequest extends FormRequest
         }
 
         if ($this->exists('description')) {
-            $description = trim((string) $this->input('description'));
-            $payload['description'] = $description === '' ? null : $description;
+            $normalized = $this->sanitizeRichContent($this->input('description'));
+            $payload['description'] = (is_array($normalized) || is_string($normalized)) ? $normalized : null;
         }
 
         if ($this->exists('default_content')) {
@@ -75,7 +75,7 @@ class UpdateTemplateBlockRequest extends FormRequest
                     $sanitized[] = $next;
                 }
             }
-            return $sanitized === [] ? null : $sanitized;
+            return $sanitized;
         }
 
         $out = [];
@@ -86,15 +86,7 @@ class UpdateTemplateBlockRequest extends FormRequest
             }
         }
 
-        $meaningfulKeys = array_values(array_filter(
-            array_keys($out),
-            fn (string $key): bool => ! in_array($key, ['type', 'id'], true),
-        ));
-
-        if ($meaningfulKeys === [] && ! in_array($parentKey, ['props', 'styles'], true)) {
-            return null;
-        }
-
+        // Preserve nodes even if they don't have nested meaningful content (like empty paragraphs)
         return $out;
     }
 }
