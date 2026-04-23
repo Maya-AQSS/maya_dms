@@ -20,4 +20,9 @@ interface CommentServiceInterface
      * Crea un comentario para una plantilla.
      */
     public function createForTemplate(string $templateId, string $authorId, array $data): Comment;
+
+    /**
+     * Marca un comentario como resuelto.
+     */
+    public function resolve(string $id, string $userId): Comment;
 }

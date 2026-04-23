@@ -22,7 +22,10 @@ class CommentService implements CommentServiceInterface
 
     public function listForTemplate(string $templateId): \Illuminate\Support\Collection
     {
-        return Comment::where('template_id', $templateId)->orderBy('created_at', 'asc')->get();
+        return Comment::where('template_id', $templateId)
+            ->with('author:id,name')
+            ->orderBy('created_at', 'asc')
+            ->get();
     }
 
     public function createForTemplate(string $templateId, string $authorId, array $data): Comment
@@ -34,5 +37,16 @@ class CommentService implements CommentServiceInterface
             'body' => $data['body'],
             'type' => $data['type'] ?? 'general',
         ]);
+    }
+
+    public function resolve(string $id, string $userId): Comment
+    {
+        $comment = $this->findOrFail($id);
+        $comment->update([
+            'resolved' => true,
+            'resolved_by' => $userId,
+            'resolved_at' => now(),
+        ]);
+        return $comment;
     }
 }

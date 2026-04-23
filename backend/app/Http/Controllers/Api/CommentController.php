@@ -114,9 +114,17 @@ class CommentController extends Controller
     public function resolve(Request $request, string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
-        $document     = $this->documentService->findOrFail($commentModel->document_id);
-        $this->authorize('view', $document);
+        
+        // Autorización basada en el recurso al que pertenece el comentario
+        if ($commentModel->template_id) {
+            $model = $this->templateService->findOrFail($commentModel->template_id);
+            $this->authorize('view', $model);
+        } elseif ($commentModel->document_id) {
+            $model = $this->documentService->findOrFail($commentModel->document_id);
+            $this->authorize('view', $model);
+        }
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $resolved = $this->commentService->resolve($comment, (string) Auth::id());
+        return response()->json(['data' => $resolved]);
     }
 }

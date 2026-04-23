@@ -7,6 +7,7 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { Button, ConfirmDialog } from '../../../ui';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
+import { useOidcSession } from '../../../auth/useOidcSession';
 
 type Props = {
   template: Template;
@@ -45,7 +46,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
   if (parsed) {
     return (
       <div className="flex-1 overflow-y-auto p-5 custom-scrollbar prose prose-sm dark:prose-invert max-w-none">
-        <BlockContentHtml content={parsed} />
+        <BlockContentHtml content={parsed as any} />
       </div>
     );
   }
@@ -53,7 +54,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
   return (
     <div className="flex-1 overflow-y-auto p-5 custom-scrollbar">
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
-        {String(description)}
+        {String(description) as any}
       </p>
     </div>
   );
@@ -61,6 +62,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
 
 export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
+  const { user } = useOidcSession();
   const { blocks } = useTemplateBlocks(template.id);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -77,6 +79,12 @@ export function TemplateReviewView({ template }: Props) {
 
   // Estado de la barra lateral: 'comments' | 'info' | null
   const [sidebarMode, setSidebarMode] = useState<'comments' | 'info' | null>(null);
+
+  const currentUserId = (user as any)?.sub || (user as any)?.id || (user as any)?.profile?.sub || (user as any)?.profile?.id;
+  const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
+  const isAlreadyValidated = myReview && myReview.status !== 'pending';
+  
+  const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
 
   useEffect(() => {
     // Cargar comentarios iniciales
@@ -173,28 +181,55 @@ export function TemplateReviewView({ template }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button
-            variant="outlineWarning"
-            size="sm"
-            onClick={handleRejectClick}
-            disabled={actionLoading}
-            loading={actionLoading}
-            className="text-[10px] font-black uppercase tracking-wider"
-          >
-            Rechazar validación
-          </Button>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={handleApprove}
-            disabled={actionLoading}
-            loading={actionLoading}
-            className="text-[10px] font-black uppercase tracking-wider px-6"
-          >
-            Validar y Aprobar
-          </Button>
+          {!isAlreadyValidated ? (
+            <>
+              <Button
+                variant="outlineWarning"
+                size="sm"
+                onClick={handleRejectClick}
+                disabled={actionLoading}
+                loading={actionLoading}
+                className="text-[10px] font-black uppercase tracking-wider"
+              >
+                Rechazar validación
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleApprove}
+                disabled={actionLoading}
+                loading={actionLoading}
+                className="text-[10px] font-black uppercase tracking-wider px-6"
+              >
+                Validar y Aprobar
+              </Button>
+            </>
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
+              <span className="text-success text-[10px] font-black uppercase tracking-widest">
+                ✓ Ya has validado esta plantilla
+              </span>
+            </div>
+          )}
         </div>
       </div>
+
+      {isAlreadyValidated && remainingReviewers.length > 0 && (
+        <div className="mx-6 mt-4 p-3 bg-odoo-purple/5 border border-odoo-purple/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-center gap-3">
+            <span className="text-lg">⏳</span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-odoo-purple">Pendiente de otros validadores</p>
+              <p className="text-xs text-text-secondary dark:text-text-dark-secondary">
+                Faltan {remainingReviewers.length} {remainingReviewers.length === 1 ? 'persona' : 'personas'} por validar: 
+                <span className="font-bold ml-1">
+                  {remainingReviewers.map(r => r.user_name || 'Usuario').join(', ')}
+                </span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="mx-6 mt-4 p-3 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold animate-in slide-in-from-top-1 z-10">
@@ -272,14 +307,14 @@ export function TemplateReviewView({ template }: Props) {
                         'absolute -left-12 top-0 text-[10px] font-black uppercase tracking-tighter transition-opacity duration-200',
                         isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted'
                       ].join(' ')}>
-                         #{block.sort_order ?? '?'}
+                         #{(block.sort_order ?? '?') as any}
                       </div>
 
                       {/* Título del bloque (opcional) + botón de descripción */}
                       {(block.title || block.description) && (
                         <div className="flex items-center gap-2 mb-3">
                           <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                            {block.title ? String(block.title) : ''}
+                            {(block.title ? String(block.title) : '') as any}
                           </h3>
                           {block.description && (
                             <div
@@ -301,7 +336,7 @@ export function TemplateReviewView({ template }: Props) {
                       {/* Contenido renderizado */}
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         {parsed ? (
-                          <BlockContentHtml content={parsed} />
+                          <BlockContentHtml content={parsed as any} />
                         ) : typeof content === 'string' && content.trim() !== '' ? (
                           <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed">
                             {content}
@@ -382,26 +417,34 @@ export function TemplateReviewView({ template }: Props) {
                     )}
                   </div>
 
-                  <div className="p-4 border-t border-ui-border dark:border-ui-dark-border bg-ui-body/10">
-                    <textarea
-                      value={newCommentBody}
-                      onChange={(e) => setNewCommentBody(e.target.value)}
-                      placeholder="Añade un comentario de revisión..."
-                      className="w-full h-24 p-3 text-xs rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-1 focus:ring-odoo-purple focus:border-odoo-purple outline-none transition-all resize-none"
-                    />
-                    <div className="mt-3 flex justify-end">
-                      <Button 
-                        variant="primary" 
-                        size="sm" 
-                        className="text-[10px] font-bold uppercase"
-                        onClick={handleAddComment}
-                        loading={commentLoading}
-                        disabled={!newCommentBody.trim() || commentLoading}
-                      >
-                        Enviar comentario
-                      </Button>
+                  {!isAlreadyValidated ? (
+                    <div className="p-4 border-t border-ui-border dark:border-ui-dark-border bg-ui-body/10">
+                      <textarea
+                        value={newCommentBody}
+                        onChange={(e) => setNewCommentBody(e.target.value)}
+                        placeholder="Añade un comentario de revisión..."
+                        className="w-full h-24 p-3 text-xs rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-1 focus:ring-odoo-purple focus:border-odoo-purple outline-none transition-all resize-none"
+                      />
+                      <div className="mt-3 flex justify-end">
+                        <Button 
+                          variant="primary" 
+                          size="sm" 
+                          className="text-[10px] font-bold uppercase"
+                          onClick={handleAddComment}
+                          loading={commentLoading}
+                          disabled={!newCommentBody.trim() || commentLoading}
+                        >
+                          Enviar comentario
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="p-6 border-t border-ui-border dark:border-ui-dark-border bg-ui-body/5 text-center">
+                      <p className="text-[10px] text-text-muted italic">
+                        No puedes añadir más comentarios porque ya has finalizado tu validación.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </>

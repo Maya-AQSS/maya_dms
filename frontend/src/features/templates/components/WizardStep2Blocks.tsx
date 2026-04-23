@@ -30,7 +30,7 @@ import {
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type PanelMode = 'empty' | 'summary' | 'edit' | 'create' | 'multi';
-type TabId = 'properties' | 'content' | 'description';
+type TabId = 'properties' | 'content' | 'description' | 'comments';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 type BlockItemState =
@@ -47,11 +47,13 @@ function SortableBlockItem({
   itemState,
   onClick,
   onDoubleClick,
+  hasReviewComments,
 }: {
   block: TemplateBlock;
   itemState: BlockItemState;
   onClick: (e: React.MouseEvent) => void;
   onDoubleClick: (e: React.MouseEvent) => void;
+  hasReviewComments?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: block.id,
@@ -112,6 +114,11 @@ function SortableBlockItem({
         <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
           {block.title || 'Bloque sin nombre'}
         </span>
+        {hasReviewComments && (
+          <span className="shrink-0 w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm animate-pulse">
+            !
+          </span>
+        )}
         {itemState === 'multi-saved' ? (
           <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-success/10 text-success border border-success/20">
             ✓
@@ -165,6 +172,8 @@ function BlockUiStateToggle({
 
 type Props = {
   template: Template;
+  reviewComments?: any[];
+  onResolveComment?: (commentId: string) => Promise<void>;
 };
 
 export type WizardStep2BlocksHandle = {
@@ -172,7 +181,7 @@ export type WizardStep2BlocksHandle = {
 };
 
 export const WizardStep2Blocks = forwardRef<WizardStep2BlocksHandle, Props>(
-function WizardStep2Blocks({ template }, ref) {
+function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, ref) {
   const { isDark } = useDarkMode();
   const { blocks, createBlock, updateBlock, deleteBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
@@ -581,6 +590,7 @@ function WizardStep2Blocks({ template }, ref) {
                       itemState={itemState}
                       onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleBlockClick(block.id); }}
                       onDoubleClick={(e: React.MouseEvent) => { e.stopPropagation(); handleBlockDoubleClick(block.id); }}
+                      hasReviewComments={reviewComments.some(c => c.template_block_id === block.id && !c.resolved)}
                     />
                   );
                 })}
@@ -706,13 +716,19 @@ function WizardStep2Blocks({ template }, ref) {
               </div>
               {/* Tabs */}
               <div className="flex gap-0 -mb-px">
-                {(['properties', 'content', 'description'] as TabId[]).map((tab) => {
+                {(['properties', 'content', 'description', 'comments'] as TabId[]).map((tab) => {
+                  if (tab === 'comments' && reviewComments.length === 0) return null;
+
                   const labels: Record<TabId, string> = {
                     properties: 'Propiedades',
                     content: 'Contenido',
                     description: 'Descripción',
+                    comments: 'Comentarios',
                   };
                   const isActive = activeTab === tab;
+                  const blockComments = reviewComments.filter(c => c.template_block_id === activeSingleId);
+                  const unresolvedCount = blockComments.filter(c => !c.resolved).length;
+
                   return (
                     <button
                       key={tab}
@@ -720,13 +736,23 @@ function WizardStep2Blocks({ template }, ref) {
                       disabled={isActive}
                       onClick={() => void handleTabChange(tab)}
                       className={[
-                        'px-4 py-2 text-xs border-b-2 transition-all',
+                        'px-4 py-2 text-xs border-b-2 transition-all flex items-center gap-2',
                         isActive
                           ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
                           : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
                       ].join(' ')}
                     >
                       {labels[tab]}
+                      {tab === 'comments' && blockComments.length > 0 && (
+                        <span className={[
+                          'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[10px] font-black',
+                          unresolvedCount > 0 
+                            ? 'bg-amber-500 text-white shadow-sm' 
+                            : 'bg-ui-border dark:bg-ui-dark-border text-text-muted'
+                        ].join(' ')}>
+                          {blockComments.length}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -777,7 +803,7 @@ function WizardStep2Blocks({ template }, ref) {
                 </Suspense>
               )}
 
-              {activeTab === 'description' && (
+               {activeTab === 'description' && (
                 <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
                   <BlockNoteEditorPanel
                     key={activeSingleId ?? 'new'}
@@ -787,6 +813,69 @@ function WizardStep2Blocks({ template }, ref) {
                     onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
                   />
                 </Suspense>
+              )}
+
+              {activeTab === 'comments' && (
+                <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-ui-body/30 dark:bg-ui-dark-bg/30">
+                  {(() => {
+                    const blockComments = reviewComments.filter(c => c.template_block_id === activeSingleId);
+                    if (blockComments.length === 0) {
+                      return (
+                        <div className="flex flex-col items-center justify-center h-40 text-center opacity-40">
+                          <span className="text-3xl mb-2">💬</span>
+                          <p className="text-xs">No hay comentarios en este bloque.</p>
+                        </div>
+                      );
+                    }
+                    return blockComments.map(c => (
+                      <div key={c.id} className={[
+                        'bg-white dark:bg-ui-dark-card p-5 rounded-xl border shadow-sm transition-all duration-300',
+                        c.resolved 
+                          ? 'opacity-60 border-ui-border dark:border-ui-dark-border grayscale-[0.5]' 
+                          : 'border-amber-200 dark:border-amber-800/50 hover:shadow-md hover:border-amber-300'
+                      ].join(' ')}>
+                        <div className="flex justify-between items-start gap-3 mb-3">
+                          <div className="flex items-center gap-2">
+                             <div className={[
+                                'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black',
+                                c.resolved ? 'bg-success/20 text-success' : 'bg-odoo-purple/10 text-odoo-purple'
+                             ].join(' ')}>
+                                {c.author?.name ? c.author.name.charAt(0).toUpperCase() : '?'}
+                             </div>
+                             <div>
+                                <p className="text-[10px] font-bold text-text-primary dark:text-text-dark-primary leading-none">
+                                  {c.author?.name || 'Validador'}
+                                </p>
+                                <p className="text-[9px] text-text-muted mt-0.5">
+                                  {c.resolved ? 'Resuelto' : 'Pendiente de corregir'}
+                                </p>
+                             </div>
+                          </div>
+                          <span className="text-[9px] text-text-muted font-medium bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 rounded border border-ui-border dark:border-ui-dark-border">
+                            {new Date(c.created_at).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <div className="pl-8">
+                          <p className="text-xs text-text-primary dark:text-text-dark-primary leading-relaxed mb-4">
+                            {c.body}
+                          </p>
+                          {!c.resolved && onResolveComment && (
+                            <div className="flex justify-end">
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="text-[9px] font-black uppercase tracking-widest text-success border-success/30 hover:bg-success hover:text-white transition-all shadow-sm"
+                                onClick={() => void onResolveComment(c.id)}
+                              >
+                                ✓ Marcar como corregido
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
               )}
 
               {actionError && (

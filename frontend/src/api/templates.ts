@@ -155,3 +155,11 @@ export async function rejectTemplateReview(id: string): Promise<{ data: Template
     body: {},
   });
 }
+
+/** PATCH /api/v1/comments/{id}/resolve */
+export async function resolveComment(commentId: string): Promise<{ data: any }> {
+  return apiFetchJson<{ data: any }>(`comments/${commentId}/resolve`, {
+    method: 'PATCH',
+    body: {},
+  });
+}

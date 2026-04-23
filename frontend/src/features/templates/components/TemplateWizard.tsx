@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
@@ -9,8 +9,9 @@ import {
   submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
+  resolveComment as apiResolveComment,
 } from '../../../api/templates';
-import { ApiHttpError } from '../../../api/http';
+import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { Button } from '../../../ui';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
@@ -62,6 +63,24 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const blocksRef = useRef<WizardStep2BlocksHandle>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (initial?.id && initial?.has_review_comments) {
+      void apiFetchJson<{ data: any[] }>(`templates/${initial.id}/comments`)
+        .then(res => setComments(res.data))
+        .catch(console.error);
+    }
+  }, [initial?.id, initial?.has_review_comments]);
+
+  const handleResolveComment = async (commentId: string) => {
+    try {
+      await apiResolveComment(commentId);
+      setComments(prev => prev.map(c => c.id === commentId ? { ...c, resolved: true } : c));
+    } catch (e) {
+      console.error('Error resolving comment:', e);
+    }
+  };
 
   // Dirty check
   const isDirty = useMemo(() => {
@@ -435,6 +454,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           <WizardStep2Blocks
             ref={blocksRef}
             template={template}
+            reviewComments={comments}
+            onResolveComment={handleResolveComment}
           />
         )}
         {step === 'users' && (

@@ -26,7 +26,6 @@ class Comment extends Model
                       ->orWhereExists(function ($subQuery) use ($userId) {
                           $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                    ->from('documents')
-                                   // Reproduces the Document's scope logic to isolate the comment via DB-level constraints
                                    ->whereColumn('documents.id', 'comments.document_id')
                                    ->where(function ($docQuery) use ($userId) {
                                        $docQuery->where('documents.created_by', $userId)
@@ -43,6 +42,20 @@ class Comment extends Model
                                                                    ->whereColumn('document_reviews.document_id', 'documents.id')
                                                                    ->where('reviewer_id', $userId);
                                                 });
+                                   });
+                      })
+                      ->orWhereExists(function ($subQuery) use ($userId) {
+                          $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                   ->from('templates')
+                                   ->whereColumn('templates.id', 'comments.template_id')
+                                   ->where(function ($templateQuery) use ($userId) {
+                                       $templateQuery->where('templates.created_by', $userId)
+                                                    ->orWhereExists(function ($revQuery) use ($userId) {
+                                                        $revQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                                 ->from('template_reviewers')
+                                                                 ->whereColumn('template_reviewers.template_id', 'templates.id')
+                                                                 ->where('template_reviewers.user_id', $userId);
+                                                    });
                                    });
                       });
             });
@@ -103,5 +116,10 @@ class Comment extends Model
     public function replies(): HasMany
     {
         return $this->hasMany(Comment::class, 'parent_id');
+    }
+
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_id');
     }
 }

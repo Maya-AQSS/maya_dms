@@ -13,7 +13,9 @@ export type ReviewMode = 'sequential' | 'parallel';
 
 export type TemplateReviewer = {
   user_id: string;
+  user_name?: string;
   stage: number;
+  status?: 'pending' | 'approved' | 'rejected';
 };
 
 export type Template = {
@@ -32,6 +34,7 @@ export type Template = {
   review_stages: number;
   review_mode: ReviewMode;
   reviewers?: TemplateReviewer[];
+  has_review_comments?: boolean;
   created_at?: string;
   updated_at?: string;
 };
