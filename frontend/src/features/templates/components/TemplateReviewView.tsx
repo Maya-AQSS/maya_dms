@@ -362,7 +362,6 @@ export function TemplateReviewView({ template }: Props) {
                         </div>
                       </div>
 
-                      {/* Contenido renderizado */}
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         {parsed ? (
                           <BlockContentHtml content={parsed as any} />

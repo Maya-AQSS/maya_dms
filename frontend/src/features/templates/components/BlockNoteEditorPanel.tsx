@@ -8,11 +8,9 @@ interface Props {
   initialContent: unknown;
   editable: boolean;
   isDark: boolean;
-  onChange: (content: unknown) => void;
+  onChange?: (content: unknown) => void;
 }
 
-// key={activeBlockId} on the parent <Suspense> forces remount when block changes,
-// so initialContent always reflects the correct block.
 export default function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -44,7 +42,7 @@ export default function BlockNoteEditorPanel({ initialContent, editable, isDark,
           onChange={() => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
             debounceRef.current = setTimeout(() => {
-              onChange(editor.document);
+              onChange?.(editor.document);
             }, 200);
           }}
         >
