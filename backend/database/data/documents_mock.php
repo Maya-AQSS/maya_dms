@@ -6,6 +6,7 @@
  * - template_id / template_version_id deben existir tras TemplateVersionsSeeder.
  * - created_by / owner_id deben existir en users_mock.php.
  * - study_* / module_id alineados con academic_hierarchy_mock.php cuando el catálogo esté sembrado (opcional).
+ * - Documentos `in_review`: revisiones pendientes en document_reviews_mock.php (DocumentReviewsSeeder).
  */
 $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
 
@@ -36,6 +37,51 @@ return array_merge([
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'draft',
+        'current_version' => 1,
+        'submitted_at' => null,
+        'published_at' => null,
+    ],
+    [
+        'id' => '77777777-7777-7777-7777-777777777703',
+        'template_id' => '33333333-3333-3333-3333-333333333311',
+        'template_version_id' => '66666666-6666-6666-6666-666666666604',
+        'title' => 'Programación DWES — pendiente de validación (docente FP)',
+        'study_type_id' => 'ST_FP',
+        'study_id' => 'S_FP_DAW',
+        'module_id' => 'M_DAW_DWES',
+        'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'status' => 'in_review',
+        'current_version' => 1,
+        'submitted_at' => null,
+        'published_at' => null,
+    ],
+    [
+        'id' => '77777777-7777-7777-7777-777777777704',
+        'template_id' => '33333333-3333-3333-3333-333333333311',
+        'template_version_id' => '66666666-6666-6666-6666-666666666604',
+        'title' => 'Programación DWES — pendiente de validación (docente Bachillerato)',
+        'study_type_id' => 'ST_FP',
+        'study_id' => 'S_FP_DAW',
+        'module_id' => 'M_DAW_DWES',
+        'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
+        'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
+        'status' => 'in_review',
+        'current_version' => 1,
+        'submitted_at' => null,
+        'published_at' => null,
+    ],
+    [
+        'id' => '77777777-7777-7777-7777-777777777705',
+        'template_id' => '33333333-3333-3333-3333-333333333318',
+        'template_version_id' => '66666666-6666-6666-6666-666666666605',
+        'title' => 'Programación DWES global — envío a validación (docente FP)',
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'status' => 'in_review',
         'current_version' => 1,
         'submitted_at' => null,
         'published_at' => null,

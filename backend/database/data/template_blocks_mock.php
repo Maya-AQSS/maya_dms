@@ -6,6 +6,8 @@
  */
 $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
 
+$dwesGlobalOfficialContent = require __DIR__.'/dwes_official_programacion_blocknote.php';
+
 return array_merge([
     [
         'id' => '55555555-5555-5555-5555-555555555501',
@@ -173,6 +175,44 @@ return array_merge([
         'type' => 'paragraph',
         'title' => 'Inglés 1º ESO',
         'default_content' => ['type' => 'doc', 'content' => []],
+        'block_state' => 'editable',
+        'mandatory' => false,
+        'sort_order' => 0,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555518',
+        'template_id' => '33333333-3333-3333-3333-333333333318',
+        'type' => 'paragraph',
+        'title' => 'Programación didáctica — DWES (oficial, catálogo global)',
+        'default_content' => $dwesGlobalOfficialContent,
+        'block_state' => 'editable',
+        'mandatory' => false,
+        'sort_order' => 0,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555519',
+        'template_id' => '33333333-3333-3333-3333-333333333319',
+        'type' => 'paragraph',
+        'title' => 'Descripción (plantilla personal Secretaría, publicada)',
+        'default_content' => [
+            'type' => 'doc',
+            'content' => [
+                [
+                    'type' => 'paragraph',
+                    'props' => [
+                        'textColor' => 'default',
+                        'backgroundColor' => 'default',
+                        'textAlignment' => 'left',
+                    ],
+                    'content' => [[
+                        'type' => 'text',
+                        'text' => 'Plantilla de referencia publicada por Secretaría (seed). Los documentos generados se validan con Dirección y Auditoría según la configuración de revisores.',
+                        'styles' => [],
+                    ]],
+                    'children' => [],
+                ],
+            ],
+        ],
         'block_state' => 'editable',
         'mandatory' => false,
         'sort_order' => 0,

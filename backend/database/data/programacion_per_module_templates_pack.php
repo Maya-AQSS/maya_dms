@@ -406,7 +406,11 @@ return (static function (): array {
             }
 
             if ($slot['status'] === 'published') {
+                $creatorId = $slot['creator'];
                 foreach ([$uDir, $uSec, $uAud, $teach] as $uid) {
+                    if ($uid === $creatorId) {
+                        continue;
+                    }
                     $reviewers[] = [
                         'id' => sprintf('44444444-4444-4444-4444-%012x', $ridHex++),
                         'template_id' => $tUuid,
@@ -414,10 +418,13 @@ return (static function (): array {
                         'stage' => 1,
                     ];
                 }
-                $docSet = ($si === 3)
+                $docBase = ($si === 3)
                     ? [$uDir, $uSec, $uAud]
                     : [$uSec, $uAud, $teach];
-                foreach ($docSet as $uid) {
+                foreach ($docBase as $uid) {
+                    if ($uid === $creatorId) {
+                        continue;
+                    }
                     $docReviewers[] = ['template_id' => $tUuid, 'user_id' => $uid];
                 }
             }
