@@ -984,4 +984,66 @@ class TemplatesApiTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['status']);
     }
+
+    public function test_sync_template_reviewers_rejects_when_creator_included(): void
+    {
+        $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $otherId = '2ead4bf3-574c-41b4-95ca-cac7daed0664';
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft revisores',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/reviewers", [
+            'user_ids' => [$creatorId, $otherId],
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user_ids']);
+    }
+
+    public function test_sync_template_document_reviewers_rejects_when_creator_included(): void
+    {
+        $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $otherId = '2ead4bf3-574c-41b4-95ca-cac7daed0664';
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft validadores doc',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'parallel',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/document-reviewers", [
+            'user_ids' => [$otherId, $creatorId],
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user_ids']);
+    }
 }

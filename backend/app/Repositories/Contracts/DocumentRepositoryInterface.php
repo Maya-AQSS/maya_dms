@@ -86,6 +86,15 @@ interface DocumentRepositoryInterface
     public function listOrderedByCreatedAtDesc(): Collection;
 
     /**
+     * Bandeja de validación de documentos pendiente para un revisor (documento en revisión y fila
+     * `document_reviews` pending). En modo secuencial de la plantilla solo entran revisiones cuya
+     * etapa coincide con la menor etapa aún pendiente del documento.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function listPendingDocumentReviewInboxForUser(string $userId): Collection;
+
+    /**
      * Mayor número de versión de snapshot guardado para el documento (0 si no hay ninguna).
      */
     public function maxDocumentVersionNumber(string $documentId): int;

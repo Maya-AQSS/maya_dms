@@ -507,20 +507,56 @@ class DocumentService implements DocumentServiceInterface
             $this->documentRepository->deleteReviewsForDocument($documentId);
 
             // Sin global scope: el titular puede no “ver” la plantilla en catálogo (p. ej. personal de otro
-            // usuario) pero debe poder generar revisiones a partir de `template_reviewers` de la plantilla anclada.
+            // usuario) pero debe poder generar revisiones desde la plantilla anclada.
+            //
+            // Prioridad: `template_document_reviewers` (validadores de documento en el asistente de plantilla);
+            // si no hay ninguno, se usa `template_reviewers` (revisores normativos de la plantilla).
+            // En ambos casos se excluye al creador y titular del documento (SoD, {@see DocumentPolicy::review}).
             $template = Template::query()
                 ->withoutGlobalScopes(['user_access'])
-                ->with(['reviewers' => fn ($q) => $q->orderBy('stage')])
+                ->with([
+                    'reviewers' => fn ($q) => $q->orderBy('stage'),
+                    'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+                ])
                 ->find($document->template_id);
 
-            $rows = $template?->reviewers
-                ?->sortBy('stage')
-                ->map(fn ($r) => [
-                    'reviewer_id' => $r->user_id,
-                    'stage' => $r->stage,
-                ])
-                ->values()
-                ->all() ?? [];
+            $candidates = [];
+            if ($template !== null) {
+                if ($template->documentReviewers->isNotEmpty()) {
+                    $stage = 1;
+                    foreach ($template->documentReviewers as $dr) {
+                        $candidates[] = [
+                            'reviewer_id' => (string) $dr->user_id,
+                            'stage' => $stage,
+                        ];
+                        $stage++;
+                    }
+                } elseif ($template->reviewers->isNotEmpty()) {
+                    $candidates = $template->reviewers
+                        ->sortBy('stage')
+                        ->values()
+                        ->map(fn ($r): array => [
+                            'reviewer_id' => (string) $r->user_id,
+                            'stage' => (int) $r->stage,
+                        ])
+                        ->all();
+                }
+            }
+
+            $ownerId = (string) $document->owner_id;
+            $createdById = (string) $document->created_by;
+            $rows = array_values(array_filter(
+                $candidates,
+                static fn (array $row): bool => $row['reviewer_id'] !== $ownerId && $row['reviewer_id'] !== $createdById,
+            ));
+
+            if ($candidates !== [] && $rows === []) {
+                throw ValidationException::withMessages([
+                    'reviewers' => [
+                        'Los validadores configurados coinciden todos con el titular o creador del documento. Añade en la plantilla al menos un validador distinto del titular y del creador.',
+                    ],
+                ]);
+            }
 
             $document = $this->transition($documentId, 'in_review', $actorId, [
                 'submitted_at' => now(),

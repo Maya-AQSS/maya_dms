@@ -9,6 +9,7 @@ use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -160,6 +161,77 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->with('template')
             ->orderByDesc('created_at')
             ->get();
+    }
+
+    /**
+     * Bandeja de validación de documentos pendiente para un revisor (documento en revisión y fila
+     * `document_reviews` pending). En modo secuencial de la plantilla solo entran revisiones cuya
+     * etapa coincide con la menor etapa aún pendiente del documento.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function listPendingDocumentReviewInboxForUser(string $userId): Collection
+    {
+        $minPendingByDocument = DB::table('document_reviews')
+            ->select('document_id')
+            ->selectRaw('MIN(stage) as min_stage')
+            ->where('status', 'pending')
+            ->groupBy('document_id');
+
+        $rows = DB::table('document_reviews as dr')
+            ->join('documents as d', 'd.id', '=', 'dr.document_id')
+            ->join('templates as t', 't.id', '=', 'd.template_id')
+            ->leftJoinSub($minPendingByDocument, 'ps', function ($join) {
+                $join->on('ps.document_id', '=', 'd.id');
+            })
+            ->where('dr.reviewer_id', $userId)
+            ->where('dr.status', 'pending')
+            ->where('d.status', 'in_review')
+            ->where(function ($q) {
+                $q->whereNull('t.review_mode')
+                    ->orWhere('t.review_mode', 'parallel')
+                    ->orWhere(function ($q2) {
+                        $q2->where('t.review_mode', 'sequential')
+                            ->whereColumn('dr.stage', 'ps.min_stage');
+                    });
+            })
+            ->orderByRaw('CASE WHEN d.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
+            ->orderBy('d.delivery_deadline', 'asc')
+            ->orderByDesc('d.updated_at')
+            ->get([
+                'd.id as document_id',
+                'd.title',
+                'd.owner_id',
+                'd.delivery_deadline',
+                'd.status',
+                'dr.id as review_id',
+                'dr.stage',
+                't.review_mode',
+            ]);
+
+        $today = Carbon::today();
+
+        return $rows->map(function (object $row) use ($today): array {
+            $deadlineIso = null;
+            $daysRemaining = null;
+            if ($row->delivery_deadline !== null) {
+                $deadline = Carbon::parse((string) $row->delivery_deadline);
+                $deadlineIso = $deadline->toIso8601String();
+                $daysRemaining = $today->diffInDays($deadline, false);
+            }
+
+            return [
+                'document_id' => (string) $row->document_id,
+                'review_id' => (string) $row->review_id,
+                'title' => (string) $row->title,
+                'owner_id' => (string) $row->owner_id,
+                'delivery_deadline' => $deadlineIso,
+                'days_remaining' => $daysRemaining,
+                'status' => (string) $row->status,
+                'review_stage' => (int) $row->stage,
+                'review_mode' => (string) ($row->review_mode ?? 'parallel'),
+            ];
+        })->values();
     }
 
     /**

@@ -382,7 +382,28 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Actualiza solo el estado de la plantilla vía repositorio y emite {@see TemplateStateChanged}.
+     * SoD plantilla: el creador no puede asignarse como revisor (alineado con {@see \App\Policies\TemplatePolicy::review}).
+     *
+     * @param  list<string>  $userIds
+     */
+    private function assertTemplateCreatorNotAmongReviewerUserIds(Template $template, array $userIds, string $message): void
+    {
+        $creatorId = (string) ($template->created_by ?? '');
+        if ($creatorId === '') {
+            return;
+        }
+
+        foreach ($userIds as $userId) {
+            if ((string) $userId === $creatorId) {
+                throw ValidationException::withMessages([
+                    'user_ids' => [$message],
+                ]);
+            }
+        }
+    }
+
+    /**
+     * Actualiza el estado de la plantilla y emite el evento de dominio TemplateStateChanged.
      */
     private function updateTemplateStatusWithEvent(Template $template, string $newStatus, string $actorId): Template
     {
@@ -406,6 +427,12 @@ class TemplateService implements TemplateServiceInterface
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
 
+            $this->assertTemplateCreatorNotAmongReviewerUserIds(
+                $template,
+                $userIds,
+                'El creador de la plantilla no puede figurar como revisor normativo de la misma.',
+            );
+
             // TemplateReviewer uses SoftDeletes; forceDelete removes rows physically
             // so the unique constraint (template_id, user_id) is not violated on re-insert.
             $template->reviewers()->withTrashed()->forceDelete();
@@ -426,6 +453,12 @@ class TemplateService implements TemplateServiceInterface
     {
         DB::transaction(function () use ($templateId, $userIds) {
             $template = $this->templateRepository->findOrFail($templateId);
+
+            $this->assertTemplateCreatorNotAmongReviewerUserIds(
+                $template,
+                $userIds,
+                'El creador de la plantilla no puede figurar como validador de documentos derivados de la misma.',
+            );
 
             $template->documentReviewers()->delete();
 
