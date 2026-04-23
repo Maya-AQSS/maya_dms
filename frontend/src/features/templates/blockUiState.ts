@@ -31,9 +31,18 @@ export const BLOCK_UI_STATE_CONFIG: Record<
   },
 };
 
-export function blockToUiState(block: TemplateBlock): BlockUiState {
-  if (!block.mandatory) return 'optional';
-  if (block.block_state === 'locked') return 'locked';
-  if (block.block_state === 'modifiable') return 'modifiable';
+export function blockToUiState(block: Pick<TemplateBlock, 'mandatory' | 'block_state'>): BlockUiState {
+  if (!block.mandatory) {
+    return 'optional';
+  }
+  if (block.block_state === 'optional') {
+    return 'optional';
+  }
+  if (block.block_state === 'locked') {
+    return 'locked';
+  }
+  if (block.block_state === 'modifiable') {
+    return 'modifiable';
+  }
   return 'editable';
 }

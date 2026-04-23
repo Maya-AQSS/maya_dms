@@ -1,4 +1,4 @@
-export type BlockState = 'editable' | 'modifiable' | 'locked';
+export type BlockState = 'editable' | 'modifiable' | 'locked' | 'optional';
 
 export type TemplateBlock = {
   id: string;
@@ -48,4 +48,5 @@ export const BLOCK_STATE_LABELS: Record<BlockState, string> = {
   editable: 'Editable',
   modifiable: 'Modificable',
   locked: 'Bloqueado',
+  optional: 'Opcional',
 };

@@ -76,6 +76,37 @@ export async function fetchTemplate(id: string): Promise<{ data: Template }> {
   return apiGetJson<{ data: Template }>(`templates/${id}`);
 }
 
+/** Bloque dentro del snapshot de una versión publicada (GET template-versions). */
+export type TemplateVersionSnapshotBlock = {
+  id: string;
+  type: string;
+  title: string;
+  default_content: unknown;
+  block_state?: string;
+  mandatory?: boolean;
+  sort_order: number;
+};
+
+export type TemplateVersionDetail = {
+  id: string;
+  template_id: string;
+  version_number: number;
+  blocks_snapshot: TemplateVersionSnapshotBlock[];
+  changelog: string | null;
+  published_by: string | null;
+  published_at: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
+/** GET /api/v1/template-versions/{id} — snapshot publicado (incluye bloques). */
+export async function fetchTemplateVersion(versionId: string): Promise<TemplateVersionDetail> {
+  const body = await apiGetJson<{ data: TemplateVersionDetail }>(
+    `template-versions/${encodeURIComponent(versionId)}`,
+  );
+  return body.data;
+}
+
 /** POST /api/v1/templates */
 export async function createTemplate(payload: CreateTemplatePayload): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>('templates', { method: 'POST', body: payload });
