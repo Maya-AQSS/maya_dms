@@ -106,16 +106,41 @@ export function useTemplateBlocks(templateId: string) {
     selectOnly,
     clearSelection,
     reorderBlocks: async (draggedId: string, targetIndex: number) => {
-      const sourceIndex = blocks.findIndex((b: TemplateBlock) => b.id === draggedId);
-      if (sourceIndex === -1) return;
       const snapshot = blocks;
-      const newBlocks = [...blocks];
+      const sourceIndex = snapshot.findIndex((b: TemplateBlock) => b.id === draggedId);
+      if (sourceIndex === -1) return;
+
+      const boundedTargetIndex = Math.max(0, Math.min(targetIndex, snapshot.length - 1));
+
+      const newBlocks = [...snapshot];
       const [movedBlock] = newBlocks.splice(sourceIndex, 1);
-      newBlocks.splice(targetIndex, 0, movedBlock);
+      newBlocks.splice(boundedTargetIndex, 0, movedBlock);
       setBlocks(newBlocks); // optimistic update
+
+      const desiredIds = newBlocks.map((b: TemplateBlock) => b.id);
+
       try {
-        await reorderBlocksForTemplate(templateId, newBlocks.map((b: TemplateBlock) => b.id));
+        await reorderBlocksForTemplate(templateId, desiredIds);
       } catch (e) {
+        // If backend rejects due strict set validation, refresh and retry once with canonical server list.
+        try {
+          const fresh = await fetchBlocks(templateId);
+          const freshBlocks = fresh.data ?? [];
+          const fromIdx = freshBlocks.findIndex((b: TemplateBlock) => b.id === draggedId);
+          if (fromIdx !== -1) {
+            const toIdx = Math.max(0, Math.min(boundedTargetIndex, freshBlocks.length - 1));
+            const retryBlocks = [...freshBlocks];
+            const [retryMoved] = retryBlocks.splice(fromIdx, 1);
+            retryBlocks.splice(toIdx, 0, retryMoved);
+            const retryIds = retryBlocks.map((b: TemplateBlock) => b.id);
+            await reorderBlocksForTemplate(templateId, retryIds);
+            setBlocks(retryBlocks);
+            return;
+          }
+        } catch {
+          // fallback below
+        }
+
         console.error('Failed to persist reorder:', e);
         setBlocks(snapshot); // revert on failure
         setError(formatError(e));
