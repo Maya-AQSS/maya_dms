@@ -23,7 +23,9 @@
     "keycloak-js": "^26.2.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
+    "@maya/shared-auth-react": "file:../../maya_infra/packages/maya-shared-auth-react",
     "@maya/shared-layout-react": "file:../../maya_infra/packages/maya-shared-layout-react",
+    "@maya/shared-sidebar-react": "file:../../maya_infra/packages/maya-shared-sidebar-react",
     "react-router-dom": "^7.14.1",
     "tailwindcss": "^4.2.2"
   },

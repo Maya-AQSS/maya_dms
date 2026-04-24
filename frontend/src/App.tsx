@@ -1,7 +1,11 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './index.css';
 import { AppLayout } from '@maya/shared-layout-react';
+import { LocaleSelector, SidebarFavorites } from '@maya/shared-sidebar-react';
 import { NAV_ITEMS } from './components/layout/navItems';
+
+const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined)
+  ?? 'http://maya_dashboard_api.localhost';
 import {
   DashboardPage,
   DocumentEditorPage,
@@ -29,8 +33,6 @@ function AppRoutes() {
       <Route path="/templates" element={<TemplatesPage />} />
       <Route path="/templates/new" element={<TemplateNewPage />} />
       <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
-      <Route path="/upload" element={<PlaceholderPage />} />
-      <Route path="/search" element={<PlaceholderPage />} />
       <Route path="*" element={<PlaceholderPage />} />
     </Routes>
   );
@@ -64,6 +66,8 @@ function AppWithLayout() {
       userInitials={userInitials}
       onLogout={logout}
       titleOverride={titleOverride}
+      topbarActions={<LocaleSelector />}
+      sidebarFooter={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
     >
       <AppRoutes />
     </AppLayout>
