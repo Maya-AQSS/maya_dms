@@ -2,38 +2,17 @@
 
 /**
  * Documentos mock para local/testing.
- *
- * - template_id / template_version_id deben existir tras TemplateVersionsSeeder.
- * - created_by / owner_id deben existir en users_mock.php.
- * - study_* / module_id alineados con academic_hierarchy_mock.php cuando el catálogo esté sembrado (opcional).
- * - Documentos `in_review`: revisiones pendientes en document_reviews_mock.php (DocumentReviewsSeeder).
+ * Fase actual: documentos reales de ejemplo para plantilla base FP.
  */
-$programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
-
-return array_merge([
+return [
     [
-        'id' => '77777777-7777-7777-7777-777777777701',
-        'template_id' => '33333333-3333-3333-3333-333333333301',
-        'template_version_id' => '66666666-6666-6666-6666-666666666601',
-        'title' => 'Documento seed — borrador (plantilla global)',
+        'id' => '77777777-7777-7777-7777-777777777901',
+        'template_id' => '33333333-3333-3333-3333-333333333309',
+        'template_version_id' => '66666666-6666-6666-6666-666666666609',
+        'title' => 'FP DAW - Despliegue de Aplicaciones Web (Presentacion 24-25)',
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
         'module_id' => 'M_DAW_DWES',
-        'created_by' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
-        'owner_id' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
-        'status' => 'draft',
-        'current_version' => 1,
-        'submitted_at' => null,
-        'published_at' => null,
-    ],
-    [
-        'id' => '77777777-7777-7777-7777-777777777702',
-        'template_id' => '33333333-3333-3333-3333-333333333302',
-        'template_version_id' => '66666666-6666-6666-6666-666666666602',
-        'title' => 'Documento seed — borrador (plantilla por grupo)',
-        'study_type_id' => null,
-        'study_id' => null,
-        'module_id' => null,
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'draft',
@@ -42,10 +21,10 @@ return array_merge([
         'published_at' => null,
     ],
     [
-        'id' => '77777777-7777-7777-7777-777777777703',
-        'template_id' => '33333333-3333-3333-3333-333333333311',
-        'template_version_id' => '66666666-6666-6666-6666-666666666604',
-        'title' => 'Programación DWES — pendiente de validación (docente FP)',
+        'id' => '77777777-7777-7777-7777-777777777902',
+        'template_id' => '33333333-3333-3333-3333-333333333309',
+        'template_version_id' => '66666666-6666-6666-6666-666666666609',
+        'title' => 'FP DAW - Web Application Deployment (English content)',
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
         'module_id' => 'M_DAW_DWES',
@@ -57,13 +36,43 @@ return array_merge([
         'published_at' => null,
     ],
     [
-        'id' => '77777777-7777-7777-7777-777777777704',
-        'template_id' => '33333333-3333-3333-3333-333333333311',
-        'template_version_id' => '66666666-6666-6666-6666-666666666604',
-        'title' => 'Programación DWES — pendiente de validación (docente Bachillerato)',
+        'id' => '77777777-7777-7777-7777-777777777903',
+        'template_id' => '33333333-3333-3333-3333-333333333309',
+        'template_version_id' => '66666666-6666-6666-6666-666666666609',
+        'title' => 'FP DAW - Lenguajes de Marcas (Guia didactica 24-25)',
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
-        'module_id' => 'M_DAW_DWES',
+        'module_id' => 'M_DAW_DWECL',
+        'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'status' => 'in_review',
+        'current_version' => 1,
+        'submitted_at' => null,
+        'published_at' => null,
+    ],
+    [
+        'id' => '77777777-7777-7777-7777-777777777904',
+        'template_id' => '33333333-3333-3333-3333-333333333304',
+        'template_version_id' => '66666666-6666-6666-6666-666666666607',
+        'title' => 'ESPA - Ambito de Comunicacion: La palabra en el trabajo',
+        'study_type_id' => 'ST_ESPA',
+        'study_id' => 'S_ESPA',
+        'module_id' => 'M_LEN_2',
+        'created_by' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
+        'owner_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
+        'status' => 'in_review',
+        'current_version' => 1,
+        'submitted_at' => null,
+        'published_at' => null,
+    ],
+    [
+        'id' => '77777777-7777-7777-7777-777777777905',
+        'template_id' => '33333333-3333-3333-3333-333333333308',
+        'template_version_id' => '66666666-6666-6666-6666-666666666608',
+        'title' => 'BACH 2o - Fisica: Campo gravitatorio (Mision a Marte)',
+        'study_type_id' => 'ST_BACH',
+        'study_id' => 'S_BACH_1_C',
+        'module_id' => 'M_FIS_1C',
         'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'status' => 'in_review',
@@ -72,18 +81,18 @@ return array_merge([
         'published_at' => null,
     ],
     [
-        'id' => '77777777-7777-7777-7777-777777777705',
-        'template_id' => '33333333-3333-3333-3333-333333333318',
-        'template_version_id' => '66666666-6666-6666-6666-666666666605',
-        'title' => 'Programación DWES global — envío a validación (docente FP)',
-        'study_type_id' => null,
-        'study_id' => null,
-        'module_id' => null,
-        'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'status' => 'in_review',
+        'id' => '77777777-7777-7777-7777-777777777906',
+        'template_id' => '33333333-3333-3333-3333-333333333308',
+        'template_version_id' => '66666666-6666-6666-6666-666666666608',
+        'title' => 'BACH 2o - Fisica: Campo gravitatorio (borrador docente)',
+        'study_type_id' => 'ST_BACH',
+        'study_id' => 'S_BACH_1_C',
+        'module_id' => 'M_FIS_1C',
+        'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
+        'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
+        'status' => 'draft',
         'current_version' => 1,
         'submitted_at' => null,
         'published_at' => null,
     ],
-], $programacionPack['documents'] ?? []);
+];
