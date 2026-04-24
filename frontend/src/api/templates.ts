@@ -171,3 +171,26 @@ export async function syncDocumentReviewers(
     body: { user_ids: userIds },
   });
 }
+/** POST /api/v1/templates/{id}/approve-review */
+export async function approveTemplateReview(id: string): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/approve-review`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+/** POST /api/v1/templates/{id}/reject-review */
+export async function rejectTemplateReview(id: string): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/reject-review`, {
+    method: 'POST',
+    body: {},
+  });
+}
+
+/** PATCH /api/v1/comments/{id}/resolve */
+export async function resolveComment(commentId: string): Promise<{ data: any }> {
+  return apiFetchJson<{ data: any }>(`comments/${commentId}/resolve`, {
+    method: 'PATCH',
+    body: {},
+  });
+}
