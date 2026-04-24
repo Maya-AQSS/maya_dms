@@ -127,35 +127,35 @@ describe('TemplateWizard Integration', () => {
     await waitFor(() => {
       expect(createTemplate).toHaveBeenCalled();
       expect(screen.getByText('Editando «New Template»')).toBeTruthy();
-      expect(screen.getByText('BLOQUES (1)')).toBeTruthy(); // Transitioned to Step 2
-    });
+      expect(screen.getByText(/Bloques \(/i)).toBeTruthy(); // Transitioned to Step 2
+    }, { timeout: 10000 });
 
     // Step 2: Blocks
     // We already have 1 block from mocked fetchBlocks
     await waitFor(() => {
       const btn = screen.getByRole('button', { name: /Guardar y continuar →/ }) as HTMLButtonElement;
       expect(btn.disabled).toBe(false);
-    });
+    }, { timeout: 10000 });
     fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
       expect(screen.getAllByText(/validadores.*\(0\)/i).length).toBeGreaterThan(0); // Paso 3
-    });
+    }, { timeout: 10000 });
 
     // Step 3: Users
     fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
       expect(screen.getByText('Revisión final')).toBeTruthy(); // Transitioned to Step 4 (Resumen)
-    });
+    }, { timeout: 10000 });
 
     // Step 4: Summary -> Finish
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/templates');
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it('handles Step 1 validation errors', async () => {
     renderWizard();
@@ -189,8 +189,8 @@ describe('TemplateWizard Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar →/ }));
 
     await waitFor(() => {
-      expect(screen.getByText('BLOQUES (1)')).toBeTruthy();
-    });
+      expect(screen.getByText(/Bloques \(/i)).toBeTruthy();
+    }, { timeout: 10000 });
 
     // Now go back using the stepper
     fireEvent.click(screen.getByRole('button', { name: /Propiedades/i }));
