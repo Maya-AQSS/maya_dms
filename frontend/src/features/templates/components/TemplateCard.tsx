@@ -97,6 +97,11 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
             <span className="rounded bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 border border-ui-border dark:border-ui-dark-border">
               {visibilityLabel(t.visibility_level)}
             </span>
+            {t.author_name ? (
+              <span className="rounded bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 border border-ui-border dark:border-ui-dark-border opacity-70">
+                {t.author_name}
+              </span>
+            ) : null}
             <span className={[
               'rounded px-2 py-0.5 border',
               isRejected 
