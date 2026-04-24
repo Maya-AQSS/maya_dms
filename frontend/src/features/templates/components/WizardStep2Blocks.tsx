@@ -190,6 +190,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const newIndex = blocks.findIndex((b: TemplateBlock) => b.id === over.id);
+    if (newIndex < 0) return;
     void reorderBlocks(active.id.toString(), newIndex);
   };
 
