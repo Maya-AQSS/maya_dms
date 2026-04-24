@@ -59,6 +59,8 @@ export type TemplateListFilters = {
   study_id?: string;
   module_id?: string;
   team_id?: string;
+  author_name?: string;
+  delivery_deadline?: string;
   page?: number;
   per_page?: number;
 };

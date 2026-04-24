@@ -86,6 +86,13 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filters->teamId !== null) {
             $query->where('templates.team_id', $filters->teamId);
         }
+        if ($filters->authorName !== null) {
+            $query->leftJoin('users', 'users.id', '=', 'templates.created_by')
+                ->where('users.name', 'like', '%'.$filters->authorName.'%');
+        }
+        if ($filters->deliveryDeadline !== null) {
+            $query->whereDate('templates.delivery_deadline', $filters->deliveryDeadline);
+        }
 
         return $query
             ->with('reviewers')
