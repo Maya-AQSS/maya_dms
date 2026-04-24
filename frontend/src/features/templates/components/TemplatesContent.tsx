@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
-import { Button, FieldLabel, Select } from '../../../ui';
+import { Button, FieldLabel, Select, TextInput } from '../../../ui';
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
 import { useNavigate } from 'react-router-dom';
@@ -31,6 +31,18 @@ export function TemplatesContent() {
     cloneTemplate,
   } = useTemplates();
 
+  const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
+  const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAuthorInput(value);
+    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    authorDebounceRef.current = setTimeout(() => {
+      applyFilters({ author_name: value || undefined });
+    }, 400);
+  };
+
   const filterUi = useMemo(
     () => ({
       visibility: filters.visibility_level ?? '',
@@ -39,11 +51,15 @@ export function TemplatesContent() {
       studyId: filters.study_id ?? '',
       moduleId: filters.module_id ?? '',
       teamId: filters.team_id ?? '',
+      authorName: filters.author_name ?? '',
+      deliveryDeadline: filters.delivery_deadline ?? '',
     }),
     [filters],
   );
 
   const clearFilters = () => {
+    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    setAuthorInput('');
     applyFilters({
       visibility_level: undefined,
       status: undefined,
@@ -51,6 +67,8 @@ export function TemplatesContent() {
       study_id: undefined,
       module_id: undefined,
       team_id: undefined,
+      author_name: undefined,
+      delivery_deadline: undefined,
     });
   };
 
@@ -132,64 +150,87 @@ export function TemplatesContent() {
         </div>
 
         {showConditionalFilters ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div className="space-y-3">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <div className="space-y-3">
+                <div>
+                  <FieldLabel>Visibilidad</FieldLabel>
+                  <Select
+                    fieldSize="sm"
+                    value={filterUi.visibility}
+                    onChange={(e) =>
+                      applyFilters({
+                        visibility_level: e.target.value || undefined,
+                        study_type_id: undefined,
+                        study_id: undefined,
+                        module_id: undefined,
+                        team_id: undefined,
+                      })
+                    }
+                  >
+                    <option value="">Todas</option>
+                    {VISIBILITY_OPTIONS.map((o) => (
+                      <option key={o.value} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <FieldLabel>Estado</FieldLabel>
+                  <Select
+                    fieldSize="sm"
+                    value={filterUi.status}
+                    onChange={(e) => applyFilters({ status: e.target.value || undefined })}
+                  >
+                    {STATUS_OPTIONS.map((o) => (
+                      <option key={o.value || 'all'} value={o.value}>
+                        {o.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+              <TemplateHierarchyFields
+                values={{
+                  study_type_id: filterUi.studyTypeId,
+                  study_id: filterUi.studyId,
+                  module_id: filterUi.moduleId,
+                  team_id: filterUi.teamId,
+                }}
+                onFieldChange={(key, value) =>
+                  applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
+                }
+                gridClassName="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                filterMode={true}
+                maxLevel={showHierarchyFilter ? (filterUi.visibility as 'study_type' | 'study' | 'module') : null}
+                showTeam={showTeamFilter}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-ui-border/50 dark:border-ui-dark-border/50">
               <div>
-                <FieldLabel>Visibilidad</FieldLabel>
-                <Select
+                <FieldLabel>Autor</FieldLabel>
+                <TextInput
                   fieldSize="sm"
-                  value={filterUi.visibility}
-                  onChange={(e) =>
-                    applyFilters({
-                      visibility_level: e.target.value || undefined,
-                      study_type_id: undefined,
-                      study_id: undefined,
-                      module_id: undefined,
-                      team_id: undefined,
-                    })
-                  }
-                >
-                  <option value="">Todas</option>
-                  {VISIBILITY_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
+                  placeholder="Buscar por autor..."
+                  value={authorInput}
+                  onChange={handleAuthorChange}
+                />
               </div>
               <div>
-                <FieldLabel>Estado</FieldLabel>
-                <Select
+                <FieldLabel>Fecha límite</FieldLabel>
+                <TextInput
                   fieldSize="sm"
-                  value={filterUi.status}
-                  onChange={(e) => applyFilters({ status: e.target.value || undefined })}
-                >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value || 'all'} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </Select>
+                  type="date"
+                  value={filterUi.deliveryDeadline}
+                  onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
+                />
               </div>
             </div>
-            <TemplateHierarchyFields
-              values={{
-                study_type_id: filterUi.studyTypeId,
-                study_id: filterUi.studyId,
-                module_id: filterUi.moduleId,
-                team_id: filterUi.teamId,
-              }}
-              onFieldChange={(key, value) =>
-                applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
-              }
-              gridClassName="grid grid-cols-1 sm:grid-cols-2 gap-3"
-              filterMode={true}
-              maxLevel={showHierarchyFilter ? (filterUi.visibility as 'study_type' | 'study' | 'module') : null}
-              showTeam={showTeamFilter}
-            />
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
               <FieldLabel>Visibilidad</FieldLabel>
               <Select
@@ -226,6 +267,24 @@ export function TemplatesContent() {
                   </option>
                 ))}
               </Select>
+            </div>
+            <div>
+              <FieldLabel>Autor</FieldLabel>
+              <TextInput
+                fieldSize="sm"
+                placeholder="Nombre del autor..."
+                value={authorInput}
+                onChange={handleAuthorChange}
+              />
+            </div>
+            <div>
+              <FieldLabel>Fecha límite</FieldLabel>
+              <TextInput
+                fieldSize="sm"
+                type="date"
+                value={filterUi.deliveryDeadline}
+                onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
+              />
             </div>
           </div>
         )}

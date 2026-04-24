@@ -29,6 +29,7 @@ export type Template = {
   module_id: string | null;
   team_id: string | null;
   created_by: string;
+  author_name?: string | null;
   status: TemplateStatus;
   version: number;
   review_stages: number;
@@ -59,6 +60,8 @@ export type TemplateListFilters = {
   study_id?: string;
   module_id?: string;
   team_id?: string;
+  author_name?: string;
+  delivery_deadline?: string;
   page?: number;
   per_page?: number;
 };
