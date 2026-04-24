@@ -1,6 +1,6 @@
 import { type MouseEvent, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { fetchDashboard, type DocumentReviewInboxItem, type TemplateReviewInboxItem } from '../api/dashboard';
+import { fetchDashboard, type DashboardPayload, type DocumentReviewInboxItem, type TemplateReviewInboxItem } from '../api/dashboard';
 import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui';
 
 /**
@@ -9,28 +9,28 @@ import { Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow }
  */
 const STATS = [
   {
-    key: 'total_documents',
-    label: 'Total documentos',
+    key: 'documents_critical',
+    label: 'Documentos urgentes (<= 7 días)',
     value: '—',
-    colorClass: 'bg-odoo-purple/10 dark:bg-odoo-purple/40 text-odoo-purple-d dark:text-white border-odoo-purple/20 dark:border-odoo-purple/50',
+    colorClass: 'bg-danger/10 dark:bg-danger/20 text-danger-dark dark:text-danger border-danger/20 dark:border-danger/40',
   },
   {
-    key: 'uploaded_today',
-    label: 'Subidos hoy',
+    key: 'documents_high',
+    label: 'Documentos próximos (8-30 días)',
     value: '—',
-    colorClass: 'bg-odoo-teal/10 dark:bg-odoo-teal/40 text-odoo-teal-d dark:text-white border-odoo-teal/20 dark:border-odoo-teal/50',
+    colorClass: 'bg-warning-light/20 dark:bg-warning-dark/40 text-warning-dark dark:text-white border-warning/20 dark:border-warning/50',
   },
   {
-    key: 'pending_reviews',
-    label: 'Pendientes revisión',
+    key: 'templates_critical',
+    label: 'Plantillas urgentes (<= 7 días)',
     value: '—',
-    colorClass: 'bg-warning-light dark:bg-warning-dark/50 text-warning-dark dark:text-white border-warning/20 dark:border-warning/50',
+    colorClass: 'bg-danger/10 dark:bg-danger/20 text-danger-dark dark:text-danger border-danger/20 dark:border-danger/40',
   },
   {
-    key: 'archived',
-    label: 'Archivados',
+    key: 'templates_high',
+    label: 'Plantillas próximas (8-30 días)',
     value: '—',
-    colorClass: 'bg-ui-body dark:bg-ui-dark-card text-text-secondary dark:text-text-dark-secondary border-ui-border dark:border-ui-dark-border',
+    colorClass: 'bg-warning-light/20 dark:bg-warning-dark/40 text-warning-dark dark:text-white border-warning/20 dark:border-warning/50',
   },
 ] as const;
 
@@ -43,6 +43,12 @@ export function DashboardPage() {
   const location = useLocation();
   const [templateInbox, setTemplateInbox] = useState<TemplateReviewInboxItem[]>([]);
   const [documentInbox, setDocumentInbox] = useState<DocumentReviewInboxItem[]>([]);
+  const [dashboardStats, setDashboardStats] = useState<DashboardPayload['stats']>({
+    documents_critical: 0,
+    documents_high: 0,
+    templates_critical: 0,
+    templates_high: 0,
+  });
   const [isLoadingInbox, setIsLoadingInbox] = useState(false);
   const [validationBanner, setValidationBanner] = useState<string | null>(null);
 
@@ -54,6 +60,7 @@ export function DashboardPage() {
         if (!isMounted) return;
         setTemplateInbox(data.template_review_inbox ?? []);
         setDocumentInbox(data.document_review_inbox ?? []);
+        setDashboardStats(data.stats);
       })
       .finally(() => {
         if (!isMounted) return;
@@ -74,6 +81,7 @@ export function DashboardPage() {
       .then((data) => {
         setTemplateInbox(data.template_review_inbox ?? []);
         setDocumentInbox(data.document_review_inbox ?? []);
+        setDashboardStats(data.stats);
       })
       .finally(() => {
         setIsLoadingInbox(false);
@@ -118,10 +126,8 @@ export function DashboardPage() {
   };
 
   const stats = STATS.map((stat) => {
-    if (stat.key === 'pending_reviews') {
-      return { ...stat, value: String(templateInbox.length + documentInbox.length) };
-    }
-    return stat;
+    const key = stat.key as keyof DashboardPayload['stats'];
+    return { ...stat, value: String(dashboardStats[key] ?? 0) };
   });
 
   return (
@@ -144,7 +150,7 @@ export function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         {stats.map((s) => (
           <div
             key={s.key}
