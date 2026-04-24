@@ -42,4 +42,11 @@ interface TemplateBlockRepositoryInterface
      * @return Collection<int, TemplateBlock>
      */
     public function bulkUpdate(array $ids, array $attributes): Collection;
+
+    /**
+     * Reordena bloques de una plantilla de forma atómica.
+     *
+     * @param  list<string>  $orderedIds
+     */
+    public function reorderForTemplate(string $templateId, array $orderedIds): void;
 }

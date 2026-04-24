@@ -34,6 +34,13 @@ interface TemplateBlockServiceInterface
     public function findBlocksByIdsOrFail(array $ids): Collection;
 
     /**
+     * Reordena todos los bloques de una plantilla de forma atómica.
+     *
+     * @param  list<string>  $orderedBlockIds
+     */
+    public function reorderForTemplate(string $templateId, array $orderedBlockIds): void;
+
+    /**
      * Crea un nuevo bloque para una plantilla.
      * 
      * @param  string  $templateId
