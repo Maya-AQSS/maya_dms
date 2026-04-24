@@ -3,7 +3,10 @@
 namespace Tests\Feature;
  
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Document;
+use App\Models\DocumentReview;
 use App\Models\Template;
+use App\Models\TemplateVersion;
 use Database\Seeders\PermissionsSeeder;
 use Database\Seeders\UserPermissionsSeeder;
 use Database\Seeders\UsersSourceSeeder;
@@ -206,9 +209,100 @@ class DashboardApiTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('data.stats', [])
             ->assertJsonPath('data.recent_documents', [])
+            ->assertJsonCount(0, 'data.document_review_inbox')
             ->assertJsonCount(3, 'data.template_review_inbox')
             ->assertJsonPath('data.template_review_inbox.0.template_id', $urgentTemplateId)
             ->assertJsonPath('data.template_review_inbox.1.template_id', $normalTemplateId)
             ->assertJsonPath('data.template_review_inbox.2.template_id', $noDeadlineTemplateId);
+    }
+
+    public function test_dashboard_document_review_inbox_respects_sequential_stage(): void
+    {
+        $rev1 = (string) Str::uuid();
+        $rev2 = (string) Str::uuid();
+        $ownerId = (string) Str::uuid();
+        $headers = $this->authHeaders($rev1);
+
+        $templateId = (string) Str::uuid();
+        $versionId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $blockSnapId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Plantilla doc inbox',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $ownerId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 2,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateVersion::query()->forceCreate([
+            'id' => $versionId,
+            'template_id' => $templateId,
+            'version_number' => 1,
+            'blocks_snapshot' => [[
+                'id' => $blockSnapId,
+                'title' => 'B',
+                'default_content' => null,
+                'block_state' => 'optional',
+                'sort_order' => 0,
+            ]],
+            'changelog' => 'v1',
+            'published_by' => $ownerId,
+            'published_at' => now(),
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'template_version_id' => $versionId,
+            'title' => 'Programación en revisión',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => now()->addDays(3),
+            'created_by' => $ownerId,
+            'owner_id' => $ownerId,
+            'status' => 'in_review',
+            'current_version' => 1,
+            'submitted_at' => now(),
+            'published_at' => null,
+        ]);
+
+        DocumentReview::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'reviewer_id' => $rev1,
+            'stage' => 1,
+            'status' => 'pending',
+        ]);
+        DocumentReview::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'reviewer_id' => $rev2,
+            'stage' => 2,
+            'status' => 'pending',
+        ]);
+
+        $r1 = $this->getJson('/api/v1/dashboard', $headers);
+        $r1->assertOk()
+            ->assertJsonCount(1, 'data.document_review_inbox')
+            ->assertJsonPath('data.document_review_inbox.0.document_id', $documentId)
+            ->assertJsonPath('data.document_review_inbox.0.review_stage', 1);
+
+        auth()->forgetUser();
+        $headersRev2 = $this->authHeaders($rev2);
+        $r2 = $this->getJson('/api/v1/dashboard', $headersRev2);
+        $r2->assertOk()
+            ->assertJsonCount(0, 'data.document_review_inbox');
     }
 }

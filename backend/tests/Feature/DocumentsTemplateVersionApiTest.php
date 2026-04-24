@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Document;
+use App\Models\DocumentVersion;
 use App\Models\DocumentShare;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Models\TemplateReviewer;
+use Illuminate\Auth\Access\AuthorizationException;
 use Database\Seeders\PermissionsSeeder;
 use Database\Seeders\UserPermissionsSeeder;
 use Database\Seeders\UsersSourceSeeder;
@@ -208,11 +211,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'Bloque publicado',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -273,11 +274,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'Bloque publicado',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -301,7 +300,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $versionIdV1 = $createDoc->json('data.template_version_id');
         $this->assertNotEmpty($versionIdV1);
         $createDoc->assertJsonCount(1, 'data.blocks');
-        $createDoc->assertJsonPath('data.blocks.0.type', 'heading');
         $createDoc->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
@@ -361,11 +359,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'heading',
             'title' => 'Bloque',
             'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
+            'block_state' => 'optional',
             'sort_order' => 0,
         ]);
 
@@ -427,11 +423,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque editable',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -496,11 +490,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque bloqueado',
             'default_content' => null,
             'block_state' => 'locked',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -558,11 +550,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
+            'block_state' => 'optional',
             'sort_order' => 0,
         ]);
 
@@ -620,11 +610,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
+            'block_state' => 'optional',
             'sort_order' => 0,
         ]);
 
@@ -680,11 +668,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque obligatorio',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => true,
             'sort_order' => 0,
         ]);
 
@@ -740,11 +726,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque obligatorio',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => true,
             'sort_order' => 0,
         ]);
 
@@ -805,11 +789,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
+            'block_state' => 'optional',
             'sort_order' => 0,
         ]);
 
@@ -903,11 +885,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
-            'block_state' => 'editable',
-            'mandatory' => false,
+            'block_state' => 'optional',
             'sort_order' => 0,
         ]);
 
@@ -959,6 +939,125 @@ class DocumentsTemplateVersionApiTest extends TestCase
         );
     }
 
+    public function test_document_version_snapshot_cannot_be_updated_via_eloquent(): void
+    {
+        $userId = (string) Str::uuid();
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $versionId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Doc snapshot',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc snapshot',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => now(),
+            'published_at' => now(),
+        ]);
+
+        DocumentVersion::query()->forceCreate([
+            'id' => $versionId,
+            'document_id' => $documentId,
+            'version_number' => 1,
+            'trigger_event' => 'published',
+            'triggered_by' => $userId,
+            'snapshot_data' => ['document' => ['id' => $documentId], 'blocks' => []],
+            'notes' => 'v1',
+            'is_immutable' => true,
+            'created_at' => now(),
+        ]);
+
+        $version = DocumentVersion::query()->findOrFail($versionId);
+        $this->expectException(AuthorizationException::class);
+        $version->update(['notes' => 'hack']);
+    }
+
+    public function test_document_version_snapshot_mutation_via_http_returns_403(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $versionId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Doc snapshot HTTP',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc snapshot HTTP',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => now(),
+            'published_at' => now(),
+        ]);
+
+        DocumentVersion::query()->forceCreate([
+            'id' => $versionId,
+            'document_id' => $documentId,
+            'version_number' => 1,
+            'trigger_event' => 'published',
+            'triggered_by' => $userId,
+            'snapshot_data' => ['document' => ['id' => $documentId], 'blocks' => []],
+            'notes' => 'v1',
+            'is_immutable' => true,
+            'created_at' => now(),
+        ]);
+
+        $this->putJson("/api/v1/documents/{$documentId}/versions/{$versionId}", ['notes' => 'hack'], $headers)->assertForbidden();
+        $this->patchJson("/api/v1/documents/{$documentId}/versions/{$versionId}", ['notes' => 'hack'], $headers)->assertForbidden();
+        $this->deleteJson("/api/v1/documents/{$documentId}/versions/{$versionId}", [], $headers)->assertForbidden();
+    }
+
     public function test_template_version_status_reports_update_when_newer_published_template_version_exists(): void
     {
         $creatorId = (string) Str::uuid();
@@ -989,11 +1088,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -1067,11 +1164,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $b1,
             'template_id' => $tid,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 

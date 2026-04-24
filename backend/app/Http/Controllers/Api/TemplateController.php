@@ -74,7 +74,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('view', $model);
-        $model->loadMissing('reviewers');
+        $model->loadMissing(['reviewers', 'documentReviewers']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
@@ -183,7 +183,6 @@ class TemplateController extends Controller
     public function publish(PublishTemplateRequest $request, string $template): TemplateResource
     {
         $model = $this->templateService->findOrFail($template);
-        $this->authorize('review', $model);
 
         $updated = $this->templateService->publishWithSnapshot(
             $model->id,

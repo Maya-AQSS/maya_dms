@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "e023d4fdbc654875cd7cddcd0db133c8",
+    "content-hash": "fb05c6ead50e258d246129feb9c9d62c",
     "packages": [
         {
             "name": "brick/math",
@@ -2487,7 +2487,7 @@
         },
         {
             "name": "maya/shared-auth-laravel",
-            "version": "dev-main",
+            "version": "dev-feature/rabbit",
             "dist": {
                 "type": "path",
                 "url": "../../packages/maya-shared-auth-laravel",
@@ -2517,6 +2517,44 @@
                 "MIT"
             ],
             "description": "Shared JWT Authentication logic for MAyA Laravel microservices.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "maya/shared-messaging-laravel",
+            "version": "dev-feature/rabbit",
+            "dist": {
+                "type": "path",
+                "url": "../../packages/maya-shared-messaging-laravel",
+                "reference": "bc14fadd08ad9166c1ec8facb84d4dae2b7ca302"
+            },
+            "require": {
+                "illuminate/log": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/queue": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "monolog/monolog": "^3.0",
+                "php": "^8.2",
+                "php-amqplib/php-amqplib": "^3.5",
+                "ramsey/uuid": "^4.7"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Maya\\Messaging\\Providers\\MessagingServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Messaging\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Shared RabbitMQ messaging layer for MAyA Laravel microservices: log publisher, notification publisher, alert publisher, and Monolog rabbit handler.",
             "transport-options": {
                 "relative": true
             }
@@ -10865,13 +10903,14 @@
     "aliases": [],
     "minimum-stability": "stable",
     "stability-flags": {
-        "maya/shared-auth-laravel": 20
+        "maya/shared-auth-laravel": 20,
+        "maya/shared-messaging-laravel": 20
     },
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.6.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }

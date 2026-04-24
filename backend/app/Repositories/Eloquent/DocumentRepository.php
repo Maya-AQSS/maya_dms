@@ -9,18 +9,46 @@ use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use JsonException;
 
 class DocumentRepository implements DocumentRepositoryInterface
 {
     /**
      * Busca un documento por su ID o lanza ModelNotFoundException.
+     *
+     * El alcance global `user_access` incluye revisores en `document_reviews`; si por cualquier
+     * desajuste el documento no entra en la consulta acotada, se comprueba una asignación pendiente
+     * explícita y se carga sin ese alcance (misma condición que usa la bandeja del dashboard).
      */
     public function findOrFail(string $id): Document
     {
-        return Document::query()->findOrFail($id);
+        $scoped = Document::query()->whereKey($id)->first();
+        if ($scoped !== null) {
+            return $scoped;
+        }
+
+        if (auth()->check()) {
+            $uid = (string) auth()->user()->getAuthIdentifier();
+            if ($uid !== '') {
+                $assigned = DocumentReview::query()
+                    ->where('document_id', $id)
+                    ->where('reviewer_id', $uid)
+                    ->where('status', 'pending')
+                    ->exists();
+
+                if ($assigned) {
+                    return Document::withoutGlobalScopes(['user_access'])
+                        ->whereKey($id)
+                        ->firstOrFail();
+                }
+            }
+        }
+
+        return Document::query()->whereKey($id)->firstOrFail();
     }
 
     /**
@@ -40,7 +68,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                     'id' => (string) Str::uuid(),
                     'document_id' => $document->getKey(),
                     'template_block_id' => $row['template_block_id'],
-                    'content' => $row['content'],
+                    'content' => $this->encodeDocumentBlockContentForInsert($row['content']),
                     'is_filled' => false,
                     'sort_order' => $row['sort_order'],
                     'created_at' => $now,
@@ -159,6 +187,82 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->with('template')
             ->orderByDesc('created_at')
             ->get();
+    }
+
+    /**
+     * Bandeja de validación de documentos pendiente para un revisor (documento en revisión y fila
+     * `document_reviews` pending). En modo secuencial de la plantilla solo entran revisiones cuya
+     * etapa coincide con la menor etapa aún pendiente del documento.
+     *
+     * @return Collection<int, array<string, mixed>>
+     */
+    public function listPendingDocumentReviewInboxForUser(string $userId): Collection
+    {
+        $minPendingByDocument = DB::table('document_reviews')
+            ->select('document_id')
+            ->selectRaw('MIN(stage) as min_stage')
+            ->where('status', 'pending')
+            ->groupBy('document_id');
+
+        $rows = DB::table('document_reviews as dr')
+            ->join('documents as d', 'd.id', '=', 'dr.document_id')
+            ->join('templates as t', 't.id', '=', 'd.template_id')
+            ->leftJoin('users as owner_user', 'owner_user.id', '=', 'd.owner_id')
+            ->leftJoinSub($minPendingByDocument, 'ps', function ($join) {
+                $join->on('ps.document_id', '=', 'd.id');
+            })
+            ->where('dr.reviewer_id', $userId)
+            ->where('dr.status', 'pending')
+            ->where('d.status', 'in_review')
+            ->where(function ($q) {
+                $q->whereNull('t.review_mode')
+                    ->orWhere('t.review_mode', 'parallel')
+                    ->orWhere(function ($q2) {
+                        $q2->where('t.review_mode', 'sequential')
+                            ->whereColumn('dr.stage', 'ps.min_stage');
+                    });
+            })
+            ->orderByRaw('CASE WHEN d.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
+            ->orderBy('d.delivery_deadline', 'asc')
+            ->orderByDesc('d.updated_at')
+            ->get([
+                'd.id as document_id',
+                'd.title',
+                'd.owner_id',
+                'd.delivery_deadline',
+                'd.status',
+                'dr.id as review_id',
+                'dr.stage',
+                't.review_mode',
+                'owner_user.name as owner_name',
+            ]);
+
+        $today = Carbon::today();
+
+        return $rows->map(function (object $row) use ($today): array {
+            $deadlineIso = null;
+            $daysRemaining = null;
+            if ($row->delivery_deadline !== null) {
+                $deadline = Carbon::parse((string) $row->delivery_deadline);
+                $deadlineIso = $deadline->toIso8601String();
+                $daysRemaining = (int) round((float) $today->diffInDays($deadline, false));
+            }
+
+            return [
+                'document_id' => (string) $row->document_id,
+                'review_id' => (string) $row->review_id,
+                'title' => (string) $row->title,
+                'owner_id' => (string) $row->owner_id,
+                'owner_name' => $row->owner_name !== null && $row->owner_name !== ''
+                    ? (string) $row->owner_name
+                    : null,
+                'delivery_deadline' => $deadlineIso,
+                'days_remaining' => $daysRemaining,
+                'status' => (string) $row->status,
+                'review_stage' => (int) $row->stage,
+                'review_mode' => (string) ($row->review_mode ?? 'parallel'),
+            ];
+        })->values();
     }
 
     /**
@@ -338,5 +442,22 @@ class DocumentRepository implements DocumentRepositoryInterface
             'edited_by' => $editedBy,
             'created_at' => now(),
         ]);
+    }
+
+    /**
+     * Serializa contenido para columnas JSON en insert masivo (insert() no aplica casts de Eloquent).
+     *
+     * @throws JsonException
+     */
+    private function encodeDocumentBlockContentForInsert(mixed $content): ?string
+    {
+        if ($content === null) {
+            return null;
+        }
+        if (is_string($content)) {
+            return $content;
+        }
+
+        return json_encode($content, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 }

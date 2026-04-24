@@ -19,13 +19,13 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Docente ESO — templates.read + documents.read */
+    /** Docente ESPA — lectura catálogo + documentos y alta de documentos (mock local) */
     private const USER_ESO = 'cf8bb92a-0417-4a4c-918a-08dd3fd69165';
 
     /** Sin filas en user_permissions_mock */
     private const USER_WITHOUT_PERMISSIONS = '00000000-0000-0000-0000-000000000099';
 
-    /** Auditoría — solo audit.read */
+    /** Auditoría — conjunto amplio en mock (sin jerarquía académica; ver user_permissions_mock) */
     private const USER_AUDITOR = 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc';
 
     protected function setUp(): void
@@ -45,7 +45,10 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
 
         $codes = $repo->findPermissionCodesByUserId(self::USER_ESO);
 
-        $this->assertSame(['documents.read', 'templates.read'], $codes);
+        $this->assertSame(
+            ['documents.create', 'documents.read', 'templates.read'],
+            $codes,
+        );
     }
 
     public function test_returns_empty_list_when_user_has_no_rows(): void
@@ -60,13 +63,29 @@ class UserPermissionRepositoryIntegrationTest extends TestCase
         $this->assertSame([], $repo->findPermissionCodesByUserId(self::USER_WITHOUT_PERMISSIONS));
     }
 
-    public function test_auditor_mock_has_only_audit_read_assignment(): void
+    public function test_auditor_mock_returns_ordered_permission_codes(): void
     {
         $repo = app(UserPermissionRepositoryInterface::class);
 
         $codes = $repo->findPermissionCodesByUserId(self::USER_AUDITOR);
 
-        $this->assertSame(['audit.read'], $codes);
+        $this->assertSame(
+            [
+                'audit.read',
+                'documents.create',
+                'documents.delete',
+                'documents.read',
+                'documents.review',
+                'documents.update',
+                'templates.create',
+                'templates.delete',
+                'templates.read',
+                'templates.review',
+                'templates.update',
+                'users.search',
+            ],
+            $codes,
+        );
     }
 
     public function test_second_call_uses_cache_until_forget(): void

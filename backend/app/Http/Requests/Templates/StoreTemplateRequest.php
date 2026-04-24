@@ -58,7 +58,7 @@ class StoreTemplateRequest extends FormRequest
             moduleId: $v['module_id'] ?? null,
             teamId: $v['team_id'] ?? null,
             reviewStages: (int) ($v['review_stages'] ?? 0),
-            reviewMode: $v['review_mode'] ?? 'sequential',
+            reviewMode: $v['review_mode'] ?? 'parallel',
         );
     }
 }

@@ -82,10 +82,8 @@ class TemplateBlockStatePerformanceTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $blockId,
             'template_id' => $templateId,
-            'type' => 'paragraph',
             'title' => 'B1',
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 

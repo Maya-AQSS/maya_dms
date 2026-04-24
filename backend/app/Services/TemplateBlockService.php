@@ -97,8 +97,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             previousValue: null,
             newValue:      [
                 'block_state' => $block->block_state,
-                'mandatory'   => $block->mandatory,
-                'type'        => $block->type,
             ],
         );
 
@@ -121,9 +119,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         );
 
         $attributes = [];
-        if ($dto->set_type) {
-            $attributes['type'] = $dto->type;
-        }
         if ($dto->set_title) {
             $attributes['title'] = $dto->title;
         }
@@ -136,9 +131,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         if ($dto->set_block_state) {
             $attributes['block_state'] = $dto->block_state;
         }
-        if ($dto->set_mandatory) {
-            $attributes['mandatory'] = $dto->mandatory;
-        }
         if ($dto->set_description) {
             $attributes['description'] = $dto->description;
         }
@@ -147,18 +139,14 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             return $block;
         }
 
-        // Audit only when there is an actual state/mandatory transition.
+        // Audit only when there is an actual block_state transition.
         $stateOrMandatoryChanged = false;
         if ($dto->set_block_state && $block->block_state !== $dto->block_state) {
-            $stateOrMandatoryChanged = true;
-        }
-        if ($dto->set_mandatory && $block->mandatory !== $dto->mandatory) {
             $stateOrMandatoryChanged = true;
         }
 
         $previous = [
             'block_state' => $block->block_state,
-            'mandatory'   => $block->mandatory,
         ];
 
         $updated = $this->blockRepository->update($block, $attributes);
@@ -173,7 +161,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
                 previousValue: $previous,
                 newValue:      [
                     'block_state' => $updated->block_state,
-                    'mandatory'   => $updated->mandatory,
                 ],
             );
         }
@@ -203,8 +190,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             blockId:       $blockId,
             previousValue: [
                 'block_state' => $block->block_state,
-                'mandatory'   => $block->mandatory,
-                'type'        => $block->type,
             ],
             newValue: null,
         );
@@ -236,9 +221,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         if ($dto->set_block_state) {
             $attributes['block_state'] = $dto->block_state;
         }
-        if ($dto->set_mandatory) {
-            $attributes['mandatory'] = $dto->mandatory;
-        }
 
         $updated = $this->blockRepository->bulkUpdate($dto->ids, $attributes);
 
@@ -247,9 +229,8 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
             // Redundant audit prevention: only log if something actually changed
             $changedState = $dto->set_block_state && $prev && $prev->block_state !== $block->block_state;
-            $changedMandatory = $dto->set_mandatory && $prev && $prev->mandatory !== $block->mandatory;
 
-            if ($changedState || $changedMandatory) {
+            if ($changedState) {
                 $this->auditLogService->record(
                     entityType:    'template',
                     entityId:      $block->template_id,
@@ -258,12 +239,10 @@ class TemplateBlockService implements TemplateBlockServiceInterface
                     blockId:       $block->getKey(),
                     previousValue: [
                         'block_state' => $prev->block_state,
-                        'mandatory'   => $prev->mandatory,
-                    ],
+                        ],
                     newValue: [
                         'block_state' => $block->block_state,
-                        'mandatory'   => $block->mandatory,
-                    ],
+                            ],
                 );
             }
         }

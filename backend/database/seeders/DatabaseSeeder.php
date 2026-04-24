@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             TemplateVersionsSeeder::class,
             DocumentsSeeder::class,
             DocumentBlocksSeeder::class,
+            DocumentReviewsSeeder::class,
             CommentsSeeder::class,
         ]);
     }

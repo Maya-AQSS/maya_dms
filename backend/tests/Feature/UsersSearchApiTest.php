@@ -145,4 +145,70 @@ class UsersSearchApiTest extends TestCase
         $ids = array_column($data, 'id');
         $this->assertContains($reviewerId, $ids);
     }
+
+    public function test_document_reviewer_candidates_exclude_user_id_omits_user(): void
+    {
+        $callerId = (string) Str::uuid();
+        $reviewerA = (string) Str::uuid();
+        $reviewerB = (string) Str::uuid();
+
+        foreach ([$reviewerA, $reviewerB] as $rid) {
+            DB::table('users')->insert([
+                'id' => $rid,
+                'name' => 'Reviewer '.$rid,
+                'email' => 'r-'.$rid.'@maya.test',
+                'department' => 'QA',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('user_permissions')->insert([
+                'id' => (string) Str::uuid(),
+                'user_id' => $rid,
+                'permission_code' => 'documents.review',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $url = '/api/v1/users/document-reviewer-candidates?search=Reviewer&exclude_user_id='.urlencode($reviewerA);
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['users.search']));
+
+        $response->assertOk();
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertNotContains($reviewerA, $ids);
+        $this->assertContains($reviewerB, $ids);
+    }
+
+    public function test_template_reviewer_candidates_exclude_user_id_omits_user(): void
+    {
+        $callerId = (string) Str::uuid();
+        $reviewerA = (string) Str::uuid();
+        $reviewerB = (string) Str::uuid();
+
+        foreach ([$reviewerA, $reviewerB] as $rid) {
+            DB::table('users')->insert([
+                'id' => $rid,
+                'name' => 'Tpl Reviewer '.$rid,
+                'email' => 't-'.$rid.'@maya.test',
+                'department' => 'QA',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('user_permissions')->insert([
+                'id' => (string) Str::uuid(),
+                'user_id' => $rid,
+                'permission_code' => 'templates.review',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $url = '/api/v1/users/reviewer-candidates?search=Tpl&exclude_user_id='.urlencode($reviewerA);
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['users.search']));
+
+        $response->assertOk();
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertNotContains($reviewerA, $ids);
+        $this->assertContains($reviewerB, $ids);
+    }
 }

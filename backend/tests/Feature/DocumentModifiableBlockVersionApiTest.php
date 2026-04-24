@@ -113,12 +113,10 @@ class DocumentModifiableBlockVersionApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $blockSnapId,
             'template_id' => $templateId,
-            'type' => 'paragraph',
             'title' => 'Normativa',
             'default_content' => $baseline,
             'description' => null,
             'block_state' => BlockState::Modifiable->value,
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
@@ -128,11 +126,9 @@ class DocumentModifiableBlockVersionApiTest extends TestCase
             'version_number' => 1,
             'blocks_snapshot' => [[
                 'id' => $blockSnapId,
-                'type' => 'paragraph',
                 'title' => 'Normativa',
                 'default_content' => $baseline,
                 'block_state' => BlockState::Modifiable->value,
-                'mandatory' => false,
                 'sort_order' => 0,
             ]],
             'changelog' => 'v1',

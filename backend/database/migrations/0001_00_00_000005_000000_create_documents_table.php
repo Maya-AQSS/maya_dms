@@ -30,6 +30,7 @@ return new class extends Migration
             $table->string('study_type_id')->nullable();
             $table->string('study_id')->nullable();
             $table->string('module_id')->nullable();
+            $table->timestamp('delivery_deadline')->nullable();
             $table->string('created_by');        // FK lógica → users (FDW)
             $table->string('owner_id');          // puede diferir de created_by tras delegación
             $table->string('status')->default('draft'); // draft | in_review | published

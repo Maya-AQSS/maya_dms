@@ -40,7 +40,7 @@ interface TemplateServiceInterface
     /**
      * Publica la plantilla con un snapshot y emite el evento de dominio TemplatePublished.
      */
-    public function publishWithSnapshot(string $templateId, string $changelog, string $actorId): Template;
+    public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template;
 
     /**
      * @return Collection<int, TemplateVersion>

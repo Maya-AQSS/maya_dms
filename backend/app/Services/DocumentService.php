@@ -105,6 +105,7 @@ class DocumentService implements DocumentServiceInterface
 
         $document->update([
             'title' => $attributes['title'],
+            'delivery_deadline' => $attributes['delivery_deadline'] ?? null,
         ]);
 
         return $document->fresh();
@@ -349,15 +350,18 @@ class DocumentService implements DocumentServiceInterface
         foreach ($definitions as $def) {
             $tid = (string) $def['id'];
             $row = $byTemplateBlockId->get($tid);
+            $mandatory = (bool) ($def['mandatory'] ?? false);
+            $state = (string) ($def['block_state'] ?? 'editable');
 
             $out[] = [
                 'document_block_id' => $row?->id,
                 'template_block_id' => $tid,
                 'type' => $def['type'] ?? '',
                 'title' => $def['title'] ?? null,
+                'description' => $def['description'] ?? null,
                 'default_content' => $def['default_content'] ?? null,
-                'block_state' => $def['block_state'] ?? 'editable',
-                'mandatory' => (bool) ($def['mandatory'] ?? false),
+                'block_state' => $state,
+                'mandatory' => $mandatory,
                 'sort_order' => (int) ($def['sort_order'] ?? 0),
                 'content' => $row?->content,
                 'is_filled' => (bool) ($row?->is_filled ?? false),
@@ -389,7 +393,9 @@ class DocumentService implements DocumentServiceInterface
                 ->keyBy(fn (array $def) => (string) $def['id']);
             $definition = $definitions->get((string) $block->template_block_id) ?? [];
 
-            if (($definition['block_state'] ?? 'editable') === 'locked') {
+            $state = (string) ($definition['block_state'] ?? 'editable');
+
+            if ($state === 'locked') {
                 abort(403, 'Este bloque está bloqueado y no admite edición.');
             }
 
@@ -452,6 +458,7 @@ class DocumentService implements DocumentServiceInterface
             'id' => $b->id,
             'type' => $b->type,
             'title' => $b->title,
+            'description' => $b->description,
             'default_content' => $b->default_content,
             'block_state' => $b->block_state,
             'mandatory' => $b->mandatory,
@@ -500,20 +507,56 @@ class DocumentService implements DocumentServiceInterface
             $this->documentRepository->deleteReviewsForDocument($documentId);
 
             // Sin global scope: el titular puede no “ver” la plantilla en catálogo (p. ej. personal de otro
-            // usuario) pero debe poder generar revisiones a partir de `template_reviewers` de la plantilla anclada.
+            // usuario) pero debe poder generar revisiones desde la plantilla anclada.
+            //
+            // Prioridad: `template_document_reviewers` (validadores de documento en el asistente de plantilla);
+            // si no hay ninguno, se usa `template_reviewers` (revisores normativos de la plantilla).
+            // En ambos casos se excluye al creador y titular del documento (SoD, {@see DocumentPolicy::review}).
             $template = Template::query()
                 ->withoutGlobalScopes(['user_access'])
-                ->with(['reviewers' => fn ($q) => $q->orderBy('stage')])
+                ->with([
+                    'reviewers' => fn ($q) => $q->orderBy('stage'),
+                    'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+                ])
                 ->find($document->template_id);
 
-            $rows = $template?->reviewers
-                ?->sortBy('stage')
-                ->map(fn ($r) => [
-                    'reviewer_id' => $r->user_id,
-                    'stage' => $r->stage,
-                ])
-                ->values()
-                ->all() ?? [];
+            $candidates = [];
+            if ($template !== null) {
+                if ($template->documentReviewers->isNotEmpty()) {
+                    $stage = 1;
+                    foreach ($template->documentReviewers as $dr) {
+                        $candidates[] = [
+                            'reviewer_id' => (string) $dr->user_id,
+                            'stage' => $stage,
+                        ];
+                        $stage++;
+                    }
+                } elseif ($template->reviewers->isNotEmpty()) {
+                    $candidates = $template->reviewers
+                        ->sortBy('stage')
+                        ->values()
+                        ->map(fn ($r): array => [
+                            'reviewer_id' => (string) $r->user_id,
+                            'stage' => (int) $r->stage,
+                        ])
+                        ->all();
+                }
+            }
+
+            $ownerId = (string) $document->owner_id;
+            $createdById = (string) $document->created_by;
+            $rows = array_values(array_filter(
+                $candidates,
+                static fn (array $row): bool => $row['reviewer_id'] !== $ownerId && $row['reviewer_id'] !== $createdById,
+            ));
+
+            if ($candidates !== [] && $rows === []) {
+                throw ValidationException::withMessages([
+                    'reviewers' => [
+                        'Los validadores configurados coinciden todos con el titular o creador del documento. Añade en la plantilla al menos un validador distinto del titular y del creador.',
+                    ],
+                ]);
+            }
 
             $document = $this->transition($documentId, 'in_review', $actorId, [
                 'submitted_at' => now(),
@@ -575,12 +618,13 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return DB::transaction(function () use ($documentId, $actorId) {
-            $this->documentRepository->deleteReviewsForDocument($documentId);
-
-            return $this->transition($documentId, 'draft', $actorId, [
+            $updated = $this->transition($documentId, 'draft', $actorId, [
                 'submitted_at' => null,
                 'published_at' => null,
             ]);
+            $this->documentRepository->deleteReviewsForDocument($documentId);
+
+            return $updated;
         });
     }
 
@@ -714,12 +758,15 @@ class DocumentService implements DocumentServiceInterface
             $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
 
-            $this->documentRepository->deleteReviewsForDocument($documentId);
 
-            return $this->transition($documentId, 'draft', $actorId, [
+            $updated = $this->transition($documentId, 'draft', $actorId, [
                 'submitted_at' => null,
                 'published_at' => null,
             ]);
+
+            $this->documentRepository->deleteReviewsForDocument($documentId);
+
+            return $updated;
         });
     }
 
@@ -775,12 +822,12 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
-     * Verifica que todos los bloques obligatorios estén completos.
+     * Verifica que todos los bloques no opcionales estén completos.
      */
     private function assertMandatoryBlocksAreFilled(Document $document): void
     {
         $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->filter(fn (array $def) => (bool) ($def['mandatory'] ?? false));
+            ->filter(fn (array $def) => ($def['block_state'] ?? 'editable') !== 'optional');
 
         if ($definitions->isEmpty()) {
             return;
@@ -809,7 +856,7 @@ class DocumentService implements DocumentServiceInterface
 
         if ($missing !== []) {
             throw ValidationException::withMessages([
-                'blocks' => ['Debes completar todos los bloques obligatorios antes de enviar a revisión.'],
+                'blocks' => ['Debes completar todos los bloques no opcionales antes de enviar a revisión.'],
                 'missing_template_block_ids' => $missing,
             ]);
         }

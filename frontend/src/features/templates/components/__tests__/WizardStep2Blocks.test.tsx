@@ -80,8 +80,8 @@ describe('WizardStep2Blocks', () => {
   it('enters multi-selection mode when selecting all blocks', () => {
     render(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
-    expect(screen.getByText('EDITANDO SELECCIÓN')).toBeTruthy();
-    expect(screen.getByText('1 / 2')).toBeTruthy();
+    expect(screen.getByText(/Edición múltiple/i)).toBeTruthy();
+    expect(screen.getByText(/\(1 de 2\)/i)).toBeTruthy();
   });
 
   it('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
@@ -97,10 +97,10 @@ describe('WizardStep2Blocks', () => {
   it('navigates through multi-selection items', () => {
     render(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
-    expect(screen.getByText('1 / 2')).toBeTruthy();
+    expect(screen.getByText(/\(1 de 2\)/i)).toBeTruthy();
 
-    const nextBtn = screen.getByRole('button', { name: '→' });
+    const nextBtn = screen.getByRole('button', { name: 'Siguiente →' });
     fireEvent.click(nextBtn);
-    expect(screen.getByText('2 / 2')).toBeTruthy();
+    expect(screen.getByText(/\(2 de 2\)/i)).toBeTruthy();
   });
 });

@@ -15,12 +15,10 @@ class UpdateTemplateBlockRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'type'            => ['sometimes', 'string', 'max:50'],
             'title'           => ['sometimes', 'nullable', 'string', 'max:255'],
             'default_content' => ['sometimes', 'nullable', 'array'],
             'description'     => ['sometimes', 'nullable', 'string'],
             'block_state'     => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
-            'mandatory'       => ['sometimes', 'boolean'],
             'sort_order'      => ['sometimes', 'integer', 'min:0'],
         ];
     }

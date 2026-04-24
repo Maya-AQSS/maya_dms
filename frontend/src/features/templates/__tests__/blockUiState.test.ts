@@ -4,23 +4,23 @@ import type { TemplateBlock } from '../../../types/blocks';
 
 describe('blockUiState logic', () => {
   describe('blockToUiState', () => {
-    it('returns "optional" when block is not mandatory', () => {
-      const block: Partial<TemplateBlock> = { mandatory: false };
+    it('returns "optional" when block_state is optional', () => {
+      const block: Partial<TemplateBlock> = { block_state: 'optional' };
       expect(blockToUiState(block as TemplateBlock)).toBe('optional');
     });
 
-    it('returns "locked" when block is mandatory and state is locked', () => {
-      const block: Partial<TemplateBlock> = { mandatory: true, block_state: 'locked' };
+    it('returns "locked" when state is locked', () => {
+      const block: Partial<TemplateBlock> = { block_state: 'locked' };
       expect(blockToUiState(block as TemplateBlock)).toBe('locked');
     });
 
-    it('returns "modifiable" when block is mandatory and state is modifiable', () => {
-      const block: Partial<TemplateBlock> = { mandatory: true, block_state: 'modifiable' };
+    it('returns "modifiable" when state is modifiable', () => {
+      const block: Partial<TemplateBlock> = { block_state: 'modifiable' };
       expect(blockToUiState(block as TemplateBlock)).toBe('modifiable');
     });
 
-    it('returns "editable" when block is mandatory and state is something else (e.g. editable)', () => {
-      const block: Partial<TemplateBlock> = { mandatory: true, block_state: 'editable' };
+    it('returns "editable" when state is editable', () => {
+      const block: Partial<TemplateBlock> = { block_state: 'editable' };
       expect(blockToUiState(block as TemplateBlock)).toBe('editable');
     });
   });

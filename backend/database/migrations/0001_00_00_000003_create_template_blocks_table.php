@@ -9,24 +9,21 @@ return new class extends Migration
 {
     /**
      * Los bloques de plantilla definen la estructura de un documento.
-     * Cada bloque tiene un tipo, un estado y un flag de obligatoriedad.
+     * Se modelan por título, contenido por defecto y estado.
      *
-     * Estados de bloque (coinciden con {@see BlockState}).
-     *
-     * Flag mandatory: si es true, el bloque debe tener contenido antes
-     * de que el documento pueda enviarse a revisión.
+     * Estados de bloque (coinciden con {@see BlockState}):
+     * optional | editable | modifiable | locked
      */
     public function up(): void
     {
         Schema::create('template_blocks', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->cascadeOnDelete();
-            $table->string('type');              // heading | paragraph | table | list | image | custom
             $table->string('title')->nullable();
             $table->json('default_content')->nullable(); // contenido BlockNote inicial
+            $table->text('description')->nullable();
             $table->enum('block_state', BlockState::values())
                 ->default(BlockState::Editable->value);
-            $table->boolean('mandatory')->default(false);
             $table->integer('sort_order')->default(0);
             $table->timestamps();
 

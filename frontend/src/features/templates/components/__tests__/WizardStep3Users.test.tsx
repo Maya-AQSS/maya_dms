@@ -2,11 +2,16 @@ import type { ReactElement } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep3Users } from '../WizardStep3Users';
-import { searchUsers, fetchMe } from '../../../../api/users';
+import {
+  searchTemplateReviewerCandidates,
+  searchDocumentReviewerCandidates,
+  fetchMe,
+} from '../../../../api/users';
 import { UserProfileProvider } from '../../../../features/user-profile';
 
 vi.mock('../../../../api/users', () => ({
-  searchUsers: vi.fn(),
+  searchTemplateReviewerCandidates: vi.fn(),
+  searchDocumentReviewerCandidates: vi.fn(),
   fetchMe: vi.fn().mockResolvedValue({
     data: {
       id: 'usr_step3',
@@ -87,7 +92,8 @@ describe('WizardStep3Users', () => {
         source: 'fdw',
       },
     });
-    (searchUsers as any).mockResolvedValue({ data: mockSearchResults });
+    vi.mocked(searchTemplateReviewerCandidates).mockResolvedValue({ data: mockSearchResults });
+    vi.mocked(searchDocumentReviewerCandidates).mockResolvedValue({ data: mockSearchResults });
   });
 
   it('renders validators correctly', () => {
@@ -133,7 +139,8 @@ describe('WizardStep3Users', () => {
     const searchInput = screen.getAllByPlaceholderText('Filtrar usuarios...')[0];
     expect(searchInput).toHaveProperty('disabled', true);
     expect(screen.getAllByText(/users\.search/i).length).toBeGreaterThan(0);
-    expect(searchUsers).not.toHaveBeenCalled();
+    expect(searchTemplateReviewerCandidates).not.toHaveBeenCalled();
+    expect(searchDocumentReviewerCandidates).not.toHaveBeenCalled();
   });
 
   it('searches and adds a new validator', async () => {
@@ -143,7 +150,7 @@ describe('WizardStep3Users', () => {
     fireEvent.change(searchInputs[0], { target: { value: 'User 2' } });
 
     await waitFor(() => {
-      expect(searchUsers).toHaveBeenCalledWith('User 2');
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('User 2', undefined);
       expect(screen.getAllByText('User 2').length).toBeGreaterThan(0);
     });
 
@@ -152,5 +159,18 @@ describe('WizardStep3Users', () => {
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([
       { userId: 'u2', name: 'User 2', role: 'Staff' }
     ]);
+  });
+
+  it('pasa exclude_user_id al buscar candidatos si hay templateCreatedBy', async () => {
+    renderWithProfile(
+      <WizardStep3Users {...defaultProps} validators={[]} templateCreatedBy="creator-uuid" />,
+    );
+
+    const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
+    fireEvent.change(searchInputs[0], { target: { value: 'ab' } });
+
+    await waitFor(() => {
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab', 'creator-uuid');
+    });
   });
 });

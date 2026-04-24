@@ -1,10 +1,17 @@
-import { useMemo, useState } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import './index.css';
-import { NAV_ITEMS, Sidebar, Topbar } from './components/layout';
+import { AppLayout } from '@maya/shared-layout-react';
+import { LocaleSelector, NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
+import { NAV_ITEMS } from './components/layout/navItems';
+
+const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined)
+  ?? 'http://maya_dashboard_api.localhost';
 import {
   DashboardPage,
   DocumentEditorPage,
+  DocumentValidationPage,
+  DocumentPreviewPage,
   DocumentsPage,
   PlaceholderPage,
   TemplateEditPage,
@@ -13,21 +20,74 @@ import {
 } from './pages';
 import { useOidcSession } from './auth/useOidcSession';
 import { HierarchyProvider } from './features/hierarchy';
-import { useDarkMode } from './hooks/useDarkMode';
+import { useUserProfile, profileDisplayInitials } from './features/user-profile';
+
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/documents" element={<DocumentsPage />} />
+      <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
+      <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
+      <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
+      <Route path="/templates" element={<TemplatesPage />} />
+      <Route path="/templates/new" element={<TemplateNewPage />} />
+      <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
+      <Route path="*" element={<PlaceholderPage />} />
+    </Routes>
+  );
+}
+
+function AppWithLayout() {
+  const { logout } = useOidcSession();
+  const { profile } = useUserProfile();
+  const location = useLocation();
+
+  const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
+  const isDocumentValidateRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/validate');
+  const isDocumentPreviewRoute = /^\/documents\/[^/]+$/.test(location.pathname);
+  const titleOverride = isEditorRoute
+    ? 'Editor de Programación'
+    : isDocumentValidateRoute
+      ? 'Validación de programación'
+      : isDocumentPreviewRoute
+        ? 'Previsualización'
+        : undefined;
+
+  const userName = profile?.name?.trim() ?? '';
+  const userInitials = profileDisplayInitials(profile);
+
+  return (
+    <AppLayout
+      navItems={NAV_ITEMS}
+      brandName="Maya DMS"
+      brandVersion="Maya DMS v1.0"
+      userName={userName}
+      userInitials={userInitials}
+      onLogout={logout}
+      titleOverride={titleOverride}
+      topbarActions={
+        <>
+          <NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />
+          <LocaleSelector />
+        </>
+      }
+      sidebarFooter={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
+    >
+      <AppRoutes />
+    </AppLayout>
+  );
+}
 
 function App() {
-  const { isOidcLoading, isOidcSignedIn, beginSignIn, logout } = useOidcSession();
-  const { isDark, toggle: handleToggleDark } = useDarkMode();
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
 
-  const location = useLocation();
-  const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
-  const currentNav = useMemo(
-    () => NAV_ITEMS.find((n) => location.pathname === n.path || location.pathname.startsWith(`${n.path}/`)),
-    [location.pathname],
-  );
-  const pageTitle = isEditorRoute ? 'Editor de Programación' : currentNav?.label ?? 'Maya DMS';
+  useEffect(() => {
+    if (!isOidcLoading && !isOidcSignedIn) {
+      beginSignIn();
+    }
+  }, [isOidcLoading, isOidcSignedIn, beginSignIn]);
 
   if (isOidcLoading) {
     return (
@@ -38,7 +98,6 @@ function App() {
   }
 
   if (!isOidcSignedIn) {
-    beginSignIn();
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
         Redirigiendo al inicio de sesión...
@@ -48,39 +107,7 @@ function App() {
 
   return (
     <HierarchyProvider>
-      <div className="min-h-screen bg-ui-body dark:bg-ui-dark-bg">
-        <Sidebar
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed((prev) => !prev)}
-          mobileOpen={mobileOpen}
-          onMobileClose={() => setMobileOpen(false)}
-        />
-
-        <div className={`flex flex-col h-screen transition-[margin] duration-200 ${sidebarCollapsed ? 'md:ml-14' : 'md:ml-64'}`}>
-          <Topbar
-            title={pageTitle}
-            isDark={isDark}
-            onToggleDark={handleToggleDark}
-            onLogout={logout}
-            onMobileMenuOpen={() => setMobileOpen(true)}
-          />
-
-          <main className="flex-1 overflow-auto">
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/documents" element={<DocumentsPage />} />
-              <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
-              <Route path="/templates" element={<TemplatesPage />} />
-              <Route path="/templates/new" element={<TemplateNewPage />} />
-              <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
-              <Route path="/upload" element={<PlaceholderPage />} />
-              <Route path="/search" element={<PlaceholderPage />} />
-              <Route path="*" element={<PlaceholderPage />} />
-            </Routes>
-          </main>
-        </div>
-      </div>
+      <AppWithLayout />
     </HierarchyProvider>
   );
 }

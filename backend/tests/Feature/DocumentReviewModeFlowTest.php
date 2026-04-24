@@ -77,11 +77,9 @@ class DocumentReviewModeFlowTest extends TestCase
             'version_number' => 1,
             'blocks_snapshot' => [[
                 'id' => $blockSnapId,
-                'type' => 'heading',
                 'title' => 'Bloque',
                 'default_content' => null,
-                'block_state' => 'editable',
-                'mandatory' => false,
+                'block_state' => 'optional',
                 'sort_order' => 0,
             ]],
             'changelog' => 'v1',
@@ -231,10 +229,37 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->postJson(
             "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review2Id']}/reject",
-            [],
+            ['rejection_reason' => 'Intento de rechazar fuera de orden'],
             $hR2,
         )->assertUnprocessable()
             ->assertJsonValidationErrors(['review']);
+    }
+
+    public function test_reject_document_review_requires_rejection_reason(): void
+    {
+        $ctx = $this->seedDocumentInReview('parallel');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
+            ->assertOk()
+            ->json('data');
+        $ids = $this->reviewIdsByStage($list);
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review1Id']}/reject",
+            [],
+            $hR1,
+        )->assertUnprocessable()
+            ->assertJsonValidationErrors(['rejection_reason']);
     }
 
     public function test_parallel_allows_higher_stage_to_act_first(): void
@@ -270,5 +295,32 @@ class DocumentReviewModeFlowTest extends TestCase
             $hR1,
         )->assertOk()
             ->assertJsonPath('data.status', 'published');
+    }
+
+    public function test_parallel_reject_review_returns_document_to_draft(): void
+    {
+        $ctx = $this->seedDocumentInReview('parallel');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
+            ->assertOk()
+            ->json('data');
+        $ids = $this->reviewIdsByStage($list);
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review1Id']}/reject",
+            ['rejection_reason' => 'No procede'],
+            $hR1,
+        )->assertOk()
+            ->assertJsonPath('data.status', 'draft');
     }
 }

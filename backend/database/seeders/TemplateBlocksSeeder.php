@@ -30,6 +30,8 @@ class TemplateBlocksSeeder extends Seeder
                 $row['default_content'] = json_encode($row['default_content']);
             }
 
+            unset($row['type'], $row['mandatory']);
+
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
 

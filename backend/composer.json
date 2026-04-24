@@ -17,6 +17,7 @@
         "laravel/tinker": "^2.10",
         "lcobucci/jwt": "^5.6",
         "maya/shared-auth-laravel": "@dev",
+        "maya/shared-messaging-laravel": "@dev",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "^14.1"
     },
     "require-dev": {
@@ -96,6 +97,10 @@
         "maya-shared-auth": {
             "type": "path",
             "url": "../../packages/maya-shared-auth-laravel"
+        },
+        "maya-shared-messaging": {
+            "type": "path",
+            "url": "../../packages/maya-shared-messaging-laravel"
         }
     }
 }

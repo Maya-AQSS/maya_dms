@@ -1,7 +1,8 @@
-import type { Document } from '../types/documents';
+import type { Document, DocumentDetail } from '../types/documents';
 import { apiFetchJson, apiGetJson } from './http';
 
 type DocumentsApiResponse = { data: Document[] };
+type DocumentDetailApiResponse = { data: DocumentDetail };
 type CreationMode = 'none' | 'auto' | 'select';
 
 export type DocumentCreationOption = {
@@ -24,6 +25,8 @@ type CreateFromModuleResponse = { data: Document };
 
 /**
  * GET /api/v1/documents — listado de documentos del usuario autenticado.
+ * 
+ * @returns Lista de documentos del usuario autenticado.
  */
 export async function fetchDocuments(): Promise<Document[]> {
   const body = await apiGetJson<DocumentsApiResponse>('documents');
@@ -31,7 +34,21 @@ export async function fetchDocuments(): Promise<Document[]> {
 }
 
 /**
+ * GET /api/v1/documents/{id} — detalle con bloques para previsualización / editor.
+ * 
+ * @param documentId - ID del documento.
+ * @returns Detalle del documento con bloques para previsualización / editor.
+ */
+export async function fetchDocument(documentId: string): Promise<DocumentDetail> {
+  const body = await apiGetJson<DocumentDetailApiResponse>(`documents/${encodeURIComponent(documentId)}`);
+  return body.data;
+}
+
+/**
  * GET /api/v1/documents/creation-options?module_id={id}
+ * 
+ * @param moduleId - ID del módulo.
+ * @returns Opciones de creación de documentos para el módulo.
  */
 export async function fetchDocumentCreationOptions(
   moduleId: string,
@@ -44,6 +61,9 @@ export async function fetchDocumentCreationOptions(
 
 /**
  * POST /api/v1/documents/create-from-module
+ * 
+ * @param payload - Datos para crear un documento desde un módulo.
+ * @returns Documento creado.
  */
 export async function createDocumentFromModule(payload: {
   module_id: string;
@@ -53,5 +73,104 @@ export async function createDocumentFromModule(payload: {
     method: 'POST',
     body: payload,
   });
+  return body.data;
+}
+
+type DocumentMutationApiResponse = { data: Document };
+type DocumentSubmitApiResponse = { data: Document };
+
+/** Fila de `document_reviews` (GET documents/{id}/reviews). */
+export type DocumentReview = {
+  id: string;
+  document_id: string;
+  reviewer_id: string;
+  stage: number;
+  status: string;
+  rejection_reason?: string | null;
+  reviewed_at?: string | null;
+};
+
+type DocumentReviewsApiResponse = { data: DocumentReview[] };
+
+/**
+ * PATCH /api/v1/documents/{id} — hoy el backend valida al menos `title`.
+ * 
+ * @param documentId - ID del documento.
+ * @param payload - Datos para actualizar el documento.
+ * @returns Documento actualizado.
+ */
+export async function updateDocument(documentId: string, payload: {
+  title: string;
+  delivery_deadline?: string | null;
+}): Promise<Document> {
+  const body = await apiFetchJson<DocumentMutationApiResponse>(
+    `documents/${encodeURIComponent(documentId)}`,
+    { method: 'PATCH', body: payload },
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/submit */
+export async function submitDocumentForReview(documentId: string): Promise<Document> {
+  const body = await apiFetchJson<DocumentSubmitApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/submit`,
+    { method: 'POST', body: {} },
+  );
+  return body.data;
+}
+
+/** GET /api/v1/documents/{id}/reviews */
+export async function fetchDocumentReviews(documentId: string): Promise<DocumentReview[]> {
+  const body = await apiGetJson<DocumentReviewsApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/reviews`,
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/reviews/{review}/approve */
+export async function approveDocumentReview(
+  documentId: string,
+  reviewId: string,
+  changelog?: string | null,
+): Promise<Document> {
+  const body = await apiFetchJson<DocumentMutationApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/approve`,
+    { method: 'POST', body: { changelog: changelog ?? null } },
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/reviews/{review}/reject — `rejection_reason` obligatorio (mín. 5 caracteres). */
+export async function rejectDocumentReview(
+  documentId: string,
+  reviewId: string,
+  rejectionReason: string,
+): Promise<Document> {
+  const body = await apiFetchJson<DocumentMutationApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/reject`,
+    { method: 'POST', body: { rejection_reason: rejectionReason } },
+  );
+  return body.data;
+}
+
+type DocumentBlockUpdateApiResponse = { data: Record<string, unknown> };
+
+/**
+ * PUT /api/v1/documents/{document}/blocks/{block} — actualiza el JSON de contenido del bloque.
+ * 
+ * @param documentId - ID del documento.
+ * @param documentBlockId - ID del bloque.
+ * @param content - Contenido del bloque.
+ * @returns Contenido del bloque actualizado.
+ */
+export async function updateDocumentBlock(
+  documentId: string,
+  documentBlockId: string,
+  content: unknown,
+): Promise<Record<string, unknown>> {
+  const body = await apiFetchJson<DocumentBlockUpdateApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/blocks/${encodeURIComponent(documentBlockId)}`,
+    { method: 'PUT', body: { content } },
+  );
   return body.data;
 }

@@ -38,11 +38,9 @@ class TemplateBlockStatePersistenceLatencyTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => $blockId,
             'template_id' => $templateId,
-            'type' => 'paragraph',
             'title' => 'Bloque',
             'default_content' => null,
             'block_state' => 'editable',
-            'mandatory' => false,
             'sort_order' => 0,
         ]);
 
