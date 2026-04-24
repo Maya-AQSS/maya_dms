@@ -8,6 +8,38 @@
  */
 $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
 
+/**
+ * Construye un blocks_snapshot alineado con {@see \App\Services\TemplateService::publishWithSnapshot()}
+ * a partir de los bloques actuales en template_blocks_mock.php (misma plantilla).
+ */
+$buildTemplateVersionSnapshotFromBlocks = static function (string $templateId): array {
+    /** @var list<array<string, mixed>> $blocks */
+    $blocks = require __DIR__.'/template_blocks_mock.php';
+
+    $subset = array_values(array_filter(
+        $blocks,
+        static fn (array $b): bool => (string) ($b['template_id'] ?? '') === $templateId
+    ));
+
+    usort(
+        $subset,
+        static fn (array $a, array $b): int => ((int) ($a['sort_order'] ?? 0)) <=> ((int) ($b['sort_order'] ?? 0))
+    );
+
+    return array_map(
+        static fn (array $b): array => [
+            'id' => $b['id'],
+            'title' => $b['title'],
+            'default_content' => $b['default_content'],
+            'block_state' => $b['block_state'],
+            'sort_order' => $b['sort_order'],
+        ],
+        $subset
+    );
+};
+
+$snapshotPublishedSecretariaPersonal = $buildTemplateVersionSnapshotFromBlocks('33333333-3333-3333-3333-333333333319');
+
 return array_merge([
     [
         'id' => '66666666-6666-6666-6666-666666666607',
@@ -272,33 +304,7 @@ return array_merge([
         'id' => '66666666-6666-6666-6666-666666666606',
         'template_id' => '33333333-3333-3333-3333-333333333319',
         'version_number' => 1,
-        'blocks_snapshot' => [
-            [
-                'id' => '55555555-5555-5555-5555-555555555519',
-                'title' => 'Descripción (plantilla personal Secretaría, publicada)',
-                'default_content' => [
-                    'type' => 'doc',
-                    'content' => [
-                        [
-                            'type' => 'paragraph',
-                            'props' => [
-                                'textColor' => 'default',
-                                'backgroundColor' => 'default',
-                                'textAlignment' => 'left',
-                            ],
-                            'content' => [[
-                                'type' => 'text',
-                                'text' => 'Plantilla de referencia publicada por Secretaría (seed). Los documentos generados se validan con Dirección y Auditoría según la configuración de revisores.',
-                                'styles' => [],
-                            ]],
-                            'children' => [],
-                        ],
-                    ],
-                ],
-                'block_state' => 'editable',
-                'sort_order' => 0,
-            ],
-        ],
+        'blocks_snapshot' => $snapshotPublishedSecretariaPersonal,
         'changelog' => 'Publicación inicial (plantilla personal Secretaría)',
         'published_by' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
         'published_at' => null,

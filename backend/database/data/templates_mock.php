@@ -15,6 +15,21 @@ use App\Enums\TemplateVisibilityLevel;
  */
 $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
 
+/** Plazos ficticios fijos (curso 2025-26) para que el dashboard muestre fechas y urgencias variadas. */
+$nextMockTemplateDeadline = (function (): callable {
+    $i = 0;
+    /** Días desde 2026-04-24: mezcla urgentes (<=7), próximos (8-30) y margen. */
+    $patterns = [3, 18, 5, 22, 1, 14, 7, 21, 4, 28, 2, 16, 9, 25, 6, 19, 11, 27, 8, 17, 12, 20, 15, 24, 10, 29];
+    $base = new \DateTimeImmutable('2026-04-24 12:00:00');
+
+    return static function () use (&$i, $patterns, $base): string {
+        $d = $patterns[$i % count($patterns)];
+        $i++;
+
+        return $base->modify("+{$d} days")->format('Y-m-d H:i:s');
+    };
+})();
+
 return [
     'templates' => array_merge([
         [
@@ -22,7 +37,7 @@ return [
             'name' => 'Plantilla mock — visibilidad global',
             'description' => 'Plantilla compartida a nivel global.',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -38,7 +53,7 @@ return [
             'name' => 'Plantilla mock — visibilidad por equipo',
             'description' => 'Plantilla visible para miembros del equipo seed.',
             'visibility_level' => TemplateVisibilityLevel::Team->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -54,7 +69,7 @@ return [
             'name' => 'Plantilla mock — visibilidad personal (docente ESPA)',
             'description' => 'Solo usr_hierarchy_eso_demo (creador) + catálogo ampliado vía permisos.',
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -70,7 +85,7 @@ return [
             'name' => 'Plantilla para ESPA (Personas Adultas)',
             'description' => 'Plantilla base ESPA centrada en integración de conocimientos, flexibilidad y utilidad práctica para el alumnado adulto.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => 'ST_ESPA',
             'module_id' => null,
@@ -86,7 +101,7 @@ return [
             'name' => 'Plantilla mock — visibilidad por estudio (ESPA)',
             'description' => 'Visible con study_ids que incluyan S_ESPA (programación concreta).',
             'visibility_level' => TemplateVisibilityLevel::Study->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => 'S_ESPA',
             'study_type_id' => 'ST_ESPA',
             'module_id' => null,
@@ -102,7 +117,7 @@ return [
             'name' => 'Plantilla mock — visibilidad por módulo (Matemáticas ESPA)',
             'description' => 'Visible con module_ids que incluyan M_MAT_1. Útil para clientes Keycloak por módulo.',
             'visibility_level' => TemplateVisibilityLevel::Module->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => 'S_ESPA',
             'study_type_id' => 'ST_ESPA',
             'module_id' => 'M_MAT_1',
@@ -118,7 +133,7 @@ return [
             'name' => 'Plantilla mock — global (catálogo general II)',
             'description' => 'Segunda plantilla global; cualquier usuario con templates.read debería verla.',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -134,7 +149,7 @@ return [
             'name' => 'Plantilla para Bachillerato',
             'description' => 'Plantilla base de Bachillerato orientada a especializacion academica y alineacion con EvAU.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => 'ST_BACH',
             'module_id' => null,
@@ -150,7 +165,7 @@ return [
             'name' => 'Plantilla para FP (Ciclos de Grado Medio/Superior)',
             'description' => 'Plantilla base FP con foco en empleabilidad, competencia profesional y evaluacion por resultados de aprendizaje.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => 'ST_FP',
             'module_id' => null,
@@ -166,7 +181,7 @@ return [
             'name' => 'Plantilla mock — estudio CFGS DAW',
             'description' => 'Nivel estudio: requiere study_ids con S_FP_DAW (y ST_FP en plantilla).',
             'visibility_level' => TemplateVisibilityLevel::Study->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => 'S_FP_DAW',
             'study_type_id' => 'ST_FP',
             'module_id' => null,
@@ -182,7 +197,7 @@ return [
             'name' => 'Plantilla mock — módulo DWES (DAW)',
             'description' => 'Nivel módulo: module_ids debe incluir M_DAW_DWES.',
             'visibility_level' => TemplateVisibilityLevel::Module->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => 'S_FP_DAW',
             'study_type_id' => 'ST_FP',
             'module_id' => 'M_DAW_DWES',
@@ -198,7 +213,7 @@ return [
             'name' => 'Plantilla mock — personal (docente Bach)',
             'description' => 'Solo usr_hierarchy_bach_demo (creador) + catálogo ampliado por permisos.',
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -214,7 +229,7 @@ return [
             'name' => 'Plantilla mock — personal (docente FP)',
             'description' => 'Solo usr_hierarchy_fp_demo.',
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -230,7 +245,7 @@ return [
             'name' => 'Plantilla mock — personal (Secretaría)',
             'description' => 'Solo usr_secretariat_demo.',
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -246,7 +261,7 @@ return [
             'name' => 'Plantilla mock — personal (docente Bach)',
             'description' => 'Solo usr_hierarchy_bach_demo.',
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -262,7 +277,7 @@ return [
             'name' => 'Plantilla mock — estudio ESPA',
             'description' => 'Requiere study_ids con S_ESPA.',
             'visibility_level' => TemplateVisibilityLevel::Study->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => 'S_ESPA',
             'study_type_id' => 'ST_ESPA',
             'module_id' => null,
@@ -278,7 +293,7 @@ return [
             'name' => 'Plantilla mock — módulo Inglés ESPA',
             'description' => 'module_ids debe incluir M_ENG_1.',
             'visibility_level' => TemplateVisibilityLevel::Module->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => 'S_ESPA_1',
             'study_type_id' => 'ST_ESPA',
             'module_id' => 'M_ENG_1',
@@ -294,7 +309,7 @@ return [
             'name' => 'Programación didáctica — DWES (catálogo global, Dirección)',
             'description' => 'Plantilla global publicada por Dirección con el contenido oficial de referencia para el módulo DWES (DAW). Validación de documentos: Secretaría y Auditoría.',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,
@@ -310,7 +325,7 @@ return [
             'name' => 'Plantilla mock — personal (Secretaría) publicada',
             'description' => 'Visible para usr_secretariat_demo y lista para clonado/uso en pruebas.',
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
             'study_id' => null,
             'study_type_id' => null,
             'module_id' => null,

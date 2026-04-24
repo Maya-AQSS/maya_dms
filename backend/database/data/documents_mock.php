@@ -2,7 +2,7 @@
 
 /**
  * Documentos mock para local/testing.
- * Fase actual: documentos reales de ejemplo para plantilla base FP.
+ * Plazos y envíos con fechas fijas (curso 2025-26) para dashboard y bandejas realistas.
  */
 return [
     [
@@ -13,6 +13,7 @@ return [
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
         'module_id' => 'M_DAW_DWES',
+        'delivery_deadline' => '2026-06-20 14:00:00',
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'draft',
@@ -28,11 +29,12 @@ return [
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
         'module_id' => 'M_DAW_DWES',
+        'delivery_deadline' => '2026-04-29 18:00:00',
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'in_review',
         'current_version' => 1,
-        'submitted_at' => null,
+        'submitted_at' => '2026-04-18 10:15:00',
         'published_at' => null,
     ],
     [
@@ -43,11 +45,12 @@ return [
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
         'module_id' => 'M_DAW_DWECL',
+        'delivery_deadline' => '2026-05-12 16:30:00',
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'in_review',
         'current_version' => 1,
-        'submitted_at' => null,
+        'submitted_at' => '2026-04-16 09:00:00',
         'published_at' => null,
     ],
     [
@@ -58,11 +61,12 @@ return [
         'study_type_id' => 'ST_ESPA',
         'study_id' => 'S_ESPA',
         'module_id' => 'M_LEN_2',
+        'delivery_deadline' => '2026-05-05 12:00:00',
         'created_by' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
         'owner_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
         'status' => 'in_review',
         'current_version' => 1,
-        'submitted_at' => null,
+        'submitted_at' => '2026-04-12 11:45:00',
         'published_at' => null,
     ],
     [
@@ -73,11 +77,12 @@ return [
         'study_type_id' => 'ST_BACH',
         'study_id' => 'S_BACH_1_C',
         'module_id' => 'M_FIS_1C',
+        'delivery_deadline' => '2026-05-18 08:45:00',
         'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'status' => 'in_review',
         'current_version' => 1,
-        'submitted_at' => null,
+        'submitted_at' => '2026-04-14 16:20:00',
         'published_at' => null,
     ],
     [
@@ -88,6 +93,7 @@ return [
         'study_type_id' => 'ST_BACH',
         'study_id' => 'S_BACH_1_C',
         'module_id' => 'M_FIS_1C',
+        'delivery_deadline' => '2026-06-08 13:00:00',
         'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'status' => 'draft',

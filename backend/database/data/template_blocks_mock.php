@@ -8,30 +8,82 @@ $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.p
 
 $dwesGlobalOfficialContent = require __DIR__.'/dwes_official_programacion_blocknote.php';
 
+/** Párrafo BlockNote compacto para seeds legibles. */
+$seedP = static fn (string $text): array => [
+    'type' => 'paragraph',
+    'props' => ['textColor' => 'default', 'backgroundColor' => 'default', 'textAlignment' => 'left'],
+    'content' => [['type' => 'text', 'text' => $text, 'styles' => []]],
+    'children' => [],
+];
+
+$seedH2 = static fn (string $text): array => [
+    'type' => 'heading',
+    'props' => ['textColor' => 'default', 'backgroundColor' => 'default', 'textAlignment' => 'left', 'level' => 2],
+    'content' => [['type' => 'text', 'text' => $text, 'styles' => []]],
+    'children' => [],
+];
+
+$seedDoc = static fn (array $nodes): array => ['type' => 'doc', 'content' => $nodes];
+
 return array_merge([
     [
         'id' => '55555555-5555-5555-5555-555555555501',
         'template_id' => '33333333-3333-3333-3333-333333333301',
-        'title' => 'Título',
-        'default_content' => null,
+        'title' => 'Portada y datos identificativos',
+        'description' => $seedDoc([
+            $seedP('Plantilla global de prueba: el revisor debe comprobar que el título sea inequívoco y que exista referencia al curso escolar y al centro (ficticio en seed).'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Documento normativo — visibilidad global'),
+            $seedP('Sustituye este texto por el título oficial, código interno del documento y versión. Indica responsable de mantenimiento y fecha de próxima revisión programada.'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
     ],
     [
         'id' => '55555555-5555-5555-5555-555555555502',
         'template_id' => '33333333-3333-3333-3333-333333333302',
-        'title' => 'Descripción',
-        'default_content' => ['type' => 'doc', 'content' => []],
+        'title' => 'Descripción y alcance del equipo',
+        'description' => $seedDoc([
+            $seedP('Plantilla visible por equipo: valida que se nombre el equipo académico, sus miembros clave y el alcance territorial o de estudios cubiertos.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Contexto del equipo seed'),
+            $seedP('Describe el propósito del documento (planificación común, protocolo de evaluación, etc.) y cómo se distribuye el trabajo entre los miembros del equipo.'),
+            $seedP('Enlaces internos: repositorio de plantillas, calendario de reuniones y criterios de calidad compartidos (placeholders de ejemplo).'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
     ],
     [
         'id' => '55555555-5555-5555-5555-555555555503',
         'template_id' => '33333333-3333-3333-3333-333333333303',
-        'title' => 'Borrador personal',
-        'default_content' => null,
+        'title' => 'Contexto y alcance del borrador',
+        'description' => $seedDoc([
+            $seedP('Para el revisor: esta plantilla personal simula el trabajo de un docente ESPA antes de enviar a revisión normativa. Valida que el lenguaje sea adecuado al alumnado adulto y que los criterios sean observables.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Resumen del curso y grupo'),
+            $seedP('Sustituye los datos ficticios por el grupo real, aula, horario y ratio. Indica si hay itinerarios de empleabilidad o certificaciones vinculadas.'),
+            $seedP('Objetivo del borrador: dejar trazada la programación o memoria que el docente someterá a revisión, con unidades y criterios alineados al decreto autonómico.'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555524',
+        'template_id' => '33333333-3333-3333-3333-333333333303',
+        'title' => 'Riesgos y apoyo al alumnado adulto',
+        'description' => $seedDoc([
+            $seedP('Guía para revisión: comprueba que existan medidas de conciliación, flexibilidad de entrega y referencias a tutoría u orientación cuando el alumnado combine trabajo y estudio.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Barreras y medidas'),
+            $seedP('Conciliación: plazos alternativos para entregas críticas; canal preferente de consulta (correo institucional o tutoría).'),
+            $seedP('Diversidad: adaptaciones razonables para competencias básicas y aulas heterogéneas; referencia a protocolos del centro.'),
+        ]),
+        'block_state' => 'modifiable',
+        'sort_order' => 1,
     ],
     [
         'id' => '55555555-5555-5555-5555-555555555504',
@@ -223,34 +275,136 @@ return array_merge([
     [
         'id' => '55555555-5555-5555-5555-555555555512',
         'template_id' => '33333333-3333-3333-3333-333333333312',
-        'title' => 'Personal docente Bach',
-        'default_content' => null,
+        'title' => 'Identificación y competencias del módulo',
+        'description' => $seedDoc([
+            $seedP('Revisor: verifica coherencia con el currículo de Bachillerato del centro, mención explícita a competencias y resultados de aprendizaje, y adecuación al calendario de EvAU si aplica.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Datos del módulo y del departamento'),
+            $seedP('Indica materia, curso, nivel (Ciencias / Humanidades), grupo y horas lectivas. Nombra al coordinador de departamento y los acuerdos de evaluación compartidos.'),
+            $seedP('Competencias específicas: lista tres competencias trabajadas en el trimestre con indicadores observables en el aula (rúbrica o lista de chequeo).'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555525',
+        'template_id' => '33333333-3333-3333-3333-333333333312',
+        'title' => 'Secuenciación y evaluación',
+        'description' => $seedDoc([
+            $seedP('Comprueba que existan instrumentos de evaluación formativa y sumativa, ponderaciones orientativas y criterios de recuperación alineados con el departamento.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Temporalización y pruebas'),
+            $seedP('Unidad 1: diagnóstico y revisión de prerrequisitos. Unidad 2: núcleo conceptual con práctica en aula. Unidad 3: síntesis y prueba integradora tipo EvAU.'),
+            $seedP('Evaluación: 40 % prueba escrita, 40 % práctica o proyecto, 20 % actitud y trabajo cotidiano (ajustar según normativa del centro).'),
+        ]),
+        'block_state' => 'modifiable',
+        'sort_order' => 1,
     ],
     [
         'id' => '55555555-5555-5555-5555-555555555513',
         'template_id' => '33333333-3333-3333-3333-333333333313',
-        'title' => 'Personal docente FP',
-        'default_content' => null,
+        'title' => 'Ficha del módulo FP y resultados de aprendizaje',
+        'description' => $seedDoc([
+            $seedP('Revisor: exige referencia explícita al BOE del módulo, RA y criterios de evaluación, y coherencia con el proyecto integrado del ciclo si procede.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Identificación del ciclo y del módulo'),
+            $seedP('Ciclo formativo, código de módulo, horas lectivas y curso. Relación con otros módulos del ciclo y con las prácticas en empresa si aplica.'),
+            $seedP('RA trabajados en el trimestre: selecciona los más relevantes y enlázalos con unidades didácticas y evidencias de evaluación.'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555526',
+        'template_id' => '33333333-3333-3333-3333-333333333313',
+        'title' => 'Proyecto práctico y criterios de calidad',
+        'description' => $seedDoc([
+            $seedP('Valida que el proyecto integre varios RA, incluya entregables intermedios y criterios de calidad (seguridad, documentación, despliegue o pruebas según el módulo).'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Enunciado y rúbrica orientativa'),
+            $seedP('Describe el reto profesional, entorno técnico (laboratorio, aula digital, taller), roles del alumnado y hitos de entrega.'),
+            $seedP('Rúbrica: funcionalidad, calidad del código o procedimiento, documentación técnica y presentación oral o memoria final.'),
+        ]),
+        'block_state' => 'modifiable',
+        'sort_order' => 1,
     ],
     [
         'id' => '55555555-5555-5555-5555-555555555514',
         'template_id' => '33333333-3333-3333-3333-333333333314',
-        'title' => 'Personal Secretaría',
-        'default_content' => null,
+        'title' => 'Objeto y circuito de esta plantilla personal',
+        'description' => $seedDoc([
+            $seedP('Para Secretaría (revisión): plantilla de prueba con visibilidad personal. Comprueba que el texto explique el uso interno del DMS, el orden de validaciones y los contactos de calidad antes de aprobar.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Uso previsto en el DMS'),
+            $seedP('Esta plantilla simula documentación administrativa o de calidad elaborada por Secretaría antes de publicar modelos para el centro. Sustituye referencias genéricas por procedimientos reales del centro (ISO, PEC, calendario de secretaría).'),
+            $seedP('Circuito: borrador → revisión (Dirección / Auditoría según configuración) → publicación o devolución con comentarios en bloques.'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
     ],
     [
+        'id' => '55555555-5555-5555-5555-555555555520',
+        'template_id' => '33333333-3333-3333-3333-333333333314',
+        'title' => 'Checklist administrativo y trazabilidad',
+        'description' => $seedDoc([
+            $seedP('Revisa que consten versiones de normativa citadas, plazos de tramitación y referencias a registros (expediente, número de registro, responsable).'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Controles mínimos'),
+            $seedP('Identificación del procedimiento, ámbito (ESO, Bach, FP), responsable y fecha de última revisión.'),
+            $seedP('Anexos: enlaces a formularios oficiales, plantillas de comunicación a familias o empresas, y comprobaciones de cumplimiento (LOMLOE, convenios, RGPD).'),
+        ]),
+        'block_state' => 'modifiable',
+        'sort_order' => 1,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555521',
+        'template_id' => '33333333-3333-3333-3333-333333333314',
+        'title' => 'Observaciones a Dirección y Auditoría',
+        'description' => $seedDoc([
+            $seedP('Espacio para que la validación deje constancia de incidencias, riesgos legales o mejoras sugeridas antes de aceptar el modelo.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Incidencias y seguimiento'),
+            $seedP('Lista hallazgos con severidad (baja / media / alta) y acción recomendada. Incluye plazo de corrección si la plantilla se devuelve a borrador.'),
+            $seedP('Si no hay incidencias, indica explícitamente "Sin observaciones" para dejar trazabilidad en auditoría.'),
+        ]),
+        'block_state' => 'editable',
+        'sort_order' => 2,
+    ],
+    [
         'id' => '55555555-5555-5555-5555-555555555515',
         'template_id' => '33333333-3333-3333-3333-333333333315',
-        'title' => 'Personal Bach',
-        'default_content' => null,
+        'title' => 'Programación docente — Bachillerato (borrador personal)',
+        'description' => $seedDoc([
+            $seedP('Guía de revisión: alinea con el departamento de la materia, menciona criterios EvAU donde proceda y deja explícita la coordinación con otros módulos del curso.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Contexto del grupo y objetivos generales'),
+            $seedP('Describe el perfil del alumnado, apoyos a la diversidad y objetivos generales del curso que condicionan la programación del docente.'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555527',
+        'template_id' => '33333333-3333-3333-3333-333333333315',
+        'title' => 'Unidades, metodología y evaluación',
+        'description' => $seedDoc([
+            $seedP('Comprueba que las unidades tengan duración orientativa, metodología activa descrita y evaluación alineada con los estándares de aprendizaje evaluables.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Secuencia didáctica'),
+            $seedP('UT1: diagnóstico y revisión de competencias previas. UT2–4: núcleo conceptual con prácticas en aula. UT5: proyecto o estudio de caso integrador.'),
+            $seedP('Evaluación: instrumentos (pruebas, rúbricas, portafolio), ponderaciones orientativas y criterios de recuperación.'),
+        ]),
+        'block_state' => 'modifiable',
+        'sort_order' => 1,
     ],
     [
         'id' => '55555555-5555-5555-5555-555555555516',
@@ -279,27 +433,46 @@ return array_merge([
     [
         'id' => '55555555-5555-5555-5555-555555555519',
         'template_id' => '33333333-3333-3333-3333-333333333319',
-        'title' => 'Descripción (plantilla personal Secretaría, publicada)',
-        'default_content' => [
-            'type' => 'doc',
-            'content' => [
-                [
-                    'type' => 'paragraph',
-                    'props' => [
-                        'textColor' => 'default',
-                        'backgroundColor' => 'default',
-                        'textAlignment' => 'left',
-                    ],
-                    'content' => [[
-                        'type' => 'text',
-                        'text' => 'Plantilla de referencia publicada por Secretaría (seed). Los documentos generados se validan con Dirección y Auditoría según la configuración de revisores.',
-                        'styles' => [],
-                    ]],
-                    'children' => [],
-                ],
-            ],
-        ],
+        'title' => 'Resumen ejecutivo y alcance',
+        'description' => $seedDoc([
+            $seedP('Plantilla personal publicada de Secretaría (seed). Sirve como modelo estable: al clonarla, los documentos heredarán esta estructura. Revisa coherencia con procedimientos del centro.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Modelo publicado para el DMS'),
+            $seedP('Plantilla de referencia publicada por Secretaría (seed). Los documentos generados se validan con Dirección y Auditoría según la configuración de revisores y el orden de etapas definido en la plantilla.'),
+            $seedP('Sustituye los textos orientativos por la versión oficial aprobada en el claustro o en el consejo escolar, incluyendo referencias normativas y fechas de vigencia.'),
+        ]),
         'block_state' => 'editable',
         'sort_order' => 0,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555522',
+        'template_id' => '33333333-3333-3333-3333-333333333319',
+        'title' => 'Validaciones cruzadas (Dirección / Auditoría)',
+        'description' => $seedDoc([
+            $seedP('Indica qué aspectos debe comprobar cada rol: legalidad de comunicaciones, coherencia curricular, protección de datos y trazabilidad de firmas o registros.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Roles y comprobaciones'),
+            $seedP('Dirección: alineación con el proyecto educativo del centro y calendario de implantación.'),
+            $seedP('Auditoría: muestra de evidencias, control de versiones y cumplimiento de retención documental.'),
+        ]),
+        'block_state' => 'modifiable',
+        'sort_order' => 1,
+    ],
+    [
+        'id' => '55555555-5555-5555-5555-555555555523',
+        'template_id' => '33333333-3333-3333-3333-333333333319',
+        'title' => 'Anexos y contactos',
+        'description' => $seedDoc([
+            $seedP('Enlaces a formularios, tablas de plazos y datos de contacto institucional. Mantén el bloque aunque sea breve para pruebas de exportación o impresión.'),
+        ]),
+        'default_content' => $seedDoc([
+            $seedH2('Referencias y soporte'),
+            $seedP('Anexos: plantillas de comunicación a familias, empresas o administración; extractos de normativa aplicable.'),
+            $seedP('Contactos: secretaría académica, dirección, coordinación TIC y delegado de protección de datos (ajustar al organigrama real).'),
+        ]),
+        'block_state' => 'optional',
+        'sort_order' => 2,
     ],
 ], $programacionPack['template_blocks']);

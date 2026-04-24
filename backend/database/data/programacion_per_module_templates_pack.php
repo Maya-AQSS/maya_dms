@@ -318,12 +318,19 @@ return (static function (): array {
         foreach ($slots as $si => $slot) {
             $tUuid = sprintf('33333333-3333-3333-3333-%012d', $tid++);
 
+            $baseDeadline = new \DateTimeImmutable('2026-04-24 09:00:00');
+            $deliveryDeadline = match ($slot['status']) {
+                'in_review' => $baseDeadline->modify('+'.(4 + (($mi * 5 + $si * 3) % 7)).' days'),
+                'draft' => $baseDeadline->modify('+'.(12 + $mi * 4 + $si * 2).' days'),
+                default => $baseDeadline->modify('+'.(38 + $mi * 3 + $si).' days'),
+            };
+
             $templates[] = [
                 'id' => $tUuid,
                 'name' => $slot['name'],
                 'description' => $slot['desc'],
                 'visibility_level' => 'module',
-                'delivery_deadline' => null,
+                'delivery_deadline' => $deliveryDeadline->format('Y-m-d H:i:s'),
                 'study_id' => $studyId,
                 'study_type_id' => $stype,
                 'module_id' => $m,
@@ -447,6 +454,8 @@ return (static function (): array {
     $docIdNum = 1700;
     $dblkNum = 9100;
 
+    $demoDocDeadlineBase = new \DateTimeImmutable('2026-04-24 10:00:00');
+
     foreach ($ownerDocPlans as [$ownerId, $label, $pubIndices]) {
         foreach ($pubIndices as $k => $pubIdx) {
             $pub = $publishedIndex[$pubIdx] ?? null;
@@ -455,6 +464,8 @@ return (static function (): array {
             }
             $docUuid = sprintf('77777777-7777-7777-7777-%012d', $docIdNum++);
             $short = $pub['short'];
+            $deadlineDays = 20 + ($pubIdx * 3) + ($k * 5);
+            $deliveryDeadline = $demoDocDeadlineBase->modify('+'.$deadlineDays.' days')->format('Y-m-d H:i:s');
             $demoDocuments[] = [
                 'id' => $docUuid,
                 'template_id' => $pub['template_id'],
@@ -463,6 +474,7 @@ return (static function (): array {
                 'study_type_id' => $pub['study_type_id'],
                 'study_id' => $pub['study_id'],
                 'module_id' => $pub['module_id'],
+                'delivery_deadline' => $deliveryDeadline,
                 'created_by' => $ownerId,
                 'owner_id' => $ownerId,
                 'status' => 'draft',
