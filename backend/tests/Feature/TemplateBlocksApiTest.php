@@ -175,5 +175,56 @@ class TemplateBlocksApiTest extends TestCase
             'type' => 'paragraph',
         ], $readerHeaders)->assertForbidden();
     }
+
+    public function test_reorder_requires_all_template_blocks(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+        [$templateId, $firstBlockId] = $this->seedTemplateAndBlock($userId);
+        $secondBlockId = (string) Str::uuid();
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $secondBlockId,
+            'template_id' => $templateId,
+            'title' => 'Bloque 2',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 1,
+        ]);
+
+        $this->patchJson("/api/v1/templates/{$templateId}/blocks/reorder", [
+            'block_ids' => [$firstBlockId],
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['block_ids']);
+    }
+
+    public function test_reorder_updates_sort_order_atomically_for_full_set(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+        [$templateId, $firstBlockId] = $this->seedTemplateAndBlock($userId);
+        $secondBlockId = (string) Str::uuid();
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $secondBlockId,
+            'template_id' => $templateId,
+            'title' => 'Bloque 2',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 1,
+        ]);
+
+        $this->patchJson("/api/v1/templates/{$templateId}/blocks/reorder", [
+            'block_ids' => [$secondBlockId, $firstBlockId],
+        ], $headers)->assertNoContent();
+
+        $orders = TemplateBlock::query()
+            ->where('template_id', $templateId)
+            ->pluck('sort_order', 'id');
+
+        $this->assertSame(1, $orders[$secondBlockId]);
+        $this->assertSame(2, $orders[$firstBlockId]);
+    }
 }
 

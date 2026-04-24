@@ -107,35 +107,8 @@ class TemplateBlockController extends Controller
      */
     public function reorder(ReorderTemplateBlocksRequest $request, string $template): \Illuminate\Http\Response
     {
-        $templateModel = Template::query()->findOrFail($template);
-        $this->authorize('update', $templateModel);
-
         $blockIds = $request->validated('block_ids');
-
-        $blocks = $this->blockService->findBlocksByIdsOrFail($blockIds);
-        $invalid = $blocks->first(fn ($block) => (string) $block->template_id !== $template);
-        if ($invalid !== null) {
-            abort(403, 'No tienes permiso para reordenar bloques fuera de la plantilla indicada.');
-        }
-
-        $userId = (string) Auth::id();
-
-        foreach ($blockIds as $index => $blockId) {
-            $this->blockService->update(
-                blockId: $blockId,
-                dto: new UpdateTemplateBlockDto(
-                    title:               null,
-                    set_title:           false,
-                    default_content:     null,
-                    set_default_content: false,
-                    sort_order:          $index + 1,
-                    set_sort_order:      true,
-                    block_state:         null,
-                    set_block_state:     false,
-                ),
-                userId: $userId,
-            );
-        }
+        $this->blockService->reorderForTemplate($template, $blockIds);
 
         return response()->noContent();
     }
