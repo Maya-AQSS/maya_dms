@@ -139,6 +139,21 @@ class TemplatePolicy
     }
 
     /**
+     * Publicación de plantilla.
+     * 
+     * El creador puede publicar directamente si no hay revisores asignados.
+     * En caso contrario, solo un revisor asignado puede realizar la publicación.
+     */
+    public function publish(JwtUser $user, Template $template): bool
+    {
+        if ($user->getAuthIdentifier() === $template->created_by) {
+            return $template->reviewers()->doesntExist();
+        }
+
+        return $this->review($user, $template);
+    }
+
+    /**
      * Enviar borrador a revisión: solo el creador.
      */
     public function submitForReview(JwtUser $user, Template $template): bool
