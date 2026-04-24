@@ -153,4 +153,9 @@ class Template extends Model
     {
         return $this->hasMany(TemplateVersion::class)->orderBy('version_number');
     }
+
+    public function comments(): HasMany
+    {
+        return $this->hasMany(Comment::class);
+    }
 }

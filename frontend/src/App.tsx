@@ -15,6 +15,7 @@ import {
   PlaceholderPage,
   TemplateEditPage,
   TemplateNewPage,
+  TemplateReviewPage,
   TemplatesPage,
 } from './pages';
 import { useOidcSession } from './auth/useOidcSession';
@@ -33,6 +34,7 @@ function AppRoutes() {
       <Route path="/templates" element={<TemplatesPage />} />
       <Route path="/templates/new" element={<TemplateNewPage />} />
       <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
+      <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
       <Route path="*" element={<PlaceholderPage />} />
     </Routes>
   );

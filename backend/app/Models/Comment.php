@@ -26,7 +26,6 @@ class Comment extends Model
                       ->orWhereExists(function ($subQuery) use ($userId) {
                           $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                    ->from('documents')
-                                   // Reproduces the Document's scope logic to isolate the comment via DB-level constraints
                                    ->whereColumn('documents.id', 'comments.document_id')
                                    ->where(function ($docQuery) use ($userId) {
                                        $docQuery->where('documents.created_by', $userId)
@@ -44,6 +43,20 @@ class Comment extends Model
                                                                    ->where('reviewer_id', $userId);
                                                 });
                                    });
+                      })
+                      ->orWhereExists(function ($subQuery) use ($userId) {
+                          $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                   ->from('templates')
+                                   ->whereColumn('templates.id', 'comments.template_id')
+                                   ->where(function ($templateQuery) use ($userId) {
+                                       $templateQuery->where('templates.created_by', $userId)
+                                                    ->orWhereExists(function ($revQuery) use ($userId) {
+                                                        $revQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                                 ->from('template_reviewers')
+                                                                 ->whereColumn('template_reviewers.template_id', 'templates.id')
+                                                                 ->where('template_reviewers.user_id', $userId);
+                                                    });
+                                   });
                       });
             });
         });
@@ -56,6 +69,8 @@ class Comment extends Model
     protected $fillable = [
         'document_id',
         'document_block_id',
+        'template_id',
+        'template_block_id',
         'parent_id',
         'author_id',
         'body',
@@ -83,6 +98,16 @@ class Comment extends Model
         return $this->belongsTo(DocumentBlock::class);
     }
 
+    public function template(): BelongsTo
+    {
+        return $this->belongsTo(Template::class);
+    }
+
+    public function templateBlock(): BelongsTo
+    {
+        return $this->belongsTo(TemplateBlock::class);
+    }
+
     public function parent(): BelongsTo
     {
         return $this->belongsTo(Comment::class, 'parent_id');
@@ -91,5 +116,10 @@ class Comment extends Model
     public function replies(): HasMany
     {
         return $this->hasMany(Comment::class, 'parent_id');
+    }
+
+    public function author(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'author_id');
     }
 }

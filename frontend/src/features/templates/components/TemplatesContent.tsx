@@ -6,6 +6,8 @@ import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
 import { useNavigate } from 'react-router-dom';
 
+const HIERARCHY_VIS = new Set(['study_type', 'study', 'module']);
+
 
 /**
  * Gestión de plantillas normativas: datos vía {@link useTemplates}.
@@ -52,6 +54,9 @@ export function TemplatesContent() {
     });
   };
 
+  const showTeamFilter = filterUi.visibility === 'team';
+  const showHierarchyFilter = HIERARCHY_VIS.has(filterUi.visibility);
+  const showConditionalFilters = showTeamFilter || showHierarchyFilter;
 
   return (
     <div className="p-6 space-y-6">
@@ -112,56 +117,61 @@ export function TemplatesContent() {
       )}
 
       <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-5 space-y-3">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
-          Filtros
-        </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div>
-            <FieldLabel>Visibilidad</FieldLabel>
-            <Select
-              fieldSize="sm"
-              value={filterUi.visibility}
-              onChange={(e) =>
-                applyFilters({
-                  visibility_level: e.target.value || undefined,
-                })
-              }
-            >
-              <option value="">Todas</option>
-              {VISIBILITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Estado</FieldLabel>
-            <Select
-              fieldSize="sm"
-              value={filterUi.status}
-              onChange={(e) => applyFilters({ status: e.target.value || undefined })}
-            >
-              {STATUS_OPTIONS.map((o) => (
-                <option key={o.value || 'all'} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel className="invisible">Acciones</FieldLabel>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={clearFilters}
-              className="w-full whitespace-nowrap shrink-0"
-            >
-              Limpiar filtros
-            </Button>
-          </div>
-          <div className="lg:col-span-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
+            Filtros
+          </h3>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={clearFilters}
+          >
+            Limpiar filtros
+          </Button>
+        </div>
+
+        {showConditionalFilters ? (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            <div className="space-y-3">
+              <div>
+                <FieldLabel>Visibilidad</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.visibility}
+                  onChange={(e) =>
+                    applyFilters({
+                      visibility_level: e.target.value || undefined,
+                      study_type_id: undefined,
+                      study_id: undefined,
+                      module_id: undefined,
+                      team_id: undefined,
+                    })
+                  }
+                >
+                  <option value="">Todas</option>
+                  {VISIBILITY_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div>
+                <FieldLabel>Estado</FieldLabel>
+                <Select
+                  fieldSize="sm"
+                  value={filterUi.status}
+                  onChange={(e) => applyFilters({ status: e.target.value || undefined })}
+                >
+                  {STATUS_OPTIONS.map((o) => (
+                    <option key={o.value || 'all'} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
             <TemplateHierarchyFields
               values={{
                 study_type_id: filterUi.studyTypeId,
@@ -169,14 +179,56 @@ export function TemplatesContent() {
                 module_id: filterUi.moduleId,
                 team_id: filterUi.teamId,
               }}
-              visibility={filterUi.visibility}
               onFieldChange={(key, value) =>
                 applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
               }
-              gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+              gridClassName="grid grid-cols-1 sm:grid-cols-2 gap-3"
+              filterMode={true}
+              maxLevel={showHierarchyFilter ? (filterUi.visibility as 'study_type' | 'study' | 'module') : null}
+              showTeam={showTeamFilter}
             />
           </div>
-        </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <FieldLabel>Visibilidad</FieldLabel>
+              <Select
+                fieldSize="sm"
+                value={filterUi.visibility}
+                onChange={(e) =>
+                  applyFilters({
+                    visibility_level: e.target.value || undefined,
+                    study_type_id: undefined,
+                    study_id: undefined,
+                    module_id: undefined,
+                    team_id: undefined,
+                  })
+                }
+              >
+                <option value="">Todas</option>
+                {VISIBILITY_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div>
+              <FieldLabel>Estado</FieldLabel>
+              <Select
+                fieldSize="sm"
+                value={filterUi.status}
+                onChange={(e) => applyFilters({ status: e.target.value || undefined })}
+              >
+                {STATUS_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading && templates.length === 0 ? (

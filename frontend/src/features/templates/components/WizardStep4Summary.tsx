@@ -233,21 +233,25 @@ export function WizardStep4Summary({ template, validators, validationType, docum
 
               {/* Contenido del tab */}
               <div className="flex-1 p-4 overflow-y-auto">
-                {activeTab === 'Descripción' ? (
-                  (() => {
-                    const desc = selectedBlock?.description;
-                    if (!desc) return <span className="text-xs text-text-muted italic">Sin descripción.</span>;
-                    let parsed: unknown[] | null = null;
-                    try { const p = JSON.parse(desc); if (Array.isArray(p) && p.length > 0) parsed = p; } catch { /* plain text */ }
-                    return parsed
-                      ? <BlockContentHtml content={parsed} />
-                      : <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{desc}</p>;
-                  })()
-                ) : (
-                  Array.isArray(selectedBlock?.default_content) && (selectedBlock.default_content as unknown[]).length > 0
-                    ? <BlockContentHtml content={selectedBlock.default_content as unknown[]} />
-                    : <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>
-                )}
+                {(() => {
+                  const content = activeTab === 'Descripción' ? selectedBlock?.description : selectedBlock?.default_content;
+                  if (!content) return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
+                  
+                  let parsed: unknown[] | null = null;
+                  if (Array.isArray(content)) {
+                    if (content.length > 0) parsed = content;
+                  } else if (typeof content === 'string') {
+                    try {
+                      const p = JSON.parse(content);
+                      if (Array.isArray(p) && p.length > 0) parsed = p;
+                    } catch { /* fallback to plain text */ }
+                  }
+
+                  if (parsed) return <BlockContentHtml content={parsed} />;
+                  if (typeof content === 'string') return <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{content}</p>;
+                  
+                  return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
+                })()}
               </div>
             </div>
 

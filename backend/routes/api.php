@@ -137,6 +137,10 @@ Route::prefix('v1')->group(function () {
             ->shallow()
             ->whereUuid('document')
             ->whereUuid('comment');
+        Route::apiResource('templates.comments', CommentController::class)
+            ->shallow()
+            ->whereUuid('template')
+            ->whereUuid('comment');
         Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
             ->whereUuid('comment');
 
