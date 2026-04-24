@@ -50,6 +50,64 @@ const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
 /** Alineado con `RejectDocumentReviewRequest` (backend): motivo obligatorio no trivial. */
 const DOCUMENT_REJECT_REASON_MIN_LEN = 5;
 
+/**
+ * Descripción de bloque: el backend puede enviar string, JSON string u objeto BlockNote (`{ type: 'doc', content }`).
+ * Renderizar un objeto dentro de `<p>` rompe React (pantalla en blanco).
+ */
+function DocumentBlockDescriptionView({ description }: { description: unknown }) {
+  if (description === null || description === undefined || description === '') {
+    return null;
+  }
+
+  const wrapProse = (inner: ReactNode) => (
+    <div className="prose prose-sm dark:prose-invert max-w-none">{inner}</div>
+  );
+
+  if (typeof description === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(description);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const doc = parsed as { type?: string; content?: unknown };
+        if (doc.type === 'doc' && Array.isArray(doc.content)) {
+          return wrapProse(<BlockContentHtml content={doc.content as unknown[]} />);
+        }
+      }
+      if (Array.isArray(parsed)) {
+        return wrapProse(<BlockContentHtml content={parsed as unknown[]} />);
+      }
+    } catch {
+      return (
+        <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
+          {description}
+        </p>
+      );
+    }
+    return (
+      <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
+        {description}
+      </p>
+    );
+  }
+
+  if (Array.isArray(description)) {
+    return wrapProse(<BlockContentHtml content={description as unknown[]} />);
+  }
+
+  if (typeof description === 'object') {
+    const doc = description as { type?: string; content?: unknown };
+    if (doc.type === 'doc' && Array.isArray(doc.content)) {
+      return wrapProse(<BlockContentHtml content={doc.content as unknown[]} />);
+    }
+    return wrapProse(<BlockContentHtml content={[description] as unknown[]} />);
+  }
+
+  return (
+    <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
+      {String(description)}
+    </p>
+  );
+}
+
 function DocSummaryRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col py-1.5 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
@@ -988,10 +1046,8 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                     )
                   ) : (
                     <div className="flex-1 overflow-y-auto p-4">
-                      {activeBlock.description ? (
-                        <p className="text-sm text-text-secondary dark:text-text-dark-secondary whitespace-pre-wrap">
-                          {activeBlock.description}
-                        </p>
+                      {activeBlock.description != null && activeBlock.description !== '' ? (
+                        <DocumentBlockDescriptionView description={activeBlock.description} />
                       ) : (
                         <p className="text-sm text-text-muted italic">
                           Este bloque no tiene descripción/instrucciones.
@@ -1205,10 +1261,8 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                             <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>
                           );
                         })()
-                      ) : selectedSummaryBlock.description ? (
-                        <p className="text-sm text-text-secondary dark:text-text-dark-secondary whitespace-pre-wrap">
-                          {selectedSummaryBlock.description}
-                        </p>
+                      ) : selectedSummaryBlock.description != null && selectedSummaryBlock.description !== '' ? (
+                        <DocumentBlockDescriptionView description={selectedSummaryBlock.description} />
                       ) : (
                         <span className="text-xs text-text-muted italic">
                           Este bloque no tiene descripción.

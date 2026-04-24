@@ -33,7 +33,8 @@ export type DocumentDisplayBlock = {
   template_block_id: string;
   type: string;
   title: string | null;
-  description?: string | null;
+  /** Puede ser texto, JSON string o estructura BlockNote (objeto/array) según plantilla / snapshot. */
+  description?: unknown;
   default_content: unknown | null;
   block_state: BlockState;
   mandatory: boolean;
