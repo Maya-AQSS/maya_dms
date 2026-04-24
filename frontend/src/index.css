@@ -8,6 +8,8 @@
 /* Docker: packages en /maya_infra/packages | Local: workspace/packages */
 @source "../../maya_infra/packages/maya-shared-layout-react/src/**/*.{tsx,ts}";
 @source "../../../packages/maya-shared-layout-react/src/**/*.{tsx,ts}";
+@source "../../maya_infra/packages/maya-shared-sidebar-react/src/**/*.{tsx,ts}";
+@source "../../../packages/maya-shared-sidebar-react/src/**/*.{tsx,ts}";
 
 /* ─── Dark mode basado en clase .dark ─────────────────────  */
 @custom-variant dark (&:where(.dark, .dark *));

@@ -1,7 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import './index.css';
 import { AppLayout } from '@maya/shared-layout-react';
-import { LocaleSelector, SidebarFavorites } from '@maya/shared-sidebar-react';
+import { LocaleSelector, NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
 import { NAV_ITEMS } from './components/layout/navItems';
 
 const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined)
@@ -66,7 +66,12 @@ function AppWithLayout() {
       userInitials={userInitials}
       onLogout={logout}
       titleOverride={titleOverride}
-      topbarActions={<LocaleSelector />}
+      topbarActions={
+        <>
+          <NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />
+          <LocaleSelector />
+        </>
+      }
       sidebarFooter={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
     >
       <AppRoutes />
