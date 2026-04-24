@@ -207,7 +207,10 @@ class DashboardApiTest extends TestCase
         $response = $this->getJson('/api/v1/dashboard', $headers);
  
         $response->assertOk()
-            ->assertJsonPath('data.stats', [])
+            ->assertJsonPath('data.stats.documents_critical', 0)
+            ->assertJsonPath('data.stats.documents_high', 0)
+            ->assertJsonPath('data.stats.templates_critical', 2)
+            ->assertJsonPath('data.stats.templates_high', 0)
             ->assertJsonPath('data.recent_documents', [])
             ->assertJsonCount(0, 'data.document_review_inbox')
             ->assertJsonCount(3, 'data.template_review_inbox')
@@ -295,6 +298,10 @@ class DashboardApiTest extends TestCase
 
         $r1 = $this->getJson('/api/v1/dashboard', $headers);
         $r1->assertOk()
+            ->assertJsonPath('data.stats.documents_critical', 1)
+            ->assertJsonPath('data.stats.documents_high', 0)
+            ->assertJsonPath('data.stats.templates_critical', 0)
+            ->assertJsonPath('data.stats.templates_high', 0)
             ->assertJsonCount(1, 'data.document_review_inbox')
             ->assertJsonPath('data.document_review_inbox.0.document_id', $documentId)
             ->assertJsonPath('data.document_review_inbox.0.review_stage', 1);
@@ -303,6 +310,10 @@ class DashboardApiTest extends TestCase
         $headersRev2 = $this->authHeaders($rev2);
         $r2 = $this->getJson('/api/v1/dashboard', $headersRev2);
         $r2->assertOk()
+            ->assertJsonPath('data.stats.documents_critical', 0)
+            ->assertJsonPath('data.stats.documents_high', 0)
+            ->assertJsonPath('data.stats.templates_critical', 0)
+            ->assertJsonPath('data.stats.templates_high', 0)
             ->assertJsonCount(0, 'data.document_review_inbox');
     }
 }
