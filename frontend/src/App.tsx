@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import './index.css';
 import { AppLayout } from '@maya/shared-layout-react';
 import { LocaleSelector, NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
@@ -84,6 +85,12 @@ function AppWithLayout() {
 function App() {
   const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
 
+  useEffect(() => {
+    if (!isOidcLoading && !isOidcSignedIn) {
+      beginSignIn();
+    }
+  }, [isOidcLoading, isOidcSignedIn, beginSignIn]);
+
   if (isOidcLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
@@ -93,7 +100,6 @@ function App() {
   }
 
   if (!isOidcSignedIn) {
-    beginSignIn();
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
         Redirigiendo al inicio de sesión...
