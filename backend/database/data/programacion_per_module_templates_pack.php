@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Plantillas de programación didáctica por módulo + documentos demo (seed programático).
  *
  * Contenido en formato **array de bloques BlockNote** (compatible con BlockContentHtml / editor).
- * Estados de bloque variados (locked | editable | modifiable | optional) con reparto pseudoaleatorio.
  * Módulos **FP** (ST_FP): plantilla base genérica de programación didáctica (identificación, objetivos,
  * unidades, metodología, evaluación, recursos), reutilizable en cualquier módulo del ciclo.
  *
@@ -211,7 +210,7 @@ return (static function (): array {
         ['module_id' => 'M_SMR_PAR', 'study_id' => 'S_FP_SMR_2', 'study_type_id' => 'ST_FP', 'teacher' => $uFp, 'short' => 'PAR'],
     ];
 
-    /** @return list<array{type: string, title: string, mandatory: bool, sort: int, db_type: string}> */
+    /** @return list<array{title: string, mandatory: bool, sort: int, db_type: string}> */
     $slotLayout = static function (int $si, string $short) use ($richPack, $para, $heading): array {
         $L = static fn (string $dbType, string $title, bool $mand, int $sort, array $bn) => [
             'db_type' => $dbType,
@@ -355,20 +354,16 @@ return (static function (): array {
                 $blocks[] = [
                     'id' => $blockUuid,
                     'template_id' => $tUuid,
-                    'type' => $row['db_type'],
                     'title' => $row['title'],
                     'default_content' => $content,
                     'block_state' => $state,
-                    'mandatory' => $row['mandatory'],
                     'sort_order' => $row['sort'],
                 ];
                 $snapshot[] = [
                     'id' => $blockUuid,
-                    'type' => $row['db_type'],
                     'title' => $row['title'],
                     'default_content' => $content,
                     'block_state' => $state,
-                    'mandatory' => $row['mandatory'],
                     'sort_order' => $row['sort'],
                 ];
             }

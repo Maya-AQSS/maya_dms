@@ -6,13 +6,12 @@ use App\Enums\TemplateVisibilityLevel;
  * Datos mock de plantillas y revisores para local/testing.
  *
  * - Los user_id deben existir en database/data/users_mock.php
- * - Los team_id (FK a equipos) deben existir en database/data/teams_mock.php (si aplica)
+ * - Los team_id (FK a equipos) deben existir en database/data/teams_mock.php
  * - IDs de jerarquía (study_type_id, study_id, module_id) alineados con
  *   {@see database/data/academic_hierarchy_mock.php}
  *
- * Keycloak / JWT (docentes): el scope global de {@see \App\Models\Template} filtra por
- * `study_type_ids`, `study_ids`, `module_ids` del token (y equipos vía team_members).
- * Clientes de realm distintos pueden mapear esos claims para probar visibilidad sin tocar código.
+ * Nota sobre visibilidad: el scope global de {@see \App\Models\Template} aplica el filtrado
+ * a partir de la jerarquía académica del usuario autenticado (relaciones en base de datos).
  */
 $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
 
@@ -68,8 +67,8 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333304',
-            'name' => 'Plantilla mock — visibilidad por tipo de estudio (ESPA)',
-            'description' => 'Visible si el JWT incluye study_type_ids con ST_ESPA (p. ej. cliente/realm docente ESPA).',
+            'name' => 'Plantilla para ESPA (Personas Adultas)',
+            'description' => 'Plantilla base ESPA centrada en integración de conocimientos, flexibilidad y utilidad práctica para el alumnado adulto.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
             'delivery_deadline' => null,
             'study_id' => null,
@@ -77,7 +76,7 @@ return [
             'module_id' => null,
             'team_id' => null,
             'created_by' => 'ed568442-ece5-4c90-97ca-12c8969bb3a2',
-            'status' => 'draft',
+            'status' => 'published',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
@@ -132,32 +131,32 @@ return [
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333308',
-            'name' => 'Plantilla mock — tipo Bachillerato (ST_BACH)',
-            'description' => 'Visible si el token incluye study_type_ids con ST_BACH.',
+            'name' => 'Plantilla para Bachillerato',
+            'description' => 'Plantilla base de Bachillerato orientada a especializacion academica y alineacion con EvAU.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
-            'delivery_deadline' => now()->addDays(2)->toDateTimeString(),
+            'delivery_deadline' => null,
             'study_id' => null,
             'study_type_id' => 'ST_BACH',
             'module_id' => null,
             'team_id' => null,
             'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
-            'status' => 'in_review',
+            'status' => 'published',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ],
         [
             'id' => '33333333-3333-3333-3333-333333333309',
-            'name' => 'Plantilla mock — tipo FP (ST_FP)',
-            'description' => 'Visible si el token incluye study_type_ids con ST_FP.',
+            'name' => 'Plantilla para FP (Ciclos de Grado Medio/Superior)',
+            'description' => 'Plantilla base FP con foco en empleabilidad, competencia profesional y evaluacion por resultados de aprendizaje.',
             'visibility_level' => TemplateVisibilityLevel::StudyType->value,
-            'delivery_deadline' => now()->addDays(6)->toDateTimeString(),
+            'delivery_deadline' => null,
             'study_id' => null,
             'study_type_id' => 'ST_FP',
             'module_id' => null,
             'team_id' => null,
             'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-            'status' => 'in_review',
+            'status' => 'published',
             'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
