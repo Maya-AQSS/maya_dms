@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
 import { Button, FieldLabel, Select, TextInput } from '../../../ui';
@@ -31,6 +31,18 @@ export function TemplatesContent() {
     cloneTemplate,
   } = useTemplates();
 
+  const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
+  const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAuthorInput(value);
+    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    authorDebounceRef.current = setTimeout(() => {
+      applyFilters({ author_name: value || undefined });
+    }, 400);
+  };
+
   const filterUi = useMemo(
     () => ({
       visibility: filters.visibility_level ?? '',
@@ -46,6 +58,8 @@ export function TemplatesContent() {
   );
 
   const clearFilters = () => {
+    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    setAuthorInput('');
     applyFilters({
       visibility_level: undefined,
       status: undefined,
@@ -200,8 +214,8 @@ export function TemplatesContent() {
                 <TextInput
                   fieldSize="sm"
                   placeholder="Buscar por autor..."
-                  value={filterUi.authorName}
-                  onChange={(e) => applyFilters({ author_name: e.target.value || undefined })}
+                  value={authorInput}
+                  onChange={handleAuthorChange}
                 />
               </div>
               <div>
@@ -259,8 +273,8 @@ export function TemplatesContent() {
               <TextInput
                 fieldSize="sm"
                 placeholder="Nombre del autor..."
-                value={filterUi.authorName}
-                onChange={(e) => applyFilters({ author_name: e.target.value || undefined })}
+                value={authorInput}
+                onChange={handleAuthorChange}
               />
             </div>
             <div>

@@ -62,6 +62,12 @@ function buildListQuery(filters: TemplateListFilters): string {
   if (filters.team_id) {
     q.set('team_id', filters.team_id);
   }
+  if (filters.author_name) {
+    q.set('author_name', filters.author_name);
+  }
+  if (filters.delivery_deadline) {
+    q.set('delivery_deadline', filters.delivery_deadline);
+  }
   const s = q.toString();
   return s ? `?${s}` : '';
 }
