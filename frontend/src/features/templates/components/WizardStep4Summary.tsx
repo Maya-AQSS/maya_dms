@@ -7,7 +7,6 @@ import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { TemplatePreviewModal } from './TemplatePreviewModal';
 import { BlockContentHtml } from './BlockContentHtml';
-import { templateBlockDescriptionToPlainText } from '../../../utils/templateBlockDescription';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -235,22 +234,8 @@ export function WizardStep4Summary({ template, validators, validationType, docum
               {/* Contenido del tab */}
               <div className="flex-1 p-4 overflow-y-auto">
                 {(() => {
-                  if (activeTab === 'Descripción') {
-                    const plain = templateBlockDescriptionToPlainText(selectedBlock?.description);
-                    if (!plain) {
-                      return <span className="text-xs text-text-muted italic">Sin descripción.</span>;
-                    }
-                    return (
-                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
-                        {plain}
-                      </p>
-                    );
-                  }
-
-                  const content = selectedBlock?.default_content;
-                  if (!content) {
-                    return <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>;
-                  }
+                  const content = activeTab === 'Descripción' ? selectedBlock?.description : selectedBlock?.default_content;
+                  if (!content) return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
 
                   let parsed: unknown[] | null = null;
                   if (Array.isArray(content)) {
@@ -259,15 +244,13 @@ export function WizardStep4Summary({ template, validators, validationType, docum
                     try {
                       const p = JSON.parse(content);
                       if (Array.isArray(p) && p.length > 0) parsed = p;
-                    } catch { /* fallback a texto */ }
+                    } catch { /* fallback to plain text */ }
                   }
 
                   if (parsed) return <BlockContentHtml content={parsed} />;
-                  if (typeof content === 'string') {
-                    return <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{content}</p>;
-                  }
+                  if (typeof content === 'string') return <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{content}</p>;
 
-                  return <span className="text-xs text-text-muted italic">Este bloque no tiene contenido.</span>;
+                  return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;
                 })()}
               </div>
             </div>
