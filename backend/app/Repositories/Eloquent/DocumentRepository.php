@@ -26,7 +26,7 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function findOrFail(string $id): Document
     {
-        $scoped = Document::query()->whereKey($id)->first();
+        $scoped = Document::query()->with(['templateVersion'])->whereKey($id)->first();
         if ($scoped !== null) {
             return $scoped;
         }
@@ -42,13 +42,14 @@ class DocumentRepository implements DocumentRepositoryInterface
 
                 if ($assigned) {
                     return Document::withoutGlobalScopes(['user_access'])
+                        ->with(['templateVersion'])
                         ->whereKey($id)
                         ->firstOrFail();
                 }
             }
         }
 
-        return Document::query()->whereKey($id)->firstOrFail();
+        return Document::query()->with(['templateVersion'])->whereKey($id)->firstOrFail();
     }
 
     /**
@@ -184,7 +185,7 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function listOrderedByCreatedAtDesc(): Collection
     {
         return Document::query()
-            ->with('template')
+            ->with(['template', 'templateVersion'])
             ->orderByDesc('created_at')
             ->get();
     }

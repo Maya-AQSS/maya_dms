@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\TemplateVersion;
 use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -17,6 +18,7 @@ class DocumentResource extends JsonResource
             'id' => $this->id,
             'template_id' => $this->template_id,
             'template_version_id' => $this->template_version_id,
+            'template_version_number' => $this->resolveTemplateVersionNumber(),
             'team' => $this->resource->getAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY),
             'title' => $this->title,
             'study_type_id' => $this->study_type_id,
@@ -34,5 +36,20 @@ class DocumentResource extends JsonResource
             'is_shared_with_me' => (bool) ($this->resource->getAttribute('is_shared_with_me') ?? false),
             'share_permission' => $this->resource->getAttribute('viewer_share_permission'),
         ];
+    }
+
+    private function resolveTemplateVersionNumber(): ?int
+    {
+        if ($this->template_version_id === null) {
+            return null;
+        }
+
+        if ($this->relationLoaded('templateVersion') && $this->templateVersion !== null) {
+            return (int) $this->templateVersion->version_number;
+        }
+
+        $n = TemplateVersion::query()->whereKey($this->template_version_id)->value('version_number');
+
+        return $n !== null ? (int) $n : null;
     }
 }

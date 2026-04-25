@@ -924,7 +924,14 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                   <DocSummaryRow label="Plantilla" value={templateName ?? detail.template_id} />
                 </div>
                 <div>
-                  <DocSummaryRow label="Versión de plantilla" value={detail.template_version_id ?? '—'} />
+                  <DocSummaryRow
+                    label="Versión de plantilla"
+                    value={
+                      detail.template_version_number != null
+                        ? String(detail.template_version_number)
+                        : '—'
+                    }
+                  />
                 </div>
                 <div>
                   <DocSummaryRow
