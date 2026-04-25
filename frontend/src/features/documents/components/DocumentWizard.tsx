@@ -631,9 +631,9 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
           const isPending = !isActive && !isDone;
 
           const circleCls = isActive
-            ? 'bg-odoo-purple text-white'
+            ? 'bg-odoo-purple text-text-inverse'
             : isDone
-              ? 'bg-success text-white'
+              ? 'bg-success text-text-inverse'
               : 'border border-ui-border text-text-muted';
 
           const labelCls = isActive ? 'text-odoo-purple' : isDone ? 'text-success' : 'text-text-muted';

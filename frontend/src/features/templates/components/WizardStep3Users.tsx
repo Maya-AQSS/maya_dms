@@ -77,7 +77,7 @@ function SortableValidatorItem({
         </button>
       )}
       {isOrdered && (
-        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-white text-[9px] font-bold">
+        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[9px] font-bold">
           {index + 1}
         </span>
       )}
@@ -157,7 +157,7 @@ function ValidatorSection({
                 onClick={() => onValidationTypeChange(t)}
                 className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
                   validationType === t
-                    ? 'bg-odoo-purple text-white border-odoo-purple'
+                    ? 'bg-odoo-purple text-text-inverse border-odoo-purple'
                     : 'bg-transparent text-text-secondary border-ui-border hover:border-odoo-purple/50'
                 }`}
               >

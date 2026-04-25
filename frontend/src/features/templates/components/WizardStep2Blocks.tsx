@@ -148,7 +148,7 @@ function BlockUiStateToggle({
             'px-3 py-1.5 rounded text-xs font-medium transition-all border min-h-9',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35',
             value === s
-              ? 'border-odoo-purple bg-odoo-purple text-white dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
+              ? 'border-odoo-purple bg-odoo-purple text-text-inverse dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
               : 'border-ui-border dark:border-ui-dark-border text-text-secondary dark:text-text-dark-secondary hover:border-odoo-purple/50',
             'disabled:opacity-50 disabled:pointer-events-none',
           ].join(' ')}
@@ -850,7 +850,7 @@ export const WizardStep2Blocks = forwardRef<WizardStep2BlocksRef, Props>(
             <div className="flex-1 flex flex-col overflow-hidden animate-in slide-in-from-right-4">
               <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-odoo-purple/5 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <span className="shrink-0 w-6 h-6 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
                     {multiIndex + 1}
                   </span>
                   <h3 className="text-sm font-bold text-odoo-purple truncate">Edición múltiple ({multiIndex + 1} de {orderedSelection.length})</h3>

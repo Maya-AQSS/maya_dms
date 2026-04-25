@@ -12,19 +12,19 @@ const STATS = [
     key: 'total_documents',
     label: 'Total documentos',
     value: '—',
-    colorClass: 'bg-odoo-purple/10 dark:bg-odoo-purple/40 text-odoo-purple-d dark:text-white border-odoo-purple/20 dark:border-odoo-purple/50',
+    colorClass: 'bg-odoo-purple/10 dark:bg-odoo-purple/40 text-odoo-purple-d dark:text-text-dark-primary border-odoo-purple/20 dark:border-odoo-purple/50',
   },
   {
     key: 'uploaded_today',
     label: 'Subidos hoy',
     value: '—',
-    colorClass: 'bg-odoo-teal/10 dark:bg-odoo-teal/40 text-odoo-teal-d dark:text-white border-odoo-teal/20 dark:border-odoo-teal/50',
+    colorClass: 'bg-odoo-teal/10 dark:bg-odoo-teal/40 text-odoo-teal-d dark:text-text-dark-primary border-odoo-teal/20 dark:border-odoo-teal/50',
   },
   {
     key: 'pending_reviews',
     label: 'Pendientes revisión',
     value: '—',
-    colorClass: 'bg-warning-light dark:bg-warning-dark/50 text-warning-dark dark:text-white border-warning/20 dark:border-warning/50',
+    colorClass: 'bg-warning-light dark:bg-warning-dark/50 text-warning-dark dark:text-text-dark-primary border-warning/20 dark:border-warning/50',
   },
   {
     key: 'archived',
@@ -91,10 +91,10 @@ export function DashboardPage() {
       return 'bg-ui-body dark:bg-ui-dark-bg text-text-secondary dark:text-text-dark-secondary';
     }
     if (d <= 3) {
-      return 'bg-error-light/20 text-error-dark dark:bg-error-dark/30 dark:text-white';
+      return 'bg-danger-light/20 text-danger-dark dark:bg-danger-dark/30 dark:text-text-dark-primary';
     }
     if (d <= 7) {
-      return 'bg-warning-light text-warning-dark dark:bg-warning-dark/40 dark:text-white';
+      return 'bg-warning-light text-warning-dark dark:bg-warning-dark/40 dark:text-text-dark-primary';
     }
     return 'bg-ui-body dark:bg-ui-dark-bg text-text-secondary dark:text-text-dark-secondary';
   };

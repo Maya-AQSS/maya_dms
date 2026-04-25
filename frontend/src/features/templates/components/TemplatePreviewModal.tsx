@@ -22,7 +22,7 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
   }, [onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 overflow-y-auto bg-[#ddd9d3]" style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 overflow-y-auto bg-ui-preview-bg" style={{ zIndex: 9999 }}>
 
       {/* Sticky nav bar */}
       <header className="sticky top-0 bg-ui-card border-b border-ui-border flex items-center gap-4 px-6 h-[52px]" style={{ zIndex: 100 }}>

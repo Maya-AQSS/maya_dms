@@ -239,9 +239,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           const isPending = !isActive && !isDone;
 
           const circleCls = isActive
-            ? 'bg-odoo-purple text-white'
+            ? 'bg-odoo-purple text-text-inverse'
             : isDone
-              ? 'bg-success text-white'
+              ? 'bg-success text-text-inverse'
               : 'border border-ui-border text-text-muted';
 
           const labelCls = isActive
@@ -358,7 +358,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           <div className="flex gap-2">
             <button
                type="button"
-              className="bg-warning-dark text-white px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider shadow-sm active:scale-95 transition-transform"
+              className="bg-warning-dark text-text-inverse px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider shadow-sm active:scale-95 transition-transform"
               onClick={() => navigate('/templates')}
             >
               Salir sin guardar
@@ -473,7 +473,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                 return (
                   <div key={v.userId} className="flex items-center gap-2.5">
                     {validationType === 'ordenada' && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
                         {i + 1}
                       </span>
                     )}

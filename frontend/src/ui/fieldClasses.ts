@@ -2,7 +2,7 @@
  * Clases compartidas para controles de formulario (Maya / Odoo).
  */
 const FIELD_SHELL =
-  'w-full rounded border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary disabled:opacity-50 disabled:cursor-not-allowed';
+  'w-full rounded border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary disabled:opacity-50 disabled:cursor-not-allowed';
 
 /** Padding y tipografía por contexto. */
 export const FIELD_SIZE_CLASS = {

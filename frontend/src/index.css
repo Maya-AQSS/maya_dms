@@ -117,13 +117,15 @@
   --z-index-dropdown: 300;
   --z-index-modal:    400;
   --z-index-toast:    500;
+
+  /* ─── Project-specific ─────────────────────────────────── */
+  /* Fondo del área de previsualización de documentos (canvas de documento) */
+  --color-ui-preview-bg: #ddd9d3;
 }
 
 /* ─── Base global ───────────────────────────────────────── */
 @layer base {
-  html,
-  body,
-  #root {
+  html, body, #root {
     height: 100%;
   }
   html {
@@ -136,16 +138,42 @@
 }
 
 /* ─── Mobile typography floor ───────────────────────────── */
-/* The design tokens set text-xs/sm/base below 14px (Odoo 19 desktop scale).
-   On small viewports we raise the floor so nothing falls below ~12px,
-   and text-base reaches the readable 14px minimum. */
+/* Los tokens de texto están calibrados a la escala Odoo desktop (13px base).
+   En viewports pequeños subimos el mínimo para legibilidad. */
 @media (max-width: 767px) {
   .text-xs   { font-size: 12px; }
   .text-sm   { font-size: 13px; }
   .text-base { font-size: 14px; }
 }
-/* ─── Wizard Utilities ───────────────────────────────────────── */
+
+/* ─── Animaciones canónicas ──────────────────────────────── */
 @layer utilities {
+  .animate-slide-up      { animation: slide-up      0.25s ease-out both; }
+  .animate-slide-up-full { animation: slide-up-full 0.3s  ease-out both; }
+  .animate-fade-in       { animation: fade-in       0.18s ease-out both; }
+  .animate-fade-in-up    { animation: fade-in-up    0.18s ease-out both; }
+}
+
+@keyframes slide-up {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes slide-up-full {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Project-specific utilities ────────────────────────── */
+@layer utilities {
+  /* Layout de dos columnas para wizards (1 col en móvil, 2 en ≥768px) */
   .wizard-grid-50-50 {
     display: grid;
     grid-template-columns: 1fr;
@@ -156,25 +184,17 @@
     }
   }
 
-  /* Animaciones simples (substituto de tailwind-animate) */
+  /* Composición de animaciones con animate-in */
   .animate-in {
     animation-duration: 200ms;
     animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     animation-fill-mode: forwards;
   }
-  .fade-in {
-    animation-name: fade-in;
-  }
-  .slide-in-from-top-1 {
-    animation-name: slide-in-from-top-1;
-  }
+  .fade-in          { animation-name: fade-in; }
+  .slide-in-from-top-1 { animation-name: slide-in-from-top-1; }
+}
 
-  @keyframes fade-in {
-    from { opacity: 0; }
-    to { opacity: 1; }
-  }
-  @keyframes slide-in-from-top-1 {
-    from { transform: translateY(-4px); }
-    to { transform: translateY(0); }
-  }
+@keyframes slide-in-from-top-1 {
+  from { transform: translateY(-4px); }
+  to   { transform: translateY(0); }
 }

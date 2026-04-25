@@ -73,7 +73,7 @@ function BlockUiStateToggle({
             'px-2.5 py-1 rounded text-xs font-medium transition-all border',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35',
             value === s
-              ? 'border-odoo-purple bg-odoo-purple text-white dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
+              ? 'border-odoo-purple bg-odoo-purple text-text-inverse dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
               : 'border-ui-border dark:border-ui-dark-border text-text-secondary dark:text-text-dark-secondary hover:border-odoo-purple/50',
             'disabled:opacity-50 disabled:pointer-events-none',
           ].join(' ')}
