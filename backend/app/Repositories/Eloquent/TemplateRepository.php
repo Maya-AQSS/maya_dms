@@ -22,6 +22,13 @@ class TemplateRepository implements TemplateRepositoryInterface
         return Template::query()->findOrFail($id);
     }
 
+    public function findOrFailWithoutCatalogScope(string $id): Template
+    {
+        return Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->findOrFail($id);
+    }
+
     /**
      * Indica si el usuario es creador o revisor asignado de la plantilla.
      * Usado para control de acceso al historial de auditoría.

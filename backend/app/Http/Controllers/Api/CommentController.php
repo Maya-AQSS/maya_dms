@@ -8,6 +8,7 @@ use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class CommentController extends Controller
 {
@@ -26,8 +27,10 @@ class CommentController extends Controller
         $documentId = $request->route('document');
 
         if ($templateId) {
-            $model = $this->templateService->findOrFail($templateId);
-            $this->authorize('view', $model);
+            $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
+            if (! Gate::forUser($request->user())->allows('view', $model)) {
+                abort(404);
+            }
             return response()->json(['data' => $this->commentService->listForTemplate($templateId)]);
         }
 
@@ -56,8 +59,10 @@ class CommentController extends Controller
         ]);
 
         if ($templateId) {
-            $model = $this->templateService->findOrFail($templateId);
-            $this->authorize('view', $model);
+            $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
+            if (! Gate::forUser($request->user())->allows('view', $model)) {
+                abort(404);
+            }
             
             $comment = $this->commentService->createForTemplate($templateId, (string) Auth::id(), $validated);
             return response()->json(['data' => $comment], 201);
@@ -117,8 +122,10 @@ class CommentController extends Controller
         
         // Autorización basada en el recurso al que pertenece el comentario
         if ($commentModel->template_id) {
-            $model = $this->templateService->findOrFail($commentModel->template_id);
-            $this->authorize('view', $model);
+            $model = $this->templateService->findOrFailWithoutCatalogScope((string) $commentModel->template_id);
+            if (! Gate::forUser($request->user())->allows('view', $model)) {
+                abort(404);
+            }
         } elseif ($commentModel->document_id) {
             $model = $this->documentService->findOrFail($commentModel->document_id);
             $this->authorize('view', $model);

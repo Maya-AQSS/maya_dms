@@ -5,6 +5,7 @@ namespace App\Policies;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Autorización sobre plantillas normativas y Segregación de Funciones (SoD).
@@ -36,11 +37,59 @@ class TemplatePolicy
     }
 
     /**
-     * Ver una plantilla: requiere `templates.read`; el scope impide cargar filas ajenas.
+     * Ver una plantilla: requiere `templates.read` y visibilidad de catálogo o vínculo con un documento
+     * que el usuario ya puede ver (misma idea que el scope de {@see \App\Models\Document}).
+     *
+     * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
      */
     public function view(JwtUser $user, Template $template): bool
     {
-        return $user->hasPermission('templates.read');
+        if (! $user->hasPermission('templates.read')) {
+            return false;
+        }
+
+        $templateId = $template->getKey();
+        if ($templateId === null || $templateId === '') {
+            return true;
+        }
+
+        if (Template::query()->whereKey($templateId)->exists()) {
+            return true;
+        }
+
+        return $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
+    }
+
+    /**
+     * Usuario con relación a un documento no borrado que usa esta plantilla (titular, creador, compartido o revisor).
+     */
+    private function mayViewTemplateAnchoredOnAccessibleDocument(JwtUser $user, string $templateId): bool
+    {
+        $userId = (string) $user->getAuthIdentifier();
+        if ($userId === '') {
+            return false;
+        }
+
+        return DB::table('documents')
+            ->where('template_id', $templateId)
+            ->whereNull('deleted_at')
+            ->where(function ($outer) use ($userId) {
+                $outer->where('owner_id', $userId)
+                    ->orWhere('created_by', $userId)
+                    ->orWhereExists(function ($sub) use ($userId) {
+                        $sub->select(DB::raw(1))
+                            ->from('document_reviews')
+                            ->whereColumn('document_reviews.document_id', 'documents.id')
+                            ->where('document_reviews.reviewer_id', $userId);
+                    })
+                    ->orWhereExists(function ($sub) use ($userId) {
+                        $sub->select(DB::raw(1))
+                            ->from('document_shares')
+                            ->whereColumn('document_shares.document_id', 'documents.id')
+                            ->where('document_shares.user_id', $userId);
+                    });
+            })
+            ->exists();
     }
 
     /**

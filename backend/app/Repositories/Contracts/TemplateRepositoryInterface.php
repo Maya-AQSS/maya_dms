@@ -14,6 +14,12 @@ interface TemplateRepositoryInterface
     public function findOrFail(string $id): Template;
 
     /**
+     * Igual que {@see self::findOrFail} pero sin el global scope de catálogo `user_access`.
+     * Solo para rutas que aplican {@see \App\Policies\TemplatePolicy::view} después.
+     */
+    public function findOrFailWithoutCatalogScope(string $id): Template;
+
+    /**
      * Indica si el usuario es creador o revisor asignado de la plantilla.
      * Usado para control de acceso al historial de auditoría.
      */

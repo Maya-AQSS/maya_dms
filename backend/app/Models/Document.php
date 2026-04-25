@@ -86,7 +86,8 @@ class Document extends Model
 
     public function template(): BelongsTo
     {
-        return $this->belongsTo(Template::class);
+        // Sin catálogo: quien puede ver el documento (p. ej. revisor) debe resolver la plantilla anclada.
+        return $this->belongsTo(Template::class)->withoutGlobalScopes(['user_access']);
     }
 
     public function templateVersion(): BelongsTo
