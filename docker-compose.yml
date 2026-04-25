@@ -74,6 +74,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile.dev
     container_name: maya_dms_frontend
+    entrypoint: ["/usr/local/bin/docker-entrypoint.sh"]
     restart: unless-stopped
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://maya_dms_api.localhost/api/v1}
