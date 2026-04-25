@@ -9,16 +9,16 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.2",
+        "php": "^8.4",
         "guzzlehttp/guzzle": "^7.10",
-        "laravel/framework": "^12.0",
+        "laravel/framework": "^13.0",
         "laravel/horizon": "^5.45",
         "laravel/reverb": "^1.10",
-        "laravel/tinker": "^2.10",
+        "laravel/tinker": "^3.0",
         "lcobucci/jwt": "^5.6",
         "maya/shared-auth-laravel": "@dev",
         "maya/shared-messaging-laravel": "@dev",
-        "vladimir-yuldashev/laravel-queue-rabbitmq": "^14.1"
+        "vladimir-yuldashev/laravel-queue-rabbitmq": "dev-master"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -26,8 +26,9 @@
         "laravel/pint": "^1.27",
         "mockery/mockery": "^1.6",
         "nunomaduro/collision": "^8.6",
-        "pestphp/pest": "^3.8",
-        "pestphp/pest-plugin-laravel": "^3.2"
+        "pestphp/pest": "^4.4",
+        "pestphp/pest-plugin-laravel": "^4.1",
+        "phpunit/phpunit": "^12.0"
     },
     "autoload": {
         "psr-4": {
@@ -91,16 +92,16 @@
             "php-http/discovery": true
         }
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": {
         "maya-shared-auth": {
             "type": "path",
-            "url": "../../packages/maya-shared-auth-laravel"
+            "url": "../../maya_infra/packages/maya-shared-auth-laravel"
         },
         "maya-shared-messaging": {
             "type": "path",
-            "url": "../../packages/maya-shared-messaging-laravel"
+            "url": "../../maya_infra/packages/maya-shared-messaging-laravel"
         }
     }
 }
