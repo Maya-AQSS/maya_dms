@@ -9,11 +9,12 @@ import {
   submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
+  resolveComment as apiResolveComment,
 } from '../../../api/templates';
-import { ApiHttpError } from '../../../api/http';
+import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { Button, ConfirmDialog } from '../../../ui';
 import { WizardStep1Properties } from './WizardStep1Properties';
-import { WizardStep2Blocks, type WizardStep2BlocksRef } from './WizardStep2Blocks';
+import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
 import { WizardStep4Summary } from './WizardStep4Summary';
 
@@ -30,7 +31,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // Step state
   const [step, setStep] = useState<Step>('properties');
-  const blocksRef = useRef<WizardStep2BlocksRef>(null);
   const [completedSteps, setCompletedSteps] = useState<Step[]>(
     initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
   );
@@ -60,8 +60,27 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // UI state
   const [saving, setSaving] = useState(false);
+  const blocksRef = useRef<WizardStep2BlocksHandle>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (initial?.id && initial?.has_review_comments) {
+      void apiFetchJson<{ data: any[] }>(`templates/${initial.id}/comments`)
+        .then(res => setComments(res.data))
+        .catch(console.error);
+    }
+  }, [initial?.id, initial?.has_review_comments]);
+
+  const handleResolveComment = async (commentId: string) => {
+    try {
+      await apiResolveComment(commentId);
+      setComments(prev => prev.map(c => c.id === commentId ? { ...c, resolved: true } : c));
+    } catch (e) {
+      console.error('Error resolving comment:', e);
+    }
+  };
 
   // Dirty check
   const isDirty = useMemo(() => {
@@ -202,11 +221,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     if (step === 'properties') {
       void saveProperties();
     } else if (step === 'blocks') {
-      if (blocksRef.current) {
-        await blocksRef.current.saveCurrent();
+      setSaving(true);
+      try {
+        await blocksRef.current?.saveIfPending();
+        setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
+        setStep('users');
+      } catch {
+        // block save failed; error already shown in the panel
+      } finally {
+        setSaving(false);
       }
-      setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
-      setStep('users');
     } else if (step === 'users') {
       void saveUsers();
     } else if (step === 'summary') {
@@ -319,7 +343,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               variant="primary"
               size="sm"
               loading={saving}
-              onClick={handleContinue}
+              onClick={() => void handleContinue()}
               className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
               Guardar y continuar →
@@ -430,6 +454,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           <WizardStep2Blocks
             ref={blocksRef}
             template={template}
+            reviewComments={comments}
+            onResolveComment={handleResolveComment}
           />
         )}
         {step === 'users' && (

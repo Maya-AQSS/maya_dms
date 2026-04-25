@@ -22,6 +22,13 @@ class TemplateRepository implements TemplateRepositoryInterface
         return Template::query()->findOrFail($id);
     }
 
+    public function findOrFailWithoutCatalogScope(string $id): Template
+    {
+        return Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->findOrFail($id);
+    }
+
     /**
      * Indica si el usuario es creador o revisor asignado de la plantilla.
      * Usado para control de acceso al historial de auditoría.
@@ -60,13 +67,15 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.module_id',
                 'templates.team_id',
                 'templates.created_by',
+                'users.name as author_name',
                 'templates.status',
                 'templates.version',
                 'templates.review_stages',
                 'templates.review_mode',
                 'templates.created_at',
                 'templates.updated_at',
-            ]);
+            ])
+            ->leftJoin('users', 'users.id', '=', 'templates.created_by');
 
         if ($filters->visibilityLevel !== null) {
             $query->where('templates.visibility_level', $filters->visibilityLevel);
@@ -86,8 +95,15 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filters->teamId !== null) {
             $query->where('templates.team_id', $filters->teamId);
         }
+        if ($filters->authorName !== null) {
+            $query->where('users.name', 'like', '%'.$filters->authorName.'%');
+        }
+        if ($filters->deliveryDeadline !== null) {
+            $query->whereDate('templates.delivery_deadline', $filters->deliveryDeadline);
+        }
 
         return $query
+            ->with('reviewers')
             ->orderByDesc('templates.updated_at')
             ->paginate($perPage);
     }

@@ -55,19 +55,27 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
         ) : (
           <div className="space-y-10">
             {blocks.map((block) => {
-              const hasContent =
-                Array.isArray(block.default_content) &&
-                (block.default_content as unknown[]).length > 0;
-
               return (
                 <section key={block.id}>
-                  {hasContent ? (
-                    <BlockContentHtml content={block.default_content as unknown[]} />
-                  ) : (
-                    <p className="text-sm text-text-muted italic">
-                      Este bloque no tiene contenido predeterminado.
-                    </p>
-                  )}
+                  {(() => {
+                    const content = block.default_content;
+                    if (!content) return <p className="text-sm text-text-muted italic">Este bloque no tiene contenido predeterminado.</p>;
+                    
+                    let parsed: unknown[] | null = null;
+                    if (Array.isArray(content)) {
+                      if (content.length > 0) parsed = content;
+                    } else if (typeof content === 'string') {
+                      try {
+                        const p = JSON.parse(content);
+                        if (Array.isArray(p) && p.length > 0) parsed = p;
+                      } catch { /* fallback */ }
+                    }
+
+                    if (parsed) return <BlockContentHtml content={parsed} />;
+                    if (typeof content === 'string') return <p className="text-sm text-text-secondary leading-relaxed">{content}</p>;
+                    
+                    return <p className="text-sm text-text-muted italic">Este bloque no tiene contenido predeterminado.</p>;
+                  })()}
                 </section>
               );
             })}

@@ -78,6 +78,12 @@ export function DocumentsContent() {
   const selectedModuleId = activeFilters.moduleId;
   const isSelectingTemplate = showSelector && creationMode === 'select';
 
+  const showSelectModuleHint =
+    !profileLoading &&
+    profile !== null &&
+    hasPermission('documents.create') &&
+    !selectedModuleId;
+
   const newProgrammingDisabledReason = useMemo(() => {
     if (profileLoading || profile === null) {
       return 'Cargando perfil de usuario…';
@@ -228,6 +234,11 @@ export function DocumentsContent() {
 
   return (
     <div className="p-6">
+      {showSelectModuleHint && (
+        <p className="mb-3 text-xs text-text-muted dark:text-text-dark-muted">
+          Selecciona un módulo para crear una nueva programación.
+        </p>
+      )}
       <CascadeFilters onClear={handleClear} onFilterChange={handleChange} />
 
       {showSubmittedForReviewBanner && (
@@ -278,7 +289,7 @@ export function DocumentsContent() {
           </div>
         </div>
 
-        {newProgrammingDisabledReason && (
+        {newProgrammingDisabledReason && !showSelectModuleHint && (
           <p className="px-5 py-2 text-xs text-text-muted dark:text-text-dark-muted border-b border-ui-border-l dark:border-ui-dark-border-l">
             {newProgrammingDisabledReason}
           </p>

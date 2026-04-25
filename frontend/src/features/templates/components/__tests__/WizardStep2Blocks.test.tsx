@@ -99,7 +99,7 @@ describe('WizardStep2Blocks', () => {
     fireEvent.click(screen.getByText('Seleccionar todos'));
     expect(screen.getByText(/\(1 de 2\)/i)).toBeTruthy();
 
-    const nextBtn = screen.getByRole('button', { name: 'Siguiente →' });
+    const nextBtn = screen.getByRole('button', { name: '→' });
     fireEvent.click(nextBtn);
     expect(screen.getByText(/\(2 de 2\)/i)).toBeTruthy();
   });

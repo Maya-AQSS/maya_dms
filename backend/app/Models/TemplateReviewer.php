@@ -34,4 +34,8 @@ class TemplateReviewer extends Model
         return $this->belongsTo(Template::class);
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 }

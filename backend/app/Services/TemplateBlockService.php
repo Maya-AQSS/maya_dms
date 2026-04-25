@@ -13,6 +13,7 @@ use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TemplateBlockService implements TemplateBlockServiceInterface
@@ -72,6 +73,50 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         }
 
         return $blocks;
+    }
+
+    /**
+     * @param  list<string>  $orderedBlockIds
+     */
+    public function reorderForTemplate(string $templateId, array $orderedBlockIds): void
+    {
+        if ($orderedBlockIds === []) {
+            throw ValidationException::withMessages([
+                'block_ids' => ['Debes enviar al menos un bloque para reordenar.'],
+            ]);
+        }
+
+        if (count($orderedBlockIds) !== count(array_unique($orderedBlockIds))) {
+            throw ValidationException::withMessages([
+                'block_ids' => ['La lista de bloques no puede contener IDs duplicados.'],
+            ]);
+        }
+
+        $template = $this->templateRepository->findOrFail($templateId);
+        $this->assertUserMayUpdateTemplate($template);
+
+        $currentBlocks = $this->blockRepository->allForTemplate($templateId);
+        $currentIds = $currentBlocks->pluck('id')->map(static fn ($id): string => (string) $id)->all();
+
+        if (count($currentIds) !== count($orderedBlockIds)) {
+            throw ValidationException::withMessages([
+                'block_ids' => ['Debes enviar todos los bloques de la plantilla.'],
+            ]);
+        }
+
+        sort($currentIds);
+        $incomingIds = $orderedBlockIds;
+        sort($incomingIds);
+
+        if ($currentIds !== $incomingIds) {
+            throw ValidationException::withMessages([
+                'block_ids' => ['La lista enviada no coincide con los bloques reales de la plantilla.'],
+            ]);
+        }
+
+        DB::transaction(function () use ($templateId, $orderedBlockIds): void {
+            $this->blockRepository->reorderForTemplate($templateId, $orderedBlockIds);
+        });
     }
 
     /**

@@ -294,6 +294,7 @@ export function TemplateEditor({ template }: Props) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const newIndex = blocks.findIndex((b) => b.id === over.id);
+    if (newIndex < 0) return;
     void reorderBlocks(active.id.toString(), newIndex);
   };
 

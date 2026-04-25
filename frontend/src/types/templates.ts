@@ -13,7 +13,9 @@ export type ReviewMode = 'sequential' | 'parallel';
 
 export type TemplateReviewer = {
   user_id: string;
+  user_name?: string;
   stage: number;
+  status?: 'pending' | 'approved' | 'rejected';
 };
 
 export type Template = {
@@ -27,12 +29,14 @@ export type Template = {
   module_id: string | null;
   team_id: string | null;
   created_by: string;
+  author_name?: string | null;
   status: TemplateStatus;
   version: number;
   review_stages: number;
   review_mode: ReviewMode;
   reviewers?: TemplateReviewer[];
   document_reviewers?: string[];
+  has_review_comments?: boolean;
   created_at?: string;
   updated_at?: string;
 };
@@ -56,6 +60,8 @@ export type TemplateListFilters = {
   study_id?: string;
   module_id?: string;
   team_id?: string;
+  author_name?: string;
+  delivery_deadline?: string;
   page?: number;
   per_page?: number;
 };

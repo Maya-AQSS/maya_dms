@@ -6,7 +6,6 @@ declare(strict_types=1);
  * Plantillas de programación didáctica por módulo + documentos demo (seed programático).
  *
  * Contenido en formato **array de bloques BlockNote** (compatible con BlockContentHtml / editor).
- * Estados de bloque variados (locked | editable | modifiable | optional) con reparto pseudoaleatorio.
  * Módulos **FP** (ST_FP): plantilla base genérica de programación didáctica (identificación, objetivos,
  * unidades, metodología, evaluación, recursos), reutilizable en cualquier módulo del ciclo.
  *
@@ -51,6 +50,11 @@ return (static function (): array {
             'content' => [['type' => 'text', 'text' => $text, 'styles' => []]],
             'children' => [],
         ];
+    };
+
+    /** Descripción en texto plano para cada bloque de plantilla (revisores en validación). */
+    $blockDescriptionText = static function (string $blockTitle): string {
+        return 'Guía para el revisor: verifica que «'.$blockTitle.'» esté completo, sea coherente con el currículo del módulo y cumpla la normativa del centro antes de validar la plantilla.';
     };
 
     /** Contenido rico variante según semilla (determinista). */
@@ -211,7 +215,7 @@ return (static function (): array {
         ['module_id' => 'M_SMR_PAR', 'study_id' => 'S_FP_SMR_2', 'study_type_id' => 'ST_FP', 'teacher' => $uFp, 'short' => 'PAR'],
     ];
 
-    /** @return list<array{type: string, title: string, mandatory: bool, sort: int, db_type: string}> */
+    /** @return list<array{title: string, mandatory: bool, sort: int, db_type: string}> */
     $slotLayout = static function (int $si, string $short) use ($richPack, $para, $heading): array {
         $L = static fn (string $dbType, string $title, bool $mand, int $sort, array $bn) => [
             'db_type' => $dbType,
@@ -319,12 +323,19 @@ return (static function (): array {
         foreach ($slots as $si => $slot) {
             $tUuid = sprintf('33333333-3333-3333-3333-%012d', $tid++);
 
+            $baseDeadline = new \DateTimeImmutable('2026-04-24 09:00:00');
+            $deliveryDeadline = match ($slot['status']) {
+                'in_review' => $baseDeadline->modify('+'.(4 + (($mi * 5 + $si * 3) % 7)).' days'),
+                'draft' => $baseDeadline->modify('+'.(12 + $mi * 4 + $si * 2).' days'),
+                default => $baseDeadline->modify('+'.(38 + $mi * 3 + $si).' days'),
+            };
+
             $templates[] = [
                 'id' => $tUuid,
                 'name' => $slot['name'],
                 'description' => $slot['desc'],
                 'visibility_level' => 'module',
-                'delivery_deadline' => null,
+                'delivery_deadline' => $deliveryDeadline->format('Y-m-d H:i:s'),
                 'study_id' => $studyId,
                 'study_type_id' => $stype,
                 'module_id' => $m,
@@ -355,20 +366,18 @@ return (static function (): array {
                 $blocks[] = [
                     'id' => $blockUuid,
                     'template_id' => $tUuid,
-                    'type' => $row['db_type'],
                     'title' => $row['title'],
+                    'description' => $blockDescriptionText($row['title']),
                     'default_content' => $content,
                     'block_state' => $state,
-                    'mandatory' => $row['mandatory'],
                     'sort_order' => $row['sort'],
                 ];
                 $snapshot[] = [
                     'id' => $blockUuid,
-                    'type' => $row['db_type'],
                     'title' => $row['title'],
+                    'description' => $blockDescriptionText($row['title']),
                     'default_content' => $content,
                     'block_state' => $state,
-                    'mandatory' => $row['mandatory'],
                     'sort_order' => $row['sort'],
                 ];
             }
@@ -452,6 +461,8 @@ return (static function (): array {
     $docIdNum = 1700;
     $dblkNum = 9100;
 
+    $demoDocDeadlineBase = new \DateTimeImmutable('2026-04-24 10:00:00');
+
     foreach ($ownerDocPlans as [$ownerId, $label, $pubIndices]) {
         foreach ($pubIndices as $k => $pubIdx) {
             $pub = $publishedIndex[$pubIdx] ?? null;
@@ -460,6 +471,8 @@ return (static function (): array {
             }
             $docUuid = sprintf('77777777-7777-7777-7777-%012d', $docIdNum++);
             $short = $pub['short'];
+            $deadlineDays = 20 + ($pubIdx * 3) + ($k * 5);
+            $deliveryDeadline = $demoDocDeadlineBase->modify('+'.$deadlineDays.' days')->format('Y-m-d H:i:s');
             $demoDocuments[] = [
                 'id' => $docUuid,
                 'template_id' => $pub['template_id'],
@@ -468,6 +481,7 @@ return (static function (): array {
                 'study_type_id' => $pub['study_type_id'],
                 'study_id' => $pub['study_id'],
                 'module_id' => $pub['module_id'],
+                'delivery_deadline' => $deliveryDeadline,
                 'created_by' => $ownerId,
                 'owner_id' => $ownerId,
                 'status' => 'draft',

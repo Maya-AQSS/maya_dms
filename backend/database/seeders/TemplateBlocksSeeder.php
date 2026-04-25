@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\TemplateBlockDescriptionNormalizer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -32,10 +33,39 @@ class TemplateBlocksSeeder extends Seeder
 
             unset($row['type'], $row['mandatory']);
 
+            if (array_key_exists('description', $row)) {
+                $row['description'] = TemplateBlockDescriptionNormalizer::toPlainString($row['description']);
+            }
+
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
 
             return $row;
+        }, $rows);
+
+        /*
+         * Laravel arma columnas desde la primera fila y un placeholder por clave en cada fila.
+         * Si solo algunas filas traen `description`, el INSERT masivo queda descuadrado y PostgreSQL falla.
+         */
+        $columnOrder = [
+            'id',
+            'template_id',
+            'title',
+            'default_content',
+            'description',
+            'block_state',
+            'sort_order',
+            'created_at',
+            'updated_at',
+        ];
+
+        $rows = array_map(static function (array $row) use ($columnOrder): array {
+            $normalized = [];
+            foreach ($columnOrder as $column) {
+                $normalized[$column] = $row[$column] ?? null;
+            }
+
+            return $normalized;
         }, $rows);
 
         DB::table('template_blocks')->insertOrIgnore($rows);

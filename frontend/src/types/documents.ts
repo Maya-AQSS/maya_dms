@@ -6,6 +6,8 @@ export type Document = {
   id: string;
   template_id: string;
   template_version_id: string | null;
+  /** Número de versión publicada de la plantilla anclada (p. ej. 1); null si no hay ancla. */
+  template_version_number?: number | null;
   title: string;
   study_type_id: string | null;
   study_id: string | null;
@@ -33,7 +35,8 @@ export type DocumentDisplayBlock = {
   template_block_id: string;
   type: string;
   title: string | null;
-  description?: string | null;
+  /** Puede ser texto, JSON string o estructura BlockNote (objeto/array) según plantilla / snapshot. */
+  description?: unknown;
   default_content: unknown | null;
   block_state: BlockState;
   mandatory: boolean;

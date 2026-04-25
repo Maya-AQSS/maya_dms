@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BlockNoteEditor } from '@blocknote/core';
 import type { PartialBlock } from '@blocknote/core';
+import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
 
 // Headless editor singleton — no DOM attachment, used only for HTML conversion.
 let _headlessEditor: BlockNoteEditor | null = null;
@@ -57,7 +58,7 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
   useEffect(() => {
     ensureStyles();
     getHeadlessEditor()
-      .blocksToHTMLLossy(content as PartialBlock[])
+      .blocksToHTMLLossy(repairBlockNoteBlocks(content) as PartialBlock[])
       .then(setHtml)
       .catch(() => setHtml('<p><em>Error al renderizar el contenido.</em></p>'));
   }, [content]);

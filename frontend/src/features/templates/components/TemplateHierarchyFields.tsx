@@ -7,20 +7,39 @@ export type TemplateHierarchyFieldKey = 'study_type_id' | 'study_id' | 'module_i
 
 export type TemplateHierarchyValues = Record<TemplateHierarchyFieldKey, string>;
 
+const HIERARCHY_LEVELS = ['study_type', 'study', 'module'] as const;
+type HierarchyMaxLevel = typeof HIERARCHY_LEVELS[number] | null;
+
+function levelGte(maxLevel: HierarchyMaxLevel | undefined, min: typeof HIERARCHY_LEVELS[number]): boolean {
+  if (maxLevel === undefined) return true;
+  if (maxLevel === null) return false;
+  return HIERARCHY_LEVELS.indexOf(maxLevel) >= HIERARCHY_LEVELS.indexOf(min);
+}
+
 type Props = {
   values: TemplateHierarchyValues;
   onFieldChange: (key: TemplateHierarchyFieldKey, value: string) => void;
   /** Contenedor del grid (p. ej. `lg:col-span-2` para ocupar fila completa en formularios). */
   gridClassName?: string;
-  /** Nivel de visibilidad actual. */
-  visibility?: string;
+  /** Filter mode: hide conditional fields instead of disabling; don't cascade-reset team_id. */
+  filterMode?: boolean;
+  /**
+   * Max hierarchy depth to show in filterMode.
+   * null = hide all hierarchy fields (e.g. when showing only Equipo).
+   * undefined = show all (default, backward-compat).
+   */
+  maxLevel?: HierarchyMaxLevel;
+  /** Whether to render the Equipo field (default true). */
+  showTeam?: boolean;
 };
 
 export function TemplateHierarchyFields({
   values,
   onFieldChange,
   gridClassName = 'grid grid-cols-1 sm:grid-cols-2 gap-2',
-  visibility,
+  filterMode = false,
+  maxLevel,
+  showTeam = true,
 }: Props) {
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const [teams, setTeams] = useState<UserTeam[]>([]);
@@ -46,25 +65,27 @@ export function TemplateHierarchyFields({
     onFieldChange('study_type_id', value);
     onFieldChange('study_id', '');
     onFieldChange('module_id', '');
-    onFieldChange('team_id', '');
+    if (!filterMode) onFieldChange('team_id', '');
   };
 
   const handleStudyChange = (value: string) => {
     onFieldChange('study_id', value);
     onFieldChange('module_id', '');
-    onFieldChange('team_id', '');
+    if (!filterMode) onFieldChange('team_id', '');
   };
 
   const handleModuleChange = (value: string) => {
     onFieldChange('module_id', value);
-    onFieldChange('team_id', '');
+    if (!filterMode) onFieldChange('team_id', '');
   };
 
-  const isTeamVisibility = visibility === 'team';
+  const showStudyType = !filterMode || levelGte(maxLevel, 'study_type');
+  const showEstudio = !filterMode || (!!values.study_type_id && levelGte(maxLevel, 'study'));
+  const showModulo = !filterMode || (!!values.study_id && levelGte(maxLevel, 'module'));
 
   return (
     <div className={gridClassName}>
-      {!isTeamVisibility && (
+      {showStudyType && (
         <div>
           <FieldLabel>Tipo de Estudio</FieldLabel>
           <Select
@@ -81,13 +102,13 @@ export function TemplateHierarchyFields({
         </div>
       )}
 
-      {!isTeamVisibility && values.study_type_id && (
+      {showEstudio && (
         <div>
           <FieldLabel>Estudio</FieldLabel>
           <Select
             fieldSize="sm"
             value={values.study_id}
-            disabled={hierarchyLoading}
+            disabled={hierarchyLoading || (!filterMode && !values.study_type_id)}
             onChange={(e) => handleStudyChange(e.target.value)}
           >
             <option value="">Todos</option>
@@ -98,13 +119,13 @@ export function TemplateHierarchyFields({
         </div>
       )}
 
-      {!isTeamVisibility && values.study_id && (
+      {showModulo && (
         <div>
           <FieldLabel>Módulo</FieldLabel>
           <Select
             fieldSize="sm"
             value={values.module_id}
-            disabled={hierarchyLoading}
+            disabled={hierarchyLoading || (!filterMode && !values.study_id)}
             onChange={(e) => handleModuleChange(e.target.value)}
           >
             <option value="">Todos</option>
@@ -115,7 +136,7 @@ export function TemplateHierarchyFields({
         </div>
       )}
 
-      {isTeamVisibility && (
+      {showTeam && (
         <div>
           <FieldLabel>Equipo</FieldLabel>
           <Select

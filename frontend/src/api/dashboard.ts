@@ -27,7 +27,12 @@ export type DocumentReviewInboxItem = {
 };
 
 export type DashboardPayload = {
-  stats: unknown[];
+  stats: {
+    documents_critical: number;
+    documents_high: number;
+    templates_critical: number;
+    templates_high: number;
+  };
   recent_documents: unknown[];
   template_review_inbox: TemplateReviewInboxItem[];
   document_review_inbox: DocumentReviewInboxItem[];

@@ -18,6 +18,11 @@ interface TemplateServiceInterface
     public function findOrFail(string $id): Template;
 
     /**
+     * Resuelve la plantilla sin scope de catálogo; exige {@see \App\Policies\TemplatePolicy::view} en el controlador.
+     */
+    public function findOrFailWithoutCatalogScope(string $id): Template;
+
+    /**
      * Localiza una versión de plantilla por su ID.
      */
     public function findVersionOrFail(string $versionId): TemplateVersion;

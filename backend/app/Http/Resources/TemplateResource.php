@@ -27,6 +27,7 @@ class TemplateResource extends JsonResource
             'team_id'            => $this->team_id,
             'team'               => $this->resource->getAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY),
             'created_by'         => $this->created_by,
+            'author_name'        => $this->resource->author_name ?? null,
             'status'             => $this->status,
             'version'            => $this->version,
             'review_stages'      => $this->review_stages,
@@ -34,7 +35,12 @@ class TemplateResource extends JsonResource
             'reviewers'           => $this->whenLoaded('reviewers', fn () => $this->reviewers
                 ->sortBy('stage')
                 ->values()
-                ->map(fn ($r) => ['user_id' => $r->user_id, 'stage' => $r->stage])
+                ->map(fn ($r) => [
+                    'user_id' => $r->user_id,
+                    'user_name' => optional($r->user)->name,
+                    'stage' => $r->stage,
+                    'status' => $r->status
+                ])
                 ->all()),
             'document_reviewers' => $this->whenLoaded('documentReviewers', fn () => $this->documentReviewers
                 ->map(fn ($v) => $v->user_id)
@@ -42,6 +48,7 @@ class TemplateResource extends JsonResource
                 ->all()),
             'created_at'         => $this->created_at?->toIso8601String(),
             'updated_at'         => $this->updated_at?->toIso8601String(),
+            'has_review_comments' => $this->comments()->where('type', 'review')->where('resolved', false)->exists(),
         ];
     }
 }

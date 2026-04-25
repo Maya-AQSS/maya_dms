@@ -12,7 +12,6 @@ use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
 use App\Http\Resources\TemplateVersionResource;
 use App\Http\Resources\TemplateVersionSummaryResource;
-use App\Policies\TemplatePolicy;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +20,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Los métodos reciben el UUID como string (route {template}) para no usar
@@ -72,8 +72,10 @@ class TemplateController extends Controller
      */
     public function show(Request $request, string $template): TemplateResource
     {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('view', $model);
+        $model = $this->templateService->findOrFailWithoutCatalogScope($template);
+        if (! Gate::forUser($request->user())->allows('view', $model)) {
+            abort(404);
+        }
         $model->loadMissing(['reviewers', 'documentReviewers']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
@@ -86,7 +88,7 @@ class TemplateController extends Controller
 
     /**
      * Actualizar plantilla.
-     * La publicación exige actor distinto del creador vía {@see TemplatePolicy::review}.
+     * La publicación exige actor distinto del creador vía la política de revisión de plantillas.
      */
     public function update(UpdateTemplateRequest $request, string $template): TemplateResource
     {
@@ -183,6 +185,7 @@ class TemplateController extends Controller
     public function publish(PublishTemplateRequest $request, string $template): TemplateResource
     {
         $model = $this->templateService->findOrFail($template);
+        $this->authorize('publish', $model);
 
         $updated = $this->templateService->publishWithSnapshot(
             $model->id,
@@ -198,8 +201,10 @@ class TemplateController extends Controller
      */
     public function versions(string $template): ResourceCollection
     {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('view', $model);
+        $model = $this->templateService->findOrFailWithoutCatalogScope($template);
+        if (! Gate::forUser(Auth::user())->allows('view', $model)) {
+            abort(404);
+        }
 
         return TemplateVersionSummaryResource::collection(
             $this->templateService->listPublishedVersions($model->id),
@@ -212,8 +217,10 @@ class TemplateController extends Controller
     public function showVersion(string $template_version): TemplateVersionResource
     {
         $version = $this->templateService->findVersionOrFail($template_version);
-        $template = $this->templateService->findOrFail($version->template_id);
-        $this->authorize('view', $template);
+        $template = $this->templateService->findOrFailWithoutCatalogScope((string) $version->template_id);
+        if (! Gate::forUser(Auth::user())->allows('view', $template)) {
+            abort(404);
+        }
 
         return new TemplateVersionResource($version);
     }

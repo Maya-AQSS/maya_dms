@@ -34,6 +34,11 @@ class TemplateService implements TemplateServiceInterface
         return $this->templateRepository->findOrFail($id);
     }
 
+    public function findOrFailWithoutCatalogScope(string $id): Template
+    {
+        return $this->templateRepository->findOrFailWithoutCatalogScope($id);
+    }
+
     /**
      * Localiza una versión de plantilla por su ID.
      */
