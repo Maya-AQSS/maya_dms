@@ -155,7 +155,7 @@ function BlockUiStateToggle({
             'px-3 py-1.5 rounded text-xs font-medium transition-all border min-h-9',
             'focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35',
             value === s
-              ? 'border-odoo-purple bg-odoo-purple text-white dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
+              ? 'border-odoo-purple bg-odoo-purple text-text-inverse dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
               : 'border-ui-border dark:border-ui-dark-border text-text-secondary dark:text-text-dark-secondary hover:border-odoo-purple/50',
             'disabled:opacity-50 disabled:pointer-events-none',
           ].join(' ')}
@@ -696,9 +696,95 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                         className="text-danger"
                         onClick={() => setDeleteModal(true)}
                       >
-                        Eliminar
-                      </Button>
-                    </>
+                        {labels[tab]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Tab content */}
+              <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' || activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+                {activeTab === 'properties' && (
+                  <div className="space-y-4">
+                    <div>
+                      <FieldLabel required>Nombre del bloque</FieldLabel>
+                      <TextInput
+                        type="text"
+                        fieldSize="comfortable"
+                        value={formName}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }}
+                        placeholder="Ej. Introducción"
+                      />
+                    </div>
+                    <div>
+                      <FieldLabel required>Estado del bloque</FieldLabel>
+                      <div className="mt-1">
+                        <BlockUiStateToggle
+                          value={formUiState}
+                          onChange={(s) => { setFormUiState(s); setTabIsDirty(true); }}
+                          disabled={busy}
+                        />
+                      </div>
+                    </div>
+                    {panelMode === 'edit' && (
+                      <p className="text-[10px] text-text-muted italic">
+                        Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'content' && (
+                  <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 overflow-hidden">
+                      <Suspense fallback={<div className="p-6 text-xs text-text-muted">Cargando editor…</div>}>
+                        <BlockNoteEditorPanel
+                          initialContent={formContent}
+                          editable={formUiState !== 'locked'}
+                          isDark={isDark}
+                          onChange={(json) => { setFormContent(json as string); setTabIsDirty(true); }}
+                        />
+                      </Suspense>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'description' && (
+                  <div className="flex-1 flex flex-col min-h-0 p-6">
+                    <FieldLabel>Descripción (interna para el docente)</FieldLabel>
+                    <TextArea
+                      fieldSize="comfortable"
+                      className="flex-1 resize-none"
+                      value={formDesc}
+                      onChange={(e) => { setFormDesc(e.target.value); setTabIsDirty(true); }}
+                      placeholder="Escribe aquí notas sobre el propósito de este bloque…"
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* multi */}
+          {panelMode === 'multi' && currentMultiBlock && (
+            <div className="flex-1 flex flex-col overflow-hidden animate-in slide-in-from-right-4">
+              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-odoo-purple/5 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="shrink-0 w-6 h-6 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
+                    {multiIndex + 1}
+                  </span>
+                  <h3 className="text-sm font-bold text-odoo-purple truncate">Edición múltiple ({multiIndex + 1} de {orderedSelection.length})</h3>
+                </div>
+                <button type="button" onClick={handleMultiCancelAll} className="text-text-muted hover:text-danger text-xs transition-colors">Cancelar todo</button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-6">
+                <div className="mb-8 p-4 bg-white dark:bg-ui-dark-card border border-odoo-purple/20 rounded-lg shadow-sm">
+                  {renderBlockForm(
+                    multiIndex === orderedSelection.length - 1 ? 'Finalizar y guardar' : 'Guardar y siguiente bloque',
+                    handleMultiSaveAndNext,
+                    handleMultiCancelAll
                   )}
                 </div>
               </div>

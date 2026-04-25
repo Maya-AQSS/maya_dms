@@ -105,7 +105,7 @@ export function WizardStep4Summary({ template, validators, validationType, docum
                   return (
                     <div key={v.userId} className="flex items-center gap-2.5">
                       {validationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
                       )}
                       <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">{initials}</span>
                       <div className="min-w-0">
@@ -136,7 +136,7 @@ export function WizardStep4Summary({ template, validators, validationType, docum
                   return (
                     <div key={v.userId} className="flex items-center gap-2.5">
                       {documentValidationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-white text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
                       )}
                       <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-[10px] font-black border border-odoo-teal/20 flex items-center justify-center">{initials}</span>
                       <div className="min-w-0">

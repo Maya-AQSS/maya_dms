@@ -1,0 +1,46 @@
+{
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "create": "Crear",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "close": "Cerrar",
+    "confirm": "Confirmar",
+    "back": "Volver",
+    "search": "Buscar",
+    "upload": "Subir",
+    "download": "Descargar",
+    "preview": "Previsualizar",
+    "duplicate": "Duplicar"
+  },
+  "status": {
+    "loading": "Cargando…",
+    "saving": "Guardando…",
+    "empty": "Sin resultados",
+    "error": "Se produjo un error"
+  },
+  "nav": {
+    "documents": "Documentos",
+    "templates": "Plantillas",
+    "trash": "Papelera"
+  },
+  "documents": {
+    "title": "Documentos",
+    "new": "Nuevo documento",
+    "untitled": "Sin título",
+    "lastModified": "Última modificación",
+    "createdBy": "Creado por",
+    "confirmDelete": "¿Eliminar este documento?",
+    "deleteMessage": "Esta acción no se puede deshacer."
+  },
+  "templates": {
+    "title": "Plantillas",
+    "new": "Nueva plantilla",
+    "useTemplate": "Usar plantilla"
+  },
+  "auth": {
+    "logout": "Cerrar sesión",
+    "profile": "Perfil"
+  }
+}

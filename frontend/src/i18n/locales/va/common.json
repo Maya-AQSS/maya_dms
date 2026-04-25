@@ -1,0 +1,46 @@
+{
+  "actions": {
+    "save": "Guardar",
+    "cancel": "Cancel·lar",
+    "create": "Crear",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "close": "Tancar",
+    "confirm": "Confirmar",
+    "back": "Tornar",
+    "search": "Cercar",
+    "upload": "Pujar",
+    "download": "Descarregar",
+    "preview": "Previsualitzar",
+    "duplicate": "Duplicar"
+  },
+  "status": {
+    "loading": "Carregant…",
+    "saving": "Guardant…",
+    "empty": "Sense resultats",
+    "error": "S'ha produït un error"
+  },
+  "nav": {
+    "documents": "Documents",
+    "templates": "Plantilles",
+    "trash": "Paperera"
+  },
+  "documents": {
+    "title": "Documents",
+    "new": "Nou document",
+    "untitled": "Sense títol",
+    "lastModified": "Última modificació",
+    "createdBy": "Creat per",
+    "confirmDelete": "Eliminar este document?",
+    "deleteMessage": "Esta acció no es pot desfer."
+  },
+  "templates": {
+    "title": "Plantilles",
+    "new": "Nova plantilla",
+    "useTemplate": "Usar plantilla"
+  },
+  "auth": {
+    "logout": "Tancar sessió",
+    "profile": "Perfil"
+  }
+}

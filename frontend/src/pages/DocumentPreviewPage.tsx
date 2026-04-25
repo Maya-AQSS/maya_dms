@@ -66,7 +66,7 @@ export function DocumentPreviewPage() {
   const cameFromValidate = previewState?.returnToValidate === true;
 
   return (
-    <div className="min-h-full overflow-y-auto bg-[#ddd9d3] dark:bg-ui-dark-bg">
+    <div className="min-h-full overflow-y-auto bg-ui-preview-bg dark:bg-ui-dark-bg">
       <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-4 px-6 h-[52px]">
         <button
           type="button"

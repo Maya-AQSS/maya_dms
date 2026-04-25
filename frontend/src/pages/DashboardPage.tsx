@@ -99,10 +99,10 @@ export function DashboardPage() {
       return 'bg-ui-body dark:bg-ui-dark-bg text-text-secondary dark:text-text-dark-secondary';
     }
     if (d <= 3) {
-      return 'bg-error-light/20 text-error-dark dark:bg-error-dark/30 dark:text-white';
+      return 'bg-danger-light/20 text-danger-dark dark:bg-danger-dark/30 dark:text-text-dark-primary';
     }
     if (d <= 7) {
-      return 'bg-warning-light text-warning-dark dark:bg-warning-dark/40 dark:text-white';
+      return 'bg-warning-light text-warning-dark dark:bg-warning-dark/40 dark:text-text-dark-primary';
     }
     return 'bg-ui-body dark:bg-ui-dark-bg text-text-secondary dark:text-text-dark-secondary';
   };
