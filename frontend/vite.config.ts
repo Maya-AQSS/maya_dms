@@ -13,6 +13,9 @@ const defaultSharedLayoutRoot = fileURLToPath(
 const defaultSharedSidebarRoot = fileURLToPath(
   new URL('../../maya_infra/packages/maya-shared-sidebar-react', import.meta.url),
 );
+const sharedI18nRoot = fileURLToPath(
+  new URL('../../maya_infra/packages/maya-shared-i18n-react', import.meta.url),
+);
 
 const sharedAuthRoot = process.env.SHARED_AUTH_PACKAGE_ROOT
   ? path.resolve(process.env.SHARED_AUTH_PACKAGE_ROOT)
@@ -26,7 +29,7 @@ export default defineConfig({
     host: '0.0.0.0',
     allowedHosts: true,
     fs: {
-      allow: ['..', sharedAuthRoot, sharedLayoutRoot, sharedSidebarRoot],
+      allow: ['..', sharedAuthRoot, sharedLayoutRoot, sharedSidebarRoot, sharedI18nRoot],
     },
     watch: {
       usePolling: true,
@@ -34,11 +37,12 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['keycloak-js', 'axios', '@blocknote/core', '@blocknote/react', '@blocknote/ariakit'],
-    exclude: ['@maya/shared-auth-react', '@maya/shared-layout-react', '@maya/shared-sidebar-react'],
+    exclude: ['@maya/shared-auth-react', '@maya/shared-i18n-react', '@maya/shared-layout-react', '@maya/shared-sidebar-react'],
   },
   resolve: {
     alias: {
       '@maya/shared-auth-react': path.join(sharedAuthRoot, 'src/index.ts'),
+      '@maya/shared-i18n-react': path.join(sharedI18nRoot, 'src/index.ts'),
       '@maya/shared-layout-react': path.join(sharedLayoutRoot, 'src/index.ts'),
       '@maya/shared-sidebar-react': path.join(sharedSidebarRoot, 'src/index.ts'),
     },
