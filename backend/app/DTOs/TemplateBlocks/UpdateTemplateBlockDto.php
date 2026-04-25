@@ -13,7 +13,7 @@ readonly class UpdateTemplateBlockDto
         public bool $set_sort_order = false,
         public ?string $block_state = null,
         public bool $set_block_state = false,
-        public ?array $description = null,
+        public ?string $description = null,
         public bool $set_description = false,
     ) {}
 }

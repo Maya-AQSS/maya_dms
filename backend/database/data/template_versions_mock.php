@@ -30,6 +30,7 @@ $buildTemplateVersionSnapshotFromBlocks = static function (string $templateId): 
         static fn (array $b): array => [
             'id' => $b['id'],
             'title' => $b['title'],
+            'description' => $b['description'] ?? null,
             'default_content' => $b['default_content'],
             'block_state' => $b['block_state'],
             'sort_order' => $b['sort_order'],
@@ -49,19 +50,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555504',
                 'title' => 'Programacion base ESPA (Personas Adultas)',
-                'description' => [
-                    'type' => 'doc',
-                    'content' => [[
-                        'type' => 'paragraph',
-                        'props' => ['textColor' => 'default', 'backgroundColor' => 'default', 'textAlignment' => 'left'],
-                        'content' => [[
-                            'type' => 'text',
-                            'text' => 'Guia de edicion para docencia ESPA: adapta este bloque al contexto real del grupo adulto, concreta necesidades de conciliacion y empleabilidad, y sustituye ejemplos genericos por evidencias del centro. Mantener siempre relacion entre competencia, situacion de aprendizaje y criterio de calificacion.',
-                            'styles' => [],
-                        ]],
-                        'children' => [],
-                    ]],
-                ],
+                'description' => 'Guia de edicion para docencia ESPA: adapta este bloque al contexto real del grupo adulto, concreta necesidades de conciliacion y empleabilidad, y sustituye ejemplos genericos por evidencias del centro. Mantener siempre relacion entre competencia, situacion de aprendizaje y criterio de calificacion.',
                 'default_content' => [
                     'type' => 'doc',
                     'content' => [
@@ -107,19 +96,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555508',
                 'title' => 'Programacion base Bachillerato',
-                'description' => [
-                    'type' => 'doc',
-                    'content' => [[
-                        'type' => 'paragraph',
-                        'props' => ['textColor' => 'default', 'backgroundColor' => 'default', 'textAlignment' => 'left'],
-                        'content' => [[
-                            'type' => 'text',
-                            'text' => 'Guia de edicion para docencia Bachillerato: actualizar materia, curso y nivel de dificultad segun grupo real. Alinear de forma explicita criterios de evaluacion con formato EvAU y evidencias que se pediran en examen.',
-                            'styles' => [],
-                        ]],
-                        'children' => [],
-                    ]],
-                ],
+                'description' => 'Guia de edicion para docencia Bachillerato: actualizar materia, curso y nivel de dificultad segun grupo real. Alinear de forma explicita criterios de evaluacion con formato EvAU y evidencias que se pediran en examen.',
                 'default_content' => [
                     'type' => 'doc',
                     'content' => [
@@ -165,19 +142,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555509',
                 'title' => 'Programacion base FP (Ciclos Medio/Superior)',
-                'description' => [
-                    'type' => 'doc',
-                    'content' => [[
-                        'type' => 'paragraph',
-                        'props' => ['textColor' => 'default', 'backgroundColor' => 'default', 'textAlignment' => 'left'],
-                        'content' => [[
-                            'type' => 'text',
-                            'text' => 'Guia de edicion para docencia FP: personalizar este bloque con resultados de aprendizaje oficiales del modulo (BOE/DOG/BOJA), detallar entorno tecnico real del aula y definir criterios verificables de funcionamiento, documentacion y optimizacion.',
-                            'styles' => [],
-                        ]],
-                        'children' => [],
-                    ]],
-                ],
+                'description' => 'Guia de edicion para docencia FP: personalizar este bloque con resultados de aprendizaje oficiales del modulo (BOE/DOG/BOJA), detallar entorno tecnico real del aula y definir criterios verificables de funcionamiento, documentacion y optimizacion.',
                 'default_content' => [
                     'type' => 'doc',
                     'content' => [
@@ -223,6 +188,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555501',
                 'title' => 'Título',
+                'description' => 'Guía para el revisor: comprueba que el bloque de portada o identificación sea inequívoco, incluya curso escolar y referencia al centro (seed).',
                 'default_content' => null,
                 'block_state' => 'editable',
                 'sort_order' => 0,
@@ -240,6 +206,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555502',
                 'title' => 'Descripción',
+                'description' => 'Guía para el revisor: valida alcance del documento, público destinatario y coherencia con la visibilidad por equipo definida en la plantilla.',
                 'default_content' => ['type' => 'doc', 'content' => []],
                 'block_state' => 'editable',
                 'sort_order' => 0,
@@ -257,6 +224,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555506',
                 'title' => 'Objetivos del módulo',
+                'description' => 'Guía para el revisor: exige objetivos medibles, alineación con competencias del módulo y referencia explícita al currículo autonómico.',
                 'default_content' => null,
                 'block_state' => 'editable',
                 'sort_order' => 0,
@@ -274,6 +242,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555511',
                 'title' => 'Criterios de evaluación',
+                'description' => 'Guía para el revisor: comprueba ponderaciones, instrumentos y criterios observables alineados con el departamento y el RD del módulo.',
                 'default_content' => ['type' => 'doc', 'content' => []],
                 'block_state' => 'editable',
                 'sort_order' => 0,
@@ -291,6 +260,7 @@ return array_merge([
             [
                 'id' => '55555555-5555-5555-5555-555555555518',
                 'title' => 'Programación didáctica — DWES (oficial, catálogo global)',
+                'description' => 'Guía para el revisor: plantilla oficial de catálogo global DWES — verifica RA del BOE, temporalización y criterios de evaluación verificables.',
                 'default_content' => require __DIR__.'/dwes_official_programacion_blocknote.php',
                 'block_state' => 'editable',
                 'sort_order' => 0,

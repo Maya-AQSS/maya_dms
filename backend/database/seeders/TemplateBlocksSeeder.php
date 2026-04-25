@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\TemplateBlockDescriptionNormalizer;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -33,9 +34,7 @@ class TemplateBlocksSeeder extends Seeder
             unset($row['type'], $row['mandatory']);
 
             if (array_key_exists('description', $row)) {
-                if (is_array($row['description']) || is_object($row['description'])) {
-                    $row['description'] = json_encode($row['description'], JSON_UNESCAPED_UNICODE);
-                }
+                $row['description'] = TemplateBlockDescriptionNormalizer::toPlainString($row['description']);
             }
 
             $row['created_at'] ??= $now;

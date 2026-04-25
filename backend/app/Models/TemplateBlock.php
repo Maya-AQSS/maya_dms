@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\TemplateBlockDescriptionNormalizer;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,9 +27,21 @@ class TemplateBlock extends Model
     {
         return [
             'default_content' => 'array',
-            'description'     => 'array',
             'sort_order'      => 'integer',
         ];
+    }
+
+    /**
+     * Descripción orientativa para revisores: siempre texto plano (se normaliza legado BlockNote/JSON al leer o al guardar).
+     */
+    protected function description(): Attribute
+    {
+        return Attribute::make(
+            get: static fn (?string $value): ?string => TemplateBlockDescriptionNormalizer::toPlainString($value),
+            set: static fn (mixed $value): array => [
+                'description' => TemplateBlockDescriptionNormalizer::toPlainString($value),
+            ],
+        );
     }
 
     public function template(): BelongsTo

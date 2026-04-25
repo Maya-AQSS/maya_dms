@@ -4,6 +4,7 @@ import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
+import { templateBlockDescriptionToPlainText } from '../../../utils/templateBlockDescription';
 import { Button, ConfirmDialog } from '../../../ui';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
@@ -23,41 +24,13 @@ type TemplateComment = {
 };
 
 function InfoBlockDescription({ description }: { description: unknown }) {
-  if (!description) return null;
-  
-  let parsed: unknown[] | null = null;
-  
-  if (Array.isArray(description)) {
-    parsed = description;
-  } else if (typeof description === 'string') {
-    try {
-      const p: unknown = JSON.parse(description);
-      if (Array.isArray(p)) {
-        parsed = p;
-      } else if (p && typeof p === 'object') {
-        parsed = [p]; // Wrap single block object in array
-      }
-    } catch { 
-      // Si falla el parseo, lo tratamos como texto plano más abajo
-    }
-  } else if (description && typeof description === 'object') {
-    parsed = [description];
-  }
-
-  if (parsed) {
-    return (
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        <BlockContentHtml content={parsed as any} />
-      </div>
-    );
-  }
+  const plain = templateBlockDescriptionToPlainText(description);
+  if (!plain) return null;
 
   return (
-    <div className="">
-      <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
-        {String(description) as any}
-      </p>
-    </div>
+    <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
+      {plain}
+    </p>
   );
 }
 

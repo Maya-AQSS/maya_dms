@@ -25,7 +25,7 @@ $seedH2 = static fn (string $text): array => [
 
 $seedDoc = static fn (array $nodes): array => ['type' => 'doc', 'content' => $nodes];
 
-return array_merge([
+$__templateBlockRows = array_merge([
     [
         'id' => '55555555-5555-5555-5555-555555555501',
         'template_id' => '33333333-3333-3333-3333-333333333301',
@@ -138,6 +138,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555505',
         'template_id' => '33333333-3333-3333-3333-333333333305',
         'title' => 'Programación 1º ESO',
+        'description' => $seedDoc([
+            $seedP('Revisor: verifica alineación con el currículo de 1.º ESO, temporalización realista y criterios de evaluación observables para el alumnado de esa etapa.'),
+        ]),
         'default_content' => null,
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -146,6 +149,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555506',
         'template_id' => '33333333-3333-3333-3333-333333333306',
         'title' => 'Matemáticas — módulo',
+        'description' => $seedDoc([
+            $seedP('Revisor: comprueba que competencias, saberes básicos y secuenciación didáctica correspondan al módulo de Matemáticas y al curso declarado en la plantilla.'),
+        ]),
         'default_content' => ['type' => 'doc', 'content' => []],
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -154,6 +160,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555507',
         'template_id' => '33333333-3333-3333-3333-333333333307',
         'title' => 'Global II',
+        'description' => $seedDoc([
+            $seedP('Revisor: valida que la programación global II refleje acuerdos del departamento, coordinación entre materias y referencias normativas vigentes.'),
+        ]),
         'default_content' => null,
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -260,6 +269,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555510',
         'template_id' => '33333333-3333-3333-3333-333333333310',
         'title' => 'Ciclo DAW',
+        'description' => $seedDoc([
+            $seedP('Revisor: confirma que la plantilla del ciclo DAW cite el título oficial, módulos del catálogo y coherencia con el proyecto curricular del centro.'),
+        ]),
         'default_content' => null,
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -268,6 +280,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555511',
         'template_id' => '33333333-3333-3333-3333-333333333311',
         'title' => 'DWES',
+        'description' => $seedDoc([
+            $seedP('Revisor: el bloque DWES debe enlazar RA del BOE, entorno de desarrollo real del aula y criterios de evaluación verificables (código, pruebas, despliegue).'),
+        ]),
         'default_content' => ['type' => 'doc', 'content' => []],
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -410,6 +425,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555516',
         'template_id' => '33333333-3333-3333-3333-333333333316',
         'title' => '2º ESO',
+        'description' => $seedDoc([
+            $seedP('Revisor: revisa que la programación de 2.º ESO sea ajustada al alumnado, incluya atención a la diversidad y criterios de evaluación acordados en el departamento.'),
+        ]),
         'default_content' => ['type' => 'doc', 'content' => []],
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -418,6 +436,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555517',
         'template_id' => '33333333-3333-3333-3333-333333333317',
         'title' => 'Inglés 1º ESO',
+        'description' => $seedDoc([
+            $seedP('Revisor: comprueba competencias lingüísticas del nivel A1/A2 según programación, actividades comunicativas y evaluación alineada con el marco del centro.'),
+        ]),
         'default_content' => ['type' => 'doc', 'content' => []],
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -426,6 +447,9 @@ return array_merge([
         'id' => '55555555-5555-5555-5555-555555555518',
         'template_id' => '33333333-3333-3333-3333-333333333318',
         'title' => 'Programación didáctica — DWES (oficial, catálogo global)',
+        'description' => $seedDoc([
+            $seedP('Revisor: plantilla oficial de catálogo global. Verifica que el contenido cumpla el RD del módulo DWES, que los RA y criterios sean citables y que la temporalización sea realista para el centro.'),
+        ]),
         'default_content' => $dwesGlobalOfficialContent,
         'block_state' => 'editable',
         'sort_order' => 0,
@@ -476,3 +500,13 @@ return array_merge([
         'sort_order' => 2,
     ],
 ], $programacionPack['template_blocks']);
+
+require_once __DIR__.'/../../app/Support/TemplateBlockDescriptionNormalizer.php';
+
+return array_map(static function (array $b): array {
+    if (array_key_exists('description', $b)) {
+        $b['description'] = \App\Support\TemplateBlockDescriptionNormalizer::toPlainString($b['description']);
+    }
+
+    return $b;
+}, $__templateBlockRows);

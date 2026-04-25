@@ -52,6 +52,11 @@ return (static function (): array {
         ];
     };
 
+    /** Descripción en texto plano para cada bloque de plantilla (revisores en validación). */
+    $blockDescriptionText = static function (string $blockTitle): string {
+        return 'Guía para el revisor: verifica que «'.$blockTitle.'» esté completo, sea coherente con el currículo del módulo y cumpla la normativa del centro antes de validar la plantilla.';
+    };
+
     /** Contenido rico variante según semilla (determinista). */
     $richPack = static function (int $seed, string $short, string $slotLabel) use ($para, $heading): array {
         $v = $seed % 6;
@@ -362,6 +367,7 @@ return (static function (): array {
                     'id' => $blockUuid,
                     'template_id' => $tUuid,
                     'title' => $row['title'],
+                    'description' => $blockDescriptionText($row['title']),
                     'default_content' => $content,
                     'block_state' => $state,
                     'sort_order' => $row['sort'],
@@ -369,6 +375,7 @@ return (static function (): array {
                 $snapshot[] = [
                     'id' => $blockUuid,
                     'title' => $row['title'],
+                    'description' => $blockDescriptionText($row['title']),
                     'default_content' => $content,
                     'block_state' => $state,
                     'sort_order' => $row['sort'],

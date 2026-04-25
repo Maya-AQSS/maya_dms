@@ -6,7 +6,7 @@ export type TemplateBlock = {
   type: string;
   title: string | null;
   default_content: unknown | null;
-  description: unknown | null;
+  description: string | null;
   block_state: BlockState;
   mandatory: boolean;
   sort_order: number;
@@ -22,7 +22,7 @@ export type CreateBlockPayload = {
   type: string;
   title?: string | null;
   default_content?: unknown | null;
-  description?: unknown | null;
+  description?: string | null;
   block_state?: BlockState;
   mandatory?: boolean;
   sort_order?: number;
@@ -32,7 +32,7 @@ export type UpdateBlockPayload = {
   type?: string;
   title?: string | null;
   default_content?: unknown | null;
-  description?: unknown | null;
+  description?: string | null;
   block_state?: BlockState;
   mandatory?: boolean;
   sort_order?: number;

@@ -19,6 +19,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Button, ConfirmDialog, FieldLabel, TextArea, TextInput } from '../../../ui';
 import type { TemplateBlock } from '../../../types/blocks';
 import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
+import { templateBlockDescriptionToPlainText } from '../../../utils/templateBlockDescription';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import type { Template } from '../../../types/templates';
 import {
@@ -261,7 +262,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
-    setFormDesc(block.description ? JSON.stringify(block.description) : '');
+    setFormDesc(templateBlockDescriptionToPlainText(block.description));
     setFormContent(block.default_content ? JSON.stringify(block.default_content) : '');
     setFormUiState(blockToUiState(block));
     setActionError(null);
@@ -287,10 +288,10 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
       const parsedContent = formContent ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formContent)); } catch { return null; } })() : null;
-      const parsedDesc = formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null;
+      const descTrim = formDesc.trim();
       await updateBlock(activeSingleId, {
         title: formName.trim() || undefined,
-        description: parsedDesc,
+        description: descTrim !== '' ? descTrim : null,
         default_content: parsedContent,
         block_state,
         mandatory,
@@ -405,7 +406,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
       const newBlock = await createBlock({
         type: 'paragraph',
         title: formName.trim(),
-        description: formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null,
+        description: formDesc.trim() !== '' ? formDesc.trim() : null,
         default_content: parsedContent ? repairBlockNoteBlocks(parsedContent) : null,
         block_state,
         mandatory,
@@ -466,12 +467,10 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
     setActionError(null);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      const parsedDesc = formDesc.trim()
-        ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return [{ type: 'paragraph', content: [{ type: 'text', text: formDesc.trim(), styles: {} }] }]; } })()
-        : null;
+      const descTrim = formDesc.trim();
       await updateBlock(currentMultiId, {
         title: formName.trim(),
-        description: parsedDesc,
+        description: descTrim !== '' ? descTrim : null,
         block_state,
         mandatory,
       });
@@ -602,11 +601,8 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                   <dt className="text-[10px] font-bold uppercase text-text-muted">Descripción</dt>
                   <dd className="mt-1 text-sm text-text-secondary">
                     {(() => {
-                      const desc = selectedBlock.description;
-                      if (!desc) return '—';
-                      if (typeof desc === 'string') return desc;
-                      if (Array.isArray(desc)) return 'Contenido enriquecido';
-                      return '—';
+                      const plain = templateBlockDescriptionToPlainText(selectedBlock.description);
+                      return plain !== '' ? plain : '—';
                     })()}
                   </dd>
                 </div>
@@ -715,7 +711,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
             </div>
 
             {/* Tab content */}
-            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' || activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
+            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
               {activeTab === 'properties' && (
                 <div className="space-y-4">
                   <div>
@@ -759,15 +755,19 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
               )}
 
               {activeTab === 'description' && (
-                <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
-                  <BlockNoteEditorPanel
-                    key={activeSingleId ?? 'new'}
-                    initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                    editable
-                    isDark={isDark}
-                    onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
+                <div className="flex flex-col flex-1 min-h-0">
+                  <TextArea
+                    fieldSize="comfortable"
+                    rows={10}
+                    className="min-h-[200px] flex-1 font-mono text-sm"
+                    value={formDesc}
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => {
+                      setFormDesc(e.target.value);
+                      setTabIsDirty(true);
+                    }}
+                    placeholder="Proporciona las instrucciones para rellenar correctamente el contenido de este campo"
                   />
-                </Suspense>
+                </div>
               )}
 
               {activeTab === 'comments' && (
@@ -930,15 +930,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                   <TextArea
                     fieldSize="comfortable"
                     rows={2}
-                    value={(() => {
-                      try {
-                        const parsed = JSON.parse(formDesc);
-                        if (Array.isArray(parsed)) {
-                          return parsed.map((b: any) => b.content?.map((c: any) => c.text ?? '').join('') ?? '').join('\n');
-                        }
-                      } catch { /* not JSON */ }
-                      return formDesc;
-                    })()}
+                    value={formDesc}
                     onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormDesc(e.target.value)}
                     placeholder="Descripción del bloque…"
                     style={{ minHeight: '52px' }}
