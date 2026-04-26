@@ -697,7 +697,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                         onClick={() => setDeleteModal(true)}
                       >
                         {labels[tab]}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>

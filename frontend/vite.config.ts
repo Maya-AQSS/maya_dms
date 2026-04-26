@@ -40,6 +40,10 @@ export default defineConfig({
     exclude: ['@maya/shared-auth-react', '@maya/shared-i18n-react', '@maya/shared-layout-react', '@maya/shared-sidebar-react'],
   },
   resolve: {
+    // When Vite processes source files from /maya_infra/packages/..., bare imports
+    // (e.g. "i18next") are resolved against the app's node_modules, not the shared
+    // package directory which has no local node_modules inside the container.
+    modules: [path.resolve('node_modules'), 'node_modules'],
     alias: {
       '@maya/shared-auth-react': path.join(sharedAuthRoot, 'src/index.ts'),
       '@maya/shared-i18n-react': path.join(sharedI18nRoot, 'src/index.ts'),
