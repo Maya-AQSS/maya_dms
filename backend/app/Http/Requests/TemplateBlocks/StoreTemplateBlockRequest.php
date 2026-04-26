@@ -3,7 +3,6 @@
 namespace App\Http\Requests\TemplateBlocks;
 
 use App\Enums\BlockState;
-use App\Support\TemplateBlockDescriptionNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTemplateBlockRequest extends FormRequest
@@ -18,7 +17,7 @@ class StoreTemplateBlockRequest extends FormRequest
         return [
             'title'           => ['nullable', 'string', 'max:255'],
             'default_content' => ['nullable', 'array'],
-            'description'     => ['nullable', 'string', 'max:65535'],
+            'description'     => ['nullable', 'array'],
             'block_state'     => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
             'sort_order'      => ['sometimes', 'integer', 'min:0'],
         ];
@@ -34,7 +33,8 @@ class StoreTemplateBlockRequest extends FormRequest
         }
 
         if ($this->exists('description')) {
-            $payload['description'] = TemplateBlockDescriptionNormalizer::toPlainString($this->input('description'));
+            $normalized = $this->sanitizeRichContent($this->input('description'));
+            $payload['description'] = (is_array($normalized) || is_string($normalized)) ? $normalized : null;
         }
 
         if ($this->exists('default_content')) {
