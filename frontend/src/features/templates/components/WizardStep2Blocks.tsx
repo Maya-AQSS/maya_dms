@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, lazy, Suspense, forwardRef, useImperativeHandle } from 'react';
 import { useDarkMode } from '../../../hooks/useDarkMode';
+import { ErrorBoundary } from '../../../components/ErrorBoundary';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel'));
 import {
@@ -779,27 +780,31 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
               )}
 
               {activeTab === 'content' && (
-                <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
-                  <BlockNoteEditorPanel
-                    key={(activeSingleId ?? 'new') + '-content'}
-                    initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                    editable
-                    isDark={isDark}
-                    onChange={(content: unknown) => { setFormContent(JSON.stringify(content)); setTabIsDirty(true); }}
-                  />
-                </Suspense>
+                <ErrorBoundary fallback={<div className="text-xs text-danger-dark dark:text-danger p-4">Error al cargar el editor de contenido.</div>}>
+                  <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
+                    <BlockNoteEditorPanel
+                      key={(activeSingleId ?? 'new') + '-content'}
+                      initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                      editable
+                      isDark={isDark}
+                      onChange={(content: unknown) => { setFormContent(JSON.stringify(content)); setTabIsDirty(true); }}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
               )}
 
               {activeTab === 'description' && (
-                <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
-                  <BlockNoteEditorPanel
-                    key={(activeSingleId ?? 'new') + '-description'}
-                    initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                    editable
-                    isDark={isDark}
-                    onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
-                  />
-                </Suspense>
+                <ErrorBoundary fallback={<div className="text-xs text-danger-dark dark:text-danger p-4">Error al cargar el editor de descripción.</div>}>
+                  <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
+                    <BlockNoteEditorPanel
+                      key={(activeSingleId ?? 'new') + '-description'}
+                      initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                      editable
+                      isDark={isDark}
+                      onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
+                    />
+                  </Suspense>
+                </ErrorBoundary>
               )}
 
               {activeTab === 'comments' && (
