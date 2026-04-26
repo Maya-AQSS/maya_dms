@@ -28,6 +28,7 @@ import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiSt
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { Button, ConfirmDialog, TextArea, TextInput } from '../../../ui';
+import { ErrorBoundary } from '../../../components/ErrorBoundary';
 
 const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
 
@@ -1027,17 +1028,19 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                 <div className="flex-1 min-h-0 flex flex-col">
                   {blockViewTab === 'content' ? (
                     canEditBlocks ? (
-                      <Suspense
-                        fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
-                        key={activeBlockKey ?? 'none'}
-                      >
-                        <BlockNoteEditorPanel
-                          initialContent={blockEditorContent(activeBlock)}
-                          editable
-                          isDark={isDark}
-                          onChange={(content) => void persistBlockContent(activeBlock, content)}
-                        />
-                      </Suspense>
+                      <ErrorBoundary fallback={<p className="p-4 text-xs text-danger-dark dark:text-danger">Error al cargar el editor de contenido.</p>}>
+                        <Suspense
+                          fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
+                          key={activeBlockKey ?? 'none'}
+                        >
+                          <BlockNoteEditorPanel
+                            initialContent={blockEditorContent(activeBlock)}
+                            editable
+                            isDark={isDark}
+                            onChange={(content) => void persistBlockContent(activeBlock, content)}
+                          />
+                        </Suspense>
+                      </ErrorBoundary>
                     ) : (
                       <div className="flex-1 overflow-y-auto p-4">
                         {(() => {
