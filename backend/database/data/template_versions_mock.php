@@ -286,7 +286,7 @@ return array_merge([
         'version_number' => 1,
         'blocks_snapshot' => $snapshotSyllabusDwesEsqueleto,
         'changelog' => 'Publicación inicial — esqueleto programación didáctica DWES.',
-        'published_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+        'published_by' => '848dc299-240e-4a75-9d8e-f0a04089309d',
         'published_at' => null,
     ],
 ], $programacionPack['template_versions']);

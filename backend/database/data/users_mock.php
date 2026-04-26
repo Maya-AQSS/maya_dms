@@ -58,4 +58,10 @@ return [
         'email'        => 'auditor.demo@maya.local',
         'departamento' => 'Auditoría',
     ],
+    [
+        'id'           => '848dc299-240e-4a75-9d8e-f0a04089309d',
+        'nombre'       => 'Super Admin',
+        'email'        => 'superadmin@maya.local',
+        'departamento' => 'Administración',
+    ],
 ];
