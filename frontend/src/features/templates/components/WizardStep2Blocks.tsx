@@ -698,8 +698,8 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                       >
                         {labels[tab]}
                       </Button>
-                    );
-                  })}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -762,73 +762,6 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                     />
                   </div>
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* multi */}
-          {panelMode === 'multi' && currentMultiBlock && (
-            <div className="flex-1 flex flex-col overflow-hidden animate-in slide-in-from-right-4">
-              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-odoo-purple/5 flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-3">
-                  <span className="shrink-0 w-6 h-6 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
-                    {multiIndex + 1}
-                  </span>
-                  <h3 className="text-sm font-bold text-odoo-purple truncate">Edición múltiple ({multiIndex + 1} de {orderedSelection.length})</h3>
-                </div>
-                <button type="button" onClick={handleMultiCancelAll} className="text-text-muted hover:text-danger text-xs transition-colors">Cancelar todo</button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6">
-                <div className="mb-8 p-4 bg-white dark:bg-ui-dark-card border border-odoo-purple/20 rounded-lg shadow-sm">
-                  {renderBlockForm(
-                    multiIndex === orderedSelection.length - 1 ? 'Finalizar y guardar' : 'Guardar y siguiente bloque',
-                    handleMultiSaveAndNext,
-                    handleMultiCancelAll
-                  )}
-                </div>
-              </div>
-              {/* Tabs */}
-              <div className="flex gap-0 -mb-px">
-                {(['properties', 'content', 'description', 'comments'] as TabId[]).map((tab) => {
-                  if (tab === 'comments' && reviewComments.length === 0) return null;
-                  const labels: Record<TabId, string> = {
-                    properties: 'Propiedades',
-                    content: 'Contenido',
-                    description: 'Descripción',
-                    comments: 'Comentarios',
-                  };
-                  const isActive = activeTab === tab;
-                  const blockComments = reviewComments.filter(c => c.template_block_id === activeSingleId);
-                  const unresolvedCount = blockComments.filter(c => !c.resolved).length;
-
-                  return (
-                    <button
-                      key={tab}
-                      type="button"
-                      disabled={isActive}
-                      onClick={() => void handleTabChange(tab)}
-                      className={[
-                        'px-4 py-2 text-xs border-b-2 transition-all flex items-center gap-2',
-                        isActive
-                          ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
-                          : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
-                      ].join(' ')}
-                    >
-                      {labels[tab]}
-                      {tab === 'comments' && blockComments.length > 0 && (
-                        <span className={[
-                          'inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full text-[10px] font-black',
-                          unresolvedCount > 0
-                            ? 'bg-amber-500 text-white shadow-sm'
-                            : 'bg-ui-border dark:bg-ui-dark-border text-text-muted'
-                        ].join(' ')}>
-                          {blockComments.length}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
               </div>
             </div>
 
