@@ -1,9 +1,11 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import './index.css';
+import './App.css';
 import { AppLayout } from '@maya/shared-layout-react';
 import { LocaleSelector, NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
-import { NAV_ITEMS } from './components/layout/navItems';
+import { useNavItems } from './components/layout';
 
 const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined)
   ?? 'http://maya_dashboard_api.localhost';
@@ -42,9 +44,23 @@ function AppRoutes() {
 }
 
 function AppWithLayout() {
-  const { logout } = useOidcSession();
+  const { logout, user } = useOidcSession();
   const { profile } = useUserProfile();
+  const navItems = useNavItems();
+  const { i18n } = useTranslation();
   const location = useLocation();
+
+  useEffect(() => {
+    if (user?.locale) void i18n.changeLanguage(user.locale);
+  }, [user?.locale, i18n]);
+
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'locale' && e.newValue) void i18n.changeLanguage(e.newValue);
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, [i18n]);
 
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
   const isDocumentValidateRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/validate');
@@ -62,7 +78,7 @@ function AppWithLayout() {
 
   return (
     <AppLayout
-      navItems={NAV_ITEMS}
+      navItems={navItems}
       brandName="Maya DMS"
       brandVersion="Maya DMS v1.0"
       userName={userName}

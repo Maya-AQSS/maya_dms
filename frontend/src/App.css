@@ -1,1 +1,34 @@
-/* App.css — Vaciado: todos los estilos se gestionan via Tailwind en index.css */
+/* ─── DMS project-specific styles ───────────────────────── */
+
+@theme {
+  /* Fondo del área de previsualización de documentos (canvas de documento) */
+  --color-ui-preview-bg: #ddd9d3;
+}
+
+/* ─── Project-specific utilities ────────────────────────── */
+@layer utilities {
+  /* Layout de dos columnas para wizards (1 col en móvil, 2 en ≥768px) */
+  .wizard-grid-50-50 {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 768px) {
+    .wizard-grid-50-50 {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  /* Composición de animaciones con animate-in */
+  .animate-in {
+    animation-duration: 200ms;
+    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    animation-fill-mode: forwards;
+  }
+  .fade-in             { animation-name: fade-in; }
+  .slide-in-from-top-1 { animation-name: slide-in-from-top-1; }
+}
+
+@keyframes slide-in-from-top-1 {
+  from { transform: translateY(-4px); }
+  to   { transform: translateY(0); }
+}

@@ -117,10 +117,6 @@
   --z-index-dropdown: 300;
   --z-index-modal:    400;
   --z-index-toast:    500;
-
-  /* ─── Project-specific ─────────────────────────────────── */
-  /* Fondo del área de previsualización de documentos (canvas de documento) */
-  --color-ui-preview-bg: #ddd9d3;
 }
 
 /* ─── Base global ───────────────────────────────────────── */
@@ -169,32 +165,4 @@
 @keyframes fade-in-up {
   from { opacity: 0; transform: translateY(4px); }
   to   { opacity: 1; transform: translateY(0); }
-}
-
-/* ─── Project-specific utilities ────────────────────────── */
-@layer utilities {
-  /* Layout de dos columnas para wizards (1 col en móvil, 2 en ≥768px) */
-  .wizard-grid-50-50 {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 768px) {
-    .wizard-grid-50-50 {
-      grid-template-columns: 1fr 1fr;
-    }
-  }
-
-  /* Composición de animaciones con animate-in */
-  .animate-in {
-    animation-duration: 200ms;
-    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    animation-fill-mode: forwards;
-  }
-  .fade-in          { animation-name: fade-in; }
-  .slide-in-from-top-1 { animation-name: slide-in-from-top-1; }
-}
-
-@keyframes slide-in-from-top-1 {
-  from { transform: translateY(-4px); }
-  to   { transform: translateY(0); }
 }

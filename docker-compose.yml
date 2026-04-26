@@ -35,8 +35,8 @@ services:
       JWT_AUDIENCE: ${JWT_AUDIENCE:-maya-dms}
       JWT_ISSUER: ${JWT_ISSUER:-http://keycloak.localhost/realms/maya}
       # ─── RabbitMQ ─────────────────────────────────────────────
-      RABBITMQ_HOST: maya_rabbitmq
-      RABBITMQ_PORT: 5672
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-maya_rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       RABBITMQ_USER: ${RABBITMQ_USER:-admin}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
       RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}

@@ -7,10 +7,20 @@
     "module": "ESNext",
     "types": ["vite/client"],
     "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "paths": {
       "@maya/shared-auth-react": [
         "../../maya_infra/packages/maya-shared-auth-react/src/index.ts"
+      ],
+      "@maya/shared-i18n-react": [
+        "../../maya_infra/packages/maya-shared-i18n-react/src/index.ts"
+      ],
+      "@maya/shared-layout-react": [
+        "../../maya_infra/packages/maya-shared-layout-react/src/index.ts"
+      ],
+      "@maya/shared-sidebar-react": [
+        "../../maya_infra/packages/maya-shared-sidebar-react/src/index.ts"
       ]
     },
     

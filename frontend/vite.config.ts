@@ -105,6 +105,7 @@ export default defineConfig({
     exclude: ['@maya/shared-auth-react', '@maya/shared-i18n-react', '@maya/shared-layout-react', '@maya/shared-sidebar-react'],
   },
   resolve: {
+    dedupe: ['react', 'react-dom', 'react-router-dom'],
     alias: {
       '@maya/shared-auth-react': path.join(sharedAuthRoot, 'src/index.ts'),
       '@maya/shared-i18n-react': path.join(sharedI18nRoot, 'src/index.ts'),

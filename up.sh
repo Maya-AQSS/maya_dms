@@ -64,6 +64,7 @@ fi
 set -a; source .env; set +a
 
 # ─── Detectar APP_KEY vacío en root .env (re-runs con .env pre-existente) ────
+NEED_KEY_GENERATE=false
 if [[ -z "${APP_KEY:-}" ]]; then
     warn "APP_KEY vacío en .env — se generará automáticamente"
     NEED_KEY_GENERATE=true
@@ -102,20 +103,6 @@ fi
 EXTRA_FLAGS=()
 [[ "${1:-}" == "--build" ]] && EXTRA_FLAGS+=("--build")
 
-# ─── Preparar backend/.env ────────────────────────────────────────────────────
-NEED_KEY_GENERATE=false
-
-if [[ ! -f backend/.env ]]; then
-    warn "backend/.env no encontrado — creando desde .env.example"
-    cp backend/.env.example backend/.env
-    NEED_KEY_GENERATE=true
-fi
-
-# Detectar APP_KEY vacío en backend/.env aunque el archivo ya existiera
-if grep -q '^APP_KEY=$' backend/.env 2>/dev/null; then
-    NEED_KEY_GENERATE=true
-fi
-
 # ─── Preparar frontend/.env ──────────────────────────────────────────────────
 # El .env raíz se monta en el contenedor como /app/.env (docker-compose.yml).
 # Para desarrollo local sin Docker (npm run dev) necesitamos frontend/.env con
@@ -145,11 +132,6 @@ if [[ "$NEED_KEY_GENERATE" == true ]]; then
       if docker exec maya_dms_backend test -f /var/www/html/vendor/autoload.php 2>/dev/null; then
         NEW_KEY=$(docker exec maya_dms_backend php artisan key:generate --show 2>/dev/null || true)
         if [[ -n "$NEW_KEY" && "$NEW_KEY" == base64:* ]]; then
-          if ! upsert_env_var backend/.env APP_KEY "$NEW_KEY"; then
-            warn "No se pudo actualizar APP_KEY en backend/.env"
-            break
-          fi
-
           if ! upsert_env_var .env APP_KEY "$NEW_KEY"; then
             warn "No se pudo actualizar APP_KEY en .env"
             break
@@ -157,7 +139,7 @@ if [[ "$NEED_KEY_GENERATE" == true ]]; then
 
           docker compose up -d backend > /dev/null
           KEY_SYNCED=true
-          success "APP_KEY generada y sincronizada en backend/.env y .env."
+          success "APP_KEY generada y escrita en .env."
         else
           warn "APP_KEY inválida o vacía desde artisan key:generate --show."
         fi
@@ -179,8 +161,6 @@ if [[ -z "${REVERB_APP_KEY:-}" ]]; then
     upsert_env_var .env REVERB_APP_KEY "$NEW_REVERB_KEY" \
         && upsert_env_var .env REVERB_APP_SECRET "$NEW_REVERB_SECRET" \
         && upsert_env_var .env VITE_REVERB_APP_KEY "$NEW_REVERB_KEY" \
-        && upsert_env_var backend/.env REVERB_APP_KEY "$NEW_REVERB_KEY" \
-        && upsert_env_var backend/.env REVERB_APP_SECRET "$NEW_REVERB_SECRET" \
         && success "Reverb keys generadas y sincronizadas." \
         || warn "No se pudieron sincronizar las Reverb keys."
     # Recargar .env para que el resto del script vea los nuevos valores
