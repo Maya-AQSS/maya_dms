@@ -14,6 +14,8 @@ class UserPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(PermissionsSeeder::class);
+
         $table = $this->writableAssignmentsTable();
 
         if ($table === null) {
