@@ -55,7 +55,7 @@ services:
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://maya_dms.localhost,http://localhost:5174}
     volumes:
       - ./backend:/var/www/html
-      - ../maya_infra/packages:/var/packages
+      - ../maya_infra/packages:/var/maya_infra/packages
       - /var/www/html/vendor
     ports:
       - "${BACKEND_PORT:-8001}:8000"
