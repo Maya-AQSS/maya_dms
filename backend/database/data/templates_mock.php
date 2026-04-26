@@ -336,6 +336,22 @@ return [
             'review_stages' => 2,
             'review_mode' => 'sequential',
         ],
+        [
+            'id' => '33333333-3333-3333-3333-333333333320',
+            'name' => 'Plantilla de Programación Didáctica — DWES (esqueleto)',
+            'description' => 'Esqueleto de programación didáctica basado en el índice estándar del módulo DWES (DAW). Bloques vacíos listos para rellenar al instanciar.',
+            'visibility_level' => TemplateVisibilityLevel::Module->value,
+            'delivery_deadline' => $nextMockTemplateDeadline(),
+            'study_id' => 'S_FP_DAW',
+            'study_type_id' => 'ST_FP',
+            'module_id' => 'M_DAW_DWES',
+            'team_id' => null,
+            'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ],
     ], $programacionPack['templates']),
     /**
      * Pool de posibles validadores de documentos generados desde cada plantilla.

@@ -40,6 +40,7 @@ $buildTemplateVersionSnapshotFromBlocks = static function (string $templateId): 
 };
 
 $snapshotPublishedSecretariaPersonal = $buildTemplateVersionSnapshotFromBlocks('33333333-3333-3333-3333-333333333319');
+$snapshotSyllabusDwesEsqueleto = $buildTemplateVersionSnapshotFromBlocks('33333333-3333-3333-3333-333333333320');
 
 return array_merge([
     [
@@ -277,6 +278,15 @@ return array_merge([
         'blocks_snapshot' => $snapshotPublishedSecretariaPersonal,
         'changelog' => 'Publicación inicial (plantilla personal Secretaría)',
         'published_by' => '2ead4bf3-574c-41b4-95ca-cac7daed0664',
+        'published_at' => null,
+    ],
+    [
+        'id' => '66666666-6666-6666-6666-666666666610',
+        'template_id' => '33333333-3333-3333-3333-333333333320',
+        'version_number' => 1,
+        'blocks_snapshot' => $snapshotSyllabusDwesEsqueleto,
+        'changelog' => 'Publicación inicial — esqueleto programación didáctica DWES.',
+        'published_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'published_at' => null,
     ],
 ], $programacionPack['template_versions']);
