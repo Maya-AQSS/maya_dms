@@ -7,7 +7,7 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { Button, ConfirmDialog } from '../../../ui';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
-import { useOidcSession } from '../../../auth/useOidcSession';
+import { useOidcSession } from '@maya/shared-auth-react';
 
 type Props = {
   template: Template;

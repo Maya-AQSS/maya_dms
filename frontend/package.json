@@ -36,6 +36,7 @@
     "@maya/shared-i18n-react": "file:../../maya_infra/packages/maya-shared-i18n-react",
     "@maya/shared-layout-react": "file:../../maya_infra/packages/maya-shared-layout-react",
     "@maya/shared-sidebar-react": "file:../../maya_infra/packages/maya-shared-sidebar-react",
+    "@maya/shared-ui-react": "file:../../maya_infra/packages/maya-shared-ui-react",
     "react-router-dom": "^7.14.2",
     "tailwindcss": "^4.2.2"
   },

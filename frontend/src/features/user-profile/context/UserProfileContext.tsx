@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { useOidcSession } from '../../../auth/useOidcSession';
+import { useOidcSession } from '@maya/shared-auth-react';
 import { fetchMe } from '../../../api/users';
 import type { MeProfile } from '../../../types/users';
 

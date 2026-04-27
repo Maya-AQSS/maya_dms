@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './index.css'
 import './i18n'
 import App from './App.tsx'
-import { AuthProvider } from './auth/OidcSessionProvider'
+import { AuthProvider } from '@maya/shared-auth-react'
 import { oidcAuthService } from './auth/oidcAdapter'
 import { UserProfileProvider } from './features/user-profile'
 

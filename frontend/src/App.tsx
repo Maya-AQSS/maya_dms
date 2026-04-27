@@ -21,7 +21,7 @@ import {
   TemplateReviewPage,
   TemplatesPage,
 } from './pages';
-import { useOidcSession } from './auth/useOidcSession';
+import { useOidcSession } from '@maya/shared-auth-react';
 import { HierarchyProvider } from './features/hierarchy';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 
