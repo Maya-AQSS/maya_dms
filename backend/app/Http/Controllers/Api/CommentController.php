@@ -14,7 +14,6 @@ use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 class CommentController extends Controller
 {
@@ -34,9 +33,7 @@ class CommentController extends Controller
 
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
+            $this->authorize('comment', $model);
             return response()->json([
                 'data' => $this->commentService->listForResource(Template::class, (string) $templateId),
             ]);
@@ -65,9 +62,7 @@ class CommentController extends Controller
 
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
+            $this->authorize('comment', $model);
 
             $comment = $this->commentService->createForResource(
                 commentableType: Template::class,
@@ -152,10 +147,7 @@ class CommentController extends Controller
 
         if ($commentableType === Template::class || is_a($commentableType, Template::class, true)) {
             $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
-
+            $this->authorize('comment', $model);
             return;
         }
 
@@ -174,10 +166,7 @@ class CommentController extends Controller
             }
 
             $template = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
-            if (! Gate::forUser($request->user())->allows('view', $template)) {
-                abort(404);
-            }
-
+            $this->authorize('comment', $template);
             return;
         }
 

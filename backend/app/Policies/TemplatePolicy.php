@@ -6,6 +6,7 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Autorización sobre plantillas normativas y Segregación de Funciones (SoD).
@@ -184,6 +185,44 @@ class TemplatePolicy
 
         return $template->reviewers()
             ->where('user_id', $userId)
+            ->exists();
+    }
+
+    /**
+     * Ver/gestionar comentarios de plantilla.
+     *
+     * Solo el creador o un revisor asignado pueden interactuar con comentarios.
+     */
+    public function comment(JwtUser $user, Template $template): bool
+    {
+        $userId = (string) $user->getAuthIdentifier();
+
+        if ($userId === $template->created_by) {
+            return true;
+        }
+
+        if ($this->hasEditShare($template, $userId)) {
+            return true;
+        }
+
+        return $this->review($user, $template);
+    }
+
+    /**
+     * Punto de extensión para compartición de plantillas.
+     *
+     * Si existe soporte de `template_shares`, se permite comentar con permiso `edit`.
+     */
+    private function hasEditShare(Template $template, string $userId): bool
+    {
+        if ($userId === '' || ! Schema::hasTable('template_shares')) {
+            return false;
+        }
+
+        return DB::table('template_shares')
+            ->where('template_id', $template->getKey())
+            ->where('user_id', $userId)
+            ->where('permission', 'edit')
             ->exists();
     }
 
