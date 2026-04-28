@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 
@@ -154,8 +155,8 @@ class Template extends Model
         return $this->hasMany(TemplateVersion::class)->orderBy('version_number');
     }
 
-    public function comments(): HasMany
+    public function comments(): MorphMany
     {
-        return $this->hasMany(Comment::class);
+        return $this->morphMany(Comment::class, 'commentable');
     }
 }
