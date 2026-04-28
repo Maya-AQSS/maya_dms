@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
 import { Button, FieldLabel, Select, TextInput, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../../ui';
 import type { Document, DocumentStatus } from '../../../types/documents';
+import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
+import type { TemplateVisibilityLevel } from '../../../types/templates';
 
 const STATUS_BADGE: Record<DocumentStatus, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
@@ -25,9 +27,17 @@ const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
 
 const VISIBILITY_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Todas' },
-  { value: 'personal', label: 'Personal' },
-  { value: 'shared', label: 'Compartida' },
+  ...VISIBILITY_OPTIONS,
 ];
+
+const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
+  personal: 'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
+  global: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  study_type: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+  study: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+  module: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  team: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+};
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -46,8 +56,7 @@ type Filters = {
 function applyClientFilters(docs: Document[], filters: Filters): Document[] {
   return docs.filter((doc) => {
     if (filters.status && doc.status !== filters.status) return false;
-    if (filters.visibility === 'personal' && doc.is_shared_with_me) return false;
-    if (filters.visibility === 'shared' && !doc.is_shared_with_me) return false;
+    if (filters.visibility && doc.visibility_level !== filters.visibility) return false;
     if (filters.authorName) {
       const name = (doc.owner_name ?? '').toLowerCase();
       if (!name.includes(filters.authorName.toLowerCase())) return false;
@@ -198,7 +207,7 @@ export function DocumentsTable() {
               )}
               {pageSlice.map((doc) => {
                 const status = doc.status as DocumentStatus;
-                const isShared = doc.is_shared_with_me === true;
+                const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
                 return (
                   <TableRow
                     key={doc.id}
@@ -209,8 +218,8 @@ export function DocumentsTable() {
                       {doc.title}
                     </TableCell>
                     <TableCell className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isShared ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary'}`}>
-                        {isShared ? 'Compartida' : 'Personal'}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[visLevel]}`}>
+                        {visibilityLabel(visLevel)}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-xs text-text-secondary dark:text-text-dark-secondary">

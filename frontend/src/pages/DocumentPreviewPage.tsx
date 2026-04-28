@@ -4,6 +4,7 @@ import { fetchDocument, submitDocumentForReview, deleteDocument } from '../api/d
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
+import { visibilityLabel } from '../features/templates/constants';
 import { Button, ConfirmDialog } from '../ui';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
@@ -196,7 +197,7 @@ export function DocumentPreviewPage() {
           <p className="text-[11px] text-text-muted dark:text-text-dark-muted">
             {detail.owner_name ?? 'Autor desconocido'}
             {' · '}
-            {detail.is_shared_with_me ? 'Compartida' : 'Personal'}
+            {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
             {' · '}
             Fecha límite: {formatDate(detail.delivery_deadline)}
             {' · '}
