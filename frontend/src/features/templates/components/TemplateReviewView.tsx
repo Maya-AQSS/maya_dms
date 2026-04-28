@@ -119,7 +119,7 @@ export function TemplateReviewView({ template }: Props) {
     setError(null);
     try {
       await approveTemplateReview(template.id);
-      navigate('/templates');
+      navigate('/procesos');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al aprobar la plantilla');
     } finally {
@@ -141,7 +141,7 @@ export function TemplateReviewView({ template }: Props) {
     setError(null);
     try {
       await rejectTemplateReview(template.id);
-      navigate('/templates');
+      navigate('/procesos');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al rechazar la plantilla');
     } finally {
@@ -158,7 +158,7 @@ export function TemplateReviewView({ template }: Props) {
       <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/templates')}
+            onClick={() => navigate('/procesos')}
             className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-secondary transition-colors"
           >
             ←

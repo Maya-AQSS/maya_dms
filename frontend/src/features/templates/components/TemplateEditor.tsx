@@ -535,7 +535,7 @@ export function TemplateEditor({ template }: Props) {
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
         <button
           type="button"
-          onClick={() => navigate('/templates')}
+          onClick={() => navigate('/procesos')}
           className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95"
           aria-label="Volver a Plantillas"
         >

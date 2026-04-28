@@ -97,7 +97,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setLeaveGuard(true);
       return;
     }
-    navigate('/templates');
+    navigate('/procesos');
   };
 
   const validateStep1 = () => {
@@ -167,7 +167,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     setSaving(true);
     try {
       await apiPublishTemplate(template.id);
-      navigate('/templates');
+      navigate('/procesos');
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al publicar la plantilla' });
     } finally {
@@ -183,7 +183,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       const res = await apiSubmitTemplateForReview(template.id);
       setTemplate(res.data);
       setShowValidationModal(false);
-      navigate('/templates');
+      navigate('/procesos');
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
     } finally {
@@ -234,7 +234,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     } else if (step === 'users') {
       void saveUsers();
     } else if (step === 'summary') {
-      navigate('/templates');
+      navigate('/procesos');
     }
   };
 
@@ -331,7 +331,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             <Button
               variant="outline"
               size="sm"
-              onClick={() => navigate('/templates')}
+              onClick={() => navigate('/procesos')}
               className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
             >
               Guardar y salir
@@ -383,7 +383,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             <button
                type="button"
               className="bg-warning-dark text-text-inverse px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider shadow-sm active:scale-95 transition-transform"
-              onClick={() => navigate('/templates')}
+              onClick={() => navigate('/procesos')}
             >
               Salir sin guardar
             </button>

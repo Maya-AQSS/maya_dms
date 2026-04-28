@@ -51,10 +51,10 @@ export function TemplateReviewPage() {
       <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
         <p className="text-sm text-danger-dark font-bold">⚠️ {error || 'No se pudo encontrar la plantilla'}</p>
         <button
-          onClick={() => navigate('/templates')}
+          onClick={() => navigate('/procesos')}
           className="text-xs font-bold uppercase tracking-widest text-odoo-purple hover:underline"
         >
-          Volver al listado
+          Volver a Procesos
         </button>
       </div>
     );
