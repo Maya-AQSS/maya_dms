@@ -1,7 +1,7 @@
 import { useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates';
-import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
+import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
 import { Button, FieldLabel, Select, TextInput, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../../ui';
 import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 
@@ -19,18 +19,14 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
   archived: 'Archivada',
 };
 
-function visibilityBadge(level: TemplateVisibilityLevel): { label: string; cls: string } {
-  if (level === 'personal') {
-    return {
-      label: 'Personal',
-      cls: 'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
-    };
-  }
-  return {
-    label: 'Compartida',
-    cls: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  };
-}
+const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
+  personal:    'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
+  global:      'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  study_type:  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+  study:       'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+  module:      'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  team:        'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+};
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -194,7 +190,7 @@ export function TemplatesTable() {
                 </TableRow>
               )}
               {templates.map((t) => {
-                const vis = visibilityBadge(t.visibility_level);
+                const visLevel = t.visibility_level;
                 const status = t.status as TemplateStatus;
                 return (
                   <TableRow
@@ -206,8 +202,8 @@ export function TemplatesTable() {
                       {t.name}
                     </TableCell>
                     <TableCell className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${vis.cls}`}>
-                        {vis.label}
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[visLevel]}`}>
+                        {visibilityLabel(visLevel)}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-3 text-xs text-text-secondary dark:text-text-dark-secondary">
