@@ -6,6 +6,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { Button } from '../ui';
 import { FavoriteButton } from '../components/FavoriteButton';
+import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -42,6 +43,7 @@ export function DocumentPreviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (!documentId) {
@@ -131,6 +133,14 @@ export function DocumentPreviewPage() {
                 v{detail.current_version}
               </span>
               {documentId && <FavoriteButton entityType="document" entityId={documentId} />}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistory(true)}
+              >
+                Historial
+              </Button>
               {isDraft && isOwner && documentId && (
                 <Link to={`/documents/${documentId}/editor`}>
                   <Button type="button" size="sm" variant="outline">
@@ -237,6 +247,15 @@ export function DocumentPreviewPage() {
           </>
         )}
       </article>
+
+      {documentId && (
+        <VersionHistoryPanel
+          open={showHistory}
+          entityType="document"
+          entityId={documentId}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }

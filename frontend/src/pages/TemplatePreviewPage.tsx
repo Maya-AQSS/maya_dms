@@ -9,6 +9,7 @@ import type { Template } from '../types/templates';
 import type { TemplateBlock } from '../types/blocks';
 import { Button } from '../ui';
 import { FavoriteButton } from '../components/FavoriteButton';
+import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -50,6 +51,7 @@ export function TemplatePreviewPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -123,6 +125,14 @@ export function TemplatePreviewPage() {
                 v{template.version}
               </span>
               {id && <FavoriteButton entityType="template" entityId={id} />}
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowHistory(true)}
+              >
+                Historial
+              </Button>
               {template.status === 'draft' && isOwner && (
                 <Button
                   type="button"
@@ -232,6 +242,15 @@ export function TemplatePreviewPage() {
           </>
         )}
       </article>
+
+      {id && (
+        <VersionHistoryPanel
+          open={showHistory}
+          entityType="template"
+          entityId={id}
+          onClose={() => setShowHistory(false)}
+        />
+      )}
     </div>
   );
 }
