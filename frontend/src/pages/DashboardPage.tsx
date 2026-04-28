@@ -250,7 +250,7 @@ export function DashboardPage() {
             type="button"
             variant="ghost"
             className="shrink-0 text-xs font-semibold underline-offset-2 dark:text-odoo-dark-teal dark:hover:text-odoo-dark-teal-d focus-visible:ring-odoo-dark-teal/50 -mx-1 px-1"
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate('/procesos', { state: { tab: 'documents' } })}
           >
             Ver todos
           </Button>
