@@ -114,10 +114,7 @@ class CommentController extends Controller
     {
         $commentModel = $this->commentService->findOrFail($comment);
         $this->authorizeViewForCommentable($request, $commentModel);
-
-        if ((string) $commentModel->author_id !== (string) Auth::id()) {
-            abort(403, 'Solo el autor puede eliminar su comentario.');
-        }
+        $this->authorize('delete', $commentModel);
 
         $this->commentService->delete($comment);
 
