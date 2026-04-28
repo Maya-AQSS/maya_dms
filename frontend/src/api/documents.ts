@@ -163,6 +163,11 @@ type DocumentBlockUpdateApiResponse = { data: Record<string, unknown> };
  * @param content - Contenido del bloque.
  * @returns Contenido del bloque actualizado.
  */
+/** DELETE /api/v1/documents/{id} — 204 sin body. */
+export async function deleteDocument(documentId: string): Promise<void> {
+  await apiFetchJson<undefined>(`documents/${encodeURIComponent(documentId)}`, { method: 'DELETE' });
+}
+
 export async function updateDocumentBlock(
   documentId: string,
   documentBlockId: string,

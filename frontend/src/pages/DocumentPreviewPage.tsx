@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchDocument, submitDocumentForReview } from '../api/documents';
+import { fetchDocument, submitDocumentForReview, deleteDocument } from '../api/documents';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
-import { Button } from '../ui';
+import { Button, ConfirmDialog } from '../ui';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -44,6 +44,9 @@ export function DocumentPreviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!documentId) {
@@ -96,6 +99,19 @@ export function DocumentPreviewPage() {
   const isDraft = detail?.status === 'draft';
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
 
+  const handleDelete = async () => {
+    if (!documentId) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await deleteDocument(documentId);
+      navigate('/procesos', { state: { tab: 'documents' } });
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar el documento.');
+      setDeleteLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!documentId || !detail) return;
     setActionLoading(true);
@@ -132,6 +148,17 @@ export function DocumentPreviewPage() {
               <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
                 v{detail.current_version}
               </span>
+              {isDraft && isOwner && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                  onClick={() => setShowDeleteModal(true)}
+                >
+                  Eliminar
+                </Button>
+              )}
               {documentId && <FavoriteButton entityType="document" entityId={documentId} />}
               <Button
                 type="button"
@@ -256,6 +283,19 @@ export function DocumentPreviewPage() {
           onClose={() => setShowHistory(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={showDeleteModal}
+        variant="danger"
+        title="¿Eliminar este documento?"
+        description="Estás a punto de eliminar este elemento. Esta acción es irreversible y no se puede deshacer."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        loading={deleteLoading}
+        error={deleteError}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+      />
     </div>
   );
 }

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fetchTemplate, submitTemplateForReview } from '../api/templates';
+import { fetchTemplate, submitTemplateForReview, deleteTemplate } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { TemplateBlock } from '../types/blocks';
-import { Button } from '../ui';
+import { Button, ConfirmDialog } from '../ui';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -52,6 +52,9 @@ export function TemplatePreviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -102,6 +105,19 @@ export function TemplatePreviewPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!id) return;
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      await deleteTemplate(id);
+      navigate('/procesos');
+    } catch (e) {
+      setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la plantilla.');
+      setDeleteLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-full overflow-y-auto bg-ui-preview-bg dark:bg-ui-dark-bg">
       <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 px-6 h-[52px]">
@@ -133,6 +149,17 @@ export function TemplatePreviewPage() {
               >
                 Historial
               </Button>
+              {isDraft && isOwner && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                  onClick={() => setShowDeleteModal(true)}
+                >
+                  Eliminar
+                </Button>
+              )}
               {template.status === 'draft' && isOwner && (
                 <Button
                   type="button"
@@ -251,6 +278,19 @@ export function TemplatePreviewPage() {
           onClose={() => setShowHistory(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={showDeleteModal}
+        variant="danger"
+        title="¿Eliminar esta plantilla?"
+        description="Estás a punto de eliminar este elemento. Esta acción es irreversible y no se puede deshacer."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        loading={deleteLoading}
+        error={deleteError}
+        onConfirm={() => void handleDelete()}
+        onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+      />
     </div>
   );
 }
