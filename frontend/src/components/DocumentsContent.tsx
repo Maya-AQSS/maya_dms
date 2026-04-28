@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  PageTitle,
+  DataTable,
+  ColumnVisibilityMenu,
+  type ColumnDef,
+  type SortState,
+} from '@maya/shared-ui-react';
 import { CascadeFilters } from './CascadeFilters';
 import {
   useDocuments,
@@ -16,7 +23,7 @@ import { fetchTemplateVersion, type TemplateVersionSnapshotBlock } from '../api/
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { useUserProfile } from '../features/user-profile';
-import type { DocumentStatus } from '../types/documents';
+import type { Document, DocumentStatus } from '../types/documents';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
 import { Button } from '../ui';
 
@@ -69,6 +76,8 @@ export function DocumentsContent() {
   const [previewBlocks, setPreviewBlocks] = useState<TemplateVersionSnapshotBlock[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy] = useState<SortState | null>(null);
   const [, startTransition] = useTransition();
 
   const { documents, loading, error, reload } = useDocuments();
@@ -221,6 +230,92 @@ export function DocumentsContent() {
     setPreviewLoading(false);
   };
 
+  const columns = useMemo<ColumnDef<Document>[]>(
+    () => [
+      {
+        id: 'title',
+        header: 'Título',
+        sortable: true,
+        cell: (d) => (
+          <span className="font-medium text-text-primary dark:text-text-dark-primary truncate block">
+            {d.title}
+          </span>
+        ),
+      },
+      {
+        id: 'version',
+        header: 'Versión',
+        sortable: true,
+        align: 'left',
+        cell: (d) => (
+          <span className="text-xs text-text-muted dark:text-text-dark-muted">
+            v{d.current_version}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Estado',
+        sortable: true,
+        align: 'left',
+        cell: (d) => (
+          <span
+            className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[d.status]}`}
+          >
+            {STATUS_LABELS[d.status]}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        align: 'right',
+        alwaysVisible: true,
+        visibilityLabel: 'Acciones',
+        cell: (d) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/documents/${d.id}`);
+            }}
+          >
+            Abrir
+          </Button>
+        ),
+      },
+    ],
+    [navigate],
+  );
+
+  const sortedFiltered = useMemo(() => {
+    if (!sortBy) return filtered;
+    const dir = sortBy.direction === 'asc' ? 1 : -1;
+    const cmp = (a: Document, b: Document): number => {
+      switch (sortBy.columnId) {
+        case 'title':
+          return a.title.localeCompare(b.title) * dir;
+        case 'version':
+          return ((a.current_version ?? 0) - (b.current_version ?? 0)) * dir;
+        case 'status':
+          return a.status.localeCompare(b.status) * dir;
+        default:
+          return 0;
+      }
+    };
+    return [...filtered].sort(cmp);
+  }, [filtered, sortBy]);
+
+  const toggleColumn = (id: string) =>
+    setHiddenColumnIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
   const handleNewProgrammingClick = async () => {
     if (!selectedModuleId || loadingCreationOptions || creatingDocument) return;
     if (creationMode === 'none') return;
@@ -234,6 +329,25 @@ export function DocumentsContent() {
 
   return (
     <div className="p-6">
+      <PageTitle
+        title="Documentos"
+        actions={
+          <Button
+            type="button"
+            size="sm"
+            loading={creatingDocument}
+            disabled={newProgrammingDisabledReason !== null || isSelectingTemplate}
+            onClick={() => void handleNewProgrammingClick()}
+            title={
+              isSelectingTemplate
+                ? 'Ya estás eligiendo una plantilla.'
+                : newProgrammingDisabledReason ?? undefined
+            }
+          >
+            Nueva Programación
+          </Button>
+        }
+      />
       {showSelectModuleHint && (
         <p className="mb-3 text-xs text-text-muted dark:text-text-dark-muted">
           Selecciona un módulo para crear una nueva programación.
@@ -262,7 +376,7 @@ export function DocumentsContent() {
       )}
 
       <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l flex items-center justify-between">
+        <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l flex items-center justify-between gap-3">
           <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
             Programaciones Didácticas
           </h2>
@@ -272,20 +386,11 @@ export function DocumentsContent() {
                 {filtered.length} {filtered.length === 1 ? 'documento' : 'documentos'}
               </span>
             )}
-            <Button
-              type="button"
-              size="sm"
-              loading={creatingDocument}
-              disabled={newProgrammingDisabledReason !== null || isSelectingTemplate}
-              onClick={() => void handleNewProgrammingClick()}
-              title={
-                isSelectingTemplate
-                  ? 'Ya estás eligiendo una plantilla.'
-                  : newProgrammingDisabledReason ?? undefined
-              }
-            >
-              Nueva Programación
-            </Button>
+            <ColumnVisibilityMenu
+              columns={columns}
+              hiddenColumnIds={hiddenColumnIds}
+              onToggle={toggleColumn}
+            />
           </div>
         </div>
 
@@ -414,7 +519,7 @@ export function DocumentsContent() {
         )}
 
         {!(showSelector && creationMode === 'select') && (
-          <div className="divide-y divide-ui-border-l dark:divide-ui-dark-border-l">
+          <div>
             {loading && (
               <p className="px-5 py-4 text-sm text-text-muted dark:text-text-dark-muted">
                 Cargando documentos…
@@ -425,33 +530,19 @@ export function DocumentsContent() {
                 Error al cargar documentos: {error.message}
               </p>
             )}
-            {!loading && !error && filtered.length === 0 && (
-              <p className="px-5 py-8 text-sm text-center text-text-muted dark:text-text-dark-muted">
-                No hay programaciones didácticas con los filtros actuales.
-              </p>
+            {!loading && !error && (
+              <DataTable<Document>
+                columns={columns}
+                rows={sortedFiltered}
+                rowKey={(d) => d.id}
+                hiddenColumnIds={hiddenColumnIds}
+                sortBy={sortBy}
+                onSortChange={setSortBy}
+                onRowClick={(d) => navigate(`/documents/${d.id}`)}
+                emptyMessage="No hay programaciones didácticas con los filtros actuales."
+                className="rounded-none border-0 shadow-none"
+              />
             )}
-            {filtered.map((doc) => (
-              <button
-                key={doc.id}
-                type="button"
-                onClick={() => navigate(`/documents/${doc.id}`)}
-                className="w-full text-left px-5 py-3 flex items-center justify-between gap-4 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary dark:text-text-dark-primary truncate">
-                    {doc.title}
-                  </p>
-                  <p className="text-xs text-text-muted dark:text-text-dark-muted mt-0.5">
-                    v{doc.current_version}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[doc.status]}`}
-                >
-                  {STATUS_LABELS[doc.status]}
-                </span>
-              </button>
-            ))}
           </div>
         )}
       </div>

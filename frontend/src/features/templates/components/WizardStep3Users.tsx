@@ -221,7 +221,7 @@ function ValidatorSection({
             <div className="flex gap-3">
               <Button
                 type="button"
-                variant="primary"
+                variant="secondary"
                 size="md"
                 className="flex-1"
                 onClick={() => setConfirmDelete(null)}
@@ -230,9 +230,9 @@ function ValidatorSection({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="danger"
                 size="md"
-                className="flex-1 text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                className="flex-1"
                 onClick={handleConfirmRemove}
               >
                 Eliminar definitivamente

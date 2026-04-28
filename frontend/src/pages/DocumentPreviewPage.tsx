@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { PageTitle } from '@maya/shared-ui-react';
 import { fetchDocument } from '../api/documents';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
@@ -67,10 +68,11 @@ export function DocumentPreviewPage() {
 
   return (
     <div className="min-h-full overflow-y-auto bg-ui-preview-bg dark:bg-ui-dark-bg">
-      <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-4 px-6 h-[52px]">
-        <button
-          type="button"
-          onClick={() => {
+      <div className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border px-6 py-3">
+        <PageTitle
+          title={detail?.title ?? 'Vista previa'}
+          subtitle="Previsualización"
+          onBack={() => {
             if (cameFromSummary && documentId) {
               if (cameFromValidate) {
                 navigate(`/documents/${documentId}/validate`);
@@ -81,25 +83,25 @@ export function DocumentPreviewPage() {
             }
             navigate('/documents');
           }}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary dark:text-text-dark-secondary bg-ui-body dark:bg-ui-dark-bg hover:bg-ui-border dark:hover:bg-ui-dark-border transition-colors cursor-pointer"
-        >
-          {cameFromSummary
-            ? cameFromValidate
-              ? '← Volver a validar'
-              : '← Volver al resumen'
-            : '← Volver al listado'}
-        </button>
-        <span className="flex-1 text-xs font-semibold text-text-muted dark:text-text-dark-muted truncate">
-          {detail?.title ?? 'Programación'} — Previsualización
-        </span>
-        {canEdit && documentId && (
-          <Link to={`/documents/${documentId}/editor`}>
-            <Button type="button" size="sm" variant="primary">
-              Editar
-            </Button>
-          </Link>
-        )}
-      </header>
+          backLabel={
+            cameFromSummary
+              ? cameFromValidate
+                ? 'Volver a validar'
+                : 'Volver al resumen'
+              : 'Volver al listado'
+          }
+          className="!mb-0"
+          actions={
+            canEdit && documentId ? (
+              <Link to={`/documents/${documentId}/editor`}>
+                <Button type="button" size="sm" variant="primary">
+                  Editar
+                </Button>
+              </Link>
+            ) : undefined
+          }
+        />
+      </div>
 
       <article
         className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"

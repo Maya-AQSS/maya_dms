@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageTitle } from '@maya/shared-ui-react';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
@@ -155,56 +156,46 @@ export function TemplateReviewView({ template }: Props) {
   return (
     <div className="flex flex-col h-full bg-[#ddd9d3] dark:bg-ui-dark-bg/50">
       {/* Header con acciones */}
-      <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/templates')}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-secondary transition-colors"
-          >
-            ←
-          </button>
-          <div>
-            <h2 className="text-sm font-bold text-text-primary dark:text-text-dark-primary">
-              Validación de Plantilla
-            </h2>
-            <p className="text-[10px] text-text-muted uppercase tracking-widest font-black truncate max-w-[200px]">
-              {template.name}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {!isAlreadyValidated ? (
-            <>
-              <Button
-                variant="outlineWarning"
-                size="sm"
-                onClick={handleRejectClick}
-                disabled={actionLoading}
-                loading={actionLoading}
-                className="text-[10px] font-black uppercase tracking-wider"
-              >
-                Rechazar validación
-              </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleApprove}
-                disabled={actionLoading}
-                loading={actionLoading}
-                className="text-[10px] font-black uppercase tracking-wider px-6"
-              >
-                Validar y Aprobar
-              </Button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
-              <span className="text-success text-[10px] font-black uppercase tracking-widest">
-                ✓ Ya has validado esta plantilla
-              </span>
-            </div>
-          )}
-        </div>
+      <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-md z-20">
+        <PageTitle
+          title="Revisión de plantilla"
+          subtitle={template.name}
+          onBack={() => navigate('/templates')}
+          backLabel="Volver"
+          className="!mb-0"
+          actions={
+            !isAlreadyValidated ? (
+              <>
+                <Button
+                  variant="outlineWarning"
+                  size="sm"
+                  onClick={handleRejectClick}
+                  disabled={actionLoading}
+                  loading={actionLoading}
+                  className="text-[10px] font-black uppercase tracking-wider"
+                >
+                  Rechazar validación
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={handleApprove}
+                  disabled={actionLoading}
+                  loading={actionLoading}
+                  className="text-[10px] font-black uppercase tracking-wider px-6"
+                >
+                  Validar y Aprobar
+                </Button>
+              </>
+            ) : (
+              <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
+                <span className="text-success text-[10px] font-black uppercase tracking-widest">
+                  ✓ Ya has validado esta plantilla
+                </span>
+              </div>
+            )
+          }
+        />
       </div>
 
       {isAlreadyValidated && remainingReviewers.length > 0 && (

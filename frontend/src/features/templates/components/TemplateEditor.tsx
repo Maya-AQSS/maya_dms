@@ -461,14 +461,15 @@ export function TemplateEditor({ template }: Props) {
               {activeUiCfg.label}
             </span>
           )}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setPropertiesCollapsed((v) => !v)}
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors text-text-muted text-xs"
             aria-label={propertiesCollapsed ? 'Expandir propiedades' : 'Colapsar propiedades'}
+            className="shrink-0 !w-6 !h-6 !p-0 !rounded"
           >
             {propertiesCollapsed ? '▾' : '▴'}
-          </button>
+          </Button>
         </div>
 
         {/* right-properties (colapsable) */}
@@ -533,14 +534,15 @@ export function TemplateEditor({ template }: Props) {
     <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
       {/* Wizard topbar */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => navigate('/templates')}
-          className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95"
           aria-label="Volver a Plantillas"
+          className="!w-9 !h-9 !p-0 !rounded-full active:scale-95"
         >
           ←
-        </button>
+        </Button>
         <span className="text-sm text-text-secondary">
           Plantillas /{' '}
           <span className="font-bold text-text-primary dark:text-text-dark-primary">

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { PageTitle } from '@maya/shared-ui-react';
 import {
   approveDocumentReview,
   fetchDocument,
@@ -784,85 +785,80 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-7rem)] overflow-hidden bg-ui-body dark:bg-ui-dark-bg">
-      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={() => navigate(isValidateMode ? '/dashboard' : `/documents/${documentId}`)}
-            className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95 shrink-0"
-            aria-label={isValidateMode ? 'Volver al panel principal' : 'Volver a la previsualización'}
-          >
-            ←
-          </button>
-          <span className="text-sm text-text-secondary truncate">
-            Programaciones /{' '}
-            <span className="font-bold text-text-primary dark:text-text-dark-primary">{detail.title}</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {isValidateMode && (
+      <div className="shrink-0 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
+        <PageTitle
+          title={isValidateMode ? 'Validación de documento' : detail.title || 'Editor de documento'}
+          subtitle={isValidateMode ? undefined : 'Programaciones'}
+          onBack={() => navigate(-1)}
+          backLabel={isValidateMode ? 'Volver al panel principal' : 'Volver a la previsualización'}
+          className="!mb-0"
+          actions={
             <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => {
-                  setValidationModalError(null);
-                  setValidateConfirm('reject');
-                }}
-              >
-                Rechazar
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => {
-                  setValidationModalError(null);
-                  setValidateConfirm('approve');
-                }}
-              >
-                Aprobar
-              </Button>
+              {isValidateMode && (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={!actionableReviewId || validationReviewLoading}
+                    onClick={() => {
+                      setValidationModalError(null);
+                      setValidateConfirm('reject');
+                    }}
+                  >
+                    Rechazar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    disabled={!actionableReviewId || validationReviewLoading}
+                    onClick={() => {
+                      setValidationModalError(null);
+                      setValidateConfirm('approve');
+                    }}
+                  >
+                    Aprobar
+                  </Button>
+                </>
+              )}
+              {!isValidateMode && step === 'summary' && (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => setSummaryConfirmAction('save')}
+                  >
+                    Guardar sin enviar
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    loading={submittingForReview}
+                    disabled={!isDraft || reviewerSubmitBlocked}
+                    onClick={() => setSummaryConfirmAction('submit')}
+                  >
+                    Enviar a validar
+                  </Button>
+                </>
+              )}
+              {!isValidateMode && step !== 'summary' && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  loading={saving}
+                  onClick={() => void handleContinue()}
+                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+                >
+                  Continuar
+                </Button>
+              )}
             </>
-          )}
-          {!isValidateMode && step === 'summary' && (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setSummaryConfirmAction('save')}
-              >
-                Guardar sin enviar
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                loading={submittingForReview}
-                disabled={!isDraft || reviewerSubmitBlocked}
-                onClick={() => setSummaryConfirmAction('submit')}
-              >
-                Enviar a validar
-              </Button>
-            </>
-          )}
-          {!isValidateMode && step !== 'summary' && (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              loading={saving}
-              onClick={() => void handleContinue()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Continuar
-            </Button>
-          )}
-        </div>
+          }
+        />
       </div>
 
       {!isDraft && !isValidateMode && (
@@ -990,7 +986,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                       <Button
                         type="button"
                         size="sm"
-                        variant="secondary"
+                        variant="danger"
                         onClick={() => void persistBlockContent(activeBlock, [])}
                       >
                         Eliminar bloque opcional

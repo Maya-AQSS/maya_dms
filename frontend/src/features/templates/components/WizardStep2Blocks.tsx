@@ -115,7 +115,7 @@ function SortableBlockItem({
           {block.title || 'Bloque sin nombre'}
         </span>
         {hasReviewComments && (
-          <span className="shrink-0 w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm animate-pulse">
+          <span className="shrink-0 w-5 h-5 bg-warning-dark text-text-inverse rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm motion-safe:animate-pulse">
             !
           </span>
         )}
@@ -590,13 +590,13 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
         </div>
 
         <div className="shrink-0 p-4 border-t border-ui-border dark:border-ui-dark-border">
-          <button
-            type="button"
+          <Button
+            variant="unstyled"
             onClick={openCreate}
             className="w-full text-center rounded-lg px-3 py-3 flex items-center justify-center border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted"
           >
             <span className="text-sm font-medium">+ Añadir bloque</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -623,7 +623,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
               <h3 className="text-sm font-bold text-text-primary truncate pr-4">{selectedBlock.title}</h3>
               <div className="flex gap-2">
                 <Button variant="outline" size="xs" onClick={() => openEdit(selectedBlock)}>Editar</Button>
-                <Button variant="outline" size="xs" className="text-danger" onClick={() => setDeleteModal(true)}>Eliminar</Button>
+                <Button variant="danger" size="xs" onClick={() => setDeleteModal(true)}>Eliminar</Button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -934,33 +934,37 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                   Edición múltiple ({multiIndex + 1} de {orderedSelection.length})
                 </h3>
               </div>
-              <button type="button" onClick={handleMultiCancelAll} className="text-text-muted hover:text-danger text-xs transition-colors">
+              <Button variant="ghost" size="xs" onClick={handleMultiCancelAll} className="hover:!text-danger">
                 Cancelar todo
-              </button>
+              </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {/* Navigation */}
               <div className="flex items-center gap-3">
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="xs"
                   onClick={() => handleMultiNavigate(multiIndex - 1)}
                   disabled={multiIndex === 0}
-                  className="w-7 h-7 rounded-full border border-ui-border flex items-center justify-center text-xs text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  className="!w-7 !h-7 !p-0 !rounded-full"
+                  aria-label="Anterior"
                 >
                   ←
-                </button>
+                </Button>
                 <span className="text-xs font-bold text-text-primary tabular-nums">
                   {multiIndex + 1} / {orderedSelection.length}
                 </span>
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="xs"
                   onClick={() => handleMultiNavigate(multiIndex + 1)}
                   disabled={multiIndex === orderedSelection.length - 1}
-                  className="w-7 h-7 rounded-full border border-ui-border flex items-center justify-center text-xs text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple disabled:opacity-30 disabled:pointer-events-none transition-all"
+                  className="!w-7 !h-7 !p-0 !rounded-full"
+                  aria-label="Siguiente"
                 >
                   →
-                </button>
+                </Button>
                 <div className="flex-1 h-1.5 bg-ui-border rounded-full overflow-hidden ml-1">
                   <div
                     className="h-full bg-odoo-purple rounded-full transition-all duration-200"

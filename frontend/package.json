@@ -38,7 +38,9 @@
     "@maya/shared-sidebar-react": "file:../../maya_infra/packages/maya-shared-sidebar-react",
     "@maya/shared-ui-react": "file:../../maya_infra/packages/maya-shared-ui-react",
     "react-router-dom": "^7.14.2",
-    "tailwindcss": "^4.2.2"
+    "tailwindcss": "^4.2.2",
+    "@maya/shared-dashboard-react": "file:../../maya_infra/packages/maya-shared-dashboard-react",
+    "react-grid-layout": "^1.5.3"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",

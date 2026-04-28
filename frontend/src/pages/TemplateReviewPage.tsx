@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '@maya/shared-ui-react';
 import { fetchTemplate, type Template } from '../api/templates';
 import { TemplateReviewView } from '../features/templates';
 import { useUserProfile } from '../features/user-profile';
@@ -49,13 +50,10 @@ export function TemplateReviewPage() {
   if (error || !template) {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
-        <p className="text-sm text-danger-dark font-bold">⚠️ {error || 'No se pudo encontrar la plantilla'}</p>
-        <button
-          onClick={() => navigate('/templates')}
-          className="text-xs font-bold uppercase tracking-widest text-odoo-purple hover:underline"
-        >
+        <p role="alert" aria-live="assertive" className="text-sm text-danger-dark font-bold">⚠️ {error || 'No se pudo encontrar la plantilla'}</p>
+        <Button variant="ghost" size="sm" onClick={() => navigate('/templates')}>
           Volver al listado
-        </button>
+        </Button>
       </div>
     );
   }

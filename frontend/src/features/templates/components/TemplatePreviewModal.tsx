@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { Button } from '../../../ui';
 import { BlockContentHtml } from './BlockContentHtml';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
@@ -26,13 +27,9 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
 
       {/* Sticky nav bar */}
       <header className="sticky top-0 bg-ui-card border-b border-ui-border flex items-center gap-4 px-6 h-[52px]" style={{ zIndex: 100 }}>
-        <button
-          type="button"
-          onClick={onClose}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary bg-ui-body hover:bg-ui-border transition-colors cursor-pointer"
-        >
+        <Button variant="secondary" size="xs" onClick={onClose} className="shrink-0">
           ← Volver al resumen
-        </button>
+        </Button>
         <span className="flex-1 text-xs font-semibold text-text-muted truncate">
           {template.name} — Previsualización
         </span>

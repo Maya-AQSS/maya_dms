@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { PageTitle } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
 import { Button, FieldLabel, Select, TextInput } from '../../../ui';
@@ -78,37 +79,31 @@ export function TemplatesContent() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-            Plantillas normativas
-          </h2>
-          <p className="text-xs text-text-muted dark:text-text-dark-muted mt-1">
-            Listado según tu visibilidad en la API (máx. 20 por página). La visibilidad compartida en alta/edición
-            requiere roles de coordinación.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void refetch()}
-            disabled={loading}
-          >
-            Actualizar
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/templates/new')}
-          >
-            Nueva Plantilla
-          </Button>
-        </div>
-
-      </div>
+      <PageTitle
+        title="Plantillas"
+        subtitle="Listado según tu visibilidad en la API (máx. 20 por página). La visibilidad compartida en alta/edición requiere roles de coordinación."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={loading}
+            >
+              Actualizar
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/templates/new')}
+            >
+              Nueva Plantilla
+            </Button>
+          </>
+        }
+      />
 
       {listError && (
         <div className="rounded-lg border border-warning/40 bg-warning-light/40 dark:bg-warning-dark/10 px-4 py-3 text-sm text-warning-dark dark:text-warning-light">

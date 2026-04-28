@@ -86,8 +86,8 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
   return (
     <div className="bg-ui-card dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-lg mb-6 shadow-sm">
       {/* Toggle visible solo en móvil */}
-      <button
-        type="button"
+      <Button
+        variant="unstyled"
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
         aria-controls="cascade-filter-panel"
@@ -100,7 +100,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
           )}
         </span>
         <ChevronIcon open={isOpen} />
-      </button>
+      </Button>
 
       {/* Panel de selectores: colapsable en móvil, siempre visible en ≥ md */}
       <div
