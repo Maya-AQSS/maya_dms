@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchDocument, submitDocumentForReview } from '../api/documents';
+import { useNavigate, useParams } from 'react-router-dom';
+import { fetchTemplate, submitTemplateForReview } from '../api/templates';
+import { fetchBlocks } from '../api/blocks';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
-import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
+import { visibilityLabel } from '../features/templates/constants';
+import type { Template } from '../types/templates';
+import type { TemplateBlock } from '../types/blocks';
 import { Button } from '../ui';
 import { useUserProfile } from '../features/user-profile';
 
@@ -11,18 +14,23 @@ const STATUS_BADGE: Record<string, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
   in_review: 'bg-amber-200 text-amber-900 dark:bg-amber-800/40 dark:text-amber-200',
   published: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
+  archived: 'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
 };
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
-  published: 'Aprobado',
+  published: 'Publicada',
+  archived: 'Archivada',
 };
 
-function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
-  const fromContent = normalizeBlockContentForEditor(block.content);
+function blockContentNodes(block: TemplateBlock): unknown[] {
+  const fromContent = normalizeBlockContentForEditor(block.default_content);
   if (fromContent.length > 0) return fromContent;
-  return normalizeBlockContentForEditor(block.default_content);
+  if (typeof block.default_content === 'string' && block.default_content.trim()) {
+    return [];
+  }
+  return [];
 }
 
 function formatDate(iso: string | null | undefined): string {
@@ -30,22 +38,22 @@ function formatDate(iso: string | null | undefined): string {
   return iso.slice(0, 10);
 }
 
-export function DocumentPreviewPage() {
-  const { documentId } = useParams<{ documentId: string }>();
+export function TemplatePreviewPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
   const { profile } = useUserProfile();
 
-  const [detail, setDetail] = useState<DocumentDetail | null>(null);
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!documentId) {
+    if (!id) {
       setLoading(false);
-      setError('Identificador de documento no válido.');
+      setError('Identificador de plantilla no válido.');
       return;
     }
 
@@ -54,52 +62,36 @@ export function DocumentPreviewPage() {
       try {
         setLoading(true);
         setError(null);
-        const data = await fetchDocument(documentId);
-        if (!cancelled) setDetail(data);
+        const [tRes, bRes] = await Promise.all([
+          fetchTemplate(id),
+          fetchBlocks(id),
+        ]);
+        if (!cancelled) {
+          setTemplate(tRes.data);
+          setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+        }
       } catch (e) {
         if (!cancelled) {
-          setError(e instanceof Error ? e.message : 'No se pudo cargar el documento.');
-          setDetail(null);
+          setError(e instanceof Error ? e.message : 'No se pudo cargar la plantilla.');
         }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
-
     void load();
     return () => { cancelled = true; };
-  }, [documentId]);
+  }, [id]);
 
-  const previewState = location.state as { returnToStep?: string; returnToValidate?: boolean } | null;
-  const cameFromSummary = previewState?.returnToStep === 'summary';
-  const cameFromValidate = previewState?.returnToValidate === true;
+  const isDraft = template?.status === 'draft';
+  const isOwner = profile?.id === template?.created_by;
 
-  const backLabel = cameFromSummary
-    ? cameFromValidate ? '← Volver a validar' : '← Volver al resumen'
-    : '← Volver';
-
-  const handleBack = () => {
-    if (cameFromSummary && documentId) {
-      if (cameFromValidate) {
-        navigate(`/documents/${documentId}/validate`);
-      } else {
-        navigate(`/documents/${documentId}/editor`, { state: { step: 'summary' } });
-      }
-      return;
-    }
-    navigate('/procesos', { state: { tab: 'documents' } });
-  };
-
-  const isDraft = detail?.status === 'draft';
-  const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
-
-  const handleSubmit = async () => {
-    if (!documentId || !detail) return;
+  const handleSubmitForReview = async () => {
+    if (!id || !template) return;
     setActionLoading(true);
     setActionError(null);
     try {
-      const res = await submitDocumentForReview(documentId);
-      setDetail((prev) => prev ? ({ ...prev, status: res.status, submitted_at: res.submitted_at } as typeof prev) : prev);
+      const res = await submitTemplateForReview(id);
+      setTemplate(res.data);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo enviar a validar.');
     } finally {
@@ -112,29 +104,32 @@ export function DocumentPreviewPage() {
       <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 px-6 h-[52px]">
         <button
           type="button"
-          onClick={handleBack}
+          onClick={() => navigate('/procesos')}
           className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary dark:text-text-dark-secondary bg-ui-body dark:bg-ui-dark-bg hover:bg-ui-border dark:hover:bg-ui-dark-border transition-colors cursor-pointer"
         >
-          {backLabel}
+          ← Volver
         </button>
         <span className="flex-1 text-xs font-semibold text-text-muted dark:text-text-dark-muted truncate">
-          {detail?.title ?? 'Programación'} — Previsualización
+          {template?.name ?? 'Plantilla'} — Previsualización
         </span>
         <div className="flex items-center gap-2 shrink-0">
-          {detail && (
+          {template && (
             <>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[detail.status] ?? ''}`}>
-                {STATUS_LABEL[detail.status] ?? detail.status}
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[template.status] ?? ''}`}>
+                {STATUS_LABEL[template.status] ?? template.status}
               </span>
               <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-                v{detail.current_version}
+                v{template.version}
               </span>
-              {isDraft && isOwner && documentId && (
-                <Link to={`/documents/${documentId}/editor`}>
-                  <Button type="button" size="sm" variant="outline">
-                    Editar
-                  </Button>
-                </Link>
+              {template.status === 'draft' && isOwner && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate(`/templates/${id}/edit`)}
+                >
+                  Editar
+                </Button>
               )}
               {isDraft && isOwner && (
                 <Button
@@ -142,7 +137,7 @@ export function DocumentPreviewPage() {
                   variant="primary"
                   size="sm"
                   loading={actionLoading}
-                  onClick={() => void handleSubmit()}
+                  onClick={() => void handleSubmitForReview()}
                 >
                   Enviar a validar
                 </Button>
@@ -152,16 +147,16 @@ export function DocumentPreviewPage() {
         </div>
       </header>
 
-      {detail && (
+      {template && (
         <div className="max-w-[960px] mx-auto px-6 py-2 border-b border-ui-border/50 dark:border-ui-dark-border/50">
           <p className="text-[11px] text-text-muted dark:text-text-dark-muted">
-            {detail.owner_name ?? 'Autor desconocido'}
+            {template.author_name ?? 'Autor desconocido'}
             {' · '}
-            {detail.is_shared_with_me ? 'Compartida' : 'Personal'}
+            {visibilityLabel(template.visibility_level)}
             {' · '}
-            Fecha límite: {formatDate(detail.delivery_deadline)}
+            Fecha límite: {formatDate(template.delivery_deadline)}
             {' · '}
-            Última edición: {formatDate(detail.updated_at)}
+            Última edición: {formatDate(template.updated_at)}
           </p>
         </div>
       )}
@@ -177,30 +172,30 @@ export function DocumentPreviewPage() {
         style={{ maxWidth: '760px', minHeight: 'calc(100vh - 52px)', padding: '56px 72px' }}
       >
         {loading && (
-          <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
+          <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</p>
         )}
         {error && !loading && (
           <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
         )}
-        {!loading && !error && detail && (
+        {!loading && !error && template && (
           <>
             <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
-              {detail.title}
+              {template.name}
             </h1>
-            {detail.blocks.length === 0 ? (
+            {blocks.length === 0 ? (
               <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                Este documento no tiene bloques.
+                Esta plantilla no tiene bloques.
               </p>
             ) : (
               <div className="space-y-10">
-                {detail.blocks.map((block) => {
+                {blocks.map((block) => {
                   const isLocked = block.block_state === 'locked';
-                  const nodes = blockContentForPreview(block);
+                  const nodes = blockContentNodes(block);
                   const hasContent = nodes.length > 0;
 
                   return (
                     <section
-                      key={block.template_block_id}
+                      key={block.id}
                       style={isLocked ? { opacity: 0.45, pointerEvents: 'none' } : undefined}
                     >
                       <div className="flex flex-wrap items-baseline gap-2 mb-2">
@@ -221,7 +216,7 @@ export function DocumentPreviewPage() {
                         )}
                       </div>
                       {hasContent ? (
-                        <BlockContentHtml content={nodes as unknown[]} />
+                        <BlockContentHtml content={nodes} />
                       ) : (
                         <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
                           Sin contenido.
