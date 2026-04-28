@@ -16,8 +16,10 @@ import {
   DocumentPreviewPage,
   DocumentsPage,
   PlaceholderPage,
+  ProcesosPage,
   TemplateEditPage,
   TemplateNewPage,
+  TemplatePreviewPage,
   TemplateReviewPage,
   TemplatesPage,
 } from './pages';
@@ -30,6 +32,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/procesos" element={<ProcesosPage />} />
       <Route path="/documents" element={<DocumentsPage />} />
       <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
       <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
@@ -38,6 +41,7 @@ function AppRoutes() {
       <Route path="/templates/new" element={<TemplateNewPage />} />
       <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
       <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
+      <Route path="/templates/:id" element={<TemplatePreviewPage />} />
       <Route path="*" element={<PlaceholderPage />} />
     </Routes>
   );
@@ -65,13 +69,19 @@ function AppWithLayout() {
   const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
   const isDocumentValidateRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/validate');
   const isDocumentPreviewRoute = /^\/documents\/[^/]+$/.test(location.pathname);
+  const isTemplatePreviewRoute = /^\/templates\/[^/]+$/.test(location.pathname);
+  const isProcesosRoute = location.pathname === '/procesos';
   const titleOverride = isEditorRoute
     ? 'Editor de Programación'
     : isDocumentValidateRoute
       ? 'Validación de programación'
       : isDocumentPreviewRoute
         ? 'Previsualización'
-        : undefined;
+        : isTemplatePreviewRoute
+          ? 'Previsualización'
+          : isProcesosRoute
+            ? 'Procesos'
+            : undefined;
 
   const userName = profile?.name?.trim() ?? '';
   const userInitials = profileDisplayInitials(profile);
