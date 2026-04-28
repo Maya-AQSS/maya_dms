@@ -15,6 +15,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('commentable_type');
             $table->uuid('commentable_id');
+            $table->unsignedInteger('commentable_version')->default(1);
             $table->string('blockable_type')->nullable();
             $table->uuid('blockable_id')->nullable();
             $table->uuid('parent_id')->nullable(); // para respuestas anidadas
@@ -27,7 +28,8 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->index(['commentable_type', 'commentable_id']);
-            $table->index(['commentable_type', 'commentable_id', 'resolved']);
+            $table->index(['commentable_type', 'commentable_id', 'commentable_version']);
+            $table->index(['commentable_type', 'commentable_id', 'commentable_version', 'resolved']);
             $table->index(['blockable_type', 'blockable_id']);
         });
     }

@@ -34,16 +34,26 @@ class CommentController extends Controller
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
             $this->authorize('comment', $model);
+            $templateVersion = (int) $model->version;
             return response()->json([
-                'data' => $this->commentService->listForResource(Template::class, (string) $templateId),
+                'data' => $this->commentService->listForResource(
+                    Template::class,
+                    (string) $templateId,
+                    $templateVersion,
+                ),
             ]);
         }
 
         if ($documentId) {
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('comment', $doc);
+            $documentVersion = (int) $doc->current_version;
             return response()->json([
-                'data' => $this->commentService->listForResource(Document::class, (string) $documentId),
+                'data' => $this->commentService->listForResource(
+                    Document::class,
+                    (string) $documentId,
+                    $documentVersion,
+                ),
             ]);
         }
 
@@ -63,10 +73,12 @@ class CommentController extends Controller
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
             $this->authorize('comment', $model);
+            $templateVersion = (int) $model->version;
 
             $comment = $this->commentService->createForResource(
                 commentableType: Template::class,
                 commentableId: (string) $templateId,
+                commentableVersion: $templateVersion,
                 blockableType: $blockableId ? TemplateBlock::class : null,
                 blockableId: $blockableId,
                 parentId: $parentId,
@@ -79,10 +91,12 @@ class CommentController extends Controller
         if ($documentId) {
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('comment', $doc);
+            $documentVersion = (int) $doc->current_version;
 
             $comment = $this->commentService->createForResource(
                 commentableType: Document::class,
                 commentableId: (string) $documentId,
+                commentableVersion: $documentVersion,
                 blockableType: $blockableId ? DocumentBlock::class : null,
                 blockableId: $blockableId,
                 parentId: $parentId,

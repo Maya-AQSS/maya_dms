@@ -89,6 +89,7 @@ class Comment extends Model
     protected $fillable = [
         'commentable_type',
         'commentable_id',
+        'commentable_version',
         'blockable_type',
         'blockable_id',
         'parent_id',
@@ -102,6 +103,7 @@ class Comment extends Model
     protected function casts(): array
     {
         return [
+            'commentable_version' => 'integer',
             'resolved'    => 'boolean',
             'resolved_at' => 'datetime',
         ];

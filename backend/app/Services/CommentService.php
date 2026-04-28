@@ -26,14 +26,19 @@ class CommentService implements CommentServiceInterface
         return $this->commentRepository->findOrFail($id);
     }
 
-    public function listForResource(string $commentableType, string $commentableId): Collection
+    public function listForResource(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+    ): Collection
     {
-        return $this->commentRepository->listForResource($commentableType, $commentableId);
+        return $this->commentRepository->listForResource($commentableType, $commentableId, $commentableVersion);
     }
 
     public function createForResource(
         string $commentableType,
         string $commentableId,
+        int $commentableVersion,
         ?string $blockableType,
         ?string $blockableId,
         ?string $parentId,
@@ -57,6 +62,7 @@ class CommentService implements CommentServiceInterface
             parentId: $parentId,
             commentableType: $commentableType,
             commentableId: $commentableId,
+            commentableVersion: $commentableVersion,
             blockableType: $blockableType,
             blockableId: $blockableId,
         );
@@ -66,6 +72,7 @@ class CommentService implements CommentServiceInterface
         return $this->commentRepository->create([
             'commentable_type' => $commentableType,
             'commentable_id' => $commentableId,
+            'commentable_version' => $commentableVersion,
             'blockable_type' => $blockableType,
             'blockable_id' => $blockableId,
             'parent_id' => $parentId,
@@ -139,6 +146,7 @@ class CommentService implements CommentServiceInterface
         ?string $parentId,
         string $commentableType,
         string $commentableId,
+        int $commentableVersion,
         ?string $blockableType,
         ?string $blockableId,
     ): void {
@@ -162,9 +170,10 @@ class CommentService implements CommentServiceInterface
         if (
             (string) $parent->commentable_type !== $commentableType
             || (string) $parent->commentable_id !== $commentableId
+            || (int) $parent->commentable_version !== $commentableVersion
         ) {
             throw ValidationException::withMessages([
-                'parent_id' => ['El comentario padre debe pertenecer al mismo recurso.'],
+                'parent_id' => ['El comentario padre debe pertenecer al mismo recurso y versión.'],
             ]);
         }
 

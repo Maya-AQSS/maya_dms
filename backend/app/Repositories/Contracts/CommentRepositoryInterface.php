@@ -14,7 +14,11 @@ interface CommentRepositoryInterface
     /**
      * Lista comentarios por recurso comentable.
      */
-    public function listForResource(string $commentableType, string $commentableId): \Illuminate\Support\Collection;
+    public function listForResource(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+    ): \Illuminate\Support\Collection;
 
     /**
      * Crea un comentario.

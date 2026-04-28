@@ -21,11 +21,16 @@ class CommentRepository implements CommentRepositoryInterface
     /**
      * Lista comentarios por recurso comentable.
      */
-    public function listForResource(string $commentableType, string $commentableId): \Illuminate\Support\Collection
+    public function listForResource(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+    ): \Illuminate\Support\Collection
     {
         return Comment::query()
             ->where('commentable_type', $commentableType)
             ->where('commentable_id', $commentableId)
+            ->where('commentable_version', $commentableVersion)
             ->with('author:id,name')
             ->orderBy('created_at', 'asc')
             ->get();
