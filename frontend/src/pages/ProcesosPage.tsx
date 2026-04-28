@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Button } from '../ui';
+import { ErrorBoundary } from '../components/ErrorBoundary';
 import { TemplatesTable } from '../features/templates/components/TemplatesTable';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
 
@@ -71,7 +72,9 @@ export function ProcesosPage() {
         </button>
       </div>
 
-      {activeTab === 'templates' ? <TemplatesTable /> : <DocumentsTable />}
+      <ErrorBoundary key={activeTab}>
+        {activeTab === 'templates' ? <TemplatesTable /> : <DocumentsTable />}
+      </ErrorBoundary>
     </div>
   );
 }
