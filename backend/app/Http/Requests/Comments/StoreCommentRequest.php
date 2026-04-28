@@ -21,10 +21,10 @@ class StoreCommentRequest extends FormRequest
         return [
             'body' => 'required|string',
             'parent_id' => 'nullable|uuid|exists:comments,id',
-            'blockable_id' => 'nullable|uuid',
+            'blockable_id' => 'nullable|string',
             // Compatibilidad temporal durante la unificación del frontend.
-            'template_block_id' => 'nullable|uuid',
-            'document_block_id' => 'nullable|uuid',
+            'template_block_id' => 'nullable|string',
+            'document_block_id' => 'nullable|string',
         ];
     }
 

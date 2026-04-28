@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Comment;
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use Illuminate\Support\Collection;

@@ -215,16 +215,17 @@ class GlobalScopesIsolationTest extends TestCase
         $commentId = (string) Str::uuid();
 
         Comment::query()->forceCreate([
-            'id'                => $commentId,
-            'document_id'       => $documentId,
-            'document_block_id' => null,
-            'parent_id'         => null,
-            'author_id'         => $userA,
-            'body'              => 'Comentario privado',
-            'type'              => 'general',
-            'resolved'          => false,
-            'resolved_by'       => null,
-            'resolved_at'       => null,
+            'id'               => $commentId,
+            'commentable_type' => Document::class,
+            'commentable_id'   => $documentId,
+            'blockable_type'   => null,
+            'blockable_id'     => null,
+            'parent_id'        => null,
+            'author_id'        => $userA,
+            'body'             => 'Comentario privado',
+            'resolved'         => false,
+            'resolved_by'      => null,
+            'resolved_at'      => null,
         ]);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
