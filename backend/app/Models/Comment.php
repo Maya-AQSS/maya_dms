@@ -60,6 +60,16 @@ class Comment extends Model
                                                                  ->whereColumn('template_reviewers.template_id', 'templates.id')
                                                                  ->where('template_reviewers.user_id', $userId);
                                                     });
+
+                                       if (\Illuminate\Support\Facades\Schema::hasTable('template_shares')) {
+                                           $templateQuery->orWhereExists(function ($shareQuery) use ($userId) {
+                                               $shareQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                   ->from('template_shares')
+                                                   ->whereColumn('template_shares.template_id', 'templates.id')
+                                                   ->where('template_shares.user_id', $userId)
+                                                   ->where('template_shares.permission', 'edit');
+                                           });
+                                       }
                                    });
                       });
             });

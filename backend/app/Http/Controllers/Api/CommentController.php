@@ -157,19 +157,8 @@ class CommentController extends Controller
             return;
         }
 
-        // Fallback defensivo para entornos de test con serialización distinta de morph type.
         if (! $isAllowed) {
-            $document = Document::query()->find((string) $comment->commentable_id);
-            if ($document !== null) {
-                $this->authorize('comment', $document);
-                return;
-            }
-
-            $template = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
-            $this->authorize('comment', $template);
-            return;
+            abort(422, 'Tipo de recurso de comentario no soportado.');
         }
-
-        abort(422, 'Tipo de recurso de comentario no soportado.');
     }
 }

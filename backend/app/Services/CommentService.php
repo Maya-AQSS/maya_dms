@@ -28,12 +28,7 @@ class CommentService implements CommentServiceInterface
 
     public function listForResource(string $commentableType, string $commentableId): Collection
     {
-        return Comment::query()
-            ->where('commentable_type', $commentableType)
-            ->where('commentable_id', $commentableId)
-            ->with('author:id,name')
-            ->orderBy('created_at', 'asc')
-            ->get();
+        return $this->commentRepository->listForResource($commentableType, $commentableId);
     }
 
     public function createForResource(
@@ -58,9 +53,17 @@ class CommentService implements CommentServiceInterface
             ]);
         }
 
+        $this->assertParentBelongsToResource(
+            parentId: $parentId,
+            commentableType: $commentableType,
+            commentableId: $commentableId,
+            blockableType: $blockableType,
+            blockableId: $blockableId,
+        );
+
         $this->assertBlockBelongsToResource($commentableType, $commentableId, $blockableType, $blockableId);
 
-        return Comment::create([
+        return $this->commentRepository->create([
             'commentable_type' => $commentableType,
             'commentable_id' => $commentableId,
             'blockable_type' => $blockableType,
@@ -129,6 +132,49 @@ class CommentService implements CommentServiceInterface
                     'blockable_id' => ['El bloque no pertenece al documento indicado.'],
                 ]);
             }
+        }
+    }
+
+    private function assertParentBelongsToResource(
+        ?string $parentId,
+        string $commentableType,
+        string $commentableId,
+        ?string $blockableType,
+        ?string $blockableId,
+    ): void {
+        if ($parentId === null) {
+            return;
+        }
+
+        $parent = $this->commentRepository->findWithoutScopesById($parentId);
+        if (! $parent instanceof Comment) {
+            throw ValidationException::withMessages([
+                'parent_id' => ['El comentario padre no existe.'],
+            ]);
+        }
+
+        if ($parent->deleted_at !== null) {
+            throw ValidationException::withMessages([
+                'parent_id' => ['El comentario padre no está disponible.'],
+            ]);
+        }
+
+        if (
+            (string) $parent->commentable_type !== $commentableType
+            || (string) $parent->commentable_id !== $commentableId
+        ) {
+            throw ValidationException::withMessages([
+                'parent_id' => ['El comentario padre debe pertenecer al mismo recurso.'],
+            ]);
+        }
+
+        if (
+            (string) ($parent->blockable_type ?? '') !== (string) ($blockableType ?? '')
+            || (string) ($parent->blockable_id ?? '') !== (string) ($blockableId ?? '')
+        ) {
+            throw ValidationException::withMessages([
+                'parent_id' => ['El comentario padre debe pertenecer al mismo bloque.'],
+            ]);
         }
     }
 }

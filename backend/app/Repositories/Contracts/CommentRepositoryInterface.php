@@ -12,6 +12,23 @@ interface CommentRepositoryInterface
     public function findOrFail(string $id): Comment;
 
     /**
+     * Lista comentarios por recurso comentable.
+     */
+    public function listForResource(string $commentableType, string $commentableId): \Illuminate\Support\Collection;
+
+    /**
+     * Crea un comentario.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function create(array $attributes): Comment;
+
+    /**
+     * Busca un comentario por ID ignorando scopes globales.
+     */
+    public function findWithoutScopesById(string $id): ?Comment;
+
+    /**
      * Indica si el usuario es autor del comentario o propietario/creador
      * del documento padre. Usado para control de acceso al historial de auditoría.
      */
