@@ -21,6 +21,7 @@ export type Document = {
   published_at: string | null;
   created_at?: string;
   updated_at?: string;
+  owner_name?: string | null;
   /** Metadatos de compartición (DocumentResource); opcional en listados antiguos. */
   is_shared_with_me?: boolean;
   share_permission?: string | null;
