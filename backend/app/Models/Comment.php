@@ -36,7 +36,8 @@ class Comment extends Model
                                                     $docShareQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                                                   ->from('document_shares')
                                                                   ->whereColumn('document_shares.document_id', 'documents.id')
-                                                                  ->where('user_id', $userId);
+                                                                  ->where('user_id', $userId)
+                                                                  ->where('permission', 'edit');
                                                 })
                                                 ->orWhereExists(function ($docReviewQuery) use ($userId) {
                                                     $docReviewQuery->select(\Illuminate\Support\Facades\DB::raw(1))

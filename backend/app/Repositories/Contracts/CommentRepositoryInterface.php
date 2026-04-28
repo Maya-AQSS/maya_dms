@@ -16,4 +16,14 @@ interface CommentRepositoryInterface
      * del documento padre. Usado para control de acceso al historial de auditoría.
      */
     public function isAuthorOrDocumentOwner(string $commentId, string $userId): bool;
+
+    /**
+     * Indica si existe un bloque de plantilla para una plantilla.
+     */
+    public function existsTemplateBlockForTemplate(string $blockId, string $templateId): bool;
+
+    /**
+     * Indica si existe un bloque de documento para un documento.
+     */
+    public function existsDocumentBlockForDocument(string $blockId, string $documentId): bool;
 }

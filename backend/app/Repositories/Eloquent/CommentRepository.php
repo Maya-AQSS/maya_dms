@@ -3,6 +3,8 @@
 namespace App\Repositories\Eloquent;
 
 use App\Models\Comment;
+use App\Models\Document;
+use App\Models\Template;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -32,12 +34,42 @@ class CommentRepository implements CommentRepositoryInterface
         }
 
         return DB::table('comments')
-            ->join('documents', 'comments.document_id', '=', 'documents.id')
+            ->leftJoin('documents', function ($join) {
+                $join->on('comments.commentable_id', '=', 'documents.id')
+                    ->where('comments.commentable_type', '=', Document::class);
+            })
+            ->leftJoin('templates', function ($join) {
+                $join->on('comments.commentable_id', '=', 'templates.id')
+                    ->where('comments.commentable_type', '=', Template::class);
+            })
             ->where('comments.id', $commentId)
             ->where(fn ($q) => $q
                 ->where('documents.owner_id', $userId)
                 ->orWhere('documents.created_by', $userId)
+                ->orWhere('templates.created_by', $userId)
             )
+            ->exists();
+    }
+
+    /**
+     * Indica si existe un bloque de plantilla para una plantilla.
+     */
+    public function existsTemplateBlockForTemplate(string $blockId, string $templateId): bool
+    {
+        return DB::table('template_blocks')
+            ->where('id', $blockId)
+            ->where('template_id', $templateId)
+            ->exists();
+    }
+
+    /**
+     * Indica si existe un bloque de documento para un documento.
+     */
+    public function existsDocumentBlockForDocument(string $blockId, string $documentId): bool
+    {
+        return DB::table('document_blocks')
+            ->where('id', $blockId)
+            ->where('document_id', $documentId)
             ->exists();
     }
 }

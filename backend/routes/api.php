@@ -134,10 +134,12 @@ Route::prefix('v1')->group(function () {
 
         // Comentarios
         Route::apiResource('documents.comments', CommentController::class)
+            ->except(['update'])
             ->shallow()
             ->whereUuid('document')
             ->whereUuid('comment');
         Route::apiResource('templates.comments', CommentController::class)
+            ->except(['update'])
             ->shallow()
             ->whereUuid('template')
             ->whereUuid('comment');
