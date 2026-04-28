@@ -63,7 +63,7 @@ function applyClientFilters(docs: Document[], filters: Filters): Document[] {
 
 export function DocumentsTable() {
   const navigate = useNavigate();
-  const { documents, loading, error, reload } = useDocuments();
+  const { documents, loading, error } = useDocuments();
 
   const [filters, setFilters] = useState<Filters>({
     visibility: '',
@@ -115,14 +115,9 @@ export function DocumentsTable() {
           <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
             Filtros
           </h3>
-          <div className="flex items-center gap-2">
-            <Button type="button" variant="outline" size="xs" onClick={() => void reload()} disabled={loading}>
-              Actualizar
-            </Button>
-            <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>
-              Limpiar filtros
-            </Button>
-          </div>
+          <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>
+            Limpiar filtros
+          </Button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
