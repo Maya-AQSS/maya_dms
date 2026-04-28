@@ -5,6 +5,7 @@ import { normalizeBlockContentForEditor } from '../features/documents/lib/normal
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { Button } from '../ui';
+import { FavoriteButton } from '../components/FavoriteButton';
 import { useUserProfile } from '../features/user-profile';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -129,6 +130,7 @@ export function DocumentPreviewPage() {
               <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
                 v{detail.current_version}
               </span>
+              {documentId && <FavoriteButton entityType="document" entityId={documentId} />}
               {isDraft && isOwner && documentId && (
                 <Link to={`/documents/${documentId}/editor`}>
                   <Button type="button" size="sm" variant="outline">
