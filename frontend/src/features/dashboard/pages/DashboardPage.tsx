@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DashboardEditToggleButton,
+  DashboardEditToolbar,
   WidgetGrid,
   useDashboardLayoutLocal,
   type LayoutItem,
@@ -69,6 +70,28 @@ export function DashboardPage() {
     [layout],
   );
 
+  const handleAddWidget = useCallback(
+    (widgetId: string) => {
+      const def = WIDGET_REGISTRY[widgetId];
+      if (!def) return;
+      const current = draftLayout ?? layout;
+      const maxY = current.reduce((m, item) => Math.max(m, item.y + item.h), 0);
+      setDraftLayout([
+        ...current,
+        {
+          i: widgetId,
+          x: 0,
+          y: maxY,
+          w: def.defaultSize.w,
+          h: def.defaultSize.h,
+          minW: def.minSize.w,
+          minH: def.minSize.h,
+        },
+      ]);
+    },
+    [draftLayout, layout],
+  );
+
   const handleReset = useCallback(async () => {
     await resetToDefault();
     setDraftLayout(null);
@@ -80,40 +103,32 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="flex items-center justify-between mb-4">
-        <PageTitle title={t('nav.dashboard', { defaultValue: 'Panel' })} />
-        <div className="flex items-center gap-2">
-          {editable && (
-            <>
-              <button
-                type="button"
-                onClick={handleReset}
-                className="text-xs px-3 py-1.5 rounded-md border border-ui-border dark:border-ui-dark-border text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors"
-              >
-                {t('dashboard.reset', { defaultValue: 'Restablecer' })}
-              </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="text-xs px-3 py-1.5 rounded-md border border-ui-border dark:border-ui-dark-border text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors"
-              >
-                {t('actions.cancel')}
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="text-xs px-3 py-1.5 rounded-md bg-odoo-purple dark:bg-odoo-dark-teal text-white hover:opacity-90 transition-opacity"
-              >
-                {t('actions.save')}
-              </button>
-            </>
-          )}
-          {!editable && (
+    <>
+      <PageTitle
+        title={t('nav.dashboard', { defaultValue: 'Panel' })}
+        actions={
+          editable ? (
+            <DashboardEditToolbar
+              layout={activeLayout}
+              registry={WIDGET_REGISTRY}
+              t={t}
+              onSave={handleSave}
+              onCancel={handleCancel}
+              onReset={handleReset}
+              onAddWidget={handleAddWidget}
+              labels={{
+                save: t('actions.save'),
+                cancel: t('actions.cancel'),
+                reset: t('dashboard.reset', { defaultValue: 'Restablecer' }),
+                addWidget: t('dashboard.addWidget', { defaultValue: 'Añadir widget' }),
+              }}
+            />
+          ) : (
             <DashboardEditToggleButton editable={editable} onToggle={handleToggleEdit} />
-          )}
-        </div>
-      </div>
+          )
+        }
+      />
+
       <WidgetGrid
         registry={WIDGET_REGISTRY}
         layout={activeLayout}
@@ -124,7 +139,7 @@ export function DashboardPage() {
         emptyKey="dashboard.noWidgets"
         removeAriaLabel={t('actions.delete')}
       />
-    </div>
+    </>
   );
 }
 

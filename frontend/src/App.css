@@ -17,18 +17,7 @@
       grid-template-columns: 1fr 1fr;
     }
   }
-
-  /* Composición de animaciones con animate-in */
-  .animate-in {
-    animation-duration: 200ms;
-    animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    animation-fill-mode: forwards;
-  }
-  .fade-in             { animation-name: fade-in; }
-  .slide-in-from-top-1 { animation-name: slide-in-from-top-1; }
 }
 
-@keyframes slide-in-from-top-1 {
-  from { transform: translateY(-4px); }
-  to   { transform: translateY(0); }
-}
+/* Animaciones canónicas (animate-in / fade-in / slide-in-from-top-* / zoom-in-95)
+   ahora viven en `maya_infra/configs/styles/index.css`. */

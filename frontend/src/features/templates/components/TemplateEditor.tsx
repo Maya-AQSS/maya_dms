@@ -4,7 +4,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { ErrorBoundary } from '../../../components/ErrorBoundary';
+import { ErrorBoundary } from '@maya/shared-ui-react';
 import { useNavigate } from 'react-router-dom';
 import {
   DndContext,

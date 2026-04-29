@@ -25,7 +25,7 @@ import {
 import { ApiHttpError } from '../../../api/http';
 import { fetchTemplate, fetchTemplateVersionSummaries } from '../../../api/templates';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
-import { useDarkMode } from '../../../hooks/useDarkMode';
+import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
 import type { Template } from '../../../types/templates';
@@ -33,7 +33,7 @@ import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiSt
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { Button, ConfirmDialog, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
-import { ErrorBoundary } from '../../../components/ErrorBoundary';
+import { ErrorBoundary } from '@maya/shared-ui-react';
 
 const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
 

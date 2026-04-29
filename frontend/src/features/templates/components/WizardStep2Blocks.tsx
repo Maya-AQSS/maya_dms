@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef, lazy, Suspense, forwardRef, useImperativeHandle } from 'react';
-import { useDarkMode } from '../../../hooks/useDarkMode';
-import { ErrorBoundary } from '../../../components/ErrorBoundary';
+import { useDarkMode } from '@maya/shared-layout-react';
+import { ErrorBoundary } from '@maya/shared-ui-react';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel'));
 import {
