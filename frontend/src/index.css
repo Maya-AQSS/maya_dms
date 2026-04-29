@@ -1,7 +1,7 @@
-/* Tailwind v4 + fuentes resueltos desde el`node_modules` local de la app. */
+/* Tailwind v4 + fuentes resueltos desde el `node_modules` local de la app. */
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;700;900&family=Manrope:wght@500;600;700;800&display=swap');
-@import"tailwindcss";
+@import "tailwindcss";
 
 /* Tokens, animaciones y reset compartidos por las 4 apps Maya.
- Editar en`maya_infra/configs/styles/index.css`. */
-@import"../../maya_infra/configs/styles/index.css";
+   Editar en `maya_infra/configs/styles/index.css`. */
+@import "../../maya_infra/configs/styles/index.css";
