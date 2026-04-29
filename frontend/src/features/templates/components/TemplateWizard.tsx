@@ -50,11 +50,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const [teamId, setTeamId] = useState(initial?.team_id || '');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Step 3: Users state
-  const [validators, setValidators] = useState<ValidatorEntry[]>([]);
+  // Step 3: Users state — load existing reviewers when editing
+  const [validators, setValidators] = useState<ValidatorEntry[]>(
+    initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
+  );
   const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>('libre');
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
+  // Dirty flag: only sync reviewers to API if the user actually changed them in Step 3
+  const [usersDirty, setUsersDirty] = useState(false);
 
   // UI state
   const [saving, setSaving] = useState(false);
@@ -202,19 +206,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   const saveUsers = async () => {
     if (!template?.id) return;
 
-    const userIds = validators.map((v: ValidatorEntry) => v.userId);
-
     setSaving(true);
     setErrors({});
     try {
-      // 1. Guardar modo de revisión (libre/ordenada -> parallel/sequential)
-      const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
-      await apiUpdateTemplate(template.id, { review_mode: reviewMode });
-
-      // 2. Sincronizar validadores de plantilla y de documento
-      const docUserIds = documentValidators.map((v: ValidatorEntry) => v.userId);
-      await syncTemplateValidators(template.id, userIds);
-      await syncDocumentReviewers(template.id, docUserIds);
+      if (usersDirty) {
+        const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
+        await apiUpdateTemplate(template.id, { review_mode: reviewMode });
+        await syncTemplateValidators(template.id, validators.map((v) => v.userId));
+        await syncDocumentReviewers(template.id, documentValidators.map((v) => v.userId));
+      }
 
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
       setStep('summary');
@@ -358,7 +358,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
               Guardar y continuar →
             </Button>
           )}
-          {step === 'summary' && validators.length > 0 && (
+          {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
             <Button
               variant="primary"
               size="sm"
@@ -471,13 +471,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           <WizardStep3Users
             templateCreatedBy={template?.created_by ?? null}
             validators={validators}
-            onValidatorsChange={setValidators}
+            onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
             validationType={validationType}
-            onValidationTypeChange={setValidationType}
+            onValidationTypeChange={(t) => { setValidationType(t); setUsersDirty(true); }}
             documentValidators={documentValidators}
-            onDocumentValidatorsChange={setDocumentValidators}
+            onDocumentValidatorsChange={(v) => { setDocumentValidators(v); setUsersDirty(true); }}
             documentValidationType={documentValidationType}
-            onDocumentValidationTypeChange={setDocumentValidationType}
+            onDocumentValidationTypeChange={(t) => { setDocumentValidationType(t); setUsersDirty(true); }}
           />
         )}
         {step === 'summary' && template && (
@@ -498,31 +498,59 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         icon="✉️"
         description={
           <div className="space-y-4">
-            <p className="text-xs text-text-muted">Se notificará a los validadores asignados.</p>
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
-                Validadores ({validators.length})
-              </p>
-              {validators.map((v, i) => {
-                const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
-                return (
-                  <div key={v.userId} className="flex items-center gap-2.5">
-                    {validationType === 'ordenada' && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
-                        {i + 1}
+            <p className="text-xs text-text-muted">Se notificará a los validadores asignados. Una vez enviada, la plantilla no podrá editarse hasta ser aprobada o rechazada.</p>
+            {validators.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                  Validadores de plantilla ({validationType}) — {validators.length}
+                </p>
+                {validators.map((v, i) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      {validationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                      )}
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
+                        {initials}
                       </span>
-                    )}
-                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
-                      {initials}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
+            {documentValidators.length > 0 && (
+              <div className="space-y-2 pt-3 border-t border-ui-border dark:border-ui-dark-border">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-odoo-teal">
+                  Validadores de documento ({documentValidationType}) — {documentValidators.length}
+                </p>
+                {documentValidators.map((v, i) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      {documentValidationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-[10px] font-bold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                      )}
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-[10px] font-black border border-odoo-teal/20 flex items-center justify-center">
+                        {initials}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         }
         confirmLabel={saving ? 'Enviando…' : 'Confirmar y salir →'}
