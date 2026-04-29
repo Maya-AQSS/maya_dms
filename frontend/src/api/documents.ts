@@ -76,6 +76,27 @@ export async function createDocumentFromModule(payload: {
   return body.data;
 }
 
+/**
+ * POST /api/v1/documents
+ * 
+ * @param payload - Datos para crear un documento.
+ * @returns Documento creado.
+ */
+export async function createDocument(payload: {
+  template_id: string;
+  title: string;
+  study_type_id?: string | null;
+  study_id?: string | null;
+  module_id?: string | null;
+  template_version_id?: string | null;
+}): Promise<Document> {
+  const body = await apiFetchJson<DocumentMutationApiResponse>('documents', {
+    method: 'POST',
+    body: payload,
+  });
+  return body.data;
+}
+
 type DocumentMutationApiResponse = { data: Document };
 type DocumentSubmitApiResponse = { data: Document };
 
@@ -102,6 +123,9 @@ type DocumentReviewsApiResponse = { data: DocumentReview[] };
 export async function updateDocument(documentId: string, payload: {
   title: string;
   delivery_deadline?: string | null;
+  study_type_id?: string | null;
+  study_id?: string | null;
+  module_id?: string | null;
 }): Promise<Document> {
   const body = await apiFetchJson<DocumentMutationApiResponse>(
     `documents/${encodeURIComponent(documentId)}`,
