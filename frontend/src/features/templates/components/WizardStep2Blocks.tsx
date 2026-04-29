@@ -203,7 +203,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const currentMultiId = orderedSelection[multiIndex] ?? null;
 
   const isOwner = !!profile && template.created_by === profile.id;
-  const isRejected = template.status === 'rejected';
+  const isRejected = template.status === 'draft' && !!template.has_review_comments;
   const blockHasComment = reviewComments.some(
     (c) => c.blockable_id === activeSingleId && !c.resolved,
   );

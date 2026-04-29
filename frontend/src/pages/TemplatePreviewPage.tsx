@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate } from '../api/templates';
+import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate, resolveComment } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
+import { apiFetchJson } from '../api/http';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { visibilityLabel } from '../features/templates/constants';
@@ -11,6 +12,16 @@ import { Button, ConfirmDialog } from '../ui';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
+
+type ReviewComment = {
+  id: string;
+  blockable_id: string | null;
+  author_id: string;
+  author?: { id: string; name: string };
+  body: string;
+  resolved: boolean;
+  created_at: string;
+};
 
 const STATUS_BADGE: Record<string, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
@@ -60,6 +71,10 @@ export function TemplatePreviewPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
+  // Review comments (only loaded when owner & has_review_comments)
+  const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
+  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+
   useEffect(() => {
     if (!id) {
       setLoading(false);
@@ -77,8 +92,15 @@ export function TemplatePreviewPage() {
           fetchBlocks(id),
         ]);
         if (!cancelled) {
-          setTemplate(tRes.data);
+          const t = tRes.data;
+          setTemplate(t);
           setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+          // Fetch review comments if owner has pending feedback
+          if (t.created_by === profile?.id && t.has_review_comments) {
+            void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
+              .then((res) => { if (!cancelled) setReviewComments(res.data); })
+              .catch(() => { /* non-critical */ });
+          }
         }
       } catch (e) {
         if (!cancelled) {
@@ -90,7 +112,17 @@ export function TemplatePreviewPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [id]);
+  }, [id, profile?.id]);
+
+  const handleResolveComment = async (commentId: string) => {
+    try {
+      await resolveComment(commentId);
+      setReviewComments((prev) => prev.map((c) => c.id === commentId ? { ...c, resolved: true } : c));
+    } catch { /* non-critical */ }
+  };
+
+  const blockComments = (blockId: string) =>
+    reviewComments.filter((c) => c.blockable_id === blockId && !c.resolved);
 
   const isDraft = template?.status === 'draft';
   const isOwner = profile?.id === template?.created_by;
@@ -274,69 +306,162 @@ export function TemplatePreviewPage() {
         </div>
       )}
 
-      <article
-        className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
-        style={{ maxWidth: '760px', minHeight: 'calc(100vh - 52px)', padding: '56px 72px' }}
-      >
-        {loading && (
-          <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</p>
-        )}
-        {error && !loading && (
-          <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
-        )}
-        {!loading && !error && template && (
-          <>
-            <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
-              {template.name}
-            </h1>
-            {blocks.length === 0 ? (
-              <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                Esta plantilla no tiene bloques.
-              </p>
-            ) : (
-              <div className="space-y-10">
-                {blocks.map((block) => {
-                  const isLocked = block.block_state === 'locked';
-                  const nodes = blockContentNodes(block);
-                  const hasContent = nodes.length > 0;
+      {/* Two-column layout when comments panel is open */}
+      <div className="flex min-h-[calc(100vh-52px)]">
+        {/* Article (paper) */}
+        <article
+          className="bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content flex-1"
+          style={{ maxWidth: selectedBlockId ? '760px' : '760px', margin: selectedBlockId ? '0 auto 0 auto' : '0 auto', padding: '56px 72px' }}
+        >
+          {loading && (
+            <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</p>
+          )}
+          {error && !loading && (
+            <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
+          )}
+          {!loading && !error && template && (
+            <>
+              <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
+                {template.name}
+              </h1>
+              {blocks.length === 0 ? (
+                <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                  Esta plantilla no tiene bloques.
+                </p>
+              ) : (
+                <div className="space-y-10">
+                  {blocks.map((block) => {
+                    const isLocked = block.block_state === 'locked';
+                    const nodes = blockContentNodes(block);
+                    const hasContent = nodes.length > 0;
+                    const pendingComments = blockComments(block.id);
+                    const isSelected = selectedBlockId === block.id;
 
-                  return (
-                    <section
-                      key={block.id}
-                      style={isLocked ? { opacity: 0.45, pointerEvents: 'none' } : undefined}
-                    >
-                      <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                        {block.title && (
-                          <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
-                            {block.title}
-                          </h4>
+                    return (
+                      <section
+                        key={block.id}
+                        style={isLocked ? { opacity: 0.45, pointerEvents: 'none' } : undefined}
+                        className={[
+                          'relative rounded-lg transition-all duration-150',
+                          pendingComments.length > 0
+                            ? 'cursor-pointer'
+                            : '',
+                          isSelected
+                            ? 'ring-2 ring-danger/40 ring-offset-4'
+                            : pendingComments.length > 0
+                              ? 'hover:ring-1 hover:ring-danger/30 hover:ring-offset-2'
+                              : '',
+                        ].join(' ')}
+                        onClick={pendingComments.length > 0 ? () => setSelectedBlockId(isSelected ? null : block.id) : undefined}
+                      >
+                        <div className="flex flex-wrap items-baseline gap-2 mb-2">
+                          {block.title && (
+                            <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
+                              {block.title}
+                            </h4>
+                          )}
+                          {pendingComments.length > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                              title="Este bloque tiene comentarios de revisión pendientes"
+                            >
+                              ⚠ {pendingComments.length} {pendingComments.length === 1 ? 'comentario' : 'comentarios'}
+                            </span>
+                          )}
+                          {block.mandatory && (
+                            <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                              Obligatorio
+                            </span>
+                          )}
+                          {isLocked && (
+                            <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                              Bloqueado
+                            </span>
+                          )}
+                        </div>
+                        {hasContent ? (
+                          <BlockContentHtml content={nodes} />
+                        ) : (
+                          <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                            Sin contenido.
+                          </p>
                         )}
-                        {block.mandatory && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                            Obligatorio
-                          </span>
-                        )}
-                        {isLocked && (
-                          <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
-                            Bloqueado
-                          </span>
+                      </section>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </article>
+
+        {/* Comments side panel — same style as Descripción tab in block editor */}
+        {selectedBlockId && (() => {
+          const block = blocks.find((b) => b.id === selectedBlockId);
+          const pending = blockComments(selectedBlockId);
+          return (
+            <aside className="w-96 shrink-0 border-l border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex flex-col sticky top-13 h-[calc(100vh-52px)] overflow-hidden shadow-lg animate-in slide-in-from-right-2">
+              {/* Header */}
+              <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-2 bg-danger/5">
+                <span className="flex-1 text-[10px] font-black uppercase tracking-widest text-danger-dark dark:text-danger truncate">
+                  ⚠ {block?.title ?? 'Bloque'}
+                </span>
+                <span className="text-[10px] text-text-muted font-bold shrink-0">
+                  {pending.length} {pending.length === 1 ? 'comentario' : 'comentarios'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBlockId(null)}
+                  className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-muted hover:text-text-primary transition-colors text-sm"
+                  aria-label="Cerrar panel"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Comment list */}
+              <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+                {pending.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
+                    <p className="text-sm font-medium text-text-muted">No hay comentarios pendientes.</p>
+                  </div>
+                ) : (
+                  pending.map((c) => (
+                    <div key={c.id} className="group relative pl-5">
+                      <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-danger/30 group-hover:bg-danger/60 transition-colors rounded-full" />
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
+                          {c.author?.name || 'Validador'}
+                        </span>
+                        {c.created_at && (
+                          <time className="text-[10px] text-text-muted font-bold uppercase tracking-wider shrink-0" dateTime={c.created_at}>
+                            {new Date(c.created_at).toLocaleDateString()}
+                          </time>
                         )}
                       </div>
-                      {hasContent ? (
-                        <BlockContentHtml content={nodes} />
-                      ) : (
-                        <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                          Sin contenido.
-                        </p>
+                      <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/40 dark:bg-ui-dark-bg/40 px-4 py-3 rounded-lg border border-ui-border/60 dark:border-ui-dark-border/60 whitespace-pre-wrap">
+                        {c.body}
+                      </div>
+                      {isOwner && (
+                        <div className="mt-2">
+                          <Button
+                            variant="outline"
+                            size="xs"
+                            className="text-success border-success/30 hover:bg-success/5 hover:border-success/60"
+                            onClick={() => void handleResolveComment(c.id)}
+                          >
+                            ✓ Marcar como corregido
+                          </Button>
+                        </div>
                       )}
-                    </section>
-                  );
-                })}
+                    </div>
+                  ))
+                )}
               </div>
-            )}
-          </>
-        )}
-      </article>
+            </aside>
+          );
+        })()}
+      </div>
 
       {id && (
         <VersionHistoryPanel
