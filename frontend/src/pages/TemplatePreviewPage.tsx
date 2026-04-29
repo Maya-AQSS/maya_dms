@@ -8,6 +8,7 @@ import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { TemplateBlock } from '../types/blocks';
 import { Button, ConfirmDialog } from '../ui';
+import { PageTitle } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -144,129 +145,89 @@ export function TemplatePreviewPage() {
     }
   };
 
-  return (
-    <div className="min-h-full overflow-y-auto bg-ui-preview-bg dark:bg-ui-dark-bg">
-      <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 px-6 h-[52px]">
-        <button
-          type="button"
-          onClick={() => navigate(selectionMode ? backTo : '/procesos')}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary dark:text-text-dark-secondary bg-ui-body dark:bg-ui-dark-bg hover:bg-ui-border dark:hover:bg-ui-dark-border transition-colors cursor-pointer"
-        >
-          {selectionMode ? '← Seleccionar plantilla' : '← Volver'}
-        </button>
-        <span className="flex-1 text-xs font-semibold text-text-muted dark:text-text-dark-muted truncate">
-          {template?.name ?? 'Plantilla'} — Previsualización
-        </span>
-        <div className="flex items-center gap-2 shrink-0">
-          {template && (
-            <>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[template.status] ?? ''}`}>
-                {STATUS_LABEL[template.status] ?? template.status}
-              </span>
-              <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-                v{template.version}
-              </span>
-
-              {selectionMode ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowHistory(true)}
-                  >
-                    Versiones de la plantilla
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    onClick={() => navigate(`/nueva-programacion/${id}/wizard`, {
-                      state: { moduleId: locationState?.moduleId }
-                    })}
-                  >
-                    Usar plantilla
-                  </Button>
-                </>
-              ) : (
-                <>
-                  {id && <FavoriteButton entityType="template" entityId={id} />}
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowHistory(true)}
-                  >
-                    Historial
-                  </Button>
-
-                  {canDelete && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                      onClick={() => setShowDeleteModal(true)}
-                    >
-                      Eliminar
-                    </Button>
-                  )}
-
-                  {canEdit && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate(`/templates/${id}/edit`)}
-                    >
-                      Editar
-                    </Button>
-                  )}
-
-                  {canClone && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      loading={actionLoading}
-                      onClick={() => void handleClone()}
-                    >
-                      Clonar
-                    </Button>
-                  )}
-
-                  {canSubmit && (
-                    <Button
-                      type="button"
-                      variant="primary"
-                      size="sm"
-                      loading={actionLoading}
-                      onClick={() => void handleSubmitForReview()}
-                    >
-                      Enviar a validar
-                    </Button>
-                  )}
-                </>
-              )}
-            </>
+  const headerActions = template ? (
+    <div className="flex items-center gap-2 flex-wrap">
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[template.status] ?? ''}`}>
+        {STATUS_LABEL[template.status] ?? template.status}
+      </span>
+      <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
+        v{template.version}
+      </span>
+      {selectionMode ? (
+        <>
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
+            Versiones
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            onClick={() => navigate(`/nueva-programacion/${id}/wizard`, {
+              state: { moduleId: locationState?.moduleId },
+            })}
+          >
+            Usar plantilla
+          </Button>
+        </>
+      ) : (
+        <>
+          {id && <FavoriteButton entityType="template" entityId={id} />}
+          <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
+            Historial
+          </Button>
+          {canDelete && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+              onClick={() => setShowDeleteModal(true)}
+            >
+              Eliminar
+            </Button>
           )}
-        </div>
-      </header>
-
-
-      {template && (
-        <div className="max-w-[960px] mx-auto px-6 py-2 border-b border-ui-border/50 dark:border-ui-dark-border/50">
-          <p className="text-[11px] text-text-muted dark:text-text-dark-muted">
-            {template.author_name ?? 'Autor desconocido'}
-            {' · '}
-            {visibilityLabel(template.visibility_level)}
-            {' · '}
-            Fecha límite de validación: {formatDate(template.delivery_deadline)}
-            {' · '}
-            Última edición: {formatDate(template.updated_at)}
-          </p>
-        </div>
+          {canEdit && (
+            <Button type="button" variant="outline" size="sm" onClick={() => navigate(`/templates/${id}/edit`)}>
+              Editar
+            </Button>
+          )}
+          {canClone && (
+            <Button type="button" variant="outline" size="sm" loading={actionLoading} onClick={() => void handleClone()}>
+              Clonar
+            </Button>
+          )}
+          {canSubmit && (
+            <Button type="button" variant="primary" size="sm" loading={actionLoading} onClick={() => void handleSubmitForReview()}>
+              Enviar a validar
+            </Button>
+          )}
+        </>
       )}
+    </div>
+  ) : null;
+
+  const headerMeta = template ? (
+    <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
+      {template.author_name ?? 'Autor desconocido'}
+      {' · '}
+      {visibilityLabel(template.visibility_level)}
+      {' · '}
+      Fecha límite de validación: {formatDate(template.delivery_deadline)}
+      {' · '}
+      Última edición: {formatDate(template.updated_at)}
+    </p>
+  ) : null;
+
+  return (
+    <div className="min-h-full overflow-y-auto">
+      <PageTitle
+        title={template?.name ?? 'Plantilla'}
+        subtitle="Previsualización"
+        onBack={() => navigate(selectionMode ? backTo : '/procesos')}
+        backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
+        actions={headerActions}
+        meta={headerMeta}
+      />
 
       {actionError && (
         <div className="max-w-[960px] mx-auto px-6 py-2">
@@ -312,12 +273,12 @@ export function TemplatePreviewPage() {
                           </h4>
                         )}
                         {block.mandatory && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                          <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                             Obligatorio
                           </span>
                         )}
                         {isLocked && (
-                          <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                          <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
                             Bloqueado
                           </span>
                         )}

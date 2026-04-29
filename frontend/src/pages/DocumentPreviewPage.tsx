@@ -194,7 +194,7 @@ export function DocumentPreviewPage() {
 
       {detail && (
         <div className="max-w-[960px] mx-auto px-6 py-2 border-b border-ui-border/50 dark:border-ui-dark-border/50">
-          <p className="text-[11px] text-text-muted dark:text-text-dark-muted">
+          <p className="text-xs text-text-muted dark:text-text-dark-muted">
             {detail.owner_name ?? 'Autor desconocido'}
             {' · '}
             {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
@@ -250,12 +250,12 @@ export function DocumentPreviewPage() {
                           </h4>
                         )}
                         {block.mandatory && (
-                          <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                          <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
                             Obligatorio
                           </span>
                         )}
                         {isLocked && (
-                          <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                          <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
                             Bloqueado
                           </span>
                         )}

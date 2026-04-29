@@ -476,7 +476,7 @@ export function DocumentsContent() {
                                   {block.title}
                                 </h4>
                               ) : null}
-                              <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                              <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
                                 {snapshotBlockStateLabel(block.block_state)}
                               </span>
                             </div>

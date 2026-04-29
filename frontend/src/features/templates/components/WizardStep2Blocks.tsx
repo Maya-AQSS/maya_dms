@@ -115,16 +115,16 @@ function SortableBlockItem({
           {block.title || 'Bloque sin nombre'}
         </span>
         {hasReviewComments && (
-          <span className="shrink-0 w-5 h-5 bg-warning-dark text-text-inverse rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm motion-safe:animate-pulse">
+          <span className="shrink-0 w-5 h-5 bg-warning-dark text-text-inverse rounded-full flex items-center justify-center text-xs font-bold shadow-sm motion-safe:animate-pulse">
             !
           </span>
         )}
         {itemState === 'multi-saved' ? (
-          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-success/10 text-success border border-success/20">
+          <span className="shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase bg-success/10 text-success border border-success/20">
             ✓
           </span>
         ) : (
-          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${cfg.badgeCls}`}>
+          <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-tight ${cfg.badgeCls}`}>
             {cfg.label}
           </span>
         )}
@@ -552,7 +552,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
       {/* Columna Izquierda — 25% */}
       <div className="md:w-1/4 min-w-0 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
         <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50 flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+          <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
             BLOQUES ({blocks.length})
           </span>
           <Button type="button" variant="ghost" size="xs" onClick={handleToggleSelectAll}>
@@ -629,11 +629,11 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               <dl className="grid grid-cols-1 gap-6">
                 <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Nombre</dt>
+                  <dt className="text-xs font-bold uppercase text-text-muted">Nombre</dt>
                   <dd className="mt-1 text-sm font-medium">{selectedBlock.title}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Descripción</dt>
+                  <dt className="text-xs font-bold uppercase text-text-muted">Descripción</dt>
                   <dd className="mt-1 text-sm text-text-secondary">
                     {(() => {
                       const desc = selectedBlock.description;
@@ -644,12 +644,12 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Estado</dt>
+                  <dt className="text-xs font-bold uppercase text-text-muted">Estado</dt>
                   <dd className="mt-2">
                     {(() => {
                       const cfg = BLOCK_UI_STATE_CONFIG[blockToUiState(selectedBlock)];
                       return (
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}>
+                        <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${cfg.badgeCls}`}>
                           {cfg.label}
                         </span>
                       );
@@ -657,7 +657,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Orden</dt>
+                  <dt className="text-xs font-bold uppercase text-text-muted">Orden</dt>
                   <dd className="mt-1 text-sm">
                     {blocks.findIndex((b: TemplateBlock) => b.id === selectedBlock.id) + 1} de {blocks.length}
                   </dd>
@@ -675,21 +675,21 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
           <div ref={panelRef} className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
             {/* Panel header */}
             <div className="px-5 pt-3 border-b border-ui-border dark:border-ui-dark-border shrink-0">
-              <div className="flex items-center justify-between pb-1">
-                <h3 className="text-sm font-bold text-text-primary truncate">
+              <div className="flex items-center justify-between pb-2">
+                <h3 className="text-sm font-bold text-text-primary dark:text-text-dark-primary truncate">
                   {panelMode === 'create' ? 'Nuevo bloque' : (selectedBlock?.title || 'Bloque sin nombre')}
                 </h3>
                 <div className="flex items-center gap-3 shrink-0">
                   {panelMode === 'edit' && (
                     <>
                       {saveStatus === 'saving' && (
-                        <span className="text-[10px] text-text-muted">Guardando…</span>
+                        <span className="text-xs text-text-muted">Guardando…</span>
                       )}
                       {saveStatus === 'saved' && (
-                        <span className="text-[10px] text-success font-medium">✓ Guardado</span>
+                        <span className="text-xs text-success font-medium">✓ Guardado</span>
                       )}
                       {saveStatus === 'error' && (
-                        <span className="text-[10px] text-danger-dark font-medium">Error al guardar</span>
+                        <span className="text-xs text-danger-dark font-medium">Error al guardar</span>
                       )}
                       <Button
                         variant="outline"
@@ -697,73 +697,56 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                         className="text-danger"
                         onClick={() => setDeleteModal(true)}
                       >
-                        {labels[tab]}
+                        Eliminar
                       </Button>
                     </>
                   )}
                 </div>
               </div>
 
-              {/* Tab content */}
-              <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' || activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
-                {activeTab === 'properties' && (
-                  <div className="space-y-4">
-                    <div>
-                      <FieldLabel required>Nombre del bloque</FieldLabel>
-                      <TextInput
-                        type="text"
-                        fieldSize="comfortable"
-                        value={formName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }}
-                        placeholder="Ej. Introducción"
-                      />
-                    </div>
-                    <div>
-                      <FieldLabel required>Estado del bloque</FieldLabel>
-                      <div className="mt-1">
-                        <BlockUiStateToggle
-                          value={formUiState}
-                          onChange={(s) => { setFormUiState(s); setTabIsDirty(true); }}
-                          disabled={busy}
-                        />
-                      </div>
-                    </div>
-                    {panelMode === 'edit' && (
-                      <p className="text-[10px] text-text-muted italic">
-                        Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
-                      </p>
-                    )}
+              {/* Tab nav */}
+              {(() => {
+                const blockComments = activeSingleId
+                  ? reviewComments.filter((c) => c.template_block_id === activeSingleId)
+                  : [];
+                const tabs: { id: TabId; label: string; badge?: number }[] = [
+                  { id: 'properties', label: 'Propiedades' },
+                  { id: 'content', label: 'Contenido' },
+                  { id: 'description', label: 'Descripción' },
+                ];
+                if (panelMode === 'edit' && blockComments.length > 0) {
+                  tabs.push({ id: 'comments', label: 'Comentarios', badge: blockComments.length });
+                }
+                return (
+                  <div role="tablist" className="flex gap-1 -mb-px">
+                    {tabs.map((t) => {
+                      const isActive = activeTab === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          onClick={() => void handleTabChange(t.id)}
+                          className={[
+                            'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-t-md transition-colors cursor-pointer',
+                            isActive
+                              ? 'text-odoo-purple dark:text-odoo-dark-purple border-b-2 border-odoo-purple dark:border-odoo-dark-purple'
+                              : 'text-text-secondary dark:text-text-dark-secondary border-b-2 border-transparent hover:text-text-primary dark:hover:text-text-dark-primary hover:bg-ui-body/60 dark:hover:bg-ui-dark-bg/60',
+                          ].join(' ')}
+                        >
+                          {t.label}
+                          {typeof t.badge === 'number' && t.badge > 0 && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-odoo-purple/15 text-odoo-purple dark:bg-odoo-dark-purple/20 dark:text-odoo-dark-purple">
+                              {t.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
-                )}
-
-                {activeTab === 'content' && (
-                  <div className="flex-1 flex flex-col min-h-0">
-                    <div className="flex-1 overflow-hidden">
-                      <Suspense fallback={<div className="p-6 text-xs text-text-muted">Cargando editor…</div>}>
-                        <BlockNoteEditorPanel
-                          initialContent={formContent}
-                          editable={formUiState !== 'locked'}
-                          isDark={isDark}
-                          onChange={(json) => { setFormContent(json as string); setTabIsDirty(true); }}
-                        />
-                      </Suspense>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'description' && (
-                  <div className="flex-1 flex flex-col min-h-0 p-6">
-                    <FieldLabel>Descripción (interna para el docente)</FieldLabel>
-                    <TextArea
-                      fieldSize="comfortable"
-                      className="flex-1 resize-none"
-                      value={formDesc}
-                      onChange={(e) => { setFormDesc(e.target.value); setTabIsDirty(true); }}
-                      placeholder="Escribe aquí notas sobre el propósito de este bloque…"
-                    />
-                  </div>
-                )}
-              </div>
+                );
+              })()}
             </div>
 
             {/* Tab content */}
@@ -791,7 +774,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                     </div>
                   </div>
                   {panelMode === 'edit' && (
-                    <p className="text-[10px] text-text-muted italic">
+                    <p className="text-xs text-text-muted italic">
                       Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
                     </p>
                   )}
@@ -848,13 +831,13 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
                         <div className="flex justify-between items-start gap-3 mb-3">
                           <div className="flex items-center gap-2">
                             <div className={[
-                              'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black',
+                              'w-6 h-6 rounded-full flex items-center justify-center text-xs font-black',
                               c.resolved ? 'bg-success/20 text-success' : 'bg-odoo-purple/10 text-odoo-purple'
                             ].join(' ')}>
                               {c.author?.name ? c.author.name.charAt(0).toUpperCase() : '?'}
                             </div>
                             <div>
-                              <p className="text-[10px] font-bold text-text-primary dark:text-text-dark-primary leading-none">
+                              <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary leading-none">
                                 {c.author?.name || 'Validador'}
                               </p>
                               <p className="text-[9px] text-text-muted mt-0.5">
@@ -927,7 +910,7 @@ function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, 
           <div className="flex-1 flex flex-col overflow-hidden animate-in slide-in-from-right-4">
             <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-odoo-purple/5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3">
-                <span className="shrink-0 w-6 h-6 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
+                <span className="shrink-0 w-6 h-6 rounded-full bg-odoo-purple text-white text-xs font-bold flex items-center justify-center">
                   {multiIndex + 1}
                 </span>
                 <h3 className="text-sm font-bold text-odoo-purple truncate">

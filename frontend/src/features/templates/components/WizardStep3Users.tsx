@@ -81,13 +81,13 @@ function SortableValidatorItem({
           {index + 1}
         </span>
       )}
-      <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20">
+      <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20">
         {initials}
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{entry.name}</p>
         {entry.role && (
-          <p className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{entry.role}</p>
+          <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{entry.role}</p>
         )}
       </div>
       <div className="flex items-center gap-1">
@@ -145,7 +145,7 @@ function ValidatorSection({
   return (
     <div className="flex-1 min-h-0 flex flex-col border-b border-ui-border dark:border-ui-dark-border last:border-b-0 overflow-hidden">
       <div className="px-4 py-2 flex items-center gap-2 shrink-0 bg-ui-card/50 dark:bg-ui-dark-card/50">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary flex-1 min-w-0">
+        <span className="text-xs font-bold uppercase tracking-widest text-text-secondary flex-1 min-w-0">
           {title} ({validators.length})
         </span>
         {validationType && onValidationTypeChange && (
@@ -155,7 +155,7 @@ function ValidatorSection({
                 key={t}
                 type="button"
                 onClick={() => onValidationTypeChange(t)}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                className={`px-2 py-0.5 rounded text-xs font-bold transition-all border ${
                   validationType === t
                     ? 'bg-odoo-purple text-text-inverse border-odoo-purple'
                     : 'bg-transparent text-text-secondary border-ui-border hover:border-odoo-purple/50'
@@ -170,13 +170,13 @@ function ValidatorSection({
 
       {validationType === 'ordenada' && (
         <div className="px-4 py-1 border-b border-warning/20 bg-warning-light/10 shrink-0">
-          <p className="text-[10px] text-warning-dark font-bold">Validación ordenada — arrastra para reordenar.</p>
+          <p className="text-xs text-warning-dark font-bold">Validación ordenada — arrastra para reordenar.</p>
         </div>
       )}
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
         {validators.length === 0 ? (
-          <p className="text-[10px] text-text-muted italic">Sin validadores asignados.</p>
+          <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={validators.map((v) => v.userId)} strategy={verticalListSortingStrategy}>
@@ -269,7 +269,7 @@ function UserAddPanel({
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border shrink-0 space-y-1.5">
-        <span className="block text-[10px] font-bold uppercase tracking-widest text-text-secondary">{title}</span>
+        <span className="block text-xs font-bold uppercase tracking-widest text-text-secondary">{title}</span>
         {!canSearchUsers && (
           <p className="text-xs text-text-muted dark:text-text-dark-muted">
             No tienes permiso para buscar usuarios (users.search).
@@ -320,7 +320,7 @@ function UserAddPanel({
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-text-primary dark:text-text-dark-primary truncate">{u.name}</p>
-                {u.role && <p className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{u.role}</p>}
+                {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{u.role}</p>}
               </div>
               <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-odoo-purple text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">+</span>
             </button>

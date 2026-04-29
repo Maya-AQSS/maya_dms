@@ -1,4 +1,5 @@
 import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
+import { DatePicker } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
@@ -58,8 +59,8 @@ export function WizardStep1Properties({
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-6">
-      <div className="space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col bg-ui-card dark:bg-ui-dark-card overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
         {errors.api && (
           <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
             {errors.api}
@@ -114,19 +115,17 @@ export function WizardStep1Properties({
 
           <div>
             <FieldLabel required>Plazo de entrega</FieldLabel>
-            <TextInput
-              type="date"
-              fieldSize="comfortable"
-              value={deliveryDeadline}
-              onChange={(e) => setDeliveryDeadline(e.target.value)}
+            <DatePicker
+              value={deliveryDeadline || null}
+              onChange={(d) => setDeliveryDeadline(d ?? '')}
               disabled={deadlineLocked}
-              error={!!errors.deliveryDeadline}
+              placeholder="Seleccionar fecha…"
             />
             {errors.deliveryDeadline && (
               <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
             )}
             {deadlineLocked && (
-              <p className="mt-1 text-[10px] text-text-muted italic">
+              <p className="mt-1 text-xs text-text-muted italic">
                 No editable en estado actual.
               </p>
             )}

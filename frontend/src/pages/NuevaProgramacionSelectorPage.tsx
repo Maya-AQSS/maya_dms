@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableCell,
 } from '../ui';
+import { DatePicker } from '@maya/shared-ui-react';
 
 const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
   personal:   'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
@@ -159,11 +160,10 @@ export function NuevaProgramacionSelectorPage() {
               />
             </FilterField>
             <FilterField label="Fecha límite de validación">
-              <TextInput
-                fieldSize="sm"
-                type="date"
-                value={filterUi.deliveryDeadline}
-                onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
+              <DatePicker
+                value={filterUi.deliveryDeadline || null}
+                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
+                placeholder="Seleccionar fecha…"
               />
             </FilterField>
           </div>

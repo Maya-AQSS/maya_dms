@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { PageTitle } from '@maya/shared-ui-react';
+import { DatePicker, PageTitle } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
 import { Button, FieldLabel, Select, TextInput } from '../../../ui';
@@ -215,11 +215,10 @@ export function TemplatesContent() {
               </div>
               <div>
                 <FieldLabel>Fecha límite</FieldLabel>
-                <TextInput
-                  fieldSize="sm"
-                  type="date"
-                  value={filterUi.deliveryDeadline}
-                  onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
+                <DatePicker
+                  value={filterUi.deliveryDeadline || null}
+                  onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
+                  placeholder="Seleccionar fecha…"
                 />
               </div>
             </div>
@@ -274,11 +273,10 @@ export function TemplatesContent() {
             </div>
             <div>
               <FieldLabel>Fecha límite</FieldLabel>
-              <TextInput
-                fieldSize="sm"
-                type="date"
-                value={filterUi.deliveryDeadline}
-                onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
+              <DatePicker
+                value={filterUi.deliveryDeadline || null}
+                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
+                placeholder="Seleccionar fecha…"
               />
             </div>
           </div>

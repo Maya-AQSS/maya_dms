@@ -145,7 +145,7 @@ function SortableOutlineItem({
           {block.title || 'Bloque sin nombre'}
         </span>
         <span
-          className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${cfg.badgeCls}`}
+          className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-tight ${cfg.badgeCls}`}
         >
           {cfg.label}
         </span>
@@ -456,7 +456,7 @@ export function TemplateEditor({ template }: Props) {
           </span>
           {activeUiCfg && (
             <span
-              className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${activeUiCfg.badgeCls}`}
+              className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-tight ${activeUiCfg.badgeCls}`}
             >
               {activeUiCfg.label}
             </span>
@@ -557,7 +557,7 @@ export function TemplateEditor({ template }: Props) {
         <div className="w-72 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
           {/* left-header */}
           <div className="shrink-0 px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+            <span className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
               Bloques ({blocks.length})
             </span>
             <Button
@@ -627,7 +627,7 @@ export function TemplateEditor({ template }: Props) {
             loading={saveStatus === 'saving'}
             disabled={!isDirty}
             onClick={() => void saveRef.current()}
-            className="text-[10px] font-black uppercase tracking-widest rounded-full"
+            className="text-xs font-black uppercase tracking-widest rounded-full"
           >
             Guardar ahora
           </Button>

@@ -98,7 +98,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setLeaveGuard(true);
       return;
     }
-    navigate('/procesos');
+    if (step === 'properties') {
+      navigate('/procesos');
+      return;
+    }
+    const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
+    const idx = order.indexOf(step);
+    if (idx > 0) setStep(order[idx - 1]!);
+    else navigate('/procesos');
   };
 
   const validateStep1 = () => {
@@ -298,10 +305,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                   {isDone && !isActive ? '✓' : i + 1}
                 </span>
                 <span className="text-left hidden lg:block">
-                  <span className={`block text-[10px] font-black uppercase tracking-widest ${labelCls}`}>
+                  <span className={`block text-xs font-black uppercase tracking-widest ${labelCls}`}>
                     {s.label}
                   </span>
-                  <span className="block text-[10px] text-text-muted">
+                  <span className="block text-xs text-text-muted">
                     {s.sub}
                   </span>
                 </span>
@@ -317,15 +324,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   };
 
   return (
-    <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-transparent">
       {/* Top bar */}
-      <div className="shrink-0 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
+      <div className="shrink-0">
         <PageTitle
           title={template ? template.name : 'Nueva plantilla'}
           subtitle={template ? 'Editar plantilla' : undefined}
           onBack={handleBackArrow}
           backLabel="Volver"
-          className="!mb-0"
+          className="!mb-2"
           actions={
             <>
               {step === 'summary' && (
@@ -345,7 +352,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                   size="sm"
                   loading={saving}
                   onClick={() => void handleContinue()}
-                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+                  className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
                 >
                   Guardar y continuar →
                 </Button>
@@ -355,7 +362,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                   variant="primary"
                   size="sm"
                   onClick={() => setShowValidationModal(true)}
-                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+                  className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
                 >
                   Enviar a validar
                 </Button>
@@ -366,7 +373,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                   size="sm"
                   loading={saving}
                   onClick={() => void handlePublish()}
-                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+                  className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
                 >
                   Publicar plantilla
                 </Button>
@@ -432,7 +439,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       {renderStepper()}
 
       {/* Body — only this element scrolls */}
-      <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-ui-body/30 dark:bg-ui-dark-bg">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         {step === 'properties' && (
           <WizardStep1Properties
             name={name} setName={setName}
@@ -488,7 +495,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           <div className="space-y-4">
             <p className="text-xs text-text-muted">Se notificará a los validadores asignados.</p>
             <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-2">
                 Validadores ({validators.length})
               </p>
               {validators.map((v, i) => {
@@ -496,16 +503,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                 return (
                   <div key={v.userId} className="flex items-center gap-2.5">
                     {validationType === 'ordenada' && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
+                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold flex items-center justify-center">
                         {i + 1}
                       </span>
                     )}
-                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
+                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20 flex items-center justify-center">
                       {initials}
                     </span>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
                     </div>
                   </div>
                 );

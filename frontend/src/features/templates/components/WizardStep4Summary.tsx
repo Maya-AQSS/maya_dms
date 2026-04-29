@@ -25,7 +25,7 @@ type PreviewTab = 'Contenido' | 'Descripción';
 function SummaryRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex flex-col py-1.5 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
-      <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+      <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
         {label}
       </dt>
       <dd className="mt-0.5 text-xs font-medium text-text-primary dark:text-text-dark-primary">
@@ -58,31 +58,33 @@ export function WizardStep4Summary({ template, validators, validationType, docum
   ].filter((f) => f.value);
 
   return (
-    <div className="flex-1 overflow-y-auto px-6 py-5 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
+    <div className="flex-1 min-h-0 flex flex-col px-6 py-5 space-y-4 overflow-hidden">
 
-      <p className="text-xs text-text-muted text-center">
+      <p className="text-xs text-text-muted text-center shrink-0">
         Revisa todos los datos antes de publicar. Usa el stepper para volver a cualquier paso.
       </p>
 
       {/* ── Fila superior: Propiedades + Usuarios ──────────────────────────── */}
-      <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1">
+      <div className="shrink-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1">
 
         {/* Columna izquierda — Propiedades */}
         <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
             Propiedades
           </p>
-          <dl className="space-y-0">
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-0">
             <SummaryRow label="Nombre" value={template.name} />
             <SummaryRow label="Visibilidad" value={visibilityLabel(template.visibility_level)} />
             {hierarchyFields.map((f) => (
               <SummaryRow key={f.label} label={f.label} value={f.value} />
             ))}
-            <SummaryRow label="Descripción" value={template.description} />
             <SummaryRow
               label="Plazo de entrega"
               value={template.delivery_deadline ? new Date(template.delivery_deadline).toLocaleDateString() : null}
             />
+            <div className="col-span-2">
+              <SummaryRow label="Descripción" value={template.description} />
+            </div>
           </dl>
         </div>
 
@@ -91,10 +93,10 @@ export function WizardStep4Summary({ template, validators, validationType, docum
           {/* Validadores de la plantilla */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
                 Validadores de la plantilla
               </p>
-              <span className="text-[10px] font-bold text-odoo-purple capitalize">({validationType})</span>
+              <span className="text-xs font-bold text-odoo-purple capitalize">({validationType})</span>
             </div>
             {validators.length === 0 ? (
               <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
@@ -105,12 +107,12 @@ export function WizardStep4Summary({ template, validators, validationType, docum
                   return (
                     <div key={v.userId} className="flex items-center gap-2.5">
                       {validationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold flex items-center justify-center">{i + 1}</span>
                       )}
-                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">{initials}</span>
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20 flex items-center justify-center">{initials}</span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
                       </div>
                     </div>
                   );
@@ -122,10 +124,10 @@ export function WizardStep4Summary({ template, validators, validationType, docum
           {/* Validadores del documento */}
           <div className="pt-3 border-t border-ui-border dark:border-ui-dark-border">
             <div className="flex items-center gap-2 mb-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
                 Validadores del documento
               </p>
-              <span className="text-[10px] font-bold text-odoo-teal capitalize">({documentValidationType})</span>
+              <span className="text-xs font-bold text-odoo-teal capitalize">({documentValidationType})</span>
             </div>
             {documentValidators.length === 0 ? (
               <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
@@ -136,12 +138,12 @@ export function WizardStep4Summary({ template, validators, validationType, docum
                   return (
                     <div key={v.userId} className="flex items-center gap-2.5">
                       {documentValidationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-xs font-bold flex items-center justify-center">{i + 1}</span>
                       )}
-                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-[10px] font-black border border-odoo-teal/20 flex items-center justify-center">{initials}</span>
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-xs font-black border border-odoo-teal/20 flex items-center justify-center">{initials}</span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
                       </div>
                     </div>
                   );
@@ -153,17 +155,17 @@ export function WizardStep4Summary({ template, validators, validationType, docum
       </div>
 
       {/* ── Fila inferior: Plantilla (bloques + preview) ──────────────────── */}
-      <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1">
+      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1">
 
         {/* Cabecera */}
         <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+          <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
             Plantilla — {blocks.length} bloque{blocks.length !== 1 ? 's' : ''}
           </span>
           <button
             type="button"
             onClick={() => setShowPreview(true)}
-            className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded border border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple transition-colors"
+            className="px-3 py-1 text-xs font-bold uppercase tracking-wider rounded border border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple transition-colors"
           >
             Previsualizar
           </button>
@@ -174,11 +176,11 @@ export function WizardStep4Summary({ template, validators, validationType, docum
             <p className="text-xs text-warning-dark italic">Aún no se han añadido bloques.</p>
           </div>
         ) : (
-          <div className="grid" style={{ gridTemplateColumns: '200px 1fr', minHeight: '200px' }}>
+          <div className="flex-1 min-h-0 grid" style={{ gridTemplateColumns: '200px 1fr' }}>
 
             {/* Lista de bloques */}
-            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto max-h-64">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
+            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
                 Bloques ({blocks.length})
               </p>
               <div className="space-y-1">
@@ -197,11 +199,11 @@ export function WizardStep4Summary({ template, validators, validationType, docum
                           : 'bg-transparent border-ui-border dark:border-ui-dark-border/50 hover:bg-ui-body dark:hover:bg-ui-dark-bg hover:border-ui-border',
                       ].join(' ')}
                     >
-                      <span className="shrink-0 text-[10px] font-bold text-text-muted w-4 text-right">{i + 1}</span>
+                      <span className="shrink-0 text-xs font-bold text-text-muted w-4 text-right">{i + 1}</span>
                       <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
                         {block.title || 'Sin nombre'}
                       </span>
-                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}>
+                      <span className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase ${cfg.badgeCls}`}>
                         {cfg.label}
                       </span>
                     </button>
