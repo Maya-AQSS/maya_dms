@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
-import { FieldLabel, Select, TextInput } from '../../../ui';
+import { FilterField, Select, TextInput } from '../../../ui';
 import { DataTable, DatePicker, Pagination, useTablePreferences, type ColumnDef } from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
@@ -206,8 +206,7 @@ export function DocumentsTable() {
         onRowClick={(doc) => navigate(`/documents/${doc.id}`)}
         filtersPanel={
           <>
-            <div>
-              <FieldLabel>Nombre</FieldLabel>
+            <FilterField label="Nombre">
               <TextInput
                 fieldSize="sm"
                 type="search"
@@ -215,9 +214,8 @@ export function DocumentsTable() {
                 value={nameInput}
                 onChange={handleNameChange}
               />
-            </div>
-            <div>
-              <FieldLabel>Visibilidad</FieldLabel>
+            </FilterField>
+            <FilterField label="Visibilidad">
               <Select
                 fieldSize="sm"
                 value={filters.visibility}
@@ -227,9 +225,8 @@ export function DocumentsTable() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </Select>
-            </div>
-            <div>
-              <FieldLabel>Estado</FieldLabel>
+            </FilterField>
+            <FilterField label="Estado">
               <Select
                 fieldSize="sm"
                 value={filters.status}
@@ -239,24 +236,22 @@ export function DocumentsTable() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </Select>
-            </div>
-            <div>
-              <FieldLabel>Autor</FieldLabel>
+            </FilterField>
+            <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
                 placeholder="Nombre del autor..."
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
-            </div>
-            <div>
-              <FieldLabel>Fecha</FieldLabel>
+            </FilterField>
+            <FilterField label="Fecha">
               <DatePicker
                 value={filters.date || null}
                 onChange={(d) => handleFilterChange({ date: d ?? '' })}
                 placeholder="Seleccionar fecha..."
               />
-            </div>
+            </FilterField>
           </>
         }
       />

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
-import { Button, FieldLabel, Select, TextInput } from '../../../ui';
+import { Button, FilterField, Select, TextInput } from '../../../ui';
 import { DataTable, DatePicker, Pagination, useTablePreferences, type ColumnDef } from '@maya/shared-ui-react';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 
@@ -201,8 +201,7 @@ export function TemplatesTable() {
         onRowClick={(t) => navigate(`/templates/${t.id}`)}
         filtersPanel={
           <>
-            <div>
-              <FieldLabel>Nombre</FieldLabel>
+            <FilterField label="Nombre">
               <TextInput
                 fieldSize="sm"
                 type="search"
@@ -210,9 +209,8 @@ export function TemplatesTable() {
                 value={nameInput}
                 onChange={handleNameChange}
               />
-            </div>
-            <div>
-              <FieldLabel>Visibilidad</FieldLabel>
+            </FilterField>
+            <FilterField label="Visibilidad">
               <Select
                 fieldSize="sm"
                 value={filterUi.visibility}
@@ -223,9 +221,8 @@ export function TemplatesTable() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </Select>
-            </div>
-            <div>
-              <FieldLabel>Estado</FieldLabel>
+            </FilterField>
+            <FilterField label="Estado">
               <Select
                 fieldSize="sm"
                 value={filterUi.status}
@@ -235,24 +232,22 @@ export function TemplatesTable() {
                   <option key={o.value || 'all'} value={o.value}>{o.label}</option>
                 ))}
               </Select>
-            </div>
-            <div>
-              <FieldLabel>Autor</FieldLabel>
+            </FilterField>
+            <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
                 placeholder="Nombre del autor..."
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
-            </div>
-            <div>
-              <FieldLabel>Fecha límite</FieldLabel>
+            </FilterField>
+            <FilterField label="Fecha límite">
               <DatePicker
                 value={filterUi.deliveryDeadline || null}
                 onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
                 placeholder="Seleccionar fecha..."
               />
-            </div>
+            </FilterField>
           </>
         }
       />

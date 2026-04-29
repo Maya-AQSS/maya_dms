@@ -3,6 +3,7 @@ export {
   FIELD_SIZE_CLASS,
   type FieldSize,
   FieldLabel,
+  FilterField,
   TextInput,
   TextArea,
   Select,
