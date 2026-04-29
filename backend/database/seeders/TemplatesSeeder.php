@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Schema;
 
 class TemplatesSeeder extends Seeder
 {
+    private const DEFAULT_PROCESS_ID = '33333333-3333-3333-3333-333333333301';
+
     public function run(): void
     {
         $data = $this->mockData();
@@ -25,6 +27,7 @@ class TemplatesSeeder extends Seeder
         $now = Carbon::now();
 
         $rows = array_map(static function (array $row) use ($now): array {
+            $row['process_id'] ??= self::DEFAULT_PROCESS_ID;
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
 
@@ -37,6 +40,7 @@ class TemplatesSeeder extends Seeder
             [
                 'name',
                 'description',
+                'process_id',
                 'visibility_level',
                 'delivery_deadline',
                 'study_id',

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
@@ -29,6 +30,8 @@ use Illuminate\Support\Facades\Gate;
  */
 class TemplateController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly TemplateServiceInterface $templateService,
         private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
@@ -76,6 +79,7 @@ class TemplateController extends Controller
         if (! Gate::forUser($request->user())->allows('view', $model)) {
             abort(404);
         }
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
         $model->loadMissing(['reviewers', 'documentReviewers']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
@@ -94,6 +98,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('update', [$model, $request->input('visibility_level')]);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $dto = $request->toUpdateDto();
 
@@ -114,6 +119,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('delete', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $hardDeleted = $this->templateService->destroy($model->id, (string) Auth::id());
 
@@ -131,6 +137,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('clone', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $copy = $this->templateService->clone($template, (string) Auth::id());
 
@@ -144,6 +151,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('submitForReview', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->submitForReview($model->id, (string) Auth::id());
 
@@ -157,6 +165,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('review', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->rejectReview($model->id, (string) Auth::id());
 
@@ -173,6 +182,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('review', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
 
@@ -186,6 +196,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('publish', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->publishWithSnapshot(
             $model->id,
@@ -205,6 +216,7 @@ class TemplateController extends Controller
         if (! Gate::forUser(Auth::user())->allows('view', $model)) {
             abort(404);
         }
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         return TemplateVersionSummaryResource::collection(
             $this->templateService->listPublishedVersions($model->id),
@@ -221,6 +233,7 @@ class TemplateController extends Controller
         if (! Gate::forUser(Auth::user())->allows('view', $template)) {
             abort(404);
         }
+        $this->assertOptionalProcessContextMatches((string) $template->process_id);
 
         return new TemplateVersionResource($version);
     }
@@ -232,6 +245,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('update', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $this->templateService->syncReviewers($model->id, $request->validated('user_ids'));
 
@@ -245,6 +259,7 @@ class TemplateController extends Controller
     {
         $model = $this->templateService->findOrFail($template);
         $this->authorize('update', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $this->templateService->syncDocumentReviewers($model->id, $request->validated('user_ids'));
 

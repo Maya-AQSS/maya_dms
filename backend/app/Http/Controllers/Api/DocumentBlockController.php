@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\UpdateDocumentBlockRequest;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -9,6 +10,8 @@ use Illuminate\Http\JsonResponse;
 
 class DocumentBlockController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
     ) {}
@@ -25,6 +28,7 @@ class DocumentBlockController extends Controller
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('view', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $blocks = $this->documentService->blocksForDisplay($doc);
 
@@ -44,6 +48,7 @@ class DocumentBlockController extends Controller
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('update', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $updated = $this->documentService->updateBlock(
             $request->toDto(

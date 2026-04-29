@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -12,10 +14,12 @@ use Illuminate\Support\Facades\Gate;
 
 class CommentController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly CommentServiceInterface $commentService,
         private readonly DocumentServiceInterface $documentService,
-        private readonly \App\Services\Contracts\TemplateServiceInterface $templateService,
+        private readonly TemplateServiceInterface $templateService,
     ) {}
 
     /**
@@ -31,12 +35,16 @@ class CommentController extends Controller
             if (! Gate::forUser($request->user())->allows('view', $model)) {
                 abort(404);
             }
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
             return response()->json(['data' => $this->commentService->listForTemplate($templateId)]);
         }
 
         if ($documentId) {
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('view', $doc);
+            $this->assertOptionalProcessContextMatches((string) $doc->process_id);
+
             return response()->json(['data' => []]);
         }
 
@@ -63,7 +71,8 @@ class CommentController extends Controller
             if (! Gate::forUser($request->user())->allows('view', $model)) {
                 abort(404);
             }
-            
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
             $comment = $this->commentService->createForTemplate($templateId, (string) Auth::id(), $validated);
             return response()->json(['data' => $comment], 201);
         }
@@ -71,6 +80,8 @@ class CommentController extends Controller
         if ($documentId) {
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('view', $doc);
+            $this->assertOptionalProcessContextMatches((string) $doc->process_id);
+
             return response()->json(['message' => 'Not implemented for documents'], 501);
         }
 
@@ -85,6 +96,7 @@ class CommentController extends Controller
         $commentModel = $this->commentService->findOrFail($comment);
         $document     = $this->documentService->findOrFail($commentModel->document_id);
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         return response()->json(['data' => $commentModel]);
     }
@@ -97,6 +109,7 @@ class CommentController extends Controller
         $commentModel = $this->commentService->findOrFail($comment);
         $document     = $this->documentService->findOrFail($commentModel->document_id);
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -109,6 +122,7 @@ class CommentController extends Controller
         $commentModel = $this->commentService->findOrFail($comment);
         $document     = $this->documentService->findOrFail($commentModel->document_id);
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -126,9 +140,11 @@ class CommentController extends Controller
             if (! Gate::forUser($request->user())->allows('view', $model)) {
                 abort(404);
             }
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
         } elseif ($commentModel->document_id) {
             $model = $this->documentService->findOrFail($commentModel->document_id);
             $this->authorize('view', $model);
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
         }
 
         $resolved = $this->commentService->resolve($comment, (string) Auth::id());

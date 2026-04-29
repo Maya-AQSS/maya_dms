@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ApproveDocumentReviewRequest;
 use App\Http\Requests\Documents\RejectDocumentReviewRequest;
@@ -11,6 +12,8 @@ use Illuminate\Http\Request;
 
 class ReviewController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
     ) {}
@@ -23,6 +26,7 @@ class ReviewController extends Controller
         $document = $this->documentService->findOrFail($documentId);
         // Listar revisiones: participantes con acceso al documento (SoD solo aplica a aprobar/rechazar).
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $reviews = $this->documentService->listReviews($document->id);
 
@@ -36,6 +40,7 @@ class ReviewController extends Controller
     {
         $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->approveReview(
@@ -55,6 +60,7 @@ class ReviewController extends Controller
     {
         $document = $this->documentService->findOrFail($documentId);
         $this->authorize('review', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->rejectReview(

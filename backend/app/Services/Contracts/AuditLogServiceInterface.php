@@ -74,4 +74,19 @@ interface AuditLogServiceInterface
      * @return void
      */
     public function assertCanAccessCommentAudit(string $commentId, JwtUser $user): void;
+
+    /**
+     * Resuelve el process_id del documento para validar contexto opcional.
+     */
+    public function resolveDocumentProcessId(string $documentId): ?string;
+
+    /**
+     * Resuelve el process_id de la plantilla para validar contexto opcional.
+     */
+    public function resolveTemplateProcessId(string $templateId): ?string;
+
+    /**
+     * Resuelve el process_id del comentario (vía documento o plantilla).
+     */
+    public function resolveCommentProcessId(string $commentId): ?string;
 }

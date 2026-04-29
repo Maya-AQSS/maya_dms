@@ -32,6 +32,7 @@ class DocumentServiceCreationOptionsTest extends TestCase
             'id' => 'tpl-1',
             'name' => 'Plantilla 1',
             'description' => 'Desc 1',
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ]);
 
         $templateWithoutVersion = new Template;
@@ -67,6 +68,7 @@ class DocumentServiceCreationOptionsTest extends TestCase
         $this->assertCount(1, $out);
         $this->assertSame('tpl-1', $out[0]['template_id']);
         $this->assertSame('ver-1', $out[0]['template_version_id']);
+        $this->assertSame('00000000-0000-0000-0000-000000000001', $out[0]['process_id']);
     }
 
     public function test_create_from_module_throws_validation_when_no_template_options_exist(): void
@@ -85,7 +87,7 @@ class DocumentServiceCreationOptionsTest extends TestCase
 
         $this->expectException(ValidationException::class);
 
-        $service->createFromModule('MOD-1', 'user-sub-1');
+        $service->createFromModule('MOD-1', 'user-sub-1', '00000000-0000-0000-0000-000000000001');
     }
 }
 

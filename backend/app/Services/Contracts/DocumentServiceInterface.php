@@ -120,7 +120,7 @@ interface DocumentServiceInterface
     /**
      * Opciones de creación de documento disponibles para un módulo.
      *
-     * @return list<array{template_id: string, template_version_id: string, name: string, description: ?string}>
+     * @return list<array{template_id: string, template_version_id: string, process_id: string, name: string, description: ?string}>
      */
     public function creationOptionsForModule(string $moduleId): array;
 
@@ -130,7 +130,9 @@ interface DocumentServiceInterface
     public function createFromModule(
         string $moduleId,
         string $creatorId,
+        string $processId,
         ?string $templateVersionId = null,
+        ?string $deliveryDeadline = null,
     ): Document;
 
     /**
