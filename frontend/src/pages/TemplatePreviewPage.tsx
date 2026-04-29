@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { fetchTemplate, submitTemplateForReview, deleteTemplate } from '../api/templates';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
@@ -43,6 +43,10 @@ function formatDate(iso: string | null | undefined): string {
 export function TemplatePreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as { selectionMode?: boolean; backTo?: string } | null;
+  const selectionMode = locationState?.selectionMode === true;
+  const backTo = locationState?.backTo ?? '/nueva-programacion';
   const { profile } = useUserProfile();
 
   const [template, setTemplate] = useState<Template | null>(null);
@@ -90,6 +94,13 @@ export function TemplatePreviewPage() {
 
   const isDraft = template?.status === 'draft';
   const isOwner = profile?.id === template?.created_by;
+  const isPublished = template?.status === 'published';
+  const hasReviewers = (template?.reviewers?.length ?? 0) > 0;
+
+  const canEdit = isOwner && isDraft;
+  const canDelete = isOwner && isDraft;
+  const canClone = isPublished || isOwner;
+  const canSubmit = isOwner && isDraft && hasReviewers;
 
   const handleSubmitForReview = async () => {
     if (!id || !template) return;
@@ -100,6 +111,21 @@ export function TemplatePreviewPage() {
       setTemplate(res.data);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo enviar a validar.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClone = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const res = await cloneTemplate(id);
+      // TODO: permitir al usuario personalizar nombre del clon
+      navigate(`/templates/${res.data.id}/edit`);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo clonar la plantilla.');
     } finally {
       setActionLoading(false);
     }
@@ -123,10 +149,10 @@ export function TemplatePreviewPage() {
       <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 px-6 h-[52px]">
         <button
           type="button"
-          onClick={() => navigate('/procesos')}
+          onClick={() => navigate(selectionMode ? backTo : '/procesos')}
           className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary dark:text-text-dark-secondary bg-ui-body dark:bg-ui-dark-bg hover:bg-ui-border dark:hover:bg-ui-dark-border transition-colors cursor-pointer"
         >
-          ← Volver
+          {selectionMode ? '← Seleccionar plantilla' : '← Volver'}
         </button>
         <span className="flex-1 text-xs font-semibold text-text-muted dark:text-text-dark-muted truncate">
           {template?.name ?? 'Plantilla'} — Previsualización
@@ -140,51 +166,91 @@ export function TemplatePreviewPage() {
               <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
                 v{template.version}
               </span>
-              {id && <FavoriteButton entityType="template" entityId={id} />}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowHistory(true)}
-              >
-                Historial
-              </Button>
-              {isDraft && isOwner && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                  onClick={() => setShowDeleteModal(true)}
-                >
-                  Eliminar
-                </Button>
-              )}
-              {template.status === 'draft' && isOwner && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate(`/templates/${id}/edit`)}
-                >
-                  Editar
-                </Button>
-              )}
-              {isDraft && isOwner && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  loading={actionLoading}
-                  onClick={() => void handleSubmitForReview()}
-                >
-                  Enviar a validar
-                </Button>
+
+              {selectionMode ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowHistory(true)}
+                  >
+                    Versiones de la plantilla
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    onClick={() => navigate(`/nueva-programacion/${id}/wizard`)}
+                  >
+                    Usar plantilla
+                  </Button>
+                </>
+              ) : (
+                <>
+                  {id && <FavoriteButton entityType="template" entityId={id} />}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowHistory(true)}
+                  >
+                    Historial
+                  </Button>
+
+                  {canDelete && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                      onClick={() => setShowDeleteModal(true)}
+                    >
+                      Eliminar
+                    </Button>
+                  )}
+
+                  {canEdit && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate(`/templates/${id}/edit`)}
+                    >
+                      Editar
+                    </Button>
+                  )}
+
+                  {canClone && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      loading={actionLoading}
+                      onClick={() => void handleClone()}
+                    >
+                      Clonar
+                    </Button>
+                  )}
+
+                  {canSubmit && (
+                    <Button
+                      type="button"
+                      variant="primary"
+                      size="sm"
+                      loading={actionLoading}
+                      onClick={() => void handleSubmitForReview()}
+                    >
+                      Enviar a validar
+                    </Button>
+                  )}
+                </>
               )}
             </>
           )}
         </div>
       </header>
+
 
       {template && (
         <div className="max-w-[960px] mx-auto px-6 py-2 border-b border-ui-border/50 dark:border-ui-dark-border/50">
@@ -193,7 +259,7 @@ export function TemplatePreviewPage() {
             {' · '}
             {visibilityLabel(template.visibility_level)}
             {' · '}
-            Fecha límite: {formatDate(template.delivery_deadline)}
+            Fecha límite de validación: {formatDate(template.delivery_deadline)}
             {' · '}
             Última edición: {formatDate(template.updated_at)}
           </p>
