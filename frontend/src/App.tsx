@@ -14,9 +14,7 @@ import {
   DocumentEditorPage,
   DocumentValidationPage,
   DocumentPreviewPage,
-  DocumentsPage,
   NuevaProgramacionSelectorPage,
-  NuevaProgramacionWizardPage,
   PlaceholderPage,
   ProcesosPage,
   TemplateEditPage,
@@ -35,9 +33,8 @@ function AppRoutes() {
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/dashboard" element={<DashboardPage />} />
       <Route path="/procesos" element={<ProcesosPage />} />
-      <Route path="/documents" element={<DocumentsPage />} />
       <Route path="/nueva-programacion" element={<NuevaProgramacionSelectorPage />} />
-      <Route path="/nueva-programacion/:templateId/wizard" element={<NuevaProgramacionWizardPage />} />
+      <Route path="/nueva-programacion/:templateId/wizard" element={<DocumentEditorPage />} />
       <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
       <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
       <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
