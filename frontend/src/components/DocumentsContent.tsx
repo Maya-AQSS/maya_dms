@@ -18,7 +18,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { useUserProfile } from '../features/user-profile';
 import type { DocumentStatus } from '../types/documents';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
-import { Button, FieldLabel, Select } from '../ui';
+import { Button } from '../ui';
 
 function snapshotBlockStateLabel(raw: string | undefined): string {
   if (raw != null && raw in BLOCK_STATE_LABELS) {
@@ -46,6 +46,9 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
     'bg-ui-border dark:bg-ui-dark-border text-text-secondary dark:text-text-dark-secondary',
 };
 
+/**
+ * Componente para mostrar el contenido de los documentos.
+ */
 export function DocumentsContent() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -55,66 +58,69 @@ export function DocumentsContent() {
     studyId: '',
     moduleId: '',
   });
-
-  // ── Estado del formulario de creación ─────────────────────────────────────
-  const [showSelector, setShowSelector] = useState(false);
-
-  // Cascada dentro del formulario de creación
-  const [formStudyTypeId, setFormStudyTypeId] = useState('');
-  const [formStudyId, setFormStudyId] = useState('');
-  const [formModuleId, setFormModuleId] = useState('');
-  const [cascadeErrors, setCascadeErrors] = useState<{
-    studyTypeId?: string;
-    studyId?: string;
-    moduleId?: string;
-  }>({});
-
-  // Opciones de plantilla para el módulo seleccionado en el formulario
   const [creationOptions, setCreationOptions] = useState<DocumentCreationOption[]>([]);
   const [creationMode, setCreationMode] = useState<'none' | 'auto' | 'select' | null>(null);
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
   const [loadingCreationOptions, setLoadingCreationOptions] = useState(false);
+  const [creatingDocument, setCreatingDocument] = useState(false);
   const [creationError, setCreationError] = useState<string | null>(null);
-
-  // Vista previa de plantilla
+  const [showSelector, setShowSelector] = useState(false);
   const [previewOption, setPreviewOption] = useState<DocumentCreationOption | null>(null);
   const [previewBlocks, setPreviewBlocks] = useState<TemplateVersionSnapshotBlock[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [creatingDocument, setCreatingDocument] = useState(false);
-
   const [, startTransition] = useTransition();
 
   const { documents, loading, error, reload } = useDocuments();
-  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
+  const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
   const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
+  const selectedModuleId = activeFilters.moduleId;
+  const isSelectingTemplate = showSelector && creationMode === 'select';
 
-  // ── Datos derivados de la cascada del formulario ───────────────────────────
-  const allStudies = hierarchy.flatMap((t) => t.studies);
-  const formStudies = formStudyTypeId
-    ? (hierarchy.find((t) => t.id === formStudyTypeId)?.studies ?? [])
-    : [];
-  const formModules = formStudyId
-    ? (allStudies.find((s) => s.id === formStudyId)?.course_modules ?? [])
-    : [];
+  const showSelectModuleHint =
+    !profileLoading &&
+    profile !== null &&
+    hasPermission('documents.create') &&
+    !selectedModuleId;
 
-  // ── Botón Nueva Programación ───────────────────────────────────────────────
   const newProgrammingDisabledReason = useMemo(() => {
-    if (profileLoading || profile === null) return 'Cargando perfil de usuario…';
-    if (!hasPermission('documents.create'))
+    if (profileLoading || profile === null) {
+      return 'Cargando perfil de usuario…';
+    }
+    if (!hasPermission('documents.create')) {
       return 'No tienes permiso para crear programaciones (documents.create).';
+    }
+    if (!selectedModuleId) {
+      return 'Selecciona un módulo para crear una nueva programación.';
+    }
+    if (loadingCreationOptions) {
+      return 'Cargando plantillas disponibles...';
+    }
+    if (creationMode === 'none') {
+      return creationMessage ?? 'No hay plantillas publicadas disponibles para este módulo.';
+    }
     return null;
-  }, [profile, profileLoading, hasPermission]);
+  }, [
+    profile,
+    profileLoading,
+    hasPermission,
+    selectedModuleId,
+    loadingCreationOptions,
+    creationMode,
+    creationMessage,
+  ]);
 
-  // ── Carga de opciones de plantilla al elegir módulo ────────────────────────
   useEffect(() => {
-    if (!formModuleId) {
+    if (!selectedModuleId) {
       setCreationOptions([]);
       setCreationMode(null);
       setCreationMessage(null);
+      setShowSelector(false);
       setPreviewOption(null);
       setPreviewBlocks([]);
+      setPreviewLoading(false);
+      setPreviewError(null);
       setCreationError(null);
       return;
     }
@@ -124,16 +130,14 @@ export function DocumentsContent() {
       try {
         setLoadingCreationOptions(true);
         setCreationError(null);
-        const data = await fetchDocumentCreationOptions(formModuleId);
+        const data = await fetchDocumentCreationOptions(selectedModuleId);
         if (cancelled) return;
         setCreationOptions(data.options);
         setCreationMode(data.mode);
         setCreationMessage(data.message);
       } catch (err) {
         if (!cancelled) {
-          setCreationError(
-            err instanceof Error ? err.message : 'No se pudieron cargar las plantillas.',
-          );
+          setCreationError(err instanceof Error ? err.message : 'No se pudieron cargar las plantillas.');
           setCreationOptions([]);
           setCreationMode('none');
           setCreationMessage('No se pudieron cargar las plantillas disponibles.');
@@ -142,11 +146,14 @@ export function DocumentsContent() {
         if (!cancelled) setLoadingCreationOptions(false);
       }
     };
-    void loadOptions();
-    return () => { cancelled = true; };
-  }, [formModuleId]);
 
-  // ── Banner de envío a revisión ─────────────────────────────────────────────
+    void loadOptions();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedModuleId]);
+
   useEffect(() => {
     const state = location.state as { documentSubmittedForReview?: boolean } | null;
     if (!state?.documentSubmittedForReview) return;
@@ -155,63 +162,38 @@ export function DocumentsContent() {
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.state, location.pathname, navigate, reload]);
 
-  // ── Handlers de filtros del listado ───────────────────────────────────────
   const handleClear = () =>
     startTransition(() =>
-      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' }),
+      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' })
     );
 
   const handleChange = (filters: CascadeDocumentFilters) =>
     startTransition(() => setActiveFilters(filters));
 
-  // ── Handlers del formulario de creación ───────────────────────────────────
-  const resetCreationForm = () => {
-    setFormStudyTypeId('');
-    setFormStudyId('');
-    setFormModuleId('');
-    setCascadeErrors({});
-    setCreationOptions([]);
-    setCreationMode(null);
-    setCreationMessage(null);
-    setPreviewOption(null);
-    setPreviewBlocks([]);
-    setPreviewLoading(false);
-    setPreviewError(null);
-    setCreationError(null);
-  };
-
-  const closeSelector = () => {
-    setShowSelector(false);
-    resetCreationForm();
-  };
-
-  const validateCascade = (): boolean => {
-    const errs: typeof cascadeErrors = {};
-    if (!formStudyTypeId) errs.studyTypeId = 'Selecciona un tipo de estudio.';
-    if (!formStudyId) errs.studyId = 'Selecciona un estudio.';
-    if (!formModuleId) errs.moduleId = 'Selecciona un módulo.';
-    setCascadeErrors(errs);
-    return Object.keys(errs).length === 0;
-  };
-
   const handleCreateFromModule = async (templateVersionId?: string) => {
-    if (!validateCascade()) return;
+    if (!selectedModuleId) return;
     setCreatingDocument(true);
     setCreationError(null);
     try {
       const created = await createDocumentFromModule({
-        module_id: formModuleId,
+        module_id: selectedModuleId,
         ...(templateVersionId ? { template_version_id: templateVersionId } : {}),
       });
       navigate(`/documents/${created.id}/editor`);
       void reload();
     } catch (err) {
-      setCreationError(
-        err instanceof Error ? err.message : 'No se pudo crear la programación.',
-      );
+      setCreationError(err instanceof Error ? err.message : 'No se pudo crear la programación.');
     } finally {
       setCreatingDocument(false);
     }
+  };
+
+  const closeSelector = () => {
+    setShowSelector(false);
+    setPreviewOption(null);
+    setPreviewBlocks([]);
+    setPreviewLoading(false);
+    setPreviewError(null);
   };
 
   const openTemplatePreview = async (option: DocumentCreationOption) => {
@@ -239,13 +221,24 @@ export function DocumentsContent() {
     setPreviewLoading(false);
   };
 
-  const handleNewProgrammingClick = () => {
+  const handleNewProgrammingClick = async () => {
+    if (!selectedModuleId || loadingCreationOptions || creatingDocument) return;
+    if (creationMode === 'none') return;
+    if (creationMode === 'auto') {
+      const versionId = creationOptions[0]?.template_version_id;
+      await handleCreateFromModule(versionId);
+      return;
+    }
     setShowSelector(true);
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="p-6">
+      {showSelectModuleHint && (
+        <p className="mb-3 text-xs text-text-muted dark:text-text-dark-muted">
+          Selecciona un módulo para crear una nueva programación.
+        </p>
+      )}
       <CascadeFilters onClear={handleClear} onFilterChange={handleChange} />
 
       {showSubmittedForReviewBanner && (
@@ -282,10 +275,11 @@ export function DocumentsContent() {
             <Button
               type="button"
               size="sm"
-              disabled={newProgrammingDisabledReason !== null || showSelector}
-              onClick={handleNewProgrammingClick}
+              loading={creatingDocument}
+              disabled={newProgrammingDisabledReason !== null || isSelectingTemplate}
+              onClick={() => void handleNewProgrammingClick()}
               title={
-                showSelector
+                isSelectingTemplate
                   ? 'Ya estás eligiendo una plantilla.'
                   : newProgrammingDisabledReason ?? undefined
               }
@@ -295,263 +289,131 @@ export function DocumentsContent() {
           </div>
         </div>
 
-        {newProgrammingDisabledReason && (
+        {newProgrammingDisabledReason && !showSelectModuleHint && (
           <p className="px-5 py-2 text-xs text-text-muted dark:text-text-dark-muted border-b border-ui-border-l dark:border-ui-dark-border-l">
             {newProgrammingDisabledReason}
           </p>
         )}
-
-        {/* ── Formulario de creación inline ──────────────────────────────── */}
-        {showSelector && (
-          <div className="px-5 py-4 border-b border-ui-border-l dark:border-ui-dark-border-l bg-ui-body dark:bg-ui-dark-bg flex flex-col gap-4">
-
-            {/* Cascada obligatoria */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <FieldLabel required>Tipo de Estudio</FieldLabel>
-                <Select
-                  fieldSize="sm"
-                  value={formStudyTypeId}
-                  disabled={hierarchyLoading}
-                  onChange={(e) => {
-                    setFormStudyTypeId(e.target.value);
-                    setFormStudyId('');
-                    setFormModuleId('');
-                    setCascadeErrors((prev) => ({ ...prev, studyTypeId: undefined, studyId: undefined, moduleId: undefined }));
-                  }}
-                  error={!!cascadeErrors.studyTypeId}
-                >
-                  <option value="">
-                    {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
-                  </option>
-                  {hierarchy.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </Select>
-                {cascadeErrors.studyTypeId && (
-                  <p className="mt-0.5 text-xs text-danger-dark dark:text-danger">
-                    {cascadeErrors.studyTypeId}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <FieldLabel required>Estudio</FieldLabel>
-                <Select
-                  fieldSize="sm"
-                  value={formStudyId}
-                  disabled={hierarchyLoading || !formStudyTypeId}
-                  onChange={(e) => {
-                    setFormStudyId(e.target.value);
-                    setFormModuleId('');
-                    setCascadeErrors((prev) => ({ ...prev, studyId: undefined, moduleId: undefined }));
-                  }}
-                  error={!!cascadeErrors.studyId}
-                >
-                  <option value="">— Seleccionar —</option>
-                  {formStudies.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </Select>
-                {cascadeErrors.studyId && (
-                  <p className="mt-0.5 text-xs text-danger-dark dark:text-danger">
-                    {cascadeErrors.studyId}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <FieldLabel required>Módulo</FieldLabel>
-                <Select
-                  fieldSize="sm"
-                  value={formModuleId}
-                  disabled={hierarchyLoading || !formStudyId}
-                  onChange={(e) => {
-                    setFormModuleId(e.target.value);
-                    setCascadeErrors((prev) => ({ ...prev, moduleId: undefined }));
-                    setPreviewOption(null);
-                    setPreviewBlocks([]);
-                  }}
-                  error={!!cascadeErrors.moduleId}
-                >
-                  <option value="">— Seleccionar —</option>
-                  {formModules.map((m) => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </Select>
-                {cascadeErrors.moduleId && (
-                  <p className="mt-0.5 text-xs text-danger-dark dark:text-danger">
-                    {cascadeErrors.moduleId}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {/* Plantillas disponibles — solo si hay módulo */}
-            {formModuleId && (
+        {creationError && (
+          <p className="px-5 py-2 text-xs text-warning-dark dark:text-warning-light border-b border-ui-border-l dark:border-ui-dark-border-l">
+            {creationError}
+          </p>
+        )}
+        {showSelector && creationMode === 'select' && (
+          <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l bg-ui-body dark:bg-ui-dark-bg flex flex-col gap-3">
+            {!previewOption ? (
               <>
-                {loadingCreationOptions && (
-                  <p className="text-xs text-text-muted dark:text-text-dark-muted">
-                    Cargando plantillas disponibles…
-                  </p>
-                )}
-
-                {creationError && !loadingCreationOptions && (
-                  <p className="text-xs text-warning-dark dark:text-warning-light">
-                    {creationError}
-                  </p>
-                )}
-
-                {!loadingCreationOptions && creationMode === 'none' && (
-                  <p className="text-xs text-text-muted dark:text-text-dark-muted italic">
-                    {creationMessage ?? 'No hay plantillas publicadas disponibles para este módulo.'}
-                  </p>
-                )}
-
-                {!loadingCreationOptions && !previewOption && creationMode === 'select' && (
-                  <>
-                    <p className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
-                      Elige una plantilla
+                <p className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
+                  Elige una plantilla para verla en previsualización
+                </p>
+                <ul className="flex flex-col gap-2 rounded-md border border-ui-border dark:border-ui-dark-border divide-y divide-ui-border-l dark:divide-ui-dark-border-l overflow-hidden bg-ui-card dark:bg-ui-dark-card">
+                  {creationOptions.map((option) => (
+                    <li key={option.template_version_id}>
+                      <button
+                        type="button"
+                        onClick={() => void openTemplatePreview(option)}
+                        disabled={creatingDocument}
+                        className="w-full text-left px-4 py-3 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary block">
+                          {option.name}
+                        </span>
+                        {option.description ? (
+                          <span className="text-xs text-text-muted dark:text-text-dark-muted mt-1 block line-clamp-2">
+                            {option.description}
+                          </span>
+                        ) : null}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center justify-end">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={closeSelector}
+                    disabled={creatingDocument}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="rounded-md border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-4 max-h-[min(70vh,520px)] overflow-y-auto">
+                  <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary mb-1">
+                    {previewOption.name}
+                  </h3>
+                  {previewOption.description ? (
+                    <p className="text-xs text-text-muted dark:text-text-dark-muted mb-4">
+                      {previewOption.description}
                     </p>
-                    <ul className="flex flex-col gap-2 rounded-md border border-ui-border dark:border-ui-dark-border divide-y divide-ui-border-l dark:divide-ui-dark-border-l overflow-hidden bg-ui-card dark:bg-ui-dark-card">
-                      {creationOptions.map((option) => (
-                        <li key={option.template_version_id}>
-                          <button
-                            type="button"
-                            onClick={() => void openTemplatePreview(option)}
-                            disabled={creatingDocument}
-                            className="w-full text-left px-4 py-3 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary block">
-                              {option.name}
-                            </span>
-                            {option.description ? (
-                              <span className="text-xs text-text-muted dark:text-text-dark-muted mt-1 block line-clamp-2">
-                                {option.description}
+                  ) : null}
+                  {previewLoading && (
+                    <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando vista previa…</p>
+                  )}
+                  {previewError && !previewLoading && (
+                    <p className="text-sm text-warning-dark dark:text-warning-light">{previewError}</p>
+                  )}
+                  {!previewLoading && !previewError && previewBlocks.length === 0 && (
+                    <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                      Esta plantilla no tiene bloques en el snapshot publicado.
+                    </p>
+                  )}
+                  {!previewLoading && !previewError && previewBlocks.length > 0 && (
+                    <div className="space-y-8 preview-content">
+                      {previewBlocks.map((block) => {
+                        const nodes = snapshotNodesForPreview(block);
+                        const hasContent = nodes.length > 0;
+                        return (
+                          <section key={block.id}>
+                            <div className="flex flex-wrap items-baseline gap-2 mb-2">
+                              {block.title ? (
+                                <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
+                                  {block.title}
+                                </h4>
+                              ) : null}
+                              <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                                {snapshotBlockStateLabel(block.block_state)}
                               </span>
-                            ) : null}
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-
-                {!loadingCreationOptions && !previewOption && creationMode === 'auto' && creationOptions.length > 0 && (
-                  <p className="text-xs text-text-muted dark:text-text-dark-muted">
-                    Plantilla: <span className="font-medium text-text-primary dark:text-text-dark-primary">{creationOptions[0]?.name}</span>
-                  </p>
-                )}
-
-                {previewOption && (
-                  <div className="rounded-md border border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card p-4 max-h-[min(70vh,520px)] overflow-y-auto">
-                    <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary mb-1">
-                      {previewOption.name}
-                    </h3>
-                    {previewOption.description ? (
-                      <p className="text-xs text-text-muted dark:text-text-dark-muted mb-4">
-                        {previewOption.description}
-                      </p>
-                    ) : null}
-                    {previewLoading && (
-                      <p className="text-sm text-text-muted dark:text-text-dark-muted">
-                        Cargando vista previa…
-                      </p>
-                    )}
-                    {previewError && !previewLoading && (
-                      <p className="text-sm text-warning-dark dark:text-warning-light">
-                        {previewError}
-                      </p>
-                    )}
-                    {!previewLoading && !previewError && previewBlocks.length === 0 && (
-                      <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                        Esta plantilla no tiene bloques en el snapshot publicado.
-                      </p>
-                    )}
-                    {!previewLoading && !previewError && previewBlocks.length > 0 && (
-                      <div className="space-y-8 preview-content">
-                        {previewBlocks.map((block) => {
-                          const nodes = snapshotNodesForPreview(block);
-                          const hasContent = nodes.length > 0;
-                          return (
-                            <section key={block.id}>
-                              <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                                {block.title ? (
-                                  <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
-                                    {block.title}
-                                  </h4>
-                                ) : null}
-                                <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
-                                  {snapshotBlockStateLabel(block.block_state)}
-                                </span>
-                              </div>
-                              {hasContent ? (
-                                <BlockContentHtml content={nodes as unknown[]} />
-                              ) : (
-                                <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                                  Sin contenido por defecto en este bloque.
-                                </p>
-                              )}
-                            </section>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )}
+                            </div>
+                            {hasContent ? (
+                              <BlockContentHtml content={nodes as unknown[]} />
+                            ) : (
+                              <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                                Sin contenido por defecto en este bloque.
+                              </p>
+                            )}
+                          </section>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={backToTemplateList}
+                    disabled={creatingDocument || previewLoading}
+                  >
+                    Elegir otra plantilla
+                  </Button>
+                  <Button
+                    type="button"
+                    loading={creatingDocument}
+                    disabled={previewLoading || !!previewError || !previewOption}
+                    onClick={() => void handleCreateFromModule(previewOption.template_version_id)}
+                  >
+                    Usar esta plantilla
+                  </Button>
+                </div>
               </>
             )}
-
-            {/* Botones del formulario */}
-            <div className="flex items-center justify-end gap-2">
-              {previewOption && (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={backToTemplateList}
-                  disabled={creatingDocument || previewLoading}
-                >
-                  Elegir otra plantilla
-                </Button>
-              )}
-
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={closeSelector}
-                disabled={creatingDocument}
-              >
-                Cancelar
-              </Button>
-
-              {previewOption && (
-                <Button
-                  type="button"
-                  loading={creatingDocument}
-                  disabled={previewLoading || !!previewError || !previewOption}
-                  onClick={() => void handleCreateFromModule(previewOption.template_version_id)}
-                >
-                  Usar esta plantilla
-                </Button>
-              )}
-
-              {formModuleId && !previewOption && creationMode === 'auto' && (
-                <Button
-                  type="button"
-                  loading={creatingDocument}
-                  disabled={loadingCreationOptions}
-                  onClick={() => void handleCreateFromModule(creationOptions[0]?.template_version_id)}
-                >
-                  Crear programación
-                </Button>
-              )}
-            </div>
-
           </div>
         )}
 
-        {/* ── Listado de documentos ──────────────────────────────────────────── */}
-        {!showSelector && (
+        {!(showSelector && creationMode === 'select') && (
           <div className="divide-y divide-ui-border-l dark:divide-ui-dark-border-l">
             {loading && (
               <p className="px-5 py-4 text-sm text-text-muted dark:text-text-dark-muted">

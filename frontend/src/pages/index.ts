@@ -3,6 +3,8 @@ export { DocumentEditorPage } from './DocumentEditorPage';
 export { DocumentValidationPage } from './DocumentValidationPage';
 export { DocumentPreviewPage } from './DocumentPreviewPage';
 export { DocumentsPage } from './DocumentsPage';
+export { NuevaProgramacionSelectorPage } from './NuevaProgramacionSelectorPage';
+export { NuevaProgramacionWizardPage } from './NuevaProgramacionWizardPage';
 export { PlaceholderPage } from './PlaceholderPage';
 export { ProcesosPage } from './ProcesosPage';
 export { TemplateEditPage } from './TemplateEditPage';

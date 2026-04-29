@@ -38,7 +38,7 @@ export function ProcesosPage() {
             type="button"
             variant="primary"
             size="sm"
-            onClick={() => navigate('/documents')}
+            onClick={() => navigate('/nueva-programacion')}
           >
             Nueva Programación
           </Button>
