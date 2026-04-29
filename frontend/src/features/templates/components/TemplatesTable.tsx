@@ -4,6 +4,7 @@ import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
 import { Button, FieldLabel, Select, TextInput, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../../ui';
 import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
+import { useUserProfile } from '../../../features/user-profile';
 
 const STATUS_BADGE: Record<TemplateStatus, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
@@ -35,6 +36,7 @@ function formatDate(iso: string | null | undefined): string {
 
 export function TemplatesTable() {
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
   const {
     templates,
     meta,
@@ -199,7 +201,17 @@ export function TemplatesTable() {
                     onClick={() => navigate(`/templates/${t.id}`)}
                   >
                     <TableCell className="px-4 py-3 text-sm font-medium text-text-primary dark:text-text-dark-primary group-hover:text-odoo-purple dark:group-hover:text-odoo-dark-purple transition-colors">
-                      {t.name}
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="truncate">{t.name}</span>
+                        {t.has_review_comments && profile && t.created_by === profile.id && (
+                          <span
+                            className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                            title="Esta plantilla tiene bloques con comentarios de revisión pendientes."
+                          >
+                            ⚠ Revisión
+                          </span>
+                        )}
+                      </span>
                     </TableCell>
                     <TableCell className="px-4 py-3">
                       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[visLevel]}`}>
