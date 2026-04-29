@@ -205,7 +205,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const isOwner = !!profile && template.created_by === profile.id;
   const isRejected = template.status === 'rejected';
   const blockHasComment = reviewComments.some(
-    (c) => c.template_block_id === activeSingleId && !c.resolved,
+    (c) => c.blockable_id === activeSingleId && !c.resolved,
   );
   const showCommentsTab = isOwner && isRejected && blockHasComment;
 
@@ -264,6 +264,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setActiveSingleId(blockId);
       setPanelMode('edit');
       loadFormFromBlock(block);
+      const hasComment = reviewComments.some(c => c.blockable_id === blockId && !c.resolved);
+      if (isOwner && isRejected && hasComment) setActiveTab('comments');
+      else setActiveTab('properties');
     }, 200);
   };
 
@@ -396,7 +399,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     block={block}
                     itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
                     onClick={() => handleBlockClick(block.id)}
-                    hasReviewComments={reviewComments.some(c => c.template_block_id === block.id && !c.resolved)}
+                    hasReviewComments={reviewComments.some(c => c.blockable_id === block.id && !c.resolved)}
                   />
                 ))}
               </SortableContext>
@@ -507,12 +510,19 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               )}
               {activeTab === 'comments' && showCommentsTab && (
                 <div className="space-y-4">
-                  {reviewComments.filter(c => c.template_block_id === activeSingleId && !c.resolved).map(c => (
-                    <div key={c.id} className="p-4 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card shadow-sm">
-                      <p className="text-xs font-bold">{c.author?.name || 'Validador'}</p>
-                      <p className="text-xs mt-1 text-text-secondary">{c.body}</p>
+                  {reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved).map(c => (
+                    <div key={c.id} className="p-4 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card shadow-sm space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">{c.author?.name || 'Validador'}</p>
+                        {c.created_at && (
+                          <time className="text-[10px] text-text-muted shrink-0" dateTime={c.created_at}>
+                            {new Date(c.created_at).toLocaleDateString()}
+                          </time>
+                        )}
+                      </div>
+                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{c.body}</p>
                       {onResolveComment && (
-                        <Button variant="outline" size="xs" className="mt-2 text-success border-success/30" onClick={() => void onResolveComment(c.id)}>✓ Corregido</Button>
+                        <Button variant="outline" size="xs" className="mt-1 text-success border-success/30" onClick={() => void onResolveComment(c.id)}>✓ Corregido</Button>
                       )}
                     </div>
                   ))}
