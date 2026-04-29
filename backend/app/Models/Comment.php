@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -26,7 +27,8 @@ class Comment extends Model
                       ->orWhereExists(function ($subQuery) use ($userId) {
                           $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                    ->from('documents')
-                                   ->whereColumn('documents.id', 'comments.document_id')
+                                   ->whereColumn('documents.id', 'comments.commentable_id')
+                                   ->where('comments.commentable_type', Document::class)
                                    ->where(function ($docQuery) use ($userId) {
                                        $docQuery->where('documents.created_by', $userId)
                                                 ->orWhere('documents.owner_id', $userId)
@@ -34,7 +36,8 @@ class Comment extends Model
                                                     $docShareQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                                                   ->from('document_shares')
                                                                   ->whereColumn('document_shares.document_id', 'documents.id')
-                                                                  ->where('user_id', $userId);
+                                                                  ->where('user_id', $userId)
+                                                                  ->where('permission', 'edit');
                                                 })
                                                 ->orWhereExists(function ($docReviewQuery) use ($userId) {
                                                     $docReviewQuery->select(\Illuminate\Support\Facades\DB::raw(1))
@@ -47,7 +50,8 @@ class Comment extends Model
                       ->orWhereExists(function ($subQuery) use ($userId) {
                           $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                    ->from('templates')
-                                   ->whereColumn('templates.id', 'comments.template_id')
+                                   ->whereColumn('templates.id', 'comments.commentable_id')
+                                   ->where('comments.commentable_type', Template::class)
                                    ->where(function ($templateQuery) use ($userId) {
                                        $templateQuery->where('templates.created_by', $userId)
                                                     ->orWhereExists(function ($revQuery) use ($userId) {
@@ -56,6 +60,16 @@ class Comment extends Model
                                                                  ->whereColumn('template_reviewers.template_id', 'templates.id')
                                                                  ->where('template_reviewers.user_id', $userId);
                                                     });
+
+                                       if (\Illuminate\Support\Facades\Schema::hasTable('template_shares')) {
+                                           $templateQuery->orWhereExists(function ($shareQuery) use ($userId) {
+                                               $shareQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                                   ->from('template_shares')
+                                                   ->whereColumn('template_shares.template_id', 'templates.id')
+                                                   ->where('template_shares.user_id', $userId)
+                                                   ->where('template_shares.permission', 'edit');
+                                           });
+                                       }
                                    });
                       });
             });
@@ -66,15 +80,21 @@ class Comment extends Model
 
     public $incrementing = false;
 
+    public const UPDATED_AT = null;
+    public const ALLOWED_COMMENTABLE_TYPES = [
+        Document::class,
+        Template::class,
+    ];
+
     protected $fillable = [
-        'document_id',
-        'document_block_id',
-        'template_id',
-        'template_block_id',
+        'commentable_type',
+        'commentable_id',
+        'commentable_version',
+        'blockable_type',
+        'blockable_id',
         'parent_id',
         'author_id',
         'body',
-        'type',
         'resolved',
         'resolved_by',
         'resolved_at',
@@ -83,29 +103,20 @@ class Comment extends Model
     protected function casts(): array
     {
         return [
+            'commentable_version' => 'integer',
             'resolved'    => 'boolean',
             'resolved_at' => 'datetime',
         ];
     }
 
-    public function document(): BelongsTo
+    public function commentable(): MorphTo
     {
-        return $this->belongsTo(Document::class);
+        return $this->morphTo();
     }
 
-    public function documentBlock(): BelongsTo
+    public function blockable(): MorphTo
     {
-        return $this->belongsTo(DocumentBlock::class);
-    }
-
-    public function template(): BelongsTo
-    {
-        return $this->belongsTo(Template::class);
-    }
-
-    public function templateBlock(): BelongsTo
-    {
-        return $this->belongsTo(TemplateBlock::class);
+        return $this->morphTo();
     }
 
     public function parent(): BelongsTo

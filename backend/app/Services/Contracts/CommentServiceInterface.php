@@ -12,14 +12,32 @@ interface CommentServiceInterface
     public function findOrFail(string $id): Comment;
 
     /**
-     * Lista comentarios de una plantilla.
+     * Lista los comentarios para un recurso.
      */
-    public function listForTemplate(string $templateId): \Illuminate\Support\Collection;
+    public function listForResource(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+    ): \Illuminate\Support\Collection;
 
     /**
-     * Crea un comentario para una plantilla.
+     * Crea un comentario para un recurso.
      */
-    public function createForTemplate(string $templateId, string $authorId, array $data): Comment;
+    public function createForResource(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        ?string $blockableType,
+        ?string $blockableId,
+        ?string $parentId,
+        string $authorId,
+        string $body,
+    ): Comment;
+
+    /**
+     * Elimina un comentario.
+     */
+    public function delete(string $id): void;
 
     /**
      * Marca un comentario como resuelto.

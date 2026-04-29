@@ -215,16 +215,17 @@ class GlobalScopesIsolationTest extends TestCase
         $commentId = (string) Str::uuid();
 
         Comment::query()->forceCreate([
-            'id'                => $commentId,
-            'document_id'       => $documentId,
-            'document_block_id' => null,
-            'parent_id'         => null,
-            'author_id'         => $userA,
-            'body'              => 'Comentario privado',
-            'type'              => 'general',
-            'resolved'          => false,
-            'resolved_by'       => null,
-            'resolved_at'       => null,
+            'id'               => $commentId,
+            'commentable_type' => Document::class,
+            'commentable_id'   => $documentId,
+            'blockable_type'   => null,
+            'blockable_id'     => null,
+            'parent_id'        => null,
+            'author_id'        => $userA,
+            'body'             => 'Comentario privado',
+            'resolved'         => false,
+            'resolved_by'      => null,
+            'resolved_at'      => null,
         ]);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
@@ -240,6 +241,71 @@ class GlobalScopesIsolationTest extends TestCase
             "/api/v1/comments/{$commentId}",
             ['Authorization' => 'Bearer '.$tokenB],
         )->assertNotFound();
+    }
+
+    public function test_comment_with_invalid_commentable_type_returns_422(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $commentId = (string) Str::uuid();
+
+        Comment::query()->forceCreate([
+            'id'               => $commentId,
+            'commentable_type' => 'Invalid\\Type',
+            'commentable_id'   => $documentId,
+            'blockable_type'   => null,
+            'blockable_id'     => null,
+            'parent_id'        => null,
+            'author_id'        => $userA,
+            'body'             => 'Comentario con tipo inválido',
+            'resolved'         => false,
+            'resolved_by'      => null,
+            'resolved_at'      => null,
+        ]);
+
+        $tokenA = $this->buildAuthTokensForUser($userA);
+        $this->getJson(
+            "/api/v1/comments/{$commentId}",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Tipo de recurso de comentario no soportado.');
+    }
+
+    public function test_cannot_reply_to_soft_deleted_parent_comment(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+        $parentId = (string) Str::uuid();
+
+        Comment::query()->forceCreate([
+            'id'               => $parentId,
+            'commentable_type' => Template::class,
+            'commentable_id'   => $templateId,
+            'blockable_type'   => null,
+            'blockable_id'     => null,
+            'parent_id'        => null,
+            'author_id'        => $userA,
+            'body'             => 'Comentario padre',
+            'resolved'         => false,
+            'resolved_by'      => null,
+            'resolved_at'      => null,
+        ]);
+
+        Comment::withoutGlobalScopes()->whereKey($parentId)->firstOrFail()->delete();
+
+        $tokenA = $this->buildAuthTokensForUser($userA);
+
+        $this->postJson(
+            "/api/v1/templates/{$templateId}/comments",
+            [
+                'body' => 'Respuesta inválida',
+                'parent_id' => $parentId,
+            ],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['parent_id']);
     }
 
     /**

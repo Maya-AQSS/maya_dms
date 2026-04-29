@@ -93,6 +93,16 @@ class DocumentPolicy
     }
 
     /**
+     * Ver/gestionar comentarios del documento.
+     *
+     * Requiere capacidad de edición o de revisión.
+     */
+    public function comment(JwtUser $user, Document $document): bool
+    {
+        return $this->update($user, $document) || $this->review($user, $document);
+    }
+
+    /**
      * Envío a revisión (p. ej. transición draft → in_review): solo el titular actual.
      */
     public function submit(JwtUser $user, Document $document): bool
@@ -100,6 +110,9 @@ class DocumentPolicy
         return $user->getAuthIdentifier() === $document->owner_id;
     }
 
+    /**
+     * Verifica si el usuario viola la segregación de funciones.
+     */
     private function violatesSegregation(JwtUser $user, Document $document): bool
     {
         $id = $user->getAuthIdentifier();
