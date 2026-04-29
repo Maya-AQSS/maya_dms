@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
@@ -76,7 +76,7 @@ const COLUMNS: ColumnDef<Template>[] = [
 
 export function TemplatesTable() {
   const navigate = useNavigate();
-  const { hiddenIds, toggleHidden, sortBy, setSortBy } = useTablePreferences({
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:templates-table',
   });
   const {
@@ -91,8 +91,25 @@ export function TemplatesTable() {
     goToPage,
   } = useTemplates();
 
+  const [nameInput, setNameInput] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Sync user-selected pageSize into the templates hook (server-side per_page).
+  useEffect(() => {
+    if (filters.per_page !== pageSize) {
+      applyFilters({ per_page: pageSize });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageSize]);
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const filteredTemplates = useMemo(() => {
+    if (!nameFilter) return templates;
+    const needle = nameFilter.toLowerCase();
+    return templates.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
+  }, [templates, nameFilter]);
 
   const filterUi = useMemo(
     () => ({
@@ -104,11 +121,21 @@ export function TemplatesTable() {
   );
 
   const filtersActiveCount = [
+    nameFilter,
     filters.visibility_level,
     filters.status,
     filters.author_name,
     filters.delivery_deadline,
   ].filter(Boolean).length;
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNameInput(value);
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    nameDebounceRef.current = setTimeout(() => {
+      setNameFilter(value);
+    }, 400);
+  };
 
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -120,7 +147,10 @@ export function TemplatesTable() {
   };
 
   const clearFilters = () => {
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    setNameInput('');
+    setNameFilter('');
     setAuthorInput('');
     applyFilters({
       visibility_level: undefined,
@@ -152,11 +182,16 @@ export function TemplatesTable() {
 
       <DataTable
         columns={COLUMNS}
-        rows={templates}
+        rows={filteredTemplates}
         loading={loading}
         rowKey={(t) => t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => {
+          setPageSize(size)
+          applyFilters({ per_page: size })
+        }}
         sortBy={sortBy}
         onSortChange={setSortBy}
         emptyMessage="No hay plantillas con los filtros actuales."
@@ -166,6 +201,16 @@ export function TemplatesTable() {
         onRowClick={(t) => navigate(`/templates/${t.id}`)}
         filtersPanel={
           <>
+            <div>
+              <FieldLabel>Nombre</FieldLabel>
+              <TextInput
+                fieldSize="sm"
+                type="search"
+                placeholder="Buscar por nombre..."
+                value={nameInput}
+                onChange={handleNameChange}
+              />
+            </div>
             <div>
               <FieldLabel>Visibilidad</FieldLabel>
               <Select

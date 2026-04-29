@@ -45,9 +45,8 @@ function formatDate(iso: string | null | undefined): string {
   return iso.slice(0, 10);
 }
 
-const PER_PAGE = 20;
-
 type Filters = {
+  name: string;
   visibility: string;
   status: string;
   authorName: string;
@@ -56,6 +55,10 @@ type Filters = {
 
 function applyClientFilters(docs: Document[], filters: Filters): Document[] {
   return docs.filter((doc) => {
+    if (filters.name) {
+      const title = (doc.title ?? '').toLowerCase();
+      if (!title.includes(filters.name.toLowerCase())) return false;
+    }
     if (filters.status && doc.status !== filters.status) return false;
     if (filters.visibility && doc.visibility_level !== filters.visibility) return false;
     if (filters.authorName) {
@@ -116,32 +119,44 @@ const COLUMNS: ColumnDef<Document>[] = [
 
 export function DocumentsTable() {
   const navigate = useNavigate();
-  const { hiddenIds, toggleHidden, sortBy, setSortBy } = useTablePreferences({
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
   });
   const { documents, loading, error } = useDocuments();
 
   const [filters, setFilters] = useState<Filters>({
+    name: '',
     visibility: '',
     status: '',
     authorName: '',
     date: '',
   });
+  const [nameInput, setNameInput] = useState('');
   const [authorInput, setAuthorInput] = useState('');
   const [page, setPage] = useState(1);
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = useMemo(() => applyClientFilters(documents, filters), [documents, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageSlice = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const pageSlice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const filtersActiveCount = [filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
+  const filtersActiveCount = [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
 
   const handleFilterChange = (patch: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...patch }));
     setPage(1);
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNameInput(value);
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    nameDebounceRef.current = setTimeout(() => {
+      handleFilterChange({ name: value });
+    }, 400);
   };
 
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,9 +169,11 @@ export function DocumentsTable() {
   };
 
   const clearFilters = () => {
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    setNameInput('');
     setAuthorInput('');
-    setFilters({ visibility: '', status: '', authorName: '', date: '' });
+    setFilters({ name: '', visibility: '', status: '', authorName: '', date: '' });
     setPage(1);
   };
 
@@ -177,6 +194,11 @@ export function DocumentsTable() {
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}
         onSortChange={setSortBy}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => {
+          setPageSize(size)
+          setPage(1)
+        }}
         emptyMessage="No hay documentos con los filtros actuales."
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
@@ -184,6 +206,16 @@ export function DocumentsTable() {
         onRowClick={(doc) => navigate(`/documents/${doc.id}`)}
         filtersPanel={
           <>
+            <div>
+              <FieldLabel>Nombre</FieldLabel>
+              <TextInput
+                fieldSize="sm"
+                type="search"
+                placeholder="Buscar por nombre..."
+                value={nameInput}
+                onChange={handleNameChange}
+              />
+            </div>
             <div>
               <FieldLabel>Visibilidad</FieldLabel>
               <Select

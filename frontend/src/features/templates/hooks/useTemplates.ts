@@ -50,7 +50,7 @@ export function useTemplates() {
       setLoading(true);
       const res = await fetchTemplates({
         ...filters,
-        per_page: Math.min(filters.per_page ?? DEFAULT_PER_PAGE, DEFAULT_PER_PAGE),
+        per_page: filters.per_page ?? DEFAULT_PER_PAGE,
       });
       setTemplates(res.data);
       setMeta(res.meta);

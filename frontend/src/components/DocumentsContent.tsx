@@ -82,9 +82,10 @@ export function DocumentsContent() {
     toggleHidden: toggleColumn,
     sortBy,
     setSortBy,
+    pageSize,
+    setPageSize,
   } = useTablePreferences({ storageKey: 'maya:dms:documents-table' });
   const [, startTransition] = useTransition();
-  const PER_PAGE = 15;
   const [page, setPage] = useState(1);
 
   const { documents, loading, error, reload } = useDocuments();
@@ -324,8 +325,8 @@ export function DocumentsContent() {
   }, [filtered, sortBy]);
 
   const { pageItems: pageRows, meta } = useMemo(
-    () => paginate(sortedFiltered, { pageSize: PER_PAGE, currentPage: page }),
-    [sortedFiltered, page],
+    () => paginate(sortedFiltered, { pageSize, currentPage: page }),
+    [sortedFiltered, page, pageSize],
   );
 
   const handleNewProgrammingClick = async () => {
@@ -536,6 +537,11 @@ export function DocumentsContent() {
                   rows={pageRows}
                   rowKey={(d) => d.id}
                   loading={loading}
+                  pageSize={pageSize}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size)
+                    setPage(1)
+                  }}
                   hiddenColumnIds={hiddenColumnIds}
                   onToggleHiddenColumn={toggleColumn}
                   sortBy={sortBy}
