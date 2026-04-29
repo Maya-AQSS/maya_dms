@@ -3,6 +3,11 @@ import type { CascadeDocumentFilters } from '../features/documents';
 import { useHierarchy } from '../features/hierarchy';
 import { Button, Select } from '../ui';
 
+interface CascadeFiltersProps {
+  onFilterChange: (filters: CascadeDocumentFilters) => void;
+  value?: CascadeDocumentFilters;
+}
+
 const ChevronIcon = ({ open }: { open: boolean }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -19,27 +24,39 @@ const ChevronIcon = ({ open }: { open: boolean }) => (
   </svg>
 );
 
-interface CascadeFiltersProps {
-  onClear: () => void;
-  onFilterChange: (filters: CascadeDocumentFilters) => void;
-}
-
 /**
  * Componente para mostrar los selectores en cascada.
- * 
- * @param onClear - Función para limpiar los filtros.
+ *
+ * Soporta modo controlado (pasando `value`) o no controlado.
+ *
  * @param onFilterChange - Función para cambiar los filtros.
+ * @param value - Filtros controlados desde el padre (opcional).
  * @returns El componente de filtros en cascada.
  */
-export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps) {
+export function CascadeFilters({ onFilterChange, value }: CascadeFiltersProps) {
   const { hierarchy, loading, error } = useHierarchy();
   const typeSelectId = useId();
   const studySelectId = useId();
   const moduleSelectId = useId();
 
-  const [selectedType, setSelectedType] = useState<string>('');
-  const [selectedStudy, setSelectedStudy] = useState<string>('');
-  const [selectedModule, setSelectedModule] = useState<string>('');
+  const [internalType, setInternalType] = useState<string>('');
+  const [internalStudy, setInternalStudy] = useState<string>('');
+  const [internalModule, setInternalModule] = useState<string>('');
+
+  const isControlled = value !== undefined;
+  const selectedType = isControlled ? value!.studyTypeId : internalType;
+  const selectedStudy = isControlled ? value!.studyId : internalStudy;
+  const selectedModule = isControlled ? value!.moduleId : internalModule;
+
+  const setSelectedType = (v: string) => {
+    if (!isControlled) setInternalType(v);
+  };
+  const setSelectedStudy = (v: string) => {
+    if (!isControlled) setInternalStudy(v);
+  };
+  const setSelectedModule = (v: string) => {
+    if (!isControlled) setInternalModule(v);
+  };
   // Visible en móvil al pulsar el toggle; en ≥ md siempre visible vía CSS
   const [isOpen, setIsOpen] = useState(false);
 
@@ -74,24 +91,17 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
     onFilterChange({ studyTypeId: selectedType, studyId: selectedStudy, moduleId: val });
   };
 
-  const clearFilters = () => {
-    setSelectedType('');
-    setSelectedStudy('');
-    setSelectedModule('');
-    onClear();
-  };
-
   const hasActiveFilters = selectedType || selectedStudy || selectedModule;
 
   return (
-    <div className="bg-ui-card dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-lg mb-6 shadow-sm">
+    <>
       {/* Toggle visible solo en móvil */}
       <Button
         variant="unstyled"
         onClick={() => setIsOpen((v) => !v)}
         aria-expanded={isOpen}
         aria-controls="cascade-filter-panel"
-        className="md:hidden w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-text-primary dark:text-text-dark-primary"
+        className="md:hidden w-full flex items-center justify-between text-sm font-semibold text-text-primary dark:text-text-dark-primary"
       >
         <span>
           Filtros: tipo de estudio, estudio y módulo
@@ -105,7 +115,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
       {/* Panel de selectores: colapsable en móvil, siempre visible en ≥ md */}
       <div
         id="cascade-filter-panel"
-        className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-4 p-4`}
+        className={`${isOpen ? 'flex' : 'hidden'} md:flex flex-col md:flex-row gap-4`}
       >
       <div className="flex-1">
         <label
@@ -180,18 +190,7 @@ export function CascadeFilters({ onClear, onFilterChange }: CascadeFiltersProps)
         </div>
       )}
 
-      <div className="flex items-end">
-        <Button
-          type="button"
-          variant="secondary"
-          size="md"
-          onClick={clearFilters}
-          className="mt-4.5 h-9.5 self-end whitespace-nowrap md:mt-0"
-        >
-          Limpiar filtros
-        </Button>
-      </div>
       </div>{/* cierre del panel colapsable */}
-    </div>
+    </>
   );
 }

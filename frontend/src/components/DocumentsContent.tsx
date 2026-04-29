@@ -3,9 +3,10 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   PageTitle,
   DataTable,
-  ColumnVisibilityMenu,
+  Pagination,
+  paginate,
+  useTablePreferences,
   type ColumnDef,
-  type SortState,
 } from '@maya/shared-ui-react';
 import { CascadeFilters } from './CascadeFilters';
 import {
@@ -76,14 +77,24 @@ export function DocumentsContent() {
   const [previewBlocks, setPreviewBlocks] = useState<TemplateVersionSnapshotBlock[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [hiddenColumnIds, setHiddenColumnIds] = useState<Set<string>>(new Set());
-  const [sortBy, setSortBy] = useState<SortState | null>(null);
+  const {
+    hiddenIds: hiddenColumnIds,
+    toggleHidden: toggleColumn,
+    sortBy,
+    setSortBy,
+  } = useTablePreferences({ storageKey: 'maya:dms:documents-table' });
   const [, startTransition] = useTransition();
+  const PER_PAGE = 15;
+  const [page, setPage] = useState(1);
 
   const { documents, loading, error, reload } = useDocuments();
   const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
   const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
+  const filtersActiveCount =
+    (activeFilters.studyTypeId ? 1 : 0) +
+    (activeFilters.studyId ? 1 : 0) +
+    (activeFilters.moduleId ? 1 : 0);
   const selectedModuleId = activeFilters.moduleId;
   const isSelectingTemplate = showSelector && creationMode === 'select';
 
@@ -172,12 +183,16 @@ export function DocumentsContent() {
   }, [location.state, location.pathname, navigate, reload]);
 
   const handleClear = () =>
-    startTransition(() =>
-      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' })
-    );
+    startTransition(() => {
+      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' });
+      setPage(1);
+    });
 
   const handleChange = (filters: CascadeDocumentFilters) =>
-    startTransition(() => setActiveFilters(filters));
+    startTransition(() => {
+      setActiveFilters(filters);
+      setPage(1);
+    });
 
   const handleCreateFromModule = async (templateVersionId?: string) => {
     if (!selectedModuleId) return;
@@ -308,13 +323,10 @@ export function DocumentsContent() {
     return [...filtered].sort(cmp);
   }, [filtered, sortBy]);
 
-  const toggleColumn = (id: string) =>
-    setHiddenColumnIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const { pageItems: pageRows, meta } = useMemo(
+    () => paginate(sortedFiltered, { pageSize: PER_PAGE, currentPage: page }),
+    [sortedFiltered, page],
+  );
 
   const handleNewProgrammingClick = async () => {
     if (!selectedModuleId || loadingCreationOptions || creatingDocument) return;
@@ -353,7 +365,6 @@ export function DocumentsContent() {
           Selecciona un módulo para crear una nueva programación.
         </p>
       )}
-      <CascadeFilters onClear={handleClear} onFilterChange={handleChange} />
 
       {showSubmittedForReviewBanner && (
         <div
@@ -376,24 +387,6 @@ export function DocumentsContent() {
       )}
 
       <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l flex items-center justify-between gap-3">
-          <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-            Programaciones Didácticas
-          </h2>
-          <div className="flex items-center gap-3">
-            {!loading && (
-              <span className="text-xs text-text-muted dark:text-text-dark-muted">
-                {filtered.length} {filtered.length === 1 ? 'documento' : 'documentos'}
-              </span>
-            )}
-            <ColumnVisibilityMenu
-              columns={columns}
-              hiddenColumnIds={hiddenColumnIds}
-              onToggle={toggleColumn}
-            />
-          </div>
-        </div>
-
         {newProgrammingDisabledReason && !showSelectModuleHint && (
           <p className="px-5 py-2 text-xs text-text-muted dark:text-text-dark-muted border-b border-ui-border-l dark:border-ui-dark-border-l">
             {newProgrammingDisabledReason}
@@ -520,28 +513,54 @@ export function DocumentsContent() {
 
         {!(showSelector && creationMode === 'select') && (
           <div>
-            {loading && (
-              <p className="px-5 py-4 text-sm text-text-muted dark:text-text-dark-muted">
-                Cargando documentos…
-              </p>
-            )}
             {error && (
               <p className="px-5 py-4 text-sm text-warning-dark dark:text-warning-light">
                 Error al cargar documentos: {error.message}
               </p>
             )}
-            {!loading && !error && (
-              <DataTable<Document>
-                columns={columns}
-                rows={sortedFiltered}
-                rowKey={(d) => d.id}
-                hiddenColumnIds={hiddenColumnIds}
-                sortBy={sortBy}
-                onSortChange={setSortBy}
-                onRowClick={(d) => navigate(`/documents/${d.id}`)}
-                emptyMessage="No hay programaciones didácticas con los filtros actuales."
-                className="rounded-none border-0 shadow-none"
-              />
+            {!error && (
+              <>
+                <DataTable<Document>
+                  title="Programaciones Didácticas"
+                  description={
+                    <span>
+                      {filtered.length}{' '}
+                      {filtered.length === 1 ? 'documento' : 'documentos'}
+                    </span>
+                  }
+                  columns={columns}
+                  rows={pageRows}
+                  rowKey={(d) => d.id}
+                  loading={loading}
+                  hiddenColumnIds={hiddenColumnIds}
+                  onToggleHiddenColumn={toggleColumn}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                  onRowClick={(d) => navigate(`/documents/${d.id}`)}
+                  emptyMessage="No hay programaciones didácticas con los filtros actuales."
+                  className="rounded-none border-0 shadow-none"
+                  filtersStorageKey="maya:dms:documents-table"
+                  filtersPanel={
+                    <CascadeFilters
+                      value={activeFilters}
+                      onFilterChange={handleChange}
+                    />
+                  }
+                  filtersActiveCount={filtersActiveCount}
+                  onClearFilters={handleClear}
+                  filtersDefaultOpen={false}
+                />
+                {meta.totalPages > 1 && (
+                  <div className="px-5 py-3 border-t border-ui-border-l dark:border-ui-dark-border-l">
+                    <Pagination
+                      currentPage={meta.currentPage}
+                      totalPages={meta.totalPages}
+                      onChange={setPage}
+                      info={`${meta.totalItems} documentos`}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
