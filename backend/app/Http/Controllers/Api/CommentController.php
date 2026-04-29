@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -15,7 +16,7 @@ class CommentController extends Controller
     public function __construct(
         private readonly CommentServiceInterface $commentService,
         private readonly DocumentServiceInterface $documentService,
-        private readonly \App\Services\Contracts\TemplateServiceInterface $templateService,
+        private readonly TemplateServiceInterface $templateService,
     ) {}
 
     /**
