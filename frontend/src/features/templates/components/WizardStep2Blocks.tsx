@@ -23,6 +23,7 @@ import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { BlockNoteEditorPanel } from './BlockNoteEditorPanel';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useUserProfile } from '../../../features/user-profile';
 
 type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';
@@ -195,9 +196,22 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const activeSingleIdRef = useRef<string | null>(null);
   activeSingleIdRef.current = activeSingleId;
 
+  const { profile } = useUserProfile();
+
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
   const orderedSelection = blocks.filter((b) => selectedBlockIds.includes(b.id)).map((b) => b.id);
   const currentMultiId = orderedSelection[multiIndex] ?? null;
+
+  const isOwner = !!profile && template.created_by === profile.id;
+  const isRejected = template.status === 'rejected';
+  const blockHasComment = reviewComments.some(
+    (c) => c.template_block_id === activeSingleId && !c.resolved,
+  );
+  const showCommentsTab = isOwner && isRejected && blockHasComment;
+
+  useEffect(() => {
+    if (activeTab === 'comments' && !showCommentsTab) setActiveTab('properties');
+  }, [showCommentsTab, activeTab]);
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
@@ -389,12 +403,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             </DndContext>
           )}
         </div>
-        {/* Añadir bloque: oculto en edit y multi */}
-        {panelMode !== 'edit' && panelMode !== 'multi' && (
-          <div className="p-4 border-t border-ui-border dark:border-ui-dark-border">
-            <Button variant="outline" className="w-full border-dashed" onClick={() => { setPanelMode('create'); setFormName(''); setFormUiState('editable'); setTabIsDirty(false); }}>+ Añadir bloque</Button>
-          </div>
-        )}
+        <div className="p-4 border-t border-ui-border dark:border-ui-dark-border">
+          <Button variant="outline" className="w-full border-dashed" onClick={() => { setPanelMode('create'); setFormName(''); setFormUiState('editable'); setTabIsDirty(false); }}>+ Añadir bloque</Button>
+        </div>
       </div>
 
       {/* Main Panel */}
@@ -440,7 +451,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             </div>
 
             <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
-              {(['properties', 'content', 'description', 'comments'] as TabId[]).map(tab => (
+              {((['properties', 'content', 'description'] as TabId[]).concat(showCommentsTab ? ['comments' as TabId] : [])).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -448,21 +459,23 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
                   }`}
                 >
-                  {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Notas' : 'Comentarios'}
+                  {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Descripción' : 'Comentarios'}
                 </button>
               ))}
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
               {activeTab === 'properties' && (
-                <div className="space-y-4 max-w-lg bg-white dark:bg-ui-dark-card p-6 rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm">
-                  <div>
-                    <FieldLabel required>Nombre del bloque</FieldLabel>
-                    <TextInput value={formName} onChange={e => { setFormName(e.target.value); setTabIsDirty(true); }} />
-                  </div>
-                  <div>
-                    <FieldLabel>Estado</FieldLabel>
-                    <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
+                <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                  <div className="p-6 space-y-4">
+                    <div>
+                      <FieldLabel required>Nombre del bloque</FieldLabel>
+                      <TextInput value={formName} onChange={e => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                    </div>
+                    <div>
+                      <FieldLabel>Estado</FieldLabel>
+                      <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -470,6 +483,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                   <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
                     <BlockNoteEditorPanel
+                      key={`content-${activeSingleId ?? 'none'}`}
                       initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
                       onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
                       editable={formUiState !== 'locked'}
@@ -482,6 +496,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                   <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
                     <BlockNoteEditorPanel
+                      key={`desc-${activeSingleId ?? 'none'}`}
                       initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
                       onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
                       editable
@@ -490,13 +505,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   </Suspense>
                 </div>
               )}
-              {activeTab === 'comments' && (
+              {activeTab === 'comments' && showCommentsTab && (
                 <div className="space-y-4">
-                  {reviewComments.filter(c => c.template_block_id === activeSingleId).map(c => (
+                  {reviewComments.filter(c => c.template_block_id === activeSingleId && !c.resolved).map(c => (
                     <div key={c.id} className="p-4 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card shadow-sm">
                       <p className="text-xs font-bold">{c.author?.name || 'Validador'}</p>
                       <p className="text-xs mt-1 text-text-secondary">{c.body}</p>
-                      {!c.resolved && onResolveComment && (
+                      {onResolveComment && (
                         <Button variant="outline" size="xs" className="mt-2 text-success border-success/30" onClick={() => void onResolveComment(c.id)}>✓ Corregido</Button>
                       )}
                     </div>
