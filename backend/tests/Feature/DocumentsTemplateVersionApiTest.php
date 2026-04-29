@@ -174,6 +174,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Mi doc',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['template_id']);
@@ -234,6 +235,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_version_id' => $versionId,
             'title' => 'Expediente',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator);
 
         $createDoc->assertCreated()
@@ -293,6 +295,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Expediente',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator);
 
         $createDoc->assertCreated();
@@ -378,6 +381,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Expediente equipo',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator);
 
         $createDoc->assertCreated();
@@ -442,6 +446,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc editable',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -509,6 +514,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc bloqueado',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -569,12 +575,14 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Título inicial',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
 
         $this->putJson("/api/v1/documents/{$docId}", [
             'title' => 'Título actualizado',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)
             ->assertOk()
             ->assertJsonPath('data.title', 'Título actualizado');
@@ -629,6 +637,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Documento borrable',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -687,6 +696,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc mandatory',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -745,6 +755,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc mandatory ok',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -808,6 +819,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc snapshot',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -904,6 +916,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc publish',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -1107,6 +1120,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc banner',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -1183,6 +1197,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc al día',
+            'delivery_deadline' => now()->addDay()->toDateString(),
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
