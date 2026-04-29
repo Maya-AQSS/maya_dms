@@ -6,6 +6,7 @@ import React, {
 } from 'react';
 import { ErrorBoundary } from '../../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
+import { useAutoSave } from '../../../hooks/useAutoSave';
 import {
   DndContext,
   closestCenter,
@@ -175,8 +176,7 @@ export function TemplateEditor({ template }: Props) {
 
   // Autosave state
   const [isDirty, setIsDirty] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // saveStatus and savedTimerRef are now managed by useAutoSave hook
 
   // Properties section visibility
   const [propertiesCollapsed, setPropertiesCollapsed] = useState(false);
@@ -204,37 +204,30 @@ export function TemplateEditor({ template }: Props) {
     }
   }, [loading, blocks.length, activeBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── saveCurrentBlock ─────────────────────────────────────────────────────────
-  // Always use a ref so autosave interval always calls the latest closure
-  const saveCurrentBlockFn = useCallback(async () => {
+  // ── Autosave: migrate to useAutoSave hook (1500ms debounce) ─────────────────
+  const doSave = useCallback(async () => {
     if (!isDirty || !activeBlockId) return;
-    setSaveStatus('saving');
-    try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[localUiState].payload;
-      await updateBlock(activeBlockId, {
-        title: localTitle.trim() || null,
-        block_state,
-        mandatory,
-        default_content: localContent,
-      });
-      setIsDirty(false);
-      setSaveStatus('saved');
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
-      setSaveStatus('error');
-    }
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[localUiState].payload;
+    await updateBlock(activeBlockId, {
+      title: localTitle.trim() || null,
+      block_state,
+      mandatory,
+      default_content: localContent,
+    });
+    setIsDirty(false);
   }, [isDirty, activeBlockId, localTitle, localUiState, localContent, updateBlock]);
 
-  const saveRef = useRef(saveCurrentBlockFn);
-  useEffect(() => { saveRef.current = saveCurrentBlockFn; }, [saveCurrentBlockFn]);
+  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
-  // ── Autosave every 30s when dirty ────────────────────────────────────────────
+  // Trigger debounced save whenever local state is dirty
   useEffect(() => {
     if (!isDirty || rightMode !== 'block' || !activeBlockId) return;
-    const interval = setInterval(() => void saveRef.current(), 30_000);
-    return () => clearInterval(interval);
-  }, [isDirty, rightMode, activeBlockId]);
+    triggerSave();
+  }, [localTitle, localUiState, localContent, isDirty, rightMode, activeBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep saveRef for navigateToBlock (force-save before switching)
+  const saveRef = useRef(forceSave);
+  useEffect(() => { saveRef.current = forceSave; }, [forceSave]);
 
   // ── Navigate to a block (saves current if dirty) ─────────────────────────────
   const navigateToBlock = useCallback(

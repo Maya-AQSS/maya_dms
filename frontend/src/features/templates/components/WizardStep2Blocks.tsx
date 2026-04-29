@@ -22,6 +22,10 @@ import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { BlockNoteEditorPanel } from './BlockNoteEditorPanel';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
+import { useAutoSave } from '../../../hooks/useAutoSave';
+
+type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
+type TabId = 'properties' | 'content' | 'description' | 'comments';
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -187,7 +191,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [tabIsDirty, setTabIsDirty] = useState(false);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Ref to always have latest activeSingleId in the autosave closure
+  const activeSingleIdRef = useRef<string | null>(null);
+  activeSingleIdRef.current = activeSingleId;
 
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
   const orderedSelection = blocks.filter((b) => selectedBlockIds.includes(b.id)).map((b) => b.id);
@@ -201,35 +207,38 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     setTabIsDirty(false);
   };
 
-  const saveCurrentTab = async () => {
-    if (!tabIsDirty || !activeSingleId) return;
-    try {
-      setBusy(true);
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
-      const parsedContent = formContent ? JSON.parse(formContent) : null;
-      const parsedDesc = formDesc ? JSON.parse(formDesc) : null;
-      
-      await updateBlock(activeSingleId, {
-        title: formName.trim(),
-        description: parsedDesc,
-        default_content: parsedContent,
-        block_state,
-        mandatory,
-      });
-      setTabIsDirty(false);
-    } catch (e) {
-      console.error('Failed to autosave block', e);
-    } finally {
-      setBusy(false);
-    }
-  };
+  // ── useAutoSave (debounce 1500ms) — compartido en edit y multi ───────────────
+  const doSave = useCallback(async () => {
+    const blockId = activeSingleIdRef.current;
+    if (!blockId) return;
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
+    let parsedContent: unknown = null;
+    let parsedDesc: unknown = null;
+    try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
+    try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
+    await updateBlock(blockId, {
+      title: formName.trim(),
+      description: parsedDesc,
+      default_content: parsedContent,
+      block_state,
+      mandatory,
+    });
+    setTabIsDirty(false);
+  }, [formName, formDesc, formContent, formUiState, updateBlock]);
 
+  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
+
+  // Trigger autosave whenever form changes and there are dirty changes in edit or multi
   useEffect(() => {
-    if (panelMode !== 'edit' || !activeSingleId || !tabIsDirty) return;
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => { void saveCurrentTab(); }, 1000);
-    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
-  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]);
+    if ((panelMode !== 'edit' && panelMode !== 'multi') || !activeSingleId || !tabIsDirty) return;
+    triggerSave();
+  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Convenience wrapper used by saveIfPending and manual saves
+  const saveCurrentTab = useCallback(async () => {
+    if (!tabIsDirty || !activeSingleId) return;
+    await forceSave();
+  }, [tabIsDirty, activeSingleId, forceSave]);
 
   const handleBlockClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
@@ -266,7 +275,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   useImperativeHandle(ref, () => ({
     saveIfPending: async () => {
-      if (tabIsDirty) await saveCurrentTab();
+      if (tabIsDirty) await forceSave();
     }
   }));
 
@@ -291,17 +300,64 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   const handleDelete = async () => {
-    if (!activeSingleId) return;
     setBusy(true);
     try {
-      await deleteBlock(activeSingleId);
+      if (panelMode === 'multi' && selectedBlockIds.length > 0) {
+        // Delete all selected blocks
+        for (const id of selectedBlockIds) {
+          await deleteBlock(id);
+        }
+        setSelectedBlockIds([]);
+        setActiveSingleId(null);
+        setMultiIndex(0);
+      } else if (activeSingleId) {
+        await deleteBlock(activeSingleId);
+        setActiveSingleId(null);
+        setSelectedBlockIds([]);
+      }
       setPanelMode('empty');
-      setActiveSingleId(null);
-      setSelectedBlockIds([]);
       setDeleteModal(false);
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleDuplicate = async () => {
+    setBusy(true);
+    try {
+      const ids = panelMode === 'multi' ? selectedBlockIds : (activeSingleId ? [activeSingleId] : []);
+      for (const id of ids) {
+        const source = blocks.find((b) => b.id === id);
+        if (!source) continue;
+        const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[blockToUiState(source)].payload;
+        await createBlock({
+          title: `${source.title ?? 'Bloque'} (copia)`,
+          type: 'paragraph',
+          block_state,
+          mandatory,
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (tabIsDirty && activeSingleId) {
+      const original = blocks.find((b) => b.id === activeSingleId);
+      if (original) loadFormFromBlock(original);
+    }
+    setPanelMode('empty');
+    setActiveSingleId(null);
+    setSelectedBlockIds([]);
+    setMultiIndex(0);
+  };
+
+  const renderSaveStatus = () => {
+    if (saveStatus === 'saving') return <span className="text-[10px] text-text-muted italic">Guardando…</span>;
+    if (saveStatus === 'saved') return <span className="text-[10px] text-success-dark flex items-center gap-1">✓ Guardado</span>;
+    if (saveStatus === 'error') return <span className="text-[10px] text-danger-dark">Error al guardar</span>;
+    return null;
   };
 
   return (
@@ -333,9 +389,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             </DndContext>
           )}
         </div>
-        <div className="p-4 border-t border-ui-border dark:border-ui-dark-border">
-          <Button variant="outline" className="w-full border-dashed" onClick={() => { setPanelMode('create'); setFormName(''); setFormUiState('editable'); setTabIsDirty(false); }}>+ Añadir bloque</Button>
-        </div>
+        {/* Añadir bloque: oculto en edit y multi */}
+        {panelMode !== 'edit' && panelMode !== 'multi' && (
+          <div className="p-4 border-t border-ui-border dark:border-ui-dark-border">
+            <Button variant="outline" className="w-full border-dashed" onClick={() => { setPanelMode('create'); setFormName(''); setFormUiState('editable'); setTabIsDirty(false); }}>+ Añadir bloque</Button>
+          </div>
+        )}
       </div>
 
       {/* Main Panel */}
@@ -369,8 +428,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         {panelMode === 'edit' && selectedBlock && (
           <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
             <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
-              <h3 className="text-sm font-bold truncate pr-4 uppercase tracking-widest">{selectedBlock.title}</h3>
-              <Button variant="outline" size="xs" className="text-danger" onClick={() => setDeleteModal(true)}>Eliminar</Button>
+              <div className="flex items-center gap-3 min-w-0">
+                <h3 className="text-sm font-bold truncate uppercase tracking-widest">{selectedBlock.title}</h3>
+                {renderSaveStatus()}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
+                <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
+                <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
+              </div>
             </div>
 
             <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
@@ -442,32 +508,57 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         )}
 
         {panelMode === 'multi' && (
-          <div className="flex-1 flex flex-col p-8 space-y-6 animate-in fade-in">
-            <h3 className="text-sm font-bold text-odoo-purple uppercase tracking-widest">Edición múltiple ({multiIndex + 1} de {selectedBlockIds.length})</h3>
-            <div className="bg-white dark:bg-ui-dark-card p-8 rounded-2xl border border-odoo-purple/20 shadow-xl space-y-6 max-w-lg">
-              <div className="space-y-2">
-                <FieldLabel required>Nombre del bloque</FieldLabel>
-                <TextInput value={formName} onChange={e => setFormName(e.target.value)} />
+          <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
+            {/* Header multi */}
+            <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
+              <div className="flex items-center gap-3 min-w-0">
+                <h3 className="text-sm font-bold text-odoo-purple uppercase tracking-widest truncate">
+                  Edición múltiple ({multiIndex + 1}/{selectedBlockIds.length})
+                </h3>
+                {renderSaveStatus()}
               </div>
-              <div className="flex gap-3">
-                <Button variant="primary" className="flex-1" onClick={() => {
-                  if (multiIndex < selectedBlockIds.length - 1) {
-                    setMultiIndex(multiIndex + 1);
-                    const nextBlock = blocks.find(b => b.id === selectedBlockIds[multiIndex + 1]);
-                    if (nextBlock) loadFormFromBlock(nextBlock);
-                  } else {
-                    setPanelMode('empty');
-                  }
-                }}>
-                  {multiIndex === selectedBlockIds.length - 1 ? 'Finalizar' : 'Guardar y siguiente'}
-                </Button>
-                {multiIndex < selectedBlockIds.length - 1 && (
-                  <Button variant="outline" onClick={() => {
-                    setMultiIndex(multiIndex + 1);
-                    const nextBlock = blocks.find(b => b.id === selectedBlockIds[multiIndex + 1]);
-                    if (nextBlock) loadFormFromBlock(nextBlock);
-                  }} aria-label="→">→</Button>
-                )}
+              <div className="flex items-center gap-2 shrink-0">
+                <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
+                <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
+                <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
+              </div>
+            </div>
+
+            {/* Formulario de edición del bloque actual en multi */}
+            <div className="flex-1 overflow-y-auto p-8">
+              <div className="bg-white dark:bg-ui-dark-card p-8 rounded-2xl border border-odoo-purple/20 shadow-xl space-y-6 max-w-lg">
+                <div className="space-y-2">
+                  <FieldLabel required>Nombre del bloque</FieldLabel>
+                  <TextInput value={formName} onChange={e => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="primary" className="flex-1" loading={busy} onClick={async () => {
+                    if (tabIsDirty) await forceSave();
+                    if (multiIndex < selectedBlockIds.length - 1) {
+                      const nextIdx = multiIndex + 1;
+                      setMultiIndex(nextIdx);
+                      setActiveSingleId(selectedBlockIds[nextIdx] ?? null);
+                      const nextBlock = blocks.find(b => b.id === selectedBlockIds[nextIdx]);
+                      if (nextBlock) loadFormFromBlock(nextBlock);
+                    } else {
+                      setPanelMode('empty');
+                      setActiveSingleId(null);
+                      setSelectedBlockIds([]);
+                    }
+                  }}>
+                    {multiIndex === selectedBlockIds.length - 1 ? 'Finalizar' : 'Guardar y siguiente'}
+                  </Button>
+                  {multiIndex < selectedBlockIds.length - 1 && (
+                    <Button variant="outline" onClick={async () => {
+                      if (tabIsDirty) await forceSave();
+                      const nextIdx = multiIndex + 1;
+                      setMultiIndex(nextIdx);
+                      setActiveSingleId(selectedBlockIds[nextIdx] ?? null);
+                      const nextBlock = blocks.find(b => b.id === selectedBlockIds[nextIdx]);
+                      if (nextBlock) loadFormFromBlock(nextBlock);
+                    }} aria-label="Siguiente">→</Button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
