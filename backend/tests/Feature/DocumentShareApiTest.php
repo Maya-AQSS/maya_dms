@@ -290,6 +290,7 @@ class DocumentShareApiTest extends TestCase
 
         $this->patchJson("/api/v1/documents/{$ctx['documentId']}", [
             'title' => 'Nuevo título',
+            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
         ], $hCollab)->assertForbidden();
     }
 

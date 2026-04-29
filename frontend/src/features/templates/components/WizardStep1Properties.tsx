@@ -113,8 +113,9 @@ export function WizardStep1Properties({
           </div>
 
           <div>
-            <FieldLabel required>Plazo de entrega</FieldLabel>
+            <FieldLabel htmlFor="delivery-deadline" required>Plazo de entrega</FieldLabel>
             <TextInput
+              id="delivery-deadline"
               type="date"
               fieldSize="comfortable"
               value={deliveryDeadline}

@@ -35,7 +35,11 @@ import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { Button, ConfirmDialog, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { ErrorBoundary } from '../../../components/ErrorBoundary';
 
-const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
+const BlockNoteEditorPanel = lazy(() =>
+  import('../../templates/components/BlockNoteEditorPanel').then(
+    (m) => ({ default: m.BlockNoteEditorPanel }),
+  )
+);
 
 type Step = 'properties' | 'blocks' | 'summary';
 type SummaryConfirmAction = 'save' | 'submit' | null;

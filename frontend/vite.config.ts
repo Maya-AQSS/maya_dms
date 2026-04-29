@@ -107,10 +107,20 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom', 'react-router-dom'],
     alias: {
-      '@maya/shared-auth-react': path.join(sharedAuthRoot, 'src/index.ts'),
-      '@maya/shared-i18n-react': path.join(sharedI18nRoot, 'src/index.ts'),
-      '@maya/shared-layout-react': path.join(sharedLayoutRoot, 'src/index.ts'),
-      '@maya/shared-sidebar-react': path.join(sharedSidebarRoot, 'src/index.ts'),
+      '@maya/shared-auth-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-auth-react/src/index.ts'),
+      '@maya/shared-i18n-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-i18n-react/src/index.ts'),
+      '@maya/shared-layout-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-layout-react/src/index.ts'),
+      '@maya/shared-sidebar-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-sidebar-react/src/index.ts'),
+    },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    server: {
+      deps: {
+        inline: [/@maya\/shared/],
+      },
     },
   },
 });

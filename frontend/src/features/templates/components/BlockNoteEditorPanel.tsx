@@ -12,7 +12,7 @@ interface Props {
   onChange?: (content: unknown) => void;
 }
 
-export default function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
+export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const normalized = normalizeBlockContentForEditor(initialContent);

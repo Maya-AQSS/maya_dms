@@ -151,6 +151,7 @@ class TemplatesApiTest extends TestCase
         $create = $this->postJson('/api/v1/templates', [
             'name' => 'Plantilla personal',
             'description' => 'Desc',
+            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
         ], $headers);
 
         $create->assertCreated()
@@ -188,6 +189,7 @@ class TemplatesApiTest extends TestCase
         $this->postJson('/api/v1/templates', [
             'name' => 'Global prohibida',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
         ], $headers)->assertForbidden();
     }
 
@@ -200,6 +202,7 @@ class TemplatesApiTest extends TestCase
         $this->postJson('/api/v1/templates', [
             'name' => 'Plantilla global',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
         ], $headers)
             ->assertCreated()
             ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value);
@@ -269,6 +272,7 @@ class TemplatesApiTest extends TestCase
         $this->postJson('/api/v1/templates', [
             'name' => 'Sin estudio',
             'visibility_level' => TemplateVisibilityLevel::Study->value,
+            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
         ], $headers)->assertUnprocessable();
     }
 
@@ -453,6 +457,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Por grupo',
             'visibility_level' => TemplateVisibilityLevel::Team->value,
             'team_id' => $gid,
+            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
         ], $headers)->assertCreated()->assertJsonPath('data.team_id', $gid);
     }
 
