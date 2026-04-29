@@ -21,7 +21,6 @@ import {
   TemplateNewPage,
   TemplatePreviewPage,
   TemplateReviewPage,
-  TemplatesPage,
 } from './pages';
 import { useOidcSession } from './auth/useOidcSession';
 import { HierarchyProvider } from './features/hierarchy';
@@ -38,7 +37,7 @@ function AppRoutes() {
       <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
       <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
       <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
-      <Route path="/templates" element={<TemplatesPage />} />
+      <Route path="/templates" element={<Navigate to="/procesos" replace />} />
       <Route path="/templates/new" element={<TemplateNewPage />} />
       <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
       <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
