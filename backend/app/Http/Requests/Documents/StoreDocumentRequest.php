@@ -52,6 +52,7 @@ class StoreDocumentRequest extends FormRequest
             'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
             'template_version_id' => [
                 'required_without:template_id',
                 'uuid',
@@ -82,6 +83,7 @@ class StoreDocumentRequest extends FormRequest
             studyTypeId: $this->validated('study_type_id') ?? null,
             studyId: $this->validated('study_id') ?? null,
             moduleId: $this->validated('module_id') ?? null,
+            deliveryDeadline: $this->validated('delivery_deadline'),
             templateVersionId: $templateVersionId ?? null,
         );
     }

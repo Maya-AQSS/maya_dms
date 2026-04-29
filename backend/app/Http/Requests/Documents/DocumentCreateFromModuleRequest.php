@@ -22,6 +22,7 @@ class DocumentCreateFromModuleRequest extends FormRequest
         return [
             'module_id' => ['required', 'string'],
             'template_version_id' => ['sometimes', 'nullable', 'uuid'],
+            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
         ];
     }
 }

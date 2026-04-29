@@ -68,6 +68,7 @@ export async function fetchDocumentCreationOptions(
 export async function createDocumentFromModule(payload: {
   module_id: string;
   template_version_id?: string;
+  delivery_deadline?: string | null;
 }): Promise<Document> {
   const body = await apiFetchJson<CreateFromModuleResponse>('documents/create-from-module', {
     method: 'POST',
@@ -89,6 +90,7 @@ export async function createDocument(payload: {
   study_id?: string | null;
   module_id?: string | null;
   template_version_id?: string | null;
+  delivery_deadline?: string | null;
 }): Promise<Document> {
   const body = await apiFetchJson<DocumentMutationApiResponse>('documents', {
     method: 'POST',

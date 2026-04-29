@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchTemplates } from '../api/templates';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
 import type { Template, TemplateListFilters, TemplatesListMeta } from '../types/templates';
@@ -33,6 +33,9 @@ function formatDate(iso: string | null | undefined): string {
 
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const locationState = location.state as { moduleId?: string } | null;
+  const selectedModuleId = locationState?.moduleId;
 
   const [filters, setFilters] = useState<TemplateListFilters>({
     status: 'published',
@@ -203,7 +206,11 @@ export function NuevaProgramacionSelectorPage() {
                     className="hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer group"
                     onClick={() =>
                       navigate(`/templates/${t.id}`, {
-                        state: { selectionMode: true, backTo: '/nueva-programacion' },
+                        state: { 
+                          selectionMode: true, 
+                          backTo: '/nueva-programacion',
+                          moduleId: selectedModuleId 
+                        },
                       })
                     }
                   >

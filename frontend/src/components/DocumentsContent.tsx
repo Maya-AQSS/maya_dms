@@ -225,11 +225,15 @@ export function DocumentsContent() {
     if (!selectedModuleId || loadingCreationOptions || creatingDocument) return;
     if (creationMode === 'none') return;
     if (creationMode === 'auto') {
-      const versionId = creationOptions[0]?.template_version_id;
-      await handleCreateFromModule(versionId);
+      const templateId = creationOptions[0]?.template_id;
+      navigate(`/nueva-programacion/${templateId}/wizard`, {
+        state: { moduleId: selectedModuleId }
+      });
       return;
     }
-    setShowSelector(true);
+    navigate('/nueva-programacion', {
+      state: { moduleId: selectedModuleId }
+    });
   };
 
   return (

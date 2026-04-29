@@ -357,10 +357,28 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   useEffect(() => {
     if (mode === 'validate') return;
-    if (!detail || detail.status === 'draft') return;
-    setCompletedSteps(['properties', 'blocks']);
-    setStep('blocks');
-  }, [detail?.id, detail?.status, mode]);
+    if (!detail) {
+      // Si estamos creando (no hay detail) y viene moduleId por state, lo pre-rellenamos
+      const state = location.state as { moduleId?: string } | null;
+      if (state?.moduleId) {
+        setModuleId(state.moduleId);
+      }
+      return;
+    }
+    if (detail.status !== 'draft') {
+      setCompletedSteps(['properties', 'blocks']);
+      setStep('blocks');
+      return;
+    }
+    // Si es borrador pero le falta la fecha límite, forzamos paso de propiedades
+    if (!detail.delivery_deadline) {
+      setStep('properties');
+      setCompletedSteps([]);
+    } else {
+      setCompletedSteps(['properties']);
+      setStep('blocks');
+    }
+  }, [detail?.id, detail?.status, detail?.delivery_deadline, mode]);
 
   useEffect(() => {
     if (mode === 'validate') return;
@@ -617,6 +635,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       if (!studyId) newErrors.studyId = 'Selecciona un estudio.';
       if (!moduleId) newErrors.moduleId = 'Selecciona un módulo.';
       if (!title.trim()) newErrors.title = 'El título es obligatorio.';
+      if (!deliveryDeadline) {
+        newErrors.deliveryDeadline = 'La fecha de entrega es obligatoria.';
+      } else {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const selected = new Date(deliveryDeadline);
+        if (selected < today) {
+          newErrors.deliveryDeadline = 'La fecha no puede ser anterior a hoy.';
+        }
+      }
 
       if (Object.keys(newErrors).length > 0) {
         setErrors(newErrors);
@@ -635,6 +663,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             study_type_id: studyTypeId,
             study_id: studyId,
             module_id: moduleId,
+            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
           });
 
           // Navigate to the editor route with the new ID
@@ -645,7 +674,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           // Edit Mode: Update existing document
           const updated = await updateDocument(documentId, {
             title: title.trim(),
-            delivery_deadline: deliveryDeadline ? deliveryDeadline : null,
+            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
             study_type_id: studyTypeId,
             study_id: studyId,
             module_id: moduleId,
@@ -1108,7 +1137,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   </div>
 
                   <div className="space-y-1">
-                    <FieldLabel htmlFor="doc-delivery-deadline-input">Fecha límite</FieldLabel>
+                    <FieldLabel htmlFor="doc-delivery-deadline-input" required>Fecha límite</FieldLabel>
                     <TextInput
                       id="doc-delivery-deadline-input"
                       type="date"
@@ -1116,7 +1145,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       value={deliveryDeadline}
                       onChange={(e) => setDeliveryDeadline(e.target.value)}
                       disabled={!isDraft}
+                      error={!!errors.deliveryDeadline}
                     />
+                    {errors.deliveryDeadline && (
+                      <p className="text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
+                    )}
                   </div>
                 </div>
               </div>

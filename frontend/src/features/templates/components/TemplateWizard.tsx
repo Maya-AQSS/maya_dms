@@ -117,6 +117,17 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       if (!teamId) newErrors.teamId = 'Este campo es obligatorio';
     }
 
+    if (!deliveryDeadline) {
+      newErrors.deliveryDeadline = 'El plazo de entrega es obligatorio.';
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selected = new Date(deliveryDeadline);
+      if (selected < today) {
+        newErrors.deliveryDeadline = 'La fecha no puede ser anterior a hoy.';
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };

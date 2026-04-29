@@ -181,7 +181,9 @@ export function TemplatePreviewPage() {
                     type="button"
                     variant="primary"
                     size="sm"
-                    onClick={() => navigate(`/nueva-programacion/${id}/wizard`)}
+                    onClick={() => navigate(`/nueva-programacion/${id}/wizard`, {
+                      state: { moduleId: locationState?.moduleId }
+                    })}
                   >
                     Usar plantilla
                   </Button>
