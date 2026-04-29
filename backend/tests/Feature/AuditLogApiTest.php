@@ -117,12 +117,13 @@ class AuditLogApiTest extends TestCase
 
         Comment::query()->forceCreate([
             'id' => $commentId,
-            'document_id' => $documentId,
-            'document_block_id' => null,
+            'commentable_type' => Document::class,
+            'commentable_id' => $documentId,
+            'blockable_type' => null,
+            'blockable_id' => null,
             'parent_id' => null,
             'author_id' => $ownerId,
             'body' => 'Nota',
-            'type' => 'general',
             'resolved' => false,
         ]);
 

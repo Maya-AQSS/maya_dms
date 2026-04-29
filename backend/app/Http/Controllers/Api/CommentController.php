@@ -4,13 +4,18 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Comments\StoreCommentRequest;
+use App\Models\Comment;
+use App\Models\Document;
+use App\Models\DocumentBlock;
+use App\Models\Template;
+use App\Models\TemplateBlock;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 class CommentController extends Controller
 {
@@ -54,17 +59,12 @@ class CommentController extends Controller
     /**
      * Crear comentario.
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreCommentRequest $request): JsonResponse
     {
         $templateId = $request->route('template');
         $documentId = $request->route('document');
-
-        $validated = $request->validate([
-            'body' => 'required|string',
-            'template_block_id' => 'nullable|uuid',
-            'document_block_id' => 'nullable|uuid',
-            'type' => 'nullable|string',
-        ]);
+        $blockableId = $request->blockableId();
+        $parentId = $request->parentId();
 
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
@@ -91,7 +91,7 @@ class CommentController extends Controller
     /**
      * Mostrar comentario.
      */
-    public function show(string $comment): JsonResponse
+    public function show(Request $request, string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
         $document     = $this->documentService->findOrFail($commentModel->document_id);
@@ -117,14 +117,16 @@ class CommentController extends Controller
     /**
      * Eliminar comentario.
      */
-    public function destroy(string $comment): JsonResponse
+    public function destroy(Request $request, string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
         $document     = $this->documentService->findOrFail($commentModel->document_id);
         $this->authorize('view', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $this->commentService->delete($comment);
+
+        return response()->json([], 204);
     }
 
     /**
@@ -149,5 +151,31 @@ class CommentController extends Controller
 
         $resolved = $this->commentService->resolve($comment, (string) Auth::id());
         return response()->json(['data' => $resolved]);
+    }
+
+    /**
+     * Autorizar vista para un comentario.
+     */
+    private function authorizeViewForCommentable(Request $request, Comment $comment): void
+    {
+        $commentableType = ltrim((string) $comment->commentable_type, '\\');
+        $isAllowed = collect(Comment::ALLOWED_COMMENTABLE_TYPES)
+            ->contains(fn (string $allowed): bool => $commentableType === $allowed || is_a($commentableType, $allowed, true));
+
+        if ($commentableType === Template::class || is_a($commentableType, Template::class, true)) {
+            $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
+            $this->authorize('comment', $model);
+            return;
+        }
+
+        if ($commentableType === Document::class || is_a($commentableType, Document::class, true)) {
+            $model = $this->documentService->findOrFail((string) $comment->commentable_id);
+            $this->authorize('comment', $model);
+            return;
+        }
+
+        if (! $isAllowed) {
+            abort(422, 'Tipo de recurso de comentario no soportado.');
+        }
     }
 }
