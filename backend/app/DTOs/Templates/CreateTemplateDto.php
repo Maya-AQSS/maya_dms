@@ -15,5 +15,6 @@ readonly class CreateTemplateDto
         public ?string $teamId,
         public int $reviewStages,
         public string $reviewMode,
+        public string $processId,
     ) {}
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
@@ -18,6 +19,8 @@ use Illuminate\Http\Request;
 
 class DocumentController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
         private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
@@ -95,6 +98,7 @@ class DocumentController extends Controller
         $document = $this->documentService->createFromModule(
             $request->validated('module_id'),
             $userId,
+            $request->validated('process_id'),
             $request->validated('template_version_id') ?? null,
             $request->validated('delivery_deadline'),
         );
@@ -118,6 +122,7 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         return response()->json([
             'data' => $this->documentService->templateVersionStatus($document->id),
@@ -132,6 +137,7 @@ class DocumentController extends Controller
         $viewerId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $this->apiTeamEmbedService->embedOnDocument(
             $document,
@@ -154,6 +160,7 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('update', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $updated = $this->documentService->update($id, $request->validated());
         $this->apiTeamEmbedService->embedOnDocument(
@@ -171,6 +178,7 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('delete', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $this->documentService->delete($id);
 
@@ -184,6 +192,7 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('submit', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->submitToReview($document->id, $actorId);
@@ -198,6 +207,7 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('review', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->publishDocument(
@@ -216,6 +226,7 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('review', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->rejectDocument($document->id, $actorId);
@@ -230,6 +241,7 @@ class DocumentController extends Controller
     {
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->delegateOwner(

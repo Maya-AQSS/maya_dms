@@ -265,6 +265,7 @@ class TemplateService implements TemplateServiceInterface
         }
 
         return $this->templateRepository->create([
+            'process_id' => $dto->processId,
             'name' => $dto->name,
             'description' => $dto->description,
             'visibility_level' => $dto->visibilityLevel,
@@ -364,6 +365,7 @@ class TemplateService implements TemplateServiceInterface
         $source->loadMissing('blocks');
 
         $target = $this->templateRepository->create([
+            'process_id' => $source->process_id,
             'name' => $source->name.' (copia)',
             'description' => $source->description,
             'visibility_level' => $source->visibility_level instanceof TemplateVisibilityLevel

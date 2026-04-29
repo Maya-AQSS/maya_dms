@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TemplateBlocks\BulkUpdateTemplateBlockRequest;
 use App\Http\Requests\TemplateBlocks\ReorderTemplateBlocksRequest;
@@ -11,6 +12,7 @@ use App\Http\Requests\TemplateBlocks\StoreTemplateBlockRequest;
 use App\Http\Requests\TemplateBlocks\UpdateTemplateBlockRequest;
 use App\Http\Resources\TemplateBlockResource;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +22,8 @@ use Illuminate\Support\Facades\Auth;
 
 class TemplateBlockController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly TemplateBlockServiceInterface $blockService,
     ) {}
@@ -31,6 +35,7 @@ class TemplateBlockController extends Controller
     {
         $templateModel = Template::query()->findOrFail($template);
         $this->authorize('view', $templateModel);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
 
         $blocks = $this->blockService->listForTemplate($template);
 
@@ -42,6 +47,9 @@ class TemplateBlockController extends Controller
      */
     public function store(StoreTemplateBlockRequest $request, string $template): JsonResponse
     {
+        $templateModel = Template::query()->findOrFail($template);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+
         $block = $this->blockService->create(
             templateId: $template,
             attributes: $request->validated(),
@@ -59,6 +67,7 @@ class TemplateBlockController extends Controller
         $blockModel = $this->blockService->findOrFail($block);
         $templateModel = Template::query()->findOrFail($blockModel->template_id);
         $this->authorize('view', $templateModel);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
 
         return new TemplateBlockResource($blockModel);
     }
@@ -69,6 +78,10 @@ class TemplateBlockController extends Controller
     public function update(UpdateTemplateBlockRequest $request, string $block): TemplateBlockResource
     {
         $validated = $request->validated();
+        $blockModel = $this->blockService->findOrFail($block);
+        $templateModel = Template::query()->findOrFail($blockModel->template_id);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+
         $dto = new UpdateTemplateBlockDto(
             title:           $validated['title'] ?? null,
             set_title:       $request->has('title'),
@@ -96,6 +109,10 @@ class TemplateBlockController extends Controller
      */
     public function destroy(string $block): Response
     {
+        $blockModel = $this->blockService->findOrFail($block);
+        $templateModel = Template::query()->findOrFail($blockModel->template_id);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+
         $this->blockService->delete($block, (string) Auth::id());
 
         return response()->noContent();
@@ -107,6 +124,9 @@ class TemplateBlockController extends Controller
      */
     public function reorder(ReorderTemplateBlocksRequest $request, string $template): \Illuminate\Http\Response
     {
+        $templateModel = Template::query()->findOrFail($template);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+
         $blockIds = $request->validated('block_ids');
         $this->blockService->reorderForTemplate($template, $blockIds);
 
@@ -119,6 +139,17 @@ class TemplateBlockController extends Controller
     public function bulkUpdate(BulkUpdateTemplateBlockRequest $request): AnonymousResourceCollection
     {
         $validated = $request->validated();
+
+        $givenProcessId = request()->query('process_id');
+        if ($givenProcessId !== null && $givenProcessId !== '') {
+            $blocks = TemplateBlock::query()
+                ->whereIn('id', $validated['ids'])
+                ->with('template')
+                ->get();
+            foreach ($blocks as $blockRow) {
+                $this->assertOptionalProcessContextMatches((string) $blockRow->template->process_id);
+            }
+        }
 
         $dto = new BulkUpdateTemplateBlocksDto(
             ids:             $validated['ids'],

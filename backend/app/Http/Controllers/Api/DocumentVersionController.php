@@ -2,12 +2,15 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 
 class DocumentVersionController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
     ) {}
@@ -21,6 +24,7 @@ class DocumentVersionController extends Controller
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('view', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $rows = $this->documentService->listDocumentVersions($doc->id);
 
@@ -36,6 +40,7 @@ class DocumentVersionController extends Controller
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('view', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $v = $this->documentService->findDocumentVersionOrFail($document, $version);
 

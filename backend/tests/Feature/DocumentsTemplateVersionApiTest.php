@@ -175,6 +175,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Mi doc',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['template_id']);
@@ -236,6 +237,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_version_id' => $versionId,
             'title' => 'Expediente',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator);
 
         $createDoc->assertCreated()
@@ -296,6 +298,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Expediente',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator);
 
         $createDoc->assertCreated();
@@ -382,6 +385,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Expediente equipo',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator);
 
         $createDoc->assertCreated();
@@ -447,6 +451,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc editable',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -515,6 +520,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc bloqueado',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -576,6 +582,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Título inicial',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -583,6 +590,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->putJson("/api/v1/documents/{$docId}", [
             'title' => 'Título actualizado',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)
             ->assertOk()
             ->assertJsonPath('data.title', 'Título actualizado');
@@ -638,6 +646,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Documento borrable',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -697,6 +706,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc mandatory',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -756,6 +766,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc mandatory ok',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -820,6 +831,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc snapshot',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -917,6 +929,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc publish',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -1121,6 +1134,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc banner',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -1198,6 +1212,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'template_id' => $tid,
             'title' => 'Doc al día',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');

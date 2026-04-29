@@ -24,6 +24,7 @@ class TemplateResource extends JsonResource
             'study_type_id'      => $this->study_type_id,
             'study_id'           => $this->study_id,
             'module_id'          => $this->module_id,
+            'process_id'         => $this->process_id,
             'team_id'            => $this->team_id,
             'team'               => $this->resource->getAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY),
             'created_by'         => $this->created_by,

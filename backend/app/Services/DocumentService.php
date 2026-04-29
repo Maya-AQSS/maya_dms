@@ -79,6 +79,7 @@ class DocumentService implements DocumentServiceInterface
             ->all();
 
         return $this->documentRepository->createDocumentWithBlocks([
+            'process_id' => $dto->processId,
             'template_id' => $dto->templateId,
             'template_version_id' => $version->id,
             'title' => $dto->title,
@@ -127,7 +128,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Opciones de creación de documento disponibles para un módulo.
      * 
-     * @return list<array{template_id: string, template_version_id: string, name: string, description: ?string}>
+     * @return list<array{template_id: string, template_version_id: string, process_id: string, name: string, description: ?string}>
      */
     public function creationOptionsForModule(string $moduleId): array
     {
@@ -143,6 +144,7 @@ class DocumentService implements DocumentServiceInterface
             $options[] = [
                 'template_id' => $template->id,
                 'template_version_id' => $version->id,
+                'process_id' => (string) $template->process_id,
                 'name' => (string) $template->name,
                 'description' => $template->description,
             ];
@@ -157,6 +159,7 @@ class DocumentService implements DocumentServiceInterface
     public function createFromModule(
         string $moduleId,
         string $creatorId,
+        string $processId,
         ?string $templateVersionId = null,
         ?string $deliveryDeadline = null,
     ): Document
@@ -190,6 +193,12 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
+        if ($selected['process_id'] !== $processId) {
+            throw ValidationException::withMessages([
+                'process_id' => ['El proceso no corresponde a la plantilla seleccionada para el módulo.'],
+            ]);
+        }
+
         $module = CourseModule::query()->with('study')->find($moduleId);
         if ($module === null) {
             throw ValidationException::withMessages([
@@ -204,6 +213,7 @@ class DocumentService implements DocumentServiceInterface
             title: 'Nueva Programación Didáctica',
             createdBy: $creatorId,
             ownerId: $creatorId,
+            processId: $processId,
             studyTypeId: $studyTypeId,
             studyId: (string) $module->study_id,
             moduleId: $moduleId,

@@ -238,6 +238,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             'module_id' => 'MOD-1',
             'template_version_id' => $version->id,
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers);
 
         $response->assertCreated()
@@ -283,6 +284,7 @@ class DocumentsModuleCreationApiTest extends TestCase
         $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['template_version_id']);
@@ -306,6 +308,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             'module_id' => 'MOD-1',
             'template_version_id' => $version->id,
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)->assertCreated();
 
         // Forzamos antigüedad para validar orden sin depender del reloj del sistema.
@@ -317,6 +320,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             'module_id' => 'MOD-1',
             'template_version_id' => $version->id,
             'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)->assertCreated();
 
         $list = $this->getJson('/api/v1/documents', $headers)
