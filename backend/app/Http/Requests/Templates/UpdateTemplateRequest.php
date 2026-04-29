@@ -35,7 +35,7 @@ class UpdateTemplateRequest extends FormRequest
             'name' => ['sometimes', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
             'visibility_level' => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
-            'delivery_deadline' => ['sometimes', 'nullable', 'date'],
+            'delivery_deadline' => ['sometimes', 'required', 'date', 'after_or_equal:today'],
             'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study_type'],
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,module'],

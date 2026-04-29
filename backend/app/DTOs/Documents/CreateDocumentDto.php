@@ -15,6 +15,7 @@ readonly class CreateDocumentDto
         public ?string $studyTypeId = null,
         public ?string $studyId = null,
         public ?string $moduleId = null,
+        public ?string $deliveryDeadline = null,
         public ?string $templateVersionId = null,
     ) {}
 }

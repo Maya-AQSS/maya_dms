@@ -96,6 +96,7 @@ class DocumentController extends Controller
             $request->validated('module_id'),
             $userId,
             $request->validated('template_version_id') ?? null,
+            $request->validated('delivery_deadline'),
         );
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);

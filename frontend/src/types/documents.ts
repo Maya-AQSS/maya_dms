@@ -1,4 +1,5 @@
 import type { BlockState } from './blocks';
+import type { TemplateVisibilityLevel } from './templates';
 
 export type DocumentStatus = 'draft' | 'in_review' | 'published';
 
@@ -21,6 +22,9 @@ export type Document = {
   published_at: string | null;
   created_at?: string;
   updated_at?: string;
+  owner_name?: string | null;
+  /** Heredada de la plantilla anclada; null si la plantilla no está cargada en la respuesta. */
+  visibility_level?: TemplateVisibilityLevel | null;
   /** Metadatos de compartición (DocumentResource); opcional en listados antiguos. */
   is_shared_with_me?: boolean;
   share_permission?: string | null;

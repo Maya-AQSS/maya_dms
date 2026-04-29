@@ -27,6 +27,10 @@ class DocumentResource extends JsonResource
             'delivery_deadline' => $this->delivery_deadline?->toIso8601String(),
             'created_by' => $this->created_by,
             'owner_id' => $this->owner_id,
+            'owner_name' => $this->resource->owner_name ?? null,
+            'visibility_level' => $this->relationLoaded('template') && $this->template !== null
+                ? $this->template->visibility_level->value
+                : null,
             'status' => $this->status,
             'current_version' => $this->current_version,
             'submitted_at' => $this->submitted_at?->toIso8601String(),

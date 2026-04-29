@@ -51,8 +51,8 @@ export function TemplateReviewPage() {
     return (
       <div className="flex flex-col items-center justify-center h-full p-6 text-center space-y-4">
         <p role="alert" aria-live="assertive" className="text-sm text-danger-dark font-bold">⚠️ {error || 'No se pudo encontrar la plantilla'}</p>
-        <Button variant="ghost" size="sm" onClick={() => navigate('/templates')}>
-          Volver al listado
+        <Button variant="ghost" size="sm" onClick={() => navigate('/procesos')}>
+          Volver al Procesos
         </Button>
       </div>
     );

@@ -98,7 +98,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setLeaveGuard(true);
       return;
     }
-    navigate('/templates');
+    navigate('/procesos');
   };
 
   const validateStep1 = () => {
@@ -116,6 +116,17 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       if (!moduleId) newErrors.moduleId = 'Este campo es obligatorio';
     } else if (visibility === 'team') {
       if (!teamId) newErrors.teamId = 'Este campo es obligatorio';
+    }
+
+    if (!deliveryDeadline) {
+      newErrors.deliveryDeadline = 'El plazo de entrega es obligatorio.';
+    } else {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selected = new Date(deliveryDeadline);
+      if (selected < today) {
+        newErrors.deliveryDeadline = 'La fecha no puede ser anterior a hoy.';
+      }
     }
 
     setErrors(newErrors);
@@ -168,7 +179,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     setSaving(true);
     try {
       await apiPublishTemplate(template.id);
-      navigate('/templates');
+      navigate('/procesos');
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al publicar la plantilla' });
     } finally {
@@ -184,7 +195,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       const res = await apiSubmitTemplateForReview(template.id);
       setTemplate(res.data);
       setShowValidationModal(false);
-      navigate('/templates');
+      navigate('/procesos');
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
     } finally {
@@ -235,7 +246,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     } else if (step === 'users') {
       void saveUsers();
     } else if (step === 'summary') {
-      navigate('/templates');
+      navigate('/procesos');
     }
   };
 
@@ -321,7 +332,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => navigate('/templates')}
+                  onClick={() => navigate('/procesos')}
                   className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
                 >
                   Guardar y salir
@@ -372,7 +383,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             ⚠️ Tienes cambios sin guardar en este paso. ¿Seguro que quieres salir?
           </span>
           <div className="flex gap-2">
-            <Button variant="outlineWarning" size="xs" onClick={() => navigate('/templates')}>
+            <Button variant="outlineWarning" size="xs" onClick={() => navigate('/procesos')}>
               Salir sin guardar
             </Button>
             <Button variant="secondary" size="xs" onClick={() => setLeaveGuard(false)}>

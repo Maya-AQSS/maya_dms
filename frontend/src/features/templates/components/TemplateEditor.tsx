@@ -537,7 +537,7 @@ export function TemplateEditor({ template }: Props) {
         <Button
           variant="ghost"
           size="xs"
-          onClick={() => navigate('/templates')}
+          onClick={() => navigate('/procesos')}
           aria-label="Volver a Plantillas"
           className="!w-9 !h-9 !p-0 !rounded-full active:scale-95"
         >

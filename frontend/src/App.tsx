@@ -27,17 +27,23 @@ const DocumentValidationPage = lazy(() =>
 const DocumentPreviewPage = lazy(() =>
   import('./pages/DocumentPreviewPage').then((m) => ({ default: m.DocumentPreviewPage })),
 );
-const DocumentsPage = lazy(() =>
-  import('./pages/DocumentsPage').then((m) => ({ default: m.DocumentsPage })),
+const NuevaProgramacionSelectorPage = lazy(() =>
+  import('./pages/NuevaProgramacionSelectorPage').then((m) => ({ default: m.NuevaProgramacionSelectorPage })),
 );
 const PlaceholderPage = lazy(() =>
   import('./pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })),
+);
+const ProcesosPage = lazy(() =>
+  import('./pages/ProcesosPage').then((m) => ({ default: m.ProcesosPage })),
 );
 const TemplateEditPage = lazy(() =>
   import('./pages/TemplateEditPage').then((m) => ({ default: m.TemplateEditPage })),
 );
 const TemplateNewPage = lazy(() =>
   import('./pages/TemplateNewPage').then((m) => ({ default: m.TemplateNewPage })),
+);
+const TemplatePreviewPage = lazy(() =>
+  import('./pages/TemplatePreviewPage').then((m) => ({ default: m.TemplatePreviewPage })),
 );
 const TemplateReviewPage = lazy(() =>
   import('./pages/TemplateReviewPage').then((m) => ({ default: m.TemplateReviewPage })),
@@ -52,7 +58,9 @@ function AppRoutes() {
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/documents" element={<DocumentsPage />} />
+        <Route path="/procesos" element={<ProcesosPage />} />
+        <Route path="/nueva-programacion" element={<NuevaProgramacionSelectorPage />} />
+        <Route path="/nueva-programacion/:templateId/wizard" element={<DocumentEditorPage />} />
         <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
         <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
         <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
@@ -60,6 +68,7 @@ function AppRoutes() {
         <Route path="/templates/new" element={<TemplateNewPage />} />
         <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
         <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
+        <Route path="/templates/:id" element={<TemplatePreviewPage />} />
         <Route path="*" element={<PlaceholderPage />} />
       </Routes>
     </Suspense>
@@ -87,7 +96,6 @@ function AppWithLayout() {
   const userName = profile?.name?.trim() ?? '';
   const userEmail = (profile?.email ?? user?.email) as string | undefined;
   const userInitials = profileDisplayInitials(profile);
-  // Redirige al perfil del dashboard (donde vive el editor de perfil + idioma)
   const onProfile = () => {
     const dashboardOrigin = (import.meta.env.VITE_DASHBOARD_URL as string | undefined)
       ?? 'http://maya_dashboard.localhost';

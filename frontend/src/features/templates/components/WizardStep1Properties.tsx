@@ -113,14 +113,18 @@ export function WizardStep1Properties({
           </div>
 
           <div>
-            <FieldLabel>Plazo de entrega</FieldLabel>
+            <FieldLabel required>Plazo de entrega</FieldLabel>
             <TextInput
               type="date"
               fieldSize="comfortable"
               value={deliveryDeadline}
               onChange={(e) => setDeliveryDeadline(e.target.value)}
               disabled={deadlineLocked}
+              error={!!errors.deliveryDeadline}
             />
+            {errors.deliveryDeadline && (
+              <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
+            )}
             {deadlineLocked && (
               <p className="mt-1 text-[10px] text-text-muted italic">
                 No editable en estado actual.

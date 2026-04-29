@@ -68,8 +68,31 @@ export async function fetchDocumentCreationOptions(
 export async function createDocumentFromModule(payload: {
   module_id: string;
   template_version_id?: string;
+  delivery_deadline?: string | null;
 }): Promise<Document> {
   const body = await apiFetchJson<CreateFromModuleResponse>('documents/create-from-module', {
+    method: 'POST',
+    body: payload,
+  });
+  return body.data;
+}
+
+/**
+ * POST /api/v1/documents
+ * 
+ * @param payload - Datos para crear un documento.
+ * @returns Documento creado.
+ */
+export async function createDocument(payload: {
+  template_id: string;
+  title: string;
+  study_type_id?: string | null;
+  study_id?: string | null;
+  module_id?: string | null;
+  template_version_id?: string | null;
+  delivery_deadline?: string | null;
+}): Promise<Document> {
+  const body = await apiFetchJson<DocumentMutationApiResponse>('documents', {
     method: 'POST',
     body: payload,
   });
@@ -102,6 +125,9 @@ type DocumentReviewsApiResponse = { data: DocumentReview[] };
 export async function updateDocument(documentId: string, payload: {
   title: string;
   delivery_deadline?: string | null;
+  study_type_id?: string | null;
+  study_id?: string | null;
+  module_id?: string | null;
 }): Promise<Document> {
   const body = await apiFetchJson<DocumentMutationApiResponse>(
     `documents/${encodeURIComponent(documentId)}`,
@@ -163,6 +189,11 @@ type DocumentBlockUpdateApiResponse = { data: Record<string, unknown> };
  * @param content - Contenido del bloque.
  * @returns Contenido del bloque actualizado.
  */
+/** DELETE /api/v1/documents/{id} — 204 sin body. */
+export async function deleteDocument(documentId: string): Promise<void> {
+  await apiFetchJson<undefined>(`documents/${encodeURIComponent(documentId)}`, { method: 'DELETE' });
+}
+
 export async function updateDocumentBlock(
   documentId: string,
   documentBlockId: string,

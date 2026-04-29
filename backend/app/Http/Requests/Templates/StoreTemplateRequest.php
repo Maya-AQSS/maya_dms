@@ -31,7 +31,7 @@ class StoreTemplateRequest extends FormRequest
             'name'              => ['required', 'string', 'max:255'],
             'description'       => ['nullable', 'string'],
             'visibility_level'  => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
-            'delivery_deadline' => ['nullable', 'date'],
+            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
             'study_type_id'     => ['nullable', 'string', 'max:255', 'required_if:visibility_level,study_type'],
             'study_id'          => ['nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
             'module_id'         => ['nullable', 'string', 'max:255', 'required_if:visibility_level,module'],

@@ -1,4 +1,5 @@
 export { DocumentWizard } from './components/DocumentWizard';
+export { DocumentsTable } from './components/DocumentsTable';
 export { useDocuments } from './hooks/useDocuments';
 export { useFilteredDocuments } from './hooks/useFilteredDocuments';
 export { filterDocumentsByCascade } from './lib/filterDocumentsByCascade';

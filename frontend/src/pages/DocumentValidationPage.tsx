@@ -12,8 +12,8 @@ export function DocumentValidationPage() {
     return (
       <div className="p-6">
         <p className="text-sm text-warning-dark dark:text-warning-light mb-4">Identificador de documento no válido.</p>
-        <Link to="/documents">
-          <Button variant="secondary">Volver al listado</Button>
+        <Link to="/procesos" state={{ tab: 'documents' }}>
+          <Button variant="secondary">Volver a Procesos</Button>
         </Link>
       </div>
     );

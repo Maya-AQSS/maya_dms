@@ -85,6 +85,7 @@ class DocumentService implements DocumentServiceInterface
             'study_type_id' => $dto->studyTypeId,
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,
+            'delivery_deadline' => $dto->deliveryDeadline,
             'created_by' => $dto->createdBy,
             'owner_id' => $dto->ownerId,
             'status' => 'draft',
@@ -106,6 +107,9 @@ class DocumentService implements DocumentServiceInterface
         $document->update([
             'title' => $attributes['title'],
             'delivery_deadline' => $attributes['delivery_deadline'] ?? null,
+            'study_type_id' => $attributes['study_type_id'] ?? $document->study_type_id,
+            'study_id' => $attributes['study_id'] ?? $document->study_id,
+            'module_id' => $attributes['module_id'] ?? $document->module_id,
         ]);
 
         return $document->fresh();
@@ -154,6 +158,7 @@ class DocumentService implements DocumentServiceInterface
         string $moduleId,
         string $creatorId,
         ?string $templateVersionId = null,
+        ?string $deliveryDeadline = null,
     ): Document
     {
         $options = $this->creationOptionsForModule($moduleId);
@@ -202,6 +207,7 @@ class DocumentService implements DocumentServiceInterface
             studyTypeId: $studyTypeId,
             studyId: (string) $module->study_id,
             moduleId: $moduleId,
+            deliveryDeadline: $deliveryDeadline,
             templateVersionId: $selected['template_version_id'],
         ));
     }

@@ -113,6 +113,23 @@ export async function fetchTemplateVersion(versionId: string): Promise<TemplateV
   return body.data;
 }
 
+export type TemplateVersionSummary = {
+  id: string;
+  template_id: string;
+  version_number: number;
+  published_at: string | null;
+  published_by: string | null;
+  changelog: string | null;
+};
+
+/** GET /api/v1/templates/{id}/versions — listado de versiones publicadas (sin bloques). */
+export async function fetchTemplateVersionSummaries(templateId: string): Promise<TemplateVersionSummary[]> {
+  const body = await apiGetJson<{ data: TemplateVersionSummary[] }>(
+    `templates/${encodeURIComponent(templateId)}/versions`,
+  );
+  return body.data;
+}
+
 /** POST /api/v1/templates */
 export async function createTemplate(payload: CreateTemplatePayload): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>('templates', { method: 'POST', body: payload });

@@ -4,14 +4,16 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type ReactNode,
 } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { PageTitle } from '@maya/shared-ui-react';
 import {
   approveDocumentReview,
+  createDocument,
+  createDocumentFromModule,
   fetchDocument,
   fetchDocumentReviews,
   rejectDocumentReview,
@@ -21,14 +23,16 @@ import {
   type DocumentReview,
 } from '../../../api/documents';
 import { ApiHttpError } from '../../../api/http';
-import { fetchTemplate } from '../../../api/templates';
+import { fetchTemplate, fetchTemplateVersionSummaries } from '../../../api/templates';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
 import { useDarkMode } from '../../../hooks/useDarkMode';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
+import { useHierarchy } from '../../hierarchy';
+import type { Template } from '../../../types/templates';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
-import { Button, ConfirmDialog, TextArea, TextInput } from '../../../ui';
+import { Button, ConfirmDialog, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { ErrorBoundary } from '../../../components/ErrorBoundary';
 
 const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
@@ -171,7 +175,8 @@ function pickActionableDocumentReview(
 }
 
 type Props = {
-  documentId: string;
+  documentId?: string | null;
+  templateId?: string | null;
   mode?: 'edit' | 'validate';
 };
 
@@ -179,7 +184,7 @@ type Props = {
  * Asistente de edición de documento (3 pasos, sin usuarios/validadores).
  * Reutiliza estética y piezas de plantillas (BlockNote, preview HTML) sin acoplar al flujo de TemplateWizard.
  */
-export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
+export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { isDark } = useDarkMode();
@@ -193,6 +198,10 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
 
   const [title, setTitle] = useState('');
   const [deliveryDeadline, setDeliveryDeadline] = useState('');
+  const [studyTypeId, setStudyTypeId] = useState('');
+  const [studyId, setStudyId] = useState('');
+  const [moduleId, setModuleId] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [submittingForReview, setSubmittingForReview] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -210,7 +219,12 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
-  const [templateName, setTemplateName] = useState<string | null>(null);
+
+  const [template, setTemplate] = useState<Template | null>(null);
+  const [loadingTemplate, setLoadingTemplate] = useState(false);
+  const [loadErrorTemplate, setLoadErrorTemplate] = useState<string | null>(null);
+
+  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const [blockViewTab, setBlockViewTab] = useState<BlockViewTab>('content');
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
@@ -221,7 +235,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   const [rejectReason, setRejectReason] = useState('');
 
   const isValidateMode = mode === 'validate';
-  const isDraft = detail?.status === 'draft';
+  const isDraft = !detail || detail.status === 'draft';
   const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
 
   /**
@@ -236,7 +250,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
     const created = detail.created_by;
     const pool =
       documentReviewerPoolIds.length > 0 ? documentReviewerPoolIds : templateReviewerPoolIds;
-    const filtered = pool.filter((id) => id !== owner && id !== created);
+    const filtered = pool.filter((id: string) => id !== owner && id !== created);
     return pool.length > 0 && filtered.length === 0;
   }, [detail, documentReviewerPoolIds, templateReviewerPoolIds]);
 
@@ -246,6 +260,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
     + 'del titular, o que los revisores normativos de la plantilla no sean solo el titular.';
 
   const reload = useCallback(async () => {
+    if (!documentId) return;
     setLoading(true);
     setLoadError(null);
     try {
@@ -253,7 +268,10 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
       setDetail(data);
       setTitle(data.title);
       setDeliveryDeadline(dateIsoToInput(data.delivery_deadline));
-      setActiveBlockKey((prev) => {
+      setStudyTypeId(data.study_type_id ?? '');
+      setStudyId(data.study_id ?? '');
+      setModuleId(data.module_id ?? '');
+      setActiveBlockKey((prev: string | null) => {
         if (prev) return prev;
         if (data.blocks.length === 0) return null;
         const first = data.blocks[0];
@@ -268,12 +286,16 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   }, [documentId]);
 
   const refreshDetail = useCallback(async () => {
+    if (!documentId) return;
     try {
       const data = await fetchDocument(documentId);
       setDetail(data);
       setTitle(data.title);
       setDeliveryDeadline(dateIsoToInput(data.delivery_deadline));
-      setActiveBlockKey((prev) => {
+      setStudyTypeId(data.study_type_id ?? '');
+      setStudyId(data.study_id ?? '');
+      setModuleId(data.module_id ?? '');
+      setActiveBlockKey((prev: string | null) => {
         if (prev && data.blocks.some((b) => (b.document_block_id ?? b.template_block_id) === prev)) {
           return prev;
         }
@@ -285,6 +307,32 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
       setBlockSaveError(e instanceof Error ? e.message : 'No se pudo actualizar el documento.');
     }
   }, [documentId]);
+
+  useEffect(() => {
+    if (!templateId || documentId) {
+      setLoadingTemplate(false);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoadingTemplate(true);
+        setLoadErrorTemplate(null);
+        const res = await fetchTemplate(templateId);
+        if (!cancelled) {
+          setTemplate(res.data);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setLoadErrorTemplate(e instanceof Error ? e.message : 'No se pudo cargar la plantilla base.');
+        }
+      } finally {
+        if (!cancelled) setLoadingTemplate(false);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [templateId, documentId]);
 
   useEffect(() => {
     void reload();
@@ -309,10 +357,28 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
 
   useEffect(() => {
     if (mode === 'validate') return;
-    if (!detail || detail.status === 'draft') return;
-    setCompletedSteps(['properties', 'blocks']);
-    setStep('blocks');
-  }, [detail?.id, detail?.status, mode]);
+    if (!detail) {
+      // Si estamos creando (no hay detail) y viene moduleId por state, lo pre-rellenamos
+      const state = location.state as { moduleId?: string } | null;
+      if (state?.moduleId) {
+        setModuleId(state.moduleId);
+      }
+      return;
+    }
+    if (detail.status !== 'draft') {
+      setCompletedSteps(['properties', 'blocks']);
+      setStep('blocks');
+      return;
+    }
+    // Si es borrador pero le falta la fecha límite, forzamos paso de propiedades
+    if (!detail.delivery_deadline) {
+      setStep('properties');
+      setCompletedSteps([]);
+    } else {
+      setCompletedSteps(['properties']);
+      setStep('blocks');
+    }
+  }, [detail?.id, detail?.status, detail?.delivery_deadline, mode]);
 
   useEffect(() => {
     if (mode === 'validate') return;
@@ -372,19 +438,27 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   }, [isValidateMode, detail?.id, detail?.status]);
 
   const sortedBlocks = useMemo(
-    () => [...(detail?.blocks ?? [])].sort((a, b) => a.sort_order - b.sort_order),
+    () => [...(detail?.blocks ?? [])].sort((a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order),
     [detail?.blocks],
   );
 
   const activeBlock = useMemo(
-    () => sortedBlocks.find((b) => (b.document_block_id ?? b.template_block_id) === activeBlockKey) ?? null,
+    () => sortedBlocks.find((b: DocumentDisplayBlock) => (b.document_block_id ?? b.template_block_id) === activeBlockKey) ?? null,
     [sortedBlocks, activeBlockKey],
   );
   const activeBlockUiState = activeBlock ? blockToUiState(activeBlock) : null;
 
+  const allStudies = hierarchy.flatMap((t) => t.studies);
+  const filteredStudies = studyTypeId
+    ? (hierarchy.find((t: any) => String(t.id) === studyTypeId)?.studies ?? [])
+    : [];
+  const filteredModules = studyId
+    ? (allStudies.find((s: any) => String(s.id) === studyId)?.course_modules ?? [])
+    : [];
+
   const selectedSummaryBlock = useMemo(
     () =>
-      sortedBlocks.find((b) => (b.document_block_id ?? b.template_block_id) === summaryBlockKey) ??
+      sortedBlocks.find((b: DocumentDisplayBlock) => (b.document_block_id ?? b.template_block_id) === summaryBlockKey) ??
       sortedBlocks[0] ??
       null,
     [sortedBlocks, summaryBlockKey],
@@ -394,8 +468,8 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
     if (step !== 'summary' || sortedBlocks.length === 0) {
       return;
     }
-    setSummaryBlockKey((prev) => {
-      if (prev && sortedBlocks.some((b) => (b.document_block_id ?? b.template_block_id) === prev)) {
+    setSummaryBlockKey((prev: string | null) => {
+      if (prev && sortedBlocks.some((b: DocumentDisplayBlock) => (b.document_block_id ?? b.template_block_id) === prev)) {
         return prev;
       }
       const first = sortedBlocks[0];
@@ -427,7 +501,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
 
         const docIds = templateResp.data.document_reviewers ?? [];
         const tplRows = templateResp.data.reviewers ?? [];
-        const tplUserIds = tplRows.map((r) => r.user_id);
+        const tplUserIds = tplRows.map((r: any) => r.user_id);
         setDocumentReviewerPoolIds(docIds);
         setTemplateReviewerPoolIds(tplUserIds);
 
@@ -445,8 +519,8 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
           return;
         }
 
-        const byId = new Map(usersResp.data.map((u) => [u.id, u.name] as const));
-        const initial = displayIds.map((id) => ({
+        const byId = new Map(usersResp.data.map((u: any) => [u.id, u.name] as const));
+        const initial = displayIds.map((id: string) => ({
           id,
           name: byId.get(id) ?? '',
           resolved: byId.has(id),
@@ -474,8 +548,9 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
             };
           }),
         );
-        const lookedUpById = new Map(lookedUp.map((r) => [r.id, r] as const));
-        setDocumentReviewers(initial.map((r) => lookedUpById.get(r.id) ?? r));
+        const lookedUpById = new Map(lookedUp.map((r: ReviewerView) => [r.id, r] as const));
+        const finalReviewers = initial.map((r: ReviewerView) => lookedUpById.get(r.id) ?? r);
+        setDocumentReviewers(finalReviewers);
       } catch (e) {
         if (!cancelled) {
           setSummaryError(e instanceof Error ? e.message : 'No se pudieron cargar los validadores de documento.');
@@ -493,28 +568,29 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   }, [step, detail]);
 
   useEffect(() => {
-    if (!detail?.template_id) {
-      setTemplateName(null);
+    const tId = detail?.template_id || templateId;
+    if (!tId) {
+      setTemplate(null);
       return;
     }
     let cancelled = false;
-    const loadTemplateName = async () => {
+    const loadTemplate = async () => {
       try {
-        const templateResp = await fetchTemplate(detail.template_id);
+        const templateResp = await fetchTemplate(tId);
         if (!cancelled) {
-          setTemplateName(templateResp.data.name || null);
+          setTemplate(templateResp.data);
         }
       } catch {
         if (!cancelled) {
-          setTemplateName(null);
+          setTemplate(null);
         }
       }
     };
-    void loadTemplateName();
+    void loadTemplate();
     return () => {
       cancelled = true;
     };
-  }, [detail?.template_id]);
+  }, [detail?.template_id, templateId]);
 
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
   const canClearOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
@@ -524,7 +600,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   }, [activeBlockKey]);
 
   const persistBlockContent = useCallback(
-    async (block: DocumentDisplayBlock, content: unknown) => {
+    async (block: DocumentDisplayBlock, content: any) => {
       if (!isDraft || blockToUiState(block) === 'locked') return;
       const blockId = block.document_block_id;
       if (!blockId) {
@@ -552,25 +628,62 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
 
   const handleContinue = async () => {
     setFormError(null);
+    setErrors({});
     if (step === 'properties') {
-      if (!title.trim()) {
-        setFormError('El título es obligatorio.');
+      const newErrors: Record<string, string> = {};
+      if (!studyTypeId) newErrors.studyTypeId = 'Selecciona un tipo de estudio.';
+      if (!studyId) newErrors.studyId = 'Selecciona un estudio.';
+      if (!moduleId) newErrors.moduleId = 'Selecciona un módulo.';
+      if (!title.trim()) newErrors.title = 'El título es obligatorio.';
+      if (!deliveryDeadline) {
+        newErrors.deliveryDeadline = 'La fecha de entrega es obligatoria.';
+      } else {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const selected = new Date(deliveryDeadline);
+        if (selected < today) {
+          newErrors.deliveryDeadline = 'La fecha no puede ser anterior a hoy.';
+        }
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
         return;
       }
-      if (!isDraft) {
-        setCompletedSteps((prev) => Array.from(new Set([...prev, 'properties'] as Step[])));
-        setStep('blocks');
-        return;
-      }
+
       setSaving(true);
       try {
-        const updated = await updateDocument(documentId, {
-          title: title.trim(),
-          delivery_deadline: deliveryDeadline ? deliveryDeadline : null,
-        });
-        setDetail((prev) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
-        setCompletedSteps((prev) => Array.from(new Set([...prev, 'properties'] as Step[])));
-        setStep('blocks');
+        if (!documentId) {
+          // Creation Mode: Create everything in one call
+          if (!templateId) throw new Error('No se puede crear un documento sin plantilla.');
+          
+          const created = await createDocument({
+            template_id: templateId,
+            title: title.trim(),
+            study_type_id: studyTypeId,
+            study_id: studyId,
+            module_id: moduleId,
+            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+          });
+
+          // Navigate to the editor route with the new ID
+          navigate(`/documents/${created.id}/editor`, { replace: true });
+          setStep('blocks');
+          setCompletedSteps((prev: Step[]) => (prev.includes('properties') ? prev : [...prev, 'properties']));
+        } else {
+          // Edit Mode: Update existing document
+          const updated = await updateDocument(documentId, {
+            title: title.trim(),
+            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+            study_type_id: studyTypeId,
+            study_id: studyId,
+            module_id: moduleId,
+          });
+
+          setDetail((prev: DocumentDetail | null) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
+          setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'] as Step[])));
+          setStep('blocks');
+        }
       } catch (e) {
         setFormError(e instanceof Error ? e.message : 'No se pudieron guardar los datos del documento.');
       } finally {
@@ -579,12 +692,12 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
       return;
     }
     if (step === 'blocks') {
-      setCompletedSteps((prev) => Array.from(new Set([...prev, 'blocks'] as Step[])));
+      setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
       setStep('summary');
       return;
     }
     if (step === 'summary') {
-      navigate('/documents');
+      navigate('/procesos', { state: { tab: 'documents' } });
     }
   };
 
@@ -597,7 +710,9 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
     try {
       const updated = await submitDocumentForReview(detail.id);
       setDetail((prev) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
-      navigate('/documents', { state: { documentSubmittedForReview: true } });
+      navigate('/procesos', {
+        state: { tab: 'documents', documentSubmittedForReview: true },
+      });
     } catch (e) {
       setSummaryError(e instanceof Error ? e.message : 'No se pudo enviar el documento a validar.');
     } finally {
@@ -608,7 +723,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
   const handleConfirmSummaryAction = async () => {
     if (summaryConfirmAction === 'save') {
       setSummaryConfirmAction(null);
-      navigate('/documents');
+      navigate('/procesos', { state: { tab: 'documents' } });
       return;
     }
     if (summaryConfirmAction === 'submit') {
@@ -734,17 +849,31 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
     );
   };
 
-  if (loading && !detail) {
+  if (loading && !detail && !templateId) {
     return (
       <div className="p-6 text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</div>
     );
   }
 
-  if (loadError || !detail) {
+  if (loadingTemplate) {
+    return (
+      <div className="p-6 text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</div>
+    );
+  }
+
+  if ((loadError || !detail) && !templateId) {
     return (
       <div className="p-6 space-y-3">
         <p className="text-sm text-warning-dark dark:text-warning-light">{loadError ?? 'Documento no encontrado.'}</p>
-        <Button type="button" variant="secondary" onClick={() => navigate(isValidateMode ? '/dashboard' : '/documents')}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={() =>
+            navigate(isValidateMode ? '/dashboard' : '/procesos', {
+              state: isValidateMode ? {} : { tab: 'documents' },
+            })
+          }
+        >
           {isValidateMode ? 'Volver al panel' : 'Volver al listado'}
         </Button>
       </div>
@@ -785,80 +914,89 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
 
   return (
     <div className="flex flex-col h-[calc(100dvh-7rem)] overflow-hidden bg-ui-body dark:bg-ui-dark-bg">
-      <div className="shrink-0 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <PageTitle
-          title={isValidateMode ? 'Validación de documento' : detail.title || 'Editor de documento'}
-          subtitle={isValidateMode ? undefined : 'Programaciones'}
-          onBack={() => navigate(-1)}
-          backLabel={isValidateMode ? 'Volver al panel principal' : 'Volver a la previsualización'}
-          className="!mb-0"
-          actions={
+      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
+        <div className="flex items-center gap-3 min-w-0">
+          <button
+            type="button"
+            onClick={() => {
+              if (isValidateMode) navigate('/dashboard');
+              else if (documentId) navigate(`/documents/${documentId}`);
+              else navigate('/nueva-programacion');
+            }}
+            className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95 shrink-0"
+            aria-label={isValidateMode ? 'Volver al panel principal' : 'Volver a la previsualización'}
+          >
+            ←
+          </button>
+          <span className="text-sm text-text-secondary truncate">
+            Programaciones /{' '}
+            <span className="font-bold text-text-primary dark:text-text-dark-primary">{detail?.title || 'Nueva programación'}</span>
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {isValidateMode && (
             <>
-              {isValidateMode && (
-                <>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={!actionableReviewId || validationReviewLoading}
-                    onClick={() => {
-                      setValidationModalError(null);
-                      setValidateConfirm('reject');
-                    }}
-                  >
-                    Rechazar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    disabled={!actionableReviewId || validationReviewLoading}
-                    onClick={() => {
-                      setValidationModalError(null);
-                      setValidateConfirm('approve');
-                    }}
-                  >
-                    Aprobar
-                  </Button>
-                </>
-              )}
-              {!isValidateMode && step === 'summary' && (
-                <>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => setSummaryConfirmAction('save')}
-                  >
-                    Guardar sin enviar
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    loading={submittingForReview}
-                    disabled={!isDraft || reviewerSubmitBlocked}
-                    onClick={() => setSummaryConfirmAction('submit')}
-                  >
-                    Enviar a validar
-                  </Button>
-                </>
-              )}
-              {!isValidateMode && step !== 'summary' && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  loading={saving}
-                  onClick={() => void handleContinue()}
-                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-                >
-                  Continuar
-                </Button>
-              )}
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={!actionableReviewId || validationReviewLoading}
+                onClick={() => {
+                  setValidationModalError(null);
+                  setValidateConfirm('reject');
+                }}
+              >
+                Rechazar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                disabled={!actionableReviewId || validationReviewLoading}
+                onClick={() => {
+                  setValidationModalError(null);
+                  setValidateConfirm('approve');
+                }}
+              >
+                Aprobar
+              </Button>
             </>
-          }
-        />
+          )}
+          {!isValidateMode && step === 'summary' && (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setSummaryConfirmAction('save')}
+              >
+                Guardar sin enviar
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                loading={submittingForReview}
+                disabled={!isDraft || reviewerSubmitBlocked}
+                onClick={() => setSummaryConfirmAction('submit')}
+              >
+                Enviar a validar
+              </Button>
+            </>
+          )}
+          {!isValidateMode && step !== 'summary' && (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              loading={saving}
+              onClick={() => void handleContinue()}
+              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+            >
+              Continuar
+            </Button>
+          )}
+        </div>
       </div>
 
       {!isDraft && !isValidateMode && (
@@ -870,73 +1008,151 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
       {renderStepper()}
 
       {!isValidateMode && step === 'properties' && (
-        <div className="flex-1 overflow-y-auto px-4 py-4 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
-          {formError && (
-            <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
-              {formError}
-            </div>
-          )}
+        <div className="flex-1 overflow-y-auto px-4 py-6 bg-ui-body/30 dark:bg-ui-dark-bg space-y-6">
+          <div className="max-w-xl mx-auto space-y-6">
+            {formError && (
+              <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
+                {formError}
+              </div>
+            )}
 
-          <div className="space-y-5 animate-in fade-in slide-in-from-top-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="doc-title-input"
-                  className="block text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1"
-                >
-                  Título <span className="text-danger-dark dark:text-danger">*</span>
-                </label>
-                <TextInput
-                  id="doc-title-input"
-                  type="text"
-                  fieldSize="comfortable"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  disabled={!isDraft}
-                  placeholder="Título de la programación"
-                />
+            <div className="bg-ui-card dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6 space-y-6 animate-in fade-in slide-in-from-top-1">
+              {template && (
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1">
+                    Plantilla base
+                  </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
+                      {template.name}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/nueva-programacion')}
+                      className="text-xs text-odoo-purple dark:text-odoo-dark-purple hover:underline cursor-pointer shrink-0"
+                    >
+                      Cambiar plantilla
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="border-t border-ui-border dark:border-ui-dark-border pt-5 space-y-4">
+                <p className="text-xs text-text-muted dark:text-text-dark-muted">
+                  Selecciona el contexto académico donde se archivará esta programación.
+                </p>
+
+                <div className="space-y-1">
+                  <FieldLabel required>Tipo de Estudio</FieldLabel>
+                  <Select
+                    fieldSize="comfortable"
+                    value={studyTypeId}
+                    disabled={hierarchyLoading || !isDraft}
+                    onChange={(e) => {
+                      setStudyTypeId(e.target.value);
+                      setStudyId('');
+                      setModuleId('');
+                      setErrors((prev: Record<string, string>) => ({ ...prev, studyTypeId: '', studyId: '', moduleId: '' }));
+                    }}
+                    error={!!errors.studyTypeId}
+                  >
+                    <option value="">
+                      {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
+                    </option>
+                    {hierarchy.map((t: any) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </Select>
+                  {errors.studyTypeId && (
+                    <p className="text-xs text-danger-dark dark:text-danger">{errors.studyTypeId}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <FieldLabel required>Estudio</FieldLabel>
+                  <Select
+                    fieldSize="comfortable"
+                    value={studyId}
+                    disabled={hierarchyLoading || !studyTypeId || !isDraft}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                      setStudyId(e.target.value);
+                      setModuleId('');
+                      setErrors((prev: Record<string, string>) => ({ ...prev, studyId: '', moduleId: '' }));
+                    }}
+                    error={!!errors.studyId}
+                  >
+                    <option value="">— Seleccionar —</option>
+                    {filteredStudies.map((s: any) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </Select>
+                  {errors.studyId && (
+                    <p className="text-xs text-danger-dark dark:text-danger">{errors.studyId}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <FieldLabel required>Módulo</FieldLabel>
+                  <Select
+                    fieldSize="comfortable"
+                    value={moduleId}
+                    disabled={hierarchyLoading || !studyId || !isDraft}
+                    onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                      setModuleId(e.target.value);
+                      setErrors((prev: Record<string, string>) => ({ ...prev, moduleId: '' }));
+                    }}
+                    error={!!errors.moduleId}
+                  >
+                    <option value="">— Seleccionar —</option>
+                    {filteredModules.map((m: any) => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </Select>
+                  {errors.moduleId && (
+                    <p className="text-xs text-danger-dark dark:text-danger">{errors.moduleId}</p>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <label
-                  htmlFor="doc-delivery-deadline-input"
-                  className="block text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1"
-                >
-                  Fecha de entrega
-                </label>
-                <TextInput
-                  id="doc-delivery-deadline-input"
-                  type="date"
-                  fieldSize="comfortable"
-                  value={deliveryDeadline}
-                  onChange={(e) => setDeliveryDeadline(e.target.value)}
-                  disabled={!isDraft}
-                />
-              </div>
-            </div>
+              <div className="border-t border-ui-border dark:border-ui-dark-border pt-5 space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <FieldLabel required htmlFor="doc-title-input">Nombre</FieldLabel>
+                    <TextInput
+                      id="doc-title-input"
+                      type="text"
+                      fieldSize="comfortable"
+                      value={title}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                        setTitle(e.target.value);
+                        setErrors((prev: Record<string, string>) => ({ ...prev, title: '' }));
+                      }}
+                      disabled={!isDraft}
+                      placeholder="Nombre de la programación"
+                      error={!!errors.title}
+                    />
+                    {errors.title && (
+                      <p className="text-xs text-danger-dark dark:text-danger">{errors.title}</p>
+                    )}
+                  </div>
 
-            <div className="pt-4 border-t border-ui-border dark:border-ui-dark-border">
-              <dl className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <DocSummaryRow label="Plantilla" value={templateName ?? detail.template_id} />
+                  <div className="space-y-1">
+                    <FieldLabel htmlFor="doc-delivery-deadline-input" required>Fecha límite</FieldLabel>
+                    <TextInput
+                      id="doc-delivery-deadline-input"
+                      type="date"
+                      fieldSize="comfortable"
+                      value={deliveryDeadline}
+                      onChange={(e) => setDeliveryDeadline(e.target.value)}
+                      disabled={!isDraft}
+                      error={!!errors.deliveryDeadline}
+                    />
+                    {errors.deliveryDeadline && (
+                      <p className="text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <DocSummaryRow
-                    label="Versión de plantilla"
-                    value={
-                      detail.template_version_number != null
-                        ? String(detail.template_version_number)
-                        : '—'
-                    }
-                  />
-                </div>
-                <div>
-                  <DocSummaryRow
-                    label="Estado"
-                    value={DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status}
-                  />
-                </div>
-              </dl>
+              </div>
             </div>
           </div>
         </div>
@@ -1085,12 +1301,12 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
             <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
               <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Propiedades</p>
               <dl className="space-y-0">
-                <DocSummaryRow label="Título" value={detail.title} />
+                <DocSummaryRow label="Título" value={detail?.title} />
                 <DocSummaryRow
                   label="Estado"
-                  value={DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status}
+                  value={detail ? (DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status) : ''}
                 />
-                <DocSummaryRow label="Versión" value={`v${detail.current_version}`} />
+                <DocSummaryRow label="Versión" value={detail ? `v${detail.current_version}` : ''} />
               </dl>
             </div>
             <div className="px-5 py-4">
@@ -1101,7 +1317,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                       Tipo de estudio
                     </dt>
                     <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
-                      {detail.study_type_id ?? '—'}
+                      {detail?.study_type_id ?? '—'}
                     </dd>
                   </div>
                   <div>
@@ -1109,7 +1325,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                       Estudio
                     </dt>
                     <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
-                      {detail.study_id ?? '—'}
+                      {detail?.study_id ?? '—'}
                     </dd>
                   </div>
                   <div>
@@ -1117,7 +1333,7 @@ export function DocumentWizard({ documentId, mode = 'edit' }: Props) {
                       Módulo
                     </dt>
                     <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
-                      {detail.module_id ?? '—'}
+                      {detail?.module_id ?? '—'}
                     </dd>
                   </div>
                 </div>

@@ -185,8 +185,10 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function listOrderedByCreatedAtDesc(): Collection
     {
         return Document::query()
+            ->select(['documents.*', 'owner_user.name as owner_name'])
+            ->leftJoin('users as owner_user', 'owner_user.id', '=', 'documents.owner_id')
             ->with(['template', 'templateVersion'])
-            ->orderByDesc('created_at')
+            ->orderByDesc('documents.created_at')
             ->get();
     }
 
