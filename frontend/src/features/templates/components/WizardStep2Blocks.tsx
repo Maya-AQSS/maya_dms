@@ -454,17 +454,27 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             </div>
 
             <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
-              {((['properties', 'content', 'description'] as TabId[]).concat(showCommentsTab ? ['comments' as TabId] : [])).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors ${
-                    activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Descripción' : 'Comentarios'}
-                </button>
-              ))}
+              {((['properties', 'content', 'description'] as TabId[]).concat(showCommentsTab ? ['comments' as TabId] : [])).map(tab => {
+                const pendingCount = tab === 'comments'
+                  ? reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved).length
+                  : 0;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
+                      activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
+                    }`}
+                  >
+                    {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Descripción' : 'Comentarios'}
+                    {tab === 'comments' && pendingCount > 0 && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-danger text-text-inverse text-[9px] font-black leading-none">
+                        {pendingCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
@@ -508,26 +518,62 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   </Suspense>
                 </div>
               )}
-              {activeTab === 'comments' && showCommentsTab && (
-                <div className="space-y-4">
-                  {reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved).map(c => (
-                    <div key={c.id} className="p-4 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card shadow-sm space-y-1.5">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">{c.author?.name || 'Validador'}</p>
-                        {c.created_at && (
-                          <time className="text-[10px] text-text-muted shrink-0" dateTime={c.created_at}>
-                            {new Date(c.created_at).toLocaleDateString()}
-                          </time>
-                        )}
-                      </div>
-                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-relaxed">{c.body}</p>
-                      {onResolveComment && (
-                        <Button variant="outline" size="xs" className="mt-1 text-success border-success/30" onClick={() => void onResolveComment(c.id)}>✓ Corregido</Button>
+              {activeTab === 'comments' && showCommentsTab && (() => {
+                const blockComments = reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved);
+                return (
+                  <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                    {/* Header del panel de comentarios */}
+                    <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-2 bg-danger/5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-danger-dark dark:text-danger">
+                        ⚠ Comentarios de revisión pendientes
+                      </span>
+                      <span className="ml-auto text-[10px] font-bold text-text-muted">
+                        {blockComments.length} {blockComments.length === 1 ? 'comentario' : 'comentarios'}
+                      </span>
+                    </div>
+
+                    {/* Lista de comentarios */}
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+                      {blockComments.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
+                          <p className="text-sm font-medium text-text-muted">No hay comentarios pendientes en este bloque.</p>
+                        </div>
+                      ) : (
+                        blockComments.map((c) => (
+                          <div key={c.id} className="group relative pl-5 animate-in fade-in">
+                            <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-danger/30 group-hover:bg-danger/60 transition-colors rounded-full" />
+                            <div className="flex items-center justify-between mb-2 gap-2">
+                              <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
+                                {c.author?.name || 'Validador'}
+                              </span>
+                              {c.created_at && (
+                                <time className="text-[10px] text-text-muted font-bold uppercase tracking-wider shrink-0" dateTime={c.created_at}>
+                                  {new Date(c.created_at).toLocaleDateString()}
+                                </time>
+                              )}
+                            </div>
+                            <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/40 dark:bg-ui-dark-bg/40 px-4 py-3 rounded-lg border border-ui-border/60 dark:border-ui-dark-border/60 whitespace-pre-wrap">
+                              {c.body}
+                            </div>
+                            {onResolveComment && (
+                              <div className="mt-2.5">
+                                <Button
+                                  variant="outline"
+                                  size="xs"
+                                  className="text-success border-success/30 hover:bg-success/5 hover:border-success/60"
+                                  onClick={() => void onResolveComment(c.id)}
+                                >
+                                  ✓ Marcar como corregido
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        ))
                       )}
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
