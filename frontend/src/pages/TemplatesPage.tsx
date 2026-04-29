@@ -1,5 +1,5 @@
-import { TemplatesContent } from '../features/templates';
+import { TemplatesContent } from'../features/templates';
 
 export function TemplatesPage() {
-  return <TemplatesContent />;
+ return <TemplatesContent />;
 }

@@ -1,24 +1,24 @@
-import type { Document, DocumentDetail } from '../types/documents';
-import { apiFetchJson, apiGetJson } from './http';
+import type { Document, DocumentDetail } from'../types/documents';
+import { apiFetchJson, apiGetJson } from'./http';
 
 type DocumentsApiResponse = { data: Document[] };
 type DocumentDetailApiResponse = { data: DocumentDetail };
-type CreationMode = 'none' | 'auto' | 'select';
+type CreationMode ='none' |'auto' |'select';
 
 export type DocumentCreationOption = {
-  template_id: string;
-  template_version_id: string;
-  name: string;
-  description: string | null;
+ template_id: string;
+ template_version_id: string;
+ name: string;
+ description: string | null;
 };
 
 export type DocumentCreationOptionsResponse = {
-  data: {
-    can_create: boolean;
-    mode: CreationMode;
-    message: string | null;
-    options: DocumentCreationOption[];
-  };
+ data: {
+ can_create: boolean;
+ mode: CreationMode;
+ message: string | null;
+ options: DocumentCreationOption[];
+ };
 };
 
 type CreateFromModuleResponse = { data: Document };
@@ -29,8 +29,8 @@ type CreateFromModuleResponse = { data: Document };
  * @returns Lista de documentos del usuario autenticado.
  */
 export async function fetchDocuments(): Promise<Document[]> {
-  const body = await apiGetJson<DocumentsApiResponse>('documents');
-  return body.data;
+ const body = await apiGetJson<DocumentsApiResponse>('documents');
+ return body.data;
 }
 
 /**
@@ -40,8 +40,8 @@ export async function fetchDocuments(): Promise<Document[]> {
  * @returns Detalle del documento con bloques para previsualización / editor.
  */
 export async function fetchDocument(documentId: string): Promise<DocumentDetail> {
-  const body = await apiGetJson<DocumentDetailApiResponse>(`documents/${encodeURIComponent(documentId)}`);
-  return body.data;
+ const body = await apiGetJson<DocumentDetailApiResponse>(`documents/${encodeURIComponent(documentId)}`);
+ return body.data;
 }
 
 /**
@@ -50,13 +50,11 @@ export async function fetchDocument(documentId: string): Promise<DocumentDetail>
  * @param moduleId - ID del módulo.
  * @returns Opciones de creación de documentos para el módulo.
  */
-export async function fetchDocumentCreationOptions(
-  moduleId: string,
+export async function fetchDocumentCreationOptions(moduleId: string,
 ): Promise<DocumentCreationOptionsResponse['data']> {
-  const body = await apiGetJson<DocumentCreationOptionsResponse>(
-    `documents/creation-options?module_id=${encodeURIComponent(moduleId)}`,
-  );
-  return body.data;
+ const body = await apiGetJson<DocumentCreationOptionsResponse>(`documents/creation-options?module_id=${encodeURIComponent(moduleId)}`,
+ );
+ return body.data;
 }
 
 /**
@@ -66,91 +64,84 @@ export async function fetchDocumentCreationOptions(
  * @returns Documento creado.
  */
 export async function createDocumentFromModule(payload: {
-  module_id: string;
-  template_version_id?: string;
+ module_id: string;
+ template_version_id?: string;
 }): Promise<Document> {
-  const body = await apiFetchJson<CreateFromModuleResponse>('documents/create-from-module', {
-    method: 'POST',
-    body: payload,
-  });
-  return body.data;
+ const body = await apiFetchJson<CreateFromModuleResponse>('documents/create-from-module', {
+ method:'POST',
+ body: payload,
+ });
+ return body.data;
 }
 
 type DocumentMutationApiResponse = { data: Document };
 type DocumentSubmitApiResponse = { data: Document };
 
-/** Fila de `document_reviews` (GET documents/{id}/reviews). */
+/** Fila de`document_reviews` (GET documents/{id}/reviews). */
 export type DocumentReview = {
-  id: string;
-  document_id: string;
-  reviewer_id: string;
-  stage: number;
-  status: string;
-  rejection_reason?: string | null;
-  reviewed_at?: string | null;
+ id: string;
+ document_id: string;
+ reviewer_id: string;
+ stage: number;
+ status: string;
+ rejection_reason?: string | null;
+ reviewed_at?: string | null;
 };
 
 type DocumentReviewsApiResponse = { data: DocumentReview[] };
 
 /**
- * PATCH /api/v1/documents/{id} — hoy el backend valida al menos `title`.
+ * PATCH /api/v1/documents/{id} — hoy el backend valida al menos`title`.
  * 
  * @param documentId - ID del documento.
  * @param payload - Datos para actualizar el documento.
  * @returns Documento actualizado.
  */
 export async function updateDocument(documentId: string, payload: {
-  title: string;
-  delivery_deadline?: string | null;
+ title: string;
+ delivery_deadline?: string | null;
 }): Promise<Document> {
-  const body = await apiFetchJson<DocumentMutationApiResponse>(
-    `documents/${encodeURIComponent(documentId)}`,
-    { method: 'PATCH', body: payload },
-  );
-  return body.data;
+ const body = await apiFetchJson<DocumentMutationApiResponse>(`documents/${encodeURIComponent(documentId)}`,
+ { method:'PATCH', body: payload },
+ );
+ return body.data;
 }
 
 /** POST /api/v1/documents/{id}/submit */
 export async function submitDocumentForReview(documentId: string): Promise<Document> {
-  const body = await apiFetchJson<DocumentSubmitApiResponse>(
-    `documents/${encodeURIComponent(documentId)}/submit`,
-    { method: 'POST', body: {} },
-  );
-  return body.data;
+ const body = await apiFetchJson<DocumentSubmitApiResponse>(`documents/${encodeURIComponent(documentId)}/submit`,
+ { method:'POST', body: {} },
+ );
+ return body.data;
 }
 
 /** GET /api/v1/documents/{id}/reviews */
 export async function fetchDocumentReviews(documentId: string): Promise<DocumentReview[]> {
-  const body = await apiGetJson<DocumentReviewsApiResponse>(
-    `documents/${encodeURIComponent(documentId)}/reviews`,
-  );
-  return body.data;
+ const body = await apiGetJson<DocumentReviewsApiResponse>(`documents/${encodeURIComponent(documentId)}/reviews`,
+ );
+ return body.data;
 }
 
 /** POST /api/v1/documents/{id}/reviews/{review}/approve */
-export async function approveDocumentReview(
-  documentId: string,
-  reviewId: string,
-  changelog?: string | null,
+export async function approveDocumentReview(documentId: string,
+ reviewId: string,
+ changelog?: string | null,
 ): Promise<Document> {
-  const body = await apiFetchJson<DocumentMutationApiResponse>(
-    `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/approve`,
-    { method: 'POST', body: { changelog: changelog ?? null } },
-  );
-  return body.data;
+ const body = await apiFetchJson<DocumentMutationApiResponse>(`documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/approve`,
+ { method:'POST', body: { changelog: changelog ?? null } },
+ );
+ return body.data;
 }
 
-/** POST /api/v1/documents/{id}/reviews/{review}/reject — `rejection_reason` obligatorio (mín. 5 caracteres). */
-export async function rejectDocumentReview(
-  documentId: string,
-  reviewId: string,
-  rejectionReason: string,
+/** POST /api/v1/documents/{id}/reviews/{review}/reject —`rejection_reason` obligatorio (mín. 5 caracteres). */
+export async function rejectDocumentReview(documentId: string,
+ reviewId: string,
+ rejectionReason: string,
 ): Promise<Document> {
-  const body = await apiFetchJson<DocumentMutationApiResponse>(
-    `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/reject`,
-    { method: 'POST', body: { rejection_reason: rejectionReason } },
-  );
-  return body.data;
+ const body = await apiFetchJson<DocumentMutationApiResponse>(`documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/reject`,
+ { method:'POST', body: { rejection_reason: rejectionReason } },
+ );
+ return body.data;
 }
 
 type DocumentBlockUpdateApiResponse = { data: Record<string, unknown> };
@@ -163,14 +154,12 @@ type DocumentBlockUpdateApiResponse = { data: Record<string, unknown> };
  * @param content - Contenido del bloque.
  * @returns Contenido del bloque actualizado.
  */
-export async function updateDocumentBlock(
-  documentId: string,
-  documentBlockId: string,
-  content: unknown,
+export async function updateDocumentBlock(documentId: string,
+ documentBlockId: string,
+ content: unknown,
 ): Promise<Record<string, unknown>> {
-  const body = await apiFetchJson<DocumentBlockUpdateApiResponse>(
-    `documents/${encodeURIComponent(documentId)}/blocks/${encodeURIComponent(documentBlockId)}`,
-    { method: 'PUT', body: { content } },
-  );
-  return body.data;
+ const body = await apiFetchJson<DocumentBlockUpdateApiResponse>(`documents/${encodeURIComponent(documentId)}/blocks/${encodeURIComponent(documentBlockId)}`,
+ { method:'PUT', body: { content } },
+ );
+ return body.data;
 }

@@ -1,5 +1,5 @@
-import { TemplateWizard } from '../features/templates/components/TemplateWizard';
+import { TemplateWizard } from'../features/templates/components/TemplateWizard';
 
 export function TemplateNewPage() {
-  return <TemplateWizard initialTemplate={null} />;
+ return <TemplateWizard initialTemplate={null} />;
 }

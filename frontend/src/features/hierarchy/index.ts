@@ -1,1 +1,1 @@
-export { HierarchyProvider, useHierarchy } from './context/HierarchyContext';
+export { HierarchyProvider, useHierarchy } from'./context/HierarchyContext';

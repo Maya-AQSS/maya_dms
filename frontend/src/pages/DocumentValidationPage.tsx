@@ -1,23 +1,22 @@
-import { Link, useParams } from 'react-router-dom';
-import { DocumentWizard } from '../features/documents/components/DocumentWizard';
-import { Button } from '../ui';
+import { Link, useParams } from'react-router-dom';
+import { DocumentWizard } from'../features/documents/components/DocumentWizard';
+import { Button } from'../ui';
 
 /**
  * Validación de programación: misma vista de resumen que el editor, con acciones Aprobar / Rechazar.
  */
 export function DocumentValidationPage() {
-  const { documentId } = useParams<{ documentId: string }>();
+ const { documentId } = useParams<{ documentId: string }>();
 
-  if (!documentId) {
-    return (
-      <div className="p-6">
-        <p className="text-sm text-warning-dark dark:text-warning-light mb-4">Identificador de documento no válido.</p>
-        <Link to="/documents">
-          <Button variant="secondary">Volver al listado</Button>
-        </Link>
-      </div>
-    );
-  }
+ if (!documentId) {
+ return (<div className="p-6">
+ <p className="text-sm text-warning-dark dark:text-warning-light mb-4">Identificador de documento no válido.</p>
+ <Link to="/documents">
+ <Button variant="secondary">Volver al listado</Button>
+ </Link>
+ </div>
+ );
+ }
 
-  return <DocumentWizard documentId={documentId} mode="validate" />;
+ return <DocumentWizard documentId={documentId} mode="validate" />;
 }

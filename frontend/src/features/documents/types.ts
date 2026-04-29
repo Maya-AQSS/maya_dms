@@ -1,5 +1,5 @@
 export type CascadeDocumentFilters = {
-  studyTypeId: string;
-  studyId: string;
-  moduleId: string;
+ studyTypeId: string;
+ studyId: string;
+ moduleId: string;
 };

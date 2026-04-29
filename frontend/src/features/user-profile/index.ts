@@ -1,6 +1,6 @@
 export {
-  UserProfileProvider,
-  useUserProfile,
-  profileDisplayInitials,
-  type UserProfileContextValue,
-} from './context/UserProfileContext';
+ UserProfileProvider,
+ useUserProfile,
+ profileDisplayInitials,
+ type UserProfileContextValue,
+} from'./context/UserProfileContext';
