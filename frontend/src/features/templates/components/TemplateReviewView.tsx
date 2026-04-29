@@ -15,7 +15,7 @@ type Props = {
 
 type TemplateComment = {
   id: string;
-  template_block_id: string | null;
+  blockable_id: string | null;
   author_id: string;
   author?: { id: string; name: string };
   body: string;
@@ -101,8 +101,7 @@ export function TemplateReviewView({ template }: Props) {
         method: 'POST',
         body: {
           body: newCommentBody,
-          template_block_id: selectedBlockId,
-          type: 'review'
+          blockable_id: selectedBlockId,
         }
       });
       setComments([...comments, res.data]);
@@ -150,7 +149,7 @@ export function TemplateReviewView({ template }: Props) {
   };
 
   const selectedBlock = blocks.find(b => b.id === selectedBlockId);
-  const blockComments = comments.filter(c => c.template_block_id === selectedBlockId);
+  const blockComments = comments.filter(c => c.blockable_id === selectedBlockId);
 
   return (
     <div className="flex flex-col h-full bg-[#ddd9d3] dark:bg-ui-dark-bg/50">
@@ -261,7 +260,7 @@ export function TemplateReviewView({ template }: Props) {
                 {blocks.map((block) => {
                   const isSelected = selectedBlockId === block.id;
                   const content = block.default_content;
-                  const hasComments = comments.some(c => c.template_block_id === block.id);
+                  const hasComments = comments.some(c => c.blockable_id === block.id);
 
                   let parsed: unknown[] | null = null;
                   if (Array.isArray(content)) {
@@ -347,7 +346,7 @@ export function TemplateReviewView({ template }: Props) {
                             <span>Mensajes</span>
                             {hasComments && (
                               <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[9px] leading-none">
-                                {comments.filter(c => c.template_block_id === block.id).length}
+                                {comments.filter(c => c.blockable_id === block.id).length}
                               </span>
                             )}
                           </button>
