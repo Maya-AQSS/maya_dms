@@ -19,6 +19,9 @@ class UpdateDocumentRequest extends FormRequest
         return [
             'title' => ['required', 'string', 'max:255'],
             'delivery_deadline' => ['nullable', 'date'],
+            'study_type_id' => ['nullable', 'string'],
+            'study_id' => ['nullable', 'string'],
+            'module_id' => ['nullable', 'string'],
         ];
     }
 }
