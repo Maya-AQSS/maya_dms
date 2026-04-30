@@ -117,12 +117,17 @@ const COLUMNS: ColumnDef<Document>[] = [
   },
 ];
 
-export function DocumentsTable() {
+type Props = {
+  /** Filtra el listado por proceso. No se expone en el panel de filtros. */
+  processId?: string;
+};
+
+export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
   });
-  const { documents, loading, error } = useDocuments();
+  const { documents, loading, error } = useDocuments(processId);
 
   const [filters, setFilters] = useState<Filters>({
     name: '',

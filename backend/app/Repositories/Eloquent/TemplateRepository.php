@@ -101,6 +101,9 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filters->deliveryDeadline !== null) {
             $query->whereDate('templates.delivery_deadline', $filters->deliveryDeadline);
         }
+        if ($filters->processId !== null) {
+            $query->where('templates.process_id', $filters->processId);
+        }
 
         return $query
             ->with('reviewers')

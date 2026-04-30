@@ -83,7 +83,7 @@ interface DocumentRepositoryInterface
      *
      * @return Collection<int, Document>
      */
-    public function listOrderedByCreatedAtDesc(): Collection;
+    public function listOrderedByCreatedAtDesc(?string $processId = null): Collection;
 
     /**
      * Bandeja de validación de documentos pendiente para un revisor (documento en revisión y fila

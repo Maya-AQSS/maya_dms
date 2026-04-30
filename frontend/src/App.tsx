@@ -7,7 +7,7 @@ import { AppLayout } from '@maya/shared-layout-react';
 import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
 import { SkeletonPage } from '@maya/shared-ui-react';
 import { useOidcSession } from '@maya/shared-auth-react';
-import { useNavItems } from './components/layout';
+import { useNavItems, SidebarProcesos } from './components/layout';
 import { HierarchyProvider } from './features/hierarchy';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 
@@ -59,6 +59,7 @@ function AppRoutes() {
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/procesos" element={<ProcesosPage />} />
+        <Route path="/procesos/:processId" element={<ProcesosPage />} />
         <Route path="/nueva-programacion" element={<NuevaProgramacionSelectorPage />} />
         <Route path="/nueva-programacion/:templateId/wizard" element={<DocumentEditorPage />} />
         <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
@@ -112,7 +113,12 @@ function AppWithLayout() {
       userInitials={userInitials}
       onLogout={logout}
       onProfile={onProfile}
-      favoritesSlot={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
+      favoritesSlot={
+        <>
+          <SidebarProcesos />
+          <SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />
+        </>
+      }
       notificationsSlot={<NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />}
     >
       <AppRoutes />

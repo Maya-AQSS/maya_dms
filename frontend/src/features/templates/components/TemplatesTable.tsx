@@ -74,7 +74,12 @@ const COLUMNS: ColumnDef<Template>[] = [
   },
 ];
 
-export function TemplatesTable() {
+type Props = {
+  /** Filtra el listado por proceso. No se expone en el panel de filtros. */
+  processId?: string;
+};
+
+export function TemplatesTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:templates-table',
@@ -89,7 +94,7 @@ export function TemplatesTable() {
     clearActionError,
     applyFilters,
     goToPage,
-  } = useTemplates();
+  } = useTemplates(processId);
 
   const [nameInput, setNameInput] = useState('');
   const [nameFilter, setNameFilter] = useState('');

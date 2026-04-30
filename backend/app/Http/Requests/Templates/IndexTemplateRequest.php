@@ -37,6 +37,7 @@ class IndexTemplateRequest extends FormRequest
             'team_id'          => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
             'author_name'      => ['sometimes', 'nullable', 'string', 'max:255'],
             'delivery_deadline' => ['sometimes', 'nullable', 'date'],
+            'process_id'       => ['sometimes', 'nullable', 'uuid', 'exists:processes,id'],
             'per_page'         => ['sometimes', 'integer', 'min:1', 'max:20'],
         ];
     }
@@ -65,6 +66,7 @@ class IndexTemplateRequest extends FormRequest
             teamId: $v['team_id'] ?? null,
             authorName: $v['author_name'] ?? null,
             deliveryDeadline: $v['delivery_deadline'] ?? null,
+            processId: $v['process_id'] ?? null,
         );
     }
 }

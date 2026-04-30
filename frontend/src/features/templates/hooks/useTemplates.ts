@@ -34,8 +34,11 @@ const DEFAULT_PER_PAGE = 20;
 
 /**
  * Listado y mutaciones de plantillas normativas (filtros + paginación acotada a 20).
+ *
+ * @param processId Si se aporta, se aplica como filtro `process_id` permanente
+ *   (no se expone en el panel de filtros — viene del contexto de la URL).
  */
-export function useTemplates() {
+export function useTemplates(processId?: string) {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [meta, setMeta] = useState<TemplatesListMeta | null>(null);
   const [filters, setFilters] = useState<TemplateListFilters>({ per_page: DEFAULT_PER_PAGE });
@@ -51,6 +54,7 @@ export function useTemplates() {
       const res = await fetchTemplates({
         ...filters,
         per_page: filters.per_page ?? DEFAULT_PER_PAGE,
+        ...(processId ? { process_id: processId } : {}),
       });
       setTemplates(res.data);
       setMeta(res.meta);
@@ -61,7 +65,7 @@ export function useTemplates() {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, processId]);
 
   useEffect(() => {
     void load();

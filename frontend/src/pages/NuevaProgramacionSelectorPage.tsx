@@ -73,8 +73,9 @@ const COLUMNS: ColumnDef<Template>[] = [
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const locationState = location.state as { moduleId?: string } | null;
+  const locationState = location.state as { moduleId?: string; processId?: string } | null;
   const selectedModuleId = locationState?.moduleId;
+  const selectedProcessId = locationState?.processId;
 
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:nueva-programacion-selector',
@@ -97,7 +98,11 @@ export function NuevaProgramacionSelectorPage() {
       setLoading(true);
       setListError(null);
       try {
-        const res = await fetchTemplates({ ...filters, status: 'published' });
+        const res = await fetchTemplates({
+          ...filters,
+          status: 'published',
+          ...(selectedProcessId ? { process_id: selectedProcessId } : {}),
+        });
         if (!cancelled) {
           setTemplates(res.data);
           setMeta(res.meta);
@@ -114,7 +119,7 @@ export function NuevaProgramacionSelectorPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [filters]);
+  }, [filters, selectedProcessId]);
 
   useEffect(() => {
     if (filters.per_page !== pageSize) {

@@ -25,11 +25,15 @@ type CreateFromModuleResponse = { data: Document };
 
 /**
  * GET /api/v1/documents — listado de documentos del usuario autenticado.
- * 
+ *
+ * @param filters Filtros opcionales (e.g. process_id para acotar al proceso activo).
  * @returns Lista de documentos del usuario autenticado.
  */
-export async function fetchDocuments(): Promise<Document[]> {
-  const body = await apiGetJson<DocumentsApiResponse>('documents');
+export async function fetchDocuments(filters: { process_id?: string } = {}): Promise<Document[]> {
+  const params = new URLSearchParams();
+  if (filters.process_id) params.set('process_id', filters.process_id);
+  const qs = params.toString();
+  const body = await apiGetJson<DocumentsApiResponse>(qs ? `documents?${qs}` : 'documents');
   return body.data;
 }
 

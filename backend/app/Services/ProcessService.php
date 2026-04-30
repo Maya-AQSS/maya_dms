@@ -12,7 +12,7 @@ class ProcessService implements ProcessServiceInterface
     ) {}
 
     /**
-     * @return list<array{id: string, code: string, name: string, alias: string}>
+     * @return list<array{id: string, code: string, name: string, alias: string, description: string|null, parent_id: string|null}>
      */
     public function list(): array
     {

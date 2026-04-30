@@ -182,14 +182,19 @@ class DocumentRepository implements DocumentRepositoryInterface
     /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
      */
-    public function listOrderedByCreatedAtDesc(): Collection
+    public function listOrderedByCreatedAtDesc(?string $processId = null): Collection
     {
-        return Document::query()
+        $query = Document::query()
             ->select(['documents.*', 'owner_user.name as owner_name'])
             ->leftJoin('users as owner_user', 'owner_user.id', '=', 'documents.owner_id')
             ->with(['template', 'templateVersion'])
-            ->orderByDesc('documents.created_at')
-            ->get();
+            ->orderByDesc('documents.created_at');
+
+        if ($processId !== null) {
+            $query->where('documents.process_id', $processId);
+        }
+
+        return $query->get();
     }
 
     /**

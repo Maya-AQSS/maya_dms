@@ -345,9 +345,9 @@ class DocumentService implements DocumentServiceInterface
      * 
      * @return Collection<int, Document>
      */
-    public function listOrderedByCreatedAtDesc(): Collection
+    public function listOrderedByCreatedAtDesc(?string $processId = null): Collection
     {
-        return $this->documentRepository->listOrderedByCreatedAtDesc();
+        return $this->documentRepository->listOrderedByCreatedAtDesc($processId);
     }
 
     /**

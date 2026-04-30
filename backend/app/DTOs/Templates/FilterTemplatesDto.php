@@ -16,5 +16,6 @@ readonly class FilterTemplatesDto
         public ?string $teamId = null,
         public ?string $authorName = null,
         public ?string $deliveryDeadline = null,
+        public ?string $processId = null,
     ) {}
 }

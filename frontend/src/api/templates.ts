@@ -19,6 +19,7 @@ export type CreateTemplatePayload = {
   study_id?: string | null;
   module_id?: string | null;
   team_id?: string | null;
+  process_id: string;
   review_stages?: number;
   review_mode?: ReviewMode;
 };
@@ -67,6 +68,9 @@ function buildListQuery(filters: TemplateListFilters): string {
   }
   if (filters.delivery_deadline) {
     q.set('delivery_deadline', filters.delivery_deadline);
+  }
+  if (filters.process_id) {
+    q.set('process_id', filters.process_id);
   }
   const s = q.toString();
   return s ? `?${s}` : '';

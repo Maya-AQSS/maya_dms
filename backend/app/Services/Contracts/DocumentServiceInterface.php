@@ -115,7 +115,7 @@ interface DocumentServiceInterface
      *
      * @return Collection<int, Document>
      */
-    public function listOrderedByCreatedAtDesc(): Collection;
+    public function listOrderedByCreatedAtDesc(?string $processId = null): Collection;
 
     /**
      * Opciones de creación de documento disponibles para un módulo.

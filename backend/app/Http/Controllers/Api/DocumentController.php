@@ -32,7 +32,10 @@ class DocumentController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
-        $documents = $this->documentService->listOrderedByCreatedAtDesc();
+        $processId = $request->query('process_id');
+        $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
+
+        $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,

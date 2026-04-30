@@ -24,9 +24,11 @@ type Step = 'properties' | 'blocks' | 'users' | 'summary';
 type Props = {
   template?: Template | null;
   initialTemplate?: Template | null;
+  /** Proceso al que se asocia la plantilla cuando se crea desde el contexto de un proceso. */
+  processId?: string;
 };
 
-export function TemplateWizard({ template: templateProp, initialTemplate }: Props) {
+export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
   const navigate = useNavigate();
   const initial = templateProp || initialTemplate;
 
@@ -163,7 +165,17 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       if (isUpdate) {
         res = await apiUpdateTemplate(template.id, payload);
       } else {
-        res = await apiCreateTemplate({ ...payload, visibility_level: visibility });
+        const effectiveProcessId = processId ?? initial?.process_id ?? undefined;
+        if (!effectiveProcessId) {
+          throw new Error(
+            'Falta el proceso de la plantilla. Crea una plantilla desde un proceso del aside.',
+          );
+        }
+        res = await apiCreateTemplate({
+          ...payload,
+          visibility_level: visibility,
+          process_id: effectiveProcessId,
+        });
       }
       setTemplate(res.data);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);

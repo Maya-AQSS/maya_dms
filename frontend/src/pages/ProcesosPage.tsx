@@ -1,8 +1,10 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, ErrorBoundary, PageTitle } from '@maya/shared-ui-react';
 import { TemplatesTable } from '../features/templates/components/TemplatesTable';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
+import { fetchProcesses } from '../api/processes';
+import type { Process } from '../types/processes';
 
 type Tab = 'templates' | 'documents';
 
@@ -17,20 +19,56 @@ const TAB_CLASS = (active: boolean) =>
 export function ProcesosPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { processId } = useParams<{ processId?: string }>();
   const locationState = location.state as { tab?: Tab } | null;
   const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
+  const [process, setProcess] = useState<Process | null>(null);
+
+  // Resuelve el proceso activo (para mostrar nombre en el header).
+  useEffect(() => {
+    if (!processId) {
+      setProcess(null);
+      return;
+    }
+    let cancelled = false;
+    fetchProcesses()
+      .then((res) => {
+        if (cancelled) return;
+        const found = res.data.find((p) => p.id === processId) ?? null;
+        setProcess(found);
+      })
+      .catch(() => {
+        if (!cancelled) setProcess(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [processId]);
+
+  const navState = processId ? { processId } : undefined;
 
   return (
     <>
       <PageTitle
-        title="Procesos"
+        title={process?.name ?? 'Procesos'}
+        subtitle={process ? process.alias || process.code : undefined}
         actions={
           activeTab === 'templates' ? (
-            <Button type="button" variant="primary" size="sm" onClick={() => navigate('/templates/new')}>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/templates/new', { state: navState })}
+            >
               Nueva Plantilla
             </Button>
           ) : (
-            <Button type="button" variant="primary" size="sm" onClick={() => navigate('/nueva-programacion')}>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/nueva-programacion', { state: navState })}
+            >
               Nueva Programación
             </Button>
           )
@@ -47,8 +85,12 @@ export function ProcesosPage() {
         }
       />
 
-      <ErrorBoundary key={activeTab}>
-        {activeTab === 'templates' ? <TemplatesTable /> : <DocumentsTable />}
+      <ErrorBoundary key={`${activeTab}:${processId ?? 'all'}`}>
+        {activeTab === 'templates' ? (
+          <TemplatesTable processId={processId} />
+        ) : (
+          <DocumentsTable processId={processId} />
+        )}
       </ErrorBoundary>
     </>
   );

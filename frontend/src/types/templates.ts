@@ -63,6 +63,7 @@ export type TemplateListFilters = {
   team_id?: string;
   author_name?: string;
   delivery_deadline?: string;
+  process_id?: string;
   page?: number;
   per_page?: number;
 };
