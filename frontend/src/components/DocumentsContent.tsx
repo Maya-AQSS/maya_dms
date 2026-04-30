@@ -202,6 +202,7 @@ export function DocumentsContent() {
     try {
       const created = await createDocumentFromModule({
         module_id: selectedModuleId,
+        process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
         ...(templateVersionId ? { template_version_id: templateVersionId } : {}),
       });
       navigate(`/documents/${created.id}/editor`);
@@ -252,7 +253,7 @@ export function DocumentsContent() {
         id: 'title',
         header: 'Título',
         sortable: true,
-        cell: (d) => (
+        cell: (d: Document) => (
           <span className="font-medium text-text-primary dark:text-text-dark-primary truncate block">
             {d.title}
           </span>
@@ -263,7 +264,7 @@ export function DocumentsContent() {
         header: 'Versión',
         sortable: true,
         align: 'left',
-        cell: (d) => (
+        cell: (d: Document) => (
           <span className="text-xs text-text-muted dark:text-text-dark-muted">
             v{d.current_version}
           </span>
@@ -274,7 +275,7 @@ export function DocumentsContent() {
         header: 'Estado',
         sortable: true,
         align: 'left',
-        cell: (d) => (
+        cell: (d: Document) => (
           <span
             className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[d.status]}`}
           >
@@ -288,12 +289,12 @@ export function DocumentsContent() {
         align: 'right',
         alwaysVisible: true,
         visibilityLabel: 'Acciones',
-        cell: (d) => (
+        cell: (d: Document) => (
           <Button
             type="button"
             variant="ghost"
             size="xs"
-            onClick={(e) => {
+            onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
               navigate(`/documents/${d.id}`);
             }}

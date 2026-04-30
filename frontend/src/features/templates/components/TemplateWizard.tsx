@@ -165,7 +165,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       if (isUpdate) {
         res = await apiUpdateTemplate(template.id, payload);
       } else {
-        res = await apiCreateTemplate({ ...payload, visibility_level: visibility });
+        res = await apiCreateTemplate({
+          ...payload,
+          visibility_level: visibility,
+          process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
+        });
       }
       setTemplate(res.data);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
