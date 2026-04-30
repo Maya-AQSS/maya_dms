@@ -10,6 +10,7 @@ use App\Models\TemplateReviewer;
 use App\Models\TemplateVersion;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Database\Seeders\PermissionsSeeder;
@@ -22,6 +23,34 @@ use Tests\TestCase;
  */
 class DocumentReviewModeFlowTest extends TestCase
 {
+    private function anyStudyId(): string
+    {
+        $existing = DB::table('studies')->value('id');
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+
+        DB::table('study_types')->insertOrIgnore([
+            'id' => $studyTypeId,
+            'name' => 'Tipo test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('studies')->insertOrIgnore([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $studyId;
+    }
+
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
@@ -58,6 +87,7 @@ class DocumentReviewModeFlowTest extends TestCase
         $versionId = (string) Str::uuid();
         $documentId = (string) Str::uuid();
         $blockSnapId = (string) Str::uuid();
+        $studyId = $this->anyStudyId();
 
         Template::query()->forceCreate([
             'id' => $templateId,
@@ -106,7 +136,7 @@ class DocumentReviewModeFlowTest extends TestCase
             'template_id' => $templateId,
             'template_version_id' => $versionId,
             'title' => 'Doc flujo',
-            'study_id' => null,
+            'study_id' => $studyId,
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'draft',
@@ -122,6 +152,16 @@ class DocumentReviewModeFlowTest extends TestCase
             'permission' => 'read',
             'granted_by' => $ownerId,
         ]);
+
+        foreach ([$submitterId, $ownerId, $rev1, $rev2] as $uid) {
+            DB::table('user_studies')->insertOrIgnore([
+                'id' => (string) Str::uuid(),
+                'user_id' => $uid,
+                'study_id' => $studyId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return [
             'templateId' => $templateId,

@@ -30,6 +30,34 @@ class TemplatesApiTest extends TestCase
     use BuildsTestJwt;
     use RefreshDatabase;
 
+    private function anyStudyId(): string
+    {
+        $existing = \Illuminate\Support\Facades\DB::table('studies')->value('id');
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+
+        \Illuminate\Support\Facades\DB::table('study_types')->insertOrIgnore([
+            'id' => $studyTypeId,
+            'name' => 'Tipo test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('studies')->insertOrIgnore([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $studyId;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -629,11 +657,11 @@ class TemplatesApiTest extends TestCase
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
     }
 
-    public function test_teacher_sees_study_scoped_template_when_jwt_contains_study_id(): void
+    public function test_teacher_sees_study_scoped_template_when_user_has_study_in_bd(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $stud = 'study-xyz';
+        $stud = $this->anyStudyId();
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -653,18 +681,24 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        $headersB = $this->authHeaders($userB, ['teacher'], [
+        \Illuminate\Support\Facades\DB::table('user_studies')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'user_id' => $userB,
             'study_id' => $stud,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+
+        $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
     }
 
-    public function test_teacher_sees_study_scoped_template_when_jwt_study_matches(): void
+    public function test_teacher_sees_study_scoped_template_when_user_study_matches(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $stud = 'study-abc';
+        $stud = $this->anyStudyId();
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -684,9 +718,15 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        $headersB = $this->authHeaders($userB, ['teacher'], [
+        \Illuminate\Support\Facades\DB::table('user_studies')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'user_id' => $userB,
             'study_id' => $stud,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+
+        $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
     }

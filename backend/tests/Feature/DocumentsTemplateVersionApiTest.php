@@ -34,6 +34,34 @@ class DocumentsTemplateVersionApiTest extends TestCase
     use BuildsTestJwt;
     use RefreshDatabase;
 
+    private function anyStudyId(): string
+    {
+        $existing = DB::table('studies')->value('id');
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+
+        DB::table('study_types')->insertOrIgnore([
+            'id' => $studyTypeId,
+            'name' => 'Tipo test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('studies')->insertOrIgnore([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $studyId;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -786,6 +814,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $studyId = $this->anyStudyId();
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
 
         $tid = (string) Str::uuid();
@@ -827,9 +856,18 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
+        DB::table('user_studies')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'user_id' => $reviewerId,
+            'study_id' => $studyId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc snapshot',
+            'study_id' => $studyId,
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
