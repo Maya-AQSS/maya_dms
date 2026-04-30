@@ -22,6 +22,18 @@ class TemplateRepository implements TemplateRepositoryInterface
         return Template::query()->findOrFail($id);
     }
 
+    /**
+     * Localiza una plantilla por su ID con lock FOR UPDATE o lanza excepción.
+     */
+    public function findOrFailForUpdate(string $id): Template
+    {
+        return Template::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+    }
+
+    /**
+     * Igual que {@see self::findOrFail} pero sin el global scope de catálogo `user_access`.
+     * Solo para rutas que aplican {@see \App\Policies\TemplatePolicy::view} después.
+     */
     public function findOrFailWithoutCatalogScope(string $id): Template
     {
         return Template::query()
@@ -231,5 +243,10 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'review_stage' => (int) $row->stage,
             ];
         })->values();
+    }
+
+    public function transaction(callable $callback): mixed
+    {
+        return DB::transaction($callback);
     }
 }
