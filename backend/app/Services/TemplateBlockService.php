@@ -4,15 +4,12 @@ namespace App\Services;
 
 use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
-use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
 class TemplateBlockService implements TemplateBlockServiceInterface
@@ -91,8 +88,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             ]);
         }
 
-        $template = $this->templateRepository->findOrFail($templateId);
-        $this->assertUserMayUpdateTemplate($template);
+        $this->templateRepository->findOrFail($templateId);
 
         $currentBlocks = $this->blockRepository->allForTemplate($templateId);
         $currentIds = $currentBlocks->pluck('id')->map(static fn ($id): string => (string) $id)->all();
@@ -127,7 +123,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     public function create(string $templateId, array $attributes, string $userId): TemplateBlock
     {
         $template = $this->templateRepository->findOrFail($templateId);
-        $this->assertUserMayUpdateTemplate($template);
         $block = $this->blockRepository->create($template, $attributes);
 
         $this->auditLogService->record(
@@ -156,9 +151,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlock
     {
         $block = $this->blockRepository->findOrFail($blockId);
-        $this->assertUserMayUpdateTemplate(
-            $this->templateRepository->findOrFail($block->template_id),
-        );
 
         $attributes = [];
         if ($dto->set_title) {
@@ -220,9 +212,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     public function delete(string $blockId, string $userId): void
     {
         $block = $this->blockRepository->findOrFail($blockId);
-        $this->assertUserMayUpdateTemplate(
-            $this->templateRepository->findOrFail($block->template_id),
-        );
 
         $this->auditLogService->record(
             entityType:    'template',
@@ -252,12 +241,6 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         // Capture previous states before the bulk update to identify actual changes
         $before = $this->findBlocksByIdsOrFail($uniqueIds)->keyBy('id');
-
-        foreach ($before->pluck('template_id')->unique() as $templateId) {
-            $this->assertUserMayUpdateTemplate(
-                $this->templateRepository->findOrFail((string) $templateId),
-            );
-        }
 
         $attributes = [];
         if ($dto->set_block_state) {
@@ -290,16 +273,5 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         }
 
         return $updated;
-    }
-
-    /**
-     * Verifica si el usuario tiene permiso para actualizar una plantilla.
-     * 
-     * @param  Template  $template
-     * @return void
-     */
-    private function assertUserMayUpdateTemplate(Template $template): void
-    {
-        Gate::forUser(Auth::user())->authorize('update', $template);
     }
 }
