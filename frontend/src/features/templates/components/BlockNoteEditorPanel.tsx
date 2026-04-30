@@ -28,7 +28,19 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   } as any);
 
   return (
-    <div className="flex-1 flex flex-col overflow-y-auto min-h-0 bg-white dark:bg-ui-dark-card">
+    <div className="flex-1 flex flex-col overflow-y-auto min-h-0 bg-white dark:bg-ui-dark-card transition-colors">
+      <style>{`
+        .bn-container, .bn-editor {
+          background-color: transparent !important;
+        }
+        /* Ajuste de padding para que el contenido no pegue con los bordes laterales */
+        .bn-editor {
+          padding-inline: 42px !important;
+        }
+        .dark .bn-editor {
+          color: var(--color-text-dark-primary) !important;
+        }
+      `}</style>
       {!editable && (
         <div className="mx-4 mt-3 px-3 py-2 text-xs text-text-muted dark:text-text-dark-muted bg-ui-body dark:bg-ui-dark-bg rounded border border-ui-border dark:border-ui-dark-border">
           Este bloque está bloqueado y no puede editarse.
