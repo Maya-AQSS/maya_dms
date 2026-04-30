@@ -744,8 +744,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   };
 
   const handleApproveValidation = async () => {
-    if (!actionableReviewId) {
-      setValidationModalError('No hay una revisión pendiente que puedas tramitar.');
+    if (!documentId || !actionableReviewId) {
+      setValidationModalError('Faltan datos críticos para procesar la revisión.');
       return;
     }
     setValidationModalError(null);
@@ -765,8 +765,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   };
 
   const handleRejectValidation = async () => {
-    if (!actionableReviewId) {
-      setValidationModalError('No hay una revisión pendiente que puedas tramitar.');
+    if (!documentId || !actionableReviewId) {
+      setValidationModalError('Faltan datos críticos para procesar la revisión.');
       return;
     }
     const reason = rejectReason.trim();
@@ -891,7 +891,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     );
   }
 
-  if (isValidateMode && detail.status !== 'in_review') {
+  if (isValidateMode && (!detail || detail.status !== 'in_review')) {
     return (
       <div className="p-6 space-y-3">
         <p className="text-sm text-warning-dark dark:text-warning-light">
@@ -915,7 +915,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     );
   }
 
-  if (isValidateMode && detail.status === 'in_review' && validationReviewLoading) {
+  if (isValidateMode && detail && detail.status === 'in_review' && validationReviewLoading) {
     return (
       <div className="flex flex-col h-[calc(100dvh-7rem)] items-center justify-center overflow-hidden bg-ui-body dark:bg-ui-dark-bg px-6">
         <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando datos de validación…</p>

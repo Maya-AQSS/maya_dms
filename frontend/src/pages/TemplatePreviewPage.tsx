@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate, resolveComment } from '../api/templates';
+import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
 import { apiFetchJson } from '../api/http';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -118,12 +118,6 @@ export function TemplatePreviewPage() {
     return () => { cancelled = true; };
   }, [id, profile?.id]);
 
-  const handleResolveComment = async (commentId: string) => {
-    try {
-      await resolveComment(commentId);
-      setReviewComments((prev) => prev.map((c) => c.id === commentId ? { ...c, resolved: true } : c));
-    } catch { /* non-critical */ }
-  };
 
   const handleSendReply = async (parentId: string) => {
     if (!replyBody.trim()) return;
@@ -476,16 +470,6 @@ export function TemplatePreviewPage() {
                           </div>
                           
                           <div className="mt-2 flex items-center gap-3">
-                            {isOwner && !isResolved && (
-                              <Button
-                                variant="outline"
-                                size="xs"
-                                className="text-success border-success/30 hover:bg-success/5 hover:border-success/60 text-[10px] font-bold"
-                                onClick={() => void handleResolveComment(c.id)}
-                              >
-                                ✓ Resolver
-                              </Button>
-                            )}
                             <button
                               type="button"
                               onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
