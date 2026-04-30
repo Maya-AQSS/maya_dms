@@ -150,7 +150,7 @@ class CommentController extends Controller
         $commentModel = $this->commentService->findOrFail($comment);
         $this->authorizeViewForCommentable($commentModel);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        return response()->json(['message' => 'No está permitido actualizar un comentario en un recurso bloqueado.'], 405);
     }
 
     /**
@@ -213,6 +213,9 @@ class CommentController extends Controller
         }
     }
 
+    /**
+     * Verifica si los comentarios de una plantilla están bloqueados.
+     */
     private function isTemplateCommentsLocked(Template $template): bool
     {
         return $template->publishedVersions()->exists();
