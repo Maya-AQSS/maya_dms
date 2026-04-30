@@ -151,10 +151,15 @@ class AuditLogService implements AuditLogServiceInterface
     {
         $comment = Comment::query()
             ->withoutGlobalScopes(['user_access'])
-            ->with(['document', 'template'])
+            ->with('commentable')
             ->findOrFail($commentId);
 
-        $processId = $comment->document?->process_id ?? $comment->template?->process_id;
+        $commentable = $comment->commentable;
+        $processId = null;
+
+        if ($commentable instanceof Document || $commentable instanceof Template) {
+            $processId = $commentable->process_id;
+        }
 
         return is_string($processId) ? $processId : null;
     }

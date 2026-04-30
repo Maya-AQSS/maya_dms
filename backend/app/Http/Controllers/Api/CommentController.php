@@ -37,20 +37,36 @@ class CommentController extends Controller
 
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
+            $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isTemplateCommentsLocked($model)) {
+                return response()->json(['data' => []]);
+            }
 
-            return response()->json(['data' => $this->commentService->listForTemplate($templateId)]);
+            return response()->json([
+                'data' => $this->commentService->listForResource(
+                    Template::class,
+                    (string) $model->id,
+                    (int) ($model->version ?? 1),
+                ),
+            ]);
         }
 
         if ($documentId) {
             $doc = $this->documentService->findOrFail($documentId);
-            $this->authorize('view', $doc);
+            $this->authorize('comment', $doc);
             $this->assertOptionalProcessContextMatches((string) $doc->process_id);
+            if ($this->isDocumentCommentsLocked($doc)) {
+                return response()->json(['data' => []]);
+            }
 
-            return response()->json(['data' => []]);
+            return response()->json([
+                'data' => $this->commentService->listForResource(
+                    Document::class,
+                    (string) $doc->id,
+                    (int) ($doc->current_version ?? 1),
+                ),
+            ]);
         }
 
         return response()->json(['data' => []]);
@@ -65,24 +81,51 @@ class CommentController extends Controller
         $documentId = $request->route('document');
         $blockableId = $request->blockableId();
         $parentId = $request->parentId();
+        $body = $request->commentBody();
+        $authorId = (string) Auth::id();
 
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
+            $this->authorize('comment', $model);
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isTemplateCommentsLocked($model)) {
                 abort(404);
             }
-            $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-            $comment = $this->commentService->createForTemplate($templateId, (string) Auth::id(), $validated);
+            $comment = $this->commentService->createForResource(
+                commentableType: Template::class,
+                commentableId: (string) $model->id,
+                commentableVersion: (int) ($model->version ?? 1),
+                blockableType: $blockableId !== null ? TemplateBlock::class : null,
+                blockableId: $blockableId,
+                parentId: $parentId,
+                authorId: $authorId,
+                body: $body,
+            );
+
             return response()->json(['data' => $comment], 201);
         }
 
         if ($documentId) {
             $doc = $this->documentService->findOrFail($documentId);
-            $this->authorize('view', $doc);
+            $this->authorize('comment', $doc);
             $this->assertOptionalProcessContextMatches((string) $doc->process_id);
+            if ($this->isDocumentCommentsLocked($doc)) {
+                abort(404);
+            }
 
-            return response()->json(['message' => 'Not implemented for documents'], 501);
+            $comment = $this->commentService->createForResource(
+                commentableType: Document::class,
+                commentableId: (string) $doc->id,
+                commentableVersion: (int) ($doc->current_version ?? 1),
+                blockableType: $blockableId !== null ? DocumentBlock::class : null,
+                blockableId: $blockableId,
+                parentId: $parentId,
+                authorId: $authorId,
+                body: $body,
+            );
+
+            return response()->json(['data' => $comment], 201);
         }
 
         return response()->json(['message' => 'Resource not found'], 404);
@@ -94,9 +137,7 @@ class CommentController extends Controller
     public function show(Request $request, string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
-        $document     = $this->documentService->findOrFail($commentModel->document_id);
-        $this->authorize('view', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $this->authorizeViewForCommentable($commentModel);
 
         return response()->json(['data' => $commentModel]);
     }
@@ -107,9 +148,7 @@ class CommentController extends Controller
     public function update(Request $request, string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
-        $document     = $this->documentService->findOrFail($commentModel->document_id);
-        $this->authorize('view', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $this->authorizeViewForCommentable($commentModel);
 
         return response()->json(['message' => 'Not implemented'], 501);
     }
@@ -120,9 +159,8 @@ class CommentController extends Controller
     public function destroy(Request $request, string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
-        $document     = $this->documentService->findOrFail($commentModel->document_id);
-        $this->authorize('view', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $this->authorizeViewForCommentable($commentModel);
+        $this->authorize('delete', $commentModel);
 
         $this->commentService->delete($comment);
 
@@ -135,19 +173,7 @@ class CommentController extends Controller
     public function resolve(Request $request, string $comment): JsonResponse
     {
         $commentModel = $this->commentService->findOrFail($comment);
-        
-        // Autorización basada en el recurso al que pertenece el comentario
-        if ($commentModel->template_id) {
-            $model = $this->templateService->findOrFailWithoutCatalogScope((string) $commentModel->template_id);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
-            $this->assertOptionalProcessContextMatches((string) $model->process_id);
-        } elseif ($commentModel->document_id) {
-            $model = $this->documentService->findOrFail($commentModel->document_id);
-            $this->authorize('view', $model);
-            $this->assertOptionalProcessContextMatches((string) $model->process_id);
-        }
+        $this->authorizeViewForCommentable($commentModel);
 
         $resolved = $this->commentService->resolve($comment, (string) Auth::id());
         return response()->json(['data' => $resolved]);
@@ -156,7 +182,7 @@ class CommentController extends Controller
     /**
      * Autorizar vista para un comentario.
      */
-    private function authorizeViewForCommentable(Request $request, Comment $comment): void
+    private function authorizeViewForCommentable(Comment $comment): void
     {
         $commentableType = ltrim((string) $comment->commentable_type, '\\');
         $isAllowed = collect(Comment::ALLOWED_COMMENTABLE_TYPES)
@@ -165,17 +191,35 @@ class CommentController extends Controller
         if ($commentableType === Template::class || is_a($commentableType, Template::class, true)) {
             $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
             $this->authorize('comment', $model);
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isTemplateCommentsLocked($model)) {
+                abort(404);
+            }
             return;
         }
 
         if ($commentableType === Document::class || is_a($commentableType, Document::class, true)) {
             $model = $this->documentService->findOrFail((string) $comment->commentable_id);
             $this->authorize('comment', $model);
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isDocumentCommentsLocked($model)) {
+                abort(404);
+            }
             return;
         }
 
         if (! $isAllowed) {
             abort(422, 'Tipo de recurso de comentario no soportado.');
         }
+    }
+
+    private function isTemplateCommentsLocked(Template $template): bool
+    {
+        return $template->publishedVersions()->exists();
+    }
+
+    private function isDocumentCommentsLocked(Document $document): bool
+    {
+        return $document->versions()->exists();
     }
 }
