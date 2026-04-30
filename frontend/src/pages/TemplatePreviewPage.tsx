@@ -366,7 +366,7 @@ export function TemplatePreviewPage() {
                     return (
                       <section
                         key={block.id}
-                        style={isLocked ? { opacity: 0.45, pointerEvents: 'none' } : undefined}
+                        style={isLocked ? { opacity: 0.45 } : undefined}
                         className={[
                           'relative rounded-lg transition-all duration-150',
                           pendingComments.length > 0
