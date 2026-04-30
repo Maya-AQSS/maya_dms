@@ -555,6 +555,13 @@ class TemplatesApiTest extends TestCase
             'is_department' => false,
         ]);
 
+        \Illuminate\Support\Facades\DB::table('team_members')->insert([
+            'id'      => (string) Str::uuid(),
+            'team_id' => $gid,
+            'user_id' => $userId,
+            'role'    => 'member',
+        ]);
+
         $this->postJson('/api/v1/templates', [
             'name' => 'Por grupo',
             'visibility_level' => TemplateVisibilityLevel::Team->value,
