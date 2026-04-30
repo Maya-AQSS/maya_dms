@@ -22,12 +22,11 @@ class DocumentReviewService
     ) {}
 
     /**
+     * @param  string  $documentId  ID ya verificado por el llamador (controller).
      * @return Collection<int, \App\Models\DocumentReview>
      */
     public function listReviews(string $documentId): Collection
     {
-        $this->documentRepository->findOrFail($documentId);
-
         return $this->documentRepository->listReviewsForDocument($documentId);
     }
 
