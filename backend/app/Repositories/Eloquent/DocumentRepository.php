@@ -150,15 +150,15 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function createPendingReviews(string $documentId, array $rows): void
     {
-        foreach ($rows as $row) {
-            DocumentReview::forceCreate([
-                'id' => (string) Str::uuid(),
-                'document_id' => $documentId,
-                'reviewer_id' => $row['reviewer_id'],
-                'stage' => $row['stage'],
-                'status' => 'pending',
-            ]);
-        }
+        $records = array_map(fn(array $row) => [
+            'id'          => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'reviewer_id' => $row['reviewer_id'],
+            'stage'       => $row['stage'],
+            'status'      => 'pending',
+        ], $rows);
+
+        DB::table('document_reviews')->insert($records);
     }
 
     /**
