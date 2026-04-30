@@ -13,8 +13,8 @@ use App\Http\Requests\TemplateBlocks\UpdateTemplateBlockRequest;
 use App\Http\Resources\TemplateBlockResource;
 use App\Models\Template;
 use App\Services\Contracts\TemplateBlockServiceInterface;
+use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -25,6 +25,7 @@ class TemplateBlockController extends Controller
 
     public function __construct(
         private readonly TemplateBlockServiceInterface $blockService,
+        private readonly TemplateServiceInterface $templateService,
     ) {}
 
     /** 
@@ -35,9 +36,7 @@ class TemplateBlockController extends Controller
      */
     public function index(string $template): AnonymousResourceCollection
     {
-        $templateModel = Template::query()->findOrFail($template);
-        $this->authorize('view', $templateModel);
-        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail($template), 'view');
 
         $blocks = $this->blockService->listForTemplate($template);
 
@@ -51,9 +50,7 @@ class TemplateBlockController extends Controller
      */
     public function store(StoreTemplateBlockRequest $request, string $template): JsonResponse
     {
-        $templateModel = Template::query()->findOrFail($template);
-        $this->authorize('update', $templateModel);
-        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail($template), 'update');
 
         $block = $this->blockService->create(
             templateId: $template,
@@ -72,9 +69,7 @@ class TemplateBlockController extends Controller
     public function show(string $block): TemplateBlockResource
     {
         $blockModel = $this->blockService->findOrFail($block);
-        $templateModel = Template::query()->findOrFail($blockModel->template_id);
-        $this->authorize('view', $templateModel);
-        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail((string) $blockModel->template_id), 'view');
 
         return new TemplateBlockResource($blockModel);
     }
@@ -88,9 +83,7 @@ class TemplateBlockController extends Controller
     {
         $validated = $request->validated();
         $blockModel = $this->blockService->findOrFail($block);
-        $templateModel = Template::query()->findOrFail($blockModel->template_id);
-        $this->authorize('update', $templateModel);
-        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail((string) $blockModel->template_id), 'update');
 
         $dto = new UpdateTemplateBlockDto(
             title:           $validated['title'] ?? null,
@@ -122,9 +115,7 @@ class TemplateBlockController extends Controller
     public function destroy(string $block): Response
     {
         $blockModel = $this->blockService->findOrFail($block);
-        $templateModel = Template::query()->findOrFail($blockModel->template_id);
-        $this->authorize('update', $templateModel);
-        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail((string) $blockModel->template_id), 'update');
 
         $this->blockService->delete($block, (string) Auth::id());
 
@@ -142,12 +133,10 @@ class TemplateBlockController extends Controller
      */
     public function reorder(ReorderTemplateBlocksRequest $request, string $template): \Illuminate\Http\Response
     {
-        $templateModel = Template::query()->findOrFail($template);
-        $this->authorize('update', $templateModel);
-        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail($template), 'update');
 
         $blockIds = $request->validated('block_ids');
-        $this->blockService->reorderForTemplate($template, $blockIds);
+        $this->blockService->reorderForTemplate($template, $blockIds, (string) Auth::id());
 
         return response()->noContent();
     }
@@ -165,17 +154,25 @@ class TemplateBlockController extends Controller
         $validated = $request->validated();
         $blocks = $this->blockService->findBlocksByIdsOrFail($validated['ids']);
         $templateIds = $blocks->pluck('template_id')->map(static fn ($id): string => (string) $id)->unique()->values()->all();
-        $templates = Template::query()->whereIn('id', $templateIds)->get()->keyBy('id');
+
+        // findManyByIds aplica el global scope: solo devuelve plantillas visibles para el usuario.
+        $templates = $this->templateService->findManyByIds($templateIds);
+
+        /** @var array<int, Template> $resolvedTemplates */
         $resolvedTemplates = [];
         foreach ($templateIds as $templateId) {
             $templateModel = $templates->get($templateId);
-            if ($templateModel !== null) {
-                $this->authorize('update', $templateModel);
-                $resolvedTemplates[] = $templateModel;
+
+            // Si la plantilla no está en el scope del usuario, abortamos antes de tocar ningún bloque.
+            if ($templateModel === null) {
+                abort(403, 'No tienes acceso a uno o más bloques solicitados.');
             }
+
+            $this->authorizeAndValidateTemplateContext($templateModel, 'update', false);
+            $resolvedTemplates[] = $templateModel;
         }
 
-        $givenProcessId = request()->query('process_id');
+        $givenProcessId = $request->query('process_id');
         if ($givenProcessId !== null && $givenProcessId !== '') {
             foreach ($resolvedTemplates as $templateModel) {
                 $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
@@ -194,5 +191,22 @@ class TemplateBlockController extends Controller
         );
 
         return TemplateBlockResource::collection($blocks);
+    }
+
+    private function findTemplateOrFail(string $templateId): Template
+    {
+        return $this->templateService->findOrFail($templateId);
+    }
+
+    private function authorizeAndValidateTemplateContext(
+        Template $template,
+        string $ability,
+        bool $checkProcessContext = true,
+    ): void {
+        $this->authorize($ability, $template);
+
+        if ($checkProcessContext) {
+            $this->assertOptionalProcessContextMatches((string) $template->process_id);
+        }
     }
 }

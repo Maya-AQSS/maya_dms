@@ -87,7 +87,12 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
             TemplateBlock::whereIn('id', $ids)->update($attributes);
         });
 
-        return TemplateBlock::whereIn('id', $ids)->get();
+        $blocks = TemplateBlock::whereIn('id', $ids)->get();
+
+        // Reorder to preserve contract: result in same order as $ids.
+        $position = array_flip($ids);
+
+        return $blocks->sortBy(fn ($b) => $position[(string) $b->getKey()] ?? PHP_INT_MAX)->values();
     }
 
     /**

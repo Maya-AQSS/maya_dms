@@ -102,7 +102,7 @@ class TemplateController extends Controller
 
         $dto = $request->toUpdateDto();
 
-        $updated = $this->templateService->update($model->id, $dto);
+        $updated = $this->templateService->update($model, $dto);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $updated,
@@ -190,7 +190,11 @@ class TemplateController extends Controller
     }
 
     /**
-     * En revisión → publicado + snapshot (revisor; changelog obligatorio).
+     * Publicación explícita de plantilla + snapshot (changelog obligatorio para v2+).
+     *
+     * Flujos aceptados:
+     *  - Creador sin revisores asignados: puede publicar directamente desde `draft`.
+     *  - Revisor asignado: puede publicar desde `in_review` tras el proceso de revisión.
      */
     public function publish(PublishTemplateRequest $request, string $template): TemplateResource
     {
@@ -247,7 +251,7 @@ class TemplateController extends Controller
         $this->authorize('update', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $this->templateService->syncReviewers($model->id, $request->validated('user_ids'));
+        $this->templateService->syncReviewers($model->id, $request->toDto());
 
         return response()->json(['message' => 'Revisores de plantilla sincronizados correctamente.']);
     }
@@ -261,7 +265,7 @@ class TemplateController extends Controller
         $this->authorize('update', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $this->templateService->syncDocumentReviewers($model->id, $request->validated('user_ids'));
+        $this->templateService->syncDocumentReviewers($model->id, $request->toDto());
 
         return response()->json(['message' => 'Validadores de documento sincronizados correctamente.']);
     }
