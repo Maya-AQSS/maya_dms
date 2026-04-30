@@ -12,6 +12,8 @@ use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Database\Seeders\PermissionsSeeder;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -20,12 +22,15 @@ use Tests\TestCase;
  */
 class DocumentReviewModeFlowTest extends TestCase
 {
+    use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(PermissionsSeeder::class);
 
         config([
             'auth.jwt_issuer' => 'test-issuer',
@@ -131,9 +136,13 @@ class DocumentReviewModeFlowTest extends TestCase
     /**
      * @return array<string, string>
      */
-    private function bearerFor(string $sub, string $privatePem, string $publicPem, string $kidSuffix): array
+    private function bearerFor(string $sub, string $privatePem, string $publicPem, string $kidSuffix, array $permissions = []): array
     {
         auth()->forgetUser();
+
+        if ($permissions !== []) {
+            $this->assignUserPermissions($sub, $permissions);
+        }
 
         $token = $this->buildJwtForSub(
             $privatePem,
@@ -142,8 +151,6 @@ class DocumentReviewModeFlowTest extends TestCase
             $sub,
             'test-issuer',
             'test-audience',
-            [],
-            [],
         );
 
         return ['Authorization' => 'Bearer '.$token];
@@ -176,8 +183,8 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
-        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -217,8 +224,8 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
-        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -245,7 +252,7 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -272,8 +279,8 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
-        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -307,7 +314,7 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 

@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -63,7 +64,7 @@ class DocumentBlockService
         return DB::transaction(function () use ($dto) {
             $document = $this->documentRepository->findOrFail($dto->documentId);
             if ($document->status !== 'draft') {
-                abort(403, 'Solo se pueden editar bloques de documentos en borrador.');
+                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador.');
             }
 
             $block = $this->documentRepository->findBlockInDocumentOrFail(
@@ -78,7 +79,7 @@ class DocumentBlockService
             $state = (string) ($definition['block_state'] ?? 'editable');
 
             if ($state === 'locked') {
-                abort(403, 'Este bloque está bloqueado y no admite edición.');
+                throw new AuthorizationException('Este bloque está bloqueado y no admite edición.');
             }
 
             if ($this->documentBlockContentEquals($block->content, $dto->content)) {

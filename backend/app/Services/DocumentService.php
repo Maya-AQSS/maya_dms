@@ -20,28 +20,17 @@ use Illuminate\Validation\ValidationException;
 
 class DocumentService implements DocumentServiceInterface
 {
-    private readonly DocumentBlockService $documentBlockService;
-    private readonly DocumentVersionService $documentVersionService;
-    private readonly DocumentShareService $documentShareService;
-    private readonly DocumentStateService $documentStateService;
-    private readonly DocumentReviewService $documentReviewService;
-
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly SnapshotServiceInterface $snapshotService,
-    ) {
-        $this->documentBlockService = new DocumentBlockService($this->documentRepository);
-        $this->documentVersionService = new DocumentVersionService($this->documentRepository);
-        $this->documentShareService = new DocumentShareService($this->documentRepository);
-        $this->documentStateService = new DocumentStateService($this->documentRepository);
-        $this->documentReviewService = new DocumentReviewService(
-            $this->documentRepository,
-            $this->snapshotService,
-            $this->documentStateService,
-        );
-    }
+        private readonly DocumentBlockService $documentBlockService,
+        private readonly DocumentVersionService $documentVersionService,
+        private readonly DocumentShareService $documentShareService,
+        private readonly DocumentStateService $documentStateService,
+        private readonly DocumentReviewService $documentReviewService,
+    ) {}
 
     /**
      * Localiza un documento por su ID.
@@ -401,27 +390,12 @@ class DocumentService implements DocumentServiceInterface
                 }
             }
 
-            $ownerId = (string) $document->owner_id;
-            $createdById = (string) $document->created_by;
-            $rows = array_values(array_filter(
-                $candidates,
-                static fn (array $row): bool => $row['reviewer_id'] !== $ownerId && $row['reviewer_id'] !== $createdById,
-            ));
-
-            if ($candidates !== [] && $rows === []) {
-                throw ValidationException::withMessages([
-                    'reviewers' => [
-                        'Los validadores configurados coinciden todos con el titular o creador del documento. Añade en la plantilla al menos un validador distinto del titular y del creador.',
-                    ],
-                ]);
-            }
-
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, [
                 'submitted_at' => now(),
             ]);
 
-            if ($rows !== []) {
-                $this->documentRepository->createPendingReviews($documentId, $rows);
+            if ($candidates !== []) {
+                $this->documentRepository->createPendingReviews($documentId, $candidates);
             }
 
             return $document;
