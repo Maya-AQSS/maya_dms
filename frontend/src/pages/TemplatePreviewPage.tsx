@@ -97,15 +97,8 @@ export function TemplatePreviewPage() {
           fetchBlocks(id),
         ]);
         if (!cancelled) {
-          const t = tRes.data;
-          setTemplate(t);
+          setTemplate(tRes.data);
           setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
-          // Fetch review comments if owner has pending feedback
-          if (t.created_by === profile?.id && t.has_review_comments) {
-            void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
-              .then((res) => { if (!cancelled) setReviewComments(res.data); })
-              .catch(() => { /* non-critical */ });
-          }
         }
       } catch (e) {
         if (!cancelled) {
@@ -117,7 +110,19 @@ export function TemplatePreviewPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [id, profile?.id]);
+  }, [id]);
+
+  // Load review comments once both template and profile are available
+  useEffect(() => {
+    if (!id || !template || !profile?.id) return;
+    if (template.created_by !== profile.id || !template.has_review_comments) return;
+
+    let cancelled = false;
+    void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
+      .then((res) => { if (!cancelled) setReviewComments(res.data); })
+      .catch(() => { /* non-critical */ });
+    return () => { cancelled = true; };
+  }, [id, template?.id, template?.created_by, template?.has_review_comments, profile?.id]);
 
 
   const handleSendReply = async (parentId: string) => {
