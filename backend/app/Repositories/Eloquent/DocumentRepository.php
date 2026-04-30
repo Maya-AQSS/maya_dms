@@ -125,11 +125,22 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
-     * Elimina todas las revisiones de un documento.
+     * Elimina todas las revisiones de un documento (uso en submitToReview para ciclo limpio).
      */
     public function deleteReviewsForDocument(string $documentId): void
     {
         DocumentReview::query()->where('document_id', $documentId)->delete();
+    }
+
+    /**
+     * Elimina solo las revisiones pendientes, conservando las rechazadas como historial.
+     */
+    public function deletePendingReviewsForDocument(string $documentId): void
+    {
+        DocumentReview::query()
+            ->where('document_id', $documentId)
+            ->where('status', 'pending')
+            ->delete();
     }
 
     /**

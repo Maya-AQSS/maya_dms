@@ -130,7 +130,7 @@ class DocumentReviewService
                 'published_at' => null,
             ]);
 
-            $this->documentRepository->deleteReviewsForDocument($documentId);
+            $this->documentRepository->deletePendingReviewsForDocument($documentId);
 
             return $updated;
         });

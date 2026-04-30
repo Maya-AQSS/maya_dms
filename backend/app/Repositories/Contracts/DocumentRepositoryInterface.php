@@ -52,9 +52,14 @@ interface DocumentRepositoryInterface
     public function findReviewInDocument(string $reviewId, string $documentId): ?DocumentReview;
 
     /**
-     * Elimina las revisiones del documento.
+     * Elimina todas las revisiones del documento (uso en submitToReview para ciclo limpio).
      */
     public function deleteReviewsForDocument(string $documentId): void;
+
+    /**
+     * Elimina solo las revisiones pendientes, conservando las rechazadas como historial.
+     */
+    public function deletePendingReviewsForDocument(string $documentId): void;
 
     /**
      * Crea las revisiones pendientes del documento.
