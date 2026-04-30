@@ -463,30 +463,6 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
-     * Rechaza el documento.
-     */
-    public function rejectDocument(string $documentId, string $actorId): Document
-    {
-        $document = $this->documentRepository->findOrFail($documentId);
-
-        if (! in_array($document->status, ['in_review', 'published'], true)) {
-            throw ValidationException::withMessages([
-                'status' => ['Solo se puede rechazar un documento en revisión o publicado.'],
-            ]);
-        }
-
-        return DB::transaction(function () use ($documentId, $actorId) {
-            $updated = $this->documentStateService->transition($documentId, 'draft', $actorId, [
-                'submitted_at' => null,
-                'published_at' => null,
-            ]);
-            $this->documentRepository->deleteReviewsForDocument($documentId);
-
-            return $updated;
-        });
-    }
-
-    /**
      * Delega la propiedad del documento a otro usuario.
      */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document

@@ -220,21 +220,6 @@ class DocumentController extends Controller
     }
 
     /**
-     * Rechazar documento y vuelta a borrador.
-     */
-    public function reject(Request $request, string $id): JsonResponse
-    {
-        $document = $this->documentService->findOrFail($id);
-        $this->authorize('review', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
-
-        $actorId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->rejectDocument($document->id, $actorId);
-
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
-    }
-
-    /**
      * Delegar documento a otro usuario.
      */
     public function delegate(DelegateDocumentRequest $request, string $id): JsonResponse
