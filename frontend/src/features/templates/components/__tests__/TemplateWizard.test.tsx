@@ -39,6 +39,7 @@ vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: any) => <div>{children}</div>,
   closestCenter: vi.fn(),
   PointerSensor: vi.fn(),
+  KeyboardSensor: vi.fn(),
   useSensor: vi.fn(),
   useSensors: vi.fn(() => []),
 }));
@@ -46,6 +47,7 @@ vi.mock('@dnd-kit/core', () => ({
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: any) => <div>{children}</div>,
   verticalListSortingStrategy: {},
+  sortableKeyboardCoordinates: vi.fn(),
   arrayMove: (arr: any) => arr,
   useSortable: () => ({
     attributes: {},
@@ -72,7 +74,7 @@ describe('TemplateWizard Integration', () => {
     name: 'Existing',
     description: null,
     visibility_level: 'personal',
-    delivery_deadline: null,
+    delivery_deadline: '2099-01-01T00:00:00Z',
     study_type_id: null,
     study_id: null,
     module_id: null,
@@ -120,6 +122,9 @@ describe('TemplateWizard Integration', () => {
     
     const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
     fireEvent.change(nameInput, { target: { value: 'New Template' } });
+
+    const deadlineInput = screen.getByLabelText(/Plazo de entrega/i);
+    fireEvent.change(deadlineInput, { target: { value: '2099-01-01' } });
     
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
@@ -153,7 +158,7 @@ describe('TemplateWizard Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/templates');
+      expect(mockNavigate).toHaveBeenCalledWith('/procesos');
     }, { timeout: 10000 });
   }, 15000);
 

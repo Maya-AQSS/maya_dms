@@ -28,7 +28,7 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
       <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
         {label}
       </dt>
-      <dd className="mt-0.5 text-xs font-medium text-text-primary dark:text-text-dark-primary">
+      <dd className="mt-0.5 text-xs font-medium text-text-primary dark:text-text-dark-primary break-words min-w-0">
         {value || <span className="text-text-muted italic">—</span>}
       </dd>
     </div>
@@ -65,11 +65,11 @@ export function WizardStep4Summary({ template, validators, validationType, docum
       </p>
 
       {/* ── Fila superior: Propiedades + Usuarios ──────────────────────────── */}
-      <div className="shrink-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1">
+      <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-1 md:grid-cols-2 animate-in fade-in slide-in-from-top-1">
 
         {/* Columna izquierda — Propiedades */}
-        <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
-          <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
+        <div className="px-5 py-4 border-b md:border-b-0 md:border-r border-ui-border dark:border-ui-dark-border min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
             Propiedades
           </p>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-0">
@@ -176,11 +176,11 @@ export function WizardStep4Summary({ template, validators, validationType, docum
             <p className="text-xs text-warning-dark italic">Aún no se han añadido bloques.</p>
           </div>
         ) : (
-          <div className="flex-1 min-h-0 grid" style={{ gridTemplateColumns: '200px 1fr' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-[minmax(160px,200px)_1fr]" style={{ minHeight: '200px' }}>
 
             {/* Lista de bloques */}
-            <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto">
-              <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
+            <div className="border-b sm:border-b-0 sm:border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto max-h-48 sm:max-h-64">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
                 Bloques ({blocks.length})
               </p>
               <div className="space-y-1">

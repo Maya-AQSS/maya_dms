@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
-import { Button, FilterField, Select, TextInput } from '../../../ui';
-import { DataTable, DatePicker, Pagination, useTablePreferences, type ColumnDef } from '@maya/shared-ui-react';
-import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
+import { Button, FieldLabel, Select, TextInput, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../../ui';
+import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
+import { useUserProfile } from '../../../features/user-profile';
 
 const STATUS_BADGE: Record<TemplateStatus, string> = {
   draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
@@ -81,9 +81,7 @@ type Props = {
 
 export function TemplatesTable({ processId }: Props = {}) {
   const navigate = useNavigate();
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
-    storageKey: 'maya:dms:templates-table',
-  });
+  const { profile } = useUserProfile();
   const {
     templates,
     meta,
@@ -100,13 +98,6 @@ export function TemplatesTable({ processId }: Props = {}) {
   const [nameFilter, setNameFilter] = useState('');
   const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync user-selected pageSize into the templates hook (server-side per_page).
-  useEffect(() => {
-    if (filters.per_page !== pageSize) {
-      applyFilters({ per_page: pageSize });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pageSize]);
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -124,14 +115,6 @@ export function TemplatesTable({ processId }: Props = {}) {
     }),
     [filters],
   );
-
-  const filtersActiveCount = [
-    nameFilter,
-    filters.visibility_level,
-    filters.status,
-    filters.author_name,
-    filters.delivery_deadline,
-  ].filter(Boolean).length;
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -185,86 +168,175 @@ export function TemplatesTable({ processId }: Props = {}) {
         </div>
       )}
 
-      <DataTable
-        columns={COLUMNS}
-        rows={filteredTemplates}
-        loading={loading}
-        rowKey={(t) => t.id}
-        hiddenColumnIds={hiddenIds}
-        onToggleHiddenColumn={toggleHidden}
-        pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size)
-          applyFilters({ per_page: size })
-        }}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
-        emptyMessage="No hay plantillas con los filtros actuales."
-        filtersActiveCount={filtersActiveCount}
-        onClearFilters={clearFilters}
-        filtersStorageKey="maya:dms:templates-table"
-        onRowClick={(t) => navigate(`/templates/${t.id}`)}
-        filtersPanel={
-          <>
-            <FilterField label="Nombre">
-              <TextInput
-                fieldSize="sm"
-                type="search"
-                placeholder="Buscar por nombre..."
-                value={nameInput}
-                onChange={handleNameChange}
-              />
-            </FilterField>
-            <FilterField label="Visibilidad">
-              <Select
-                fieldSize="sm"
-                value={filterUi.visibility}
-                onChange={(e) => applyFilters({ visibility_level: e.target.value || undefined })}
-              >
-                <option value="">Todas</option>
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label="Estado">
-              <Select
-                fieldSize="sm"
-                value={filterUi.status}
-                onChange={(e) => applyFilters({ status: e.target.value || undefined })}
-              >
-                {STATUS_OPTIONS.map((o) => (
-                  <option key={o.value || 'all'} value={o.value}>{o.label}</option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label="Autor">
-              <TextInput
-                fieldSize="sm"
-                placeholder="Nombre del autor..."
-                value={authorInput}
-                onChange={handleAuthorChange}
-              />
-            </FilterField>
-            <FilterField label="Fecha límite">
-              <DatePicker
-                value={filterUi.deliveryDeadline || null}
-                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
-                placeholder="Seleccionar fecha..."
-              />
-            </FilterField>
-          </>
-        }
-      />
+      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
+            Filtros
+          </h3>
+          <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>
+            Limpiar filtros
+          </Button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div>
+            <FieldLabel>Nombre</FieldLabel>
+            <TextInput
+              fieldSize="sm"
+              placeholder="Buscar por nombre..."
+              value={nameInput}
+              onChange={handleNameChange}
+            />
+          </div>
+          <div>
+            <FieldLabel>Visibilidad</FieldLabel>
+            <Select
+              fieldSize="sm"
+              value={filterUi.visibility}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                applyFilters({ visibility_level: e.target.value || undefined })
+              }
+            >
+              <option value="">Todas</option>
+              {VISIBILITY_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <FieldLabel>Estado</FieldLabel>
+            <Select
+              fieldSize="sm"
+              value={filterUi.status}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => applyFilters({ status: e.target.value || undefined })}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value || 'all'} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div>
+            <FieldLabel>Autor</FieldLabel>
+            <TextInput
+              fieldSize="sm"
+              placeholder="Nombre del autor..."
+              value={authorInput}
+              onChange={handleAuthorChange}
+            />
+          </div>
+        </div>
+      </div>
 
-      {meta && (
-        <Pagination
-          currentPage={meta.current_page}
-          totalPages={meta.last_page}
-          onChange={goToPage}
-          info={`Página ${meta.current_page} de ${meta.last_page} — ${meta.total} plantillas`}
-        />
-      )}
+      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableHeader>Nombre</TableHeader>
+                <TableHeader>Visibilidad</TableHeader>
+                <TableHeader>Autor</TableHeader>
+                <TableHeader>Estado</TableHeader>
+                <TableHeader>Fecha límite</TableHeader>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading && templates.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="px-4 py-6 text-sm text-center text-text-muted dark:text-text-dark-muted">
+                    Cargando plantillas…
+                  </TableCell>
+                </TableRow>
+              )}
+              {!loading && templates.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={5} className="px-4 py-6 text-sm text-center text-text-muted dark:text-text-dark-muted">
+                    No hay plantillas con los filtros actuales.
+                  </TableCell>
+                </TableRow>
+              )}
+              {filteredTemplates.map((t) => {
+                const visLevel = t.visibility_level;
+                const status = t.status as TemplateStatus;
+                return (
+                  <TableRow
+                    key={t.id}
+                    className="hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer group"
+                    onClick={() => {
+                      const isReviewer = t.status === 'in_review' && t.reviewers?.some(r => r.user_id === profile?.id);
+                      if (isReviewer) {
+                        navigate(`/templates/${t.id}/review`);
+                      } else {
+                        navigate(`/templates/${t.id}`);
+                      }
+                    }}
+                  >
+                    <TableCell className="px-4 py-3 text-sm font-medium text-text-primary dark:text-text-dark-primary group-hover:text-odoo-purple dark:group-hover:text-odoo-dark-purple transition-colors">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span className="truncate">{t.name}</span>
+                        {t.has_review_comments && t.status === 'draft' && profile && t.created_by === profile.id && (
+                          <span
+                            className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                            title="Esta plantilla tiene bloques con comentarios de revisión pendientes."
+                          >
+                            ⚠ Revisión
+                          </span>
+                        )}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[visLevel]}`}>
+                        {visibilityLabel(visLevel)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-text-secondary dark:text-text-dark-secondary">
+                      {t.author_name ?? '—'}
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[status] ?? ''}`}>
+                        {STATUS_LABEL[status] ?? status}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-xs text-text-secondary dark:text-text-dark-secondary">
+                      {formatDate(t.delivery_deadline)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+
+        {meta && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-ui-border dark:border-ui-dark-border text-xs text-text-muted dark:text-text-dark-muted">
+            <span>
+              Página {meta.current_page} de {meta.last_page} — {meta.total} plantillas
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={loading || meta.current_page <= 1}
+                onClick={() => goToPage(meta.current_page - 1)}
+              >
+                Anterior
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="xs"
+                disabled={loading || meta.current_page >= meta.last_page}
+                onClick={() => goToPage(meta.current_page + 1)}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

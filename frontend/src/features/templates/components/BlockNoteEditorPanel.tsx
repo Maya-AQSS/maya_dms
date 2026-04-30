@@ -58,11 +58,21 @@ function ensurePanelStyles() {
       font-size: 0.95rem;
       line-height: 1.6;
     }
+    /* HEAD styles integrated */
+    .bn-container, .bn-editor {
+      background-color: transparent !important;
+    }
+    .bn-editor {
+      padding-inline: 42px !important;
+    }
+    .dark .bn-editor {
+      color: var(--color-text-dark-primary) !important;
+    }
   `;
   if (!existing) document.head.appendChild(el);
 }
 
-export default function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
+export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -102,7 +112,7 @@ export default function BlockNoteEditorPanel({ initialContent, editable, isDark,
       )}
       <div className="flex-1 min-h-0 relative overflow-y-auto">
         <BlockNoteView
-          editor={editor}
+          editor={editor as any}
           editable={editable}
           theme={isDark ? 'dark' : 'light'}
           formattingToolbar={false}

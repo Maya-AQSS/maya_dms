@@ -169,6 +169,7 @@ export function DocumentPreviewPage() {
           variant="primary"
           size="sm"
           loading={actionLoading}
+          disabled={!!detail.has_review_comments}
           onClick={() => void handleSubmit()}
         >
           Enviar a validar
@@ -239,7 +240,7 @@ export function DocumentPreviewPage() {
                   return (
                     <section
                       key={block.template_block_id}
-                      style={isLocked ? { opacity: 0.45, pointerEvents: 'none' } : undefined}
+                      style={isLocked ? { opacity: 0.45 } : undefined}
                     >
                       <div className="flex flex-wrap items-baseline gap-2 mb-2">
                         {block.title && (

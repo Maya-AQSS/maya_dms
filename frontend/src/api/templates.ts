@@ -12,6 +12,7 @@ export type { Template, TemplateListFilters, TemplatesListResponse } from '../ty
 
 export type CreateTemplatePayload = {
   name: string;
+  process_id: string;
   description?: string | null;
   visibility_level?: TemplateVisibilityLevel;
   delivery_deadline?: string | null;
