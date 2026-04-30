@@ -113,7 +113,7 @@ const COLUMNS: ColumnDef<Document>[] = [
   },
   {
     id: 'delivery_deadline',
-    header: 'Fecha',
+    header: 'Fecha límite',
     sortable: true,
     cell: (doc) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>,
   },
