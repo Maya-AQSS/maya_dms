@@ -65,6 +65,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.study_type_id',
                 'templates.study_id',
                 'templates.module_id',
+                'templates.process_id',
                 'templates.team_id',
                 'templates.created_by',
                 'users.name as author_name',
@@ -103,6 +104,9 @@ class TemplateRepository implements TemplateRepositoryInterface
         }
 
         return $query
+            ->withExists([
+                'comments as has_review_comments' => fn ($q) => $q->where('resolved', false),
+            ])
             ->with('reviewers')
             ->orderByDesc('templates.updated_at')
             ->paginate($perPage);
@@ -195,6 +199,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.id',
                 'templates.name',
                 'templates.created_by',
+                'templates.process_id',
                 'templates.delivery_deadline',
                 'templates.status',
                 'template_reviewers.stage',
@@ -216,6 +221,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'template_id' => (string) $row->id,
                 'title' => (string) $row->name,
                 'author_id' => (string) $row->created_by,
+                'process_id' => (string) $row->process_id,
                 'author_name' => $row->author_name !== null && $row->author_name !== ''
                     ? (string) $row->author_name
                     : null,

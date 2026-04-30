@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Comment;
 use App\Models\Document;
 use App\Models\Team;
 use Database\Seeders\PermissionsSeeder;
@@ -265,6 +266,76 @@ class TemplatesApiTest extends TestCase
 
         $this->getJson('/api/v1/templates?per_page=25', $headers)
             ->assertUnprocessable();
+    }
+
+    public function test_index_includes_has_review_comments_flag(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId, ['teacher']);
+        $this->assignUserPermissions($userId, ['templates.read']);
+
+        $withComments = (string) Str::uuid();
+        $withoutComments = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $withComments,
+            'name' => 'Con comentarios',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Template::query()->forceCreate([
+            'id' => $withoutComments,
+            'name' => 'Sin comentarios',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Comment::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'commentable_type' => Template::class,
+            'commentable_id' => $withComments,
+            'commentable_version' => 1,
+            'blockable_type' => null,
+            'blockable_id' => null,
+            'parent_id' => null,
+            'author_id' => $userId,
+            'body' => 'Comentario de revision abierto',
+            'resolved' => false,
+            'resolved_by' => null,
+            'resolved_at' => null,
+        ]);
+
+        $this->getJson('/api/v1/templates', $headers)
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $withComments,
+                'has_review_comments' => true,
+            ])
+            ->assertJsonFragment([
+                'id' => $withoutComments,
+                'has_review_comments' => false,
+            ]);
     }
 
     public function test_store_study_visibility_requires_study_id(): void
