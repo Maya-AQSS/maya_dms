@@ -96,6 +96,7 @@ const COLUMNS: ColumnDef<Document>[] = [
   {
     id: 'owner_name',
     header: 'Autor',
+    sortable: true,
     cell: (doc) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{doc.owner_name ?? '—'}</span>,
   },
   {
@@ -113,6 +114,7 @@ const COLUMNS: ColumnDef<Document>[] = [
   {
     id: 'delivery_deadline',
     header: 'Fecha',
+    sortable: true,
     cell: (doc) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>,
   },
 ];
@@ -139,9 +141,31 @@ export function DocumentsTable() {
 
   const filtered = useMemo(() => applyClientFilters(documents, filters), [documents, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const sortedFiltered = useMemo(() => {
+    if (!sortBy) return filtered;
+    return [...filtered].sort((a, b) => {
+      const dir = sortBy.direction === 'asc' ? 1 : -1;
+      if (sortBy.columnId === 'owner_name') {
+        return (a.owner_name ?? '').localeCompare(b.owner_name ?? '') * dir;
+      }
+      if (sortBy.columnId === 'delivery_deadline') {
+        const da = a.delivery_deadline ?? '';
+        const db = b.delivery_deadline ?? '';
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da.localeCompare(db) * dir;
+      }
+      if (sortBy.columnId === 'title') {
+        return (a.title ?? '').localeCompare(b.title ?? '') * dir;
+      }
+      return 0;
+    });
+  }, [filtered, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedFiltered.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageSlice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageSlice = sortedFiltered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const filtersActiveCount = [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
 

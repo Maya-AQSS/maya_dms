@@ -78,6 +78,28 @@ export function TemplatesTable() {
     return templates.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
   }, [templates, nameFilter]);
 
+  const sortedTemplates = useMemo(() => {
+    if (!sortBy) return filteredTemplates;
+    return [...filteredTemplates].sort((a, b) => {
+      const dir = sortBy.direction === 'asc' ? 1 : -1;
+      if (sortBy.columnId === 'author_name') {
+        return (a.author_name ?? '').localeCompare(b.author_name ?? '') * dir;
+      }
+      if (sortBy.columnId === 'delivery_deadline') {
+        const da = a.delivery_deadline ?? '';
+        const db = b.delivery_deadline ?? '';
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da.localeCompare(db) * dir;
+      }
+      if (sortBy.columnId === 'name') {
+        return (a.name ?? '').localeCompare(b.name ?? '') * dir;
+      }
+      return 0;
+    });
+  }, [filteredTemplates, sortBy]);
+
   const filtersActiveCount = [
     nameFilter,
     filterUi.visibility,
@@ -117,6 +139,7 @@ export function TemplatesTable() {
     {
       id: 'author_name',
       header: 'Autor',
+      sortable: true,
       cell: (t) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{t.author_name ?? '—'}</span>,
     },
     {
@@ -134,6 +157,7 @@ export function TemplatesTable() {
     {
       id: 'delivery_deadline',
       header: 'Fecha límite',
+      sortable: true,
       cell: (t) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(t.delivery_deadline)}</span>,
     },
   ], [profile]);
@@ -192,7 +216,7 @@ export function TemplatesTable() {
 
       <DataTable
         columns={columns}
-        rows={filteredTemplates}
+        rows={sortedTemplates}
         loading={loading && templates.length === 0}
         rowKey={(t) => t.id}
         hiddenColumnIds={hiddenIds}
