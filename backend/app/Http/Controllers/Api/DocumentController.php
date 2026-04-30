@@ -225,7 +225,7 @@ class DocumentController extends Controller
     public function delegate(DelegateDocumentRequest $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
-        $this->authorize('view', $document);
+        $this->authorize('delegate', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();

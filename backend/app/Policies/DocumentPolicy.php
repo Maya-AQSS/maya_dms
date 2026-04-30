@@ -113,6 +113,14 @@ class DocumentPolicy
     }
 
     /**
+     * Delegación de titularidad a otro usuario: solo el titular actual.
+     */
+    public function delegate(JwtUser $user, Document $document): bool
+    {
+        return $user->getAuthIdentifier() === $document->owner_id;
+    }
+
+    /**
      * Envío a revisión (p. ej. transición draft → in_review): solo el titular actual.
      */
     public function submit(JwtUser $user, Document $document): bool

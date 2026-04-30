@@ -443,12 +443,6 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->owner_id !== $actorId) {
-            throw ValidationException::withMessages([
-                'owner' => ['Solo el titular actual puede delegar el documento.'],
-            ]);
-        }
-
         if ($newOwnerId === $document->owner_id) {
             throw ValidationException::withMessages([
                 'new_owner_id' => ['El nuevo titular debe ser distinto del actual.'],
