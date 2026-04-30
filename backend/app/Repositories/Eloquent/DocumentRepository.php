@@ -18,40 +18,13 @@ use JsonException;
 class DocumentRepository implements DocumentRepositoryInterface
 {
     /**
-     * Busca un documento por su ID o lanza ModelNotFoundException.
+     * Busca un documento por su ID aplicando el scope `user_access`, o lanza ModelNotFoundException.
      *
-     * El alcance global `user_access` incluye revisores en `document_reviews`; si por cualquier
-     * desajuste el documento no entra en la consulta acotada, se comprueba una asignación pendiente
-     * explícita y se carga sin ese alcance (misma condición que usa la bandeja del dashboard).
-     * La revisión pendiente debe además alinear el documento con el ámbito académico resuelto en BD.
+     * La visibilidad la gestiona íntegramente el scope global del modelo:
+     * propietario, compartido, revisor en ciclo activo o catálogo publicado con contexto académico.
      */
     public function findOrFail(string $id): Document
     {
-        $scoped = Document::query()->with(['templateVersion'])->whereKey($id)->first();
-        if ($scoped !== null) {
-            return $scoped;
-        }
-
-        $uid = (string) (auth()->user()?->getAuthIdentifier() ?? '');
-        if ($uid !== '') {
-            $assigned = DocumentReview::query()
-                ->where('document_id', $id)
-                ->where('reviewer_id', $uid)
-                ->where('status', 'pending')
-                ->exists();
-
-            if ($assigned) {
-                $unscoped = Document::withoutGlobalScopes(['user_access'])
-                    ->with(['templateVersion'])
-                    ->whereKey($id)
-                    ->first();
-
-                if ($unscoped !== null && $unscoped->matchesAcademicContextForUserId($uid)) {
-                    return $unscoped;
-                }
-            }
-        }
-
         return Document::query()->with(['templateVersion'])->whereKey($id)->firstOrFail();
     }
 

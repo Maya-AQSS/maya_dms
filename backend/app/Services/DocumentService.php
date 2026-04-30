@@ -14,6 +14,7 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -438,10 +439,16 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Delega la propiedad del documento a otro usuario.
+     * Solo el titular actual puede delegar; esta invariante se refuerza aquí
+     * además de en la policy del controlador, para proteger llamadas desde otros entrypoints.
      */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
+
+        if ($document->owner_id !== $actorId) {
+            throw new AuthorizationException('Solo el titular puede delegar la titularidad del documento.');
+        }
 
         if ($newOwnerId === $document->owner_id) {
             throw ValidationException::withMessages([

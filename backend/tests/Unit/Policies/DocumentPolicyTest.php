@@ -177,6 +177,38 @@ class DocumentPolicyTest extends TestCase
     }
 
     /**
+     * Solo el titular puede publicar explícitamente un documento.
+     */
+    public function test_publish_allowed_only_for_owner(): void
+    {
+        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        $owner   = $this->makeJwtUser($ownerId);
+        $creator = $this->makeJwtUser($creatorId);
+        $doc     = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+
+        $this->assertTrue($this->policy->publish($owner, $doc));
+        $this->assertFalse($this->policy->publish($creator, $doc));
+    }
+
+    /**
+     * Solo el titular puede delegar la titularidad.
+     */
+    public function test_delegate_allowed_only_for_owner(): void
+    {
+        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        $owner   = $this->makeJwtUser($ownerId);
+        $creator = $this->makeJwtUser($creatorId);
+        $doc     = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+
+        $this->assertTrue($this->policy->delegate($owner, $doc));
+        $this->assertFalse($this->policy->delegate($creator, $doc));
+    }
+
+    /**
      * @param  list<string>  $permissions
      */
     private function makeJwtUser(string $id, array $permissions = []): JwtUser
