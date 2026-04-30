@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Events\TemplateStateChanged;
+use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Validation\ValidationException;
@@ -27,13 +27,25 @@ class TemplateReviewService
             ]);
         }
 
+        if ($template->blocks()->doesntExist()) {
+            throw ValidationException::withMessages([
+                'blocks' => ['La plantilla debe tener al menos un bloque antes de enviarse a revisión.'],
+            ]);
+        }
+
         if ($template->reviewers()->doesntExist()) {
+            if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
+                throw ValidationException::withMessages([
+                    'reviewers' => ['Las plantillas no personales requieren al menos un revisor asignado antes de enviarse a revisión.'],
+                ]);
+            }
+
             return $this->templatePublishingService->publishWithSnapshot($templateId, null, $actorId);
         }
 
         $template->reviewers()->update(['status' => 'pending']);
 
-        return $this->updateTemplateStatusWithEvent($template, 'in_review', $actorId);
+        return $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
     }
 
     /**
@@ -41,23 +53,42 @@ class TemplateReviewService
      */
     public function rejectReview(string $templateId, string $actorId): Template
     {
-        $template = $this->templateRepository->findOrFail($templateId);
+        return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
+            $template = $this->templateRepository->findOrFailForUpdate($templateId);
 
-        if ($template->status !== 'in_review') {
-            throw ValidationException::withMessages([
-                'status' => ['Solo se puede rechazar una plantilla en revisión.'],
-            ]);
-        }
+            if ($template->status !== 'in_review') {
+                throw ValidationException::withMessages([
+                    'status' => ['Solo se puede rechazar una plantilla en revisión.'],
+                ]);
+            }
 
-        $template->reviewers()
-            ->where('user_id', $actorId)
-            ->update(['status' => 'rejected']);
+            $reviewer = $template->reviewers()->where('user_id', $actorId)->first();
 
-        return $this->updateTemplateStatusWithEvent($template, 'draft', $actorId);
+            if (! $reviewer) {
+                throw ValidationException::withMessages([
+                    'user' => ['No estás asignado como revisor de esta plantilla.'],
+                ]);
+            }
+
+            if ($reviewer->status === 'approved') {
+                throw ValidationException::withMessages([
+                    'status' => ['No puedes rechazar una plantilla que ya has aprobado.'],
+                ]);
+            }
+
+            $template->reviewers()
+                ->where('user_id', $actorId)
+                ->update(['status' => 'rejected']);
+
+            return $this->templatePublishingService->transitionStatus($template, 'draft', $actorId);
+        });
     }
 
     /**
      * Registra la aprobación del revisor activo.
+     *
+     * En modo secuencial verifica que los stages anteriores hayan aprobado primero.
+     * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
      */
     public function approveReview(string $templateId, string $actorId): Template
     {
@@ -119,17 +150,4 @@ class TemplateReviewService
         });
     }
 
-    private function updateTemplateStatusWithEvent(Template $template, string $newStatus, string $actorId): Template
-    {
-        $oldStatus = $template->status;
-        $updated = $this->templateRepository->update($template, ['status' => $newStatus]);
-        event(new TemplateStateChanged(
-            template: $updated,
-            oldStatus: $oldStatus,
-            newStatus: $newStatus,
-            actorId: $actorId,
-        ));
-
-        return $updated;
-    }
 }

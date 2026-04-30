@@ -16,7 +16,33 @@ class TemplatePublishingService
     ) {}
 
     /**
+     * Actualiza el estado de una plantilla y emite el evento de dominio TemplateStateChanged.
+     *
+     * Método compartido por TemplateService y TemplateReviewService para evitar duplicación.
+     */
+    public function transitionStatus(Template $template, string $newStatus, string $actorId): Template
+    {
+        $oldStatus = $template->status;
+        $updated = $this->templateRepository->update($template, ['status' => $newStatus]);
+
+        event(new TemplateStateChanged(
+            template: $updated,
+            oldStatus: $oldStatus,
+            newStatus: $newStatus,
+            actorId: $actorId,
+        ));
+
+        return $updated;
+    }
+
+    /**
      * Publica la plantilla con un snapshot y emite el evento de dominio TemplatePublished.
+     *
+     * Si el actor es un revisor asignado en modo secuencial, verifica que todos los
+     * stages anteriores hayan aprobado antes de permitir la publicación. Esto garantiza
+     * que el endpoint /publish respeta el mismo orden de etapas que approveReview.
+     * Cuando el actor es el creador (publicación directa sin revisores), la validación
+     * se omite porque no existe ningún revisor con stage previo.
      */
     public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template
     {
@@ -27,6 +53,21 @@ class TemplatePublishingService
                 throw ValidationException::withMessages([
                     'status' => ['Solo se puede publicar una plantilla en borrador o en revisión.'],
                 ]);
+            }
+
+            $reviewer = $template->reviewers()->where('user_id', $actorId)->first();
+
+            if ($reviewer && $template->review_mode === 'sequential') {
+                $pendingPreviousStage = $template->reviewers()
+                    ->where('stage', '<', $reviewer->stage)
+                    ->where('status', '!=', 'approved')
+                    ->exists();
+
+                if ($pendingPreviousStage) {
+                    throw ValidationException::withMessages([
+                        'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
+                    ]);
+                }
             }
 
             $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
@@ -42,16 +83,15 @@ class TemplatePublishingService
 
             $next = $this->templateVersionRepository->nextVersionNumber($templateId);
             $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
-            $resolvedChangelog = $trimmedChangelog;
 
-            if ($resolvedChangelog === '') {
-                if ($next === 1) {
-                    $resolvedChangelog = 'Versión inicial';
-                } else {
-                    throw ValidationException::withMessages([
-                        'changelog' => ['El changelog es obligatorio al publicar una plantilla.'],
-                    ]);
-                }
+            // changelog === null indica publicación automática (sin revisores o aprobación unánime).
+            // En ese caso se usa un texto por defecto según si es la primera versión o una sucesiva.
+            // Solo el flujo explícito (POST /publish) exige changelog, y esa validación la aplica
+            // PublishTemplateRequest antes de llegar aquí.
+            if ($trimmedChangelog === '') {
+                $resolvedChangelog = $next === 1 ? 'Versión inicial' : 'Publicación automática';
+            } else {
+                $resolvedChangelog = $trimmedChangelog;
             }
 
             $this->templateVersionRepository->createSnapshot(

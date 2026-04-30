@@ -40,7 +40,7 @@ class UpdateTemplateRequest extends FormRequest
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255', 'required_if:visibility_level,module'],
             'team_id' => ['sometimes', 'nullable', 'uuid', 'exists:teams,id', 'required_if:visibility_level,team'],
-            'status' => ['sometimes', 'string', 'in:draft,in_review,archived'],
+            'status' => ['prohibited'],
             'review_stages' => ['sometimes', 'integer', 'min:0'],
             'review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
         ];
@@ -70,8 +70,6 @@ class UpdateTemplateRequest extends FormRequest
             setModuleId: $this->has('module_id'),
             teamId: $this->input('team_id'),
             setTeamId: $this->has('team_id'),
-            status: $this->input('status'),
-            setStatus: $this->has('status'),
             reviewStages: $this->has('review_stages') ? (int) $this->input('review_stages') : null,
             setReviewStages: $this->has('review_stages'),
             reviewMode: $this->input('review_mode'),
