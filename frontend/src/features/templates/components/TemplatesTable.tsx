@@ -43,7 +43,6 @@ export function TemplatesTable() {
   const { profile } = useUserProfile();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:templates-table',
-    defaultPageSize: 20,
   });
   const {
     templates,

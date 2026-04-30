@@ -30,10 +30,10 @@ function formatActionError(err: unknown): string {
   return err instanceof Error ? err.message : 'Error desconocido';
 }
 
-const DEFAULT_PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 10;
 
 /**
- * Listado y mutaciones de plantillas normativas (filtros + paginación acotada a 20).
+ * Listado y mutaciones de plantillas normativas (filtros + paginación acotada a 10).
  */
 export function useTemplates() {
   const [templates, setTemplates] = useState<Template[]>([]);
