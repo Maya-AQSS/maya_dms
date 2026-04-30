@@ -20,8 +20,8 @@ use Illuminate\Support\Facades\Schema;
  * - Cualquier usuario con `templates.delete` puede borrar cualquier plantilla.
  *
  * REGLAS DE REVISIÓN:
- * - Solo los revisores explícitamente asignados en `template_reviewers` pueden aprobar/rechazar.
- * - El creador nunca puede ser revisor de su propia plantilla.
+ * - Solo usuarios con permiso `templates.review` y asignados en `template_reviewers`
+ *   pueden aprobar/rechazar.
  *
  * Uso en controladores:
  *   $this->authorize('create', [Template::class, $visibilityLevelString]);
@@ -170,18 +170,17 @@ class TemplatePolicy
     }
 
     /**
-     * Revisión / aprobación (SoD).
+     * Revisión / aprobación.
      *
-     * Requiere estar asignado en `template_reviewers` Y no ser el creador de la plantilla.
-     * El creador nunca puede aprobar o rechazar su propia plantilla.
+     * Requiere permiso `templates.review` y estar asignado en `template_reviewers`.
      */
     public function review(JwtUser $user, Template $template): bool
     {
-        $userId = $user->getAuthIdentifier();
-
-        if ($userId === $template->created_by) {
+        if (! $user->hasPermission('templates.review')) {
             return false;
         }
+
+        $userId = $user->getAuthIdentifier();
 
         return $template->reviewers()
             ->where('user_id', $userId)
