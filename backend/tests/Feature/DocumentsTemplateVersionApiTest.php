@@ -937,25 +937,17 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
             ->assertOk();
 
-        // Tras borrar revisiones el revisor deja de entrar por `document_reviews` en el scope del modelo;
-        // un share de lectura mantiene visibilidad para publicar sin filas pendientes.
-        DocumentShare::query()->forceCreate([
-            'id' => (string) Str::uuid(),
-            'document_id' => $docId,
-            'user_id' => $reviewerId,
-            'permission' => 'read',
-            'granted_by' => $creatorId,
-        ]);
-
+        // Borrar revisiones pendientes para simular escenario sin revisores pendientes.
+        // El titular sigue teniendo visibilidad sobre su propio documento.
         DB::table('document_reviews')->where('document_id', $docId)->delete();
 
-        $this->postJson("/api/v1/documents/{$docId}/publish", [], $hReviewer)
+        $this->postJson("/api/v1/documents/{$docId}/publish", [], $hCreator)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['changelog']);
 
         $this->postJson("/api/v1/documents/{$docId}/publish", [
             'changelog' => 'Publicación directa con notas',
-        ], $hReviewer)
+        ], $hCreator)
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 

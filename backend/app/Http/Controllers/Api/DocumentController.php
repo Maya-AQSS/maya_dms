@@ -206,7 +206,7 @@ class DocumentController extends Controller
     public function publish(PublishDocumentRequest $request, string $id): JsonResponse
     {
         $document = $this->documentService->findOrFail($id);
-        $this->authorize('review', $document);
+        $this->authorize('publish', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();

@@ -84,6 +84,16 @@ class DocumentPolicy
     }
 
     /**
+     * Publicación explícita del documento (sin revisores configurados).
+     * Los revisores publican automáticamente al aprobar la última etapa; este endpoint
+     * es solo para el titular cuando no hay revisores pendientes.
+     */
+    public function publish(JwtUser $user, Document $document): bool
+    {
+        return $user->getAuthIdentifier() === $document->owner_id;
+    }
+
+    /**
      * Revisión / aprobación / rechazo del documento en flujo de revisión.
      * El servicio verifica adicionalmente que el actor sea el revisor asignado.
      */
