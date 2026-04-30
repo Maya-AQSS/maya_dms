@@ -9,7 +9,7 @@ import React, {
 import { ErrorBoundary } from '@maya/shared-ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useAutoSave } from '../../../hooks/useAutoSave';
-import { useDarkMode } from '../../../hooks/useDarkMode';
+import { useDarkMode } from '@maya/shared-layout-react';
 import {
   DndContext,
   closestCenter,

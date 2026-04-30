@@ -120,7 +120,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       )}
       <div className="flex-1 min-h-0 relative overflow-y-auto">
         <BlockNoteView
-          editor={editor}
+          editor={editor as any}
           editable={editable}
           theme={isDark ? 'dark' : 'light'}
           formattingToolbar={false}

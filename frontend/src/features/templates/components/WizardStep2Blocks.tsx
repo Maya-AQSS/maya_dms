@@ -187,7 +187,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
 
-  const [multiIndex, setMultiIndex] = useState(0);
+  // const [multiIndex, setMultiIndex] = useState(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [formName, setFormName] = useState('');
@@ -280,7 +280,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setPanelMode('empty');
     } else {
       setSelectedBlockIds(blocks.map(b => b.id));
-      setMultiIndex(0);
+      // setMultiIndex(0);
       setPanelMode('multi');
       if (blocks[0]) loadFormFromBlock(blocks[0]);
     }
@@ -329,7 +329,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         }
         setSelectedBlockIds([]);
         setActiveSingleId(null);
-        setMultiIndex(0);
+        // setMultiIndex(0);
       } else if (activeSingleId) {
         await deleteBlock(activeSingleId);
         setActiveSingleId(null);
@@ -370,7 +370,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     setPanelMode('empty');
     setActiveSingleId(null);
     setSelectedBlockIds([]);
-    setMultiIndex(0);
+    // setMultiIndex(0);
   };
 
   const renderSaveStatus = () => {
@@ -535,6 +535,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         open={deleteModal}
         title="¿Eliminar bloque?"
         description={panelMode === 'multi' ? `¿Seguro que quieres eliminar ${selectedBlockIds.length} bloques?` : 'Esta acción no se puede deshacer.'}
+        confirmLabel="Eliminar"
         variant="danger"
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal(false)}
