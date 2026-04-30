@@ -4,9 +4,9 @@ namespace App\Services;
 
 use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
+use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
-use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Models\TemplateVersion;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -15,7 +15,6 @@ use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
 class TemplateService implements TemplateServiceInterface
@@ -37,6 +36,18 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Carga múltiples plantillas por sus IDs aplicando el global scope de visibilidad.
+     * El resultado está indexado por ID.
+     *
+     * @param  list<string>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     */
+    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->templateRepository->findManyByIds($ids);
+    }
+
+    /**
      * Localiza una plantilla por su ID sin el global scope de catálogo `user_access`.
      */
     public function findOrFailWithoutCatalogScope(string $id): Template
@@ -53,17 +64,7 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Transiciona la plantilla a un nuevo estado y emite el evento de dominio TemplateStateChanged.
-     */
-    public function transition(string $templateId, string $newStatus, string $actorId): Template
-    {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        return $this->updateTemplateStatusWithEvent($template, $newStatus, $actorId);
-    }
-
-    /**
-     * Envia el borrador a revisión (autor o quien puede editar la plantilla).
+     * Envía el borrador a revisión. Solo el creador de la plantilla puede ejecutar esta acción.
      *
      * - Sin revisores asignados → publica automáticamente.
      * - Con revisores → resetea sus estados a `pending` (necesario para rondas
@@ -118,7 +119,7 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Listado paginado con filtros (20 ítems por defecto en request).
+     * Listado paginado con filtros (10 ítems por defecto en request).
      */
     public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator
     {
@@ -155,17 +156,10 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Actualiza una plantilla con los atributos dados.
+     * Recibe el modelo ya resuelto para evitar una query redundante.
      */
-    public function update(string $templateId, UpdateTemplateDto $dto): Template
+    public function update(Template $template, UpdateTemplateDto $dto): Template
     {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        if ($dto->setStatus && $dto->status === 'published') {
-            throw ValidationException::withMessages([
-                'status' => ['La publicación se realiza con POST /api/v1/templates/{id}/publish e incluye changelog obligatorio.'],
-            ]);
-        }
-
         $attributes = [];
 
         if ($dto->setName) {
@@ -192,9 +186,6 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setTeamId) {
             $attributes['team_id'] = $dto->teamId;
         }
-        if ($dto->setStatus) {
-            $attributes['status'] = $dto->status;
-        }
         if ($dto->setReviewStages) {
             $attributes['review_stages'] = $dto->reviewStages;
         }
@@ -206,9 +197,13 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Elimina una plantilla físicamente (no se archiva).
+     * Elimina una plantilla de forma recuperable.
      *
-     * @return bool true si se eliminó físicamente; false si solo se archivó (hay documentos asociados).
+     * - Con documentos asociados: transiciona a `archived` (soft delete semántico;
+     *   los documentos siguen vivos). Se puede recuperar cambiando el estado.
+     * - Sin documentos: soft delete con deleted_at. Se puede recuperar con restore.
+     *
+     * @return bool true si se eliminó por soft delete (sin documentos); false si se archivó (con documentos).
      */
     public function destroy(string $templateId, string $actorId): bool
     {
@@ -216,13 +211,13 @@ class TemplateService implements TemplateServiceInterface
 
         if ($this->templateRepository->templateHasDocuments($templateId)) {
             if ($template->status !== 'archived') {
-                $this->updateTemplateStatusWithEvent($template, 'archived', $actorId);
+                $this->templatePublishingService->transitionStatus($template, 'archived', $actorId);
             }
 
             return false;
         }
 
-        $template->forceDelete();
+        $template->delete();
 
         return true;
     }
@@ -233,7 +228,7 @@ class TemplateService implements TemplateServiceInterface
     public function clone(string $sourceTemplateId, string $actorId): Template
     {
         $source = $this->templateRepository->findOrFail($sourceTemplateId);
-        $source->loadMissing('blocks');
+        $source->loadMissing(['blocks', 'reviewers', 'documentReviewers']);
 
         $target = $this->templateRepository->create([
             'process_id' => $source->process_id,
@@ -249,12 +244,25 @@ class TemplateService implements TemplateServiceInterface
             'team_id' => $source->team_id,
             'created_by' => $actorId,
             'status' => 'draft',
-            'version' => ((int) $source->version) + 1,
+            'version' => 1,
             'review_stages' => $source->review_stages,
             'review_mode' => $source->review_mode,
         ]);
 
         $this->templateRepository->replicateBlocks($source, $target);
+
+        foreach ($source->reviewers as $reviewer) {
+            $target->reviewers()->create([
+                'user_id' => $reviewer->user_id,
+                'stage' => $reviewer->stage,
+            ]);
+        }
+
+        foreach ($source->documentReviewers as $docReviewer) {
+            $target->documentReviewers()->create([
+                'user_id' => $docReviewer->user_id,
+            ]);
+        }
 
         return $this->templateRepository->findOrFail($target->getKey());
     }
@@ -262,34 +270,17 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncReviewers(string $templateId, array $userIds): void
+    public function syncReviewers(string $templateId, SyncUsersDto $dto): void
     {
-        $this->templateReviewerAssignmentService->syncReviewers($templateId, $userIds);
+        $this->templateReviewerAssignmentService->syncReviewers($templateId, $dto);
     }
 
     /**
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
      */
-    public function syncDocumentReviewers(string $templateId, array $userIds): void
+    public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void
     {
-        $this->templateReviewerAssignmentService->syncDocumentReviewers($templateId, $userIds);
+        $this->templateReviewerAssignmentService->syncDocumentReviewers($templateId, $dto);
     }
 
-    /**
-     * Actualiza estado de plantilla y emite evento de cambio.
-     */
-    private function updateTemplateStatusWithEvent(Template $template, string $newStatus, string $actorId): Template
-    {
-        $oldStatus = $template->status;
-        $updated = $this->templateRepository->update($template, ['status' => $newStatus]);
-
-        event(new TemplateStateChanged(
-            template: $updated,
-            oldStatus: $oldStatus,
-            newStatus: $newStatus,
-            actorId: $actorId,
-        ));
-
-        return $updated;
-    }
 }

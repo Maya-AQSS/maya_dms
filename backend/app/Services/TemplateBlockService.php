@@ -16,9 +16,10 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 {
     public function __construct(
         private readonly TemplateBlockRepositoryInterface $blockRepository,
-        private readonly TemplateRepositoryInterface      $templateRepository,
-        private readonly AuditLogServiceInterface         $auditLogService,
-    ) {}
+        private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly AuditLogServiceInterface $auditLogService,
+    ) {
+    }
 
     /**
      * Lista todos los bloques de una plantilla.
@@ -74,7 +75,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     /**
      * @param  list<string>  $orderedBlockIds
      */
-    public function reorderForTemplate(string $templateId, array $orderedBlockIds): void
+    public function reorderForTemplate(string $templateId, array $orderedBlockIds, string $userId): void
     {
         if ($orderedBlockIds === []) {
             throw ValidationException::withMessages([
@@ -91,7 +92,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $this->templateRepository->findOrFail($templateId);
 
         $currentBlocks = $this->blockRepository->allForTemplate($templateId);
-        $currentIds = $currentBlocks->pluck('id')->map(static fn ($id): string => (string) $id)->all();
+        $currentIds = $currentBlocks->pluck('id')->map(static fn($id): string => (string) $id)->all();
 
         if (count($currentIds) !== count($orderedBlockIds)) {
             throw ValidationException::withMessages([
@@ -110,6 +111,16 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         }
 
         $this->blockRepository->reorderForTemplate($templateId, $orderedBlockIds);
+
+        $this->auditLogService->record(
+            entityType: 'template',
+            entityId: $templateId,
+            action: 'blocks_reordered',
+            userId: $userId,
+            blockId: null,
+            previousValue: null,
+            newValue: ['block_ids' => $orderedBlockIds],
+        );
     }
 
     /**
@@ -126,13 +137,13 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $block = $this->blockRepository->create($template, $attributes);
 
         $this->auditLogService->record(
-            entityType:    'template',
-            entityId:      $templateId,
-            action:        'block_created',
-            userId:        $userId,
-            blockId:       $block->getKey(),
+            entityType: 'template',
+            entityId: $templateId,
+            action: 'block_created',
+            userId: $userId,
+            blockId: $block->getKey(),
             previousValue: null,
-            newValue:      [
+            newValue: [
                 'block_state' => $block->block_state,
             ],
         );
@@ -187,13 +198,13 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         if ($stateOrMandatoryChanged) {
             $this->auditLogService->record(
-                entityType:    'template',
-                entityId:      $updated->template_id,
-                action:        'block_state_changed',
-                userId:        $userId,
-                blockId:       $blockId,
+                entityType: 'template',
+                entityId: $updated->template_id,
+                action: 'block_state_changed',
+                userId: $userId,
+                blockId: $blockId,
                 previousValue: $previous,
-                newValue:      [
+                newValue: [
                     'block_state' => $updated->block_state,
                 ],
             );
@@ -214,11 +225,11 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $block = $this->blockRepository->findOrFail($blockId);
 
         $this->auditLogService->record(
-            entityType:    'template',
-            entityId:      $block->template_id,
-            action:        'block_deleted',
-            userId:        $userId,
-            blockId:       $blockId,
+            entityType: 'template',
+            entityId: $block->template_id,
+            action: 'block_deleted',
+            userId: $userId,
+            blockId: $blockId,
             previousValue: [
                 'block_state' => $block->block_state,
             ],
@@ -257,17 +268,17 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
             if ($changedState) {
                 $this->auditLogService->record(
-                    entityType:    'template',
-                    entityId:      $block->template_id,
-                    action:        'block_state_changed',
-                    userId:        $userId,
-                    blockId:       $block->getKey(),
+                    entityType: 'template',
+                    entityId: $block->template_id,
+                    action: 'block_state_changed',
+                    userId: $userId,
+                    blockId: $block->getKey(),
                     previousValue: [
                         'block_state' => $prev->block_state,
-                        ],
+                    ],
                     newValue: [
                         'block_state' => $block->block_state,
-                            ],
+                    ],
                 );
             }
         }

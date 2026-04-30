@@ -25,12 +25,6 @@ interface TemplateRepositoryInterface
     public function findOrFailWithoutCatalogScope(string $id): Template;
 
     /**
-     * Indica si el usuario es creador o revisor asignado de la plantilla.
-     * Usado para control de acceso al historial de auditoría.
-     */
-    public function isCreatorOrReviewer(string $templateId, string $userId): bool;
-
-    /**
      * Listado paginado con filtros (sin cargar bloques).
      */
     public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator;
@@ -59,6 +53,15 @@ interface TemplateRepositoryInterface
      * Replica los bloques de una plantilla origen hacia otra destino.
      */
     public function replicateBlocks(Template $source, Template $target): void;
+
+    /**
+     * Carga múltiples plantillas por sus IDs (con el global scope activo).
+     * El resultado está indexado por ID (keyBy).
+     *
+     * @param  list<string>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     */
+    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection;
 
     /**
      * Lista plantillas publicadas disponibles para un módulo.

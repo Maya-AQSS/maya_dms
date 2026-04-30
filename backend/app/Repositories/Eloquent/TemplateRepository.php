@@ -42,27 +42,6 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
-     * Indica si el usuario es creador o revisor asignado de la plantilla.
-     * Usado para control de acceso al historial de auditoría.
-     */
-    public function isCreatorOrReviewer(string $templateId, string $userId): bool
-    {
-        $isCreator = DB::table('templates')
-            ->where('id', $templateId)
-            ->where('created_by', $userId)
-            ->exists();
-
-        if ($isCreator) {
-            return true;
-        }
-
-        return DB::table('template_reviewers')
-            ->where('template_id', $templateId)
-            ->where('user_id', $userId)
-            ->exists();
-    }
-
-    /**
      * Listado paginado con filtros (sin cargar bloques).
      */
     public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator
@@ -179,6 +158,17 @@ class TemplateRepository implements TemplateRepositoryInterface
                 ]);
             }
         });
+    }
+
+    /**
+     * Carga múltiples plantillas por sus IDs (con el global scope activo), indexadas por ID.
+     *
+     * @param  list<string>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     */
+    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection
+    {
+        return Template::query()->whereIn('id', $ids)->get()->keyBy('id');
     }
 
     /**
