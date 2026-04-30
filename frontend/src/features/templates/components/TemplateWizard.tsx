@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageTitle } from '@maya/shared-ui-react';
+import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
 import {
@@ -266,126 +266,65 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
 
   // ── Render Helpers ─────────────────────────────────────────────────────────
 
-  const renderStepper = () => {
-    const stepsData: { id: Step; label: string; sub: string }[] = [
-      { id: 'properties', label: 'Propiedades', sub: 'Nombre, descripción…' },
-      { id: 'blocks', label: 'Bloques', sub: 'Estructura del documento' },
-      { id: 'users', label: 'Usuarios', sub: 'Validadores' },
-      { id: 'summary', label: 'Resumen', sub: 'Revisión final' },
-    ];
+  const stepsData: WizardStepDef<Step>[] = [
+    { id: 'properties', label: 'Propiedades', sub: 'Nombre, descripción…' },
+    { id: 'blocks', label: 'Bloques', sub: 'Estructura del documento' },
+    { id: 'users', label: 'Usuarios', sub: 'Validadores' },
+    { id: 'summary', label: 'Resumen', sub: 'Revisión final' },
+  ];
 
-    return (
-      <div className="flex items-center px-6 py-4 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
-        {stepsData.map((s, i) => {
-          const isActive = step === s.id;
-          const isDone = completedSteps.includes(s.id);
-          const isPending = !isActive && !isDone;
+  const headerActions = (
+    <>
+      {step === 'summary' && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/procesos')}
+          className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
+        >
+          Guardar y salir
+        </Button>
+      )}
 
-          const circleCls = isActive
-            ? 'bg-odoo-purple text-text-inverse'
-            : isDone
-              ? 'bg-success text-text-inverse'
-              : 'border border-ui-border text-text-muted';
+      {step !== 'summary' && (
+        <Button
+          variant="primary"
+          size="sm"
+          loading={saving}
+          onClick={() => void handleContinue()}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Guardar y continuar →
+        </Button>
+      )}
+      {step === 'summary' && validators.length > 0 && (
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={() => setShowValidationModal(true)}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Enviar a validar
+        </Button>
+      )}
+      {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
+        <Button
+          variant="primary"
+          size="sm"
+          loading={saving}
+          onClick={() => void handlePublish()}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Publicar plantilla
+        </Button>
+      )}
+    </>
+  );
 
-          const labelCls = isActive
-            ? 'text-odoo-purple'
-            : isDone
-              ? 'text-success'
-              : 'text-text-muted';
-
-          return (
-            <div key={s.id} className="flex flex-1 items-center last:flex-none">
-              <button
-                type="button"
-                onClick={() => handleGoToStep(s.id)}
-                className={`flex items-center gap-3 focus:outline-none transition-all group ${isPending ? 'opacity-50 cursor-default' : 'cursor-pointer hover:scale-105'}`}
-                disabled={isPending}
-              >
-                <span className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors shadow-sm ${circleCls}`}>
-                  {isDone && !isActive ? '✓' : i + 1}
-                </span>
-                <span className="text-left hidden lg:block">
-                  <span className={`block text-xs font-black uppercase tracking-widest ${labelCls}`}>
-                    {s.label}
-                  </span>
-                  <span className="block text-xs text-text-muted">
-                    {s.sub}
-                  </span>
-                </span>
-              </button>
-              {i < stepsData.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-4 rounded-full ${completedSteps.includes(s.id) ? 'bg-success' : 'bg-ui-border'}`} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-transparent">
-      {/* Top bar */}
-      <div className="shrink-0">
-        <PageTitle
-          title={template ? template.name : 'Nueva plantilla'}
-          subtitle={template ? 'Editar plantilla' : undefined}
-          onBack={handleBackArrow}
-          backLabel="Volver"
-          className="!mb-2"
-          actions={
-            <>
-              {step === 'summary' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/procesos')}
-                  className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
-                >
-                  Guardar y salir
-                </Button>
-              )}
-
-              {step !== 'summary' && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={saving}
-                  onClick={() => void handleContinue()}
-                  className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-                >
-                  Guardar y continuar →
-                </Button>
-              )}
-              {step === 'summary' && validators.length > 0 && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setShowValidationModal(true)}
-                  className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-                >
-                  Enviar a validar
-                </Button>
-              )}
-              {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  loading={saving}
-                  onClick={() => void handlePublish()}
-                  className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-                >
-                  Publicar plantilla
-                </Button>
-              )}
-            </>
-          }
-        />
-      </div>
-
-      {/* Leave guard confirmation */}
+  const banner = (
+    <>
       {leaveGuard && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-warning/30 bg-warning-light/40 animate-in slide-in-from-top-1">
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-warning/30 bg-warning-light/40 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-warning-dark">
             ⚠️ Tienes cambios sin guardar en este paso. ¿Seguro que quieres salir?
           </span>
@@ -399,11 +338,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           </div>
         </div>
       )}
-
-
-      {/* Permission / API error banner — step 1 */}
       {step === 'properties' && permissionError && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
           <Button
             variant="ghost"
@@ -416,10 +352,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           </Button>
         </div>
       )}
-
-      {/* API error banner — steps 2, 3, 4 (step 1 shows errors.api inline) */}
       {errors.api && step !== 'properties' && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">
             ⚠️ {errors.api}. Inténtalo de nuevo.
           </span>
@@ -434,12 +368,23 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           </Button>
         </div>
       )}
+    </>
+  );
 
-      {/* Stepper */}
-      {renderStepper()}
-
-      {/* Body — only this element scrolls */}
-      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+  return (
+    <>
+    <WizardShell<Step>
+      title={template ? template.name : 'Nueva plantilla'}
+      subtitle={template ? 'Editar plantilla' : undefined}
+      onBack={handleBackArrow}
+      actions={headerActions}
+      steps={stepsData}
+      currentStep={step}
+      completedSteps={completedSteps}
+      onGoToStep={handleGoToStep}
+      banner={banner}
+    >
+      <>
         {step === 'properties' && (
           <WizardStep1Properties
             name={name} setName={setName}
@@ -484,7 +429,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             documentValidationType={documentValidationType}
           />
         )}
-      </div>
+      </>
+    </WizardShell>
 
       {/* Validation modal */}
       <ConfirmDialog
@@ -525,7 +471,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         onCancel={() => setShowValidationModal(false)}
         onConfirm={handleSubmitForReview}
       />
-
-    </div>
+    </>
   );
 }

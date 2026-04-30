@@ -139,6 +139,7 @@ class DocumentController extends Controller
         $this->authorize('view', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
+        $document->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument(
             $document,
             $viewerId,

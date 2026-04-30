@@ -131,6 +131,11 @@ class Template extends Model
         return $this->belongsTo(Team::class);
     }
 
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public function process(): BelongsTo
     {
         return $this->belongsTo(Process::class);

@@ -102,6 +102,11 @@ class Document extends Model
         return $this->belongsTo(Process::class);
     }
 
+    public function owner(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
     public function blocks(): HasMany
     {
         return $this->hasMany(DocumentBlock::class);

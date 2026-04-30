@@ -145,8 +145,8 @@ export function TemplatePreviewPage() {
     }
   };
 
-  const headerActions = template ? (
-    <div className="flex items-center gap-2 flex-wrap">
+  const headerToolbar = template ? (
+    <div className="flex items-center justify-center gap-2 flex-wrap">
       <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[template.status] ?? ''}`}>
         {STATUS_LABEL[template.status] ?? template.status}
       </span>
@@ -225,8 +225,12 @@ export function TemplatePreviewPage() {
         subtitle="Previsualización"
         onBack={() => navigate(selectionMode ? backTo : '/procesos')}
         backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
-        actions={headerActions}
-        meta={headerMeta}
+        meta={
+          <div className="space-y-3">
+            {headerMeta}
+            {headerToolbar}
+          </div>
+        }
       />
 
       {actionError && (

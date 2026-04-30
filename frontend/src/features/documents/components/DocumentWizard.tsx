@@ -34,6 +34,7 @@ import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { Button, ConfirmDialog, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { DatePicker, ErrorBoundary } from '@maya/shared-ui-react';
+import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 
 const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
 
@@ -656,10 +657,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         if (!documentId) {
           // Creation Mode: Create everything in one call
           if (!templateId) throw new Error('No se puede crear un documento sin plantilla.');
-          
+          if (!template?.process_id) {
+            throw new Error('La plantilla seleccionada no tiene proceso asociado.');
+          }
+
           const created = await createDocument({
             template_id: templateId,
             title: title.trim(),
+            process_id: template.process_id,
             study_type_id: studyTypeId,
             study_id: studyId,
             module_id: moduleId,
@@ -782,72 +787,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   };
 
-  const renderStepper = () => {
-    if (isValidateMode) {
-      return (
-        <div className="flex items-center justify-center px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
-          <p className="text-xs font-semibold text-text-secondary dark:text-text-dark-secondary text-center">
-            Validación — resumen del documento
-          </p>
-        </div>
-      );
-    }
-    const stepsData: { id: Step; label: string; sub: string }[] = [
-      { id: 'properties', label: 'Propiedades', sub: 'Título y metadatos' },
-      { id: 'blocks', label: 'Bloques', sub: 'Contenido de la programación' },
-      { id: 'summary', label: 'Resumen', sub: 'Revisión antes de salir' },
-    ];
+  const stepsData: WizardStepDef<Step>[] = [
+    { id: 'properties', label: 'Propiedades', sub: 'Título y metadatos' },
+    { id: 'blocks', label: 'Bloques', sub: 'Contenido de la programación' },
+    { id: 'summary', label: 'Resumen', sub: 'Revisión antes de salir' },
+  ];
 
-    return (
-      <div className="flex items-center px-6 py-4 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
-        {stepsData.map((s, i) => {
-          const isActive = step === s.id;
-          const isDone = completedSteps.includes(s.id);
-          const isPending = !isActive && !isDone;
-
-          const circleCls = isActive
-            ? 'bg-odoo-purple text-text-inverse'
-            : isDone
-              ? 'bg-success text-text-inverse'
-              : 'border border-ui-border text-text-muted';
-
-          const labelCls = isActive ? 'text-odoo-purple' : isDone ? 'text-success' : 'text-text-muted';
-
-          return (
-            <div key={s.id} className="flex flex-1 items-center last:flex-none">
-              <button
-                type="button"
-                onClick={() => handleGoToStep(s.id)}
-                className={`flex items-center gap-3 focus:outline-none transition-all group ${
-                  isPending ? 'opacity-50 cursor-default' : 'cursor-pointer hover:scale-105'
-                }`}
-                disabled={isPending}
-              >
-                <span
-                  className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors shadow-sm ${circleCls}`}
-                >
-                  {isDone && !isActive ? '✓' : i + 1}
-                </span>
-                <span className="text-left hidden lg:block">
-                  <span className={`block text-xs font-black uppercase tracking-widest ${labelCls}`}>
-                    {s.label}
-                  </span>
-                  <span className="block text-xs text-text-muted">{s.sub}</span>
-                </span>
-              </button>
-              {i < stepsData.length - 1 && (
-                <div
-                  className={`flex-1 h-0.5 mx-4 rounded-full ${
-                    completedSteps.includes(s.id) ? 'bg-success' : 'bg-ui-border'
-                  }`}
-                />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
+  const validateModeStepper = (
+    <div className="flex items-center justify-center px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
+      <p className="text-xs font-semibold text-text-secondary dark:text-text-dark-secondary text-center">
+        Validación — resumen del documento
+      </p>
+    </div>
+  );
 
   if (loading && !detail && !templateId) {
     return (
@@ -912,101 +864,119 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     );
   }
 
-  return (
-    <div className="flex flex-col h-[calc(100dvh-7rem)] overflow-hidden bg-ui-body dark:bg-ui-dark-bg">
-      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
+  const headerActions = (
+    <>
+      {isValidateMode && (
+        <>
+          <Button
             type="button"
+            variant="secondary"
+            size="sm"
+            disabled={!actionableReviewId || validationReviewLoading}
             onClick={() => {
-              if (isValidateMode) navigate('/dashboard');
-              else if (documentId) navigate(`/documents/${documentId}`);
-              else navigate('/nueva-programacion');
+              setValidationModalError(null);
+              setValidateConfirm('reject');
             }}
-            className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95 shrink-0"
-            aria-label={isValidateMode ? 'Volver al panel principal' : 'Volver a la previsualización'}
           >
-            ←
-          </button>
-          <span className="text-sm text-text-secondary truncate">
-            Programaciones /{' '}
-            <span className="font-bold text-text-primary dark:text-text-dark-primary">{detail?.title || 'Nueva programación'}</span>
-          </span>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {isValidateMode && (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => {
-                  setValidationModalError(null);
-                  setValidateConfirm('reject');
-                }}
-              >
-                Rechazar
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => {
-                  setValidationModalError(null);
-                  setValidateConfirm('approve');
-                }}
-              >
-                Aprobar
-              </Button>
-            </>
-          )}
-          {!isValidateMode && step === 'summary' && (
-            <>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                onClick={() => setSummaryConfirmAction('save')}
-              >
-                Guardar sin enviar
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                loading={submittingForReview}
-                disabled={!isDraft || reviewerSubmitBlocked}
-                onClick={() => setSummaryConfirmAction('submit')}
-              >
-                Enviar a validar
-              </Button>
-            </>
-          )}
-          {!isValidateMode && step !== 'summary' && (
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              loading={saving}
-              onClick={() => void handleContinue()}
-              className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Continuar
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {!isDraft && !isValidateMode && (
-        <p className="shrink-0 px-6 py-2 text-xs bg-warning-light/20 text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light border-b border-warning/20">
-          Este documento no está en borrador: la edición de bloques está deshabilitada; solo puedes revisar el contenido.
-        </p>
+            Rechazar
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            disabled={!actionableReviewId || validationReviewLoading}
+            onClick={() => {
+              setValidationModalError(null);
+              setValidateConfirm('approve');
+            }}
+          >
+            Aprobar
+          </Button>
+        </>
       )}
+      {!isValidateMode && step === 'summary' && (
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setSummaryConfirmAction('save')}
+          >
+            Guardar sin enviar
+          </Button>
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={submittingForReview}
+            disabled={!isDraft || reviewerSubmitBlocked}
+            onClick={() => setSummaryConfirmAction('submit')}
+          >
+            Enviar a validar
+          </Button>
+        </>
+      )}
+      {!isValidateMode && step !== 'summary' && (
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={saving}
+          onClick={() => void handleContinue()}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Continuar
+        </Button>
+      )}
+    </>
+  );
 
-      {renderStepper()}
+  const draftBanner = !isDraft && !isValidateMode ? (
+    <p className="px-6 py-2 text-xs bg-warning-light/20 text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light border-b border-warning/20">
+      Este documento no está en borrador: la edición de bloques está deshabilitada; solo puedes revisar el contenido.
+    </p>
+  ) : null;
 
+  const handleWizardBack = () => {
+    if (isValidateMode) {
+      navigate('/dashboard');
+      return;
+    }
+    if (step === 'blocks') {
+      setStep('properties');
+      return;
+    }
+    if (step === 'summary') {
+      setStep('blocks');
+      return;
+    }
+    // step === 'properties'
+    const tId = detail?.template_id || templateId;
+    if (tId) {
+      navigate(`/templates/${tId}`);
+    } else if (documentId) {
+      navigate(`/documents/${documentId}`);
+    } else {
+      navigate('/nueva-programacion');
+    }
+  };
+
+  return (
+    <>
+    <WizardShell<Step>
+      title={detail?.title || 'Nueva programación'}
+      subtitle={detail?.title ? 'Editar programación' : undefined}
+      onBack={handleWizardBack}
+      backLabel={isValidateMode ? 'Volver al panel principal' : 'Volver'}
+      actions={headerActions}
+      steps={stepsData}
+      currentStep={step}
+      completedSteps={completedSteps}
+      onGoToStep={handleGoToStep}
+      banner={draftBanner}
+      stepperOverride={isValidateMode ? validateModeStepper : undefined}
+    >
+      <>
       {!isValidateMode && step === 'properties' && (
         <div className="flex-1 overflow-y-auto px-4 py-6 bg-ui-body/30 dark:bg-ui-dark-bg space-y-6">
           <div className="max-w-xl mx-auto space-y-6">
@@ -1157,8 +1127,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       )}
 
       {!isValidateMode && step === 'blocks' && (
-        <div className="flex-1 min-h-0 flex overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
-          <aside className="w-[280px] shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-y-auto p-3 space-y-1">
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-ui-body/30 dark:bg-ui-dark-bg">
+          <aside className="md:w-[280px] shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-y-auto p-3 space-y-1">
             {sortedBlocks.length === 0 ? (
               <p className="text-xs text-text-muted">No hay bloques.</p>
             ) : (
@@ -1188,9 +1158,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               })
             )}
           </aside>
-          <div className="flex-1 flex flex-col min-w-0 bg-ui-body dark:bg-ui-dark-bg">
+          <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
             {activeBlock && (
-              <>
+              <div className="flex-1 flex flex-col overflow-hidden">
                 <div className="shrink-0 px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
@@ -1235,7 +1205,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     <p className="text-xs text-danger-dark dark:text-danger mt-1">{blockSaveError}</p>
                   )}
                 </div>
-                <div className="flex-1 min-h-0 flex flex-col">
+                <div className={`flex-1 flex flex-col min-h-0 ${blockViewTab === 'content' && canEditBlocks ? 'overflow-hidden' : ''}`}>
                   {blockViewTab === 'content' ? (
                     canEditBlocks ? (
                       <ErrorBoundary fallback={<p className="p-4 text-xs text-danger-dark dark:text-danger">Error al cargar el editor de contenido.</p>}>
@@ -1276,102 +1246,71 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     </div>
                   )}
                 </div>
-              </>
+              </div>
             )}
           </div>
         </div>
       )}
 
       {step === 'summary' && detail && (
-        <div className="flex-1 overflow-y-auto px-4 py-4 bg-ui-body/30 dark:bg-ui-dark-bg space-y-4">
-          <p className="text-xs text-text-muted text-center">
-            {isValidateMode
-              ? 'Revisa el resumen del documento y confirma si lo apruebas o lo rechazas.'
-              : (
-                  <>
-                    Cambia todos los datos antes de publicar. Puedes volver atrás con el stepper. Al salir, el documento
-                    permanece en su estado actual.
-                  </>
-                )}
-          </p>
+        <div className="flex-1 min-h-0 flex flex-col px-6 py-5 space-y-4 overflow-hidden">
+          {isValidateMode && (
+            <p className="text-xs text-text-muted text-center shrink-0">
+              Revisa el resumen del documento y confirma si lo apruebas o lo rechazas.
+            </p>
+          )}
 
-          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 w-full">
+          <div className="shrink-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 w-full">
+            {/* Columna izquierda — Propiedades */}
             <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
               <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">Propiedades</p>
-              <dl className="space-y-0">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-0">
                 <DocSummaryRow label="Título" value={detail?.title} />
                 <DocSummaryRow
                   label="Estado"
                   value={detail ? (DOCUMENT_STATUS_LABELS[detail.status] ?? detail.status) : ''}
                 />
                 <DocSummaryRow label="Versión" value={detail ? `v${detail.current_version}` : ''} />
-              </dl>
-            </div>
-            <div className="px-5 py-4">
-              <dl className="space-y-0">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-2 border-b border-ui-border dark:border-ui-dark-border/30">
-                  <div>
-                    <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
-                      Tipo de estudio
-                    </dt>
-                    <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
-                      {detail?.study_type_id ?? '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
-                      Estudio
-                    </dt>
-                    <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
-                      {detail?.study_id ?? '—'}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
-                      Módulo
-                    </dt>
-                    <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
-                      {detail?.module_id ?? '—'}
-                    </dd>
-                  </div>
-                </div>
+                <DocSummaryRow label="Tipo de estudio" value={detail?.study_type_id} />
+                <DocSummaryRow label="Estudio" value={detail?.study_id} />
+                <DocSummaryRow label="Módulo" value={detail?.module_id} />
                 <DocSummaryRow
-                  label={
-                    reviewerListKind === 'document'
-                      ? 'Validadores del documento'
-                      : reviewerListKind === 'template_fallback'
-                        ? 'Quién validará (revisores de plantilla)'
-                        : 'Revisores / validadores'
-                  }
-                  value={
-                    documentReviewers.length > 0
-                      ? (
-                          <div className="space-y-1">
-                            {reviewerListKind === 'template_fallback' && (
-                              <p className="text-xs text-text-muted dark:text-text-dark-muted leading-snug">
-                                La plantilla no define validadores de documento; al enviar se usarán los revisores
-                                normativos de la plantilla (misma prioridad que en el servidor).
-                              </p>
-                            )}
-                            <ul className="mt-1 space-y-1">
-                              {documentReviewers.map((reviewer) => (
-                                <li key={reviewer.id}>
-                                  • {reviewer.name}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )
-                      : (
-                          <span className="text-text-muted italic">
-                            {reviewerListKind === 'none'
-                              ? 'La plantilla no tiene revisores ni validadores de documento configurados.'
-                              : '—'}
-                          </span>
-                        )
-                  }
+                  label="Plazo de entrega"
+                  value={detail?.delivery_deadline ? new Date(detail.delivery_deadline).toLocaleDateString() : null}
                 />
               </dl>
+            </div>
+
+            {/* Columna derecha — Revisores / validadores */}
+            <div className="px-5 py-4 space-y-3">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+                {reviewerListKind === 'document'
+                  ? 'Validadores del documento'
+                  : reviewerListKind === 'template_fallback'
+                    ? 'Quién validará (revisores de plantilla)'
+                    : 'Revisores / validadores'}
+              </p>
+              {documentReviewers.length > 0 ? (
+                <div className="space-y-1">
+                  {reviewerListKind === 'template_fallback' && (
+                    <p className="text-xs text-text-muted dark:text-text-dark-muted leading-snug">
+                      La plantilla no define validadores de documento; al enviar se usarán los revisores
+                      normativos de la plantilla (misma prioridad que en el servidor).
+                    </p>
+                  )}
+                  <ul className="mt-1 space-y-1 text-xs">
+                    {documentReviewers.map((reviewer) => (
+                      <li key={reviewer.id}>• {reviewer.name}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted italic">
+                  {reviewerListKind === 'none'
+                    ? 'La plantilla no tiene revisores ni validadores de documento configurados.'
+                    : '—'}
+                </p>
+              )}
               {reviewerSubmitBlocked && (
                 <p className="mt-2 text-xs text-danger-dark dark:text-danger">{reviewerSubmitBlockedMessage}</p>
               )}
@@ -1381,8 +1320,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             </div>
           </div>
 
-          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1 w-full">
-            <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
+          <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1 w-full">
+            <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
               <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
                 Contenido — {sortedBlocks.length} bloque{sortedBlocks.length !== 1 ? 's' : ''}
               </span>
@@ -1404,8 +1343,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 <p className="text-xs text-warning-dark italic">Este documento no tiene bloques.</p>
               </div>
             ) : (
-              <div className="grid" style={{ gridTemplateColumns: '200px 1fr', minHeight: '200px' }}>
-                <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto max-h-80">
+              <div className="flex-1 min-h-0 grid" style={{ gridTemplateColumns: '200px 1fr' }}>
+                <div className="border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto">
                   <div className="space-y-1">
                     {sortedBlocks.map((block, i) => {
                       const key = block.document_block_id ?? block.template_block_id;
@@ -1442,7 +1381,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     })}
                   </div>
                 </div>
-                <div className="flex flex-col min-w-0 max-h-80 preview-content">
+                <div className="flex flex-col min-w-0 min-h-0 preview-content">
                   <div className="shrink-0 px-4 pt-3 border-b border-ui-border dark:border-ui-dark-border">
                     <div className="flex gap-0 -mb-px">
                       {([
@@ -1497,7 +1436,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
         </div>
       )}
-      <ConfirmDialog
+      </>
+    </WizardShell>
+    <ConfirmDialog
         open={validateConfirm === 'approve'}
         title="Confirmar aprobación"
         description="Se registrará tu aprobación. Si eres el último validador pendiente, el documento pasará a publicado."
@@ -1588,6 +1529,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         onCancel={() => setSummaryConfirmAction(null)}
         onConfirm={() => void handleConfirmSummaryAction()}
       />
-    </div>
+    </>
   );
 }

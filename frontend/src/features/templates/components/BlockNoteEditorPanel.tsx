@@ -13,7 +13,7 @@ interface Props {
 }
 
 const PANEL_STYLES_ID = 'maya-bn-panel-styles';
-const PANEL_STYLES_VERSION = '6';
+const PANEL_STYLES_VERSION = '9';
 function ensurePanelStyles() {
   if (typeof document === 'undefined') return;
   const existing = document.getElementById(PANEL_STYLES_ID) as HTMLStyleElement | null;
@@ -36,9 +36,11 @@ function ensurePanelStyles() {
     .maya-bn-panel [class*="ScrollArrow"] {
       display: none !important;
     }
-    /* bn-root: fills the scroll wrapper visually but has no grow constraints
-       that could push the page scroll. Only height comes from min-height: 100%
-       relative to its scroll-wrapper parent. */
+    /* DOM real: .bn-root y .bn-container son el mismo elemento (al igual
+       que .ProseMirror y .bn-editor). bn-root usa min-height:100% para
+       llenar el wrapper cuando el contenido es corto, pero puede crecer y
+       hacer scroll cuando el contenido excede; ProseMirror toma el resto
+       del alto con flex:1. */
     .maya-bn-panel .bn-root {
       min-height: 100%;
       display: flex;
@@ -46,18 +48,9 @@ function ensurePanelStyles() {
       cursor: text;
       box-sizing: border-box;
     }
-    .maya-bn-panel .bn-container {
-      flex: 1 0 auto;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-    }
-    .maya-bn-panel .bn-editor {
-      flex: 1 0 auto;
-      min-height: 0;
-    }
     .maya-bn-panel .ProseMirror {
-      min-height: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
     }
     /* Bring editor typography up to the rest of the app (was a touch smaller). */
     .maya-bn-panel .ProseMirror,

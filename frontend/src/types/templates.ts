@@ -28,6 +28,7 @@ export type Template = {
   study_id: string | null;
   module_id: string | null;
   team_id: string | null;
+  process_id: string | null;
   created_by: string;
   author_name?: string | null;
   status: TemplateStatus;

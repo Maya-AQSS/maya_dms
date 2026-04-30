@@ -86,6 +86,7 @@ export async function createDocumentFromModule(payload: {
 export async function createDocument(payload: {
   template_id: string;
   title: string;
+  process_id: string;
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;

@@ -80,7 +80,7 @@ class TemplateController extends Controller
             abort(404);
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
-        $model->loadMissing(['reviewers', 'documentReviewers']);
+        $model->loadMissing(['reviewers', 'documentReviewers', 'creator']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,

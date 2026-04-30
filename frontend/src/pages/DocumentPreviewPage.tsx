@@ -6,6 +6,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { visibilityLabel } from '../features/templates/constants';
 import { Button, ConfirmDialog } from '../ui';
+import { PageTitle } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -82,8 +83,8 @@ export function DocumentPreviewPage() {
   const cameFromValidate = previewState?.returnToValidate === true;
 
   const backLabel = cameFromSummary
-    ? cameFromValidate ? '← Volver a validar' : '← Volver al resumen'
-    : '← Volver';
+    ? cameFromValidate ? 'Volver a validar' : 'Volver al resumen'
+    : 'Volver';
 
   const handleBack = () => {
     if (cameFromSummary && documentId) {
@@ -127,84 +128,81 @@ export function DocumentPreviewPage() {
     }
   };
 
-  return (
-    <div className="min-h-full overflow-y-auto bg-ui-preview-bg dark:bg-ui-dark-bg">
-      <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 px-6 h-[52px]">
-        <button
+  const headerToolbar = detail ? (
+    <div className="flex items-center justify-center gap-2 flex-wrap">
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[detail.status] ?? ''}`}>
+        {STATUS_LABEL[detail.status] ?? detail.status}
+      </span>
+      <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
+        v{detail.current_version}
+      </span>
+      {documentId && <FavoriteButton entityType="document" entityId={documentId} />}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setShowHistory(true)}
+      >
+        Historial
+      </Button>
+      {isDraft && isOwner && (
+        <Button
           type="button"
-          onClick={handleBack}
-          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary dark:text-text-dark-secondary bg-ui-body dark:bg-ui-dark-bg hover:bg-ui-border dark:hover:bg-ui-dark-border transition-colors cursor-pointer"
+          variant="outline"
+          size="sm"
+          className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+          onClick={() => setShowDeleteModal(true)}
         >
-          {backLabel}
-        </button>
-        <span className="flex-1 text-xs font-semibold text-text-muted dark:text-text-dark-muted truncate">
-          {detail?.title ?? 'Programación'} — Previsualización
-        </span>
-        <div className="flex items-center gap-2 shrink-0">
-          {detail && (
-            <>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[detail.status] ?? ''}`}>
-                {STATUS_LABEL[detail.status] ?? detail.status}
-              </span>
-              <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-                v{detail.current_version}
-              </span>
-              {isDraft && isOwner && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                  onClick={() => setShowDeleteModal(true)}
-                >
-                  Eliminar
-                </Button>
-              )}
-              {documentId && <FavoriteButton entityType="document" entityId={documentId} />}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setShowHistory(true)}
-              >
-                Historial
-              </Button>
-              {isDraft && isOwner && documentId && (
-                <Link to={`/documents/${documentId}/editor`}>
-                  <Button type="button" size="sm" variant="outline">
-                    Editar
-                  </Button>
-                </Link>
-              )}
-              {isDraft && isOwner && (
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="sm"
-                  loading={actionLoading}
-                  onClick={() => void handleSubmit()}
-                >
-                  Enviar a validar
-                </Button>
-              )}
-            </>
-          )}
-        </div>
-      </header>
-
-      {detail && (
-        <div className="max-w-[960px] mx-auto px-6 py-2 border-b border-ui-border/50 dark:border-ui-dark-border/50">
-          <p className="text-xs text-text-muted dark:text-text-dark-muted">
-            {detail.owner_name ?? 'Autor desconocido'}
-            {' · '}
-            {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
-            {' · '}
-            Fecha límite: {formatDate(detail.delivery_deadline)}
-            {' · '}
-            Última edición: {formatDate(detail.updated_at)}
-          </p>
-        </div>
+          Eliminar
+        </Button>
       )}
+      {isDraft && isOwner && documentId && (
+        <Link to={`/documents/${documentId}/editor`}>
+          <Button type="button" size="sm" variant="outline">
+            Editar
+          </Button>
+        </Link>
+      )}
+      {isDraft && isOwner && (
+        <Button
+          type="button"
+          variant="primary"
+          size="sm"
+          loading={actionLoading}
+          onClick={() => void handleSubmit()}
+        >
+          Enviar a validar
+        </Button>
+      )}
+    </div>
+  ) : null;
+
+  const headerMeta = detail ? (
+    <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
+      {detail.owner_name ?? 'Autor desconocido'}
+      {' · '}
+      {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
+      {' · '}
+      Fecha límite: {formatDate(detail.delivery_deadline)}
+      {' · '}
+      Última edición: {formatDate(detail.updated_at)}
+    </p>
+  ) : null;
+
+  return (
+    <div className="min-h-full overflow-y-auto">
+      <PageTitle
+        title={detail?.title ?? 'Programación'}
+        subtitle="Previsualización"
+        onBack={handleBack}
+        backLabel={backLabel}
+        meta={
+          <div className="space-y-3">
+            {headerMeta}
+            {headerToolbar}
+          </div>
+        }
+      />
 
       {actionError && (
         <div className="max-w-[960px] mx-auto px-6 py-2">
