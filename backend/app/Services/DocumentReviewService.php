@@ -4,8 +4,11 @@ namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Models\Document;
+use App\Models\DocumentReview;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -28,6 +31,9 @@ class DocumentReviewService
         return $this->documentRepository->listReviewsForDocument($documentId);
     }
 
+    /**
+     * Aprueba una revisión del documento.
+     */
     public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document
     {
         return DB::transaction(function () use ($documentId, $reviewId, $actorId, $publicationChangelog) {
@@ -42,11 +48,11 @@ class DocumentReviewService
             $review = $this->documentRepository->findReviewInDocument($reviewId, $documentId);
 
             if ($review === null) {
-                abort(404);
+                throw new ModelNotFoundException('Revisión no encontrada.');
             }
 
             if ($review->reviewer_id !== $actorId) {
-                abort(403, 'No eres el revisor asignado a esta etapa.');
+                throw new AuthorizationException('No eres el revisor asignado a esta etapa.');
             }
 
             if ($review->status !== 'pending') {
@@ -82,6 +88,9 @@ class DocumentReviewService
         });
     }
 
+    /**
+     * Rechaza una revisión del documento.
+     */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document
     {
         return DB::transaction(function () use ($documentId, $reviewId, $actorId, $reason) {
@@ -96,11 +105,11 @@ class DocumentReviewService
             $review = $this->documentRepository->findReviewInDocument($reviewId, $documentId);
 
             if ($review === null) {
-                abort(404);
+                throw new ModelNotFoundException('Revisión no encontrada.');
             }
 
             if ($review->reviewer_id !== $actorId) {
-                abort(403, 'No eres el revisor asignado a esta etapa.');
+                throw new AuthorizationException('No eres el revisor asignado a esta etapa.');
             }
 
             if ($review->status !== 'pending') {
@@ -127,7 +136,10 @@ class DocumentReviewService
         });
     }
 
-    private function assertSequentialReviewAllowsActing(Document $document, $review): void
+    /**
+     * Verifica si la revisión secuencial permite actuar.
+     */
+    private function assertSequentialReviewAllowsActing(Document $document, DocumentReview $review): void
     {
         $document->loadMissing('template');
         $mode = $document->template?->review_mode ?? 'parallel';
