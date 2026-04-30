@@ -9,6 +9,7 @@ import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext
 import { useNavItems } from './components/layout/navItems';
 
 // Lazy-loaded pages
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const ProcesosPage = lazy(() => import('./pages/ProcesosPage').then(m => ({ default: m.ProcesosPage })));
 const NuevaProgramacionSelectorPage = lazy(() => import('./pages/NuevaProgramacionSelectorPage').then(m => ({ default: m.NuevaProgramacionSelectorPage })));
 const DocumentEditorPage = lazy(() => import('./pages/DocumentEditorPage').then(m => ({ default: m.DocumentEditorPage })));
@@ -28,6 +29,7 @@ function AppRoutes() {
     <Suspense fallback={<div className="p-8">Cargando...</div>}>
       <Routes>
         <Route path="/" element={<Navigate to="/procesos" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/procesos" element={<ProcesosPage />} />
         <Route path="/nueva-programacion" element={<NuevaProgramacionSelectorPage />} />
         <Route path="/nueva-programacion/:templateId/wizard" element={<DocumentEditorPage />} />
@@ -75,12 +77,8 @@ function Main() {
       userInitials={userInitials}
       onLogout={logout}
       onProfile={onProfile}
-      topbarActions={
-        <div className="flex items-center gap-2">
-          <SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />
-          <NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />
-        </div>
-      }
+      favoritesSlot={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
+      notificationsSlot={<NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />}
     >
       <AppRoutes />
     </AppLayout>
