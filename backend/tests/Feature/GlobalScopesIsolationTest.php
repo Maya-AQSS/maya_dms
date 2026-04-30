@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\Document;
 use App\Models\Team;
 use App\Models\Template;
+use App\Models\TemplateVersion;
 use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -369,6 +370,63 @@ class GlobalScopesIsolationTest extends TestCase
             ->assertJsonPath('data.0.id', $commentId)
             ->assertJsonPath('data.0.commentable_type', Document::class)
             ->assertJsonPath('data.0.commentable_id', $documentId);
+    }
+
+    public function test_template_comments_are_hidden_and_blocked_after_first_publish(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+        $commentId = (string) Str::uuid();
+
+        Comment::query()->forceCreate([
+            'id'                  => $commentId,
+            'commentable_type'    => Template::class,
+            'commentable_id'      => $templateId,
+            'commentable_version' => 1,
+            'blockable_type'      => null,
+            'blockable_id'        => null,
+            'parent_id'           => null,
+            'author_id'           => $userA,
+            'body'                => 'Comentario previo a publicar',
+            'resolved'            => false,
+            'resolved_by'         => null,
+            'resolved_at'         => null,
+        ]);
+
+        TemplateVersion::query()->forceCreate([
+            'id'             => (string) Str::uuid(),
+            'template_id'    => $templateId,
+            'version_number' => 1,
+            'blocks_snapshot'=> [],
+            'changelog'      => 'Publicacion inicial',
+            'published_by'   => $userA,
+            'published_at'   => now(),
+        ]);
+
+        $this->getJson(
+            "/api/v1/templates/{$templateId}/comments",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertOk()
+            ->assertJsonPath('data', []);
+
+        $this->getJson(
+            "/api/v1/comments/{$commentId}",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNotFound();
+
+        $this->postJson(
+            "/api/v1/templates/{$templateId}/comments",
+            ['body' => 'Nuevo comentario bloqueado'],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNotFound();
+
+        $this->patchJson(
+            "/api/v1/comments/{$commentId}/resolve",
+            [],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNotFound();
     }
 
     /**

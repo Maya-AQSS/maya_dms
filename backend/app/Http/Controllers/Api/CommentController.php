@@ -39,6 +39,9 @@ class CommentController extends Controller
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isTemplateCommentsLocked($model)) {
+                return response()->json(['data' => []]);
+            }
 
             return response()->json([
                 'data' => $this->commentService->listForResource(
@@ -82,6 +85,9 @@ class CommentController extends Controller
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isTemplateCommentsLocked($model)) {
+                abort(404);
+            }
 
             $comment = $this->commentService->createForResource(
                 commentableType: Template::class,
@@ -180,6 +186,9 @@ class CommentController extends Controller
             $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isTemplateCommentsLocked($model)) {
+                abort(404);
+            }
             return;
         }
 
@@ -193,5 +202,10 @@ class CommentController extends Controller
         if (! $isAllowed) {
             abort(422, 'Tipo de recurso de comentario no soportado.');
         }
+    }
+
+    private function isTemplateCommentsLocked(Template $template): bool
+    {
+        return $template->publishedVersions()->exists();
     }
 }
