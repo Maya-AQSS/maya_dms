@@ -5,11 +5,8 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
-use App\Events\DocumentStateChanged;
 use App\Models\CourseModule;
 use App\Models\Document;
-use App\Models\DocumentBlock;
-use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
@@ -23,12 +20,28 @@ use Illuminate\Validation\ValidationException;
 
 class DocumentService implements DocumentServiceInterface
 {
+    private readonly DocumentBlockService $documentBlockService;
+    private readonly DocumentVersionService $documentVersionService;
+    private readonly DocumentShareService $documentShareService;
+    private readonly DocumentStateService $documentStateService;
+    private readonly DocumentReviewService $documentReviewService;
+
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly SnapshotServiceInterface $snapshotService,
-    ) {}
+    ) {
+        $this->documentBlockService = new DocumentBlockService($this->documentRepository);
+        $this->documentVersionService = new DocumentVersionService($this->documentRepository);
+        $this->documentShareService = new DocumentShareService($this->documentRepository);
+        $this->documentStateService = new DocumentStateService($this->documentRepository);
+        $this->documentReviewService = new DocumentReviewService(
+            $this->documentRepository,
+            $this->snapshotService,
+            $this->documentStateService,
+        );
+    }
 
     /**
      * Localiza un documento por su ID.
@@ -273,36 +286,12 @@ class DocumentService implements DocumentServiceInterface
         string $permission,
         string $actorId,
     ): array {
-        $document = $this->documentRepository->findOrFail($documentId);
-
-        if ($document->owner_id !== $actorId) {
-            abort(403, 'Solo el titular puede gestionar colaboradores.');
-        }
-
-        if ($targetUserId === $actorId) {
-            throw ValidationException::withMessages([
-                'user_id' => ['No puedes compartir el documento contigo mismo.'],
-            ]);
-        }
-
-        if ($targetUserId === $document->owner_id) {
-            throw ValidationException::withMessages([
-                'user_id' => ['El titular ya tiene acceso completo al documento.'],
-            ]);
-        }
-
-        $this->documentRepository->upsertDocumentShare(
+        return $this->documentShareService->upsertDocumentShare(
             $documentId,
             $targetUserId,
             $permission,
             $actorId,
         );
-
-        return [
-            'user_id' => $targetUserId,
-            'permission' => $permission,
-            'granted_by' => $actorId,
-        ];
     }
 
     /**
@@ -310,13 +299,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void
     {
-        $document = $this->documentRepository->findOrFail($documentId);
-
-        if ($document->owner_id !== $actorId) {
-            abort(403, 'Solo el titular puede gestionar colaboradores.');
-        }
-
-        $this->documentRepository->deleteDocumentShare($documentId, $targetUserId);
+        $this->documentShareService->removeDocumentShare($documentId, $targetUserId, $actorId);
     }
 
     /**
@@ -326,18 +309,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void
     {
-        if ($documents->isEmpty()) {
-            return;
-        }
-
-        $ids = $documents->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
-        $byDoc = $this->documentRepository->sharePermissionsForViewer($ids, $viewerId);
-
-        foreach ($documents as $document) {
-            $permission = $byDoc[(string) $document->getKey()] ?? null;
-            $document->setAttribute('viewer_share_permission', $permission);
-            $document->setAttribute('is_shared_with_me', $permission !== null);
-        }
+        $this->documentShareService->attachShareMetadataForViewer($documents, $viewerId);
     }
 
     /**
@@ -357,34 +329,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function blocksForDisplay(Document $document): array
     {
-        $document->loadMissing(['blocks', 'templateVersion']);
-
-        $byTemplateBlockId = $document->blocks->keyBy('template_block_id');
-        $definitions = $this->blockDefinitionsForDocument($document);
-
-        $out = [];
-        foreach ($definitions as $def) {
-            $tid = (string) $def['id'];
-            $row = $byTemplateBlockId->get($tid);
-            $mandatory = (bool) ($def['mandatory'] ?? false);
-            $state = (string) ($def['block_state'] ?? 'editable');
-
-            $out[] = [
-                'document_block_id' => $row?->id,
-                'template_block_id' => $tid,
-                'type' => $def['type'] ?? '',
-                'title' => $def['title'] ?? null,
-                'description' => $def['description'] ?? null,
-                'default_content' => $def['default_content'] ?? null,
-                'block_state' => $state,
-                'mandatory' => $mandatory,
-                'sort_order' => (int) ($def['sort_order'] ?? 0),
-                'content' => $row?->content,
-                'is_filled' => (bool) ($row?->is_filled ?? false),
-            ];
-        }
-
-        return $out;
+        return $this->documentBlockService->blocksForDisplay($document);
     }
 
     /**
@@ -394,92 +339,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function updateBlock(UpdateDocumentBlockDto $dto): array
     {
-        return DB::transaction(function () use ($dto) {
-            $document = $this->documentRepository->findOrFail($dto->documentId);
-            if ($document->status !== 'draft') {
-                abort(403, 'Solo se pueden editar bloques de documentos en borrador.');
-            }
-
-            $block = $this->documentRepository->findBlockInDocumentOrFail(
-                $dto->documentId,
-                $dto->documentBlockId,
-            );
-
-            $definitions = collect($this->blockDefinitionsForDocument($document))
-                ->keyBy(fn (array $def) => (string) $def['id']);
-            $definition = $definitions->get((string) $block->template_block_id) ?? [];
-
-            $state = (string) ($definition['block_state'] ?? 'editable');
-
-            if ($state === 'locked') {
-                abort(403, 'Este bloque está bloqueado y no admite edición.');
-            }
-
-            if ($this->documentBlockContentEquals($block->content, $dto->content)) {
-                return [
-                    'document_block_id' => (string) $block->id,
-                    'template_block_id' => (string) $block->template_block_id,
-                    'content' => $block->content,
-                    'is_filled' => (bool) $block->is_filled,
-                    'last_edited_by' => (string) $block->last_edited_by,
-                    'updated_at' => $block->updated_at?->toIso8601String(),
-                ];
-            }
-
-            $this->appendModifiableBlockVersionSnapshotsIfNeeded($document, $block, $definition, $dto);
-
-            $block->content = $dto->content;
-            $block->is_filled = $this->isContentFilled($dto->content);
-            $block->last_edited_by = $dto->actorId;
-            $this->documentRepository->saveBlock($block);
-
-            return [
-                'document_block_id' => (string) $block->id,
-                'template_block_id' => (string) $block->template_block_id,
-                'content' => $block->content,
-                'is_filled' => (bool) $block->is_filled,
-                'last_edited_by' => (string) $block->last_edited_by,
-                'updated_at' => $block->updated_at?->toIso8601String(),
-            ];
-        });
-    }
-
-    /**
-     * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
-     *
-     * @return list<array<string, mixed>>
-     */
-    private function blockDefinitionsForDocument(Document $document): array
-    {
-        if ($document->template_version_id !== null) {
-            $document->loadMissing('templateVersion');
-            if ($document->templateVersion !== null) {
-                $snap = $document->templateVersion->blocks_snapshot;
-
-                return collect(is_array($snap) ? $snap : [])
-                    ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
-                    ->values()
-                    ->all();
-            }
-        }
-
-        // Sin global scope: durante submit/revisión el titular puede no tener visibilidad
-        // de catálogo sobre la plantilla, pero el documento ya está anclado a ella.
-        $template = Template::query()
-            ->withoutGlobalScopes(['user_access'])
-            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order')])
-            ->findOrFail($document->template_id);
-
-        return $template->blocks->map(fn ($b) => [
-            'id' => $b->id,
-            'type' => $b->type,
-            'title' => $b->title,
-            'description' => $b->description,
-            'default_content' => $b->default_content,
-            'block_state' => $b->block_state,
-            'mandatory' => $b->mandatory,
-            'sort_order' => $b->sort_order,
-        ])->all();
+        return $this->documentBlockService->updateBlock($dto);
     }
 
     /**
@@ -489,19 +349,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document
     {
-        $document = $this->documentRepository->findOrFail($documentId);
-        $oldStatus = $document->status;
-
-        $document->update(array_merge(['status' => $newStatus], $extraAttributes));
-
-        event(new DocumentStateChanged(
-            document: $document->fresh(),
-            oldStatus: $oldStatus,
-            newStatus: $newStatus,
-            actorId: $actorId,
-        ));
-
-        return $document->fresh();
+        return $this->documentStateService->transition($documentId, $newStatus, $actorId, $extraAttributes);
     }
 
     /**
@@ -517,17 +365,11 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        $this->assertMandatoryBlocksAreFilled($document);
+        $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
 
         return DB::transaction(function () use ($documentId, $actorId, $document) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
 
-            // Sin global scope: el titular puede no “ver” la plantilla en catálogo (p. ej. personal de otro
-            // usuario) pero debe poder generar revisiones desde la plantilla anclada.
-            //
-            // Prioridad: `template_document_reviewers` (validadores de documento en el asistente de plantilla);
-            // si no hay ninguno, se usa `template_reviewers` (revisores normativos de la plantilla).
-            // En ambos casos se excluye al creador y titular del documento (SoD, {@see DocumentPolicy::review}).
             $template = Template::query()
                 ->withoutGlobalScopes(['user_access'])
                 ->with([
@@ -574,7 +416,7 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
 
-            $document = $this->transition($documentId, 'in_review', $actorId, [
+            $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, [
                 'submitted_at' => now(),
             ]);
 
@@ -606,7 +448,7 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return DB::transaction(function () use ($documentId, $actorId, $changelog) {
-            $this->transition($documentId, 'published', $actorId, [
+            $this->documentStateService->transition($documentId, 'published', $actorId, [
                 'published_at' => now(),
             ]);
             $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
@@ -634,7 +476,7 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return DB::transaction(function () use ($documentId, $actorId) {
-            $updated = $this->transition($documentId, 'draft', $actorId, [
+            $updated = $this->documentStateService->transition($documentId, 'draft', $actorId, [
                 'submitted_at' => null,
                 'published_at' => null,
             ]);
@@ -671,13 +513,11 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Lista las revisiones del documento.
      * 
-     * @return Collection<int, DocumentReview>
+     * @return Collection<int, \App\Models\DocumentReview>
      */
     public function listReviews(string $documentId): Collection
     {
-        $this->documentRepository->findOrFail($documentId);
-
-        return $this->documentRepository->listReviewsForDocument($documentId);
+        return $this->documentReviewService->listReviews($documentId);
     }
 
     /**
@@ -685,56 +525,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document
     {
-        return DB::transaction(function () use ($documentId, $reviewId, $actorId, $publicationChangelog) {
-            $document = $this->documentRepository->findOrFail($documentId);
-
-            if ($document->status !== 'in_review') {
-                throw ValidationException::withMessages([
-                    'status' => ['Las revisiones solo aplican a documentos en revisión.'],
-                ]);
-            }
-
-            $review = $this->documentRepository->findReviewInDocument($reviewId, $documentId);
-
-            if ($review === null) {
-                abort(404);
-            }
-
-            if ($review->reviewer_id !== $actorId) {
-                abort(403, 'No eres el revisor asignado a esta etapa.');
-            }
-
-            if ($review->status !== 'pending') {
-                throw ValidationException::withMessages([
-                    'review' => ['Esta revisión ya fue procesada.'],
-                ]);
-            }
-
-            $this->assertSequentialReviewAllowsActing($document, $review);
-
-            $review->status = 'approved';
-            $review->reviewed_at = now();
-            $this->documentRepository->saveReview($review);
-
-            if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
-                $this->transition($documentId, 'published', $actorId, [
-                    'published_at' => now(),
-                ]);
-                $changelog = $publicationChangelog !== null && trim($publicationChangelog) !== ''
-                    ? trim($publicationChangelog)
-                    : 'Publicado tras aprobación de revisión.';
-                $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
-                    documentId: $documentId,
-                    triggerEvent: 'published',
-                    triggeredBy: $actorId,
-                    notes: $changelog,
-                ));
-
-                return $this->documentRepository->findOrFail($documentId);
-            }
-
-            return $this->documentRepository->findOrFail($documentId);
-        });
+        return $this->documentReviewService->approveReview($documentId, $reviewId, $actorId, $publicationChangelog);
     }
 
     /**
@@ -742,140 +533,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document
     {
-        return DB::transaction(function () use ($documentId, $reviewId, $actorId, $reason) {
-            $document = $this->documentRepository->findOrFail($documentId);
-
-            if ($document->status !== 'in_review') {
-                throw ValidationException::withMessages([
-                    'status' => ['Las revisiones solo aplican a documentos en revisión.'],
-                ]);
-            }
-
-            $review = $this->documentRepository->findReviewInDocument($reviewId, $documentId);
-
-            if ($review === null) {
-                abort(404);
-            }
-
-            if ($review->reviewer_id !== $actorId) {
-                abort(403, 'No eres el revisor asignado a esta etapa.');
-            }
-
-            if ($review->status !== 'pending') {
-                throw ValidationException::withMessages([
-                    'review' => ['Esta revisión ya fue procesada.'],
-                ]);
-            }
-
-            $this->assertSequentialReviewAllowsActing($document, $review);
-
-            $review->status = 'rejected';
-            $review->rejection_reason = $reason;
-            $review->reviewed_at = now();
-            $this->documentRepository->saveReview($review);
-
-
-            $updated = $this->transition($documentId, 'draft', $actorId, [
-                'submitted_at' => null,
-                'published_at' => null,
-            ]);
-
-            $this->documentRepository->deleteReviewsForDocument($documentId);
-
-            return $updated;
-        });
-    }
-
-    /**
-     * En modo {@see Template::$review_mode} secuencial, solo puede actuar quien pertenezca
-     * a la etapa pendiente con número más bajo (así se respetan varios revisores en la misma etapa).
-     * En modo paralelo no hay orden entre etapas.
-     */
-    private function assertSequentialReviewAllowsActing(Document $document, DocumentReview $review): void
-    {
-        $document->loadMissing('template');
-        $mode = $document->template?->review_mode ?? 'parallel';
-        if ($mode !== 'sequential') {
-            return;
-        }
-
-        $minStage = $this->documentRepository->minPendingReviewStageForDocument($document->id);
-        if ($minStage === null) {
-            return;
-        }
-
-        if ($review->stage !== $minStage) {
-            throw ValidationException::withMessages([
-                'review' => ['En revisión secuencial, solo puede actuar la etapa pendiente más baja.'],
-            ]);
-        }
-    }
-
-    /**
-     * Verifica si el contenido del bloque está completado.
-     */
-    private function isContentFilled(mixed $content): bool
-    {
-        if ($content === null) {
-            return false;
-        }
-
-        if (is_string($content)) {
-            return trim($content) !== '';
-        }
-
-        if (is_array($content)) {
-            if ($content === []) {
-                return false;
-            }
-
-            $encoded = json_encode($content);
-
-            return $encoded !== false && $encoded !== '[]' && $encoded !== '{}' && $encoded !== 'null';
-        }
-
-        return true;
-    }
-
-    /**
-     * Verifica que todos los bloques no opcionales estén completos.
-     */
-    private function assertMandatoryBlocksAreFilled(Document $document): void
-    {
-        $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->filter(fn (array $def) => ($def['block_state'] ?? 'editable') !== 'optional');
-
-        if ($definitions->isEmpty()) {
-            return;
-        }
-
-        $document->loadMissing('blocks');
-        $blocksByTemplateBlockId = $document->blocks->keyBy('template_block_id');
-        $missing = [];
-
-        foreach ($definitions as $definition) {
-            $templateBlockId = (string) ($definition['id'] ?? '');
-            if ($templateBlockId === '') {
-                continue;
-            }
-
-            $block = $blocksByTemplateBlockId->get($templateBlockId);
-            if ($block === null) {
-                $missing[] = $templateBlockId;
-                continue;
-            }
-
-            if (! ((bool) $block->is_filled) && ! $this->isContentFilled($block->content)) {
-                $missing[] = $templateBlockId;
-            }
-        }
-
-        if ($missing !== []) {
-            throw ValidationException::withMessages([
-                'blocks' => ['Debes completar todos los bloques no opcionales antes de enviar a revisión.'],
-                'missing_template_block_ids' => $missing,
-            ]);
-        }
+        return $this->documentReviewService->rejectReview($documentId, $reviewId, $actorId, $reason);
     }
 
     /**
@@ -883,9 +541,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion
     {
-        $this->documentRepository->findOrFail($documentId);
-
-        return $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
+        return $this->documentVersionService->findDocumentVersionOrFail($documentId, $versionId);
     }
 
     /**
@@ -904,128 +560,6 @@ class DocumentService implements DocumentServiceInterface
      */
     public function listDocumentVersions(string $documentId): array
     {
-        $document = $this->documentRepository->findOrFail($documentId);
-
-        return $document->versions()
-            ->orderByDesc('version_number')
-            ->get()
-            ->map(static function (DocumentVersion $v): array {
-                return [
-                    'id' => $v->id,
-                    'document_id' => $v->document_id,
-                    'version_number' => $v->version_number,
-                    'trigger_event' => $v->trigger_event,
-                    'triggered_by' => $v->triggered_by,
-                    'changelog' => $v->notes,
-                    'notes' => $v->notes,
-                    'created_at' => $v->created_at?->toIso8601String(),
-                ];
-            })
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Compara dos valores JSON canónicamente.
-     */
-    private function documentBlockContentEquals(mixed $a, mixed $b): bool
-    {
-        return $this->jsonEncodeCanonical($a) === $this->jsonEncodeCanonical($b);
-    }
-
-    /**
-     * Codifica un valor JSON canónicamente.
-     */
-    private function jsonEncodeCanonical(mixed $value): string
-    {
-        try {
-            $normalized = $this->normalizeKeysForCanonicalJson($value);
-
-            return json_encode(
-                $normalized,
-                \JSON_THROW_ON_ERROR | \JSON_UNESCAPED_SLASHES | \JSON_UNESCAPED_UNICODE | \JSON_PRESERVE_ZERO_FRACTION,
-            );
-        } catch (\JsonException) {
-            return '';
-        }
-    }
-
-    /**
-     * Ordena claves de objetos JSON (arrays asociativos) de forma recursiva; preserva el orden de listas.
-     */
-    private function normalizeKeysForCanonicalJson(mixed $value): mixed
-    {
-        if (! is_array($value)) {
-            return $value;
-        }
-
-        if ($value === [] || array_is_list($value)) {
-            return array_map(fn (mixed $item): mixed => $this->normalizeKeysForCanonicalJson($item), $value);
-        }
-
-        ksort($value);
-
-        foreach ($value as $k => $nested) {
-            $value[$k] = $this->normalizeKeysForCanonicalJson($nested);
-        }
-
-        return $value;
-    }
-
-    /**
-     * Si el bloque es editable y modificable, crea una nueva versión del bloque.
-     * 
-     * @param  array<string, mixed>  $definition
-     */
-    private function appendModifiableBlockVersionSnapshotsIfNeeded(
-        Document $document,
-        DocumentBlock $block,
-        array $definition,
-        UpdateDocumentBlockDto $dto,
-    ): void {
-        if (($definition['block_state'] ?? 'editable') !== 'modifiable') {
-            return;
-        }
-
-        $blockId = (string) $block->id;
-        $documentId = (string) $document->id;
-        $max = $this->documentRepository->maxBlockVersionNumberForDocumentBlock($blockId);
-
-        if ($max === 0) {
-            $baseline = $this->normalizeBlockVersionPayload($definition['default_content'] ?? null);
-            $baselineEditor = (string) ($document->created_by ?? $document->owner_id ?? $dto->actorId);
-            $this->documentRepository->insertDocumentBlockVersion(
-                $blockId,
-                $documentId,
-                1,
-                $baseline,
-                null,
-                $baselineEditor,
-            );
-            $max = 1;
-        }
-
-        $this->documentRepository->insertDocumentBlockVersion(
-            $blockId,
-            $documentId,
-            $max + 1,
-            $this->normalizeBlockVersionPayload($dto->content),
-            null,
-            $dto->actorId,
-        );
-    }
-
-    /**
-     * Normaliza el payload del bloque para la versión.
-     * 
-     * @return array<string, mixed>
-     */
-    private function normalizeBlockVersionPayload(mixed $value): array
-    {
-        if ($value === null) {
-            return [];
-        }
-
-        return is_array($value) ? $value : [];
+        return $this->documentVersionService->listDocumentVersions($documentId);
     }
 }

@@ -28,7 +28,7 @@ interface TemplateRepositoryInterface
     /**
      * Listado paginado con filtros (sin cargar bloques).
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator;
 
     /**
      * Crea una plantilla con los atributos dados.
