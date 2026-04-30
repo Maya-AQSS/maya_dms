@@ -216,13 +216,10 @@ describe('DocumentsContent creation flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
     await waitFor(() =>
-      expect(mockCreateDocumentFromModule).toHaveBeenCalledWith({
-        module_id: 'm1',
-        template_version_id: 'ver-1',
+      expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion/tpl-1/wizard', {
+        state: { moduleId: 'm1' },
       }),
     );
-    expect(reload).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-new/editor');
   });
 
   it('muestra listado, previsualiza y crea con la plantilla elegida en modo select', async () => {
@@ -281,29 +278,11 @@ describe('DocumentsContent creation flow', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
-    expect(
-      screen.getByText('Elige una plantilla para verla en previsualización'),
-    ).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', true);
-
-    fireEvent.click(screen.getByRole('button', { name: /Plantilla B/i }));
-
-    await waitFor(() => expect(mockFetchTemplateVersion).toHaveBeenCalledWith('ver-2'));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Usar esta plantilla' })).toHaveProperty('disabled', false);
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Usar esta plantilla' }));
-
     await waitFor(() =>
-      expect(mockCreateDocumentFromModule).toHaveBeenCalledWith({
-        module_id: 'm1',
-        template_version_id: 'ver-2',
+      expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion', {
+        state: { moduleId: 'm1' },
       }),
     );
-    expect(reload).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-sel/editor');
   });
 
   it('vuelve al listado desde la previsualización con Elegir otra plantilla', async () => {
@@ -343,16 +322,9 @@ describe('DocumentsContent creation flow', () => {
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
-    fireEvent.click(screen.getByRole('button', { name: /Plantilla A/i }));
-
-    await waitFor(() => expect(mockFetchTemplateVersion).toHaveBeenCalled());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Elegir otra plantilla' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Elige una plantilla para verla en previsualización')).toBeTruthy();
+    expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion', {
+      state: { moduleId: 'm1' },
     });
-    expect(screen.getByRole('button', { name: /Plantilla B/i })).toBeTruthy();
   });
 });
 

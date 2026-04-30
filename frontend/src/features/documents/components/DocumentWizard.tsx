@@ -13,7 +13,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   approveDocumentReview,
   createDocument,
-  createDocumentFromModule,
   fetchDocument,
   fetchDocumentReviews,
   rejectDocumentReview,
@@ -23,8 +22,9 @@ import {
   type DocumentReview,
 } from '../../../api/documents';
 import { ApiHttpError } from '../../../api/http';
-import { fetchTemplate, fetchTemplateVersionSummaries } from '../../../api/templates';
+import { fetchTemplate } from '../../../api/templates';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
+import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
@@ -35,7 +35,11 @@ import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { Button, ConfirmDialog, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
 import { DatePicker, ErrorBoundary } from '@maya/shared-ui-react';
 
-const BlockNoteEditorPanel = lazy(() => import('../../templates/components/BlockNoteEditorPanel'));
+const BlockNoteEditorPanel = lazy(() =>
+  import('../../templates/components/BlockNoteEditorPanel').then(
+    (m) => ({ default: m.BlockNoteEditorPanel }),
+  )
+);
 
 type Step = 'properties' | 'blocks' | 'summary';
 type SummaryConfirmAction = 'save' | 'submit' | null;
@@ -222,7 +226,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
-  const [loadErrorTemplate, setLoadErrorTemplate] = useState<string | null>(null);
 
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const [blockViewTab, setBlockViewTab] = useState<BlockViewTab>('content');
@@ -233,6 +236,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [localContent, setLocalContent] = useState<unknown>(null);
+  const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
 
   const isValidateMode = mode === 'validate';
   const isDraft = !detail || detail.status === 'draft';
@@ -317,14 +322,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     const load = async () => {
       try {
         setLoadingTemplate(true);
-        setLoadErrorTemplate(null);
         const res = await fetchTemplate(templateId);
         if (!cancelled) {
           setTemplate(res.data);
         }
       } catch (e) {
         if (!cancelled) {
-          setLoadErrorTemplate(e instanceof Error ? e.message : 'No se pudo cargar la plantilla base.');
         }
       } finally {
         if (!cancelled) setLoadingTemplate(false);
@@ -599,26 +602,34 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setBlockViewTab('content');
   }, [activeBlockKey]);
 
-  const persistBlockContent = useCallback(
-    async (block: DocumentDisplayBlock, content: any) => {
-      if (!isDraft || blockToUiState(block) === 'locked') return;
-      const blockId = block.document_block_id;
-      if (!blockId) {
-        setBlockSaveError('Este bloque aún no tiene fila de documento; no se puede guardar.');
-        return;
-      }
-      setBlockSaveError(null);
-      try {
-        await updateDocumentBlock(documentId, blockId, content);
-        await refreshDetail();
-      } catch (e) {
-        const msg =
-          e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al guardar el bloque.';
-        setBlockSaveError(msg);
-      }
-    },
-    [documentId, isDraft, refreshDetail],
-  );
+  const doSave = useCallback(async () => {
+    const block = activeBlockRef.current;
+    if (!block || !isDraft || blockToUiState(block) === 'locked') return;
+    const blockId = block.document_block_id;
+    if (!blockId) return;
+    setBlockSaveError(null);
+    try {
+      if (!documentId) return;
+      await updateDocumentBlock(documentId, blockId, localContent);
+      await refreshDetail();
+    } catch (e) {
+      const msg = e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al guardar el bloque.';
+      setBlockSaveError(msg);
+      throw e;
+    }
+  }, [documentId, isDraft, refreshDetail, localContent]);
+
+  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
+
+  useEffect(() => {
+    activeBlockRef.current = activeBlock;
+    if (activeBlock) {
+      setLocalContent(normalizeBlockContentForEditor(activeBlock.content).length > 0 
+        ? activeBlock.content 
+        : activeBlock.default_content
+      );
+    }
+  }, [activeBlock]);
 
   const handleGoToStep = (s: Step) => {
     if (s === 'properties') setStep(s);
@@ -659,6 +670,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           
           const created = await createDocument({
             template_id: templateId,
+            process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
             title: title.trim(),
             study_type_id: studyTypeId,
             study_id: studyId,
@@ -733,8 +745,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   };
 
   const handleApproveValidation = async () => {
-    if (!actionableReviewId) {
-      setValidationModalError('No hay una revisión pendiente que puedas tramitar.');
+    if (!documentId || !actionableReviewId) {
+      setValidationModalError('Faltan datos críticos para procesar la revisión.');
       return;
     }
     setValidationModalError(null);
@@ -754,8 +766,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   };
 
   const handleRejectValidation = async () => {
-    if (!actionableReviewId) {
-      setValidationModalError('No hay una revisión pendiente que puedas tramitar.');
+    if (!documentId || !actionableReviewId) {
+      setValidationModalError('Faltan datos críticos para procesar la revisión.');
       return;
     }
     const reason = rejectReason.trim();
@@ -880,7 +892,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     );
   }
 
-  if (isValidateMode && detail.status !== 'in_review') {
+  if (isValidateMode && (!detail || detail.status !== 'in_review')) {
     return (
       <div className="p-6 space-y-3">
         <p className="text-sm text-warning-dark dark:text-warning-light">
@@ -904,7 +916,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     );
   }
 
-  if (isValidateMode && detail.status === 'in_review' && validationReviewLoading) {
+  if (isValidateMode && detail && detail.status === 'in_review' && validationReviewLoading) {
     return (
       <div className="flex flex-col h-[calc(100dvh-7rem)] items-center justify-center overflow-hidden bg-ui-body dark:bg-ui-dark-bg px-6">
         <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando datos de validación…</p>
@@ -1140,7 +1152,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     <FieldLabel htmlFor="doc-delivery-deadline-input" required>Fecha límite</FieldLabel>
                     <DatePicker
                       value={deliveryDeadline || null}
-                      onChange={(d) => setDeliveryDeadline(d ?? '')}
+                      onChange={(d: string | null) => setDeliveryDeadline(d ?? '')}
                       disabled={!isDraft}
                       placeholder="Seleccionar fecha…"
                       ariaLabel="Fecha límite del documento"
@@ -1200,36 +1212,45 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       <Button
                         type="button"
                         size="sm"
-                        variant="danger"
-                        onClick={() => void persistBlockContent(activeBlock, [])}
+                        variant="secondary"
+                        onClick={async () => {
+                          setLocalContent([]);
+                          await forceSave();
+                        }}
                       >
-                        Eliminar bloque opcional
-                      </Button>
+                        </Button>
                     )}
                   </div>
-                  <div className="flex gap-0 -mb-px mt-2">
-                    {([
-                      { id: 'content', label: 'Contenido' },
-                      { id: 'description', label: 'Descripción' },
-                    ] as const).map((tab) => {
-                      const isActive = blockViewTab === tab.id;
-                      return (
-                        <button
-                          key={tab.id}
-                          type="button"
-                          onClick={() => setBlockViewTab(tab.id)}
-                          className={[
-                            'px-3 py-1.5 text-xs border-b-2 transition-all',
-                            isActive
-                              ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
-                              : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
-                          ].join(' ')}
-                          disabled={isActive}
-                        >
-                          {tab.label}
-                        </button>
-                      );
-                    })}
+                  <div className="flex items-center justify-between gap-0 -mb-px mt-2">
+                    <div className="flex gap-0">
+                      {([
+                        { id: 'content', label: 'Contenido' },
+                        { id: 'description', label: 'Descripción' },
+                      ] as const).map((tab) => {
+                        const isActive = blockViewTab === tab.id;
+                        return (
+                          <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setBlockViewTab(tab.id)}
+                            className={[
+                              'px-3 py-1.5 text-xs border-b-2 transition-all',
+                              isActive
+                                ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
+                                : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
+                            ].join(' ')}
+                            disabled={isActive}
+                          >
+                            {tab.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex items-center gap-2 pr-4">
+                      {saveStatus === 'saving' && <span className="text-[10px] text-text-muted italic animate-pulse">Guardando…</span>}
+                      {saveStatus === 'saved' && <span className="text-[10px] text-success-dark font-bold">✓ Guardado</span>}
+                      {saveStatus === 'error' && <span className="text-[10px] text-danger-dark font-bold">Error al guardar</span>}
+                    </div>
                   </div>
                   {blockSaveError && (
                     <p className="text-xs text-danger-dark dark:text-danger mt-1">{blockSaveError}</p>
@@ -1247,7 +1268,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                             initialContent={blockEditorContent(activeBlock)}
                             editable
                             isDark={isDark}
-                            onChange={(content) => void persistBlockContent(activeBlock, content)}
+                            onChange={(content) => { setLocalContent(content); triggerSave(); }}
                           />
                         </Suspense>
                       </ErrorBoundary>
@@ -1440,6 +1461,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         </button>
                       );
                     })}
+                  </div>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    {saveStatus === 'saving' && <span className="text-[10px] text-text-muted italic animate-pulse">Guardando…</span>}
+                    {saveStatus === 'saved' && <span className="text-[10px] text-success-dark font-bold">✓ Guardado</span>}
+                    {saveStatus === 'error' && <span className="text-[10px] text-danger-dark font-bold">Error al guardar</span>}
                   </div>
                 </div>
                 <div className="flex flex-col min-w-0 max-h-80 preview-content">

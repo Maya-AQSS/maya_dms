@@ -7,7 +7,7 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { Button, ConfirmDialog } from '../../../ui';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
-import { useOidcSession } from '@maya/shared-auth-react';
+import { useAuth } from '@maya/shared-auth-react';
 
 type Props = {
   template: Template;
@@ -15,11 +15,12 @@ type Props = {
 
 type TemplateComment = {
   id: string;
-  template_block_id: string | null;
+  blockable_id: string | null;
   author_id: string;
   author?: { id: string; name: string };
   body: string;
   created_at: string;
+  parent_id?: string | null;
 };
 
 function InfoBlockDescription({ description }: { description: unknown }) {
@@ -55,7 +56,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
 
 export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
-  const { user } = useOidcSession();
+  const { user } = useAuth();
   const { blocks } = useTemplateBlocks(template.id);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -73,7 +74,7 @@ export function TemplateReviewView({ template }: Props) {
   // Estado de la barra lateral: 'comments' | 'info' | null
   const [sidebarMode, setSidebarMode] = useState<'comments' | 'info' | null>(null);
 
-  const currentUserId = (user as any)?.sub || (user as any)?.id || (user as any)?.profile?.sub || (user as any)?.profile?.id;
+  const currentUserId = user?.sub || (user as any)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
   const isAlreadyValidated = myReview && myReview.status !== 'pending';
   
@@ -101,8 +102,7 @@ export function TemplateReviewView({ template }: Props) {
         method: 'POST',
         body: {
           body: newCommentBody,
-          template_block_id: selectedBlockId,
-          type: 'review'
+          blockable_id: selectedBlockId,
         }
       });
       setComments([...comments, res.data]);
@@ -150,7 +150,7 @@ export function TemplateReviewView({ template }: Props) {
   };
 
   const selectedBlock = blocks.find(b => b.id === selectedBlockId);
-  const blockComments = comments.filter(c => c.template_block_id === selectedBlockId);
+  const blockComments = comments.filter(c => c.blockable_id === selectedBlockId);
 
   return (
     <div className="flex flex-col h-full bg-[#ddd9d3] dark:bg-ui-dark-bg/50">
@@ -261,7 +261,7 @@ export function TemplateReviewView({ template }: Props) {
                 {blocks.map((block) => {
                   const isSelected = selectedBlockId === block.id;
                   const content = block.default_content;
-                  const hasComments = comments.some(c => c.template_block_id === block.id);
+                  const hasComments = comments.some(c => c.blockable_id === block.id);
 
                   let parsed: unknown[] | null = null;
                   if (Array.isArray(content)) {
@@ -347,7 +347,7 @@ export function TemplateReviewView({ template }: Props) {
                             <span>Mensajes</span>
                             {hasComments && (
                               <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[9px] leading-none">
-                                {comments.filter(c => c.template_block_id === block.id).length}
+                                {comments.filter(c => c.blockable_id === block.id).length}
                               </span>
                             )}
                           </button>
@@ -453,22 +453,48 @@ export function TemplateReviewView({ template }: Props) {
                           </div>
                         ) : (
                           <div className="space-y-8 mt-2">
-                            {blockComments.map((comment) => (
-                              <div key={comment.id} className="group relative pl-6 animate-in fade-in slide-in-from-right-2">
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
-                                    {comment.author?.name || 'Validador'}
-                                  </span>
-                                  <span className="text-xs text-text-muted font-bold uppercase tracking-wider opacity-70">
-                                    {new Date(comment.created_at).toLocaleDateString()}
-                                  </span>
+                            {blockComments.filter(c => !c.parent_id).map((comment) => {
+                              const replies = comments.filter(r => r.parent_id === comment.id);
+                              return (
+                                <div key={comment.id} className="space-y-4">
+                                  <div className="group relative pl-6 animate-in fade-in slide-in-from-right-2">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
+                                        {comment.author?.name || 'Validador'}
+                                      </span>
+                                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
+                                        {new Date(comment.created_at).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/30 p-5 rounded-xl border border-ui-border/50 shadow-sm">
+                                      {comment.body}
+                                    </div>
+                                  </div>
+
+                                  {/* Replies */}
+                                  {replies.length > 0 && (
+                                    <div className="ml-12 space-y-4">
+                                      {replies.map(r => (
+                                        <div key={r.id} className="relative pl-4 border-l-2 border-ui-border/30">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
+                                              {r.author?.name || 'Autor'}
+                                            </span>
+                                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                              {new Date(r.created_at).toLocaleDateString()}
+                                            </span>
+                                          </div>
+                                          <div className="text-xs text-text-secondary dark:text-text-dark-secondary bg-ui-body/10 p-3 rounded-lg border border-ui-border/20 italic">
+                                            {r.body}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/30 p-5 rounded-xl border border-ui-border/50 shadow-sm">
-                                  {comment.body}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

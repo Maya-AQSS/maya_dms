@@ -1,5 +1,4 @@
 import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
-import { DatePicker } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
@@ -75,7 +74,7 @@ export function WizardStep1Properties({
               type="text"
               fieldSize="comfortable"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
               placeholder="Ej. Acta de Evaluación Final"
               error={!!errors.name}
             />
@@ -87,7 +86,7 @@ export function WizardStep1Properties({
             <TextArea
               fieldSize="comfortable"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
               placeholder="Propósito de la plantilla…"
               style={{ minHeight: '64px' }}
             />
@@ -114,10 +113,13 @@ export function WizardStep1Properties({
           </div>
 
           <div>
-            <FieldLabel required>Plazo de entrega</FieldLabel>
-            <DatePicker
-              value={deliveryDeadline || null}
-              onChange={(d) => setDeliveryDeadline(d ?? '')}
+            <FieldLabel htmlFor="delivery-deadline" required>Plazo de entrega</FieldLabel>
+            <TextInput
+              id="delivery-deadline"
+              type="date"
+              fieldSize="comfortable"
+              value={deliveryDeadline}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeliveryDeadline(e.target.value)}
               disabled={deadlineLocked}
               placeholder="Seleccionar fecha…"
             />
@@ -206,7 +208,7 @@ export function WizardStep1Properties({
                     fieldSize="comfortable"
                     value={moduleId}
                     disabled={hierarchyLoading}
-                    onChange={(e) => setModuleId(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setModuleId(e.target.value)}
                     error={!!errors.moduleId}
                   >
                     <option value="">— Seleccionar —</option>
@@ -226,7 +228,7 @@ export function WizardStep1Properties({
                     fieldSize="comfortable"
                     value={teamId}
                     disabled={teamsLoading || !teams.length}
-                    onChange={(e) => setTeamId(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTeamId(e.target.value)}
                     error={!!errors.teamId}
                   >
                     <option value="">

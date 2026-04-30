@@ -1,62 +1,34 @@
 import { lazy, Suspense, useEffect } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import './index.css';
-import './App.css';
+import { Route, Routes, Navigate } from 'react-router-dom';
+import i18n from './i18n';
 import { AppLayout } from '@maya/shared-layout-react';
 import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
-import { SkeletonPage } from '@maya/shared-ui-react';
-import { useOidcSession } from '@maya/shared-auth-react';
-import { useNavItems } from './components/layout';
-import { HierarchyProvider } from './features/hierarchy';
+import { useAuth } from '@maya/shared-auth-react';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
+import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
+import { useNavItems } from './components/layout/navItems';
 
-const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined)
-  ?? 'http://maya_dashboard_api.localhost';
+// Lazy-loaded pages
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ProcesosPage = lazy(() => import('./pages/ProcesosPage').then(m => ({ default: m.ProcesosPage })));
+const NuevaProgramacionSelectorPage = lazy(() => import('./pages/NuevaProgramacionSelectorPage').then(m => ({ default: m.NuevaProgramacionSelectorPage })));
+const DocumentEditorPage = lazy(() => import('./pages/DocumentEditorPage').then(m => ({ default: m.DocumentEditorPage })));
+const DocumentValidationPage = lazy(() => import('./pages/DocumentValidationPage').then(m => ({ default: m.DocumentValidationPage })));
+const DocumentPreviewPage = lazy(() => import('./pages/DocumentPreviewPage').then(m => ({ default: m.DocumentPreviewPage })));
+const TemplatesPage = lazy(() => import('./pages/TemplatesPage').then(m => ({ default: m.TemplatesPage })));
+const TemplateNewPage = lazy(() => import('./pages/TemplateNewPage').then(m => ({ default: m.TemplateNewPage })));
+const TemplateEditPage = lazy(() => import('./pages/TemplateEditPage').then(m => ({ default: m.TemplateEditPage })));
+const TemplateReviewPage = lazy(() => import('./pages/TemplateReviewPage').then(m => ({ default: m.TemplateReviewPage })));
+const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').then(m => ({ default: m.TemplatePreviewPage })));
+const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
-// Code-splitting route-level: cada página carga en chunk separado bajo demanda.
-const DashboardPage = lazy(() =>
-  import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })),
-);
-const DocumentEditorPage = lazy(() =>
-  import('./pages/DocumentEditorPage').then((m) => ({ default: m.DocumentEditorPage })),
-);
-const DocumentValidationPage = lazy(() =>
-  import('./pages/DocumentValidationPage').then((m) => ({ default: m.DocumentValidationPage })),
-);
-const DocumentPreviewPage = lazy(() =>
-  import('./pages/DocumentPreviewPage').then((m) => ({ default: m.DocumentPreviewPage })),
-);
-const NuevaProgramacionSelectorPage = lazy(() =>
-  import('./pages/NuevaProgramacionSelectorPage').then((m) => ({ default: m.NuevaProgramacionSelectorPage })),
-);
-const PlaceholderPage = lazy(() =>
-  import('./pages/PlaceholderPage').then((m) => ({ default: m.PlaceholderPage })),
-);
-const ProcesosPage = lazy(() =>
-  import('./pages/ProcesosPage').then((m) => ({ default: m.ProcesosPage })),
-);
-const TemplateEditPage = lazy(() =>
-  import('./pages/TemplateEditPage').then((m) => ({ default: m.TemplateEditPage })),
-);
-const TemplateNewPage = lazy(() =>
-  import('./pages/TemplateNewPage').then((m) => ({ default: m.TemplateNewPage })),
-);
-const TemplatePreviewPage = lazy(() =>
-  import('./pages/TemplatePreviewPage').then((m) => ({ default: m.TemplatePreviewPage })),
-);
-const TemplateReviewPage = lazy(() =>
-  import('./pages/TemplateReviewPage').then((m) => ({ default: m.TemplateReviewPage })),
-);
-const TemplatesPage = lazy(() =>
-  import('./pages/TemplatesPage').then((m) => ({ default: m.TemplatesPage })),
-);
+const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined) ?? 'http://api.dashboard.localhost';
 
 function AppRoutes() {
   return (
-    <Suspense fallback={<SkeletonPage />}>
+    <Suspense fallback={<div className="p-8">Cargando...</div>}>
       <Routes>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/" element={<Navigate to="/procesos" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/procesos" element={<ProcesosPage />} />
         <Route path="/nueva-programacion" element={<NuevaProgramacionSelectorPage />} />
@@ -75,15 +47,10 @@ function AppRoutes() {
   );
 }
 
-function AppWithLayout() {
-  const { logout, user } = useOidcSession();
+function Main() {
+  const { logout } = useAuth();
   const { profile } = useUserProfile();
   const navItems = useNavItems();
-  const { i18n } = useTranslation();
-
-  useEffect(() => {
-    if (user?.locale) void i18n.changeLanguage(user.locale);
-  }, [user?.locale, i18n]);
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
@@ -94,7 +61,6 @@ function AppWithLayout() {
   }, [i18n]);
 
   const userName = profile?.name?.trim() ?? '';
-  const userEmail = (profile?.email ?? user?.email) as string | undefined;
   const userInitials = profileDisplayInitials(profile);
   const onProfile = () => {
     const dashboardOrigin = (import.meta.env.VITE_DASHBOARD_URL as string | undefined)
@@ -108,7 +74,6 @@ function AppWithLayout() {
       brandName="Maya DMS"
       brandVersion="v1.0"
       userName={userName}
-      userEmail={userEmail}
       userInitials={userInitials}
       onLogout={logout}
       onProfile={onProfile}
@@ -121,15 +86,15 @@ function AppWithLayout() {
 }
 
 function App() {
-  const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
+  const { isLoading, isAuthenticated, login } = useAuth();
 
   useEffect(() => {
-    if (!isOidcLoading && !isOidcSignedIn) {
-      beginSignIn();
+    if (!isLoading && !isAuthenticated) {
+      login();
     }
-  }, [isOidcLoading, isOidcSignedIn, beginSignIn]);
+  }, [isLoading, isAuthenticated, login]);
 
-  if (isOidcLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
         Iniciando sesión…
@@ -137,17 +102,11 @@ function App() {
     );
   }
 
-  if (!isOidcSignedIn) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
-        Redirigiendo al inicio de sesión...
-      </div>
-    );
-  }
+  if (!isAuthenticated) return null;
 
   return (
     <HierarchyProvider>
-      <AppWithLayout />
+      <Main />
     </HierarchyProvider>
   );
 }

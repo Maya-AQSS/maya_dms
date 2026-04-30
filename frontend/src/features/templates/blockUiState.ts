@@ -31,8 +31,8 @@ export const BLOCK_UI_STATE_CONFIG: Record<
   },
 };
 
-export function blockToUiState(block: Pick<TemplateBlock, 'block_state'>): BlockUiState {
-  if (block.block_state === 'optional') {
+export function blockToUiState(block: Pick<TemplateBlock, 'block_state' | 'mandatory'>): BlockUiState {
+  if (block.mandatory === false) {
     return 'optional';
   }
   if (block.block_state === 'locked') {

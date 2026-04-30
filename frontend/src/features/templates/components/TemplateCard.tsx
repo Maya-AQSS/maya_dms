@@ -1,9 +1,16 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmDialog } from '../../../ui';
-import type { Template } from '../../../types/templates';
+import type { Template, TemplateStatus } from '../../../types/templates';
 import { visibilityLabel } from '../constants';
 import { useUserProfile } from '../../../features/user-profile';
+
+const STATUS_LABEL: Record<TemplateStatus, string> = {
+  draft: 'Borrador',
+  in_review: 'En revisión',
+  published: 'Publicada',
+  archived: 'Archivada',
+};
 
 type Props = {
   template: Template;
@@ -49,8 +56,9 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
     }
   };
 
-  const isReviewer = t.reviewers?.some((r) => r.user_id === profile?.id);
-  const canValidate = t.status === 'in_review' && isReviewer;
+  const isCreator = profile?.id === t.created_by;
+  // reviewers is not loaded in list responses — use status + not-creator as proxy
+  const canValidate = t.status === 'in_review' && !isCreator;
   const isRejected = t.status === 'draft' && t.has_review_comments;
 
   return (
@@ -108,7 +116,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
                 ? 'text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 font-bold' 
                 : 'bg-ui-body dark:bg-ui-dark-bg border-ui-border dark:border-ui-dark-border'
             ].join(' ')}>
-              {isRejected ? 'Requiere cambios' : t.status}
+              {isRejected ? 'Requiere cambios' : (STATUS_LABEL[t.status] ?? t.status)}
             </span>
             <span className="px-2 py-0.5 opacity-70 italic">v{t.version}</span>
           </div>

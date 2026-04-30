@@ -29,6 +29,7 @@ export type Document = {
   is_shared_with_me?: boolean;
   share_permission?: string | null;
   team?: unknown;
+  has_review_comments?: boolean;
 };
 
 /**

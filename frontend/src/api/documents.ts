@@ -67,6 +67,7 @@ export async function fetchDocumentCreationOptions(
  */
 export async function createDocumentFromModule(payload: {
   module_id: string;
+  process_id: string;
   template_version_id?: string;
   delivery_deadline?: string | null;
 }): Promise<Document> {
@@ -85,6 +86,7 @@ export async function createDocumentFromModule(payload: {
  */
 export async function createDocument(payload: {
   template_id: string;
+  process_id: string;
   title: string;
   study_type_id?: string | null;
   study_id?: string | null;
