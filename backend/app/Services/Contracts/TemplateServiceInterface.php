@@ -55,7 +55,7 @@ interface TemplateServiceInterface
     /**
      * Listado paginado con filtros (20 ítems por defecto en request).
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator;
 
     /**
      * Crea una plantilla con los atributos dados.

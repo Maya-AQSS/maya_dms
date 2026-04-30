@@ -65,7 +65,7 @@ class TemplateRepository implements TemplateRepositoryInterface
     /**
      * Listado paginado con filtros (sin cargar bloques).
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator
     {
         $query = Template::query()
             ->select([
