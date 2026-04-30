@@ -264,7 +264,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $t2);
 
-        $this->getJson('/api/v1/templates?per_page=25', $headers)
+        $this->getJson('/api/v1/templates?per_page=101', $headers)
             ->assertUnprocessable();
     }
 

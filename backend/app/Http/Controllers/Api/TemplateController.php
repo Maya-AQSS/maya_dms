@@ -38,7 +38,7 @@ class TemplateController extends Controller
     ) {}
 
     /**
-     * Listar plantillas (filtros en query; paginación máx. 10).
+     * Listar plantillas (filtros en query; paginación por defecto 10, máx. 100).
      */
     public function index(IndexTemplateRequest $request): AnonymousResourceCollection
     {

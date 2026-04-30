@@ -37,16 +37,16 @@ class IndexTemplateRequest extends FormRequest
             'team_id'          => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
             'author_name'      => ['sometimes', 'nullable', 'string', 'max:255'],
             'delivery_deadline' => ['sometimes', 'nullable', 'date'],
-            'per_page'         => ['sometimes', 'integer', 'min:1', 'max:10'],
+            'per_page'         => ['sometimes', 'integer', 'min:1', 'max:100'],
         ];
     }
 
     /**
-     * Obtiene el número máximo de plantillas por página, por defecto 10.
+     * Obtiene el número de plantillas por página, por defecto 10.
      */
     public function perPage(): int
     {
-        return min(max((int) $this->query('per_page', 10), 1), 10);
+        return min(max((int) $this->query('per_page', 10), 1), 100);
     }
 
     /**
