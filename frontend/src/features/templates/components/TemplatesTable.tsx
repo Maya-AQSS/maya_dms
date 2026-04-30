@@ -198,7 +198,14 @@ export function TemplatesTable() {
                   <TableRow
                     key={t.id}
                     className="hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer group"
-                    onClick={() => navigate(`/templates/${t.id}`)}
+                    onClick={() => {
+                      const isReviewer = t.status === 'in_review' && t.reviewers?.some(r => r.user_id === profile?.id);
+                      if (isReviewer) {
+                        navigate(`/templates/${t.id}/review`);
+                      } else {
+                        navigate(`/templates/${t.id}`);
+                      }
+                    }}
                   >
                     <TableCell className="px-4 py-3 text-sm font-medium text-text-primary dark:text-text-dark-primary group-hover:text-odoo-purple dark:group-hover:text-odoo-dark-purple transition-colors">
                       <span className="flex items-center gap-2 min-w-0">
