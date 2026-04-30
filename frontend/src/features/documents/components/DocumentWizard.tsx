@@ -670,6 +670,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           
           const created = await createDocument({
             template_id: templateId,
+            process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
             title: title.trim(),
             study_type_id: studyTypeId,
             study_id: studyId,
