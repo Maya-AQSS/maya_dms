@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
@@ -43,6 +43,7 @@ export function TemplatesTable() {
   const { profile } = useUserProfile();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:templates-table',
+    defaultPageSize: 20,
   });
   const {
     templates,
@@ -55,6 +56,17 @@ export function TemplatesTable() {
     applyFilters,
     goToPage,
   } = useTemplates();
+
+  // Sync pageSize (from preferences/localStorage) → server per_page.
+  // Skip the first render: defaultPageSize=20 already matches DEFAULT_PER_PAGE.
+  const isFirstPageSizeRender = useRef(true);
+  useEffect(() => {
+    if (isFirstPageSizeRender.current) {
+      isFirstPageSizeRender.current = false;
+      return;
+    }
+    applyFilters({ per_page: pageSize });
+  }, [pageSize, applyFilters]);
 
   const [nameInput, setNameInput] = useState('');
   const [nameFilter, setNameFilter] = useState('');
@@ -224,10 +236,8 @@ export function TemplatesTable() {
         sortBy={sortBy}
         onSortChange={setSortBy}
         pageSize={pageSize}
-        onPageSizeChange={(size) => {
-          setPageSize(size);
-          applyFilters({ per_page: size });
-        }}
+        onPageSizeChange={setPageSize}
+        pageSizeOptions={[10, 20, 50, 100]}
         emptyMessage="No hay plantillas con los filtros actuales."
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
