@@ -95,11 +95,13 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
      */
     public function reorderForTemplate(string $templateId, array $orderedIds): void
     {
-        foreach ($orderedIds as $index => $blockId) {
-            TemplateBlock::query()
-                ->where('id', $blockId)
-                ->where('template_id', $templateId)
-                ->update(['sort_order' => $index + 1]);
-        }
+        DB::transaction(function () use ($templateId, $orderedIds): void {
+            foreach ($orderedIds as $index => $blockId) {
+                TemplateBlock::query()
+                    ->where('id', $blockId)
+                    ->where('template_id', $templateId)
+                    ->update(['sort_order' => $index + 1]);
+            }
+        });
     }
 }

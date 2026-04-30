@@ -13,7 +13,6 @@ use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TemplateBlockService implements TemplateBlockServiceInterface
@@ -114,9 +113,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             ]);
         }
 
-        DB::transaction(function () use ($templateId, $orderedBlockIds): void {
-            $this->blockRepository->reorderForTemplate($templateId, $orderedBlockIds);
-        });
+        $this->blockRepository->reorderForTemplate($templateId, $orderedBlockIds);
     }
 
     /**
