@@ -308,6 +308,69 @@ class GlobalScopesIsolationTest extends TestCase
             ->assertJsonValidationErrors(['parent_id']);
     }
 
+    public function test_owner_can_create_and_resolve_template_comment_with_polymorphic_contract(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+
+        $create = $this->postJson(
+            "/api/v1/templates/{$templateId}/comments",
+            [
+                'body' => 'Comentario para validar flujo',
+            ],
+            ['Authorization' => 'Bearer '.$tokenA],
+        );
+
+        $create->assertCreated()
+            ->assertJsonPath('data.commentable_type', Template::class)
+            ->assertJsonPath('data.commentable_id', $templateId)
+            ->assertJsonPath('data.commentable_version', 1);
+
+        $commentId = (string) $create->json('data.id');
+
+        $this->patchJson(
+            "/api/v1/comments/{$commentId}/resolve",
+            [],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.resolved', true)
+            ->assertJsonPath('data.resolved_by', $userA);
+    }
+
+    public function test_owner_can_list_document_comments_with_polymorphic_contract(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+        $commentId = (string) Str::uuid();
+
+        Comment::query()->forceCreate([
+            'id'                  => $commentId,
+            'commentable_type'    => Document::class,
+            'commentable_id'      => $documentId,
+            'commentable_version' => 1,
+            'blockable_type'      => null,
+            'blockable_id'        => null,
+            'parent_id'           => null,
+            'author_id'           => $userA,
+            'body'                => 'Comentario documento',
+            'resolved'            => false,
+            'resolved_by'         => null,
+            'resolved_at'         => null,
+        ]);
+
+        $this->getJson(
+            "/api/v1/documents/{$documentId}/comments",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $commentId)
+            ->assertJsonPath('data.0.commentable_type', Document::class)
+            ->assertJsonPath('data.0.commentable_id', $documentId);
+    }
+
     /**
      * Test de Fail-Closed: Un usuario no autenticado no debe ver NADA
      */
