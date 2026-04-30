@@ -56,6 +56,9 @@ class CommentController extends Controller
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('comment', $doc);
             $this->assertOptionalProcessContextMatches((string) $doc->process_id);
+            if ($this->isDocumentCommentsLocked($doc)) {
+                return response()->json(['data' => []]);
+            }
 
             return response()->json([
                 'data' => $this->commentService->listForResource(
@@ -107,6 +110,9 @@ class CommentController extends Controller
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('comment', $doc);
             $this->assertOptionalProcessContextMatches((string) $doc->process_id);
+            if ($this->isDocumentCommentsLocked($doc)) {
+                abort(404);
+            }
 
             $comment = $this->commentService->createForResource(
                 commentableType: Document::class,
@@ -196,6 +202,9 @@ class CommentController extends Controller
             $model = $this->documentService->findOrFail((string) $comment->commentable_id);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
+            if ($this->isDocumentCommentsLocked($model)) {
+                abort(404);
+            }
             return;
         }
 
@@ -207,5 +216,10 @@ class CommentController extends Controller
     private function isTemplateCommentsLocked(Template $template): bool
     {
         return $template->publishedVersions()->exists();
+    }
+
+    private function isDocumentCommentsLocked(Document $document): bool
+    {
+        return $document->versions()->exists();
     }
 }

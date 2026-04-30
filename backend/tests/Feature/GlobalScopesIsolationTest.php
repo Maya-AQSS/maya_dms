@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Comment;
 use App\Models\Document;
+use App\Models\DocumentVersion;
 use App\Models\Team;
 use App\Models\Template;
 use App\Models\TemplateVersion;
@@ -427,6 +428,84 @@ class GlobalScopesIsolationTest extends TestCase
             [],
             ['Authorization' => 'Bearer '.$tokenA],
         )->assertNotFound();
+    }
+
+    public function test_document_comments_are_hidden_and_blocked_after_first_publish(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+        $commentId = (string) Str::uuid();
+
+        Comment::query()->forceCreate([
+            'id'                  => $commentId,
+            'commentable_type'    => Document::class,
+            'commentable_id'      => $documentId,
+            'commentable_version' => 1,
+            'blockable_type'      => null,
+            'blockable_id'        => null,
+            'parent_id'           => null,
+            'author_id'           => $userA,
+            'body'                => 'Comentario previo a publicar doc',
+            'resolved'            => false,
+            'resolved_by'         => null,
+            'resolved_at'         => null,
+        ]);
+
+        DocumentVersion::query()->forceCreate([
+            'id'             => (string) Str::uuid(),
+            'document_id'    => $documentId,
+            'version_number' => 1,
+            'trigger_event'  => 'published',
+            'triggered_by'   => $userA,
+            'snapshot_data'  => ['document' => ['id' => $documentId]],
+            'notes'          => 'Publicacion inicial documento',
+            'is_immutable'   => true,
+            'created_at'     => now(),
+        ]);
+
+        $this->getJson(
+            "/api/v1/documents/{$documentId}/comments",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertOk()
+            ->assertJsonPath('data', []);
+
+        $this->getJson(
+            "/api/v1/comments/{$commentId}",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNotFound();
+
+        $this->postJson(
+            "/api/v1/documents/{$documentId}/comments",
+            ['body' => 'Nuevo comentario bloqueado'],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNotFound();
+
+        $this->patchJson(
+            "/api/v1/comments/{$commentId}/resolve",
+            [],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNotFound();
+    }
+
+    public function test_comment_store_rejects_multiple_block_identifiers(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+
+        $this->postJson(
+            "/api/v1/templates/{$templateId}/comments",
+            [
+                'body' => 'Comentario invalido por bloque ambiguo',
+                'blockable_id' => (string) Str::uuid(),
+                'template_block_id' => (string) Str::uuid(),
+            ],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['blockable_id']);
     }
 
     /**
