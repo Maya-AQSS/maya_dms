@@ -180,7 +180,7 @@ class TemplatesApiTest extends TestCase
         $this->deleteJson("/api/v1/templates/{$templateId}", [], $headers)
             ->assertNoContent();
 
-        $this->assertDatabaseMissing('templates', ['id' => $templateId]);
+        $this->assertSoftDeleted('templates', ['id' => $templateId]);
     }
 
     public function test_user_without_privileged_role_cannot_create_global_template(): void
@@ -210,6 +210,33 @@ class TemplatesApiTest extends TestCase
         ], $headers)
             ->assertCreated()
             ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value);
+    }
+
+    public function test_store_requires_process_id(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $this->postJson('/api/v1/templates', [
+            'name' => 'Plantilla sin proceso',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['process_id']);
+    }
+
+    public function test_store_requires_existing_process_id(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $this->postJson('/api/v1/templates', [
+            'name' => 'Plantilla con proceso inexistente',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000999',
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['process_id']);
     }
 
     public function test_index_filters_by_status_and_visibility_and_respects_per_page_max(): void
@@ -427,7 +454,7 @@ class TemplatesApiTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.name', 'Original (copia)')
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.version', 3)
+            ->assertJsonPath('data.version', 1)
             ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value)
             ->assertJsonPath('data.review_stages', 1)
             ->assertJsonPath('data.review_mode', 'parallel');
@@ -511,7 +538,7 @@ class TemplatesApiTest extends TestCase
         $this->deleteJson("/api/v1/templates/{$tid}", [], $headers)
             ->assertNoContent();
 
-        $this->assertDatabaseMissing('templates', ['id' => $tid]);
+        $this->assertSoftDeleted('templates', ['id' => $tid]);
     }
 
     public function test_team_visibility_requires_existing_team(): void
@@ -1026,6 +1053,14 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Bloque rechazo',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
 
         $this->seedTemplateReviewer($tid, $reviewerId);
 
@@ -1058,6 +1093,14 @@ class TemplatesApiTest extends TestCase
             'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Bloque aprobación',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
         ]);
 
         $this->seedTemplateReviewer($tid, $creatorId);
