@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageTitle } from '@maya/shared-ui-react';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
 import {
@@ -99,7 +100,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       setLeaveGuard(true);
       return;
     }
-    navigate('/procesos');
+    if (step === 'properties') {
+      navigate('/procesos');
+      return;
+    }
+    const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
+    const idx = order.indexOf(step);
+    if (idx > 0) setStep(order[idx - 1]!);
+    else navigate('/procesos');
   };
 
   const validateStep1 = () => {
@@ -295,10 +303,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
                   {isDone && !isActive ? '✓' : i + 1}
                 </span>
                 <span className="text-left hidden lg:block">
-                  <span className={`block text-[10px] font-black uppercase tracking-widest ${labelCls}`}>
+                  <span className={`block text-xs font-black uppercase tracking-widest ${labelCls}`}>
                     {s.label}
                   </span>
-                  <span className="block text-[10px] text-text-muted">
+                  <span className="block text-xs text-text-muted">
                     {s.sub}
                   </span>
                 </span>
@@ -314,72 +322,63 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   };
 
   return (
-    <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-transparent">
       {/* Top bar */}
-      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={handleBackArrow}
-            className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95 shrink-0"
-            aria-label="Volver"
-          >
-            ←
-          </button>
-          <span className="text-sm text-text-secondary truncate">
-            Plantillas /{' '}
-            <span className="font-bold text-text-primary dark:text-text-dark-primary">
-              {template ? `Editando «${template.name}»` : 'Nueva plantilla'}
-            </span>
-          </span>
-        </div>
+      <div className="shrink-0">
+        <PageTitle
+          title={template ? template.name : 'Nueva plantilla'}
+          subtitle={template ? 'Editar plantilla' : undefined}
+          onBack={handleBackArrow}
+          backLabel="Volver"
+          className="!mb-2"
+          actions={
+            <>
+              {step === 'summary' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/procesos')}
+                  className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
+                >
+                  Guardar y salir
+                </Button>
+              )}
 
-        {/* Topbar actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          {step === 'summary' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/procesos')}
-              className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
-            >
-              Guardar y salir
-            </Button>
-          )}
-
-          {step !== 'summary' && (
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saving}
-              onClick={() => void handleContinue()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Guardar y continuar →
-            </Button>
-          )}
-          {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowValidationModal(true)}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Enviar a validar
-            </Button>
-          )}
-          {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saving}
-              onClick={() => void handlePublish()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Publicar plantilla
-            </Button>
-          )}
-        </div>
+              {step !== 'summary' && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={saving}
+                  onClick={() => void handleContinue()}
+                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+                >
+                  Guardar y continuar →
+                </Button>
+              )}
+              {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowValidationModal(true)}
+                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+                >
+                  Enviar a validar
+                </Button>
+              )}
+              {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  loading={saving}
+                  onClick={() => void handlePublish()}
+                  className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+                >
+                  Publicar plantilla
+                </Button>
+              )}
+            </>
+          }
+        />
       </div>
 
       {/* Leave guard confirmation */}
@@ -389,20 +388,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
             ⚠️ Tienes cambios sin guardar en este paso. ¿Seguro que quieres salir?
           </span>
           <div className="flex gap-2">
-            <button
-               type="button"
-              className="bg-warning-dark text-text-inverse px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider shadow-sm active:scale-95 transition-transform"
-              onClick={() => navigate('/procesos')}
-            >
+            <Button variant="outlineWarning" size="xs" onClick={() => navigate('/procesos')}>
               Salir sin guardar
-            </button>
-            <button
-              type="button"
-              className="bg-white border border-ui-border px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider text-text-secondary active:scale-95 transition-transform"
-              onClick={() => setLeaveGuard(false)}
-            >
+            </Button>
+            <Button variant="secondary" size="xs" onClick={() => setLeaveGuard(false)}>
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -412,14 +403,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       {step === 'properties' && permissionError && (
         <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setPermissionError(null)}
-            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
             aria-label="Cerrar"
+            className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
             ✕
-          </button>
+          </Button>
         </div>
       )}
 
@@ -429,14 +421,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">
             ⚠️ {errors.api}. Inténtalo de nuevo.
           </span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setErrors({})}
-            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
             aria-label="Cerrar"
+            className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
             ✕
-          </button>
+          </Button>
         </div>
       )}
 
@@ -444,7 +437,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       {renderStepper()}
 
       {/* Body — only this element scrolls */}
-      <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-ui-body/30 dark:bg-ui-dark-bg">
+      <div className="flex-1 overflow-hidden flex flex-col min-h-0">
         {step === 'properties' && (
           <WizardStep1Properties
             name={name} setName={setName}

@@ -21,12 +21,12 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
 };
 
 const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
-  personal:    'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
-  global:      'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  study_type:  'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  study:       'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
-  module:      'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  team:        'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+  personal:   'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
+  global:     'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  study_type: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+  study:      'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+  module:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  team:       'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
 };
 
 function formatDate(iso: string | null | undefined): string {
@@ -49,18 +49,36 @@ export function TemplatesTable() {
     goToPage,
   } = useTemplates();
 
+  const [nameInput, setNameInput] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const filteredTemplates = useMemo(() => {
+    if (!nameFilter) return templates;
+    const needle = nameFilter.toLowerCase();
+    return templates.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
+  }, [templates, nameFilter]);
 
   const filterUi = useMemo(
     () => ({
       visibility: filters.visibility_level ?? '',
       status: filters.status ?? '',
-      authorName: filters.author_name ?? '',
       deliveryDeadline: filters.delivery_deadline ?? '',
     }),
     [filters],
   );
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNameInput(value);
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    nameDebounceRef.current = setTimeout(() => {
+      setNameFilter(value);
+    }, 400);
+  };
 
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -72,7 +90,10 @@ export function TemplatesTable() {
   };
 
   const clearFilters = () => {
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    setNameInput('');
+    setNameFilter('');
     setAuthorInput('');
     applyFilters({
       visibility_level: undefined,
@@ -113,11 +134,20 @@ export function TemplatesTable() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <div>
+            <FieldLabel>Nombre</FieldLabel>
+            <TextInput
+              fieldSize="sm"
+              placeholder="Buscar por nombre..."
+              value={nameInput}
+              onChange={handleNameChange}
+            />
+          </div>
+          <div>
             <FieldLabel>Visibilidad</FieldLabel>
             <Select
               fieldSize="sm"
               value={filterUi.visibility}
-              onChange={(e) =>
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                 applyFilters({ visibility_level: e.target.value || undefined })
               }
             >
@@ -134,7 +164,7 @@ export function TemplatesTable() {
             <Select
               fieldSize="sm"
               value={filterUi.status}
-              onChange={(e) => applyFilters({ status: e.target.value || undefined })}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => applyFilters({ status: e.target.value || undefined })}
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value || 'all'} value={o.value}>
@@ -150,15 +180,6 @@ export function TemplatesTable() {
               placeholder="Nombre del autor..."
               value={authorInput}
               onChange={handleAuthorChange}
-            />
-          </div>
-          <div>
-            <FieldLabel>Fecha límite</FieldLabel>
-            <TextInput
-              fieldSize="sm"
-              type="date"
-              value={filterUi.deliveryDeadline}
-              onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
             />
           </div>
         </div>
@@ -191,7 +212,7 @@ export function TemplatesTable() {
                   </TableCell>
                 </TableRow>
               )}
-              {templates.map((t) => {
+              {filteredTemplates.map((t) => {
                 const visLevel = t.visibility_level;
                 const status = t.status as TemplateStatus;
                 return (

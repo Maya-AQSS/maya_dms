@@ -87,6 +87,7 @@ services:
     volumes:
       - ./frontend:/app
       - ../maya_infra/packages:/maya_infra/packages
+      - ../maya_infra/configs:/maya_infra/configs:ro
       - ./.env:/app/.env
       - /app/node_modules
     ports:

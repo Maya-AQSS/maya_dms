@@ -237,7 +237,12 @@ class DocumentsModuleCreationApiTest extends TestCase
         $response = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
             'template_version_id' => $version->id,
+<<<<<<< HEAD
             'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
+=======
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+>>>>>>> origin/feature/unic_components
         ], $headers);
 
         $response->assertCreated()
@@ -282,7 +287,12 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
+<<<<<<< HEAD
             'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
+=======
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+>>>>>>> origin/feature/unic_components
         ], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['template_version_id']);
@@ -305,7 +315,12 @@ class DocumentsModuleCreationApiTest extends TestCase
         $first = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
             'template_version_id' => $version->id,
+<<<<<<< HEAD
             'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
+=======
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+>>>>>>> origin/feature/unic_components
         ], $headers)->assertCreated();
 
         // Forzamos antigüedad para validar orden sin depender del reloj del sistema.
@@ -316,7 +331,12 @@ class DocumentsModuleCreationApiTest extends TestCase
         $second = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
             'template_version_id' => $version->id,
+<<<<<<< HEAD
             'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
+=======
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+>>>>>>> origin/feature/unic_components
         ], $headers)->assertCreated();
 
         $list = $this->getJson('/api/v1/documents', $headers)

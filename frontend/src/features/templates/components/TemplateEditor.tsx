@@ -6,7 +6,7 @@ import React, {
   Suspense,
   lazy,
 } from 'react';
-import { ErrorBoundary } from '../../../components/ErrorBoundary';
+import { ErrorBoundary } from '@maya/shared-ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '../../../hooks/useDarkMode';
@@ -152,7 +152,7 @@ function SortableOutlineItem({
           {block.title || 'Bloque sin nombre'}
         </span>
         <span
-          className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${cfg.badgeCls}`}
+          className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-tight ${cfg.badgeCls}`}
         >
           {cfg.label}
         </span>
@@ -377,19 +377,20 @@ export function TemplateEditor({ template }: Props) {
           </span>
           {activeUiCfg && (
             <span
-              className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${activeUiCfg.badgeCls}`}
+              className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-tight ${activeUiCfg.badgeCls}`}
             >
               {activeUiCfg.label}
             </span>
           )}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setPropertiesCollapsed((v) => !v)}
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors text-text-muted text-xs"
             aria-label={propertiesCollapsed ? 'Expandir propiedades' : 'Colapsar propiedades'}
+            className="shrink-0 !w-6 !h-6 !p-0 !rounded"
           >
             {propertiesCollapsed ? '▾' : '▴'}
-          </button>
+          </Button>
         </div>
 
         {/* right-properties (colapsable) */}
@@ -466,14 +467,15 @@ export function TemplateEditor({ template }: Props) {
     <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
       {/* Wizard topbar */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="xs"
           onClick={() => navigate('/procesos')}
-          className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95"
           aria-label="Volver a Plantillas"
+          className="!w-9 !h-9 !p-0 !rounded-full active:scale-95"
         >
           ←
-        </button>
+        </Button>
         <span className="text-sm text-text-secondary">
           Plantillas /{' '}
           <span className="font-bold text-text-primary dark:text-text-dark-primary">
@@ -488,7 +490,7 @@ export function TemplateEditor({ template }: Props) {
         <div className="w-72 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
           {/* left-header */}
           <div className="shrink-0 px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+            <span className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
               Bloques ({blocks.length})
             </span>
             <Button
@@ -554,7 +556,7 @@ export function TemplateEditor({ template }: Props) {
             loading={saveStatus === 'saving'}
             disabled={!isDirty}
             onClick={() => void saveRef.current()}
-            className="text-[10px] font-black uppercase tracking-widest rounded-full"
+            className="text-xs font-black uppercase tracking-widest rounded-full"
           >
             Guardar ahora
           </Button>

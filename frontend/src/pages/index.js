@@ -1,0 +1,12 @@
+export { DashboardPage } from './DashboardPage';
+export { DocumentEditorPage } from './DocumentEditorPage';
+export { DocumentValidationPage } from './DocumentValidationPage';
+export { DocumentPreviewPage } from './DocumentPreviewPage';
+export { NuevaProgramacionSelectorPage } from './NuevaProgramacionSelectorPage';
+export { PlaceholderPage } from './PlaceholderPage';
+export { ProcesosPage } from './ProcesosPage';
+export { TemplateEditPage } from './TemplateEditPage';
+export { TemplateNewPage } from './TemplateNewPage';
+export { TemplatePreviewPage } from './TemplatePreviewPage';
+export { TemplateReviewPage } from './TemplateReviewPage';
+export { TemplatesPage } from './TemplatesPage';

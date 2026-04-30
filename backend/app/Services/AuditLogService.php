@@ -117,4 +117,50 @@ class AuditLogService implements AuditLogServiceInterface
 
         Comment::query()->withoutGlobalScopes(['user_access'])->findOrFail($commentId);
     }
+
+    /**
+     * Resuelve el process_id del documento para validar contexto opcional.
+     */
+    public function resolveDocumentProcessId(string $documentId): ?string
+    {
+        $processId = Document::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->whereKey($documentId)
+            ->value('process_id');
+
+        return is_string($processId) ? $processId : null;
+    }
+
+    /**
+     * Resuelve el process_id de la plantilla para validar contexto opcional.
+     */
+    public function resolveTemplateProcessId(string $templateId): ?string
+    {
+        $processId = Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->whereKey($templateId)
+            ->value('process_id');
+
+        return is_string($processId) ? $processId : null;
+    }
+
+    /**
+     * Resuelve el process_id del comentario (vía documento o plantilla).
+     */
+    public function resolveCommentProcessId(string $commentId): ?string
+    {
+        $comment = Comment::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with('commentable')
+            ->findOrFail($commentId);
+
+        $commentable = $comment->commentable;
+        $processId = null;
+
+        if ($commentable instanceof Document || $commentable instanceof Template) {
+            $processId = $commentable->process_id;
+        }
+
+        return is_string($processId) ? $processId : null;
+    }
 }

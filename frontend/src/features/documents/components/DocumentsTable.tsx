@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
-import { Button, FieldLabel, Select, TextInput, Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../../../ui';
+import { FilterField, Select, TextInput } from '../../../ui';
+import { DataTable, DatePicker, Pagination, useTablePreferences, type ColumnDef } from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
@@ -31,12 +32,12 @@ const VISIBILITY_FILTER_OPTIONS: { value: string; label: string }[] = [
 ];
 
 const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
-  personal: 'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
-  global: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  personal:   'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
+  global:     'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
   study_type: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  study: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
-  module: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  team: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+  study:      'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+  module:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  team:       'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
 };
 
 function formatDate(iso: string | null | undefined): string {
@@ -44,9 +45,8 @@ function formatDate(iso: string | null | undefined): string {
   return iso.slice(0, 10);
 }
 
-const PER_PAGE = 20;
-
 type Filters = {
+  name: string;
   visibility: string;
   status: string;
   authorName: string;
@@ -55,6 +55,10 @@ type Filters = {
 
 function applyClientFilters(docs: Document[], filters: Filters): Document[] {
   return docs.filter((doc) => {
+    if (filters.name) {
+      const title = (doc.title ?? '').toLowerCase();
+      if (!title.includes(filters.name.toLowerCase())) return false;
+    }
     if (filters.status && doc.status !== filters.status) return false;
     if (filters.visibility && doc.visibility_level !== filters.visibility) return false;
     if (filters.authorName) {
@@ -70,29 +74,89 @@ function applyClientFilters(docs: Document[], filters: Filters): Document[] {
   });
 }
 
+const COLUMNS: ColumnDef<Document>[] = [
+  {
+    id: 'title',
+    header: 'Nombre',
+    cell: (doc) => <span className="font-medium">{doc.title}</span>,
+    sortable: true,
+  },
+  {
+    id: 'visibility_level',
+    header: 'Visibilidad',
+    cell: (doc) => {
+      const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
+      return (
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[visLevel]}`}>
+          {visibilityLabel(visLevel)}
+        </span>
+      );
+    },
+  },
+  {
+    id: 'owner_name',
+    header: 'Autor',
+    cell: (doc) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{doc.owner_name ?? '—'}</span>,
+  },
+  {
+    id: 'status',
+    header: 'Estado',
+    cell: (doc) => {
+      const status = doc.status as DocumentStatus;
+      return (
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[status] ?? ''}`}>
+          {STATUS_LABEL[status] ?? status}
+        </span>
+      );
+    },
+  },
+  {
+    id: 'delivery_deadline',
+    header: 'Fecha',
+    cell: (doc) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>,
+  },
+];
+
 export function DocumentsTable() {
   const navigate = useNavigate();
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
+    storageKey: 'maya:dms:documents-table',
+  });
   const { documents, loading, error } = useDocuments();
 
   const [filters, setFilters] = useState<Filters>({
+    name: '',
     visibility: '',
     status: '',
     authorName: '',
     date: '',
   });
+  const [nameInput, setNameInput] = useState('');
   const [authorInput, setAuthorInput] = useState('');
   const [page, setPage] = useState(1);
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const filtered = useMemo(() => applyClientFilters(documents, filters), [documents, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageSlice = filtered.slice((safePage - 1) * PER_PAGE, safePage * PER_PAGE);
+  const pageSlice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
+  const filtersActiveCount = [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
 
   const handleFilterChange = (patch: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...patch }));
     setPage(1);
+  };
+
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNameInput(value);
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    nameDebounceRef.current = setTimeout(() => {
+      handleFilterChange({ name: value });
+    }, 400);
   };
 
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,9 +169,11 @@ export function DocumentsTable() {
   };
 
   const clearFilters = () => {
+    if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    setNameInput('');
     setAuthorInput('');
-    setFilters({ visibility: '', status: '', authorName: '', date: '' });
+    setFilters({ name: '', visibility: '', status: '', authorName: '', date: '' });
     setPage(1);
   };
 
@@ -119,153 +185,83 @@ export function DocumentsTable() {
         </div>
       )}
 
-      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
-            Filtros
-          </h3>
-          <Button type="button" variant="secondary" size="sm" onClick={clearFilters}>
-            Limpiar filtros
-          </Button>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div>
-            <FieldLabel>Visibilidad</FieldLabel>
-            <Select
-              fieldSize="sm"
-              value={filters.visibility}
-              onChange={(e) => handleFilterChange({ visibility: e.target.value })}
-            >
-              {VISIBILITY_FILTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Estado</FieldLabel>
-            <Select
-              fieldSize="sm"
-              value={filters.status}
-              onChange={(e) => handleFilterChange({ status: e.target.value })}
-            >
-              {STATUS_FILTER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <FieldLabel>Autor</FieldLabel>
-            <TextInput
-              fieldSize="sm"
-              placeholder="Nombre del autor..."
-              value={authorInput}
-              onChange={handleAuthorChange}
-            />
-          </div>
-          <div>
-            <FieldLabel>Fecha</FieldLabel>
-            <TextInput
-              fieldSize="sm"
-              type="date"
-              value={filters.date}
-              onChange={(e) => handleFilterChange({ date: e.target.value })}
-            />
-          </div>
-        </div>
-      </div>
+      <DataTable
+        columns={COLUMNS}
+        rows={pageSlice}
+        loading={loading && documents.length === 0}
+        rowKey={(doc) => doc.id}
+        hiddenColumnIds={hiddenIds}
+        onToggleHiddenColumn={toggleHidden}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => {
+          setPageSize(size)
+          setPage(1)
+        }}
+        emptyMessage="No hay documentos con los filtros actuales."
+        filtersActiveCount={filtersActiveCount}
+        onClearFilters={clearFilters}
+        filtersStorageKey="maya:dms:documents-table"
+        onRowClick={(doc) => navigate(`/documents/${doc.id}`)}
+        filtersPanel={
+          <>
+            <FilterField label="Nombre">
+              <TextInput
+                fieldSize="sm"
+                type="search"
+                placeholder="Buscar por nombre..."
+                value={nameInput}
+                onChange={handleNameChange}
+              />
+            </FilterField>
+            <FilterField label="Visibilidad">
+              <Select
+                fieldSize="sm"
+                value={filters.visibility}
+                onChange={(e) => handleFilterChange({ visibility: e.target.value })}
+              >
+                {VISIBILITY_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Estado">
+              <Select
+                fieldSize="sm"
+                value={filters.status}
+                onChange={(e) => handleFilterChange({ status: e.target.value })}
+              >
+                {STATUS_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Autor">
+              <TextInput
+                fieldSize="sm"
+                placeholder="Nombre del autor..."
+                value={authorInput}
+                onChange={handleAuthorChange}
+              />
+            </FilterField>
+            <FilterField label="Fecha">
+              <DatePicker
+                value={filters.date || null}
+                onChange={(d) => handleFilterChange({ date: d ?? '' })}
+                placeholder="Seleccionar fecha..."
+              />
+            </FilterField>
+          </>
+        }
+      />
 
-      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableHeader>Nombre</TableHeader>
-                <TableHeader>Visibilidad</TableHeader>
-                <TableHeader>Autor</TableHeader>
-                <TableHeader>Estado</TableHeader>
-                <TableHeader>Fecha</TableHeader>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading && documents.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="px-4 py-6 text-sm text-center text-text-muted dark:text-text-dark-muted">
-                    Cargando documentos…
-                  </TableCell>
-                </TableRow>
-              )}
-              {!loading && pageSlice.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="px-4 py-6 text-sm text-center text-text-muted dark:text-text-dark-muted">
-                    No hay documentos con los filtros actuales.
-                  </TableCell>
-                </TableRow>
-              )}
-              {pageSlice.map((doc) => {
-                const status = doc.status as DocumentStatus;
-                const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
-                return (
-                  <TableRow
-                    key={doc.id}
-                    className="hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer group"
-                    onClick={() => navigate(`/documents/${doc.id}`)}
-                  >
-                    <TableCell className="px-4 py-3 text-sm font-medium text-text-primary dark:text-text-dark-primary group-hover:text-odoo-purple dark:group-hover:text-odoo-dark-purple transition-colors">
-                      {doc.title}
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[visLevel]}`}>
-                        {visibilityLabel(visLevel)}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-text-secondary dark:text-text-dark-secondary">
-                      {doc.owner_name ?? '—'}
-                    </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[status] ?? ''}`}>
-                        {STATUS_LABEL[status] ?? status}
-                      </span>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 text-xs text-text-secondary dark:text-text-dark-secondary">
-                      {formatDate(doc.delivery_deadline)}
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-ui-border dark:border-ui-dark-border text-xs text-text-muted dark:text-text-dark-muted">
-          <span>
-            Página {safePage} de {totalPages} — {filtered.length} documentos
-          </span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled={loading || safePage <= 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Anterior
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled={loading || safePage >= totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      </div>
+      <Pagination
+        currentPage={safePage}
+        totalPages={totalPages}
+        onChange={setPage}
+        info={`Página ${safePage} de ${totalPages} — ${filtered.length} documentos`}
+      />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import type { Template, TemplateListFilters, TemplatesListMeta } from '../types/
 import type { TemplateVisibilityLevel } from '../types/templates';
 import {
   Button,
-  FieldLabel,
+  FilterField,
   Select,
   TextInput,
   Table,
@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableCell,
 } from '../ui';
+import { DatePicker } from '@maya/shared-ui-react';
 
 const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
   personal:   'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
@@ -133,8 +134,7 @@ export function NuevaProgramacionSelectorPage() {
             </Button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div>
-              <FieldLabel>Visibilidad</FieldLabel>
+            <FilterField label="Visibilidad">
               <Select
                 fieldSize="sm"
                 value={filterUi.visibility}
@@ -145,31 +145,27 @@ export function NuevaProgramacionSelectorPage() {
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </Select>
-            </div>
-            <div>
-              <FieldLabel>Estado</FieldLabel>
+            </FilterField>
+            <FilterField label="Estado">
               <Select fieldSize="sm" value="published" disabled>
                 <option value="published">Publicada</option>
               </Select>
-            </div>
-            <div>
-              <FieldLabel>Autor</FieldLabel>
+            </FilterField>
+            <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
                 placeholder="Nombre del autor..."
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
-            </div>
-            <div>
-              <FieldLabel>Fecha límite de validación</FieldLabel>
-              <TextInput
-                fieldSize="sm"
-                type="date"
-                value={filterUi.deliveryDeadline}
-                onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
+            </FilterField>
+            <FilterField label="Fecha límite de validación">
+              <DatePicker
+                value={filterUi.deliveryDeadline || null}
+                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
+                placeholder="Seleccionar fecha…"
               />
-            </div>
+            </FilterField>
           </div>
         </div>
 

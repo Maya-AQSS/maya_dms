@@ -83,7 +83,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
       }
     >
       {isRejected && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/4 bg-amber-500/60 rounded-r-full" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3/4 bg-warning/60 rounded-r-full" />
       )}
 
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -93,15 +93,15 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
               {t.name}
             </h3>
             {isRejected && (
-              <span className="shrink-0 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest bg-amber-500 text-white px-2 py-0.5 rounded-full shadow-sm border border-amber-400">
-                <span className="animate-pulse">●</span> Rechazada
+              <span className="shrink-0 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest bg-warning-dark text-text-inverse px-2 py-0.5 rounded-full shadow-sm border border-warning">
+                <span className="motion-safe:animate-pulse">●</span> Rechazada
               </span>
             )}
           </div>
           {t.description ? (
             <p className="text-xs text-text-secondary dark:text-text-dark-secondary line-clamp-2">{t.description}</p>
           ) : null}
-          <div className="flex flex-wrap gap-2 text-[10px] text-text-muted dark:text-text-dark-muted font-medium">
+          <div className="flex flex-wrap gap-2 text-xs text-text-muted dark:text-text-dark-muted font-medium">
             <span className="rounded bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 border border-ui-border dark:border-ui-dark-border">
               {visibilityLabel(t.visibility_level)}
             </span>
@@ -139,7 +139,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
           {canDelete && (
             <Button
               type="button"
-              variant="outlineWarning"
+              variant="danger"
               size="xs"
               disabled={dialog !== null}
               onClick={() => setDialog('delete')}

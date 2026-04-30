@@ -7,6 +7,7 @@ use App\Models\JwtUser;
 use App\Models\Template;
 use App\Models\TemplateVersion;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreDocumentRequest extends FormRequest
 {
@@ -53,12 +54,50 @@ class StoreDocumentRequest extends FormRequest
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
+            'process_id' => ['required', 'uuid', 'exists:processes,id'],
             'template_version_id' => [
                 'required_without:template_id',
                 'uuid',
                 'exists:template_versions,id',
             ],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            if ($v->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $processId = $this->input('process_id');
+            if (! is_string($processId)) {
+                return;
+            }
+
+            $template = null;
+            if ($this->filled('template_id')) {
+                $template = Template::query()->find($this->input('template_id'));
+            } elseif ($this->filled('template_version_id')) {
+                $tid = TemplateVersion::query()
+                    ->whereKey($this->input('template_version_id'))
+                    ->value('template_id');
+                if (is_string($tid)) {
+                    $template = Template::query()->find($tid);
+                }
+            }
+
+            if ($template === null) {
+                return;
+            }
+
+            if ((string) $template->process_id !== $processId) {
+                $v->errors()->add(
+                    'process_id',
+                    'El proceso no corresponde a la plantilla seleccionada.',
+                );
+            }
+        });
     }
 
     /**
@@ -80,6 +119,7 @@ class StoreDocumentRequest extends FormRequest
             title: $this->validated('title'),
             createdBy: $createdBy,
             ownerId: $ownerId,
+            processId: $this->validated('process_id'),
             studyTypeId: $this->validated('study_type_id') ?? null,
             studyId: $this->validated('study_id') ?? null,
             moduleId: $this->validated('module_id') ?? null,

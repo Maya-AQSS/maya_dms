@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'jwt' => \Maya\Auth\Middleware\JwtMiddleware::class,
         ]);
+        $middleware->api(prepend: [\Illuminate\Http\Middleware\HandleCors::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

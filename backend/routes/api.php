@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\HealthCheckController;
+use App\Http\Controllers\Api\ProcessController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\TemplateBlockController;
 use App\Http\Controllers\Api\TemplateController;
@@ -37,6 +38,7 @@ Route::prefix('v1')->group(function () {
         // Autenticación y sesión
         Route::get('/me', [AuthController::class, 'me']);
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
+        Route::get('/processes', [ProcessController::class, 'index']);
 
         // Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).

@@ -21,9 +21,18 @@
     "error": "Se produjo un error"
   },
   "nav": {
+    "dashboard": "Panel",
     "documents": "Documentos",
     "templates": "Plantillas",
     "trash": "Papelera"
+  },
+  "dashboard": {
+    "noWidgets": "No hay widgets en el panel.",
+    "reset": "Restablecer",
+    "widgets": {
+      "recentDocuments": "Documentos recientes",
+      "pendingValidations": "Pendientes de validar"
+    }
   },
   "documents": {
     "title": "Documentos",

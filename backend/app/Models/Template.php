@@ -102,6 +102,7 @@ class Template extends Model
     protected $fillable = [
         'name',
         'description',
+        'process_id',
         'visibility_level',
         'delivery_deadline',
         'study_type_id',
@@ -128,6 +129,11 @@ class Template extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function process(): BelongsTo
+    {
+        return $this->belongsTo(Process::class);
     }
 
     public function blocks(): HasMany

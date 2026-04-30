@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\StoreDocumentShareRequest;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -14,6 +15,8 @@ use Illuminate\Http\Response;
  */
 class DocumentShareController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
     ) {}
@@ -27,6 +30,7 @@ class DocumentShareController extends Controller
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('share', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $data = $this->documentService->upsertDocumentShare(
@@ -48,6 +52,7 @@ class DocumentShareController extends Controller
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('share', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $this->documentService->removeDocumentShare(
             $doc->id,

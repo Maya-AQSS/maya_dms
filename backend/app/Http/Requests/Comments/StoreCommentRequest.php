@@ -19,13 +19,37 @@ class StoreCommentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'body' => 'required|string',
+            'body' => 'nullable|string|max:5000',
             'parent_id' => 'nullable|uuid|exists:comments,id',
-            'blockable_id' => 'nullable|string',
-            // Compatibilidad temporal durante la unificación del frontend.
-            'template_block_id' => 'nullable|string',
-            'document_block_id' => 'nullable|string',
+            'blockable_id' => 'nullable|uuid',
         ];
+    }
+
+    /**
+     * Prepara la validación.
+     */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('body')) {
+            $this->merge([
+                'body' => trim((string) $this->input('body')),
+            ]);
+        }
+    }
+
+    /**
+     * Valida el bloque.
+     */
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            if (
+                $this->filled('template_block_id')
+                || $this->filled('document_block_id')
+            ) {
+                $validator->errors()->add('blockable_id', 'Usa blockable_id como único identificador de bloque.');
+            }
+        });
     }
 
     /**
@@ -50,9 +74,7 @@ class StoreCommentRequest extends FormRequest
      */
     public function blockableId(): ?string
     {
-        $value = $this->validated('blockable_id')
-            ?? $this->validated('template_block_id')
-            ?? $this->validated('document_block_id');
+        $value = $this->validated('blockable_id');
 
         return is_string($value) && $value !== '' ? $value : null;
     }

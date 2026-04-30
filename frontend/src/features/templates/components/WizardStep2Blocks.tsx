@@ -1,4 +1,6 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense, lazy } from 'react';
+import { useDarkMode } from '@maya/shared-layout-react';
+import { ErrorBoundary } from '@maya/shared-ui-react';
 import {
   DndContext,
   closestCenter,
@@ -20,10 +22,11 @@ import { Button, ConfirmDialog, TextInput, FieldLabel } from '../../../ui';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
-import { BlockNoteEditorPanel } from './BlockNoteEditorPanel';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useUserProfile } from '../../../features/user-profile';
+
+const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
 
 type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';
@@ -165,6 +168,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     deleteBlock,
     reorderBlocks
   } = useTemplateBlocks(template.id);
+
+  const { isDark: globalIsDark } = useDarkMode();
+  const effectiveIsDark = isDark || globalIsDark;
 
   useEffect(() => {
     onBlocksCountChange?.(blocks.length);
@@ -416,8 +422,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
           </div>
         )}
 
-
-        {panelMode === 'edit' && selectedBlock && (
+        {(panelMode === 'edit' || panelMode === 'multi') && selectedBlock && (
           <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
             <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
               <div className="flex items-center gap-3 min-w-0">
@@ -461,200 +466,64 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   <div className="p-6 space-y-4">
                     <div>
                       <FieldLabel required>Nombre del bloque</FieldLabel>
-                      <TextInput value={formName} onChange={e => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                      <TextInput value={formName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }} />
                     </div>
                     <div>
                       <FieldLabel>Estado</FieldLabel>
                       <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
                     </div>
+                    <p className="text-[10px] text-text-muted italic">
+                      Se guarda automáticamente tras 1500 ms de inactividad o al cambiar de pestaña.
+                    </p>
                   </div>
                 </div>
               )}
               {activeTab === 'content' && (
-                <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                  <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                    <BlockNoteEditorPanel
-                      key={`content-${activeSingleId ?? 'none'}`}
-                      initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                      onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
-                      editable={true} // Siempre editable en la plantilla
-                      isDark={isDark}
-                    />
-                  </Suspense>
-                </div>
+                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
+                  <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                    <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                      <BlockNoteEditorPanel
+                        key={`content-${activeSingleId ?? 'none'}`}
+                        initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                        onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
+                        editable={true}
+                        isDark={effectiveIsDark}
+                      />
+                    </Suspense>
+                  </div>
+                </ErrorBoundary>
               )}
               {activeTab === 'description' && (
-                <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                  <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                    <BlockNoteEditorPanel
-                      key={`desc-${activeSingleId ?? 'none'}`}
-                      initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                      onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
-                      editable
-                      isDark={isDark}
-                    />
-                  </Suspense>
-                </div>
-              )}
-              {activeTab === 'comments' && showCommentsTab && (() => {
-                const blockComments = reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved);
-                return (
+                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de descripción.</div>}>
                   <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                    {/* Header del panel de comentarios */}
-                    <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-2 bg-danger/5">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-danger-dark dark:text-danger">
-                        ⚠ Comentarios de revisión pendientes
-                      </span>
-                      <span className="ml-auto text-[10px] font-bold text-text-muted">
-                        {blockComments.length} {blockComments.length === 1 ? 'comentario' : 'comentarios'}
-                      </span>
-                    </div>
-
-                    {/* Lista de comentarios */}
-                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
-                      {blockComments.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
-                          <p className="text-sm font-medium text-text-muted">No hay comentarios pendientes en este bloque.</p>
+                    <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                      <BlockNoteEditorPanel
+                        key={`description-${activeSingleId ?? 'none'}`}
+                        initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                        onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
+                        editable={true}
+                        isDark={effectiveIsDark}
+                      />
+                    </Suspense>
+                  </div>
+                </ErrorBoundary>
+              )}
+              {activeTab === 'comments' && (
+                <div className="space-y-4">
+                  {reviewComments.filter(c => c.blockable_id === activeSingleId).map(c => (
+                    <div key={c.id} className={`bg-white dark:bg-ui-dark-card p-4 rounded-xl border ${c.resolved ? 'border-ui-border opacity-60' : 'border-amber-200 shadow-sm'} transition-all`}>
+                      <div className="flex justify-between mb-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-primary dark:text-text-dark-primary">{c.author?.name || 'Validador'}</span>
+                        <span className="text-[9px] text-text-muted">{new Date(c.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary mb-3">{c.body}</p>
+                      {!c.resolved && onResolveComment && (
+                        <div className="flex justify-end">
+                          <Button variant="outline" size="xs" className="text-success border-success/30 hover:bg-success hover:text-white" onClick={() => void onResolveComment(c.id)}>✓ Resolver</Button>
                         </div>
-                      ) : (
-                        blockComments.map((c) => (
-                          <div key={c.id} className="group relative pl-5 animate-in fade-in">
-                            <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-danger/30 group-hover:bg-danger/60 transition-colors rounded-full" />
-                            <div className="flex items-center justify-between mb-2 gap-2">
-                              <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
-                                {c.author?.name || 'Validador'}
-                              </span>
-                              {c.created_at && (
-                                <time className="text-[10px] text-text-muted font-bold uppercase tracking-wider shrink-0" dateTime={c.created_at}>
-                                  {new Date(c.created_at).toLocaleDateString()}
-                                </time>
-                              )}
-                            </div>
-                            <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/40 dark:bg-ui-dark-bg/40 px-4 py-3 rounded-lg border border-ui-border/60 dark:border-ui-dark-border/60 whitespace-pre-wrap">
-                              {c.body}
-                            </div>
-                            {onResolveComment && (
-                              <div className="mt-2.5">
-                                <Button
-                                  variant="outline"
-                                  size="xs"
-                                  className="text-success border-success/30 hover:bg-success/5 hover:border-success/60"
-                                  onClick={() => void onResolveComment(c.id)}
-                                >
-                                  ✓ Marcar como corregido
-                                </Button>
-                              </div>
-                            )}
-                          </div>
-                        ))
                       )}
                     </div>
-                  </div>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
-        {panelMode === 'multi' && (
-          <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
-            {/* Header multi */}
-            <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
-              <div className="flex items-center gap-3 min-w-0">
-                <h3 className="text-sm font-bold text-odoo-purple uppercase tracking-widest truncate">
-                  Edición múltiple ({multiIndex + 1}/{selectedBlockIds.length})
-                </h3>
-                {renderSaveStatus()}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
-                <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
-                <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
-              </div>
-            </div>
-
-            {/* Formulario de edición del bloque actual en multi */}
-            <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
-              {(['properties', 'content', 'description'] as TabId[]).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors ${
-                    activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
-                  }`}
-                >
-                  {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : 'Descripción'}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              {activeTab === 'properties' && (
-                <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6 space-y-4 max-w-lg mx-auto">
-                  <div>
-                    <FieldLabel required>Nombre del bloque</FieldLabel>
-                    <TextInput value={formName} onChange={e => { setFormName(e.target.value); setTabIsDirty(true); }} />
-                  </div>
-                  <div>
-                    <FieldLabel>Estado</FieldLabel>
-                    <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <Button variant="primary" className="flex-1" loading={busy} onClick={async () => {
-                      if (tabIsDirty) await forceSave();
-                      if (multiIndex < selectedBlockIds.length - 1) {
-                        const nextIdx = multiIndex + 1;
-                        setMultiIndex(nextIdx);
-                        setActiveSingleId(selectedBlockIds[nextIdx] ?? null);
-                        const nextBlock = blocks.find(b => b.id === selectedBlockIds[nextIdx]);
-                        if (nextBlock) loadFormFromBlock(nextBlock);
-                        setActiveTab('properties');
-                      } else {
-                        setPanelMode('empty');
-                        setActiveSingleId(null);
-                        setSelectedBlockIds([]);
-                      }
-                    }}>
-                      {multiIndex === selectedBlockIds.length - 1 ? 'Finalizar' : 'Guardar y siguiente'}
-                    </Button>
-                    {multiIndex < selectedBlockIds.length - 1 && (
-                      <Button variant="outline" onClick={async () => {
-                        if (tabIsDirty) await forceSave();
-                        const nextIdx = multiIndex + 1;
-                        setMultiIndex(nextIdx);
-                        setActiveSingleId(selectedBlockIds[nextIdx] ?? null);
-                        const nextBlock = blocks.find(b => b.id === selectedBlockIds[nextIdx]);
-                        if (nextBlock) loadFormFromBlock(nextBlock);
-                        setActiveTab('properties');
-                      }} aria-label="Siguiente">→</Button>
-                    )}
-                  </div>
-                </div>
-              )}
-              {activeTab === 'content' && (
-                <div className="flex-1 flex flex-col min-h-[400px] bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                  <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                    <BlockNoteEditorPanel
-                      key={`content-multi-${activeSingleId ?? 'none'}`}
-                      initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                      onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
-                      editable={true}
-                      isDark={isDark}
-                    />
-                  </Suspense>
-                </div>
-              )}
-              {activeTab === 'description' && (
-                <div className="flex-1 flex flex-col min-h-[400px] bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                  <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                    <BlockNoteEditorPanel
-                      key={`desc-multi-${activeSingleId ?? 'none'}`}
-                      initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                      onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
-                      editable={true}
-                      isDark={isDark}
-                    />
-                  </Suspense>
+                  ))}
                 </div>
               )}
             </div>
@@ -665,13 +534,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       <ConfirmDialog
         open={deleteModal}
         title="¿Eliminar bloque?"
-        description="Esta acción eliminará permanentemente el bloque y su contenido."
+        description={panelMode === 'multi' ? `¿Seguro que quieres eliminar ${selectedBlockIds.length} bloques?` : 'Esta acción no se puede deshacer.'}
         variant="danger"
-        confirmLabel="Eliminar"
-        onCancel={() => setDeleteModal(false)}
         onConfirm={handleDelete}
+        onCancel={() => setDeleteModal(false)}
         loading={busy}
       />
     </div>
   );
 });
+
+WizardStep2Blocks.displayName = 'WizardStep2Blocks';

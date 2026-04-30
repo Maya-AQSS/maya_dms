@@ -62,6 +62,7 @@ class Document extends Model
     protected $fillable = [
         'template_id',
         'template_version_id',
+        'process_id',
         'title',
         'study_type_id',
         'study_id',
@@ -94,6 +95,11 @@ class Document extends Model
     public function templateVersion(): BelongsTo
     {
         return $this->belongsTo(TemplateVersion::class);
+    }
+
+    public function process(): BelongsTo
+    {
+        return $this->belongsTo(Process::class);
     }
 
     public function blocks(): HasMany

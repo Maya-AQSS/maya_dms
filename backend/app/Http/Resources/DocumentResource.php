@@ -16,6 +16,7 @@ class DocumentResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'process_id' => $this->process_id,
             'template_id' => $this->template_id,
             'template_version_id' => $this->template_version_id,
             'template_version_number' => $this->resolveTemplateVersionNumber(),

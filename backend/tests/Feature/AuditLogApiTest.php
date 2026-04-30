@@ -183,4 +183,35 @@ class AuditLogApiTest extends TestCase
             ->assertOk();
     }
 
+    public function test_audit_endpoints_return_forbidden_when_process_context_does_not_match(): void
+    {
+        $ownerId = (string) Str::uuid();
+        $ids = $this->seedTemplateDocumentComment($ownerId);
+        $headers = $this->authHeaders($ownerId);
+        $wrongProcessId = '00000000-0000-0000-0000-000000000999';
+
+        $this->getJson("/api/v1/documents/{$ids['documentId']}/audit?process_id={$wrongProcessId}", $headers)
+            ->assertForbidden();
+        $this->getJson("/api/v1/templates/{$ids['templateId']}/audit?process_id={$wrongProcessId}", $headers)
+            ->assertForbidden();
+        $this->getJson("/api/v1/comments/{$ids['commentId']}/audit?process_id={$wrongProcessId}", $headers)
+            ->assertForbidden();
+    }
+
+    public function test_audit_endpoints_allow_matching_process_context(): void
+    {
+        $ownerId = (string) Str::uuid();
+        $ids = $this->seedTemplateDocumentComment($ownerId);
+        $headers = $this->authHeaders($ownerId);
+
+        $processId = (string) Document::query()->whereKey($ids['documentId'])->value('process_id');
+
+        $this->getJson("/api/v1/documents/{$ids['documentId']}/audit?process_id={$processId}", $headers)
+            ->assertOk();
+        $this->getJson("/api/v1/templates/{$ids['templateId']}/audit?process_id={$processId}", $headers)
+            ->assertOk();
+        $this->getJson("/api/v1/comments/{$ids['commentId']}/audit?process_id={$processId}", $headers)
+            ->assertOk();
+    }
+
 }

@@ -58,8 +58,8 @@ export function WizardStep1Properties({
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-6">
-      <div className="space-y-6">
+    <div className="flex-1 min-h-0 flex flex-col bg-ui-card dark:bg-ui-dark-card overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
         {errors.api && (
           <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
             {errors.api}
@@ -74,7 +74,7 @@ export function WizardStep1Properties({
               type="text"
               fieldSize="comfortable"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
               placeholder="Ej. Acta de Evaluación Final"
               error={!!errors.name}
             />
@@ -86,7 +86,7 @@ export function WizardStep1Properties({
             <TextArea
               fieldSize="comfortable"
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
               placeholder="Propósito de la plantilla…"
               style={{ minHeight: '64px' }}
             />
@@ -119,15 +119,15 @@ export function WizardStep1Properties({
               type="date"
               fieldSize="comfortable"
               value={deliveryDeadline}
-              onChange={(e) => setDeliveryDeadline(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeliveryDeadline(e.target.value)}
               disabled={deadlineLocked}
-              error={!!errors.deliveryDeadline}
+              placeholder="Seleccionar fecha…"
             />
             {errors.deliveryDeadline && (
               <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
             )}
             {deadlineLocked && (
-              <p className="mt-1 text-[10px] text-text-muted italic">
+              <p className="mt-1 text-xs text-text-muted italic">
                 No editable en estado actual.
               </p>
             )}
@@ -208,7 +208,7 @@ export function WizardStep1Properties({
                     fieldSize="comfortable"
                     value={moduleId}
                     disabled={hierarchyLoading}
-                    onChange={(e) => setModuleId(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setModuleId(e.target.value)}
                     error={!!errors.moduleId}
                   >
                     <option value="">— Seleccionar —</option>
@@ -228,7 +228,7 @@ export function WizardStep1Properties({
                     fieldSize="comfortable"
                     value={teamId}
                     disabled={teamsLoading || !teams.length}
-                    onChange={(e) => setTeamId(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTeamId(e.target.value)}
                     error={!!errors.teamId}
                   >
                     <option value="">

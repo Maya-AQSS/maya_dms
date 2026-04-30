@@ -25,7 +25,7 @@ import { ApiHttpError } from '../../../api/http';
 import { fetchTemplate } from '../../../api/templates';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
-import { useDarkMode } from '../../../hooks/useDarkMode';
+import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
 import type { Template } from '../../../types/templates';
@@ -33,7 +33,7 @@ import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiSt
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { Button, ConfirmDialog, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
-import { ErrorBoundary } from '../../../components/ErrorBoundary';
+import { DatePicker, ErrorBoundary } from '@maya/shared-ui-react';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then(
@@ -121,7 +121,7 @@ function DocumentBlockDescriptionView({ description }: { description: unknown })
 function DocSummaryRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col py-1.5 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
-      <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+      <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
         {label}
       </dt>
       <dd className="mt-0.5 text-xs font-medium text-text-primary dark:text-text-dark-primary">
@@ -840,10 +840,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   {isDone && !isActive ? '✓' : i + 1}
                 </span>
                 <span className="text-left hidden lg:block">
-                  <span className={`block text-[10px] font-black uppercase tracking-widest ${labelCls}`}>
+                  <span className={`block text-xs font-black uppercase tracking-widest ${labelCls}`}>
                     {s.label}
                   </span>
-                  <span className="block text-[10px] text-text-muted">{s.sub}</span>
+                  <span className="block text-xs text-text-muted">{s.sub}</span>
                 </span>
               </button>
               {i < stepsData.length - 1 && (
@@ -1002,7 +1002,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               size="sm"
               loading={saving}
               onClick={() => void handleContinue()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+              className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
             >
               Continuar
             </Button>
@@ -1030,7 +1030,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             <div className="bg-ui-card dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6 space-y-6 animate-in fade-in slide-in-from-top-1">
               {template && (
                 <div>
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1">
+                  <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1">
                     Plantilla base
                   </p>
                   <div className="flex items-center justify-between gap-3">
@@ -1149,14 +1149,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
                   <div className="space-y-1">
                     <FieldLabel htmlFor="doc-delivery-deadline-input" required>Fecha límite</FieldLabel>
-                    <TextInput
-                      id="doc-delivery-deadline-input"
-                      type="date"
-                      fieldSize="comfortable"
-                      value={deliveryDeadline}
-                      onChange={(e) => setDeliveryDeadline(e.target.value)}
+                    <DatePicker
+                      value={deliveryDeadline || null}
+                      onChange={(d: string | null) => setDeliveryDeadline(d ?? '')}
                       disabled={!isDraft}
-                      error={!!errors.deliveryDeadline}
+                      placeholder="Seleccionar fecha…"
+                      ariaLabel="Fecha límite del documento"
                     />
                     {errors.deliveryDeadline && (
                       <p className="text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
@@ -1190,7 +1188,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     }`}
                   >
                     <span className="block font-medium truncate">{b.title || 'Sin título'}</span>
-                    <span className="block text-[10px] text-text-muted mt-0.5">
+                    <span className="block text-xs text-text-muted mt-0.5">
                       {(() => {
                         const ui = blockToUiState(b);
                         return BLOCK_UI_STATE_CONFIG[ui].label;
@@ -1319,7 +1317,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
           <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 w-full">
             <div className="px-5 py-4 border-r border-ui-border dark:border-ui-dark-border">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">Propiedades</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">Propiedades</p>
               <dl className="space-y-0">
                 <DocSummaryRow label="Título" value={detail?.title} />
                 <DocSummaryRow
@@ -1333,7 +1331,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               <dl className="space-y-0">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 py-2 border-b border-ui-border dark:border-ui-dark-border/30">
                   <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+                    <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
                       Tipo de estudio
                     </dt>
                     <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
@@ -1341,7 +1339,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+                    <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
                       Estudio
                     </dt>
                     <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
@@ -1349,7 +1347,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[10px] font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+                    <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
                       Módulo
                     </dt>
                     <dd className="text-sm text-text-primary dark:text-text-dark-primary mt-0.5">
@@ -1370,7 +1368,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       ? (
                           <div className="space-y-1">
                             {reviewerListKind === 'template_fallback' && (
-                              <p className="text-[10px] text-text-muted dark:text-text-dark-muted leading-snug">
+                              <p className="text-xs text-text-muted dark:text-text-dark-muted leading-snug">
                                 La plantilla no define validadores de documento; al enviar se usarán los revisores
                                 normativos de la plantilla (misma prioridad que en el servidor).
                               </p>
@@ -1405,7 +1403,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
           <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden animate-in fade-in slide-in-from-top-1 w-full">
             <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+              <span className="text-xs font-bold uppercase tracking-widest text-text-secondary">
                 Contenido — {sortedBlocks.length} bloque{sortedBlocks.length !== 1 ? 's' : ''}
               </span>
               <Button
@@ -1448,14 +1446,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                               : 'bg-transparent border-ui-border dark:border-ui-dark-border/50 hover:bg-ui-body dark:hover:bg-ui-dark-bg hover:border-ui-border',
                           ].join(' ')}
                         >
-                          <span className="shrink-0 text-[10px] font-bold text-text-muted w-4 text-right">
+                          <span className="shrink-0 text-xs font-bold text-text-muted w-4 text-right">
                             {i + 1}
                           </span>
                           <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
                             {block.title || 'Sin nombre'}
                           </span>
                           <span
-                            className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}
+                            className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase ${cfg.badgeCls}`}
                           >
                             {cfg.label}
                           </span>

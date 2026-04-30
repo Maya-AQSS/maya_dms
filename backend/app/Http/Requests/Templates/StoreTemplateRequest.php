@@ -38,6 +38,7 @@ class StoreTemplateRequest extends FormRequest
             'team_id'           => ['nullable', 'uuid', 'exists:teams,id', 'required_if:visibility_level,team'],
             'review_stages'     => ['sometimes', 'integer', 'min:0'],
             'review_mode'       => ['sometimes', 'string', 'in:sequential,parallel'],
+            'process_id'        => ['required', 'uuid', 'exists:processes,id'],
         ];
     }
 
@@ -59,6 +60,7 @@ class StoreTemplateRequest extends FormRequest
             teamId: $v['team_id'] ?? null,
             reviewStages: (int) ($v['review_stages'] ?? 0),
             reviewMode: $v['review_mode'] ?? 'parallel',
+            processId: $v['process_id'],
         );
     }
 }

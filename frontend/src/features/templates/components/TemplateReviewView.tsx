@@ -7,7 +7,7 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { Button, ConfirmDialog } from '../../../ui';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
-import { useOidcSession } from '../../../auth/useOidcSession';
+import { useAuth } from '@maya/shared-auth-react';
 
 type Props = {
   template: Template;
@@ -56,7 +56,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
 
 export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
-  const { user } = useOidcSession();
+  const { user } = useAuth();
   const { blocks } = useTemplateBlocks(template.id);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
@@ -74,7 +74,7 @@ export function TemplateReviewView({ template }: Props) {
   // Estado de la barra lateral: 'comments' | 'info' | null
   const [sidebarMode, setSidebarMode] = useState<'comments' | 'info' | null>(null);
 
-  const currentUserId = (user as any)?.sub || (user as any)?.id || (user as any)?.profile?.sub || (user as any)?.profile?.id;
+  const currentUserId = user?.sub || (user as any)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
   const isAlreadyValidated = myReview && myReview.status !== 'pending';
   
@@ -167,7 +167,7 @@ export function TemplateReviewView({ template }: Props) {
             <h2 className="text-sm font-bold text-text-primary dark:text-text-dark-primary">
               Validación de Plantilla
             </h2>
-            <p className="text-[10px] text-text-muted uppercase tracking-widest font-black truncate max-w-[200px]">
+            <p className="text-xs text-text-muted uppercase tracking-widest font-black truncate max-w-[200px]">
               {template.name}
             </p>
           </div>
@@ -182,7 +182,7 @@ export function TemplateReviewView({ template }: Props) {
                 onClick={handleRejectClick}
                 disabled={actionLoading}
                 loading={actionLoading}
-                className="text-[10px] font-black uppercase tracking-wider"
+                className="text-xs font-black uppercase tracking-wider"
               >
                 Rechazar validación
               </Button>
@@ -192,14 +192,14 @@ export function TemplateReviewView({ template }: Props) {
                 onClick={handleApprove}
                 disabled={actionLoading}
                 loading={actionLoading}
-                className="text-[10px] font-black uppercase tracking-wider px-6"
+                className="text-xs font-black uppercase tracking-wider px-6"
               >
                 Validar y Aprobar
               </Button>
             </>
           ) : (
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
-              <span className="text-success text-[10px] font-black uppercase tracking-widest">
+              <span className="text-success text-xs font-black uppercase tracking-widest">
                 ✓ Ya has validado esta plantilla
               </span>
             </div>
@@ -212,7 +212,7 @@ export function TemplateReviewView({ template }: Props) {
           <div className="flex items-center gap-3">
             <span className="text-lg">⏳</span>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-odoo-purple">Pendiente de otros validadores</p>
+              <p className="text-xs font-black uppercase tracking-widest text-odoo-purple">Pendiente de otros validadores</p>
               <p className="text-xs text-text-secondary dark:text-text-dark-secondary">
                 Faltan {remainingReviewers.length} {remainingReviewers.length === 1 ? 'persona' : 'personas'} por validar: 
                 <span className="font-bold ml-1">
@@ -244,7 +244,7 @@ export function TemplateReviewView({ template }: Props) {
               <h1 className="text-3xl font-black text-text-primary dark:text-text-dark-primary mb-4 leading-tight">
                 {template.name}
               </h1>
-              <div className="flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-widest text-text-muted">
+              <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-widest text-text-muted">
                 <span>{visibilityLabel(template.visibility_level)}</span>
                 {template.study_id && <span>• {String(template.study_id)}</span>}
                 {template.module_id && <span>• {String(template.module_id)}</span>}
@@ -290,7 +290,7 @@ export function TemplateReviewView({ template }: Props) {
                     >
                       {/* Badge del bloque */}
                       <div className={[
-                        'absolute -left-12 top-0 text-[10px] font-black uppercase tracking-tighter transition-opacity duration-200',
+                        'absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200',
                         isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted'
                       ].join(' ')}>
                          #{(block.sort_order ?? '?') as any}
@@ -312,7 +312,7 @@ export function TemplateReviewView({ template }: Props) {
                               setSidebarMode('info'); 
                             }}
                             className={[
-                              "shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-[10px] font-black uppercase tracking-wider",
+                              "shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider",
                               sidebarMode === 'info' && isSelected
                                 ? "border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm"
                                 : "border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5"
@@ -334,7 +334,7 @@ export function TemplateReviewView({ template }: Props) {
                               setSidebarMode('comments'); 
                             }}
                             className={[
-                              "shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-[10px] font-black uppercase tracking-wider",
+                              "shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider",
                               sidebarMode === 'comments' && isSelected
                                 ? "border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm"
                                 : "border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5"
@@ -412,7 +412,7 @@ export function TemplateReviewView({ template }: Props) {
                       <button
                         onClick={() => setSidebarMode('comments')}
                         className={[
-                          'pb-4 text-[11px] font-bold uppercase tracking-widest transition-all relative',
+                          'pb-4 text-xs font-bold uppercase tracking-widest transition-all relative',
                           sidebarMode === 'comments' 
                             ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple' 
                             : 'text-text-muted hover:text-text-primary'
@@ -423,7 +423,7 @@ export function TemplateReviewView({ template }: Props) {
                       <button
                         onClick={() => setSidebarMode('info')}
                         className={[
-                          'pb-4 text-[11px] font-bold uppercase tracking-widest transition-all relative',
+                          'pb-4 text-xs font-bold uppercase tracking-widest transition-all relative',
                           sidebarMode === 'info' 
                             ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple' 
                             : 'text-text-muted hover:text-text-primary'
@@ -511,7 +511,7 @@ export function TemplateReviewView({ template }: Props) {
                             <Button 
                               variant="primary" 
                               size="md" 
-                              className="text-[11px] font-black uppercase tracking-widest px-8 py-2.5"
+                              className="text-xs font-black uppercase tracking-widest px-8 py-2.5"
                               onClick={handleAddComment}
                               loading={commentLoading}
                               disabled={!newCommentBody.trim() || commentLoading}

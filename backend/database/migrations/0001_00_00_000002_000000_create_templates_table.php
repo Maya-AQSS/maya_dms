@@ -19,6 +19,7 @@ return new class extends Migration
     {
         Schema::create('templates', function (Blueprint $table) {
             $table->uuid('id')->primary();
+            $table->foreignUuid('process_id')->constrained('processes')->restrictOnDelete();
             $table->string('name');
             $table->text('description')->nullable();
 
@@ -45,6 +46,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
+            $table->unique(['process_id', 'id']);
             $table->index(['visibility_level', 'status'], 'templates_visibility_status_index');
             $table->index('study_id');
             $table->index('study_type_id');
