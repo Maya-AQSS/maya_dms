@@ -108,21 +108,6 @@ class Document extends Model
         });
     }
 
-    /**
-     * Indica si el documento cae en el ámbito académico del usuario (resuelto en BD).
-     */
-    public function matchesAcademicContextForUserId(string $userId): bool
-    {
-        if ($userId === '') {
-            return false;
-        }
-
-        $query = DB::query()->selectRaw('1')->from('documents')->where('documents.id', $this->id);
-        self::applyAcademicOverlapOnDocumentsTable($query, $userId);
-
-        return $query->exists();
-    }
-
     protected $keyType = 'string';
 
     public $incrementing = false;

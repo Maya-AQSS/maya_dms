@@ -84,9 +84,9 @@ class DocumentPolicy
     }
 
     /**
-     * Publicación explícita del documento (sin revisores configurados).
-     * Los revisores publican automáticamente al aprobar la última etapa; este endpoint
-     * es solo para el titular cuando no hay revisores pendientes.
+     * Publicación explícita del documento: solo el titular.
+     * La ausencia de revisiones pendientes se verifica en DocumentService::publishDocument,
+     * no aquí; esta policy únicamente controla quién tiene permiso para invocar el endpoint.
      */
     public function publish(JwtUser $user, Document $document): bool
     {
