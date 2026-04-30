@@ -20,6 +20,7 @@ type TemplateComment = {
   author?: { id: string; name: string };
   body: string;
   created_at: string;
+  parent_id?: string | null;
 };
 
 function InfoBlockDescription({ description }: { description: unknown }) {
@@ -452,22 +453,48 @@ export function TemplateReviewView({ template }: Props) {
                           </div>
                         ) : (
                           <div className="space-y-8 mt-2">
-                            {blockComments.map((comment) => (
-                              <div key={comment.id} className="group relative pl-6 animate-in fade-in slide-in-from-right-2">
-                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
-                                <div className="flex items-center justify-between mb-2">
-                                  <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
-                                    {comment.author?.name || 'Validador'}
-                                  </span>
-                                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
-                                    {new Date(comment.created_at).toLocaleDateString()}
-                                  </span>
+                            {blockComments.filter(c => !c.parent_id).map((comment) => {
+                              const replies = comments.filter(r => r.parent_id === comment.id);
+                              return (
+                                <div key={comment.id} className="space-y-4">
+                                  <div className="group relative pl-6 animate-in fade-in slide-in-from-right-2">
+                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
+                                    <div className="flex items-center justify-between mb-2">
+                                      <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
+                                        {comment.author?.name || 'Validador'}
+                                      </span>
+                                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
+                                        {new Date(comment.created_at).toLocaleDateString()}
+                                      </span>
+                                    </div>
+                                    <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/30 p-5 rounded-xl border border-ui-border/50 shadow-sm">
+                                      {comment.body}
+                                    </div>
+                                  </div>
+
+                                  {/* Replies */}
+                                  {replies.length > 0 && (
+                                    <div className="ml-12 space-y-4">
+                                      {replies.map(r => (
+                                        <div key={r.id} className="relative pl-4 border-l-2 border-ui-border/30">
+                                          <div className="flex items-center justify-between mb-1">
+                                            <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
+                                              {r.author?.name || 'Autor'}
+                                            </span>
+                                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                              {new Date(r.created_at).toLocaleDateString()}
+                                            </span>
+                                          </div>
+                                          <div className="text-xs text-text-secondary dark:text-text-dark-secondary bg-ui-body/10 p-3 rounded-lg border border-ui-border/20 italic">
+                                            {r.body}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
-                                <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/30 p-5 rounded-xl border border-ui-border/50 shadow-sm">
-                                  {comment.body}
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

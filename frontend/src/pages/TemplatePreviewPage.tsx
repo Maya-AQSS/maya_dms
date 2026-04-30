@@ -21,6 +21,7 @@ type ReviewComment = {
   body: string;
   resolved: boolean;
   created_at: string;
+  parent_id?: string | null;
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -55,7 +56,7 @@ export function TemplatePreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const locationState = location.state as { selectionMode?: boolean; backTo?: string } | null;
+  const locationState = location.state as { selectionMode?: boolean; backTo?: string; moduleId?: string } | null;
   const selectionMode = locationState?.selectionMode === true;
   const backTo = locationState?.backTo ?? '/nueva-programacion';
   const { profile } = useUserProfile();
@@ -74,6 +75,9 @@ export function TemplatePreviewPage() {
   // Review comments (only loaded when owner & has_review_comments)
   const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyBody, setReplyBody] = useState('');
+  const [replyLoading, setReplyLoading] = useState(false);
 
   useEffect(() => {
     if (!id) {
@@ -121,8 +125,30 @@ export function TemplatePreviewPage() {
     } catch { /* non-critical */ }
   };
 
+  const handleSendReply = async (parentId: string) => {
+    if (!replyBody.trim()) return;
+    setReplyLoading(true);
+    try {
+      const res = await apiFetchJson<{ data: ReviewComment }>(`templates/${id}/comments`, {
+        method: 'POST',
+        body: {
+          body: replyBody,
+          parent_id: parentId,
+          blockable_id: selectedBlockId,
+        }
+      });
+      setReviewComments(prev => [...prev, res.data]);
+      setReplyBody('');
+      setReplyingTo(null);
+    } catch (e) {
+      console.error('Error sending reply', e);
+    } finally {
+      setReplyLoading(false);
+    }
+  };
+
   const blockComments = (blockId: string) =>
-    reviewComments.filter((c) => c.blockable_id === blockId && !c.resolved);
+    reviewComments.filter((c) => c.blockable_id === blockId);
 
   const isDraft = template?.status === 'draft';
   const isOwner = profile?.id === template?.created_by;
@@ -132,7 +158,7 @@ export function TemplatePreviewPage() {
   const canEdit = isOwner && isDraft;
   const canDelete = isOwner && isDraft;
   const canClone = isPublished || isOwner;
-  const canSubmit = isOwner && isDraft && hasReviewers;
+  const canSubmit = isOwner && isDraft && hasReviewers && !template.has_review_comments;
 
   const handleSubmitForReview = async () => {
     if (!id || !template) return;
@@ -420,42 +446,102 @@ export function TemplatePreviewPage() {
               </div>
 
               {/* Comment list */}
-              <div className="flex-1 overflow-y-auto px-5 py-5 space-y-6">
+              <div className="flex-1 overflow-y-auto px-5 py-5 space-y-8">
                 {pending.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
                     <p className="text-sm font-medium text-text-muted">No hay comentarios pendientes.</p>
                   </div>
                 ) : (
-                  pending.map((c) => (
-                    <div key={c.id} className="group relative pl-5">
-                      <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-danger/30 group-hover:bg-danger/60 transition-colors rounded-full" />
-                      <div className="flex items-center justify-between mb-1.5 gap-2">
-                        <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
-                          {c.author?.name || 'Validador'}
-                        </span>
-                        {c.created_at && (
-                          <time className="text-[10px] text-text-muted font-bold uppercase tracking-wider shrink-0" dateTime={c.created_at}>
-                            {new Date(c.created_at).toLocaleDateString()}
-                          </time>
+                  pending.filter(c => !c.parent_id).map((c) => {
+                    const replies = reviewComments.filter(r => r.parent_id === c.id);
+                    const isResolved = c.resolved;
+
+                    return (
+                      <div key={c.id} className="space-y-4">
+                        <div className={`group relative pl-5 ${isResolved ? 'opacity-50' : ''}`}>
+                          <div className={`absolute left-0 top-0 bottom-0 w-1 ${isResolved ? 'bg-success/30' : 'bg-danger/30 group-hover:bg-danger/60'} transition-colors rounded-full`} />
+                          <div className="flex items-center justify-between mb-1.5 gap-2">
+                            <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
+                              {c.author?.name || 'Validador'}
+                              {isResolved && <span className="ml-2 text-[10px] text-success font-bold uppercase tracking-wider">✓ Resuelto</span>}
+                            </span>
+                            {c.created_at && (
+                              <time className="text-[10px] text-text-muted font-bold uppercase tracking-wider shrink-0" dateTime={c.created_at}>
+                                {new Date(c.created_at).toLocaleDateString()}
+                              </time>
+                            )}
+                          </div>
+                          <div className={`text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed ${isResolved ? 'bg-success/5' : 'bg-ui-body/40 dark:bg-ui-dark-bg/40'} px-4 py-3 rounded-lg border border-ui-border/60 dark:border-ui-dark-border/60 whitespace-pre-wrap`}>
+                            {c.body}
+                          </div>
+                          
+                          <div className="mt-2 flex items-center gap-3">
+                            {isOwner && !isResolved && (
+                              <Button
+                                variant="outline"
+                                size="xs"
+                                className="text-success border-success/30 hover:bg-success/5 hover:border-success/60 text-[10px] font-bold"
+                                onClick={() => void handleResolveComment(c.id)}
+                              >
+                                ✓ Resolver
+                              </Button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
+                              className="text-[10px] font-bold text-odoo-purple hover:underline"
+                            >
+                              {replyingTo === c.id ? 'Cancelar respuesta' : 'Responder'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Replies */}
+                        {replies.length > 0 && (
+                          <div className="ml-8 space-y-4">
+                            {replies.map(r => (
+                              <div key={r.id} className="relative pl-4 border-l-2 border-ui-border/40 dark:border-ui-dark-border/40">
+                                <div className="flex items-center justify-between mb-1 gap-2">
+                                  <span className="text-[11px] font-bold text-text-primary dark:text-text-dark-primary">
+                                    {r.author?.name || 'Autor'}
+                                  </span>
+                                  <time className="text-[9px] text-text-muted font-bold" dateTime={r.created_at}>
+                                    {new Date(r.created_at).toLocaleDateString()}
+                                  </time>
+                                </div>
+                                <div className="text-xs text-text-secondary dark:text-text-dark-secondary bg-ui-body/20 dark:bg-ui-dark-bg/20 p-2 rounded border border-ui-border/30">
+                                  {r.body}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Reply form */}
+                        {replyingTo === c.id && (
+                          <div className="ml-8 mt-2 space-y-2">
+                            <textarea
+                              value={replyBody}
+                              onChange={(e) => setReplyBody(e.target.value)}
+                              placeholder="Escribe una respuesta..."
+                              className="w-full text-xs p-3 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-2 focus:ring-odoo-purple/20 outline-none transition-all resize-none h-20"
+                            />
+                            <div className="flex justify-end">
+                              <Button
+                                size="xs"
+                                variant="primary"
+                                loading={replyLoading}
+                                disabled={!replyBody.trim() || replyLoading}
+                                onClick={() => void handleSendReply(c.id)}
+                              >
+                                Enviar respuesta
+                              </Button>
+                            </div>
+                          </div>
                         )}
                       </div>
-                      <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/40 dark:bg-ui-dark-bg/40 px-4 py-3 rounded-lg border border-ui-border/60 dark:border-ui-dark-border/60 whitespace-pre-wrap">
-                        {c.body}
-                      </div>
-                      {isOwner && (
-                        <div className="mt-2">
-                          <Button
-                            variant="outline"
-                            size="xs"
-                            className="text-success border-success/30 hover:bg-success/5 hover:border-success/60"
-                            onClick={() => void handleResolveComment(c.id)}
-                          >
-                            ✓ Marcar como corregido
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  ))
+                    );
+                  })
                 )}
               </div>
             </aside>

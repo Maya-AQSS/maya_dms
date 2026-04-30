@@ -182,6 +182,7 @@ export function DocumentPreviewPage() {
                   variant="primary"
                   size="sm"
                   loading={actionLoading}
+                  disabled={!!detail.has_review_comments}
                   onClick={() => void handleSubmit()}
                 >
                   Enviar a validar
