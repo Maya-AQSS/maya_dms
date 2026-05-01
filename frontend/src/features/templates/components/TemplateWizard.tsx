@@ -13,7 +13,7 @@ import {
   resolveComment as apiResolveComment,
 } from '../../../api/templates';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
-import { Button, ConfirmDialog } from '../../../ui';
+import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
@@ -452,7 +452,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             <p className="text-xs text-text-muted">Se notificará a los validadores asignados. Una vez enviada, la plantilla no podrá editarse hasta ser aprobada o rechazada.</p>
             {validators.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
+                <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
                   Validadores de plantilla ({validationType}) — {validators.length}
                 </p>
                 {validators.map((v, i) => {
@@ -460,16 +460,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
                   return (
                     <div key={v.userId} className="flex items-center gap-2.5">
                       {validationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold flex items-center justify-center">
                           {i + 1}
                         </span>
                       )}
-                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20 flex items-center justify-center">
                         {initials}
                       </span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
                       </div>
                     </div>
                   );
@@ -478,7 +478,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             )}
             {documentValidators.length > 0 && (
               <div className="space-y-2 pt-3 border-t border-ui-border dark:border-ui-dark-border">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-odoo-teal">
+                <p className="text-xs font-bold uppercase tracking-widest text-odoo-teal">
                   Validadores de documento ({documentValidationType}) — {documentValidators.length}
                 </p>
                 {documentValidators.map((v, i) => {
@@ -486,16 +486,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
                   return (
                     <div key={v.userId} className="flex items-center gap-2.5">
                       {documentValidationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-[10px] font-bold flex items-center justify-center">
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-xs font-bold flex items-center justify-center">
                           {i + 1}
                         </span>
                       )}
-                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-[10px] font-black border border-odoo-teal/20 flex items-center justify-center">
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-xs font-black border border-odoo-teal/20 flex items-center justify-center">
                         {initials}
                       </span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
                       </div>
                     </div>
                   );

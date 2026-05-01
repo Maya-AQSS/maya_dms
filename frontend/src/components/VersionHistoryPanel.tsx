@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button } from '../ui';
+import { Button } from '@maya/shared-ui-react';
 
 type Props = {
   open: boolean;

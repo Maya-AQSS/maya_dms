@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { DocumentWizard } from '../features/documents/components/DocumentWizard';
-import { Button } from '../ui';
+import { Button } from '@maya/shared-ui-react';
 
 /**
  * Editor de programación: asistente de 3 pasos (propiedades, bloques, resumen), sin paso de usuarios.

@@ -1,4 +1,4 @@
-import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
+import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
@@ -114,14 +114,12 @@ export function WizardStep1Properties({
 
           <div>
             <FieldLabel htmlFor="delivery-deadline" required>Plazo de entrega</FieldLabel>
-            <TextInput
-              id="delivery-deadline"
-              type="date"
-              fieldSize="comfortable"
-              value={deliveryDeadline}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeliveryDeadline(e.target.value)}
+            <DatePicker
+              value={deliveryDeadline || null}
+              onChange={(d: string | null) => setDeliveryDeadline(d ?? '')}
               disabled={deadlineLocked}
               placeholder="Seleccionar fecha…"
+              ariaLabel="Plazo de entrega"
             />
             {errors.deliveryDeadline && (
               <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
@@ -136,17 +134,7 @@ export function WizardStep1Properties({
 
         {/* Bloque de vinculación — separador, sin card */}
         {showAcademicBlock && (
-          <div
-            className="pt-5 border-t border-ui-border dark:border-ui-dark-border"
-            style={{ animation: 'wizardFadeSlide 150ms ease both' }}
-          >
-            <style>{`
-              @keyframes wizardFadeSlide {
-                from { opacity: 0; transform: translateY(-4px); }
-                to   { opacity: 1; transform: translateY(0); }
-              }
-            `}</style>
-
+          <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in">
             <div className={`grid gap-4 ${
               visibility === 'module' ? 'grid-cols-3' :
               visibility === 'study' ? 'grid-cols-2' :

@@ -1,7 +1,7 @@
 import { useId, useState, type ChangeEvent } from 'react';
 import type { CascadeDocumentFilters } from '../features/documents';
 import { useHierarchy } from '../features/hierarchy';
-import { Button, Select } from '../ui';
+import { Button, Select } from '@maya/shared-ui-react';
 
 interface CascadeFiltersProps {
   onFilterChange: (filters: CascadeDocumentFilters) => void;

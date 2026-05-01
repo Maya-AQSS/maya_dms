@@ -1,17 +1,24 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDocuments } from '../hooks/useDocuments';
-import { FilterField, Select, TextInput } from '../../../ui';
-import { DataTable, DatePicker, Pagination, useTablePreferences, type ColumnDef } from '@maya/shared-ui-react';
+import {
+  DataTable,
+  DatePicker,
+  FilterField,
+  Pagination,
+  Select,
+  TextInput,
+  useTablePreferences,
+  statusBadgeClass,
+  visibilityBadgeClass,
+  type ColumnDef,
+} from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 
-const STATUS_BADGE: Record<DocumentStatus, string> = {
-  draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  in_review: 'bg-amber-200 text-amber-900 dark:bg-amber-800/40 dark:text-amber-200',
-  published: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-};
+// Estado y visibilidad: clases provenientes del módulo compartido `badges`
+// (los colores hex viven en `maya_infra/configs/styles/index.css`).
 
 const STATUS_LABEL: Record<DocumentStatus, string> = {
   draft: 'Borrador',
@@ -31,14 +38,6 @@ const VISIBILITY_FILTER_OPTIONS: { value: string; label: string }[] = [
   ...VISIBILITY_OPTIONS,
 ];
 
-const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
-  personal:   'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
-  global:     'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  study_type: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  study:      'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
-  module:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  team:       'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
-};
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -87,7 +86,7 @@ const COLUMNS: ColumnDef<Document>[] = [
     cell: (doc) => {
       const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
       return (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[visLevel]}`}>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(visLevel)}`}>
           {visibilityLabel(visLevel)}
         </span>
       );
@@ -104,7 +103,7 @@ const COLUMNS: ColumnDef<Document>[] = [
     cell: (doc) => {
       const status = doc.status as DocumentStatus;
       return (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[status] ?? ''}`}>
+        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
           {STATUS_LABEL[status] ?? status}
         </span>
       );

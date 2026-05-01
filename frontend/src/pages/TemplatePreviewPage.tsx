@@ -8,8 +8,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { TemplateBlock } from '../types/blocks';
-import { Button, ConfirmDialog } from '../ui';
-import { PageTitle } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog, PageTitle, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -25,12 +24,7 @@ type ReviewComment = {
   parent_id?: string | null;
 };
 
-const STATUS_BADGE: Record<string, string> = {
-  draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  in_review: 'bg-amber-200 text-amber-900 dark:bg-amber-800/40 dark:text-amber-200',
-  published: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  archived: 'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
-};
+// Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
@@ -199,7 +193,7 @@ export function TemplatePreviewPage() {
 
   const headerToolbar = template ? (
     <div className="flex items-center justify-center gap-2 flex-wrap">
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[template.status] ?? ''}`}>
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(template.status)}`}>
         {STATUS_LABEL[template.status] ?? template.status}
       </span>
       <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
@@ -291,12 +285,11 @@ export function TemplatePreviewPage() {
         </div>
       )}
 
-      {/* Two-column layout when comments panel is open */}
-      <div className="flex min-h-[calc(100vh-52px)]">
-        {/* Article (paper) */}
+      <div className={selectedBlockId ? 'pr-96' : ''}>
+        {/* Article (paper) — same layout as DocumentPreviewPage */}
         <article
-          className="bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content flex-1"
-          style={{ maxWidth: selectedBlockId ? '760px' : '760px', margin: selectedBlockId ? '0 auto 0 auto' : '0 auto', padding: '56px 72px' }}
+          className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
+          style={{ maxWidth: '760px', minHeight: 'calc(100vh - 52px)', padding: '56px 72px' }}
         >
           {loading && (
             <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</p>
@@ -347,19 +340,19 @@ export function TemplatePreviewPage() {
                           )}
                           {pendingComments.length > 0 && (
                             <span
-                              className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                              className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                               title="Este bloque tiene comentarios de revisión pendientes"
                             >
                               ⚠ {pendingComments.length} {pendingComments.length === 1 ? 'comentario' : 'comentarios'}
                             </span>
                           )}
                           {block.mandatory && (
-                            <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                            <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-success-light text-success-dark dark:bg-success-dark/30 dark:text-success-light">
                               Obligatorio
                             </span>
                           )}
                           {isLocked && (
-                            <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                            <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
                               Bloqueado
                             </span>
                           )}
@@ -380,18 +373,18 @@ export function TemplatePreviewPage() {
           )}
         </article>
 
-        {/* Comments side panel — same style as Descripción tab in block editor */}
+        {/* Comments side panel — fixed position so the article remains centered */}
         {selectedBlockId && (() => {
           const block = blocks.find((b) => b.id === selectedBlockId);
           const pending = blockComments(selectedBlockId);
           return (
-            <aside className="w-96 shrink-0 border-l border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex flex-col sticky top-13 h-[calc(100vh-52px)] overflow-hidden shadow-lg animate-in slide-in-from-right-2">
+            <aside className="fixed right-0 top-13 w-96 h-[calc(100vh-52px)] z-30 border-l border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex flex-col overflow-hidden shadow-lg animate-in slide-in-from-right-2">
               {/* Header */}
               <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-2 bg-danger/5">
-                <span className="flex-1 text-[10px] font-black uppercase tracking-widest text-danger-dark dark:text-danger truncate">
+                <span className="flex-1 text-xs font-black uppercase tracking-widest text-danger-dark dark:text-danger truncate">
                   ⚠ {block?.title ?? 'Bloque'}
                 </span>
-                <span className="text-[10px] text-text-muted font-bold shrink-0">
+                <span className="text-xs text-text-muted font-bold shrink-0">
                   {pending.length} {pending.length === 1 ? 'comentario' : 'comentarios'}
                 </span>
                 <button
@@ -422,10 +415,10 @@ export function TemplatePreviewPage() {
                           <div className="flex items-center justify-between mb-1.5 gap-2">
                             <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
                               {c.author?.name || 'Validador'}
-                              {isResolved && <span className="ml-2 text-[10px] text-success font-bold uppercase tracking-wider">✓ Resuelto</span>}
+                              {isResolved && <span className="ml-2 text-xs text-success-dark font-bold uppercase tracking-wider">✓ Resuelto</span>}
                             </span>
                             {c.created_at && (
-                              <time className="text-[10px] text-text-muted font-bold uppercase tracking-wider shrink-0" dateTime={c.created_at}>
+                              <time className="text-xs text-text-muted font-bold uppercase tracking-wider shrink-0" dateTime={c.created_at}>
                                 {new Date(c.created_at).toLocaleDateString()}
                               </time>
                             )}
@@ -438,7 +431,7 @@ export function TemplatePreviewPage() {
                             <button
                               type="button"
                               onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
-                              className="text-[10px] font-bold text-odoo-purple hover:underline"
+                              className="text-xs font-bold text-odoo-purple hover:underline"
                             >
                               {replyingTo === c.id ? 'Cancelar respuesta' : 'Responder'}
                             </button>
@@ -451,10 +444,10 @@ export function TemplatePreviewPage() {
                             {replies.map(r => (
                               <div key={r.id} className="relative pl-4 border-l-2 border-ui-border/40 dark:border-ui-dark-border/40">
                                 <div className="flex items-center justify-between mb-1 gap-2">
-                                  <span className="text-[11px] font-bold text-text-primary dark:text-text-dark-primary">
+                                  <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
                                     {r.author?.name || 'Autor'}
                                   </span>
-                                  <time className="text-[9px] text-text-muted font-bold" dateTime={r.created_at}>
+                                  <time className="text-xs text-text-muted font-bold" dateTime={r.created_at}>
                                     {new Date(r.created_at).toLocaleDateString()}
                                   </time>
                                 </div>

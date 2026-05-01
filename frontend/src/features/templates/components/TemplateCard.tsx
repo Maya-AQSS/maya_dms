@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, ConfirmDialog } from '../../../ui';
+import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import type { Template, TemplateStatus } from '../../../types/templates';
 import { visibilityLabel } from '../constants';
 import { useUserProfile } from '../../../features/user-profile';
@@ -68,7 +68,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
         canValidate 
           ? 'border-odoo-teal dark:border-odoo-dark-teal bg-odoo-teal/5 dark:bg-odoo-dark-teal/10 cursor-pointer hover:shadow-card-md' 
           : isRejected
-            ? 'border-amber-500/40 dark:border-amber-400/30 bg-amber-50/20 dark:bg-amber-900/5 cursor-pointer shadow-sm hover:shadow-md'
+            ? 'border-warning/40 dark:border-warning/30 bg-warning-light/20 dark:bg-warning-dark/10 cursor-pointer shadow-sm hover:shadow-md'
             : 'border-ui-border dark:border-ui-dark-border bg-ui-card dark:bg-ui-dark-card',
         dialog === null && (canEdit || canValidate || isRejected) ? 'cursor-pointer hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors' : '',
       ].join(' ')}
@@ -93,7 +93,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
               {t.name}
             </h3>
             {isRejected && (
-              <span className="shrink-0 flex items-center gap-1.5 text-[8px] font-black uppercase tracking-widest bg-warning-dark text-text-inverse px-2 py-0.5 rounded-full shadow-sm border border-warning">
+              <span className="shrink-0 flex items-center gap-1.5 text-xs font-black uppercase tracking-widest bg-warning-dark text-text-inverse px-2 py-0.5 rounded-full shadow-sm border border-warning">
                 <span className="motion-safe:animate-pulse">●</span> Rechazada
               </span>
             )}
@@ -113,7 +113,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
             <span className={[
               'rounded px-2 py-0.5 border',
               isRejected 
-                ? 'text-amber-700 dark:text-amber-400 bg-amber-100/50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 font-bold' 
+                ? 'text-warning-dark dark:text-warning-light bg-warning-light/50 dark:bg-warning-dark/30 border-warning/40 dark:border-warning-dark font-bold'
                 : 'bg-ui-body dark:bg-ui-dark-bg border-ui-border dark:border-ui-dark-border'
             ].join(' ')}>
               {isRejected ? 'Requiere cambios' : (STATUS_LABEL[t.status] ?? t.status)}

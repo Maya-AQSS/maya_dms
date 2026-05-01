@@ -2,20 +2,16 @@ import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { fetchDocument, submitDocumentForReview, deleteDocument } from '../api/documents';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
-import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { visibilityLabel } from '../features/templates/constants';
-import { Button, ConfirmDialog } from '../ui';
-import { PageTitle } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
+import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
+import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 
-const STATUS_BADGE: Record<string, string> = {
-  draft: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  in_review: 'bg-amber-200 text-amber-900 dark:bg-amber-800/40 dark:text-amber-200',
-  published: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-};
+// Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
@@ -128,21 +124,16 @@ export function DocumentPreviewPage() {
     }
   };
 
-  const headerToolbar = detail ? (
-    <div className="flex items-center justify-center gap-2 flex-wrap">
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[detail.status] ?? ''}`}>
+  const headerActions = detail ? (
+    <>
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
         {STATUS_LABEL[detail.status] ?? detail.status}
       </span>
       <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
         v{detail.current_version}
       </span>
       {documentId && <FavoriteButton entityType="document" entityId={documentId} />}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => setShowHistory(true)}
-      >
+      <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
         Historial
       </Button>
       {isDraft && isOwner && (
@@ -175,10 +166,10 @@ export function DocumentPreviewPage() {
           Enviar a validar
         </Button>
       )}
-    </div>
+    </>
   ) : null;
 
-  const headerMeta = detail ? (
+  const headerMetaInfo = detail ? (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
       {detail.owner_name ?? 'Autor desconocido'}
       {' · '}
@@ -190,30 +181,22 @@ export function DocumentPreviewPage() {
     </p>
   ) : null;
 
+  const articleBlocks: PaperArticleBlock[] = (detail?.blocks ?? []).map((b) => ({
+    id: b.template_block_id,
+    title: b.title,
+    mandatory: b.mandatory,
+    isLocked: b.block_state === 'locked',
+    nodes: blockContentForPreview(b),
+  }));
+
   return (
-    <div className="min-h-full overflow-y-auto">
-      <PageTitle
+    <>
+      <PaperPreviewLayout
         title={detail?.title ?? 'Programación'}
-        subtitle="Previsualización"
         onBack={handleBack}
         backLabel={backLabel}
-        meta={
-          <div className="space-y-3">
-            {headerMeta}
-            {headerToolbar}
-          </div>
-        }
-      />
-
-      {actionError && (
-        <div className="max-w-[960px] mx-auto px-6 py-2">
-          <p className="text-sm text-warning-dark dark:text-warning-light">{actionError}</p>
-        </div>
-      )}
-
-      <article
-        className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
-        style={{ maxWidth: '760px', minHeight: 'calc(100vh - 52px)', padding: '56px 72px' }}
+        metaInfo={headerMetaInfo}
+        actions={headerActions}
       >
         {loading && (
           <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
@@ -221,59 +204,17 @@ export function DocumentPreviewPage() {
         {error && !loading && (
           <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
         )}
-        {!loading && !error && detail && (
-          <>
-            <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
-              {detail.title}
-            </h1>
-            {detail.blocks.length === 0 ? (
-              <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                Este documento no tiene bloques.
-              </p>
-            ) : (
-              <div className="space-y-10">
-                {detail.blocks.map((block) => {
-                  const isLocked = block.block_state === 'locked';
-                  const nodes = blockContentForPreview(block);
-                  const hasContent = nodes.length > 0;
-
-                  return (
-                    <section
-                      key={block.template_block_id}
-                      style={isLocked ? { opacity: 0.45 } : undefined}
-                    >
-                      <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                        {block.title && (
-                          <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
-                            {block.title}
-                          </h4>
-                        )}
-                        {block.mandatory && (
-                          <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
-                            Obligatorio
-                          </span>
-                        )}
-                        {isLocked && (
-                          <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
-                            Bloqueado
-                          </span>
-                        )}
-                      </div>
-                      {hasContent ? (
-                        <BlockContentHtml content={nodes as unknown[]} />
-                      ) : (
-                        <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                          Sin contenido.
-                        </p>
-                      )}
-                    </section>
-                  );
-                })}
-              </div>
-            )}
-          </>
+        {actionError && (
+          <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{actionError}</p>
         )}
-      </article>
+        {!loading && !error && detail && (
+          <PaperBlocksArticle
+            title={detail.title}
+            blocks={articleBlocks}
+            emptyMessage="Este documento no tiene bloques."
+          />
+        )}
+      </PaperPreviewLayout>
 
       {documentId && (
         <VersionHistoryPanel
@@ -296,6 +237,6 @@ export function DocumentPreviewPage() {
         onConfirm={() => void handleDelete()}
         onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
       />
-    </div>
+    </>
   );
 }

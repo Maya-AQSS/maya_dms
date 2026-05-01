@@ -32,11 +32,14 @@ export const BLOCK_UI_STATE_CONFIG: Record<
 };
 
 export function blockToUiState(block: Pick<TemplateBlock, 'block_state' | 'mandatory'>): BlockUiState {
-  if (block.mandatory === false) {
-    return 'optional';
-  }
+  // 'locked' tiene prioridad sobre 'optional': un bloque locked es no editable
+  // independientemente de mandatory. El backend (DocumentService::updateBlock)
+  // rechaza con 403 cualquier edición de un bloque cuyo block_state === 'locked'.
   if (block.block_state === 'locked') {
     return 'locked';
+  }
+  if (block.block_state === 'optional' || block.mandatory === false) {
+    return 'optional';
   }
   if (block.block_state === 'modifiable') {
     return 'modifiable';

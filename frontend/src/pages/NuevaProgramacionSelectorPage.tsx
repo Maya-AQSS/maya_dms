@@ -3,24 +3,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchTemplates } from '../api/templates';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
 import type { Template, TemplateListFilters, TemplatesListMeta, TemplateVisibilityLevel } from '../types/templates';
-import { FilterField, Select, TextInput } from '../ui';
 import {
   DataTable,
   DatePicker,
+  FilterField,
   PageTitle,
   Pagination,
+  Select,
+  TextInput,
   useTablePreferences,
+  visibilityBadgeClass,
   type ColumnDef,
 } from '@maya/shared-ui-react';
-
-const VISIBILITY_BADGE: Record<TemplateVisibilityLevel, string> = {
-  personal:   'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
-  global:     'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  study_type: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  study:      'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
-  module:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  team:       'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
-};
 
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
@@ -38,7 +32,7 @@ const COLUMNS: ColumnDef<Template>[] = [
     id: 'visibility_level',
     header: 'Visibilidad',
     cell: (t) => (
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[t.visibility_level]}`}>
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}>
         {visibilityLabel(t.visibility_level)}
       </span>
     ),

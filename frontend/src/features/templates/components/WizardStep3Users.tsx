@@ -17,7 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
 import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
-import { Button } from '../../../ui';
+import { Button, TextInput } from '@maya/shared-ui-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,7 +77,7 @@ function SortableValidatorItem({
         </button>
       )}
       {isOrdered && (
-        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[9px] font-bold">
+        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold">
           {index + 1}
         </span>
       )}
@@ -276,15 +276,16 @@ function UserAddPanel({
           </p>
         )}
         <div className="relative">
-          <input
-            type="text"
+          <TextInput
+            type="search"
+            fieldSize="comfortable"
             disabled={!canSearchUsers}
-            className="w-full bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="Filtrar usuarios..."
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
+            className="pl-9"
           />
-          <svg className="absolute left-3 top-2.5 w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="absolute left-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>

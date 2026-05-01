@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense, lazy } from 'react';
 import { useDarkMode } from '@maya/shared-layout-react';
-import { ErrorBoundary } from '@maya/shared-ui-react';
 import {
   DndContext,
   closestCenter,
@@ -18,7 +17,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button, ConfirmDialog, TextInput, FieldLabel } from '../../../ui';
+import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, TextInput } from '@maya/shared-ui-react';
+import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -32,15 +32,6 @@ type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';
 
 // ── Icons ────────────────────────────────────────────────────────────────────
-
-function LockIcon() {
-  return (
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 
@@ -62,7 +53,7 @@ function BlockUiStateToggle({
           disabled={disabled}
           onClick={() => onChange(s)}
           className={[
-            'px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-widest transition-all border',
+            'px-2.5 py-1 rounded text-xs font-bold uppercase tracking-widest transition-all border',
             value === s
               ? 'border-odoo-purple bg-odoo-purple text-text-inverse'
               : 'border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50',
@@ -97,44 +88,29 @@ function SortableBlockItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const uiState = blockToUiState(block);
-  const isLocked = uiState === 'locked';
-
-  const containerCls = [
-    'flex items-center gap-2 rounded-lg px-3 py-2.5 border transition-all cursor-pointer group',
-    itemState === 'selected'
-      ? 'bg-odoo-purple/5 border-odoo-purple shadow-sm'
-      : itemState === 'multi-current'
-      ? 'bg-amber-50 border-amber-400 ring-2 ring-amber-200'
-      : itemState === 'multi-saved'
-      ? 'bg-success/5 border-success/30'
-      : 'bg-white dark:bg-ui-dark-card border-ui-border dark:border-ui-dark-border hover:border-odoo-purple/40 hover:bg-ui-body/50',
-  ].join(' ');
+  const isLocked = blockToUiState(block) === 'locked';
 
   return (
-    <div ref={setNodeRef} style={style} className={containerCls} onClick={onClick}>
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary focus:outline-none"
-        onClick={(e) => e.stopPropagation()}
-      >
-        ⠿
-      </button>
-      <button
-        type="button"
+    <div ref={setNodeRef} style={style}>
+      <BlockListItem
+        title={block.title || ''}
+        variant={itemState}
+        locked={isLocked}
+        hasReviewComments={hasReviewComments}
         onClick={onClick}
-        className="flex-1 min-w-0 flex items-center gap-1.5 text-left focus:outline-none"
-      >
-        {isLocked && <span className="shrink-0 text-danger-dark"><LockIcon /></span>}
-        <span className={`flex-1 truncate text-xs font-bold ${itemState === 'selected' ? 'text-odoo-purple' : 'text-text-primary dark:text-text-dark-primary'}`}>
-          {block.title || 'Bloque sin nombre'}
-        </span>
-        {hasReviewComments && (
-          <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" title="Comentarios pendientes" />
-        )}
-      </button>
+        dragHandle={
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary focus:outline-none"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Reordenar bloque"
+          >
+            ⠿
+          </button>
+        }
+      />
     </div>
   );
 }
@@ -374,9 +350,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   const renderSaveStatus = () => {
-    if (saveStatus === 'saving') return <span className="text-[10px] text-text-muted italic">Guardando…</span>;
-    if (saveStatus === 'saved') return <span className="text-[10px] text-success-dark flex items-center gap-1">✓ Guardado</span>;
-    if (saveStatus === 'error') return <span className="text-[10px] text-danger-dark">Error al guardar</span>;
+    if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
+    if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ Guardado</span>;
+    if (saveStatus === 'error') return <span className="text-xs text-danger-dark">Error al guardar</span>;
     return null;
   };
 
@@ -385,7 +361,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       {/* Sidebar */}
       <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
         <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-          <span className="text-[10px] font-bold uppercase text-text-secondary tracking-widest">Bloques ({blocks.length})</span>
+          <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">Bloques ({blocks.length})</span>
           <Button variant="ghost" size="xs" onClick={handleToggleSelectAll}>
             {selectedBlockIds.length === blocks.length && blocks.length > 0 ? 'Deseleccionar todos' : 'Seleccionar todos'}
           </Button>
@@ -445,13 +421,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-[10px] font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
+                    className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
                       activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
                     }`}
                   >
                     {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Descripción' : 'Comentarios'}
                     {tab === 'comments' && pendingCount > 0 && (
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-danger text-text-inverse text-[9px] font-black leading-none">
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-danger text-text-inverse text-xs font-black leading-none">
                         {pendingCount}
                       </span>
                     )}
@@ -460,70 +436,78 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               })}
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
               {activeTab === 'properties' && (
-                <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                  <div className="p-6 space-y-4">
-                    <div>
-                      <FieldLabel required>Nombre del bloque</FieldLabel>
-                      <TextInput value={formName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <FieldLabel required>Nombre del bloque</FieldLabel>
+                        <TextInput value={formName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                      </div>
+                      <div>
+                        <FieldLabel>Estado</FieldLabel>
+                        <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
+                      </div>
+                      <p className="text-xs text-text-muted italic">
+                        Se guarda automáticamente tras 1500 ms de inactividad o al cambiar de pestaña.
+                      </p>
                     </div>
-                    <div>
-                      <FieldLabel>Estado</FieldLabel>
-                      <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
-                    </div>
-                    <p className="text-[10px] text-text-muted italic">
-                      Se guarda automáticamente tras 1500 ms de inactividad o al cambiar de pestaña.
-                    </p>
                   </div>
                 </div>
               )}
               {activeTab === 'content' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
-                  <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                    <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                      <BlockNoteEditorPanel
-                        key={`content-${activeSingleId ?? 'none'}`}
-                        initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                        onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
-                        editable={true}
-                        isDark={effectiveIsDark}
-                      />
-                    </Suspense>
+                  <div className="flex-1 min-h-0 p-6 flex flex-col">
+                    <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                      <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                        <BlockNoteEditorPanel
+                          key={`content-${activeSingleId ?? 'none'}`}
+                          initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                          onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
+                          editable={true}
+                          isDark={effectiveIsDark}
+                        />
+                      </Suspense>
+                    </div>
                   </div>
                 </ErrorBoundary>
               )}
               {activeTab === 'description' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de descripción.</div>}>
-                  <div className="flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                    <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                      <BlockNoteEditorPanel
-                        key={`description-${activeSingleId ?? 'none'}`}
-                        initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                        onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
-                        editable={true}
-                        isDark={effectiveIsDark}
-                      />
-                    </Suspense>
+                  <div className="flex-1 min-h-0 p-6 flex flex-col">
+                    <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                      <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                        <BlockNoteEditorPanel
+                          key={`description-${activeSingleId ?? 'none'}`}
+                          initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                          onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
+                          editable={true}
+                          isDark={effectiveIsDark}
+                        />
+                      </Suspense>
+                    </div>
                   </div>
                 </ErrorBoundary>
               )}
               {activeTab === 'comments' && (
-                <div className="space-y-4">
-                  {reviewComments.filter(c => c.blockable_id === activeSingleId).map(c => (
-                    <div key={c.id} className={`bg-white dark:bg-ui-dark-card p-4 rounded-xl border ${c.resolved ? 'border-ui-border opacity-60' : 'border-amber-200 shadow-sm'} transition-all`}>
-                      <div className="flex justify-between mb-2">
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-text-primary dark:text-text-dark-primary">{c.author?.name || 'Validador'}</span>
-                        <span className="text-[9px] text-text-muted">{new Date(c.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary mb-3">{c.body}</p>
-                      {!c.resolved && onResolveComment && (
-                        <div className="flex justify-end">
-                          <Button variant="outline" size="xs" className="text-success border-success/30 hover:bg-success hover:text-white" onClick={() => void onResolveComment(c.id)}>✓ Resolver</Button>
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="space-y-4">
+                    {reviewComments.filter(c => c.blockable_id === activeSingleId).map(c => (
+                      <div key={c.id} className={`bg-white dark:bg-ui-dark-card p-4 rounded-xl border ${c.resolved ? 'border-ui-border opacity-60' : 'border-warning/40 shadow-sm'} transition-all`}>
+                        <div className="flex justify-between mb-2">
+                          <span className="text-xs font-bold uppercase tracking-widest text-text-primary dark:text-text-dark-primary">{c.author?.name || 'Validador'}</span>
+                          <span className="text-xs text-text-muted">{new Date(c.created_at).toLocaleDateString()}</span>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                        <p className="text-xs text-text-secondary dark:text-text-dark-secondary mb-3">{c.body}</p>
+                        {!c.resolved && onResolveComment && (
+                          <div className="flex justify-end">
+                            <Button variant="outline" size="xs" className="text-success border-success/30 hover:bg-success hover:text-white" onClick={() => void onResolveComment(c.id)}>✓ Resolver</Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

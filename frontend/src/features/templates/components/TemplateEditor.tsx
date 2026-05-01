@@ -6,7 +6,6 @@ import React, {
   Suspense,
   lazy,
 } from 'react';
-import { ErrorBoundary } from '@maya/shared-ui-react';
 import { useNavigate } from 'react-router-dom';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
@@ -24,7 +23,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, FieldLabel, TextInput } from '../../../ui';
+import { Button, ErrorBoundary, FieldLabel, TextInput } from '@maya/shared-ui-react';
 import type { Template } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';

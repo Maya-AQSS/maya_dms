@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { DocumentWizard } from '../features/documents/components/DocumentWizard';
-import { Button } from '../ui';
+import { Button } from '@maya/shared-ui-react';
 
 /**
  * Validación de programación: misma vista de resumen que el editor, con acciones Aprobar / Rechazar.

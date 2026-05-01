@@ -25,6 +25,22 @@ const SUB_DOT = (
   </svg>
 );
 
+const CHEVRON = (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.5"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <polyline points="9 18 15 12 9 6" />
+  </svg>
+);
+
 type ProcessNode = Process & { children: Process[] };
 
 /**
@@ -65,6 +81,7 @@ function buildTree(processes: Process[]): ProcessNode[] {
 export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
   const [processes, setProcesses] = useState<Process[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -109,58 +126,77 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
       <p className="text-xs font-semibold text-text-inverse/40 uppercase tracking-wider px-2 mb-1">
         {label}
       </p>
-      {tree.map((p) => (
-        <div key={p.id}>
-          <NavLink
-            to={`/procesos/${p.id}`}
-            title={`${p.code} — ${p.name}`}
-            className={({ isActive }: { isActive: boolean }) =>
-              [
-                'flex items-center gap-3 px-3.5 py-2 rounded-xl text-[13.5px] font-medium transition-colors whitespace-nowrap overflow-hidden',
-                isActive
-                  ? 'bg-text-inverse/10 text-text-inverse'
-                  : 'text-text-inverse/70 hover:bg-text-inverse/8 hover:text-text-inverse',
-              ].join(' ')
-            }
-          >
-            <span className="shrink-0 w-6 h-6 flex items-center justify-center text-text-inverse/60">
-              {FOLDER_ICON}
-            </span>
-            <span className="truncate">
-              <span className="text-text-inverse/50 font-mono text-xs mr-1.5">{p.code}</span>
-              {p.name}
-            </span>
-          </NavLink>
+      {tree.map((p) => {
+        const hasChildren = p.children.length > 0;
+        const isOpen = openId === p.id;
 
-          {p.children.length > 0 && (
-            <div className="ml-5 border-l border-text-inverse/10 pl-1 my-0.5 space-y-0.5">
-              {p.children.map((child) => (
-                <NavLink
-                  key={child.id}
-                  to={`/procesos/${child.id}`}
-                  title={`${child.code} — ${child.name}`}
-                  className={({ isActive }: { isActive: boolean }) =>
-                    [
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap overflow-hidden',
-                      isActive
-                        ? 'bg-text-inverse/10 text-text-inverse'
-                        : 'text-text-inverse/55 hover:bg-text-inverse/8 hover:text-text-inverse/90',
-                    ].join(' ')
-                  }
+        return (
+          <div key={p.id}>
+            <div className="group flex items-center gap-1">
+              <NavLink
+                to={`/procesos/${p.id}`}
+                title={`${p.code} — ${p.name}`}
+                className={({ isActive }: { isActive: boolean }) =>
+                  [
+                    'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap overflow-hidden flex-1 min-w-0',
+                    isActive
+                      ? 'bg-text-inverse/10 text-text-inverse'
+                      : 'text-text-inverse/70 hover:bg-text-inverse/8 hover:text-text-inverse',
+                  ].join(' ')
+                }
+              >
+                <span className="shrink-0 w-6 h-6 flex items-center justify-center text-text-inverse/60">
+                  {FOLDER_ICON}
+                </span>
+                <span className="truncate">{p.name}</span>
+              </NavLink>
+              {hasChildren && (
+                <button
+                  type="button"
+                  onClick={() => setOpenId(isOpen ? null : p.id)}
+                  aria-expanded={isOpen}
+                  aria-label={isOpen ? 'Colapsar subprocesos' : 'Expandir subprocesos'}
+                  className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-text-inverse/50 hover:bg-text-inverse/8 hover:text-text-inverse transition-colors"
                 >
-                  <span className="shrink-0 w-3 flex items-center justify-center text-text-inverse/40">
-                    {SUB_DOT}
+                  <span
+                    className={[
+                      'flex items-center justify-center transition-transform',
+                      isOpen ? 'rotate-90' : '',
+                    ].join(' ')}
+                  >
+                    {CHEVRON}
                   </span>
-                  <span className="truncate">
-                    <span className="text-text-inverse/40 font-mono mr-1.5">{child.code}</span>
-                    {child.name}
-                  </span>
-                </NavLink>
-              ))}
+                </button>
+              )}
             </div>
-          )}
-        </div>
-      ))}
+
+            {hasChildren && isOpen && (
+              <div className="ml-5 border-l border-text-inverse/10 pl-1 my-0.5 space-y-0.5">
+                {p.children.map((child) => (
+                  <NavLink
+                    key={child.id}
+                    to={`/procesos/${child.id}`}
+                    title={`${child.code} — ${child.name}`}
+                    className={({ isActive }: { isActive: boolean }) =>
+                      [
+                        'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap overflow-hidden',
+                        isActive
+                          ? 'bg-text-inverse/10 text-text-inverse'
+                          : 'text-text-inverse/55 hover:bg-text-inverse/8 hover:text-text-inverse/90',
+                      ].join(' ')
+                    }
+                  >
+                    <span className="shrink-0 w-3 flex items-center justify-center text-text-inverse/40">
+                      {SUB_DOT}
+                    </span>
+                    <span className="truncate">{child.name}</span>
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

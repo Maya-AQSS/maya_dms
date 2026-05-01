@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button } from '../../../ui';
+import { Button } from '@maya/shared-ui-react';
 import { apiFetchJson } from '../../../api/http';
 import { resolveComment } from '../../../api/templates';
 
@@ -85,10 +85,10 @@ export function ReviewCommentsSidebar({
     <aside className="w-96 shrink-0 border-l border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex flex-col sticky top-0 h-full overflow-hidden shadow-lg">
       {/* Header */}
       <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-2 bg-danger/5">
-        <span className="flex-1 text-[10px] font-black uppercase tracking-widest text-danger-dark dark:text-danger truncate">
+        <span className="flex-1 text-xs font-black uppercase tracking-widest text-danger-dark dark:text-danger truncate">
           ⚠ Revisión de bloque
         </span>
-        <span className="text-[10px] text-text-muted font-bold shrink-0">
+        <span className="text-xs text-text-muted font-bold shrink-0">
           {topLevelComments.filter(c => !c.resolved).length} pendientes
         </span>
         <button
@@ -123,12 +123,12 @@ export function ReviewCommentsSidebar({
                     <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
                       {c.author?.name || 'Validador'}
                       {isResolved && (
-                        <span className="ml-2 text-[10px] text-success font-bold uppercase tracking-wider">
+                        <span className="ml-2 text-xs text-success-dark font-bold uppercase tracking-wider">
                           ✓ Resuelto
                         </span>
                       )}
                     </span>
-                    <time className="text-[10px] text-text-muted font-bold uppercase tracking-wider shrink-0">
+                    <time className="text-xs text-text-muted font-bold uppercase tracking-wider shrink-0">
                       {new Date(c.created_at).toLocaleDateString()}
                     </time>
                   </div>
@@ -144,7 +144,7 @@ export function ReviewCommentsSidebar({
                       <Button
                         variant="outline"
                         size="xs"
-                        className="text-success border-success/30 hover:bg-success/5 hover:border-success/60 text-[10px] font-bold"
+                        className="text-success border-success/30 hover:bg-success/5 hover:border-success/60 text-xs font-bold"
                         onClick={() => void handleResolve(c.id)}
                         loading={isResolving}
                       >
@@ -154,7 +154,7 @@ export function ReviewCommentsSidebar({
                     <button
                       type="button"
                       onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
-                      className="text-[10px] font-bold text-odoo-purple hover:underline"
+                      className="text-xs font-bold text-odoo-purple hover:underline"
                     >
                       {replyingTo === c.id ? 'Cancelar' : 'Responder'}
                     </button>
@@ -170,10 +170,10 @@ export function ReviewCommentsSidebar({
                         className="relative pl-4 border-l-2 border-ui-border/40 dark:border-ui-dark-border/40"
                       >
                         <div className="flex items-center justify-between mb-1 gap-2">
-                          <span className="text-[11px] font-bold text-text-primary dark:text-text-dark-primary">
+                          <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
                             {r.author?.name || 'Autor'}
                           </span>
-                          <time className="text-[9px] text-text-muted font-bold">
+                          <time className="text-xs text-text-muted font-bold">
                             {new Date(r.created_at).toLocaleDateString()}
                           </time>
                         </div>
@@ -201,7 +201,7 @@ export function ReviewCommentsSidebar({
                         loading={replyLoading}
                         disabled={!replyBody.trim() || replyLoading}
                         onClick={() => void handleSendReply(c.id)}
-                        className="text-[10px] font-bold uppercase tracking-wider"
+                        className="text-xs font-bold uppercase tracking-wider"
                       >
                         Enviar respuesta
                       </Button>

@@ -4,7 +4,7 @@ import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
-import { Button, ConfirmDialog } from '../../../ui';
+import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
 import { useAuth } from '@maya/shared-auth-react';
@@ -153,7 +153,7 @@ export function TemplateReviewView({ template }: Props) {
   const blockComments = comments.filter(c => c.blockable_id === selectedBlockId);
 
   return (
-    <div className="flex flex-col h-full bg-[#ddd9d3] dark:bg-ui-dark-bg/50">
+    <div className="flex flex-col h-full bg-ui-preview-bg dark:bg-ui-dark-bg/50">
       {/* Header con acciones */}
       <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20">
         <div className="flex items-center gap-3">
@@ -199,7 +199,7 @@ export function TemplateReviewView({ template }: Props) {
             </>
           ) : (
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
-              <span className="text-success text-xs font-black uppercase tracking-widest">
+              <span className="text-success-dark text-xs font-black uppercase tracking-widest">
                 ✓ Ya has validado esta plantilla
               </span>
             </div>
@@ -346,7 +346,7 @@ export function TemplateReviewView({ template }: Props) {
                             </svg>
                             <span>Mensajes</span>
                             {hasComments && (
-                              <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[9px] leading-none">
+                              <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-xs leading-none">
                                 {comments.filter(c => c.blockable_id === block.id).length}
                               </span>
                             )}
@@ -463,7 +463,7 @@ export function TemplateReviewView({ template }: Props) {
                                       <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
                                         {comment.author?.name || 'Validador'}
                                       </span>
-                                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
+                                      <span className="text-xs text-text-muted font-bold uppercase tracking-wider opacity-70">
                                         {new Date(comment.created_at).toLocaleDateString()}
                                       </span>
                                     </div>
@@ -481,7 +481,7 @@ export function TemplateReviewView({ template }: Props) {
                                             <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
                                               {r.author?.name || 'Autor'}
                                             </span>
-                                            <span className="text-[9px] text-text-muted font-bold uppercase tracking-widest">
+                                            <span className="text-xs text-text-muted font-bold uppercase tracking-widest">
                                               {new Date(r.created_at).toLocaleDateString()}
                                             </span>
                                           </div>

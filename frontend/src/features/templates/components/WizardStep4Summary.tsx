@@ -69,7 +69,7 @@ export function WizardStep4Summary({ template, validators, validationType, docum
 
         {/* Columna izquierda — Propiedades */}
         <div className="px-5 py-4 border-b md:border-b-0 md:border-r border-ui-border dark:border-ui-dark-border min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-3">
+          <p className="text-xs font-bold uppercase tracking-widest text-text-secondary mb-3">
             Propiedades
           </p>
           <dl className="grid grid-cols-2 gap-x-4 gap-y-0">
@@ -176,11 +176,11 @@ export function WizardStep4Summary({ template, validators, validationType, docum
             <p className="text-xs text-warning-dark italic">Aún no se han añadido bloques.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-[minmax(160px,200px)_1fr]" style={{ minHeight: '200px' }}>
+          <div className="flex-1 min-h-0 grid grid-cols-1 sm:grid-cols-[minmax(160px,200px)_1fr]">
 
             {/* Lista de bloques */}
-            <div className="border-b sm:border-b-0 sm:border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto max-h-48 sm:max-h-64">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-2">
+            <div className="border-b sm:border-b-0 sm:border-r border-ui-border dark:border-ui-dark-border p-3 overflow-y-auto min-h-0">
+              <p className="text-xs font-bold uppercase tracking-widest text-text-muted mb-2">
                 Bloques ({blocks.length})
               </p>
               <div className="space-y-1">
@@ -213,7 +213,7 @@ export function WizardStep4Summary({ template, validators, validationType, docum
             </div>
 
             {/* Panel de preview con tabs */}
-            <div className="flex flex-col min-w-0">
+            <div className="flex flex-col min-w-0 min-h-0">
               {/* Tabs */}
               <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0">
                 {(['Contenido', 'Descripción'] as PreviewTab[]).map((tab) => (
@@ -234,7 +234,7 @@ export function WizardStep4Summary({ template, validators, validationType, docum
               </div>
 
               {/* Contenido del tab */}
-              <div className="flex-1 p-4 overflow-y-auto">
+              <div className="flex-1 min-h-0 p-4 overflow-y-auto">
                 {(() => {
                   const content = activeTab === 'Descripción' ? selectedBlock?.description : selectedBlock?.default_content;
                   if (!content) return <span className="text-xs text-text-muted italic">{activeTab === 'Descripción' ? 'Sin descripción.' : 'Este bloque no tiene contenido.'}</span>;

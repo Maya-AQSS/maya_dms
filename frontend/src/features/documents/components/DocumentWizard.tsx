@@ -32,9 +32,18 @@ import type { Template } from '../../../types/templates';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
-import { Button, ConfirmDialog, FieldLabel, Select, TextArea, TextInput } from '../../../ui';
-import { DatePicker, ErrorBoundary } from '@maya/shared-ui-react';
+import {
+  Button,
+  ConfirmDialog,
+  DatePicker,
+  ErrorBoundary,
+  FieldLabel,
+  Select,
+  TextArea,
+  TextInput,
+} from '@maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
+import { BlockListItem } from '../../blocks-ui/BlockListItem';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then(
@@ -238,6 +247,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [localContent, setLocalContent] = useState<unknown>(null);
+  const [showClearBlockConfirm, setShowClearBlockConfirm] = useState(false);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
 
   const isValidateMode = mode === 'validate';
@@ -1139,131 +1149,134 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       )}
 
       {!isValidateMode && step === 'blocks' && (
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-ui-body/30 dark:bg-ui-dark-bg">
-          <aside className="md:w-[280px] shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-y-auto p-3 space-y-1">
-            {sortedBlocks.length === 0 ? (
-              <p className="text-xs text-text-muted">No hay bloques.</p>
-            ) : (
-              sortedBlocks.map((b) => {
-                const key = b.document_block_id ?? b.template_block_id;
-                const selected = key === activeBlockKey;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActiveBlockKey(key)}
-                    className={`w-full text-left rounded px-3 py-2 text-xs border transition-colors ${
-                      selected
-                        ? 'border-odoo-purple bg-odoo-purple/10 text-text-primary'
-                        : 'border-transparent hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-secondary'
-                    }`}
-                  >
-                    <span className="block font-medium truncate">{b.title || 'Sin título'}</span>
-                    <span className="block text-xs text-text-muted mt-0.5">
-                      {(() => {
-                        const ui = blockToUiState(b);
-                        return BLOCK_UI_STATE_CONFIG[ui].label;
-                      })()}
-                    </span>
-                  </button>
-                );
-              })
-            )}
-          </aside>
-          <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
+            <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
+              <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">
+                Bloques ({sortedBlocks.length})
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {sortedBlocks.length === 0 ? (
+                <p className="text-xs text-text-muted">No hay bloques.</p>
+              ) : (
+                sortedBlocks.map((b) => {
+                  const key = b.document_block_id ?? b.template_block_id;
+                  const selected = key === activeBlockKey;
+                  const ui = blockToUiState(b);
+                  return (
+                    <BlockListItem
+                      key={key}
+                      title={b.title || ''}
+                      variant={selected ? 'selected' : 'default'}
+                      locked={ui === 'locked'}
+                      stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
+                      onClick={() => setActiveBlockKey(key)}
+                    />
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
             {activeBlock && (
-              <div className="flex-1 flex flex-col overflow-hidden">
-                <div className="shrink-0 px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
+              <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
+                <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <h3 className="text-sm font-bold truncate uppercase tracking-widest">
                       {activeBlock.title || 'Bloque'}
-                    </p>
-                    {canClearOptionalBlock && (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="secondary"
-                        onClick={async () => {
-                          setLocalContent([]);
-                          await forceSave();
-                        }}
-                      >
-                        </Button>
-                    )}
+                    </h3>
+                    {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
+                    {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
+                    {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
-                  <div className="flex items-center justify-between gap-0 -mb-px mt-2">
-                    <div className="flex gap-0">
-                      {([
-                        { id: 'content', label: 'Contenido' },
-                        { id: 'description', label: 'Descripción' },
-                      ] as const).map((tab) => {
-                        const isActive = blockViewTab === tab.id;
-                        return (
-                          <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setBlockViewTab(tab.id)}
-                            className={[
-                              'px-3 py-1.5 text-xs border-b-2 transition-all',
-                              isActive
-                                ? 'border-odoo-purple text-odoo-purple font-medium cursor-default'
-                                : 'border-transparent text-text-muted hover:text-text-primary cursor-pointer',
-                            ].join(' ')}
-                            disabled={isActive}
-                          >
-                            {tab.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex items-center gap-2 pr-4">
-                      {saveStatus === 'saving' && <span className="text-[10px] text-text-muted italic animate-pulse">Guardando…</span>}
-                      {saveStatus === 'saved' && <span className="text-[10px] text-success-dark font-bold">✓ Guardado</span>}
-                      {saveStatus === 'error' && <span className="text-[10px] text-danger-dark font-bold">Error al guardar</span>}
-                    </div>
-                  </div>
-                  {blockSaveError && (
-                    <p className="text-xs text-danger-dark dark:text-danger mt-1">{blockSaveError}</p>
+                  {canClearOptionalBlock && (
+                    <Button
+                      type="button"
+                      size="xs"
+                      variant="outline"
+                      className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                      onClick={() => setShowClearBlockConfirm(true)}
+                    >
+                      Vaciar contenido
+                    </Button>
                   )}
                 </div>
-                <div className={`flex-1 flex flex-col min-h-0 ${blockViewTab === 'content' && canEditBlocks ? 'overflow-hidden' : ''}`}>
+
+                <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+                  {([
+                    { id: 'content', label: 'Contenido' },
+                    { id: 'description', label: 'Descripción' },
+                  ] as const).map((tab) => {
+                    const isActive = blockViewTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setBlockViewTab(tab.id)}
+                        className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors ${
+                          isActive
+                            ? 'border-odoo-purple text-odoo-purple'
+                            : 'border-transparent text-text-muted hover:text-text-primary'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {blockSaveError && (
+                  <p className="text-xs text-danger-dark dark:text-danger px-5 py-2 shrink-0 bg-white dark:bg-ui-dark-card">
+                    {blockSaveError}
+                  </p>
+                )}
+                <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                   {blockViewTab === 'content' ? (
                     canEditBlocks ? (
-                      <ErrorBoundary fallback={<p className="p-4 text-xs text-danger-dark dark:text-danger">Error al cargar el editor de contenido.</p>}>
-                        <Suspense
-                          fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
-                          key={activeBlockKey ?? 'none'}
-                        >
-                          <BlockNoteEditorPanel
-                            initialContent={blockEditorContent(activeBlock)}
-                            editable
-                            isDark={isDark}
-                            onChange={(content) => { setLocalContent(content); triggerSave(); }}
-                          />
-                        </Suspense>
+                      <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
+                        <div className="flex-1 min-h-0 p-6 flex flex-col">
+                          <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                            <Suspense
+                              fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
+                              key={activeBlockKey ?? 'none'}
+                            >
+                              <BlockNoteEditorPanel
+                                initialContent={blockEditorContent(activeBlock)}
+                                editable
+                                isDark={isDark}
+                                onChange={(content) => { setLocalContent(content); triggerSave(); }}
+                              />
+                            </Suspense>
+                          </div>
+                        </div>
                       </ErrorBoundary>
                     ) : (
-                      <div className="flex-1 overflow-y-auto p-4">
-                        {(() => {
-                          const nodes = blockEditorContent(activeBlock);
-                          const hasNodes = nodes.length > 0;
-                          return hasNodes ? (
-                            <BlockContentHtml content={nodes} />
-                          ) : (
-                            <p className="text-sm text-text-muted italic">Sin contenido en este bloque.</p>
-                          );
-                        })()}
+                      <div className="flex-1 overflow-y-auto p-6">
+                        <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6">
+                          {(() => {
+                            const nodes = blockEditorContent(activeBlock);
+                            const hasNodes = nodes.length > 0;
+                            return hasNodes ? (
+                              <BlockContentHtml content={nodes} />
+                            ) : (
+                              <p className="text-sm text-text-muted italic">Sin contenido en este bloque.</p>
+                            );
+                          })()}
+                        </div>
                       </div>
                     )
                   ) : (
-                    <div className="flex-1 overflow-y-auto p-4">
-                      {activeBlock.description != null && activeBlock.description !== '' ? (
-                        <DocumentBlockDescriptionView description={activeBlock.description} />
-                      ) : (
-                        <p className="text-sm text-text-muted italic">
-                          Este bloque no tiene descripción/instrucciones.
-                        </p>
-                      )}
+                    <div className="flex-1 overflow-y-auto p-6">
+                      <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6">
+                        {activeBlock.description != null && activeBlock.description !== '' ? (
+                          <DocumentBlockDescriptionView description={activeBlock.description} />
+                        ) : (
+                          <p className="text-sm text-text-muted italic">
+                            Este bloque no tiene descripción/instrucciones.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1402,9 +1415,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     })}
                   </div>
                   <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-                    {saveStatus === 'saving' && <span className="text-[10px] text-text-muted italic animate-pulse">Guardando…</span>}
-                    {saveStatus === 'saved' && <span className="text-[10px] text-success-dark font-bold">✓ Guardado</span>}
-                    {saveStatus === 'error' && <span className="text-[10px] text-danger-dark font-bold">Error al guardar</span>}
+                    {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
+                    {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
+                    {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
                 </div>
                 <div className="flex flex-col min-w-0 min-h-0 preview-content">
@@ -1465,6 +1478,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       </>
     </WizardShell>
     <ConfirmDialog
+        open={showClearBlockConfirm}
+        variant="danger"
+        title="¿Vaciar el contenido del bloque?"
+        description="Se guardará este bloque opcional sin contenido. Podrás volver a editarlo después si lo necesitas."
+        confirmLabel="Vaciar contenido"
+        cancelLabel="Cancelar"
+        onCancel={() => setShowClearBlockConfirm(false)}
+        onConfirm={async () => {
+          setShowClearBlockConfirm(false);
+          setLocalContent([]);
+          await forceSave();
+        }}
+      />
+      <ConfirmDialog
         open={validateConfirm === 'approve'}
         title="Confirmar aprobación"
         description="Se registrará tu aprobación. Si eres el último validador pendiente, el documento pasará a publicado."

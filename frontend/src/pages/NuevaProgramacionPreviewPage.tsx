@@ -7,21 +7,10 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { TemplateBlock } from '../types/blocks';
-import { Button } from '../ui';
+import { Button, statusBadgeClass, visibilityBadgeClass } from '@maya/shared-ui-react';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 
-const STATUS_BADGE: Record<string, string> = {
-  published: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-};
-
-const VISIBILITY_BADGE: Record<string, string> = {
-  personal:   'bg-ui-border text-text-secondary dark:bg-ui-dark-border dark:text-text-dark-secondary',
-  global:     'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  study_type: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-  study:      'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
-  module:     'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  team:       'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
-};
+// Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
 
 function blockContentNodes(block: TemplateBlock): unknown[] {
   return normalizeBlockContentForEditor(block.default_content);
@@ -84,10 +73,10 @@ export function NuevaProgramacionPreviewPage() {
         <div className="flex items-center gap-2 shrink-0">
           {template && (
             <>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${VISIBILITY_BADGE[template.visibility_level] ?? ''}`}>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(template.visibility_level)}`}>
                 {visibilityLabel(template.visibility_level)}
               </span>
-              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_BADGE[template.status] ?? ''}`}>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(template.status)}`}>
                 Publicada
               </span>
               <Button
@@ -162,7 +151,7 @@ export function NuevaProgramacionPreviewPage() {
                           </h4>
                         )}
                         {block.mandatory && (
-                          <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                          <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-success-light text-success-dark dark:bg-success-dark/30 dark:text-success-light">
                             Obligatorio
                           </span>
                         )}

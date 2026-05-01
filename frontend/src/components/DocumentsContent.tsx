@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
-  PageTitle,
+  Button,
   DataTable,
+  PageTitle,
   Pagination,
   paginate,
   useTablePreferences,
@@ -26,7 +27,6 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { useUserProfile } from '../features/user-profile';
 import type { Document, DocumentStatus } from '../types/documents';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
-import { Button } from '../ui';
 
 function snapshotBlockStateLabel(raw: string | undefined): string {
   if (raw != null && raw in BLOCK_STATE_LABELS) {
