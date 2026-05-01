@@ -34,6 +34,34 @@ class DocumentsTemplateVersionApiTest extends TestCase
     use BuildsTestJwt;
     use RefreshDatabase;
 
+    private function anyStudyId(): string
+    {
+        $existing = DB::table('studies')->value('id');
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+
+        DB::table('study_types')->insertOrIgnore([
+            'id' => $studyTypeId,
+            'name' => 'Tipo test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('studies')->insertOrIgnore([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $studyId;
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -174,12 +202,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Mi doc',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['template_id']);
@@ -240,12 +264,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_version_id' => $versionId,
             'title' => 'Expediente',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator);
 
         $createDoc->assertCreated()
@@ -305,12 +325,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Expediente',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator);
 
         $createDoc->assertCreated();
@@ -396,12 +412,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Expediente equipo',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator);
 
         $createDoc->assertCreated();
@@ -466,12 +478,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc editable',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -539,12 +547,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc bloqueado',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -605,24 +609,16 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Título inicial',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
 
         $this->putJson("/api/v1/documents/{$docId}", [
             'title' => 'Título actualizado',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)
             ->assertOk()
             ->assertJsonPath('data.title', 'Título actualizado');
@@ -677,12 +673,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Documento borrable',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -741,12 +733,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc mandatory',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -805,12 +793,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc mandatory ok',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -830,6 +814,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $studyId = $this->anyStudyId();
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
 
         $tid = (string) Str::uuid();
@@ -871,15 +856,20 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
+        DB::table('user_studies')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'user_id' => $reviewerId,
+            'study_id' => $studyId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc snapshot',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
+            'study_id' => $studyId,
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -976,12 +966,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc publish',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -989,25 +975,17 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
             ->assertOk();
 
-        // Tras borrar revisiones el revisor deja de entrar por `document_reviews` en el scope del modelo;
-        // un share de lectura mantiene visibilidad para publicar sin filas pendientes.
-        DocumentShare::query()->forceCreate([
-            'id' => (string) Str::uuid(),
-            'document_id' => $docId,
-            'user_id' => $reviewerId,
-            'permission' => 'read',
-            'granted_by' => $creatorId,
-        ]);
-
+        // Borrar revisiones pendientes para simular escenario sin revisores pendientes.
+        // El titular sigue teniendo visibilidad sobre su propio documento.
         DB::table('document_reviews')->where('document_id', $docId)->delete();
 
-        $this->postJson("/api/v1/documents/{$docId}/publish", [], $hReviewer)
+        $this->postJson("/api/v1/documents/{$docId}/publish", [], $hCreator)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['changelog']);
 
         $this->postJson("/api/v1/documents/{$docId}/publish", [
             'changelog' => 'Publicación directa con notas',
-        ], $hReviewer)
+        ], $hCreator)
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
@@ -1185,12 +1163,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc banner',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
@@ -1267,12 +1241,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc al día',
-<<<<<<< HEAD
-            'delivery_deadline' => now()->addDays(7)->format('Y-m-d'),
-=======
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
->>>>>>> origin/feature/unic_components
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');

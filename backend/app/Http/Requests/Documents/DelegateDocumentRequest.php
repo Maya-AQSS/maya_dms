@@ -17,7 +17,7 @@ class DelegateDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'new_owner_id' => ['required', 'string'],
+            'new_owner_id' => ['required', 'string', 'uuid'],
         ];
     }
 }

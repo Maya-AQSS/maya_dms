@@ -14,21 +14,20 @@ interface TemplateRepositoryInterface
     public function findOrFail(string $id): Template;
 
     /**
+     * Localiza una plantilla por su ID con lock FOR UPDATE o lanza excepción.
+     */
+    public function findOrFailForUpdate(string $id): Template;
+
+    /**
      * Igual que {@see self::findOrFail} pero sin el global scope de catálogo `user_access`.
      * Solo para rutas que aplican {@see \App\Policies\TemplatePolicy::view} después.
      */
     public function findOrFailWithoutCatalogScope(string $id): Template;
 
     /**
-     * Indica si el usuario es creador o revisor asignado de la plantilla.
-     * Usado para control de acceso al historial de auditoría.
-     */
-    public function isCreatorOrReviewer(string $templateId, string $userId): bool;
-
-    /**
      * Listado paginado con filtros (sin cargar bloques).
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator;
 
     /**
      * Crea una plantilla con los atributos dados.
@@ -56,6 +55,15 @@ interface TemplateRepositoryInterface
     public function replicateBlocks(Template $source, Template $target): void;
 
     /**
+     * Carga múltiples plantillas por sus IDs (con el global scope activo).
+     * El resultado está indexado por ID (keyBy).
+     *
+     * @param  list<string>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     */
+    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection;
+
+    /**
      * Lista plantillas publicadas disponibles para un módulo.
      *
      * @return \Illuminate\Support\Collection<int, Template>
@@ -68,4 +76,9 @@ interface TemplateRepositoryInterface
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>
      */
     public function listPendingReviewInboxForUser(string $userId): \Illuminate\Support\Collection;
+
+    /**
+     * Ejecuta una operación dentro de transacción.
+     */
+    public function transaction(callable $callback): mixed;
 }

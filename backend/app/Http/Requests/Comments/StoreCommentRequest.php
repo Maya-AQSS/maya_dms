@@ -42,14 +42,13 @@ class StoreCommentRequest extends FormRequest
      */
     public function withValidator($validator): void
     {
-        $validator->after(function ($validator): void {
-            if (
-                $this->filled('template_block_id')
-                || $this->filled('document_block_id')
-            ) {
+        $hasLegacyBlockField = $this->has('template_block_id') || $this->has('document_block_id');
+
+        if ($hasLegacyBlockField) {
+            $validator->after(function ($validator): void {
                 $validator->errors()->add('blockable_id', 'Usa blockable_id como único identificador de bloque.');
-            }
-        });
+            });
+        }
     }
 
     /**

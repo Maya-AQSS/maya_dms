@@ -45,7 +45,7 @@ interface AuditLogServiceInterface
     public function historyFor(
         string $entityType,
         string $entityId,
-        int $perPage = 25,
+        int $perPage = 10,
     ): LengthAwarePaginator;
 
     /**

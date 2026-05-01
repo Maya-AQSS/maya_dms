@@ -508,6 +508,30 @@ class GlobalScopesIsolationTest extends TestCase
             ->assertJsonValidationErrors(['blockable_id']);
     }
 
+    public function test_comment_update_returns_method_not_allowed(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+        $commentId = (string) Str::uuid();
+
+        Comment::query()->forceCreate([
+            'id' => $commentId,
+            'commentable_type' => Template::class,
+            'commentable_id' => $templateId,
+            'commentable_version' => 1,
+            'author_id' => $userA,
+            'body' => 'Comentario original',
+            'resolved' => false,
+        ]);
+
+        $this->putJson(
+            "/api/v1/comments/{$commentId}",
+            ['body' => 'Editado'],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertStatus(405);
+    }
+
     /**
      * Test de Fail-Closed: Un usuario no autenticado no debe ver NADA
      */

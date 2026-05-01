@@ -24,6 +24,34 @@ class DashboardApiTest extends TestCase
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+
+    private function anyStudyId(): string
+    {
+        $existing = \DB::table('studies')->value('id');
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+
+        \DB::table('study_types')->insertOrIgnore([
+            'id' => $studyTypeId,
+            'name' => 'Tipo test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \DB::table('studies')->insertOrIgnore([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $studyId;
+    }
  
     protected function setUp(): void
     {
@@ -64,7 +92,7 @@ class DashboardApiTest extends TestCase
             'test-issuer',
             'test-audience',
         );
- 
+
         return ['Authorization' => 'Bearer '.$token];
     }
  
@@ -230,6 +258,7 @@ class DashboardApiTest extends TestCase
         $versionId = (string) Str::uuid();
         $documentId = (string) Str::uuid();
         $blockSnapId = (string) Str::uuid();
+        $studyId = $this->anyStudyId();
 
         Template::query()->forceCreate([
             'id' => $templateId,
@@ -270,7 +299,7 @@ class DashboardApiTest extends TestCase
             'template_version_id' => $versionId,
             'title' => 'Programación en revisión',
             'study_type_id' => null,
-            'study_id' => null,
+            'study_id' => $studyId,
             'module_id' => null,
             'delivery_deadline' => now()->addDays(3),
             'created_by' => $ownerId,
@@ -295,6 +324,16 @@ class DashboardApiTest extends TestCase
             'stage' => 2,
             'status' => 'pending',
         ]);
+
+        foreach ([$rev1, $rev2] as $uid) {
+            \DB::table('user_studies')->insertOrIgnore([
+                'id' => (string) Str::uuid(),
+                'user_id' => $uid,
+                'study_id' => $studyId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         $r1 = $this->getJson('/api/v1/dashboard', $headers);
         $r1->assertOk()

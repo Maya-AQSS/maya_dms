@@ -18,37 +18,13 @@ use JsonException;
 class DocumentRepository implements DocumentRepositoryInterface
 {
     /**
-     * Busca un documento por su ID o lanza ModelNotFoundException.
+     * Busca un documento por su ID aplicando el scope `user_access`, o lanza ModelNotFoundException.
      *
-     * El alcance global `user_access` incluye revisores en `document_reviews`; si por cualquier
-     * desajuste el documento no entra en la consulta acotada, se comprueba una asignación pendiente
-     * explícita y se carga sin ese alcance (misma condición que usa la bandeja del dashboard).
+     * La visibilidad la gestiona íntegramente el scope global del modelo:
+     * propietario, compartido, revisor en ciclo activo o catálogo publicado con contexto académico.
      */
     public function findOrFail(string $id): Document
     {
-        $scoped = Document::query()->with(['templateVersion'])->whereKey($id)->first();
-        if ($scoped !== null) {
-            return $scoped;
-        }
-
-        if (auth()->check()) {
-            $uid = (string) auth()->user()->getAuthIdentifier();
-            if ($uid !== '') {
-                $assigned = DocumentReview::query()
-                    ->where('document_id', $id)
-                    ->where('reviewer_id', $uid)
-                    ->where('status', 'pending')
-                    ->exists();
-
-                if ($assigned) {
-                    return Document::withoutGlobalScopes(['user_access'])
-                        ->with(['templateVersion'])
-                        ->whereKey($id)
-                        ->firstOrFail();
-                }
-            }
-        }
-
         return Document::query()->with(['templateVersion'])->whereKey($id)->firstOrFail();
     }
 
@@ -125,11 +101,22 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
-     * Elimina todas las revisiones de un documento.
+     * Elimina todas las revisiones de un documento (uso en submitToReview para ciclo limpio).
      */
     public function deleteReviewsForDocument(string $documentId): void
     {
         DocumentReview::query()->where('document_id', $documentId)->delete();
+    }
+
+    /**
+     * Elimina solo las revisiones pendientes, conservando las rechazadas como historial.
+     */
+    public function deletePendingReviewsForDocument(string $documentId): void
+    {
+        DocumentReview::query()
+            ->where('document_id', $documentId)
+            ->where('status', 'pending')
+            ->delete();
     }
 
     /**
@@ -141,11 +128,11 @@ class DocumentRepository implements DocumentRepositoryInterface
     {
         foreach ($rows as $row) {
             DocumentReview::forceCreate([
-                'id' => (string) Str::uuid(),
+                'id'          => (string) Str::uuid(),
                 'document_id' => $documentId,
                 'reviewer_id' => $row['reviewer_id'],
-                'stage' => $row['stage'],
-                'status' => 'pending',
+                'stage'       => $row['stage'],
+                'status'      => 'pending',
             ]);
         }
     }
@@ -212,7 +199,7 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('status', 'pending')
             ->groupBy('document_id');
 
-        $rows = DB::table('document_reviews as dr')
+        $query = DB::table('document_reviews as dr')
             ->join('documents as d', 'd.id', '=', 'dr.document_id')
             ->join('templates as t', 't.id', '=', 'd.template_id')
             ->leftJoin('users as owner_user', 'owner_user.id', '=', 'd.owner_id')
@@ -229,7 +216,13 @@ class DocumentRepository implements DocumentRepositoryInterface
                         $q2->where('t.review_mode', 'sequential')
                             ->whereColumn('dr.stage', 'ps.min_stage');
                     });
-            })
+            });
+
+        $query->where(function ($w) use ($userId) {
+            Document::applyAcademicOverlapForTableAlias($w, $userId, 'd');
+        });
+
+        $rows = $query
             ->orderByRaw('CASE WHEN d.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
             ->orderBy('d.delivery_deadline', 'asc')
             ->orderByDesc('d.updated_at')

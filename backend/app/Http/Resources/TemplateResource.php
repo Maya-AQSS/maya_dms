@@ -50,7 +50,7 @@ class TemplateResource extends JsonResource
                 ->all()),
             'created_at'         => $this->created_at?->toIso8601String(),
             'updated_at'         => $this->updated_at?->toIso8601String(),
-            'has_review_comments' => $this->comments()->where('resolved', false)->exists(),
+            'has_review_comments' => (bool) ($this->resource->has_review_comments ?? false),
         ];
     }
 }

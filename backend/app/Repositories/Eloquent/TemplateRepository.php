@@ -22,6 +22,18 @@ class TemplateRepository implements TemplateRepositoryInterface
         return Template::query()->findOrFail($id);
     }
 
+    /**
+     * Localiza una plantilla por su ID con lock FOR UPDATE o lanza excepción.
+     */
+    public function findOrFailForUpdate(string $id): Template
+    {
+        return Template::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+    }
+
+    /**
+     * Igual que {@see self::findOrFail} pero sin el global scope de catálogo `user_access`.
+     * Solo para rutas que aplican {@see \App\Policies\TemplatePolicy::view} después.
+     */
     public function findOrFailWithoutCatalogScope(string $id): Template
     {
         return Template::query()
@@ -30,30 +42,9 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
-     * Indica si el usuario es creador o revisor asignado de la plantilla.
-     * Usado para control de acceso al historial de auditoría.
-     */
-    public function isCreatorOrReviewer(string $templateId, string $userId): bool
-    {
-        $isCreator = DB::table('templates')
-            ->where('id', $templateId)
-            ->where('created_by', $userId)
-            ->exists();
-
-        if ($isCreator) {
-            return true;
-        }
-
-        return DB::table('template_reviewers')
-            ->where('template_id', $templateId)
-            ->where('user_id', $userId)
-            ->exists();
-    }
-
-    /**
      * Listado paginado con filtros (sin cargar bloques).
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 20): LengthAwarePaginator
+    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator
     {
         $query = Template::query()
             ->select([
@@ -65,6 +56,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.study_type_id',
                 'templates.study_id',
                 'templates.module_id',
+                'templates.process_id',
                 'templates.team_id',
                 'templates.created_by',
                 'users.name as author_name',
@@ -106,6 +98,9 @@ class TemplateRepository implements TemplateRepositoryInterface
         }
 
         return $query
+            ->withExists([
+                'comments as has_review_comments' => fn ($q) => $q->where('resolved', false),
+            ])
             ->with('reviewers')
             ->orderByDesc('templates.updated_at')
             ->paginate($perPage);
@@ -169,6 +164,17 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
+     * Carga múltiples plantillas por sus IDs (con el global scope activo), indexadas por ID.
+     *
+     * @param  list<string>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     */
+    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection
+    {
+        return Template::query()->whereIn('id', $ids)->get()->keyBy('id');
+    }
+
+    /**
      * Lista plantillas publicadas disponibles para un módulo.
      */
     public function listPublishedByModule(string $moduleId): Collection
@@ -198,6 +204,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.id',
                 'templates.name',
                 'templates.created_by',
+                'templates.process_id',
                 'templates.delivery_deadline',
                 'templates.status',
                 'template_reviewers.stage',
@@ -219,6 +226,7 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'template_id' => (string) $row->id,
                 'title' => (string) $row->name,
                 'author_id' => (string) $row->created_by,
+                'process_id' => (string) $row->process_id,
                 'author_name' => $row->author_name !== null && $row->author_name !== ''
                     ? (string) $row->author_name
                     : null,
@@ -228,5 +236,10 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'review_stage' => (int) $row->stage,
             ];
         })->values();
+    }
+
+    public function transaction(callable $callback): mixed
+    {
+        return DB::transaction($callback);
     }
 }

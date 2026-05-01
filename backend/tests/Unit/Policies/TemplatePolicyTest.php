@@ -38,7 +38,7 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->view($con, $template));
     }
 
-    public function test_creator_cannot_review_template(): void
+    public function test_creator_without_templates_review_permission_cannot_review_template(): void
     {
         $creatorId = '11111111-1111-1111-1111-111111111111';
         $user      = $this->makeJwtUser($creatorId);

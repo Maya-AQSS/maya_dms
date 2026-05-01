@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Document;
 use App\Models\DocumentShare;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -31,12 +32,21 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'id' => $templateId,
             'name' => 'Plantilla SoD',
             'description' => null,
+            'visibility_level' => 'personal',
             'study_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
             'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $templateId,
+            'title' => 'Bloque SoD',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
         ]);
 
         Document::query()->forceCreate([

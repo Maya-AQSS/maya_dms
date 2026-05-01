@@ -13,8 +13,14 @@ class Comment extends Model
 {
     use SoftDeletes, HasUuids;
 
+    private static ?bool $hasTemplateSharesTable = null;
+
     protected static function booted(): void
     {
+        if (self::$hasTemplateSharesTable === null) {
+            self::$hasTemplateSharesTable = \Illuminate\Support\Facades\Schema::hasTable('template_shares');
+        }
+
         static::addGlobalScope('user_access', function (\Illuminate\Database\Eloquent\Builder $builder) {
             if (! auth()->check()) {
                 $builder->whereRaw('1 = 0');
@@ -61,7 +67,7 @@ class Comment extends Model
                                                                  ->where('template_reviewers.user_id', $userId);
                                                     });
 
-                                       if (\Illuminate\Support\Facades\Schema::hasTable('template_shares')) {
+                                       if (self::$hasTemplateSharesTable) {
                                            $templateQuery->orWhereExists(function ($shareQuery) use ($userId) {
                                                $shareQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                                    ->from('template_shares')

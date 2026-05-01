@@ -10,8 +10,11 @@ use App\Models\TemplateReviewer;
 use App\Models\TemplateVersion;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Database\Seeders\PermissionsSeeder;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -20,12 +23,43 @@ use Tests\TestCase;
  */
 class DocumentReviewModeFlowTest extends TestCase
 {
+    private function anyStudyId(): string
+    {
+        $existing = DB::table('studies')->value('id');
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+
+        DB::table('study_types')->insertOrIgnore([
+            'id' => $studyTypeId,
+            'name' => 'Tipo test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('studies')->insertOrIgnore([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $studyId;
+    }
+
+    use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(PermissionsSeeder::class);
 
         config([
             'auth.jwt_issuer' => 'test-issuer',
@@ -53,6 +87,7 @@ class DocumentReviewModeFlowTest extends TestCase
         $versionId = (string) Str::uuid();
         $documentId = (string) Str::uuid();
         $blockSnapId = (string) Str::uuid();
+        $studyId = $this->anyStudyId();
 
         Template::query()->forceCreate([
             'id' => $templateId,
@@ -101,7 +136,7 @@ class DocumentReviewModeFlowTest extends TestCase
             'template_id' => $templateId,
             'template_version_id' => $versionId,
             'title' => 'Doc flujo',
-            'study_id' => null,
+            'study_id' => $studyId,
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'draft',
@@ -118,6 +153,16 @@ class DocumentReviewModeFlowTest extends TestCase
             'granted_by' => $ownerId,
         ]);
 
+        foreach ([$submitterId, $ownerId, $rev1, $rev2] as $uid) {
+            DB::table('user_studies')->insertOrIgnore([
+                'id' => (string) Str::uuid(),
+                'user_id' => $uid,
+                'study_id' => $studyId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
         return [
             'templateId' => $templateId,
             'documentId' => $documentId,
@@ -131,9 +176,13 @@ class DocumentReviewModeFlowTest extends TestCase
     /**
      * @return array<string, string>
      */
-    private function bearerFor(string $sub, string $privatePem, string $publicPem, string $kidSuffix): array
+    private function bearerFor(string $sub, string $privatePem, string $publicPem, string $kidSuffix, array $permissions = []): array
     {
         auth()->forgetUser();
+
+        if ($permissions !== []) {
+            $this->assignUserPermissions($sub, $permissions);
+        }
 
         $token = $this->buildJwtForSub(
             $privatePem,
@@ -142,8 +191,6 @@ class DocumentReviewModeFlowTest extends TestCase
             $sub,
             'test-issuer',
             'test-audience',
-            [],
-            [],
         );
 
         return ['Authorization' => 'Bearer '.$token];
@@ -176,8 +223,8 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
-        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -217,8 +264,8 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
-        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -245,7 +292,7 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -272,8 +319,8 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
-        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
@@ -307,7 +354,7 @@ class DocumentReviewModeFlowTest extends TestCase
             ->andReturn(InMemory::plainText($pub));
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
-        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 

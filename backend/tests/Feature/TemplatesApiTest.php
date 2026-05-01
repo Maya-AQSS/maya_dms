@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Comment;
 use App\Models\Document;
 use App\Models\Team;
 use Database\Seeders\PermissionsSeeder;
@@ -28,6 +29,34 @@ class TemplatesApiTest extends TestCase
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+
+    private function anyStudyId(): string
+    {
+        $existing = \Illuminate\Support\Facades\DB::table('studies')->value('id');
+        if (is_string($existing) && $existing !== '') {
+            return $existing;
+        }
+
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+
+        \Illuminate\Support\Facades\DB::table('study_types')->insertOrIgnore([
+            'id' => $studyTypeId,
+            'name' => 'Tipo test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('studies')->insertOrIgnore([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        return $studyId;
+    }
 
     protected function setUp(): void
     {
@@ -183,7 +212,7 @@ class TemplatesApiTest extends TestCase
         $this->deleteJson("/api/v1/templates/{$templateId}", [], $headers)
             ->assertNoContent();
 
-        $this->assertDatabaseMissing('templates', ['id' => $templateId]);
+        $this->assertSoftDeleted('templates', ['id' => $templateId]);
     }
 
     public function test_user_without_privileged_role_cannot_create_global_template(): void
@@ -221,6 +250,33 @@ class TemplatesApiTest extends TestCase
         ], $headers)
             ->assertCreated()
             ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value);
+    }
+
+    public function test_store_requires_process_id(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $this->postJson('/api/v1/templates', [
+            'name' => 'Plantilla sin proceso',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['process_id']);
+    }
+
+    public function test_store_requires_existing_process_id(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $this->postJson('/api/v1/templates', [
+            'name' => 'Plantilla con proceso inexistente',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000999',
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['process_id']);
     }
 
     public function test_index_filters_by_status_and_visibility_and_respects_per_page_max(): void
@@ -275,8 +331,78 @@ class TemplatesApiTest extends TestCase
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $t2);
 
-        $this->getJson('/api/v1/templates?per_page=25', $headers)
+        $this->getJson('/api/v1/templates?per_page=101', $headers)
             ->assertUnprocessable();
+    }
+
+    public function test_index_includes_has_review_comments_flag(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId, ['teacher']);
+        $this->assignUserPermissions($userId, ['templates.read']);
+
+        $withComments = (string) Str::uuid();
+        $withoutComments = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $withComments,
+            'name' => 'Con comentarios',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Template::query()->forceCreate([
+            'id' => $withoutComments,
+            'name' => 'Sin comentarios',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Comment::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'commentable_type' => Template::class,
+            'commentable_id' => $withComments,
+            'commentable_version' => 1,
+            'blockable_type' => null,
+            'blockable_id' => null,
+            'parent_id' => null,
+            'author_id' => $userId,
+            'body' => 'Comentario de revision abierto',
+            'resolved' => false,
+            'resolved_by' => null,
+            'resolved_at' => null,
+        ]);
+
+        $this->getJson('/api/v1/templates', $headers)
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $withComments,
+                'has_review_comments' => true,
+            ])
+            ->assertJsonFragment([
+                'id' => $withoutComments,
+                'has_review_comments' => false,
+            ]);
     }
 
     public function test_store_study_visibility_requires_study_id(): void
@@ -372,7 +498,7 @@ class TemplatesApiTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.name', 'Original (copia)')
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.version', 3)
+            ->assertJsonPath('data.version', 1)
             ->assertJsonPath('data.visibility_level', TemplateVisibilityLevel::Global->value)
             ->assertJsonPath('data.review_stages', 1)
             ->assertJsonPath('data.review_mode', 'parallel');
@@ -456,7 +582,7 @@ class TemplatesApiTest extends TestCase
         $this->deleteJson("/api/v1/templates/{$tid}", [], $headers)
             ->assertNoContent();
 
-        $this->assertDatabaseMissing('templates', ['id' => $tid]);
+        $this->assertSoftDeleted('templates', ['id' => $tid]);
     }
 
     public function test_team_visibility_requires_existing_team(): void
@@ -471,6 +597,13 @@ class TemplatesApiTest extends TestCase
             'description' => null,
             'owner_id' => $userId,
             'is_department' => false,
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('team_members')->insert([
+            'id'      => (string) Str::uuid(),
+            'team_id' => $gid,
+            'user_id' => $userId,
+            'role'    => 'member',
         ]);
 
         $this->postJson('/api/v1/templates', [
@@ -544,11 +677,11 @@ class TemplatesApiTest extends TestCase
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
     }
 
-    public function test_teacher_sees_study_scoped_template_when_jwt_contains_study_id(): void
+    public function test_teacher_sees_study_scoped_template_when_user_has_study_in_bd(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $stud = 'study-xyz';
+        $stud = $this->anyStudyId();
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -568,18 +701,24 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        $headersB = $this->authHeaders($userB, ['teacher'], [
+        \Illuminate\Support\Facades\DB::table('user_studies')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'user_id' => $userB,
             'study_id' => $stud,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+
+        $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
     }
 
-    public function test_teacher_sees_study_scoped_template_when_jwt_study_matches(): void
+    public function test_teacher_sees_study_scoped_template_when_user_study_matches(): void
     {
         $userA = (string) Str::uuid();
         $userB = (string) Str::uuid();
-        $stud = 'study-abc';
+        $stud = $this->anyStudyId();
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -599,9 +738,15 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        $headersB = $this->authHeaders($userB, ['teacher'], [
+        \Illuminate\Support\Facades\DB::table('user_studies')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'user_id' => $userB,
             'study_id' => $stud,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
+
+        $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertOk();
     }
@@ -975,6 +1120,14 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Bloque rechazo',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
 
         $this->seedTemplateReviewer($tid, $reviewerId);
 
@@ -984,6 +1137,45 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'draft');
 
         $this->assertDatabaseCount('template_versions', 0);
+    }
+
+    public function test_creator_can_approve_when_assigned_and_has_templates_review_permission(): void
+    {
+        $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Aprobación creador asignado',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Bloque aprobación',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->seedTemplateReviewer($tid, $creatorId);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headers)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/approve-review", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
     }
 
 
@@ -1015,7 +1207,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonValidationErrors(['status']);
     }
 
-    public function test_sync_template_reviewers_rejects_when_creator_included(): void
+    public function test_sync_template_reviewers_allows_creator_included(): void
     {
         $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         $otherId = '2ead4bf3-574c-41b4-95ca-cac7daed0664';
@@ -1042,11 +1234,10 @@ class TemplatesApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/reviewers", [
             'user_ids' => [$creatorId, $otherId],
         ], $headers)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['user_ids']);
+            ->assertOk();
     }
 
-    public function test_sync_template_document_reviewers_rejects_when_creator_included(): void
+    public function test_sync_template_document_reviewers_allows_creator_included(): void
     {
         $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         $otherId = '2ead4bf3-574c-41b4-95ca-cac7daed0664';
@@ -1073,7 +1264,6 @@ class TemplatesApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/document-reviewers", [
             'user_ids' => [$otherId, $creatorId],
         ], $headers)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['user_ids']);
+            ->assertOk();
     }
 }

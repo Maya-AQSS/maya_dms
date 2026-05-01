@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
 
 class Template extends Model
@@ -20,7 +21,7 @@ class Template extends Model
      * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see \App\Policies\TemplatePolicy}):
      * - Creador o revisor asignado en `template_reviewers` (acceso a esa plantilla concreta; editar/comentar se gobiernan aparte).
      * - Plantillas compartidas según nivel (global, tipo de estudio, estudio, módulo, equipo)
-     *   usando claims JWT opcionales y membresía en team_members.
+     *   usando contexto académico resuelto en BD y membresía en team_members.
      */
     protected static function booted(): void
     {
@@ -31,16 +32,14 @@ class Template extends Model
                 return;
             }
 
-            $user = auth()->user();
-            if (! $user instanceof JwtUser) {
+            $userId = (string) (auth()->user()?->getAuthIdentifier() ?? '');
+            if ($userId === '') {
                 $builder->whereRaw('1 = 0');
 
                 return;
             }
 
-            $userId = $user->getAuthIdentifier();
-
-            $builder->where(function (Builder $outer) use ($user, $userId) {
+            $builder->where(function (Builder $outer) use ($userId) {
                 $outer->where('templates.created_by', $userId)
                     ->orWhereExists(function ($subQuery) use ($userId) {
                         $subQuery->select(DB::raw(1))
@@ -49,7 +48,7 @@ class Template extends Model
                             ->where('template_reviewers.user_id', $userId);
                     });
 
-                $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $user, $userId));
+                $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $userId));
             });
         });
     }
@@ -57,31 +56,40 @@ class Template extends Model
     /**
      * Docente: niveles compartidos (no incluye plantillas personales ajenas).
      */
-    private static function scopeSharedTemplatesForTeacher(Builder $shared, JwtUser $user, string $userId): void
+    private static function scopeSharedTemplatesForTeacher(Builder $shared, string $userId): void
     {
-        $shared->where(function (Builder $docente) use ($user, $userId) {
+        $shared->where(function (Builder $docente) use ($userId) {
             $docente->where('templates.visibility_level', TemplateVisibilityLevel::Global->value);
 
-            if ($user->studyTypeIds !== []) {
-                $docente->orWhere(function (Builder $st) use ($user) {
-                    $st->where('templates.visibility_level', TemplateVisibilityLevel::StudyType->value)
-                        ->whereIn('templates.study_type_id', $user->studyTypeIds);
-                });
-            }
+            $docente->orWhere(function (Builder $st) use ($userId) {
+                $st->where('templates.visibility_level', TemplateVisibilityLevel::StudyType->value)
+                    ->whereExists(function ($sub) use ($userId) {
+                        $sub->select(DB::raw(1))
+                            ->from('user_study_types')
+                            ->where('user_study_types.user_id', $userId)
+                            ->whereColumn('user_study_types.study_type_id', 'templates.study_type_id');
+                    });
+            });
 
-            if ($user->studyIds !== []) {
-                $docente->orWhere(function (Builder $s) use ($user) {
-                    $s->where('templates.visibility_level', TemplateVisibilityLevel::Study->value)
-                        ->whereIn('templates.study_id', $user->studyIds);
-                });
-            }
+            $docente->orWhere(function (Builder $s) use ($userId) {
+                $s->where('templates.visibility_level', TemplateVisibilityLevel::Study->value)
+                    ->whereExists(function ($sub) use ($userId) {
+                        $sub->select(DB::raw(1))
+                            ->from('user_studies')
+                            ->where('user_studies.user_id', $userId)
+                            ->whereColumn('user_studies.study_id', 'templates.study_id');
+                    });
+            });
 
-            if ($user->moduleIds !== []) {
-                $docente->orWhere(function (Builder $m) use ($user) {
-                    $m->where('templates.visibility_level', TemplateVisibilityLevel::Module->value)
-                        ->whereIn('templates.module_id', $user->moduleIds);
-                });
-            }
+            $docente->orWhere(function (Builder $m) use ($userId) {
+                $m->where('templates.visibility_level', TemplateVisibilityLevel::Module->value)
+                    ->whereExists(function ($sub) use ($userId) {
+                        $sub->select(DB::raw(1))
+                            ->from('user_course_modules')
+                            ->where('user_course_modules.user_id', $userId)
+                            ->whereColumn('user_course_modules.module_id', 'templates.module_id');
+                    });
+            });
 
             $docente->orWhere(function (Builder $gr) use ($userId) {
                 $gr->where('templates.visibility_level', TemplateVisibilityLevel::Team->value)
@@ -91,6 +99,34 @@ class Template extends Model
                             ->whereColumn('team_members.team_id', 'templates.team_id')
                             ->where('team_members.user_id', $userId);
                     });
+            });
+        });
+    }
+
+    /**
+     * Solapa académico en BD para alias de plantilla (p.ej. templates / t).
+     *
+     * @param Builder|QueryBuilder $query
+     */
+    public static function applyAcademicOverlapForTableAlias(Builder|QueryBuilder $query, string $userId, string $alias): void
+    {
+        $t = rtrim($alias, '.').'.';
+        $query->where(function ($w) use ($userId, $t) {
+            $w->whereExists(function ($sub) use ($userId, $t) {
+                $sub->select(DB::raw(1))
+                    ->from('user_study_types')
+                    ->where('user_study_types.user_id', $userId)
+                    ->whereColumn('user_study_types.study_type_id', $t.'study_type_id');
+            })->orWhereExists(function ($sub) use ($userId, $t) {
+                $sub->select(DB::raw(1))
+                    ->from('user_studies')
+                    ->where('user_studies.user_id', $userId)
+                    ->whereColumn('user_studies.study_id', $t.'study_id');
+            })->orWhereExists(function ($sub) use ($userId, $t) {
+                $sub->select(DB::raw(1))
+                    ->from('user_course_modules')
+                    ->where('user_course_modules.user_id', $userId)
+                    ->whereColumn('user_course_modules.module_id', $t.'module_id');
             });
         });
     }

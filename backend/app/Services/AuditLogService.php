@@ -53,7 +53,7 @@ class AuditLogService implements AuditLogServiceInterface
     public function historyFor(
         string $entityType,
         string $entityId,
-        int $perPage = 25,
+        int $perPage = 10,
     ): LengthAwarePaginator {
         return $this->auditLogRepository->paginateByEntity($entityType, $entityId, $perPage);
     }

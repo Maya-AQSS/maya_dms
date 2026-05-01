@@ -6,12 +6,11 @@ use App\Models\Document;
 use App\Models\JwtUser;
 
 /**
- * Segregación de funciones (SoD) en documentos.
+ * Autorización de documentos.
  *
- * Creador y titular actual (owner tras delegación) no pueden revisar ni aprobar
- * el mismo artefacto. Solo comparación de IDs en memoria — sin consultas extra.
- *
- * Envío a revisión ({@see self::submit}): solo el titular ({@see Document::$owner_id}).
+ * El titular actual (owner tras delegación) puede enviar a revisión y editar.
+ * Tener `documents.review` es suficiente para aprobar o rechazar, independientemente
+ * de si el actor es también el creador o titular — igual que en plantillas.
  *
  * Mutaciones de persistencia: el creador o el titular pueden editar sin el permiso
  * global; un colaborador con share `edit` puede mutar contenido; el resto
@@ -85,11 +84,22 @@ class DocumentPolicy
     }
 
     /**
+     * Publicación explícita del documento: solo el titular.
+     * La ausencia de revisiones pendientes se verifica en DocumentService::publishDocument,
+     * no aquí; esta policy únicamente controla quién tiene permiso para invocar el endpoint.
+     */
+    public function publish(JwtUser $user, Document $document): bool
+    {
+        return $user->getAuthIdentifier() === $document->owner_id;
+    }
+
+    /**
      * Revisión / aprobación / rechazo del documento en flujo de revisión.
+     * El servicio verifica adicionalmente que el actor sea el revisor asignado.
      */
     public function review(JwtUser $user, Document $document): bool
     {
-        return ! $this->violatesSegregation($user, $document);
+        return $user->hasPermission('documents.review');
     }
 
     /**
@@ -103,20 +113,18 @@ class DocumentPolicy
     }
 
     /**
-     * Envío a revisión (p. ej. transición draft → in_review): solo el titular actual.
+     * Delegación de titularidad a otro usuario: solo el titular actual.
      */
-    public function submit(JwtUser $user, Document $document): bool
+    public function delegate(JwtUser $user, Document $document): bool
     {
         return $user->getAuthIdentifier() === $document->owner_id;
     }
 
     /**
-     * Verifica si el usuario viola la segregación de funciones.
+     * Envío a revisión (p. ej. transición draft → in_review): solo el titular actual.
      */
-    private function violatesSegregation(JwtUser $user, Document $document): bool
+    public function submit(JwtUser $user, Document $document): bool
     {
-        $id = $user->getAuthIdentifier();
-
-        return $id === $document->created_by || $id === $document->owner_id;
+        return $user->getAuthIdentifier() === $document->owner_id;
     }
 }

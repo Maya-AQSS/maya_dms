@@ -87,7 +87,12 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
             TemplateBlock::whereIn('id', $ids)->update($attributes);
         });
 
-        return TemplateBlock::whereIn('id', $ids)->get();
+        $blocks = TemplateBlock::whereIn('id', $ids)->get();
+
+        // Reorder to preserve contract: result in same order as $ids.
+        $position = array_flip($ids);
+
+        return $blocks->sortBy(fn ($b) => $position[(string) $b->getKey()] ?? PHP_INT_MAX)->values();
     }
 
     /**
@@ -95,11 +100,13 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
      */
     public function reorderForTemplate(string $templateId, array $orderedIds): void
     {
-        foreach ($orderedIds as $index => $blockId) {
-            TemplateBlock::query()
-                ->where('id', $blockId)
-                ->where('template_id', $templateId)
-                ->update(['sort_order' => $index + 1]);
-        }
+        DB::transaction(function () use ($templateId, $orderedIds): void {
+            foreach ($orderedIds as $index => $blockId) {
+                TemplateBlock::query()
+                    ->where('id', $blockId)
+                    ->where('template_id', $templateId)
+                    ->update(['sort_order' => $index + 1]);
+            }
+        });
     }
 }

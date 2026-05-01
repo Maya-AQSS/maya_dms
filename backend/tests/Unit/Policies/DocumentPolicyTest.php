@@ -19,9 +19,9 @@ class DocumentPolicyTest extends TestCase
     }
 
     /**
-     * SoD: creador/titular no pueden actuar como revisor del mismo documento.
+     * Sin el permiso documents.review, nadie puede revisar (ni terceros, ni creador, ni titular).
      */
-    public function test_creator_owner_cannot_review(): void
+    public function test_review_denied_without_documents_review_permission(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
         $user   = $this->makeJwtUser($userId);
@@ -30,14 +30,16 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->review($user, $doc));
     }
 
-    public function test_delegate_owner_cannot_review_when_not_creator(): void
+    /**
+     * Con el permiso documents.review, el creador/titular también puede revisar (sin SoD).
+     */
+    public function test_creator_owner_can_review_with_permission(): void
     {
-        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-        $user      = $this->makeJwtUser($ownerId);
-        $doc       = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user   = $this->makeJwtUser($userId, ['documents.review']);
+        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId);
 
-        $this->assertFalse($this->policy->review($user, $doc));
+        $this->assertTrue($this->policy->review($user, $doc));
     }
 
     /**
@@ -81,7 +83,7 @@ class DocumentPolicyTest extends TestCase
         $doc        = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
 
         $this->assertFalse($this->policy->submit($user, $doc));
-        $this->assertTrue($this->policy->review($user, $doc));
+        $this->assertFalse($this->policy->review($user, $doc));
     }
 
     public function test_update_allows_creator_or_owner_without_global_permission(): void
@@ -172,6 +174,38 @@ class DocumentPolicyTest extends TestCase
 
         $withPerm = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', ['documents.delete']);
         $this->assertTrue($this->policy->delete($withPerm, $doc));
+    }
+
+    /**
+     * Solo el titular puede publicar explícitamente un documento.
+     */
+    public function test_publish_allowed_only_for_owner(): void
+    {
+        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        $owner   = $this->makeJwtUser($ownerId);
+        $creator = $this->makeJwtUser($creatorId);
+        $doc     = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+
+        $this->assertTrue($this->policy->publish($owner, $doc));
+        $this->assertFalse($this->policy->publish($creator, $doc));
+    }
+
+    /**
+     * Solo el titular puede delegar la titularidad.
+     */
+    public function test_delegate_allowed_only_for_owner(): void
+    {
+        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        $owner   = $this->makeJwtUser($ownerId);
+        $creator = $this->makeJwtUser($creatorId);
+        $doc     = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+
+        $this->assertTrue($this->policy->delegate($owner, $doc));
+        $this->assertFalse($this->policy->delegate($creator, $doc));
     }
 
     /**

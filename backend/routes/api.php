@@ -90,8 +90,6 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('document');
         Route::post('documents/{document}/publish', [DocumentController::class, 'publish'])
             ->whereUuid('document');
-        Route::post('documents/{document}/reject', [DocumentController::class, 'reject'])
-            ->whereUuid('document');
         Route::post('documents/{document}/delegate', [DocumentController::class, 'delegate'])
             ->whereUuid('document');
 

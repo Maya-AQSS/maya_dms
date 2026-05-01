@@ -6,7 +6,6 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 
 /**
  * Autorización sobre plantillas normativas y Segregación de Funciones (SoD).
@@ -20,8 +19,16 @@ use Illuminate\Support\Facades\Schema;
  * - Cualquier usuario con `templates.delete` puede borrar cualquier plantilla.
  *
  * REGLAS DE REVISIÓN:
- * - Solo los revisores explícitamente asignados en `template_reviewers` pueden aprobar/rechazar.
- * - El creador nunca puede ser revisor de su propia plantilla.
+ * - Solo usuarios con permiso `templates.review` y asignados en `template_reviewers`
+ *   pueden aprobar/rechazar.
+ * - El creador puede autoasignarse como revisor si tiene `templates.review`; en ese
+ *   caso su aprobación cuenta igual que la de cualquier otro revisor.
+ *
+ * REGLAS DE PUBLICACIÓN:
+ * - Sin revisores: el creador publica directamente desde `draft` (vía submit-review o /publish).
+ * - Con revisores: la publicación es automática al aprobar el último revisor (approveReview).
+ *   El endpoint /publish también está disponible para revisores desde `in_review`.
+ * - El rechazo devuelve la plantilla a `draft`; el resto de revisores ya no necesita actuar.
  *
  * Uso en controladores:
  *   $this->authorize('create', [Template::class, $visibilityLevelString]);
@@ -50,6 +57,9 @@ class TemplatePolicy
         }
 
         $templateId = $template->getKey();
+        // Un modelo sin ID es una instancia transitoria (no persistida). En ese caso no hay
+        // datos que proteger, por lo que se permite la vista si el permiso está presente.
+        // En producción los controladores siempre pasan un modelo recuperado de BD.
         if ($templateId === null || $templateId === '') {
             return true;
         }
@@ -170,18 +180,17 @@ class TemplatePolicy
     }
 
     /**
-     * Revisión / aprobación (SoD).
+     * Revisión / aprobación.
      *
-     * Requiere estar asignado en `template_reviewers` Y no ser el creador de la plantilla.
-     * El creador nunca puede aprobar o rechazar su propia plantilla.
+     * Requiere permiso `templates.review` y estar asignado en `template_reviewers`.
      */
     public function review(JwtUser $user, Template $template): bool
     {
-        $userId = $user->getAuthIdentifier();
-
-        if ($userId === $template->created_by) {
+        if (! $user->hasPermission('templates.review')) {
             return false;
         }
+
+        $userId = $user->getAuthIdentifier();
 
         return $template->reviewers()
             ->where('user_id', $userId)
@@ -201,44 +210,26 @@ class TemplatePolicy
             return true;
         }
 
-        if ($this->hasEditShare($template, $userId)) {
-            return true;
-        }
-
         return $this->review($user, $template);
     }
 
     /**
-     * Punto de extensión para compartición de plantillas.
+     * Publicación explícita de plantilla.
      *
-     * Si existe soporte de `template_shares`, se permite comentar con permiso `edit`.
-     */
-    private function hasEditShare(Template $template, string $userId): bool
-    {
-        if ($userId === '' || ! Schema::hasTable('template_shares')) {
-            return false;
-        }
-
-        return DB::table('template_shares')
-            ->where('template_id', $template->getKey())
-            ->where('user_id', $userId)
-            ->where('permission', 'edit')
-            ->exists();
-    }
-
-    /**
-     * Publicación de plantilla.
-     * 
-     * El creador puede publicar directamente si no hay revisores asignados.
-     * En caso contrario, solo un revisor asignado puede realizar la publicación.
+     * - Creador de plantilla personal sin revisores: puede publicar directamente desde `draft`.
+     * - Revisiones no personales: requieren al menos un revisor; solo el revisor asignado
+     *   puede publicar explícitamente desde `in_review`.
+     *   (La publicación automática al último approval se gestiona en approveReview.)
      */
     public function publish(JwtUser $user, Template $template): bool
     {
         if ($user->getAuthIdentifier() === $template->created_by) {
-            return $template->reviewers()->doesntExist();
+            $isPersonal = $template->visibility_level === TemplateVisibilityLevel::Personal;
+
+            return $isPersonal && $template->reviewers()->doesntExist();
         }
 
-        return $this->review($user, $template);
+        return $template->status === 'in_review' && $this->review($user, $template);
     }
 
     /**

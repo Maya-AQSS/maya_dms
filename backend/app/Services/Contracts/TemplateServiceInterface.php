@@ -4,6 +4,7 @@ namespace App\Services\Contracts;
 
 use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
+use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Models\Template;
 use App\Models\TemplateVersion;
@@ -18,6 +19,15 @@ interface TemplateServiceInterface
     public function findOrFail(string $id): Template;
 
     /**
+     * Carga múltiples plantillas por sus IDs aplicando el global scope de visibilidad.
+     * El resultado está indexado por ID.
+     *
+     * @param  list<string>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     */
+    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection;
+
+    /**
      * Resuelve la plantilla sin scope de catálogo; exige {@see \App\Policies\TemplatePolicy::view} en el controlador.
      */
     public function findOrFailWithoutCatalogScope(string $id): Template;
@@ -28,17 +38,12 @@ interface TemplateServiceInterface
     public function findVersionOrFail(string $versionId): TemplateVersion;
 
     /**
-     * Transiciona la plantilla a un nuevo estado y emite el evento de dominio TemplateStateChanged.
-     */
-    public function transition(string $templateId, string $newStatus, string $actorId): Template;
-
-    /**
-     * Envia el borrador a revisión (autor o quien puede editar la plantilla).
+     * Envía el borrador a revisión. Solo el creador puede ejecutar esta acción.
      */
     public function submitForReview(string $templateId, string $actorId): Template;
 
     /**
-     * Rechaza la revisión de la plantilla (autor o quien puede editar la plantilla).
+     * Rechaza la revisión de la plantilla. Solo un revisor asignado puede ejecutar esta acción.
      */
     public function rejectReview(string $templateId, string $actorId): Template;
 
@@ -48,14 +53,16 @@ interface TemplateServiceInterface
     public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template;
 
     /**
+     * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
+     *
      * @return Collection<int, TemplateVersion>
      */
     public function listPublishedVersions(string $templateId): Collection;
 
     /**
-     * Listado paginado con filtros (20 ítems por defecto en request).
+     * Listado paginado con filtros (10 ítems por defecto; máximo 100 según IndexTemplateRequest).
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 20): LengthAwarePaginator;
+    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator;
 
     /**
      * Crea una plantilla con los atributos dados.
@@ -64,13 +71,17 @@ interface TemplateServiceInterface
 
     /**
      * Actualiza una plantilla con los atributos dados.
+     * Recibe el modelo ya resuelto para evitar una query redundante.
      */
-    public function update(string $templateId, UpdateTemplateDto $dto): Template;
+    public function update(Template $template, UpdateTemplateDto $dto): Template;
 
     /**
-     * Elimina una plantilla físicamente (no se archiva).
+     * Elimina una plantilla de forma recuperable.
      *
-     * @return bool true si se eliminó físicamente; false si solo se archivó (hay documentos asociados).
+     * - Con documentos: transiciona a `archived` (recuperable cambiando estado).
+     * - Sin documentos: soft delete con deleted_at (recuperable con restore).
+     *
+     * @return bool true si se eliminó por soft delete (sin documentos); false si se archivó (con documentos).
      */
     public function destroy(string $templateId, string $actorId): bool;
 
@@ -90,13 +101,11 @@ interface TemplateServiceInterface
 
     /**
      * Sincroniza los revisores de la plantilla normativa.
-     * @param array<int, string> $userIds Lista ordenada de IDs de usuario.
      */
-    public function syncReviewers(string $templateId, array $userIds): void;
+    public function syncReviewers(string $templateId, SyncUsersDto $dto): void;
 
     /**
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
-     * @param array<int, string> $userIds IDs de usuario elegibles como revisores de documentos.
      */
-    public function syncDocumentReviewers(string $templateId, array $userIds): void;
+    public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void;
 }
