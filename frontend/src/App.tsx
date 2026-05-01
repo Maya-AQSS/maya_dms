@@ -23,7 +23,7 @@ const TemplateReviewPage = lazy(() => import('./pages/TemplateReviewPage').then(
 const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').then(m => ({ default: m.TemplatePreviewPage })));
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
-const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined) ?? 'http://api.dashboard.localhost';
+const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined) ?? 'http://maya_dashboard_api.localhost';
 
 function AppRoutes() {
   return (
@@ -75,6 +75,7 @@ function Main() {
       navItems={navItems}
       brandName="Maya DMS"
       brandVersion="v1.0"
+      brandLogoUrl="/favicon.png"
       userName={userName}
       userInitials={userInitials}
       onLogout={logout}
