@@ -381,7 +381,10 @@ class GlobalScopesIsolationTest extends TestCase
     {
         $userA = 'user-a-uuid-123';
         [$templateId] = $this->seedTemplateAndDocument($userA);
-        $this->assertSame('draft', (string) Template::query()->whereKey($templateId)->value('status'));
+        $this->assertSame(
+            'draft',
+            (string) Template::withoutGlobalScopes()->whereKey($templateId)->value('status'),
+        );
         $tokenA = $this->buildAuthTokensForUser($userA);
         $commentId = (string) Str::uuid();
 
@@ -457,7 +460,7 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        Template::query()->whereKey($templateId)->update(['status' => 'published']);
+        Template::withoutGlobalScopes()->whereKey($templateId)->update(['status' => 'published']);
 
         $this->getJson(
             "/api/v1/templates/{$templateId}/comments",
@@ -482,7 +485,10 @@ class GlobalScopesIsolationTest extends TestCase
     {
         $userA = 'user-a-uuid-123';
         [, $documentId] = $this->seedTemplateAndDocument($userA);
-        $this->assertSame('draft', (string) Document::query()->whereKey($documentId)->value('status'));
+        $this->assertSame(
+            'draft',
+            (string) Document::withoutGlobalScopes()->whereKey($documentId)->value('status'),
+        );
         $tokenA = $this->buildAuthTokensForUser($userA);
         $commentId = (string) Str::uuid();
 
@@ -560,7 +566,7 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        Document::query()->whereKey($documentId)->update(['status' => 'published']);
+        Document::withoutGlobalScopes()->whereKey($documentId)->update(['status' => 'published']);
 
         $this->getJson(
             "/api/v1/documents/{$documentId}/comments",
