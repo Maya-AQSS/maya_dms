@@ -6,7 +6,7 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -42,9 +42,11 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
-     * Listado paginado con filtros (sin cargar bloques).
+     * Listado con filtros (sin cargar bloques); sin paginación en servidor.
+     *
+     * @return EloquentCollection<int, Template>
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator
+    public function listFiltered(FilterTemplatesDto $filters): Collection
     {
         $query = Template::query()
             ->select([
@@ -97,13 +99,16 @@ class TemplateRepository implements TemplateRepositoryInterface
             $query->where('templates.process_id', $filters->processId);
         }
 
-        return $query
+        /** @var EloquentCollection<int, Template> $rows */
+        $rows = $query
             ->withExists([
                 'comments as has_review_comments' => fn ($q) => $q->where('resolved', false),
             ])
             ->with('reviewers')
             ->orderByDesc('templates.updated_at')
-            ->paginate($perPage);
+            ->get();
+
+        return $rows;
     }
 
     /**

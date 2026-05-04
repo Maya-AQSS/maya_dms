@@ -7,7 +7,6 @@ use App\Models\Template;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
 use App\Support\ApiEmbeddedTeamResponse;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
 {
@@ -37,14 +36,6 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
         foreach ($templates as $template) {
             $this->embedOnTemplate($template, $viewerUserId);
         }
-    }
-
-    /**
-     * Resuelve el equipo visible para las plantillas paginadas y lo deja listo para {@see \App\Http\Resources\TemplateResource}.
-     */
-    public function embedOnTemplatePaginator(LengthAwarePaginator $paginator, string $viewerUserId): void
-    {
-        $this->embedOnTemplates($paginator->items(), $viewerUserId);
     }
 
     /**

@@ -49,9 +49,10 @@ export type TemplatesListMeta = {
   total: number;
 };
 
+/** El backend devuelve solo `data`; la `meta` de paginación se calcula en cliente. */
 export type TemplatesListResponse = {
   data: Template[];
-  meta: TemplatesListMeta;
+  meta?: TemplatesListMeta;
 };
 
 export type TemplateListFilters = {

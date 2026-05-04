@@ -38,16 +38,7 @@ class IndexTemplateRequest extends FormRequest
             'author_name'      => ['sometimes', 'nullable', 'string', 'max:255'],
             'delivery_deadline' => ['sometimes', 'nullable', 'date'],
             'process_id'       => ['sometimes', 'nullable', 'uuid', 'exists:processes,id'],
-            'per_page'         => ['sometimes', 'integer', 'min:1', 'max:20'],
         ];
-    }
-
-    /**
-     * Obtiene el número de plantillas por página, por defecto 10.
-     */
-    public function perPage(): int
-    {
-        return min(max((int) $this->query('per_page', 10), 1), 100);
     }
 
     /**

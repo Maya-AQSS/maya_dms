@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiHttpError } from '../../../api/http';
 import {
   cloneTemplate as cloneTemplateRequest,
@@ -9,6 +9,7 @@ import {
 } from '../../../api/templates';
 import type { CreateTemplatePayload, UpdateTemplatePayload } from '../../../api/templates';
 import type { Template, TemplateListFilters, TemplatesListMeta } from '../../../types/templates';
+import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
 
 function formatActionError(err: unknown): string {
   if (err instanceof ApiHttpError) {
@@ -33,39 +34,65 @@ function formatActionError(err: unknown): string {
 const DEFAULT_PER_PAGE = 20;
 
 /**
- * Listado y mutaciones de plantillas normativas (filtros + paginación acotada a 20).
+ * Listado y mutaciones de plantillas normativas.
+ * La API devuelve el catálogo completo (filtrado); la paginación es en cliente.
  *
  * @param processId Si se aporta, se aplica como filtro `process_id` permanente
  *   (no se expone en el panel de filtros — viene del contexto de la URL).
  */
 export function useTemplates(processId?: string) {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [meta, setMeta] = useState<TemplatesListMeta | null>(null);
+  const [fullList, setFullList] = useState<Template[]>([]);
   const [filters, setFilters] = useState<TemplateListFilters>({ per_page: DEFAULT_PER_PAGE });
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionInfo, setActionInfo] = useState<string | null>(null);
 
+  const filtersForApi = useMemo(() => {
+    const { page: _page, per_page: _perPage, ...rest } = filters;
+    return {
+      ...rest,
+      ...(processId ? { process_id: processId } : {}),
+    };
+  }, [
+    filters.visibility_level,
+    filters.status,
+    filters.study_type_id,
+    filters.study_id,
+    filters.module_id,
+    filters.team_id,
+    filters.author_name,
+    filters.delivery_deadline,
+    filters.process_id,
+    processId,
+  ]);
+
+  const page = filters.page ?? 1;
+  const perPage = filters.per_page ?? DEFAULT_PER_PAGE;
+
+  const templates = useMemo(
+    () => sliceTemplatesPage(fullList, page, perPage),
+    [fullList, page, perPage],
+  );
+
+  const meta = useMemo(
+    () => buildTemplatesListMeta(fullList.length, page, perPage),
+    [fullList.length, page, perPage],
+  );
+
   const load = useCallback(async () => {
     try {
       setListError(null);
       setLoading(true);
-      const res = await fetchTemplates({
-        ...filters,
-        per_page: filters.per_page ?? DEFAULT_PER_PAGE,
-        ...(processId ? { process_id: processId } : {}),
-      });
-      setTemplates(res.data);
-      setMeta(res.meta);
+      const res = await fetchTemplates(filtersForApi);
+      setFullList(res.data);
     } catch (e) {
       setListError(formatActionError(e));
-      setTemplates([]);
-      setMeta(null);
+      setFullList([]);
     } finally {
       setLoading(false);
     }
-  }, [filters, processId]);
+  }, [filtersForApi]);
 
   useEffect(() => {
     void load();

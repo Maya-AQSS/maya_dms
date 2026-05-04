@@ -20,7 +20,6 @@ export type CreateTemplatePayload = {
   study_id?: string | null;
   module_id?: string | null;
   team_id?: string | null;
-  process_id: string;
   review_stages?: number;
   review_mode?: ReviewMode;
 };
@@ -41,11 +40,6 @@ export type UpdateTemplatePayload = {
 
 function buildListQuery(filters: TemplateListFilters): string {
   const q = new URLSearchParams();
-  const perPage = filters.per_page ?? 20;
-  q.set('per_page', String(Math.min(Math.max(perPage, 1), 20)));
-  if (filters.page != null && filters.page > 0) {
-    q.set('page', String(filters.page));
-  }
   if (filters.visibility_level) {
     q.set('visibility_level', filters.visibility_level);
   }

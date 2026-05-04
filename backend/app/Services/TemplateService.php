@@ -12,7 +12,6 @@ use App\Models\TemplateVersion;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use RuntimeException;
@@ -119,11 +118,11 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * Listado paginado con filtros (10 ítems por defecto en request).
+     * Listado con filtros (sin paginación en servidor; el front pagina en cliente).
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator
+    public function listFiltered(FilterTemplatesDto $filters): Collection
     {
-        return $this->templateRepository->paginateFiltered($filters, $perPage);
+        return $this->templateRepository->listFiltered($filters);
     }
 
     /**
