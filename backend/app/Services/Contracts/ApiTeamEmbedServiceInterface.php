@@ -4,7 +4,6 @@ namespace App\Services\Contracts;
 
 use App\Models\Document;
 use App\Models\Template;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface ApiTeamEmbedServiceInterface
 {
@@ -17,11 +16,6 @@ interface ApiTeamEmbedServiceInterface
      * Resuelve el equipo visible para las plantillas y lo deja listo para {@see \App\Http\Resources\TemplateResource}.
      */
     public function embedOnTemplates(iterable $templates, string $viewerUserId): void;
-
-    /**
-     * Resuelve el equipo visible para las plantillas paginadas y lo deja listo para {@see \App\Http\Resources\TemplateResource}.
-     */
-    public function embedOnTemplatePaginator(LengthAwarePaginator $paginator, string $viewerUserId): void;
 
     /**
      * Resuelve el equipo según la plantilla del documento y lo deja listo para {@see \App\Http\Resources\DocumentResource}.

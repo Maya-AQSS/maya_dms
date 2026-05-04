@@ -267,7 +267,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonValidationErrors(['process_id']);
     }
 
-    public function test_index_filters_by_status_and_visibility_and_respects_per_page_max(): void
+    public function test_index_filters_by_status_and_visibility(): void
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
@@ -318,9 +318,6 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.id', $t2);
-
-        $this->getJson('/api/v1/templates?per_page=101', $headers)
-            ->assertUnprocessable();
     }
 
     public function test_index_includes_has_review_comments_flag(): void

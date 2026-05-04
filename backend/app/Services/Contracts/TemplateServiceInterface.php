@@ -8,7 +8,6 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Models\Template;
 use App\Models\TemplateVersion;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface TemplateServiceInterface
@@ -60,9 +59,11 @@ interface TemplateServiceInterface
     public function listPublishedVersions(string $templateId): Collection;
 
     /**
-     * Listado paginado con filtros (10 ítems por defecto; máximo 100 según IndexTemplateRequest).
+     * Listado con filtros visible para el usuario (sin paginación en servidor).
+     *
+     * @return Collection<int, Template>
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator;
+    public function listFiltered(FilterTemplatesDto $filters): Collection;
 
     /**
      * Crea una plantilla con los atributos dados.

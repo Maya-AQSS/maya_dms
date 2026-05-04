@@ -38,21 +38,18 @@ class TemplateController extends Controller
     ) {}
 
     /**
-     * Listar plantillas (filtros en query; paginación por defecto 10, máx. 100).
+     * Listar plantillas (filtros en query; sin paginación en servidor, como documentos).
      */
     public function index(IndexTemplateRequest $request): AnonymousResourceCollection
     {
-        $paginator = $this->templateService->paginateFiltered(
-            $request->toFilterDto(),
-            $request->perPage(),
-        );
+        $templates = $this->templateService->listFiltered($request->toFilterDto());
 
-        $this->apiTeamEmbedService->embedOnTemplatePaginator(
-            $paginator,
+        $this->apiTeamEmbedService->embedOnTemplates(
+            $templates,
             (string) $request->user()->getAuthIdentifier(),
         );
 
-        return TemplateResource::collection($paginator);
+        return TemplateResource::collection($templates);
     }
 
     /**

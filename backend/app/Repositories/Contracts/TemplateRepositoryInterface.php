@@ -4,7 +4,7 @@ namespace App\Repositories\Contracts;
 
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\Models\Template;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 interface TemplateRepositoryInterface
 {
@@ -25,9 +25,11 @@ interface TemplateRepositoryInterface
     public function findOrFailWithoutCatalogScope(string $id): Template;
 
     /**
-     * Listado paginado con filtros (sin cargar bloques).
+     * Listado con filtros (sin cargar bloques); sin paginación en servidor.
+     *
+     * @return Collection<int, Template>
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 10): LengthAwarePaginator;
+    public function listFiltered(FilterTemplatesDto $filters): Collection;
 
     /**
      * Crea una plantilla con los atributos dados.
