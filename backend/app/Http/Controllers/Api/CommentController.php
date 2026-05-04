@@ -39,7 +39,7 @@ class CommentController extends Controller
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
-            if ($this->isTemplateCommentsLocked($model)) {
+            if ($this->areCommentsHiddenWhilePublished($model)) {
                 return response()->json(['data' => []]);
             }
 
@@ -56,7 +56,7 @@ class CommentController extends Controller
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('comment', $doc);
             $this->assertOptionalProcessContextMatches((string) $doc->process_id);
-            if ($this->isDocumentCommentsLocked($doc)) {
+            if ($this->areCommentsHiddenWhilePublished($doc)) {
                 return response()->json(['data' => []]);
             }
 
@@ -88,7 +88,7 @@ class CommentController extends Controller
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
-            if ($this->isTemplateCommentsLocked($model)) {
+            if ($this->areCommentsHiddenWhilePublished($model)) {
                 abort(404);
             }
 
@@ -110,7 +110,7 @@ class CommentController extends Controller
             $doc = $this->documentService->findOrFail($documentId);
             $this->authorize('comment', $doc);
             $this->assertOptionalProcessContextMatches((string) $doc->process_id);
-            if ($this->isDocumentCommentsLocked($doc)) {
+            if ($this->areCommentsHiddenWhilePublished($doc)) {
                 abort(404);
             }
 
@@ -150,7 +150,7 @@ class CommentController extends Controller
         $commentModel = $this->commentService->findOrFail($comment);
         $this->authorizeViewForCommentable($commentModel);
 
-        return response()->json(['message' => 'No está permitido actualizar un comentario en un recurso bloqueado.'], 405);
+        return response()->json(['message' => 'Method Not Allowed'], 405);
     }
 
     /**
@@ -192,7 +192,7 @@ class CommentController extends Controller
             $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
-            if ($this->isTemplateCommentsLocked($model)) {
+            if ($this->areCommentsHiddenWhilePublished($model)) {
                 abort(404);
             }
             return;
@@ -202,7 +202,7 @@ class CommentController extends Controller
             $model = $this->documentService->findOrFail((string) $comment->commentable_id);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
-            if ($this->isDocumentCommentsLocked($model)) {
+            if ($this->areCommentsHiddenWhilePublished($model)) {
                 abort(404);
             }
             return;
@@ -214,15 +214,12 @@ class CommentController extends Controller
     }
 
     /**
-     * Verifica si los comentarios de una plantilla están bloqueados.
+     * Los comentarios solo se ocultan mientras el recurso está en estado publicado.
+     * No depende de si existen filas históricas en template_versions / document_versions:
+     * en un nuevo ciclo (p. ej. borrador o en revisión) los comentarios vuelven a mostrarse.
      */
-    private function isTemplateCommentsLocked(Template $template): bool
+    private function areCommentsHiddenWhilePublished(Template|Document $resource): bool
     {
-        return $template->publishedVersions()->exists();
-    }
-
-    private function isDocumentCommentsLocked(Document $document): bool
-    {
-        return $document->versions()->exists();
+        return ($resource->status ?? '') === 'published';
     }
 }
