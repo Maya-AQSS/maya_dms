@@ -72,6 +72,12 @@ class TemplatePublishingService
 
             $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
 
+            if ($template->blocks->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['La plantilla debe tener al menos un bloque antes de publicarse.'],
+                ]);
+            }
+
             $blocksSnapshot = $template->blocks->map(fn ($b) => [
                 'id' => $b->id,
                 'title' => $b->title,
