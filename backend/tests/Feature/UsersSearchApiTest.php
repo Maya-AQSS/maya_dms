@@ -99,13 +99,13 @@ class UsersSearchApiTest extends TestCase
         $this->assertNotEmpty($data);
     }
 
-    public function test_document_reviewer_candidates_returns_403_without_users_search_permission(): void
+    public function test_document_reviewer_candidates_returns_403_without_documents_read_permission(): void
     {
         $userId = (string) Str::uuid();
 
         $response = $this->getJson(
             '/api/v1/users/document-reviewer-candidates',
-            $this->authHeaders($userId, ['documents.create']),
+            $this->authHeaders($userId, ['documents.create']), // Lacks documents.read
         );
 
         $response->assertForbidden();
@@ -136,7 +136,7 @@ class UsersSearchApiTest extends TestCase
 
         $response = $this->getJson(
             '/api/v1/users/document-reviewer-candidates?search=doc',
-            $this->authHeaders($callerId, ['users.search']),
+            $this->authHeaders($callerId, ['documents.read']),
         );
 
         $response->assertOk();
@@ -171,7 +171,7 @@ class UsersSearchApiTest extends TestCase
         }
 
         $url = '/api/v1/users/document-reviewer-candidates?search=Reviewer&exclude_user_id='.urlencode($reviewerA);
-        $response = $this->getJson($url, $this->authHeaders($callerId, ['users.search']));
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['documents.read']));
 
         $response->assertOk();
         $ids = array_column($response->json('data'), 'id');
@@ -204,7 +204,7 @@ class UsersSearchApiTest extends TestCase
         }
 
         $url = '/api/v1/users/reviewer-candidates?search=Tpl&exclude_user_id='.urlencode($reviewerA);
-        $response = $this->getJson($url, $this->authHeaders($callerId, ['users.search']));
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['templates.read']));
 
         $response->assertOk();
         $ids = array_column($response->json('data'), 'id');

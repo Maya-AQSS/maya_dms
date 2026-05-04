@@ -451,6 +451,27 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     };
   }, [isValidateMode, detail?.id, detail?.status]);
 
+  // Auto-selección si solo hay una opción disponible
+  useEffect(() => {
+    if (documentId || hierarchyLoading || hierarchy.length === 0 || studyTypeId) return;
+    if (hierarchy.length === 1) setStudyTypeId(String(hierarchy[0].id));
+  }, [documentId, hierarchy, hierarchyLoading, studyTypeId]);
+
+  useEffect(() => {
+    if (documentId || !studyTypeId || studyId) return;
+    const typeNode = hierarchy.find((t: any) => String(t.id) === studyTypeId);
+    if (!typeNode) return;
+    if ((typeNode.studies ?? []).length === 1) setStudyId(String(typeNode.studies[0].id));
+  }, [documentId, hierarchy, studyTypeId, studyId]);
+
+  useEffect(() => {
+    if (documentId || !studyId || moduleId) return;
+    const allStudiesFlat = hierarchy.flatMap((t: any) => t.studies ?? []);
+    const studyNode = allStudiesFlat.find((s: any) => String(s.id) === studyId);
+    if (!studyNode) return;
+    if ((studyNode.course_modules ?? []).length === 1) setModuleId(String(studyNode.course_modules[0].id));
+  }, [documentId, hierarchy, studyId, moduleId]);
+
   const sortedBlocks = useMemo(
     () => [...(detail?.blocks ?? [])].sort((a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order),
     [detail?.blocks],
@@ -463,6 +484,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const activeBlockUiState = activeBlock ? blockToUiState(activeBlock) : null;
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
+
   const filteredStudies = studyTypeId
     ? (hierarchy.find((t: any) => String(t.id) === studyTypeId)?.studies ?? [])
     : [];
@@ -684,9 +706,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
           const created = await createDocument({
             template_id: templateId,
-            process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
-            title: title.trim(),
             process_id: template.process_id,
+            title: title.trim(),
             study_type_id: studyTypeId,
             study_id: studyId,
             module_id: moduleId,
@@ -1048,9 +1069,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     }}
                     error={!!errors.studyTypeId}
                   >
-                    <option value="">
-                      {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
-                    </option>
+                    {hierarchy.length === 0 && !hierarchyLoading ? (
+                      <option value="" disabled>No tienes tipos de estudio asignados, contacta con un administrador</option>
+                    ) : (
+                      <option value="">
+                        {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
+                      </option>
+                    )}
                     {hierarchy.map((t: any) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}

@@ -61,4 +61,7 @@ return [
     ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'permission_code' => 'documents.review'],
     ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'permission_code' => 'users.search'],
     ['user_id' => 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc', 'permission_code' => 'audit.read'],
+    
+    // Super Admin: permiso admin para ver todo
+    ['user_id' => '848dc299-240e-4a75-9d8e-f0a04089309d', 'permission_code' => 'admin'],
 ];

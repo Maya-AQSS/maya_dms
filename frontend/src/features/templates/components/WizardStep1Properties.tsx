@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
@@ -40,12 +41,17 @@ export function WizardStep1Properties({
 }: Props) {
   const deadlineLocked = templateStatus === 'in_review' || templateStatus === 'published';
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
-  const { profile, loading: profileLoading, error: profileError } = useUserProfile();
+  const { profile, loading: profileLoading, error: profileError, hasPermission } = useUserProfile();
   const teams: UserTeam[] = profile?.teams ?? [];
   const teamsLoading = profileLoading;
   const teamsError = profileError
     ? 'No se pudo cargar el perfil (equipos). Revisa la sesión o inténtalo de nuevo.'
     : null;
+
+  const canCreateShared = hasPermission('templates.create');
+  const visibilityOptions = VISIBILITY_OPTIONS.filter(
+    (o) => o.value === 'personal' || canCreateShared,
+  );
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
   const filteredStudies = studyTypeId
@@ -54,6 +60,32 @@ export function WizardStep1Properties({
   const filteredModules = studyId
     ? (allStudies.find((s) => String(s.id) === studyId)?.course_modules ?? [])
     : [];
+
+  // Auto-selección si solo hay una opción disponible
+  useEffect(() => {
+    if (hierarchyLoading || hierarchy.length === 0 || studyTypeId) return;
+    if (hierarchy.length === 1) {
+      setStudyTypeId(String(hierarchy[0].id));
+    }
+  }, [hierarchy, hierarchyLoading, studyTypeId, setStudyTypeId]);
+
+  useEffect(() => {
+    if (!studyTypeId || studyId) return;
+    const typeNode = hierarchy.find((t) => String(t.id) === studyTypeId);
+    if (!typeNode) return;
+    if ((typeNode.studies ?? []).length === 1) {
+      setStudyId(String(typeNode.studies[0].id));
+    }
+  }, [hierarchy, studyTypeId, studyId, setStudyId]);
+
+  useEffect(() => {
+    if (!studyId || moduleId) return;
+    const studyNode = allStudies.find((s) => String(s.id) === studyId);
+    if (!studyNode) return;
+    if ((studyNode.course_modules ?? []).length === 1) {
+      setModuleId(String(studyNode.course_modules[0].id));
+    }
+  }, [allStudies, studyId, moduleId, setModuleId]);
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
@@ -106,7 +138,7 @@ export function WizardStep1Properties({
                 setTeamId('');
               }}
             >
-              {VISIBILITY_OPTIONS.map((o) => (
+              {visibilityOptions.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </Select>
@@ -154,7 +186,11 @@ export function WizardStep1Properties({
                     }}
                     error={!!errors.studyTypeId}
                   >
-                    <option value="">— Seleccionar —</option>
+                    {hierarchy.length === 0 && !hierarchyLoading ? (
+                      <option value="" disabled>No tienes tipos de estudio asignados, contacta con un administrador</option>
+                    ) : (
+                      <option value="">— Seleccionar —</option>
+                    )}
                     {hierarchy.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}

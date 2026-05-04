@@ -22,8 +22,10 @@ vi.mock('../../../../api/users', () => ({
   }),
 }));
 
+import { useHierarchy } from '../../../../features/hierarchy';
+
 vi.mock('../../../../features/hierarchy', () => ({
-  useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
+  useHierarchy: vi.fn(() => ({ hierarchy: [], loading: false, error: null })),
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
@@ -83,6 +85,17 @@ describe('WizardStep1Properties', () => {
         <WizardStep1Properties {...defaultProps} visibility="study_type" />
       </UserProfileProvider>,
     );
-    expect(screen.getAllByText('— Seleccionar —').length).toBeGreaterThan(0);
+    expect(screen.getByText('No tienes tipos de estudio asignados, contacta con un administrador')).toBeTruthy();
+  });
+
+  it('auto-selects study type if only one is available', () => {
+    vi.mocked(useHierarchy).mockReturnValue({
+      hierarchy: [{ id: 'ST_1', name: 'Único Tipo', studies: [] }],
+      loading: false,
+      error: null,
+    } as any);
+
+    renderWithProfile(<WizardStep1Properties {...defaultProps} visibility="study_type" />);
+    expect(defaultProps.setStudyTypeId).toHaveBeenCalledWith('ST_1');
   });
 });
