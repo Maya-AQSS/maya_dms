@@ -450,7 +450,10 @@ export function TemplateEditor({ template }: Props) {
                   setLocalContent(content);
                   markDirty();
                 }}
-                editable={true} // Siempre editable en la plantilla
+                // The template author always edits all blocks regardless of
+                // block_state.  The locked flag restricts document signatories,
+                // not the creator.  editable is intentionally hardcoded here.
+                editable={true}
                 isDark={isDark}
               />
             </Suspense>
