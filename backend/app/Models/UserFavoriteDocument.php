@@ -9,12 +9,11 @@ class UserFavoriteDocument extends Model
 {
     protected $table = 'user_favorite_documents';
 
-    /** @var list<string> */
-    protected $primaryKey = ['user_id', 'document_id'];
-
+    /**
+     * PK compuesta (user_id, document_id). No usar save() vía Eloquent;
+     * la persistencia va por {@see \App\Repositories\Eloquent\UserFavoriteRepository}.
+     */
     public $incrementing = false;
-
-    protected $keyType = 'string';
 
     protected $fillable = [
         'user_id',
