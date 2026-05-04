@@ -25,7 +25,7 @@ return new class extends Migration
     private const FDW_TABLE = 'teams_fdw';
 
     /**
-     * Servidor FDW propio del catálogo de equipos (no reutiliza `users_server`: otro origen / otro mapping).
+     * Servidor FDW propio del catálogo de equipos (no reutiliza `odoo_server`: otro origen / otro mapping).
      */
     private const FDW_SERVER = 'teams_server';
 
