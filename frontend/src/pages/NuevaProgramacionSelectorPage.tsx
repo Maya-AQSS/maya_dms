@@ -29,6 +29,7 @@ const COLUMNS: ColumnDef<Template>[] = [
   {
     id: 'name',
     header: 'Nombre',
+    alwaysVisible: true,
     cell: (t) => <span className="font-medium">{t.name}</span>,
     sortable: true,
   },

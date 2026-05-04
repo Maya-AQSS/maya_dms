@@ -253,6 +253,7 @@ export function DocumentsContent() {
         id: 'title',
         header: 'Título',
         sortable: true,
+        alwaysVisible: true,
         cell: (d: Document) => (
           <span className="font-medium text-text-primary dark:text-text-dark-primary truncate block">
             {d.title}

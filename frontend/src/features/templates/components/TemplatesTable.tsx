@@ -133,6 +133,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         id: 'name',
         header: 'Nombre',
         sortable: true,
+        alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
             <span className="truncate font-medium">{t.name}</span>

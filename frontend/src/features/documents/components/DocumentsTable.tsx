@@ -77,6 +77,7 @@ const COLUMNS: ColumnDef<Document>[] = [
   {
     id: 'title',
     header: 'Nombre',
+    alwaysVisible: true,
     cell: (doc) => <span className="font-medium">{doc.title}</span>,
     sortable: true,
   },
