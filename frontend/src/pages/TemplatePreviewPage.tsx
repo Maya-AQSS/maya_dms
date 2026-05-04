@@ -54,7 +54,7 @@ export function TemplatePreviewPage() {
   const locationState = location.state as { selectionMode?: boolean; backTo?: string; moduleId?: string } | null;
   const selectionMode = locationState?.selectionMode === true;
   const backTo = locationState?.backTo ?? '/nueva-programacion';
-  const { profile } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
@@ -145,7 +145,10 @@ export function TemplatePreviewPage() {
   const hasReviewers = (template?.reviewers?.length ?? 0) > 0;
 
   const canEdit = isOwner && isDraft;
-  const canDelete = isOwner && isDraft;
+  /** Igual que `TemplatePolicy::delete` (backend): creador o `templates.delete`, cualquier estado. */
+  const canDelete =
+    template != null &&
+    (profile?.id === template.created_by || hasPermission('templates.delete'));
   const canClone = isPublished || isOwner;
   const canSubmit = isOwner && isDraft && hasReviewers && !template.has_review_comments;
 
