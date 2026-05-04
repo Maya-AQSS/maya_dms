@@ -16,6 +16,8 @@ type Props = {
   validationType: 'libre' | 'ordenada';
   documentValidators?: ValidatorEntry[];
   documentValidationType?: 'libre' | 'ordenada';
+  onBlocksCountChange?: (count: number) => void;
+  onBlocksLoadingChange?: (loading: boolean) => void;
 };
 
 type PreviewTab = 'Contenido' | 'Descripción';
@@ -37,8 +39,26 @@ function SummaryRow({ label, value }: { label: string; value: React.ReactNode })
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function WizardStep4Summary({ template, validators, validationType, documentValidators = [], documentValidationType = 'libre' }: Props) {
-  const { blocks } = useTemplateBlocks(template.id);
+export function WizardStep4Summary({
+  template,
+  validators,
+  validationType,
+  documentValidators = [],
+  documentValidationType = 'libre',
+  onBlocksCountChange,
+  onBlocksLoadingChange,
+}: Props) {
+  const { blocks, loading } = useTemplateBlocks(template.id);
+
+  useEffect(() => {
+    onBlocksLoadingChange?.(loading);
+  }, [loading, onBlocksLoadingChange]);
+
+  useEffect(() => {
+    if (!loading) {
+      onBlocksCountChange?.(blocks.length);
+    }
+  }, [blocks.length, loading, onBlocksCountChange]);
 
   const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
   const [activeTab, setActiveTab] = useState<PreviewTab>('Contenido');
