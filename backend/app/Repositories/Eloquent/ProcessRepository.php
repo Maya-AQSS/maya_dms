@@ -12,23 +12,23 @@ class ProcessRepository implements ProcessRepositoryInterface
      *
      * El orden por código garantiza que los sub-procesos aparezcan justo
      * después de su padre (PE01, PE01.01, PE01.02, PE02, ...). El frontend
-     * agrupa por `parent_id` para mostrar la jerarquía.
+     * agrupa por `process_parent_id` para mostrar la jerarquía.
      *
-     * @return list<array{id: string, code: string, name: string, alias: string, description: string|null, parent_id: string|null}>
+     * @return list<array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}>
      */
     public function all(): array
     {
         return Process::query()
-            ->select(['id', 'code', 'name', 'alias', 'description', 'parent_id'])
+            ->select(['id', 'code', 'name', 'alias', 'description', 'process_parent_id'])
             ->orderBy('code')
             ->get()
             ->map(static fn (Process $process): array => [
-                'id'          => (string) $process->id,
-                'code'        => (string) $process->code,
-                'name'        => (string) $process->name,
-                'alias'       => (string) $process->alias,
-                'description' => $process->description,
-                'parent_id'   => $process->parent_id,
+                'id'                 => (string) $process->id,
+                'code'               => (string) $process->code,
+                'name'               => (string) $process->name,
+                'alias'              => (string) $process->alias,
+                'description'        => $process->description,
+                'process_parent_id'  => $process->process_parent_id,
             ])
             ->values()
             ->all();
