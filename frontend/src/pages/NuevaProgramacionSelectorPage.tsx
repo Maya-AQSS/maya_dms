@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchTemplates } from '../api/templates';
+import {
+  buildTemplatesListMeta,
+  sliceTemplatesPage,
+} from '../features/templates/clientTemplatePagination';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
-import type { Template, TemplateListFilters, TemplatesListMeta, TemplateVisibilityLevel } from '../types/templates';
+import type { Template, TemplateListFilters, TemplateVisibilityLevel } from '../types/templates';
 import {
   DataTable,
   DatePicker,
@@ -79,8 +83,7 @@ export function NuevaProgramacionSelectorPage() {
     status: 'published',
     per_page: pageSize,
   });
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [meta, setMeta] = useState<TemplatesListMeta | null>(null);
+  const [allTemplates, setAllTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [authorInput, setAuthorInput] = useState('');
@@ -93,19 +96,19 @@ export function NuevaProgramacionSelectorPage() {
       setListError(null);
       try {
         const res = await fetchTemplates({
-          ...filters,
           status: 'published',
+          visibility_level: filters.visibility_level,
+          author_name: filters.author_name,
+          delivery_deadline: filters.delivery_deadline,
           ...(selectedProcessId ? { process_id: selectedProcessId } : {}),
         });
         if (!cancelled) {
-          setTemplates(res.data);
-          setMeta(res.meta);
+          setAllTemplates(res.data);
         }
       } catch (e) {
         if (!cancelled) {
           setListError(e instanceof Error ? e.message : 'No se pudieron cargar las plantillas.');
-          setTemplates([]);
-          setMeta(null);
+          setAllTemplates([]);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -113,7 +116,25 @@ export function NuevaProgramacionSelectorPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [filters, selectedProcessId]);
+  }, [
+    filters.visibility_level,
+    filters.author_name,
+    filters.delivery_deadline,
+    selectedProcessId,
+  ]);
+
+  const listPage = filters.page ?? 1;
+  const listPerPage = filters.per_page ?? pageSize;
+
+  const templates = useMemo(
+    () => sliceTemplatesPage(allTemplates, listPage, listPerPage),
+    [allTemplates, listPage, listPerPage],
+  );
+
+  const meta = useMemo(
+    () => buildTemplatesListMeta(allTemplates.length, listPage, listPerPage),
+    [allTemplates.length, listPage, listPerPage],
+  );
 
   useEffect(() => {
     if (filters.per_page !== pageSize) {
