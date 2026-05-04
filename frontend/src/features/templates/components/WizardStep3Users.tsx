@@ -335,8 +335,6 @@ function UserAddPanel({
 // ── Main component ────────────────────────────────────────────────────────────
 
 type Props = {
-  /** Creador de la plantilla: no se ofrece en los listados de candidatos a validador (SoD). */
-  templateCreatedBy?: string | null;
   validators: ValidatorEntry[];
   onValidatorsChange: (validators: ValidatorEntry[]) => void;
   validationType: 'libre' | 'ordenada';
@@ -348,7 +346,6 @@ type Props = {
 };
 
 export function WizardStep3Users({
-  templateCreatedBy = null,
   validators,
   onValidatorsChange,
   validationType,
@@ -386,14 +383,13 @@ export function WizardStep3Users({
     const timer = setTimeout(() => {
       setSearchingTemplate(true);
       setSearchErrorTemplate(null);
-      const exclude = templateCreatedBy?.trim() || undefined;
-      searchTemplateReviewerCandidates(q, exclude)
+      searchTemplateReviewerCandidates(q)
         .then((res) => setSearchResultsTemplate(res.data))
         .catch(() => setSearchErrorTemplate('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingTemplate(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryTemplate, canSearchUsers, templateCreatedBy]);
+  }, [searchQueryTemplate, canSearchUsers]);
 
   useEffect(() => {
     if (!canSearchUsers) {
@@ -408,14 +404,13 @@ export function WizardStep3Users({
     const timer = setTimeout(() => {
       setSearchingDocument(true);
       setSearchErrorDocument(null);
-      const exclude = templateCreatedBy?.trim() || undefined;
-      searchDocumentReviewerCandidates(q, exclude)
+      searchDocumentReviewerCandidates(q)
         .then((res) => setSearchResultsDocument(res.data))
         .catch(() => setSearchErrorDocument('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingDocument(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryDocument, canSearchUsers, templateCreatedBy]);
+  }, [searchQueryDocument, canSearchUsers]);
 
   const handleAddToTemplate = (user: User) => {
     if (!validators.some((v) => v.userId === user.id)) {

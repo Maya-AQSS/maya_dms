@@ -161,16 +161,15 @@ describe('WizardStep3Users', () => {
     ]);
   });
 
-  it('pasa exclude_user_id al buscar candidatos si hay templateCreatedBy', async () => {
-    renderWithProfile(
-      <WizardStep3Users {...defaultProps} validators={[]} templateCreatedBy="creator-uuid" />,
-    );
+  it('no excluye al creador: la búsqueda de candidatos no envía exclude_user_id', async () => {
+    renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
     const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
     fireEvent.change(searchInputs[0], { target: { value: 'ab' } });
 
     await waitFor(() => {
-      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab', 'creator-uuid');
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab', undefined);
+      expect(searchDocumentReviewerCandidates).toHaveBeenCalledWith('ab', undefined);
     });
   });
 });
