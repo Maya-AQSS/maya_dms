@@ -180,6 +180,11 @@ class Document extends Model
         return $this->hasMany(DocumentShare::class);
     }
 
+    public function userFavoriteDocuments(): HasMany
+    {
+        return $this->hasMany(UserFavoriteDocument::class);
+    }
+
     public function comments(): MorphMany
     {
         return $this->morphMany(Comment::class, 'commentable');
