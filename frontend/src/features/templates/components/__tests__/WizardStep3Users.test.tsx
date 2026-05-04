@@ -146,11 +146,15 @@ describe('WizardStep3Users', () => {
   it('searches and adds a new validator', async () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
+    await waitFor(() => {
+      expect(vi.mocked(fetchMe)).toHaveBeenCalled();
+    });
+
     const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
     fireEvent.change(searchInputs[0], { target: { value: 'User 2' } });
 
     await waitFor(() => {
-      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('User 2', undefined);
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('User 2');
       expect(screen.getAllByText('User 2').length).toBeGreaterThan(0);
     });
 
@@ -164,12 +168,17 @@ describe('WizardStep3Users', () => {
   it('no excluye al creador: la búsqueda de candidatos no envía exclude_user_id', async () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
+    await waitFor(() => {
+      expect(vi.mocked(fetchMe)).toHaveBeenCalled();
+    });
+
     const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
     fireEvent.change(searchInputs[0], { target: { value: 'ab' } });
+    fireEvent.change(searchInputs[1], { target: { value: 'ab' } });
 
     await waitFor(() => {
-      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab', undefined);
-      expect(searchDocumentReviewerCandidates).toHaveBeenCalledWith('ab', undefined);
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab');
+      expect(searchDocumentReviewerCandidates).toHaveBeenCalledWith('ab');
     });
   });
 });
