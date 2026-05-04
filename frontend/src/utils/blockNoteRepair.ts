@@ -17,7 +17,7 @@ export const repairBlockNoteBlocks = (blocks: unknown): any[] => {
       if (STRUCTURAL_BLOCK_TYPES.has(block.type)) {
         return {
           ...block,
-          id: typeof block.id === 'string' ? block.id : Math.random().toString(36).substring(7),
+          id: typeof block.id === 'string' ? block.id : crypto.randomUUID(),
           type: block.type,
           props: (typeof block.props === 'object' && block.props !== null) ? { ...block.props } : {},
           content: block.content ?? [],
@@ -27,7 +27,7 @@ export const repairBlockNoteBlocks = (blocks: unknown): any[] => {
 
       const repairedBlock = {
         ...block,
-        id: typeof block.id === 'string' ? block.id : Math.random().toString(36).substring(7),
+        id: typeof block.id === 'string' ? block.id : crypto.randomUUID(),
         type: block.type,
         props: (typeof block.props === 'object' && block.props !== null) ? { ...block.props } : {},
         content: Array.isArray(block.content)
