@@ -20,7 +20,6 @@ export type CreateTemplatePayload = {
   study_id?: string | null;
   module_id?: string | null;
   team_id?: string | null;
-  process_id: string;
   review_stages?: number;
   review_mode?: ReviewMode;
 };
