@@ -10,6 +10,9 @@ const fakePmDom = document.createElement('div');
 const mockTryParseMarkdown = vi.fn().mockReturnValue([
   { id: 'p1', type: 'paragraph', props: {}, content: [{ type: 'text', text: 'hello', styles: {} }], children: [] },
 ]);
+const mockTryParseHTML = vi.fn().mockReturnValue([
+  { id: 'p2', type: 'paragraph', props: {}, content: [{ type: 'text', text: 'html content', styles: {} }], children: [] },
+]);
 const mockGetCursorPos = vi.fn().mockReturnValue({
   block: { id: 'cursor', type: 'paragraph', props: {}, content: [], children: [] },
 });
@@ -20,6 +23,7 @@ const mockSetCursorPos = vi.fn();
 const fakeEditor = {
   _tiptapEditor: { view: { dom: fakePmDom } },
   tryParseMarkdownToBlocks: mockTryParseMarkdown,
+  tryParseHTMLToBlocks: mockTryParseHTML,
   getTextCursorPosition: mockGetCursorPos,
   replaceBlocks: mockReplaceBlocks,
   insertBlocks: mockInsertBlocks,
@@ -103,6 +107,9 @@ describe('BlockNoteEditorPanel paste handler', () => {
     mockTryParseMarkdown.mockReturnValue([
       { id: 'p1', type: 'paragraph', props: {}, content: [{ type: 'text', text: 'hello', styles: {} }], children: [] },
     ]);
+    mockTryParseHTML.mockReturnValue([
+      { id: 'p2', type: 'paragraph', props: {}, content: [{ type: 'text', text: 'html content', styles: {} }], children: [] },
+    ]);
   });
 
   it('intercepts Markdown paste and calls replaceBlocks on empty cursor block', async () => {
@@ -138,16 +145,21 @@ describe('BlockNoteEditorPanel paste handler', () => {
     expect(mockReplaceBlocks).not.toHaveBeenCalled();
   });
 
-  it('does NOT intercept HTML paste (Word / Google Docs)', async () => {
+  it('intercepts HTML paste and cleans it (Word / Google Docs / Browser)', async () => {
     render(<BlockNoteEditorPanel initialContent={undefined} editable isDark={false} onChange={vi.fn()} />);
 
-    const richHtml = '<html><body><p>Content from Word</p></body></html>';
+    const richHtml = '<html><body><p><b>A</b>\n<b>B</b></p></body></html>';
     await act(async () => {
-      fakePmDom.dispatchEvent(makePasteEvent('Content from Word', richHtml));
+      fakePmDom.dispatchEvent(makePasteEvent('A B', richHtml));
     });
 
-    expect(mockTryParseMarkdown).not.toHaveBeenCalled();
-    expect(mockReplaceBlocks).not.toHaveBeenCalled();
+    expect(mockTryParseHTML).toHaveBeenCalledOnce();
+    // Check that it was called with spaces instead of newlines
+    const calledHtml = mockTryParseHTML.mock.calls[0][0];
+    expect(calledHtml).toContain('<b>A</b> <b>B</b>');
+    expect(calledHtml).not.toContain('\n');
+    
+    expect(mockReplaceBlocks).toHaveBeenCalledOnce();
   });
 
   it('does NOT intercept plain text without Markdown markers', async () => {

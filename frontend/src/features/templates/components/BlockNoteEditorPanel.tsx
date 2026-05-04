@@ -46,6 +46,15 @@ interface Props {
   onChange?: (content: unknown) => void;
 }
 
+function cleanHtmlForPaste(html: string): string {
+  // Replace newlines and multiple spaces between tags with a single space.
+  // This prevents ProseMirror from collapsing newlines between inline tags into "nothing".
+  return html
+    .replace(/\r?\n/g, ' ')
+    .replace(/>\s+</g, '> <')
+    .replace(/\s+/g, ' ');
+}
+
 export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -63,7 +72,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   } as any);
 
   // ---------------------------------------------------------------------------
-  // Markdown paste handler
+  // Paste handler (HTML & Markdown)
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!editable) return;
@@ -76,29 +85,42 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       const html = e.clipboardData?.getData('text/html') ?? '';
 
       // Empty paste — nothing to do.
-      if (!plain.trim()) return;
+      if (!plain.trim() && !html.trim()) return;
 
-      // HTML from Word / Google Docs / browser: let BlockNote's built-in
-      // HTML paste handler take over (it converts HTML to blocks natively).
-      if (html && html.includes('<') && html.length > 80) return;
+      let parsedBlocks: any[] | undefined;
+      let handled = false;
 
-      // Plain text that does not carry enough Markdown markers — let BlockNote
-      // paste it as plain text, no transformation needed.
-      if (!looksLikeMarkdown(plain)) return;
+      // 1. Prioritize HTML if it looks like rich content (has tags).
+      // We clean it to ensure spaces between tags are preserved.
+      if (html && html.includes('<')) {
+        const cleaned = cleanHtmlForPaste(html);
+        try {
+          parsedBlocks = (editor as any).tryParseHTMLToBlocks(cleaned);
+          if (parsedBlocks && parsedBlocks.length > 0) {
+            handled = true;
+          }
+        } catch {
+          // Fallback to markdown/plain text if HTML parsing fails.
+        }
+      }
+
+      // 2. If not handled by HTML, check if it looks like Markdown.
+      if (!handled && looksLikeMarkdown(plain)) {
+        try {
+          parsedBlocks = (editor as any).tryParseMarkdownToBlocks(plain);
+          if (parsedBlocks && parsedBlocks.length > 0) {
+            handled = true;
+          }
+        } catch {
+          // Fallback to default behavior.
+        }
+      }
+
+      if (!handled || !parsedBlocks) return;
 
       // From here on we own the paste event.
       e.preventDefault();
       e.stopPropagation();
-
-      let parsedBlocks: any[];
-      try {
-        parsedBlocks = (editor as any).tryParseMarkdownToBlocks(plain);
-      } catch {
-        // Malformed input: abort silently. User can re-paste normally.
-        return;
-      }
-
-      if (!parsedBlocks || parsedBlocks.length === 0) return;
 
       try {
         const cursor = (editor as any).getTextCursorPosition();
