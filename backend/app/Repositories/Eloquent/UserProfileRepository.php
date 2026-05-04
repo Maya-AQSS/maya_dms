@@ -101,6 +101,7 @@ class UserProfileRepository implements UserProfileRepositoryInterface
     {
         $query = DB::table('team_members');
 
+        // teams.id = VARCHAR (vista FDW); team_members.team_id = UUID en mocks → comparar como texto.
         if (DB::connection()->getDriverName() === 'pgsql') {
             $query->join('teams', DB::raw('teams.id::text'), '=', DB::raw('team_members.team_id::text'));
         } else {

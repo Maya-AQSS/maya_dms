@@ -107,16 +107,31 @@ class AppServiceProvider extends ServiceProvider
         // que JwtMiddleware deposita en el request tras validar el token.
         // Auth::user() / $request->user() lo invocan de forma diferida, sin sesión.
         Auth::viaRequest('jwt-token', function ($request) {
-            $profile = $request->attributes->get('jwt_user');
+            $jwtProfile = $request->attributes->get('jwt_user');
 
-            if (! $profile) {
+            if (! $jwtProfile) {
                 return null;
             }
 
-            $permissions = app(UserPermissionRepositoryInterface::class)
-                ->findPermissionCodesByUserId((string) $profile['id']);
+            $userId = (string) $jwtProfile['id'];
 
-            $profile['permissions'] = $permissions;
+            /** @var array<string, mixed> $fromDb Perfil unificado (FDW o fallback JWT vía {@see UserProfileService}). */
+            $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, $jwtProfile);
+
+            $profile = array_merge($jwtProfile, [
+                'study_type_ids'    => $fromDb['study_type_ids'] ?? [],
+                'study_type_id'     => null,
+                'study_ids'         => $fromDb['study_ids'] ?? [],
+                'study_id'          => null,
+                'module_ids'        => $fromDb['module_ids'] ?? [],
+                'module_id'         => null,
+                'course_module_ids' => null,
+                'course_module_id'  => null,
+                'team_ids'          => $fromDb['team_ids'] ?? [],
+                'team_id'           => null,
+            ]);
+
+            $profile['permissions'] = $fromDb['permissions'] ?? [];
 
             return new JwtUser($profile);
         });

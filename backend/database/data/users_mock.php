@@ -8,9 +8,9 @@
  * `user_permissions_mock.php`, `templates_mock.php` (created_by / revisores),
  * `teams_mock.php`, `documents_mock.php`, `comments_mock.php` el mismo valor.
  *
- * ── Ámbito académico (JWT / Keycloak) ─────────────────────────────────────
+ * ── Ámbito académico ───────────────────────────────────────────────────────
  * `users_source` no tiene columnas de ámbito; {@see \App\Services\UserProfileService}
- * rellena `study_type_ids`, `study_ids`, `module_ids` desde el token.
+ * las obtiene desde las tablas pivote (seed) y, si no hay filas, desde claims JWT.
  *
  * | id lógico               | study_type_ids        | study_ids                         | module_ids                                    |
  * |-------------------------|-----------------------|-----------------------------------|-----------------------------------------------|
