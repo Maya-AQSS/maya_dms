@@ -23,7 +23,7 @@ const MD_PATTERNS: RegExp[] = [
   /^\|.+\|/m,             // table row
 ];
 
-function looksLikeMarkdown(text: string): boolean {
+export function looksLikeMarkdown(text: string): boolean {
   let matches = 0;
   for (const re of MD_PATTERNS) {
     if (re.test(text)) {
