@@ -189,7 +189,12 @@ describe('TemplateWizard Integration', () => {
       expect(screen.getByText('Revisión final')).toBeTruthy(); // Transitioned to Step 4 (Resumen)
     }, { timeout: 10000 });
 
-    // Step 4: Summary -> Finish
+    // Step 4: Summary -> Finish (esperar a que la bandeja de bloques del resumen cargue; sin esto
+    // «Publicar plantilla» sigue disabled por blocksLoading/blocksCount y el clic no navega)
+    await waitFor(() => {
+      const publishBtn = screen.getByRole('button', { name: /Publicar plantilla/ }) as HTMLButtonElement;
+      expect(publishBtn.disabled).toBe(false);
+    }, { timeout: 10000 });
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
