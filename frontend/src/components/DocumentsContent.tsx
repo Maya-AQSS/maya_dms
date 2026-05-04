@@ -285,6 +285,17 @@ export function DocumentsContent() {
         ),
       },
       {
+        id: 'delivery_deadline',
+        header: 'Fecha',
+        sortable: true,
+        align: 'left',
+        cell: (d: Document) => (
+          <span className="text-xs text-text-muted dark:text-text-dark-muted">
+            {d.delivery_deadline ? d.delivery_deadline.slice(0, 10) : '—'}
+          </span>
+        ),
+      },
+      {
         id: 'actions',
         header: '',
         align: 'right',
@@ -314,11 +325,13 @@ export function DocumentsContent() {
     const cmp = (a: Document, b: Document): number => {
       switch (sortBy.columnId) {
         case 'title':
-          return a.title.localeCompare(b.title) * dir;
+          return (a.title ?? '').localeCompare(b.title ?? '') * dir;
         case 'version':
           return ((a.current_version ?? 0) - (b.current_version ?? 0)) * dir;
         case 'status':
-          return a.status.localeCompare(b.status) * dir;
+          return (a.status ?? '').localeCompare(b.status ?? '') * dir;
+        case 'delivery_deadline':
+          return (a.delivery_deadline ?? '').localeCompare(b.delivery_deadline ?? '') * dir;
         default:
           return 0;
       }

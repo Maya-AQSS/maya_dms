@@ -54,6 +54,7 @@ const COLUMNS: ColumnDef<Template>[] = [
   {
     id: 'delivery_deadline',
     header: 'Fecha límite de validación',
+    sortable: true,
     cell: (t) => (
       <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
         {formatDate(t.delivery_deadline)}
@@ -127,9 +128,35 @@ export function NuevaProgramacionSelectorPage() {
   const listPage = filters.page ?? 1;
   const listPerPage = filters.per_page ?? pageSize;
 
+  const sortedTemplates = useMemo(() => {
+    if (!sortBy) return allTemplates;
+    const { columnId, direction } = sortBy;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    return [...allTemplates].sort((a, b) => {
+      let valA: string | number = '';
+      let valB: string | number = '';
+
+      if (columnId === 'name') {
+        valA = a.name ?? '';
+        valB = b.name ?? '';
+      } else if (columnId === 'delivery_deadline') {
+        valA = a.delivery_deadline ?? '';
+        valB = b.delivery_deadline ?? '';
+      } else if (columnId === 'version') {
+        valA = a.version ?? 0;
+        valB = b.version ?? 0;
+      }
+
+      if (valA < valB) return -1 * dir;
+      if (valA > valB) return 1 * dir;
+      return 0;
+    });
+  }, [allTemplates, sortBy]);
+
   const templates = useMemo(
-    () => sliceTemplatesPage(allTemplates, listPage, listPerPage),
-    [allTemplates, listPage, listPerPage],
+    () => sliceTemplatesPage(sortedTemplates, listPage, listPerPage),
+    [sortedTemplates, listPage, listPerPage],
   );
 
   const meta = useMemo(

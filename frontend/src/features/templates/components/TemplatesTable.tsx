@@ -40,6 +40,10 @@ type Props = {
 export function TemplatesTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
+    useTablePreferences({ storageKey: 'maya:dms:templates-table' });
+
   const {
     templates,
     meta,
@@ -50,10 +54,7 @@ export function TemplatesTable({ processId }: Props = {}) {
     clearActionError,
     applyFilters,
     goToPage,
-  } = useTemplates(processId);
-
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
-    useTablePreferences({ storageKey: 'maya:dms:templates-table' });
+  } = useTemplates(processId, sortBy);
 
   const [nameInput, setNameInput] = useState('');
   const [nameFilter, setNameFilter] = useState('');
@@ -152,8 +153,8 @@ export function TemplatesTable({ processId }: Props = {}) {
         id: 'visibility_level',
         header: 'Visibilidad',
         cell: (t) => (
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}>
-            {visibilityLabel(t.visibility_level)}
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level as TemplateVisibilityLevel)}`}>
+            {visibilityLabel(t.visibility_level as TemplateVisibilityLevel)}
           </span>
         ),
       },
@@ -243,7 +244,7 @@ export function TemplatesTable({ processId }: Props = {}) {
                 fieldSize="sm"
                 value={filterUi.visibility}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ visibility_level: e.target.value || undefined })
+                  applyFilters({ visibility_level: (e.target.value as any) || undefined })
                 }
               >
                 <option value="">Todas</option>
@@ -259,7 +260,7 @@ export function TemplatesTable({ processId }: Props = {}) {
                 fieldSize="sm"
                 value={filterUi.status}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ status: e.target.value || undefined })
+                  applyFilters({ status: (e.target.value as any) || undefined })
                 }
               >
                 {STATUS_OPTIONS.map((o) => (
