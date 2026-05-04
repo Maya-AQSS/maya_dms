@@ -8,8 +8,12 @@ use Maya\Auth\Models\BaseJwtUser;
  * DTO específico de DMS: extiende {@see \Maya\Auth\Models\BaseJwtUser} añadiendo
  * los IDs de scope académico (study types, studies, modules, teams).
  *
+ * El guard `api` fusiona el JWT con {@see \App\Services\UserProfileService::getProfile()}:
+ * el ámbito académico y los equipos preferentes vienen de la BD (FDW / tablas mock);
+ * si el servicio cae en fallback JWT, esas listas equivalen a los claims del token.
+ *
  * Los roles de realm (Keycloak) no se materializan aquí: la autorización de
- * negocio usa {@see hasPermission()} y claims de ámbito académico cuando apliquen.
+ * negocio usa {@see hasPermission()} con los códigos resueltos en el perfil.
  */
 class JwtUser extends BaseJwtUser
 {

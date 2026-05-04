@@ -50,10 +50,26 @@ it('findById runs inside transaction with SET LOCAL statement_timeout and filter
 });
 
 it('findTeamsByUserId always includes user_id filter in JOIN', function () {
+    $mockConnection = Mockery::mock();
+    $mockConnection->shouldReceive('getDriverName')->once()->andReturn('sqlite');
+
+    DB::shouldReceive('connection')
+        ->once()
+        ->andReturn($mockConnection);
+
     $mockQuery = Mockery::mock();
     $mockQuery->shouldReceive('join')
         ->once()
-        ->with('teams', 'teams.id', '=', 'team_members.team_id')
+        ->withArgs(function (string $table, mixed $on, mixed $op = null, mixed $second = null): bool {
+            if ($table !== 'teams') {
+                return false;
+            }
+            if ($on instanceof \Closure) {
+                return true;
+            }
+
+            return $on === 'teams.id' && $op === '=' && $second === 'team_members.team_id';
+        })
         ->andReturnSelf();
     $mockQuery->shouldReceive('where')
         ->once()
