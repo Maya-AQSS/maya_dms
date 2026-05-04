@@ -419,7 +419,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         )}
         {step === 'users' && (
           <WizardStep3Users
-            templateCreatedBy={template?.created_by ?? null}
             validators={validators}
             onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
             validationType={validationType}
