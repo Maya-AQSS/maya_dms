@@ -26,3 +26,13 @@ export function useAuth() {
     user: null as { sub: string; email: string; name: string; preferred_username: string } | null,
   };
 }
+
+export function useOidcSession() {
+  return {
+    isOidcLoading: false,
+    isOidcSignedIn: true,
+    beginSignIn: () => undefined,
+    user: null,
+    logout: () => undefined,
+  };
+}
