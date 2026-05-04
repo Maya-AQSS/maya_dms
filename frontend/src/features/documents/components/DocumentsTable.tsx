@@ -16,6 +16,8 @@ import {
 import type { Document, DocumentStatus } from '../../../types/documents';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
+import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
+import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
 // (los colores hex viven en `maya_infra/configs/styles/index.css`).
@@ -73,49 +75,6 @@ function applyClientFilters(docs: Document[], filters: Filters): Document[] {
   });
 }
 
-const COLUMNS: ColumnDef<Document>[] = [
-  {
-    id: 'title',
-    header: 'Nombre',
-    cell: (doc) => <span className="font-medium">{doc.title}</span>,
-    sortable: true,
-  },
-  {
-    id: 'visibility_level',
-    header: 'Visibilidad',
-    cell: (doc) => {
-      const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
-      return (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(visLevel)}`}>
-          {visibilityLabel(visLevel)}
-        </span>
-      );
-    },
-  },
-  {
-    id: 'owner_name',
-    header: 'Autor',
-    cell: (doc) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{doc.owner_name ?? '—'}</span>,
-  },
-  {
-    id: 'status',
-    header: 'Estado',
-    cell: (doc) => {
-      const status = doc.status as DocumentStatus;
-      return (
-        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
-          {STATUS_LABEL[status] ?? status}
-        </span>
-      );
-    },
-  },
-  {
-    id: 'delivery_deadline',
-    header: 'Fecha',
-    cell: (doc) => <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>,
-  },
-];
-
 type Props = {
   /** Filtra el listado por proceso. No se expone en el panel de filtros. */
   processId?: string;
@@ -123,10 +82,66 @@ type Props = {
 
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
+  const { documentIds: favoriteDocumentIds } = useFavoritesIds();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
   });
   const { documents, loading, error } = useDocuments(processId);
+
+  const columns: ColumnDef<Document>[] = useMemo(
+    () => [
+      {
+        id: 'title',
+        header: 'Nombre',
+        cell: (doc) => (
+          <span className="flex items-center gap-2 min-w-0">
+            {favoriteDocumentIds.has(doc.id) && <FavoriteInlineMark />}
+            <span className="font-medium truncate">{doc.title}</span>
+          </span>
+        ),
+        sortable: true,
+      },
+      {
+        id: 'visibility_level',
+        header: 'Visibilidad',
+        cell: (doc) => {
+          const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
+          return (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(visLevel)}`}>
+              {visibilityLabel(visLevel)}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'owner_name',
+        header: 'Autor',
+        cell: (doc) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{doc.owner_name ?? '—'}</span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Estado',
+        cell: (doc) => {
+          const status = doc.status as DocumentStatus;
+          return (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
+              {STATUS_LABEL[status] ?? status}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'delivery_deadline',
+        header: 'Fecha',
+        cell: (doc) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>
+        ),
+      },
+    ],
+    [favoriteDocumentIds],
+  );
 
   const [filters, setFilters] = useState<Filters>({
     name: '',
@@ -190,7 +205,7 @@ export function DocumentsTable({ processId }: Props = {}) {
       )}
 
       <DataTable
-        columns={COLUMNS}
+        columns={columns}
         rows={pageSlice}
         loading={loading && documents.length === 0}
         rowKey={(doc) => doc.id}
