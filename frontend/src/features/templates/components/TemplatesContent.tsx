@@ -21,6 +21,8 @@ import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
 import { useUserProfile } from '../../../features/user-profile';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
+import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
+import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 
 const HIERARCHY_VIS = new Set(['study_type', 'study', 'module']);
 
@@ -44,6 +46,7 @@ function formatDate(iso: string | null | undefined): string {
 export function TemplatesContent() {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+  const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
     templates,
     meta,
@@ -133,6 +136,7 @@ export function TemplatesContent() {
         sortable: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
+            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
             <span className="truncate font-medium">{t.name}</span>
             {t.has_review_comments && t.status === 'draft' && profile && t.created_by === profile.id && (
               <span
@@ -187,7 +191,7 @@ export function TemplatesContent() {
         ),
       },
     ],
-    [profile],
+    [profile, favoriteTemplateIds],
   );
 
   return (

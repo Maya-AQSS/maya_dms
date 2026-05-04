@@ -261,12 +261,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const handleToggleSelectAll = () => {
     if (selectedBlockIds.length === blocks.length && blocks.length > 0) {
       setSelectedBlockIds([]);
+      setActiveSingleId(null);
       setPanelMode('empty');
     } else {
       setSelectedBlockIds(blocks.map(b => b.id));
       // setMultiIndex(0);
       setPanelMode('multi');
-      if (blocks[0]) loadFormFromBlock(blocks[0]);
+      if (blocks[0]) {
+        setActiveSingleId(blocks[0].id);
+        loadFormFromBlock(blocks[0]);
+      }
     }
   };
 

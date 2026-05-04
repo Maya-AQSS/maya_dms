@@ -1,9 +1,29 @@
+import type { ReactElement } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep2Blocks } from '../WizardStep2Blocks';
 import { useTemplateBlocks } from '../../hooks/useTemplateBlocks';
+import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
+
+vi.mock('../../../../api/users', () => ({
+  fetchMe: vi.fn().mockResolvedValue({
+    data: {
+      id: 'usr_step2_blocks',
+      email: null,
+      name: null,
+      department: null,
+      study_type_ids: [],
+      study_ids: [],
+      module_ids: [],
+      team_ids: [],
+      permissions: [],
+      teams: [],
+      source: 'fdw' as const,
+    },
+  }),
+}));
 
 vi.mock('../../hooks/useTemplateBlocks');
 
@@ -43,6 +63,10 @@ const mockBlocks = [
   { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'default' },
 ];
 
+function renderWithProfile(ui: ReactElement) {
+  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+}
+
 describe('WizardStep2Blocks', () => {
   const defaultProps = {
     template: { id: 't1', title: 'Template' } as any,
@@ -64,13 +88,13 @@ describe('WizardStep2Blocks', () => {
   });
 
   it('renders block list correctly', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     expect(screen.getByText('Bloque 1')).toBeTruthy();
     expect(screen.getByText('Bloque 2')).toBeTruthy();
   });
 
   it('opens edit panel when a block is clicked', async () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     const blockButton = screen.getByRole('button', { name: /Bloque 1/i });
     fireEvent.click(blockButton);
     await waitFor(() => {
@@ -80,14 +104,15 @@ describe('WizardStep2Blocks', () => {
   });
 
   it('enters multi-selection mode when selecting all blocks', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
-    expect(screen.getByText(/Edición múltiple/i)).toBeTruthy();
-    expect(screen.getByText(/\(1 de 2\)/i)).toBeTruthy();
+    expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Bloque 1' })).toBeTruthy();
+    expect(screen.getByText('Propiedades')).toBeTruthy();
   });
 
   it('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     const selectAllBtn = screen.getByText('Seleccionar todos');
     
     fireEvent.click(selectAllBtn);
@@ -96,13 +121,12 @@ describe('WizardStep2Blocks', () => {
     expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
   });
 
-  it('navigates through multi-selection items', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+  it('sale del modo multi al deseleccionar todos', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
-    expect(screen.getByText(/\(1 de 2\)/i)).toBeTruthy();
+    expect(screen.getByText('Propiedades')).toBeTruthy();
 
-    const nextBtn = screen.getByRole('button', { name: '→' });
-    fireEvent.click(nextBtn);
-    expect(screen.getByText(/\(2 de 2\)/i)).toBeTruthy();
+    fireEvent.click(screen.getByText('Deseleccionar todos'));
+    expect(screen.queryByText('Propiedades')).toBeNull();
   });
 });

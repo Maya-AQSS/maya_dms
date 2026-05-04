@@ -197,6 +197,11 @@ class Template extends Model
         return $this->hasMany(Document::class);
     }
 
+    public function userFavoriteTemplates(): HasMany
+    {
+        return $this->hasMany(UserFavoriteTemplate::class);
+    }
+
     public function publishedVersions(): HasMany
     {
         return $this->hasMany(TemplateVersion::class)->orderBy('version_number');

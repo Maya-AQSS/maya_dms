@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TemplateWizard } from '../TemplateWizard';
 import { createTemplate, updateTemplate, syncTemplateValidators, publishTemplate } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
+import { fetchMe } from '../../../../api/users';
 import { MemoryRouter } from 'react-router-dom';
 import { UserProfileProvider } from '../../../../features/user-profile';
 
@@ -33,6 +34,32 @@ vi.mock('../../../../features/hierarchy', () => ({
   useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+
+vi.mock('@maya/shared-ui-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@maya/shared-ui-react')>();
+  return {
+    ...actual,
+    DatePicker: ({
+      value,
+      onChange,
+      ariaLabel,
+      disabled,
+    }: {
+      value: string | null | undefined;
+      onChange: (date: string | null) => void;
+      ariaLabel?: string;
+      disabled?: boolean;
+    }) => (
+      <input
+        type="date"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value ? e.target.value : null)}
+      />
+    ),
+  };
+});
 
 // Mock dnd-kit globally for the wizard
 vi.mock('@dnd-kit/core', () => ({
@@ -115,7 +142,11 @@ describe('TemplateWizard Integration', () => {
     (createTemplate as any).mockResolvedValue({ data: mockNewTemplate });
     (fetchBlocks as any).mockResolvedValue({ data: [{ id: 'b1', title: 'Block 1', mandatory: true, block_state: 'locked' }] });
 
-    renderWizard();
+    renderWizard({ processId: 'proc-test-1' });
+
+    await waitFor(() => {
+      expect(vi.mocked(fetchMe)).toHaveBeenCalled();
+    });
 
     // Step 1: Properties
     expect(screen.getByText('Nueva plantilla')).toBeTruthy();
@@ -125,13 +156,17 @@ describe('TemplateWizard Integration', () => {
 
     const deadlineInput = screen.getByLabelText(/Plazo de entrega/i);
     fireEvent.change(deadlineInput, { target: { value: '2099-01-01' } });
-    
+
+    await waitFor(() => {
+      expect((deadlineInput as HTMLInputElement).value).toBe('2099-01-01');
+    });
+
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
 
     await waitFor(() => {
       expect(createTemplate).toHaveBeenCalled();
-      expect(screen.getByText('Editando «New Template»')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'New Template' })).toBeTruthy();
       expect(screen.getByText(/Bloques \(/i)).toBeTruthy(); // Transitioned to Step 2
     }, { timeout: 10000 });
 
