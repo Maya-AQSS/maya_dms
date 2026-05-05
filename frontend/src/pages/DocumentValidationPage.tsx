@@ -1,5 +1,5 @@
 import { Link, useParams } from 'react-router-dom';
-import { DocumentWizard } from '../features/documents/components/DocumentWizard';
+import { DocumentPreviewPage } from './DocumentPreviewPage';
 import { Button } from '@maya/shared-ui-react';
 
 /**
@@ -19,5 +19,5 @@ export function DocumentValidationPage() {
     );
   }
 
-  return <DocumentWizard documentId={documentId} mode="validate" />;
+  return <DocumentPreviewPage mode="validate" />;
 }
