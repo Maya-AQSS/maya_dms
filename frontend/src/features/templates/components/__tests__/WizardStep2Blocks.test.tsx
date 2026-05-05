@@ -34,6 +34,7 @@ vi.mock('../../../../features/user-profile', () => ({
     error: null,
     hasPermission: () => false,
   })),
+  UserProfileProvider: ({ children }: any) => <>{children}</>,
 }));
 
 vi.mock('../../../hooks/useAutoSave', () => ({
@@ -125,8 +126,10 @@ describe('WizardStep2Blocks', () => {
   it('shows all blocks after selecting all', () => {
     render(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
-    expect(screen.getByText('Bloque 1')).toBeTruthy();
-    expect(screen.getByText('Bloque 2')).toBeTruthy();
+    // After selecting all, "Bloque 1" appears in both the sidebar and the edit panel
+    // header, so we use getAllByText to handle multiple matches.
+    expect(screen.getAllByText('Bloque 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bloque 2').length).toBeGreaterThan(0);
   });
 
   it('toggles button label between "Seleccionar todos" and "Deseleccionar todos"', () => {
