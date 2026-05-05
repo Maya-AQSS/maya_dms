@@ -28,7 +28,7 @@ import type { Process } from '../types/processes';
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
-  published: 'Aprobado',
+  published: 'Publicado',
 };
 
 function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
