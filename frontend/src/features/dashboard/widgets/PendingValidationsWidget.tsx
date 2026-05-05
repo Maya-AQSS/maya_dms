@@ -14,7 +14,9 @@ export default function PendingValidationsWidget() {
     fetchDashboard()
       .then((data) => {
         if (!mounted) return;
-        setCount(data.document_review_inbox?.length ?? 0);
+        const pendingDocuments = data.document_review_inbox?.length ?? 0;
+        const pendingTemplates = data.template_review_inbox?.length ?? 0;
+        setCount(pendingDocuments + pendingTemplates);
       })
       .catch(() => {
         if (!mounted) return;
