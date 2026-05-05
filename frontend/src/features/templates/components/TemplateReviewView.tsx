@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
@@ -58,6 +58,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
 
 export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { blocks } = useTemplateBlocks(template.id);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -82,6 +83,15 @@ export function TemplateReviewView({ template }: Props) {
   const isAlreadyValidated = myReview && myReview.status !== 'pending';
   
   const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
+  const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
+
+  const goBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(backTo);
+  };
 
   useEffect(() => {
     // Cargar comentarios iniciales
@@ -146,7 +156,7 @@ export function TemplateReviewView({ template }: Props) {
     setError(null);
     try {
       await approveTemplateReview(template.id);
-      navigate('/procesos');
+      navigate(backTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al aprobar la plantilla');
     } finally {
@@ -168,7 +178,7 @@ export function TemplateReviewView({ template }: Props) {
     setError(null);
     try {
       await rejectTemplateReview(template.id);
-      navigate('/procesos');
+      navigate(backTo);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al rechazar la plantilla');
     } finally {
@@ -185,7 +195,7 @@ export function TemplateReviewView({ template }: Props) {
       <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate('/procesos')}
+            onClick={goBack}
             className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-secondary transition-colors"
           >
             ←

@@ -128,9 +128,14 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     return () => { cancelled = true; };
   }, [documentId]);
 
-  const previewState = location.state as { returnToStep?: string; returnToValidate?: boolean } | null;
+  const previewState = location.state as {
+    returnToStep?: string;
+    returnToValidate?: boolean;
+    backTo?: string;
+  } | null;
   const cameFromSummary = previewState?.returnToStep === 'summary';
   const cameFromValidate = previewState?.returnToValidate === true;
+  const backTo = previewState?.backTo ?? (isValidateMode ? '/dashboard' : '/procesos');
 
   const backLabel = cameFromSummary
     ? cameFromValidate ? 'Volver a validar' : 'Volver al resumen'
@@ -138,7 +143,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const handleBack = () => {
     if (isValidateMode) {
-      navigate('/dashboard');
+      if (window.history.length > 1) {
+        navigate(-1);
+        return;
+      }
+      navigate(backTo);
       return;
     }
     if (cameFromSummary && documentId) {
@@ -147,6 +156,14 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       } else {
         navigate(`/documents/${documentId}/editor`, { state: { step: 'summary' } });
       }
+      return;
+    }
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    if (previewState?.backTo) {
+      navigate(previewState.backTo);
       return;
     }
     navigate('/procesos', { state: { tab: 'documents' } });
@@ -420,7 +437,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20">
             <div className="flex items-center gap-3 min-w-0">
               <button
-                onClick={() => navigate('/dashboard')}
+                onClick={handleBack}
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-secondary transition-colors"
               >
                 ←

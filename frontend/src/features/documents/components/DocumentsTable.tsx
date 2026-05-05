@@ -250,7 +250,11 @@ export function DocumentsTable({ processId }: Props = {}) {
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:documents-table"
-        onRowClick={(doc) => navigate(`/documents/${doc.id}`)}
+        onRowClick={(doc) =>
+          navigate(`/documents/${doc.id}`, {
+            state: { backTo: processId ? `/procesos/${processId}` : '/procesos', processId },
+          })
+        }
         filtersPanel={
           <>
             <FilterField label="Nombre">

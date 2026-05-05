@@ -129,6 +129,7 @@ export default function RecentDocumentsWidget() {
         <li key={`${item.kind}:${item.id}`}>
           <Link
             to={item.kind === 'template' ? `/templates/${item.id}/review` : `/documents/${item.id}/validate`}
+            state={{ backTo: '/dashboard' }}
             className="flex items-center justify-between gap-3 py-2 px-1 hover:bg-ui-body dark:hover:bg-ui-dark-bg rounded transition-colors"
           >
             <span className="min-w-0 flex items-center gap-2">

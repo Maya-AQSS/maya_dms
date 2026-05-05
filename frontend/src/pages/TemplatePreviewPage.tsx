@@ -59,6 +59,15 @@ export function TemplatePreviewPage() {
   } | null;
   const selectionMode = locationState?.selectionMode === true;
   const backTo = locationState?.backTo ?? '/documentos/nuevo';
+  const defaultBackTo = locationState?.backTo ?? '/procesos';
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(selectionMode ? backTo : defaultBackTo);
+  };
+
   const { profile, hasPermission } = useUserProfile();
 
   const [template, setTemplate] = useState<Template | null>(null);
@@ -282,7 +291,7 @@ export function TemplatePreviewPage() {
       <PageTitle
         title={template?.name ?? 'Plantilla'}
         subtitle="Previsualización"
-        onBack={() => navigate(selectionMode ? backTo : '/procesos')}
+        onBack={handleBack}
         backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
         meta={
           <div className="space-y-3">
