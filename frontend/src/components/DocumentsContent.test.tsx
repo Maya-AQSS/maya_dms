@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentsContent } from './DocumentsContent';
@@ -71,12 +71,16 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-function renderWithProfile(ui: ReactElement) {
-  return render(
-    <MemoryRouter>
-      <UserProfileProvider>{ui}</UserProfileProvider>
-    </MemoryRouter>,
-  );
+async function renderWithProfile(ui: ReactElement) {
+  let renderResult: ReturnType<typeof render> | null = null;
+  await act(async () => {
+    renderResult = render(
+      <MemoryRouter>
+        <UserProfileProvider>{ui}</UserProfileProvider>
+      </MemoryRouter>,
+    );
+  });
+  return renderResult!;
 }
 
 /** Evita clics mientras `fetchMe` del perfil sigue en curso (botón con title de carga). */
@@ -163,7 +167,7 @@ describe('DocumentsContent creation flow', () => {
         source: 'fdw',
       },
     });
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
 
     await waitFor(() => {
       expect(screen.getByText(/documents\.create/i)).toBeTruthy();
@@ -173,7 +177,7 @@ describe('DocumentsContent creation flow', () => {
   });
 
   it('deshabilita nueva programación sin módulo seleccionado', async () => {
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
 
     await waitFor(() => {
       expect(
@@ -192,7 +196,7 @@ describe('DocumentsContent creation flow', () => {
       options: [],
     });
 
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
     await waitForUserProfileReady();
     await openFiltersAndSelectModule();
 
@@ -228,7 +232,7 @@ describe('DocumentsContent creation flow', () => {
     });
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-new' });
 
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
     await waitForUserProfileReady();
     await openFiltersAndSelectModule();
 
@@ -238,7 +242,7 @@ describe('DocumentsContent creation flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
     await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion/tpl-1/wizard', {
+      expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo/tpl-1/wizard', {
         state: { moduleId: 'm1' },
       }),
     );
@@ -292,7 +296,7 @@ describe('DocumentsContent creation flow', () => {
     });
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-sel' });
 
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
     await waitForUserProfileReady();
     await openFiltersAndSelectModule();
 
@@ -302,7 +306,7 @@ describe('DocumentsContent creation flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
     await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion', {
+      expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
         state: { moduleId: 'm1' },
       }),
     );
@@ -338,7 +342,7 @@ describe('DocumentsContent creation flow', () => {
       published_at: null,
     });
 
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
     await waitForUserProfileReady();
     await openFiltersAndSelectModule();
 
@@ -346,7 +350,7 @@ describe('DocumentsContent creation flow', () => {
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion', {
+    expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
       state: { moduleId: 'm1' },
     });
   });

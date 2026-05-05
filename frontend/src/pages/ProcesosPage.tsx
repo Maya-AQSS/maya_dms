@@ -23,14 +23,17 @@ export function ProcesosPage() {
   const locationState = location.state as { tab?: Tab } | null;
   const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
   const [process, setProcess] = useState<Process | null>(null);
+  const [processLoading, setProcessLoading] = useState(false);
 
   // Resuelve el proceso activo (para mostrar nombre en el header).
   useEffect(() => {
     if (!processId) {
+      setProcessLoading(false);
       setProcess(null);
       return;
     }
     let cancelled = false;
+    setProcessLoading(true);
     fetchProcesses()
       .then((res) => {
         if (cancelled) return;
@@ -39,6 +42,9 @@ export function ProcesosPage() {
       })
       .catch(() => {
         if (!cancelled) setProcess(null);
+      })
+      .finally(() => {
+        if (!cancelled) setProcessLoading(false);
       });
     return () => {
       cancelled = true;
@@ -50,7 +56,7 @@ export function ProcesosPage() {
   return (
     <>
       <PageTitle
-        title={process?.name ?? 'Procesos'}
+        title={processId ? (process?.name ?? (processLoading ? 'Cargando proceso…' : 'Proceso')) : 'Procesos'}
         subtitle={process ? process.alias || process.code : undefined}
         actions={
           activeTab === 'templates' ? (
@@ -67,9 +73,9 @@ export function ProcesosPage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => navigate('/nueva-programacion', { state: navState })}
+              onClick={() => navigate('/documentos/nuevo', { state: navState })}
             >
-              Nueva Programación
+              Nuevo Documento
             </Button>
           )
         }

@@ -253,6 +253,7 @@ export function DocumentsContent() {
         id: 'title',
         header: 'Título',
         sortable: true,
+        alwaysVisible: true,
         cell: (d: Document) => (
           <span className="font-medium text-text-primary dark:text-text-dark-primary truncate block">
             {d.title}
@@ -280,6 +281,17 @@ export function DocumentsContent() {
             className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[d.status]}`}
           >
             {STATUS_LABELS[d.status]}
+          </span>
+        ),
+      },
+      {
+        id: 'delivery_deadline',
+        header: 'Fecha',
+        sortable: true,
+        align: 'left',
+        cell: (d: Document) => (
+          <span className="text-xs text-text-muted dark:text-text-dark-muted">
+            {d.delivery_deadline ? d.delivery_deadline.slice(0, 10) : '—'}
           </span>
         ),
       },
@@ -313,11 +325,13 @@ export function DocumentsContent() {
     const cmp = (a: Document, b: Document): number => {
       switch (sortBy.columnId) {
         case 'title':
-          return a.title.localeCompare(b.title) * dir;
+          return (a.title ?? '').localeCompare(b.title ?? '') * dir;
         case 'version':
           return ((a.current_version ?? 0) - (b.current_version ?? 0)) * dir;
         case 'status':
-          return a.status.localeCompare(b.status) * dir;
+          return (a.status ?? '').localeCompare(b.status ?? '') * dir;
+        case 'delivery_deadline':
+          return (a.delivery_deadline ?? '').localeCompare(b.delivery_deadline ?? '') * dir;
         default:
           return 0;
       }
@@ -335,12 +349,12 @@ export function DocumentsContent() {
     if (creationMode === 'none') return;
     if (creationMode === 'auto') {
       const templateId = creationOptions[0]?.template_id;
-      navigate(`/nueva-programacion/${templateId}/wizard`, {
+      navigate(`/documentos/nuevo/${templateId}/wizard`, {
         state: { moduleId: selectedModuleId }
       });
       return;
     }
-    navigate('/nueva-programacion', {
+    navigate('/documentos/nuevo', {
       state: { moduleId: selectedModuleId }
     });
   };

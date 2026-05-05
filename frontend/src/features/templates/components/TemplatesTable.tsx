@@ -42,6 +42,9 @@ type Props = {
 export function TemplatesTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
+    useTablePreferences({ storageKey: 'maya:dms:templates-table' });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
     templates,
@@ -53,10 +56,7 @@ export function TemplatesTable({ processId }: Props = {}) {
     clearActionError,
     applyFilters,
     goToPage,
-  } = useTemplates(processId);
-
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
-    useTablePreferences({ storageKey: 'maya:dms:templates-table' });
+  } = useTemplates(processId, sortBy);
 
   const [nameInput, setNameInput] = useState('');
   const [nameFilter, setNameFilter] = useState('');
@@ -127,7 +127,10 @@ export function TemplatesTable({ processId }: Props = {}) {
   const handleRowClick = (t: Template) => {
     const isReviewer =
       t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`);
+    const backTo = processId ? `/procesos/${processId}` : '/dashboard';
+    navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
+      state: { backTo, processId },
+    });
   };
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -136,6 +139,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         id: 'name',
         header: 'Nombre',
         sortable: true,
+        alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
             {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
@@ -155,8 +159,8 @@ export function TemplatesTable({ processId }: Props = {}) {
         id: 'visibility_level',
         header: 'Visibilidad',
         cell: (t) => (
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}>
-            {visibilityLabel(t.visibility_level)}
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level as TemplateVisibilityLevel)}`}>
+            {visibilityLabel(t.visibility_level as TemplateVisibilityLevel)}
           </span>
         ),
       },
@@ -246,7 +250,7 @@ export function TemplatesTable({ processId }: Props = {}) {
                 fieldSize="sm"
                 value={filterUi.visibility}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ visibility_level: e.target.value || undefined })
+                  applyFilters({ visibility_level: (e.target.value as any) || undefined })
                 }
               >
                 <option value="">Todas</option>
@@ -262,7 +266,7 @@ export function TemplatesTable({ processId }: Props = {}) {
                 fieldSize="sm"
                 value={filterUi.status}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ status: e.target.value || undefined })
+                  applyFilters({ status: (e.target.value as any) || undefined })
                 }
               >
                 {STATUS_OPTIONS.map((o) => (

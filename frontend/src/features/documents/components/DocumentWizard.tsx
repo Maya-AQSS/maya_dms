@@ -22,6 +22,7 @@ import {
   type DocumentReview,
 } from '../../../api/documents';
 import { ApiHttpError } from '../../../api/http';
+import { fetchProcesses } from '../../../api/processes';
 import { fetchTemplate } from '../../../api/templates';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
@@ -248,11 +249,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [rejectReason, setRejectReason] = useState('');
   const [localContent, setLocalContent] = useState<unknown>(null);
   const [showClearBlockConfirm, setShowClearBlockConfirm] = useState(false);
+  const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
 
   const isValidateMode = mode === 'validate';
   const isDraft = !detail || detail.status === 'draft';
-  const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
+  const locationState = location.state as {
+    step?: string;
+    processId?: string;
+    moduleId?: string;
+  } | null;
+  const returnToSummary = locationState?.step === 'summary';
+  const locationProcessId = locationState?.processId;
+  const locationModuleId = locationState?.moduleId;
+  const processBackTo = useMemo(() => {
+    const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
+    return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
+  }, [locationProcessId, template?.process_id]);
 
   const reload = useCallback(async () => {
     if (!documentId) return;
@@ -607,6 +620,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     };
   }, [detail?.template_id, templateId]);
 
+  useEffect(() => {
+    const effectiveProcessId = template?.process_id ?? locationProcessId ?? null;
+    if (!effectiveProcessId) {
+      setProcessSubtitle(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchProcesses()
+      .then((res) => {
+        if (cancelled) return;
+        const selectedProcess = res.data.find((p) => p.id === effectiveProcessId) ?? null;
+        if (!selectedProcess) {
+          setProcessSubtitle(null);
+          return;
+        }
+        setProcessSubtitle(`Proceso: ${selectedProcess.code} — ${selectedProcess.name}`);
+      })
+      .catch(() => {
+        if (!cancelled) setProcessSubtitle(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locationProcessId, template?.process_id]);
+
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
   const canClearOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
 
@@ -724,7 +762,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'summary') {
-      navigate('/procesos', { state: { tab: 'documents' } });
+      navigate(processBackTo, { state: { tab: 'documents' } });
     }
   };
 
@@ -737,7 +775,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     try {
       const updated = await submitDocumentForReview(detail.id);
       setDetail((prev) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
-      navigate('/procesos', {
+      navigate(processBackTo, {
         state: { tab: 'documents', documentSubmittedForReview: true },
       });
     } catch (e) {
@@ -750,7 +788,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const handleConfirmSummaryAction = async () => {
     if (summaryConfirmAction === 'save') {
       setSummaryConfirmAction(null);
-      navigate('/procesos', { state: { tab: 'documents' } });
+      navigate(processBackTo, { state: { tab: 'documents' } });
       return;
     }
     if (summaryConfirmAction === 'submit') {
@@ -843,7 +881,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           type="button"
           variant="secondary"
           onClick={() =>
-            navigate(isValidateMode ? '/dashboard' : '/procesos', {
+            navigate(isValidateMode ? '/dashboard' : processBackTo, {
               state: isValidateMode ? {} : { tab: 'documents' },
             })
           }
@@ -975,11 +1013,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     // step === 'properties'
     const tId = detail?.template_id || templateId;
     if (tId) {
-      navigate(`/templates/${tId}`);
+      navigate(`/templates/${tId}`, {
+        state: {
+          selectionMode: !documentId,
+          backTo: '/documentos/nuevo',
+          moduleId: locationModuleId,
+          processId: locationProcessId,
+        },
+      });
     } else if (documentId) {
       navigate(`/documents/${documentId}`);
     } else {
-      navigate('/nueva-programacion');
+      navigate('/documentos/nuevo');
     }
   };
 
@@ -987,7 +1032,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     <>
     <WizardShell<Step>
       title={detail?.title || 'Nueva programación'}
-      subtitle={detail?.title ? 'Editar programación' : undefined}
+      subtitle={processSubtitle ?? (detail?.title ? 'Editar programación' : undefined)}
       onBack={handleWizardBack}
       backLabel={isValidateMode ? 'Volver al panel principal' : 'Volver'}
       actions={headerActions}
@@ -1020,7 +1065,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     </span>
                     <button
                       type="button"
-                      onClick={() => navigate('/nueva-programacion')}
+                      onClick={() => navigate('/documentos/nuevo')}
                       className="text-xs text-odoo-purple dark:text-odoo-dark-purple hover:underline cursor-pointer shrink-0"
                     >
                       Cambiar plantilla

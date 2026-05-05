@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep3Users } from '../WizardStep3Users';
 import {
@@ -59,8 +59,12 @@ const mockSearchResults = [
   { id: 'u2', name: 'User 2', role: 'Staff' },
 ];
 
-function renderWithProfile(ui: ReactElement) {
-  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+async function renderWithProfile(ui: ReactElement) {
+  let renderResult: ReturnType<typeof render> | null = null;
+  await act(async () => {
+    renderResult = render(<UserProfileProvider>{ui}</UserProfileProvider>);
+  });
+  return renderResult!;
 }
 
 describe('WizardStep3Users', () => {
@@ -96,20 +100,20 @@ describe('WizardStep3Users', () => {
     vi.mocked(searchDocumentReviewerCandidates).mockResolvedValue({ data: mockSearchResults });
   });
 
-  it('renders validators correctly', () => {
-    renderWithProfile(<WizardStep3Users {...defaultProps} />);
+  it('renders validators correctly', async () => {
+    await renderWithProfile(<WizardStep3Users {...defaultProps} />);
     expect(screen.getByText('User 1')).toBeTruthy();
   });
 
-  it('switches between Libre and Ordenada', () => {
-    renderWithProfile(<WizardStep3Users {...defaultProps} />);
+  it('switches between Libre and Ordenada', async () => {
+    await renderWithProfile(<WizardStep3Users {...defaultProps} />);
     const orderedBtn = screen.getAllByRole('button', { name: 'Ordenada' })[0];
     fireEvent.click(orderedBtn);
     expect(defaultProps.onValidationTypeChange).toHaveBeenCalledWith('ordenada');
   });
 
   it('removes a validator after confirmation', async () => {
-    renderWithProfile(<WizardStep3Users {...defaultProps} />);
+    await renderWithProfile(<WizardStep3Users {...defaultProps} />);
     const removeBtn = screen.getByText('✕');
     fireEvent.click(removeBtn);
     expect(screen.getByText(/¿Eliminar a/i)).toBeTruthy();
@@ -118,7 +122,7 @@ describe('WizardStep3Users', () => {
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([]);
   });
 
-  it('no llama a la API de búsqueda sin permiso users.search', () => {
+  it('no llama a la API de búsqueda sin permiso users.search', async () => {
     vi.mocked(fetchMe).mockResolvedValue({
       data: {
         id: 'usr_step3',
@@ -134,7 +138,7 @@ describe('WizardStep3Users', () => {
         source: 'fdw',
       },
     });
-    renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
+    await renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
     const searchInput = screen.getAllByPlaceholderText('Filtrar usuarios...')[0];
     expect(searchInput).toHaveProperty('disabled', true);
@@ -144,7 +148,7 @@ describe('WizardStep3Users', () => {
   });
 
   it('searches and adds a new validator', async () => {
-    renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
+    await renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
     await waitFor(() => {
       expect(vi.mocked(fetchMe)).toHaveBeenCalled();
@@ -166,7 +170,7 @@ describe('WizardStep3Users', () => {
   });
 
   it('no excluye al creador: la búsqueda de candidatos no envía exclude_user_id', async () => {
-    renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
+    await renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
     await waitFor(() => {
       expect(vi.mocked(fetchMe)).toHaveBeenCalled();

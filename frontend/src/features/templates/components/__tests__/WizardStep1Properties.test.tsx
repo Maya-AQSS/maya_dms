@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep1Properties } from '../WizardStep1Properties';
 import { UserProfileProvider } from '../../../../features/user-profile';
@@ -29,8 +29,12 @@ vi.mock('../../../../features/hierarchy', () => ({
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-function renderWithProfile(ui: ReactElement) {
-  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+async function renderWithProfile(ui: ReactElement) {
+  let renderResult: ReturnType<typeof render> | null = null;
+  await act(async () => {
+    renderResult = render(<UserProfileProvider>{ui}</UserProfileProvider>);
+  });
+  return renderResult!;
 }
 
 describe('WizardStep1Properties', () => {
@@ -58,44 +62,46 @@ describe('WizardStep1Properties', () => {
     vi.clearAllMocks();
   });
 
-  it('renders correctly with default props', () => {
-    renderWithProfile(<WizardStep1Properties {...defaultProps} />);
+  it('renders correctly with default props', async () => {
+    await renderWithProfile(<WizardStep1Properties {...defaultProps} />);
     expect(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Visibilidad/i)).toBeTruthy();
   });
 
-  it('shows error message when passed via props', () => {
-    renderWithProfile(<WizardStep1Properties {...defaultProps} errors={{ name: 'El nombre es obligatorio.' }} />);
+  it('shows error message when passed via props', async () => {
+    await renderWithProfile(<WizardStep1Properties {...defaultProps} errors={{ name: 'El nombre es obligatorio.' }} />);
     expect(screen.getByText(/El nombre es obligatorio./i)).toBeTruthy();
   });
 
-  it('calls setName on input change', () => {
-    renderWithProfile(<WizardStep1Properties {...defaultProps} />);
+  it('calls setName on input change', async () => {
+    await renderWithProfile(<WizardStep1Properties {...defaultProps} />);
     const [input] = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i);
     fireEvent.change(input, { target: { value: 'Nueva Plantilla' } });
     expect(defaultProps.setName).toHaveBeenCalledWith('Nueva Plantilla');
   });
 
-  it('shows academic hierarchy fields only when visibility requires it', () => {
-    const { rerender } = renderWithProfile(<WizardStep1Properties {...defaultProps} visibility="personal" />);
+  it('shows academic hierarchy fields only when visibility requires it', async () => {
+    const { rerender } = await renderWithProfile(<WizardStep1Properties {...defaultProps} visibility="personal" />);
     expect(screen.queryByText('— Seleccionar —')).toBeNull();
 
-    rerender(
-      <UserProfileProvider>
-        <WizardStep1Properties {...defaultProps} visibility="study_type" />
-      </UserProfileProvider>,
-    );
+    await act(async () => {
+      rerender(
+        <UserProfileProvider>
+          <WizardStep1Properties {...defaultProps} visibility="study_type" />
+        </UserProfileProvider>,
+      );
+    });
     expect(screen.getByText('No tienes tipos de estudio asignados, contacta con un administrador')).toBeTruthy();
   });
 
-  it('auto-selects study type if only one is available', () => {
+  it('auto-selects study type if only one is available', async () => {
     vi.mocked(useHierarchy).mockReturnValue({
       hierarchy: [{ id: 'ST_1', name: 'Único Tipo', studies: [] }],
       loading: false,
       error: null,
     } as any);
 
-    renderWithProfile(<WizardStep1Properties {...defaultProps} visibility="study_type" />);
+    await renderWithProfile(<WizardStep1Properties {...defaultProps} visibility="study_type" />);
     expect(defaultProps.setStudyTypeId).toHaveBeenCalledWith('ST_1');
   });
 });

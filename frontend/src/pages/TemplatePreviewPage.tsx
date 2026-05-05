@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
+import { fetchProcesses } from '../api/processes';
 import { apiFetchJson } from '../api/http';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
@@ -51,9 +52,32 @@ export function TemplatePreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const locationState = location.state as { selectionMode?: boolean; backTo?: string; moduleId?: string } | null;
+  const locationState = location.state as {
+    selectionMode?: boolean;
+    backTo?: string;
+    moduleId?: string;
+    processId?: string;
+  } | null;
   const selectionMode = locationState?.selectionMode === true;
-  const backTo = locationState?.backTo ?? '/nueva-programacion';
+  const backTo = locationState?.backTo ?? '/documentos/nuevo';
+  const defaultBackTo = locationState?.backTo ?? '/dashboard';
+  const handleBack = () => {
+    if (selectionMode) {
+      navigate(backTo, {
+        state: {
+          moduleId: locationState?.moduleId,
+          processId: locationState?.processId,
+        },
+      });
+      return;
+    }
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate(selectionMode ? backTo : defaultBackTo);
+  };
+
   const { profile, hasPermission } = useUserProfile();
 
   const [template, setTemplate] = useState<Template | null>(null);
@@ -66,6 +90,7 @@ export function TemplatePreviewPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [processLabel, setProcessLabel] = useState<string | null>(null);
 
   // Review comments (only loaded when owner & has_review_comments)
   const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
@@ -143,14 +168,47 @@ export function TemplatePreviewPage() {
   const isOwner = profile?.id === template?.created_by;
   const isPublished = template?.status === 'published';
   const hasReviewers = (template?.reviewers?.length ?? 0) > 0;
+  const authorDisplay =
+    template?.author_name?.trim() ||
+    (isOwner ? profile?.name?.trim() : '') ||
+    'Autor desconocido';
 
   const canEdit = isOwner && isDraft;
   /** Igual que `TemplatePolicy::delete` (backend): creador o `templates.delete`, cualquier estado. */
   const canDelete =
     template != null &&
-    (profile?.id === template.created_by || hasPermission('templates.delete'));
-  const canClone = isPublished || isOwner;
+    (
+      (isDraft && isOwner) ||
+      (isPublished && (isOwner || hasPermission('templates.delete')))
+    );
+  const canClone =
+    (isDraft && isOwner) ||
+    (isPublished && (isOwner || hasPermission('templates.update')));
   const canSubmit = isOwner && isDraft && hasReviewers && !template.has_review_comments;
+
+  useEffect(() => {
+    if (!template?.process_id) {
+      setProcessLabel(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchProcesses()
+      .then((res) => {
+        if (cancelled) return;
+        const process = res.data.find((p) => p.id === template.process_id) ?? null;
+        if (!process) {
+          setProcessLabel(null);
+          return;
+        }
+        setProcessLabel(`Proceso: ${process.code} — ${process.name}`);
+      })
+      .catch(() => {
+        if (!cancelled) setProcessLabel(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [template?.process_id]);
 
   const handleSubmitForReview = async () => {
     if (!id || !template) return;
@@ -187,7 +245,7 @@ export function TemplatePreviewPage() {
     setDeleteError(null);
     try {
       await deleteTemplate(id);
-      navigate('/procesos');
+      navigate(defaultBackTo);
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la plantilla.');
       setDeleteLoading(false);
@@ -211,8 +269,8 @@ export function TemplatePreviewPage() {
             type="button"
             variant="primary"
             size="sm"
-            onClick={() => navigate(`/nueva-programacion/${id}/wizard`, {
-              state: { moduleId: locationState?.moduleId },
+            onClick={() => navigate(`/documentos/nuevo/${id}/wizard`, {
+              state: { moduleId: locationState?.moduleId, processId: locationState?.processId },
             })}
           >
             Usar plantilla
@@ -257,7 +315,13 @@ export function TemplatePreviewPage() {
 
   const headerMeta = template ? (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
-      {template.author_name ?? 'Autor desconocido'}
+      {processLabel ? (
+        <>
+          {processLabel}
+          {' · '}
+        </>
+      ) : null}
+      {authorDisplay}
       {' · '}
       {visibilityLabel(template.visibility_level)}
       {' · '}
@@ -272,7 +336,7 @@ export function TemplatePreviewPage() {
       <PageTitle
         title={template?.name ?? 'Plantilla'}
         subtitle="Previsualización"
-        onBack={() => navigate(selectionMode ? backTo : '/procesos')}
+        onBack={handleBack}
         backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
         meta={
           <div className="space-y-3">
