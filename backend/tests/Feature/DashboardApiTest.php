@@ -355,4 +355,69 @@ class DashboardApiTest extends TestCase
             ->assertJsonPath('data.stats.templates_high', 0)
             ->assertJsonCount(0, 'data.document_review_inbox');
     }
+
+    public function test_dashboard_template_review_inbox_respects_sequential_stage(): void
+    {
+        $rev1 = (string) Str::uuid();
+        $rev2 = (string) Str::uuid();
+        $headersRev2 = $this->authHeaders($rev2);
+
+        $templateId = (string) Str::uuid();
+        $ownerId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Plantilla secuencial dashboard',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => now()->addDays(2),
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $ownerId,
+            'status' => 'in_review',
+            'version' => 1,
+            'review_stages' => 2,
+            'review_mode' => 'sequential',
+        ]);
+
+        \DB::table('template_reviewers')->insert([
+            [
+                'id' => (string) Str::uuid(),
+                'template_id' => $templateId,
+                'user_id' => $rev1,
+                'stage' => 1,
+                'status' => 'pending',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'template_id' => $templateId,
+                'user_id' => $rev2,
+                'stage' => 2,
+                'status' => 'pending',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $blocked = $this->getJson('/api/v1/dashboard', $headersRev2);
+        $blocked->assertOk()
+            ->assertJsonCount(0, 'data.template_review_inbox')
+            ->assertJsonPath('data.stats.templates_critical', 0)
+            ->assertJsonPath('data.stats.templates_high', 0);
+
+        \DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->where('user_id', $rev1)
+            ->update(['status' => 'approved', 'updated_at' => now()]);
+
+        $unblocked = $this->getJson('/api/v1/dashboard', $headersRev2);
+        $unblocked->assertOk()
+            ->assertJsonCount(1, 'data.template_review_inbox')
+            ->assertJsonPath('data.template_review_inbox.0.template_id', $templateId)
+            ->assertJsonPath('data.template_review_inbox.0.review_stage', 2);
+    }
 }

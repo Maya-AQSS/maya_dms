@@ -196,12 +196,29 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function listPendingReviewInboxForUser(string $userId): Collection
     {
+        $minPendingByTemplate = DB::table('template_reviewers as tr_min')
+            ->select('tr_min.template_id')
+            ->selectRaw('MIN(tr_min.stage) as min_stage')
+            ->where('tr_min.status', 'pending')
+            ->groupBy('tr_min.template_id');
+
         $rows = DB::table('template_reviewers')
             ->join('templates', 'templates.id', '=', 'template_reviewers.template_id')
             ->leftJoin('users as author_user', 'author_user.id', '=', 'templates.created_by')
+            ->leftJoinSub($minPendingByTemplate, 'ts', function ($join) {
+                $join->on('ts.template_id', '=', 'templates.id');
+            })
             ->where('template_reviewers.user_id', $userId)
             ->where('template_reviewers.status', 'pending')
             ->where('templates.status', 'in_review')
+            ->where(function ($q) {
+                $q->whereNull('templates.review_mode')
+                    ->orWhere('templates.review_mode', 'parallel')
+                    ->orWhere(function ($q2) {
+                        $q2->where('templates.review_mode', 'sequential')
+                            ->whereColumn('template_reviewers.stage', 'ts.min_stage');
+                    });
+            })
             ->orderByRaw('CASE WHEN templates.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
             ->orderBy('templates.delivery_deadline', 'asc')
             ->orderBy('templates.updated_at', 'desc')
