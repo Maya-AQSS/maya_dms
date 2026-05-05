@@ -69,7 +69,7 @@ export function ProcesosPage() {
               size="sm"
               onClick={() => navigate('/nueva-programacion', { state: navState })}
             >
-              Nueva Programación
+              Nuevo Documento
             </Button>
           )
         }
