@@ -82,10 +82,22 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
 
   useEffect(() => {
     ensureStyles();
-    try {
-      const result = getHeadlessEditor().blocksToHTMLLossy(
-        repairBlockNoteBlocks(content) as PartialBlock[],
+    const repaired = repairBlockNoteBlocks(Array.isArray(content) ? content : []);
+    // Empty content (no blocks, or all-whitespace text) → render nothing, not an error.
+    const isEmpty =
+      repaired.length === 0 ||
+      repaired.every(
+        (b: any) =>
+          !Array.isArray(b.content) ||
+          b.content.length === 0 ||
+          b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
       );
+    if (isEmpty) {
+      setHtml('');
+      return;
+    }
+    try {
+      const result = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
       setHtml(result);
     } catch {
       setHtml('<p><em>Error al renderizar el contenido.</em></p>');
