@@ -10,6 +10,7 @@ import {
   type DocumentReview,
 } from '../api/documents';
 import { fetchTemplate } from '../api/templates';
+import { fetchProcesses } from '../api/processes';
 import { fetchMe } from '../api/users';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
@@ -20,6 +21,7 @@ import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
+import type { Process } from '../types/processes';
 
 // Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
@@ -96,6 +98,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [processLabel, setProcessLabel] = useState<string | null>(null);
 
   useEffect(() => {
     if (!documentId) {
@@ -201,6 +204,40 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       cancelled = true;
     };
   }, [isValidateMode, detail?.id, detail?.status, detail?.template_id]);
+
+  useEffect(() => {
+    if (!detail?.template_id) {
+      setProcessLabel(null);
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const [templateResp, processesResp] = await Promise.all([
+          fetchTemplate(detail.template_id),
+          fetchProcesses(),
+        ]);
+        if (cancelled) return;
+        const processId = templateResp.data.process_id;
+        if (!processId) {
+          setProcessLabel(null);
+          return;
+        }
+        const process = processesResp.data.find((p: Process) => p.id === processId) ?? null;
+        if (!process) {
+          setProcessLabel(null);
+          return;
+        }
+        setProcessLabel(`Proceso: ${process.code} — ${process.name}`);
+      } catch {
+        if (!cancelled) setProcessLabel(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [detail?.template_id]);
 
   const handleDelete = async () => {
     if (!documentId) return;
@@ -352,6 +389,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const headerMetaInfo = detail ? (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
+      {processLabel ? (
+        <>
+          {processLabel}
+          {' · '}
+        </>
+      ) : null}
       {detail.owner_name ?? 'Autor desconocido'}
       {' · '}
       {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
@@ -389,6 +432,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 <p className="text-xs text-text-muted uppercase tracking-widest font-black truncate max-w-[320px]">
                   {detail?.title ?? 'Documento'}
                 </p>
+                {processLabel && (
+                  <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[420px]">
+                    {processLabel}
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">

@@ -6,8 +6,10 @@ import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
+import { fetchProcesses } from '../../../api/processes';
 import { apiFetchJson } from '../../../api/http';
 import { useAuth } from '@maya/shared-auth-react';
+import type { Process } from '../../../types/processes';
 
 type Props = {
   template: Template;
@@ -70,6 +72,7 @@ export function TemplateReviewView({ template }: Props) {
   // Modales
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showNoCommentsWarning, setShowNoCommentsWarning] = useState(false);
+  const [processLabel, setProcessLabel] = useState<string | null>(null);
 
   // Estado de la barra lateral: 'comments' | 'info' | null
   const [sidebarMode, setSidebarMode] = useState<'comments' | 'info' | null>(null);
@@ -84,6 +87,30 @@ export function TemplateReviewView({ template }: Props) {
     // Cargar comentarios iniciales
     void loadComments();
   }, [template.id]);
+
+  useEffect(() => {
+    if (!template.process_id) {
+      setProcessLabel(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchProcesses()
+      .then((res) => {
+        if (cancelled) return;
+        const process = res.data.find((p: Process) => p.id === template.process_id) ?? null;
+        if (!process) {
+          setProcessLabel(null);
+          return;
+        }
+        setProcessLabel(`Proceso: ${process.code} — ${process.name}`);
+      })
+      .catch(() => {
+        if (!cancelled) setProcessLabel(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [template.process_id]);
 
   const loadComments = async () => {
     try {
@@ -170,6 +197,11 @@ export function TemplateReviewView({ template }: Props) {
             <p className="text-xs text-text-muted uppercase tracking-widest font-black truncate max-w-[200px]">
               {template.name}
             </p>
+                            {processLabel && (
+                              <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[420px]">
+                                {processLabel}
+                              </p>
+                            )}
           </div>
         </div>
 
