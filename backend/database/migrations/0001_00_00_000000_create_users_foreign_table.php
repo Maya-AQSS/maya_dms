@@ -26,13 +26,16 @@ return new class extends Migration
 
         DB::statement("
             CREATE FOREIGN TABLE " . self::FDW_TBL . " (
-                id           varchar(255) NOT NULL,
-                email        varchar(255) NOT NULL,
-                display_name varchar(255),
-                first_name   varchar(150),
-                last_name    varchar(150),
-                username     varchar(150),
-                is_active    boolean NOT NULL DEFAULT true
+                id            varchar(255) NOT NULL,
+                email         varchar(255) NOT NULL,
+                display_name  varchar(255),
+                first_name    varchar(150),
+                last_name     varchar(150),
+                username      varchar(150),
+                employee_id   varchar(64),
+                dni           varchar(32),
+                employee_type varchar(64),
+                is_active     boolean NOT NULL DEFAULT true
             )
             SERVER " . self::SERVER . "
             OPTIONS (schema_name 'public', table_name 'v_app_users')
@@ -45,6 +48,10 @@ return new class extends Migration
                    email,
                    first_name,
                    last_name,
+                   username,
+                   employee_id,
+                   dni,
+                   employee_type,
                    is_active
             FROM " . self::FDW_TBL . "
         ");
