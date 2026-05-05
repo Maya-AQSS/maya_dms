@@ -87,6 +87,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   }, [initial?.id, initial?.has_review_comments]);
 
   useEffect(() => {
+    if (step !== 'blocks') return;
+    if (blocksLoading || blocksCount < 1) return;
+    if (!errors.blocks) return;
+    setErrors((prev) => {
+      const { blocks: _blocks, ...rest } = prev;
+      return rest;
+    });
+  }, [blocksCount, blocksLoading, errors.blocks, step]);
+
+  useEffect(() => {
     const effectiveProcessId = processId ?? template?.process_id ?? initial?.process_id ?? null;
     if (!effectiveProcessId) {
       setProcessSubtitle(null);
