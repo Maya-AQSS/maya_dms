@@ -1,25 +1,59 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { fetchDocuments } from '../../../api/documents';
-import type { Document } from '../../../types/documents';
+import { fetchDashboard, type DocumentReviewInboxItem, type TemplateReviewInboxItem } from '../../../api/dashboard';
 
-/** Widget compacto: últimos 5 documentos ordenados por updated_at desc. */
+type PendingReviewItem =
+  | {
+      kind: 'template';
+      id: string;
+      title: string;
+      daysRemaining: number | null;
+    }
+  | {
+      kind: 'document';
+      id: string;
+      title: string;
+      daysRemaining: number | null;
+    };
+
+/** Widget compacto: pendientes de validar (plantillas + documentos). */
 export default function RecentDocumentsWidget() {
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const [filter, setFilter] = useState<'all' | 'template' | 'document'>('all');
+  const [items, setItems] = useState<PendingReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     let mounted = true;
-    fetchDocuments()
+    fetchDashboard()
       .then((data) => {
         if (!mounted) return;
-        const sorted = [...data].sort((a, b) => {
-          const ta = a.updated_at ? new Date(a.updated_at).getTime() : 0;
-          const tb = b.updated_at ? new Date(b.updated_at).getTime() : 0;
-          return tb - ta;
-        });
-        setDocuments(sorted.slice(0, 5));
+        const templateItems: PendingReviewItem[] = (data.template_review_inbox ?? []).map(
+          (item: TemplateReviewInboxItem) => ({
+            kind: 'template',
+            id: item.template_id,
+            title: item.title?.trim() || 'Plantilla sin título',
+            daysRemaining: item.days_remaining ?? null,
+          }),
+        );
+        const documentItems: PendingReviewItem[] = (data.document_review_inbox ?? []).map(
+          (item: DocumentReviewInboxItem) => ({
+            kind: 'document',
+            id: item.document_id,
+            title: item.title?.trim() || 'Documento sin título',
+            daysRemaining: item.days_remaining ?? null,
+          }),
+        );
+        const merged = [...templateItems, ...documentItems]
+          .sort((a, b) => {
+            const da = a.daysRemaining;
+            const db = b.daysRemaining;
+            if (da == null && db == null) return a.title.localeCompare(b.title);
+            if (da == null) return 1;
+            if (db == null) return -1;
+            return da - db;
+          });
+        setItems(merged);
         setError(null);
       })
       .catch((err) => {
@@ -35,16 +69,23 @@ export default function RecentDocumentsWidget() {
     };
   }, []);
 
-  const formatRelative = (iso?: string | null) => {
-    if (!iso) return '—';
-    const date = new Date(iso);
-    const diffMs = Date.now() - date.getTime();
-    const days = Math.floor(diffMs / 86_400_000);
-    if (days <= 0) return 'hoy';
-    if (days === 1) return 'ayer';
-    if (days < 7) return `hace ${days} días`;
-    if (days < 30) return `hace ${Math.floor(days / 7)} sem.`;
-    return date.toLocaleDateString('es-ES');
+  useEffect(() => {
+    const handleFilterChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ filter?: 'all' | 'template' | 'document' }>;
+      const nextFilter = customEvent.detail?.filter ?? 'all';
+      setFilter(nextFilter);
+    };
+    window.addEventListener('maya:dms:pending-validations-filter-change', handleFilterChange as EventListener);
+    return () => {
+      window.removeEventListener('maya:dms:pending-validations-filter-change', handleFilterChange as EventListener);
+    };
+  }, []);
+
+  const formatRemaining = (daysRemaining: number | null): string => {
+    if (daysRemaining == null) return '—';
+    if (daysRemaining < 0) return `Vencido (${Math.abs(daysRemaining)}d)`;
+    if (daysRemaining === 0) return 'Vence hoy';
+    return `${daysRemaining}d`;
   };
 
   if (loading) {
@@ -63,27 +104,50 @@ export default function RecentDocumentsWidget() {
     );
   }
 
-  if (documents.length === 0) {
+  if (items.length === 0) {
     return (
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
-        No hay documentos recientes.
+        No tienes pendientes de validación.
+      </p>
+    );
+  }
+
+  const visibleItems =
+    filter === 'all' ? items : items.filter((item) => item.kind === filter);
+
+  if (visibleItems.length === 0) {
+    return (
+      <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
+        No hay pendientes para ese filtro.
       </p>
     );
   }
 
   return (
     <ul className="divide-y divide-ui-border-l dark:divide-ui-dark-border">
-      {documents.map((doc) => (
-        <li key={doc.id}>
+      {visibleItems.map((item) => (
+        <li key={`${item.kind}:${item.id}`}>
           <Link
-            to={`/documents/${doc.id}`}
+            to={item.kind === 'template' ? `/templates/${item.id}/review` : `/documents/${item.id}/validate`}
             className="flex items-center justify-between gap-3 py-2 px-1 hover:bg-ui-body dark:hover:bg-ui-dark-bg rounded transition-colors"
           >
-            <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary truncate">
-              {doc.title?.trim() || 'Sin título'}
+            <span className="min-w-0 flex items-center gap-2">
+              <span
+                className={[
+                  'shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                  item.kind === 'template'
+                    ? 'bg-odoo-purple/10 text-odoo-purple'
+                    : 'bg-odoo-teal/10 text-odoo-teal',
+                ].join(' ')}
+              >
+                {item.kind === 'template' ? 'TPL' : 'DOC'}
+              </span>
+              <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary truncate">
+                {item.title}
+              </span>
             </span>
             <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0 tabular-nums">
-              {formatRelative(doc.updated_at)}
+              {formatRemaining(item.daysRemaining)}
             </span>
           </Link>
         </li>

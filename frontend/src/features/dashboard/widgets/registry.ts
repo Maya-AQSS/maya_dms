@@ -6,7 +6,7 @@ import PendingValidationsWidget from './PendingValidationsWidget';
 export const WIDGET_REGISTRY: WidgetRegistry = {
   'recent-documents': {
     id: 'recent-documents',
-    titleKey: 'dashboard.widgets.recentDocuments',
+    titleKey: 'dashboard.widgets.pendingValidations',
     defaultSize: { w: 6, h: 4 },
     minSize: { w: 4, h: 3 },
     component: RecentDocumentsWidget,
