@@ -135,7 +135,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   } | null;
   const cameFromSummary = previewState?.returnToStep === 'summary';
   const cameFromValidate = previewState?.returnToValidate === true;
-  const backTo = previewState?.backTo ?? (isValidateMode ? '/dashboard' : '/procesos');
+  const backTo = previewState?.backTo ?? '/dashboard';
 
   const backLabel = cameFromSummary
     ? cameFromValidate ? 'Volver a validar' : 'Volver al resumen'
@@ -166,7 +166,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       navigate(previewState.backTo);
       return;
     }
-    navigate('/procesos', { state: { tab: 'documents' } });
+    navigate('/dashboard');
   };
 
   const isDraft = detail?.status === 'draft';
@@ -262,7 +262,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setDeleteError(null);
     try {
       await deleteDocument(documentId);
-      navigate('/procesos', { state: { tab: 'documents' } });
+      navigate(backTo);
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar el documento.');
       setDeleteLoading(false);

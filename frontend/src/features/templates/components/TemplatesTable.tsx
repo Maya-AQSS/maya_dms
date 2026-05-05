@@ -127,7 +127,7 @@ export function TemplatesTable({ processId }: Props = {}) {
   const handleRowClick = (t: Template) => {
     const isReviewer =
       t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    const backTo = processId ? `/procesos/${processId}` : '/procesos';
+    const backTo = processId ? `/procesos/${processId}` : '/dashboard';
     navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
       state: { backTo, processId },
     });

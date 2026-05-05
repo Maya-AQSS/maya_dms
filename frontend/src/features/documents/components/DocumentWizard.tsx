@@ -256,6 +256,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const isDraft = !detail || detail.status === 'draft';
   const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
   const locationProcessId = (location.state as { processId?: string } | null)?.processId;
+  const processBackTo = useMemo(() => {
+    const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
+    return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
+  }, [locationProcessId, template?.process_id]);
 
   const reload = useCallback(async () => {
     if (!documentId) return;
@@ -752,7 +756,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'summary') {
-      navigate('/procesos', { state: { tab: 'documents' } });
+      navigate(processBackTo, { state: { tab: 'documents' } });
     }
   };
 
@@ -765,7 +769,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     try {
       const updated = await submitDocumentForReview(detail.id);
       setDetail((prev) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
-      navigate('/procesos', {
+      navigate(processBackTo, {
         state: { tab: 'documents', documentSubmittedForReview: true },
       });
     } catch (e) {
@@ -778,7 +782,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const handleConfirmSummaryAction = async () => {
     if (summaryConfirmAction === 'save') {
       setSummaryConfirmAction(null);
-      navigate('/procesos', { state: { tab: 'documents' } });
+      navigate(processBackTo, { state: { tab: 'documents' } });
       return;
     }
     if (summaryConfirmAction === 'submit') {
@@ -871,7 +875,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           type="button"
           variant="secondary"
           onClick={() =>
-            navigate(isValidateMode ? '/dashboard' : '/procesos', {
+            navigate(isValidateMode ? '/dashboard' : processBackTo, {
               state: isValidateMode ? {} : { tab: 'documents' },
             })
           }

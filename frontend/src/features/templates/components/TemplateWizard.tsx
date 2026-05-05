@@ -32,6 +32,10 @@ type Props = {
 export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
   const navigate = useNavigate();
   const initial = templateProp || initialTemplate;
+  const processBackTo = useMemo(() => {
+    const effectiveProcessId = processId ?? templateProp?.process_id ?? initialTemplate?.process_id ?? null;
+    return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
+  }, [initialTemplate?.process_id, processId, templateProp?.process_id]);
 
   // Step state
   const [step, setStep] = useState<Step>('properties');
@@ -132,13 +136,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       return;
     }
     if (step === 'properties') {
-      navigate('/procesos');
+      navigate(processBackTo);
       return;
     }
     const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
     const idx = order.indexOf(step);
     if (idx > 0) setStep(order[idx - 1]!);
-    else navigate('/procesos');
+    else navigate(processBackTo);
   };
 
   const validateStep1 = () => {
@@ -229,7 +233,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setSaving(true);
     try {
       await apiPublishTemplate(template.id);
-      navigate('/procesos');
+      navigate(processBackTo);
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al publicar la plantilla' });
     } finally {
@@ -245,7 +249,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       const res = await apiSubmitTemplateForReview(template.id);
       setTemplate(res.data);
       setShowValidationModal(false);
-      navigate('/procesos');
+      navigate(processBackTo);
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
     } finally {
@@ -305,7 +309,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     } else if (step === 'users') {
       void saveUsers();
     } else if (step === 'summary') {
-      navigate('/procesos');
+      navigate(processBackTo);
     }
   };
 
@@ -352,7 +356,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         <Button
           variant="outline"
           size="sm"
-          onClick={() => navigate('/procesos')}
+          onClick={() => navigate(processBackTo)}
           className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
         >
           Guardar y salir
@@ -405,7 +409,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             ⚠️ Tienes cambios sin guardar en este paso. ¿Seguro que quieres salir?
           </span>
           <div className="flex gap-2">
-            <Button variant="outlineWarning" size="xs" onClick={() => navigate('/procesos')}>
+            <Button variant="outlineWarning" size="xs" onClick={() => navigate(processBackTo)}>
               Salir sin guardar
             </Button>
             <Button variant="secondary" size="xs" onClick={() => setLeaveGuard(false)}>

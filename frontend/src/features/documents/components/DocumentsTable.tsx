@@ -252,7 +252,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         filtersStorageKey="maya:dms:documents-table"
         onRowClick={(doc) =>
           navigate(`/documents/${doc.id}`, {
-            state: { backTo: processId ? `/procesos/${processId}` : '/procesos', processId },
+            state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
           })
         }
         filtersPanel={

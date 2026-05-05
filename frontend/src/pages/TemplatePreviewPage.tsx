@@ -59,7 +59,7 @@ export function TemplatePreviewPage() {
   } | null;
   const selectionMode = locationState?.selectionMode === true;
   const backTo = locationState?.backTo ?? '/documentos/nuevo';
-  const defaultBackTo = locationState?.backTo ?? '/procesos';
+  const defaultBackTo = locationState?.backTo ?? '/dashboard';
   const handleBack = () => {
     if (window.history.length > 1) {
       navigate(-1);
@@ -206,7 +206,7 @@ export function TemplatePreviewPage() {
     setDeleteError(null);
     try {
       await deleteTemplate(id);
-      navigate('/procesos');
+      navigate(defaultBackTo);
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar la plantilla.');
       setDeleteLoading(false);
