@@ -41,7 +41,7 @@ const VARIANT_CLS: Record<BlockListItemVariant, string> = {
   'multi-current': 'bg-warning-light/40 border-warning ring-2 ring-warning/30',
   'multi-saved': 'bg-success/5 border-success/30',
   'multi-queued':
-    'bg-white dark:bg-ui-dark-card border-ui-border dark:border-ui-dark-border hover:border-odoo-purple/40 hover:bg-ui-body/50',
+    'bg-odoo-purple/5 border-odoo-purple/40 shadow-sm',
   default:
     'bg-white dark:bg-ui-dark-card border-ui-border dark:border-ui-dark-border hover:border-odoo-purple/40 hover:bg-ui-body/50',
 };

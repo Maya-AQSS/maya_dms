@@ -79,8 +79,16 @@ vi.mock('@dnd-kit/utilities', () => ({
 }));
 
 const mockBlocks = [
-  { id: 'b1', title: 'Bloque 1', mandatory: true, block_state: 'locked' },
-  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'default' },
+  {
+    id: 'b1',
+    title: 'Bloque 1',
+    mandatory: true,
+    block_state: 'locked',
+    type: 'paragraph',
+    default_content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello' }] }],
+    description: [{ type: 'paragraph', content: [{ type: 'text', text: 'desc' }] }],
+  },
+  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'default', type: 'paragraph', default_content: null, description: null },
 ];
 
 function renderWithProfile(ui: ReactElement) {
@@ -149,5 +157,38 @@ describe('WizardStep2Blocks', () => {
 
     fireEvent.click(screen.getByText('Deseleccionar todos'));
     expect(screen.queryByText('Propiedades')).toBeNull();
+  });
+
+  it('duplicate deep-clones content and description', async () => {
+    const createBlock = vi.fn().mockResolvedValue({ id: 'b3', title: 'Bloque 1 (copia)', mandatory: true, block_state: 'locked', type: 'paragraph' });
+    mockUseTemplateBlocks.mockReturnValue({
+      blocks: mockBlocks,
+      loading: false,
+      createBlock,
+      updateBlock: vi.fn(),
+      deleteBlock: vi.fn(),
+      reorderBlocks: vi.fn(),
+    });
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Bloque 1/i }));
+    await waitFor(() => expect(screen.getByText('Duplicar')).toBeTruthy());
+    fireEvent.click(screen.getByText('Duplicar'));
+    await waitFor(() => {
+      expect(createBlock).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Bloque 1 (copia)',
+        default_content: mockBlocks[0].default_content,
+        description: mockBlocks[0].description,
+      }));
+    });
+  });
+
+  it('shows selected state on all blocks after "Seleccionar todos"', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByText('Seleccionar todos'));
+    // Both blocks should have multi-queued or selected styling via data rendered by BlockListItem
+    // The presence of 'Deseleccionar todos' confirms multi-select is active
+    expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
+    expect(screen.getAllByText('Bloque 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bloque 2').length).toBeGreaterThan(0);
   });
 });

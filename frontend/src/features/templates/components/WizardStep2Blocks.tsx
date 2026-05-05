@@ -340,9 +340,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[blockToUiState(source)].payload;
         await createBlock({
           title: `${source.title ?? 'Bloque'} (copia)`,
-          type: 'paragraph',
+          type: source.type,
           block_state,
           mandatory,
+          default_content: source.default_content,
+          description: source.description,
         });
       }
     } finally {
