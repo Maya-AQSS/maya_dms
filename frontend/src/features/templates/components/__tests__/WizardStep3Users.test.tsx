@@ -150,7 +150,7 @@ describe('WizardStep3Users', () => {
     fireEvent.change(searchInputs[0], { target: { value: 'User 2' } });
 
     await waitFor(() => {
-      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('User 2', undefined);
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('User 2');
       expect(screen.getAllByText('User 2').length).toBeGreaterThan(0);
     });
 
@@ -166,10 +166,11 @@ describe('WizardStep3Users', () => {
 
     const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
     fireEvent.change(searchInputs[0], { target: { value: 'ab' } });
+    fireEvent.change(searchInputs[1], { target: { value: 'ab' } });
 
     await waitFor(() => {
-      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab', undefined);
-      expect(searchDocumentReviewerCandidates).toHaveBeenCalledWith('ab', undefined);
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab');
+      expect(searchDocumentReviewerCandidates).toHaveBeenCalledWith('ab');
     });
   });
 });
