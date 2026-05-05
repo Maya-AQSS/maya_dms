@@ -46,6 +46,8 @@ function formatDate(iso: string | null | undefined): string {
 export function TemplatesContent() {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
+    useTablePreferences({ storageKey: 'maya:dms:templates-content' });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
     templates,
@@ -62,10 +64,7 @@ export function TemplatesContent() {
     goToPage,
     deleteTemplate,
     cloneTemplate,
-  } = useTemplates();
-
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
-    useTablePreferences({ storageKey: 'maya:dms:templates-content' });
+  } = useTemplates(undefined, sortBy);
 
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,6 +133,7 @@ export function TemplatesContent() {
         id: 'name',
         header: 'Nombre',
         sortable: true,
+        alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
             {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}

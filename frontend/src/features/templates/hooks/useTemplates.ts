@@ -40,7 +40,7 @@ const DEFAULT_PER_PAGE = 20;
  * @param processId Si se aporta, se aplica como filtro `process_id` permanente
  *   (no se expone en el panel de filtros — viene del contexto de la URL).
  */
-export function useTemplates(processId?: string) {
+export function useTemplates(processId?: string, sortBy?: { columnId: string; direction: 'asc' | 'desc' } | null) {
   const [fullList, setFullList] = useState<Template[]>([]);
   const [filters, setFilters] = useState<TemplateListFilters>({ per_page: DEFAULT_PER_PAGE });
   const [loading, setLoading] = useState(true);
@@ -70,9 +70,37 @@ export function useTemplates(processId?: string) {
   const page = filters.page ?? 1;
   const perPage = filters.per_page ?? DEFAULT_PER_PAGE;
 
+  const sortedList = useMemo(() => {
+    if (!sortBy) return fullList;
+    const { columnId, direction } = sortBy;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    return [...fullList].sort((a, b) => {
+      let valA: string | number = '';
+      let valB: string | number = '';
+
+      if (columnId === 'name') {
+        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
+      } else if (columnId === 'delivery_deadline') {
+        valA = a.delivery_deadline ?? '';
+        valB = b.delivery_deadline ?? '';
+      } else if (columnId === 'status') {
+        valA = a.status ?? '';
+        valB = b.status ?? '';
+      } else if (columnId === 'version') {
+        valA = a.version ?? 0;
+        valB = b.version ?? 0;
+      }
+
+      if (valA < valB) return -1 * dir;
+      if (valA > valB) return 1 * dir;
+      return 0;
+    });
+  }, [fullList, sortBy]);
+
   const templates = useMemo(
-    () => sliceTemplatesPage(fullList, page, perPage),
-    [fullList, page, perPage],
+    () => sliceTemplatesPage(sortedList, page, perPage),
+    [sortedList, page, perPage],
   );
 
   const meta = useMemo(
