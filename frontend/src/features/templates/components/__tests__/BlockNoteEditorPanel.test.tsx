@@ -70,4 +70,41 @@ describe('BlockNoteEditorPanel', () => {
     render(<BlockNoteEditorPanel initialContent={null} editable={false} isDark={false} />);
     expect(screen.queryByRole('button', { name: /pantalla completa/i })).toBeNull();
   });
+
+  it('fullscreen applies sidebar-aware CSS class, not fixed inset-0', () => {
+    const { container } = render(
+      <BlockNoteEditorPanel initialContent={null} editable={true} isDark={false} />,
+    );
+    const panel = container.querySelector('.maya-bn-panel') as HTMLElement;
+    expect(panel.classList.contains('maya-bn-panel--fullscreen')).toBe(false);
+
+    fireEvent.click(screen.getByRole('button', { name: /pantalla completa/i }));
+    expect(panel.classList.contains('maya-bn-panel--fullscreen')).toBe(true);
+    expect(panel.classList.contains('fixed')).toBe(false);
+    expect(panel.classList.contains('inset-0')).toBe(false);
+  });
+
+  it('Escape key exits fullscreen', () => {
+    render(<BlockNoteEditorPanel initialContent={null} editable={true} isDark={false} />);
+    const btn = screen.getByRole('button', { name: /pantalla completa/i });
+    fireEvent.click(btn);
+    expect(btn.getAttribute('aria-pressed')).toBe('true');
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(btn.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('exiting fullscreen restores original layout classes', () => {
+    const { container } = render(
+      <BlockNoteEditorPanel initialContent={null} editable={true} isDark={false} />,
+    );
+    const panel = container.querySelector('.maya-bn-panel') as HTMLElement;
+    const originalClasses = panel.className;
+
+    const btn = screen.getByRole('button', { name: /pantalla completa/i });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+
+    expect(panel.className).toBe(originalClasses);
+  });
 });

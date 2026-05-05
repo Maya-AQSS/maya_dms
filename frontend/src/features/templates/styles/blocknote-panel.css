@@ -44,3 +44,17 @@
 .dark .bn-editor {
   color: var(--color-text-dark-primary) !important;
 }
+/* Fullscreen: anchor to content area (respects AppLayout sidebar via --sidebar-w) */
+.maya-bn-panel--fullscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+}
+@media (min-width: 768px) {
+  .maya-bn-panel--fullscreen {
+    left: var(--sidebar-w, 0);
+  }
+}

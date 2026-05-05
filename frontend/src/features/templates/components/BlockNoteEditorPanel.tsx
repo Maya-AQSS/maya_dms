@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BlockNoteEditor } from '@blocknote/core';
 import { FormattingToolbar } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
@@ -37,6 +37,15 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [isFullscreen]);
+
   const normalized = normalizeBlockContentForEditor(initialContent);
   const safeContent =
     normalized.length > 0
@@ -69,7 +78,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   };
 
   const containerCls = isFullscreen
-    ? 'maya-bn-panel fixed inset-0 z-50 flex flex-col bg-white dark:bg-ui-dark-card overflow-hidden'
+    ? 'maya-bn-panel maya-bn-panel--fullscreen flex flex-col bg-white dark:bg-ui-dark-card overflow-hidden'
     : 'maya-bn-panel flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden';
 
   return (
