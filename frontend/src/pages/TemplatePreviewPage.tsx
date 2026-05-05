@@ -153,8 +153,13 @@ export function TemplatePreviewPage() {
   /** Igual que `TemplatePolicy::delete` (backend): creador o `templates.delete`, cualquier estado. */
   const canDelete =
     template != null &&
-    (profile?.id === template.created_by || hasPermission('templates.delete'));
-  const canClone = isPublished || isOwner;
+    (
+      (isDraft && isOwner) ||
+      (isPublished && (isOwner || hasPermission('templates.delete')))
+    );
+  const canClone =
+    (isDraft && isOwner) ||
+    (isPublished && (isOwner || hasPermission('templates.update')));
   const canSubmit = isOwner && isDraft && hasReviewers && !template.has_review_comments;
 
   const handleSubmitForReview = async () => {
