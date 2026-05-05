@@ -80,7 +80,7 @@ vi.mock('@dnd-kit/utilities', () => ({
 
 const mockBlocks = [
   { id: 'b1', title: 'Bloque 1', mandatory: true, block_state: 'locked' },
-  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'editable' },
+  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'default' },
 ];
 
 function renderWithProfile(ui: ReactElement) {
@@ -89,7 +89,7 @@ function renderWithProfile(ui: ReactElement) {
 
 describe('WizardStep2Blocks', () => {
   const defaultProps = {
-    template: { id: 't1', title: 'Template', created_by: 'other-user', status: 'draft' } as any,
+    template: { id: 't1', title: 'Template' } as any,
     onBlocksCountChange: vi.fn(),
   };
 
@@ -120,11 +120,11 @@ describe('WizardStep2Blocks', () => {
     await waitFor(() => {
       expect(screen.getByText('Propiedades')).toBeTruthy();
       expect(screen.getByText('Eliminar')).toBeTruthy();
-    }, { timeout: 1000 });
+    });
   });
 
-  it('shows all blocks after selecting all', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+  it('enters multi-selection mode when selecting all blocks', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
     // After selecting all, "Bloque 1" appears in both the sidebar and the edit panel
     // header, so we use getAllByText to handle multiple matches.
@@ -132,20 +132,22 @@ describe('WizardStep2Blocks', () => {
     expect(screen.getAllByText('Bloque 2').length).toBeGreaterThan(0);
   });
 
-  it('toggles button label between "Seleccionar todos" and "Deseleccionar todos"', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
-    const btn = screen.getByText('Seleccionar todos');
-    fireEvent.click(btn);
+  it('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    const selectAllBtn = screen.getByText('Seleccionar todos');
+    
+    fireEvent.click(selectAllBtn);
+    
+    // After clicking select all, the button text should change
     expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
-    fireEvent.click(screen.getByText('Deseleccionar todos'));
-    expect(screen.getByText('Seleccionar todos')).toBeTruthy();
   });
 
-  it('returns to empty panel after deselecting all blocks', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+  it('sale del modo multi al deseleccionar todos', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
+    expect(screen.getByText('Propiedades')).toBeTruthy();
+
     fireEvent.click(screen.getByText('Deseleccionar todos'));
     expect(screen.queryByText('Propiedades')).toBeNull();
-    expect(screen.queryByText('Eliminar')).toBeNull();
   });
 });

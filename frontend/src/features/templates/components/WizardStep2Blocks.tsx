@@ -115,31 +115,6 @@ function SortableBlockItem({
   );
 }
 
-// Converts any block field value (object, JSON string, plain string, null) to
-// a JSON string suitable for storage in form state and re-parsing by the editor.
-// Plain-text legacy values are wrapped into a single paragraph block so the
-// editor can display them and doSave can round-trip them as BlockNote JSON.
-function serializeForEditor(value: unknown): string {
-  if (value == null) return '';
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    if (!trimmed) return '';
-    // Already a JSON structure (array or object)?
-    if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
-      try { JSON.parse(trimmed); return trimmed; } catch { /* fall through */ }
-    }
-    // Plain text: wrap in a minimal paragraph block so the editor renders it.
-    return JSON.stringify([{
-      id: crypto.randomUUID(),
-      type: 'paragraph',
-      props: {},
-      content: [{ type: 'text', text: trimmed, styles: {} }],
-      children: [],
-    }]);
-  }
-  return JSON.stringify(value);
-}
-
 // ── Main Component ───────────────────────────────────────────────────────────
 
 interface WizardStep2BlocksProps {
@@ -228,8 +203,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
-    setFormDesc(serializeForEditor(block.description));
-    setFormContent(serializeForEditor(block.default_content));
+    setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
+    setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
     setFormUiState(blockToUiState(block));
     setTabIsDirty(false);
   };
@@ -241,8 +216,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
     let parsedContent: unknown = null;
     let parsedDesc: unknown = null;
-    try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = formContent || null; }
-    try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = formDesc || null; }
+    try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
+    try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
     await updateBlock(blockId, {
       title: formName.trim(),
       description: parsedDesc,
