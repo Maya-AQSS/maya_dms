@@ -75,6 +75,7 @@ function applyClientFilters(docs: Document[], filters: Filters): Document[] {
   });
 }
 
+
 type Props = {
   /** Filtra el listado por proceso. No se expone en el panel de filtros. */
   processId?: string;
@@ -93,6 +94,7 @@ export function DocumentsTable({ processId }: Props = {}) {
       {
         id: 'title',
         header: 'Nombre',
+        alwaysVisible: true,
         cell: (doc) => (
           <span className="flex items-center gap-2 min-w-0">
             {favoriteDocumentIds.has(doc.id) && <FavoriteInlineMark />}
@@ -135,6 +137,7 @@ export function DocumentsTable({ processId }: Props = {}) {
       {
         id: 'delivery_deadline',
         header: 'Fecha',
+        sortable: true,
         cell: (doc) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>
         ),
@@ -158,9 +161,34 @@ export function DocumentsTable({ processId }: Props = {}) {
 
   const filtered = useMemo(() => applyClientFilters(documents, filters), [documents, filters]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const sorted = useMemo(() => {
+    if (!sortBy) return filtered;
+    const { columnId, direction } = sortBy;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    return [...filtered].sort((a, b) => {
+      let valA: string | number = '';
+      let valB: string | number = '';
+
+      if (columnId === 'title') {
+        return (a.title ?? '').localeCompare(b.title ?? '', 'es') * dir;
+      } else if (columnId === 'delivery_deadline') {
+        valA = a.delivery_deadline ?? '';
+        valB = b.delivery_deadline ?? '';
+      } else if (columnId === 'status') {
+        valA = a.status ?? '';
+        valB = b.status ?? '';
+      }
+
+      if (valA < valB) return -1 * dir;
+      if (valA > valB) return 1 * dir;
+      return 0;
+    });
+  }, [filtered, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, totalPages);
-  const pageSlice = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+  const pageSlice = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const filtersActiveCount = [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
 
