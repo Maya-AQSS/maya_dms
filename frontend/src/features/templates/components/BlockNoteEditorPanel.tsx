@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { useCreateBlockNote, FormattingToolbar } from '@blocknote/react';
+import { BlockNoteEditor } from '@blocknote/core';
+import { FormattingToolbar } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
 import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
 import '@blocknote/ariakit/style.css';
@@ -24,10 +25,19 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         (normalized as any)
       : undefined;
 
+  // Use a ref for stable editor identity across React StrictMode's double-mount cycle.
+  // useCreateBlockNote registers ProseMirror clipboard handlers on mount; without this
+  // guard StrictMode's mount→cleanup→remount leaves two handlers → paste fires twice.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const editor = useCreateBlockNote({
-    initialContent: safeContent ? repairBlockNoteBlocks(safeContent) : undefined,
-  } as any);
+  const editorRef = useRef<any>(null);
+  if (!editorRef.current) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    editorRef.current = (BlockNoteEditor as any).create({
+      initialContent: safeContent ? repairBlockNoteBlocks(safeContent) : undefined,
+    });
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const editor = editorRef.current as any;
 
   // Click anywhere in the empty editor area focuses the editor at the end.
   const handleAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
