@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TemplateWizard } from '../TemplateWizard';
 import { createTemplate, updateTemplate, syncTemplateValidators, publishTemplate } from '../../../../api/templates';
@@ -127,14 +127,18 @@ describe('TemplateWizard Integration', () => {
     (publishTemplate as any).mockResolvedValue({ data: { success: true } });
   });
 
-  const renderWizard = (props = {}) => {
-    return render(
-      <MemoryRouter>
-        <UserProfileProvider>
-          <TemplateWizard {...props} />
-        </UserProfileProvider>
-      </MemoryRouter>,
-    );
+  const renderWizard = async (props = {}) => {
+    let renderResult: ReturnType<typeof render> | null = null;
+    await act(async () => {
+      renderResult = render(
+        <MemoryRouter>
+          <UserProfileProvider>
+            <TemplateWizard {...props} />
+          </UserProfileProvider>
+        </MemoryRouter>,
+      );
+    });
+    return renderResult!;
   };
 
   it('completes full "Create" flow from Step 1 to Step 4', async () => {
@@ -142,7 +146,7 @@ describe('TemplateWizard Integration', () => {
     (createTemplate as any).mockResolvedValue({ data: mockNewTemplate });
     (fetchBlocks as any).mockResolvedValue({ data: [{ id: 'b1', title: 'Block 1', mandatory: true, block_state: 'locked' }] });
 
-    renderWizard({ processId: 'proc-test-1' });
+    await renderWizard({ processId: 'proc-test-1' });
 
     await waitFor(() => {
       expect(vi.mocked(fetchMe)).toHaveBeenCalled();
@@ -198,12 +202,12 @@ describe('TemplateWizard Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/procesos');
+      expect(mockNavigate).toHaveBeenCalledWith('/procesos/proc-test-1');
     }, { timeout: 10000 });
   }, 15000);
 
   it('handles Step 1 validation errors', async () => {
-    renderWizard();
+    await renderWizard();
     
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
@@ -227,7 +231,7 @@ describe('TemplateWizard Integration', () => {
       }],
     });
 
-    renderWizard({ template: mockTemplate });
+    await renderWizard({ template: mockTemplate });
     
     // We start at Step 1, but let's go to Step 2
     fireEvent.change(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0], { target: { value: 'Modified' } });
@@ -244,7 +248,7 @@ describe('TemplateWizard Integration', () => {
   });
 
   it('shows leave guard when dirty', async () => {
-    renderWizard();
+    await renderWizard();
     
     const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
     fireEvent.change(nameInput, { target: { value: 'Some change' } });
