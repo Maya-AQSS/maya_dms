@@ -1,9 +1,29 @@
+import type { ReactElement } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep2Blocks } from '../WizardStep2Blocks';
 import { useTemplateBlocks } from '../../hooks/useTemplateBlocks';
+import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
+
+vi.mock('../../../../api/users', () => ({
+  fetchMe: vi.fn().mockResolvedValue({
+    data: {
+      id: 'usr_step2_blocks',
+      email: null,
+      name: null,
+      department: null,
+      study_type_ids: [],
+      study_ids: [],
+      module_ids: [],
+      team_ids: [],
+      permissions: [],
+      teams: [],
+      source: 'fdw' as const,
+    },
+  }),
+}));
 
 vi.mock('../../hooks/useTemplateBlocks');
 
@@ -62,6 +82,10 @@ const mockBlocks = [
   { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'editable' },
 ];
 
+function renderWithProfile(ui: ReactElement) {
+  return render(<UserProfileProvider>{ui}</UserProfileProvider>);
+}
+
 describe('WizardStep2Blocks', () => {
   const defaultProps = {
     template: { id: 't1', title: 'Template', created_by: 'other-user', status: 'draft' } as any,
@@ -83,13 +107,13 @@ describe('WizardStep2Blocks', () => {
   });
 
   it('renders block list correctly', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     expect(screen.getByText('Bloque 1')).toBeTruthy();
     expect(screen.getByText('Bloque 2')).toBeTruthy();
   });
 
   it('opens edit panel when a block is clicked', async () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     const blockButton = screen.getByRole('button', { name: /Bloque 1/i });
     fireEvent.click(blockButton);
     await waitFor(() => {

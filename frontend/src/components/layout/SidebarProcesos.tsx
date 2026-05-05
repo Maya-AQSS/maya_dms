@@ -44,7 +44,7 @@ const CHEVRON = (
 type ProcessNode = Process & { children: Process[] };
 
 /**
- * Agrupa procesos planos por `parent_id`. Procesos top-level conservan el orden
+ * Agrupa procesos planos por `process_parent_id`. Procesos top-level conservan el orden
  * de entrada (que viene ordenado por código desde el backend) y los hijos se
  * ordenan también por código.
  */
@@ -59,8 +59,8 @@ function buildTree(processes: Process[]): ProcessNode[] {
 
   for (const p of processes) {
     const node = byId.get(p.id)!;
-    if (p.parent_id) {
-      const parent = byId.get(p.parent_id);
+    if (p.process_parent_id) {
+      const parent = byId.get(p.process_parent_id);
       if (parent) parent.children.push(node);
       else roots.push(node); // Huérfano: tratar como top-level por seguridad
     } else {

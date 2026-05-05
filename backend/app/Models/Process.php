@@ -19,7 +19,7 @@ class Process extends Model
         'name',
         'alias',
         'description',
-        'parent_id',
+        'process_parent_id',
     ];
 
     public function templates(): HasMany
@@ -34,11 +34,11 @@ class Process extends Model
 
     public function parent(): BelongsTo
     {
-        return $this->belongsTo(self::class, 'parent_id');
+        return $this->belongsTo(self::class, 'process_parent_id');
     }
 
     public function children(): HasMany
     {
-        return $this->hasMany(self::class, 'parent_id')->orderBy('code');
+        return $this->hasMany(self::class, 'process_parent_id')->orderBy('code');
     }
 }

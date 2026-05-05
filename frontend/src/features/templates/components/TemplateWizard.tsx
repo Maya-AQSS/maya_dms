@@ -69,6 +69,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
+  const [blocksCount, setBlocksCount] = useState(0);
+  const [blocksLoading, setBlocksLoading] = useState(true);
 
   useEffect(() => {
     if (initial?.id && initial?.has_review_comments) {
@@ -225,6 +227,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   };
   const saveUsers = async () => {
     if (!template?.id) return;
+    if (blocksLoading || blocksCount < 1) {
+      setErrors({ api: 'Añade al menos un bloque antes de continuar.' });
+      return;
+    }
 
     setSaving(true);
     setErrors({});
@@ -250,6 +256,15 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (step === 'properties') {
       void saveProperties();
     } else if (step === 'blocks') {
+      if (blocksLoading) return;
+      if (blocksCount < 1) {
+        setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+        return;
+      }
+      setErrors((prev) => {
+        const { blocks: _b, ...rest } = prev;
+        return rest;
+      });
       setSaving(true);
       try {
         await blocksRef.current?.saveIfPending();
@@ -268,10 +283,29 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   };
 
   const handleGoToStep = (s: Step) => {
-    if (s === 'properties') setStep(s);
-    else if (s === 'blocks' && completedSteps.includes('properties')) setStep(s);
-    else if (s === 'users' && completedSteps.includes('blocks')) setStep(s);
-    else if (s === 'summary' && completedSteps.includes('users')) setStep(s);
+    if (s === 'properties') {
+      setStep(s);
+      return;
+    }
+    if (s === 'blocks' && completedSteps.includes('properties')) {
+      setStep(s);
+      return;
+    }
+    if (s === 'users' && completedSteps.includes('blocks')) {
+      if (blocksLoading || blocksCount < 1) {
+        setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+        return;
+      }
+      setStep(s);
+      return;
+    }
+    if (s === 'summary' && completedSteps.includes('users')) {
+      if (blocksLoading || blocksCount < 1) {
+        setErrors({ api: 'Añade al menos un bloque antes de publicar o enviar a validación.' });
+        return;
+      }
+      setStep(s);
+    }
   };
 
   // ── Render Helpers ─────────────────────────────────────────────────────────
@@ -282,6 +316,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     { id: 'users', label: 'Usuarios', sub: 'Validadores' },
     { id: 'summary', label: 'Resumen', sub: 'Revisión final' },
   ];
+
+  const blocksGateActive = blocksLoading || blocksCount < 1;
 
   const headerActions = (
     <>
@@ -301,6 +337,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           variant="primary"
           size="sm"
           loading={saving}
+          disabled={step === 'blocks' && blocksGateActive}
           onClick={() => void handleContinue()}
           className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
         >
@@ -311,6 +348,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         <Button
           variant="primary"
           size="sm"
+          disabled={blocksGateActive}
           onClick={() => setShowValidationModal(true)}
           className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
         >
@@ -322,6 +360,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           variant="primary"
           size="sm"
           loading={saving}
+          disabled={blocksGateActive}
           onClick={() => void handlePublish()}
           className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
         >
@@ -355,6 +394,25 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             variant="ghost"
             size="xs"
             onClick={() => setPermissionError(null)}
+            aria-label="Cerrar"
+            className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
+          >
+            ✕
+          </Button>
+        </div>
+      )}
+      {errors.blocks && step === 'blocks' && (
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">
+            ⚠️ {errors.blocks}
+          </span>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => setErrors((prev) => {
+              const { blocks: _b, ...rest } = prev;
+              return rest;
+            })}
             aria-label="Cerrar"
             className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
@@ -415,6 +473,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             template={template}
             reviewComments={comments}
             onResolveComment={handleResolveComment}
+            onBlocksCountChange={setBlocksCount}
+            onBlocksLoadingChange={setBlocksLoading}
           />
         )}
         {step === 'users' && (
@@ -436,6 +496,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             validationType={validationType}
             documentValidators={documentValidators}
             documentValidationType={documentValidationType}
+            onBlocksCountChange={setBlocksCount}
+            onBlocksLoadingChange={setBlocksLoading}
           />
         )}
       </>

@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TemplateWizard } from '../TemplateWizard';
 import { createTemplate, updateTemplate, syncTemplateValidators, publishTemplate } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
+import { fetchMe } from '../../../../api/users';
 import { MemoryRouter } from 'react-router-dom';
 import { UserProfileProvider } from '../../../../features/user-profile';
 
@@ -48,6 +49,32 @@ vi.mock('../../../../features/hierarchy', () => ({
   useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
+
+vi.mock('@maya/shared-ui-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@maya/shared-ui-react')>();
+  return {
+    ...actual,
+    DatePicker: ({
+      value,
+      onChange,
+      ariaLabel,
+      disabled,
+    }: {
+      value: string | null | undefined;
+      onChange: (date: string | null) => void;
+      ariaLabel?: string;
+      disabled?: boolean;
+    }) => (
+      <input
+        type="date"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value ? e.target.value : null)}
+      />
+    ),
+  };
+});
 
 // Mock dnd-kit globally for the wizard
 vi.mock('@dnd-kit/core', () => ({
@@ -140,7 +167,11 @@ describe('TemplateWizard Integration', () => {
 
     const deadlineInput = screen.getByLabelText(/Plazo de entrega/i);
     fireEvent.change(deadlineInput, { target: { value: '2099-01-01' } });
-    
+
+    await waitFor(() => {
+      expect((deadlineInput as HTMLInputElement).value).toBe('2099-01-01');
+    });
+
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
 
@@ -169,7 +200,12 @@ describe('TemplateWizard Integration', () => {
       expect(screen.getByText('Revisión final')).toBeTruthy(); // Transitioned to Step 4 (Resumen)
     }, { timeout: 10000 });
 
-    // Step 4: Summary -> Finish
+    // Step 4: Summary -> Finish (esperar a que la bandeja de bloques del resumen cargue; sin esto
+    // «Publicar plantilla» sigue disabled por blocksLoading/blocksCount y el clic no navega)
+    await waitFor(() => {
+      const publishBtn = screen.getByRole('button', { name: /Publicar plantilla/ }) as HTMLButtonElement;
+      expect(publishBtn.disabled).toBe(false);
+    }, { timeout: 10000 });
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {

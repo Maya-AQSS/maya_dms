@@ -27,12 +27,14 @@ export function useAuth() {
   };
 }
 
+/** Misma forma que en maya-shared-auth-react para que UserProfileProvider funcione en Vitest. */
 export function useOidcSession() {
+  const { isLoading, isAuthenticated, login, user, logout } = useAuth();
   return {
-    isOidcLoading: false,
-    isOidcSignedIn: true,
-    beginSignIn: () => undefined,
-    user: null,
-    logout: () => undefined,
+    isOidcLoading: isLoading,
+    isOidcSignedIn: isAuthenticated,
+    beginSignIn: login,
+    user,
+    logout,
   };
 }

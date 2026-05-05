@@ -146,6 +146,10 @@ describe('WizardStep3Users', () => {
   it('searches and adds a new validator', async () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
 
+    await waitFor(() => {
+      expect(vi.mocked(fetchMe)).toHaveBeenCalled();
+    });
+
     const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
     fireEvent.change(searchInputs[0], { target: { value: 'User 2' } });
 
@@ -163,6 +167,10 @@ describe('WizardStep3Users', () => {
 
   it('no excluye al creador: la búsqueda de candidatos no envía exclude_user_id', async () => {
     renderWithProfile(<WizardStep3Users {...defaultProps} validators={[]} />);
+
+    await waitFor(() => {
+      expect(vi.mocked(fetchMe)).toHaveBeenCalled();
+    });
 
     const searchInputs = screen.getAllByPlaceholderText('Filtrar usuarios...');
     fireEvent.change(searchInputs[0], { target: { value: 'ab' } });

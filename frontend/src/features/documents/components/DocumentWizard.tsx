@@ -254,27 +254,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const isDraft = !detail || detail.status === 'draft';
   const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
 
-  /**
-   * Misma regla que el envío a revisión en backend: se excluye titular y creador del documento.
-   * Si el pool efectivo queda vacío pero había candidatos, el envío fallaría (SoD).
-   */
-  const reviewerSubmitBlocked = useMemo(() => {
-    if (!detail || detail.status !== 'draft') {
-      return false;
-    }
-    const owner = detail.owner_id;
-    const created = detail.created_by;
-    const pool =
-      documentReviewerPoolIds.length > 0 ? documentReviewerPoolIds : templateReviewerPoolIds;
-    const filtered = pool.filter((id: string) => id !== owner && id !== created);
-    return pool.length > 0 && filtered.length === 0;
-  }, [detail, documentReviewerPoolIds, templateReviewerPoolIds]);
-
-  const reviewerSubmitBlockedMessage =
-    'No se puede enviar a validar: los revisores configurados en la plantilla coinciden todos contigo '
-    + '(titular o creador del documento). Pide que en la plantilla se definan validadores de documento distintos '
-    + 'del titular, o que los revisores normativos de la plantilla no sean solo el titular.';
-
   const reload = useCallback(async () => {
     if (!documentId) return;
     setLoading(true);
@@ -451,6 +430,27 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     };
   }, [isValidateMode, detail?.id, detail?.status]);
 
+  // Auto-selección si solo hay una opción disponible
+  useEffect(() => {
+    if (documentId || hierarchyLoading || hierarchy.length === 0 || studyTypeId) return;
+    if (hierarchy.length === 1) setStudyTypeId(String(hierarchy[0].id));
+  }, [documentId, hierarchy, hierarchyLoading, studyTypeId]);
+
+  useEffect(() => {
+    if (documentId || !studyTypeId || studyId) return;
+    const typeNode = hierarchy.find((t: any) => String(t.id) === studyTypeId);
+    if (!typeNode) return;
+    if ((typeNode.studies ?? []).length === 1) setStudyId(String(typeNode.studies[0].id));
+  }, [documentId, hierarchy, studyTypeId, studyId]);
+
+  useEffect(() => {
+    if (documentId || !studyId || moduleId) return;
+    const allStudiesFlat = hierarchy.flatMap((t: any) => t.studies ?? []);
+    const studyNode = allStudiesFlat.find((s: any) => String(s.id) === studyId);
+    if (!studyNode) return;
+    if ((studyNode.course_modules ?? []).length === 1) setModuleId(String(studyNode.course_modules[0].id));
+  }, [documentId, hierarchy, studyId, moduleId]);
+
   const sortedBlocks = useMemo(
     () => [...(detail?.blocks ?? [])].sort((a: DocumentDisplayBlock, b: DocumentDisplayBlock) => a.sort_order - b.sort_order),
     [detail?.blocks],
@@ -463,6 +463,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const activeBlockUiState = activeBlock ? blockToUiState(activeBlock) : null;
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
+
   const filteredStudies = studyTypeId
     ? (hierarchy.find((t: any) => String(t.id) === studyTypeId)?.studies ?? [])
     : [];
@@ -686,9 +687,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
           const created = await createDocument({
             template_id: templateId,
-            process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
-            title: title.trim(),
             process_id: template.process_id,
+            title: title.trim(),
             study_type_id: studyTypeId,
             study_id: studyId,
             module_id: moduleId,
@@ -934,7 +934,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             variant="primary"
             size="sm"
             loading={submittingForReview}
-            disabled={!isDraft || reviewerSubmitBlocked}
+            disabled={!isDraft}
             onClick={() => setSummaryConfirmAction('submit')}
           >
             Enviar a validar
@@ -1051,9 +1051,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     }}
                     error={!!errors.studyTypeId}
                   >
-                    <option value="">
-                      {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
-                    </option>
+                    {hierarchy.length === 0 && !hierarchyLoading ? (
+                      <option value="" disabled>No tienes tipos de estudio asignados, contacta con un administrador</option>
+                    ) : (
+                      <option value="">
+                        {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
+                      </option>
+                    )}
                     {hierarchy.map((t: any) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
@@ -1347,9 +1351,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     ? 'La plantilla no tiene revisores ni validadores de documento configurados.'
                     : '—'}
                 </p>
-              )}
-              {reviewerSubmitBlocked && (
-                <p className="mt-2 text-xs text-danger-dark dark:text-danger">{reviewerSubmitBlockedMessage}</p>
               )}
               {summaryError && (
                 <p className="mt-2 text-xs text-danger-dark dark:text-danger">{summaryError}</p>

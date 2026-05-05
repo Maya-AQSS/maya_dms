@@ -79,6 +79,26 @@ function renderWithProfile(ui: ReactElement) {
   );
 }
 
+/** Evita clics mientras `fetchMe` del perfil sigue en curso (botón con title de carga). */
+async function waitForUserProfileReady() {
+  await waitFor(() => {
+    const btn = screen.getByRole('button', { name: 'Nueva Programación' });
+    expect(btn.getAttribute('title')).not.toBe('Cargando perfil de usuario…');
+  });
+}
+
+/** Abre el panel de filtros si hace falta (DataTable cachea `filtersOpen` en memoria por `filtersStorageKey`). */
+async function openFiltersAndSelectModule() {
+  const filtrosBtn = screen.getAllByRole('button', { name: /Filtros/i })[0]!;
+  if (filtrosBtn.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(filtrosBtn);
+  }
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'seleccionar-modulo' })).toBeTruthy();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+}
+
 const baseDocument = {
   id: 'd-1',
   template_id: 't-1',

@@ -29,6 +29,10 @@ const sharedSidebarRoot = defaultSharedSidebarRoot;
 
 // The app root dir — used to resolve bare imports from shared package sources.
 const appRoot = fileURLToPath(new URL('.', import.meta.url));
+const sharedAuthSource = path.resolve(
+  appRoot,
+  '../../maya_infra/packages/maya-shared-auth-react/src/index.ts',
+);
 
 // Recursively unwrap nested package export condition objects until a string path is found.
 // e.g. exports['.'].import can be { types: '...', default: './dist/esm/foo.js' }
@@ -107,7 +111,7 @@ export default defineConfig({
   resolve: {
     dedupe: ['react', 'react-dom', 'react-router-dom'],
     alias: {
-      '@maya/shared-auth-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-auth-react/src/index.ts'),
+      '@maya/shared-auth-react': sharedAuthSource,
       '@maya/shared-i18n-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-i18n-react/src/index.ts'),
       '@maya/shared-layout-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-layout-react/src/index.ts'),
       '@maya/shared-sidebar-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-sidebar-react/src/index.ts'),
@@ -116,7 +120,8 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'jsdom',
-    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['./vitest.setup.ts'],
     server: {
       deps: {
         inline: [/@maya\/shared/],

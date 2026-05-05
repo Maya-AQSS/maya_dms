@@ -75,6 +75,10 @@ it('findTeamsByUserId always includes user_id filter in JOIN', function () {
         ->with('team_members')
         ->andReturn($mockQuery);
 
+    $mockConnection = Mockery::mock();
+    $mockConnection->shouldReceive('getDriverName')->andReturn('sqlite');
+    DB::shouldReceive('connection')->andReturn($mockConnection);
+
     $result = $this->repository->findTeamsByUserId('user-123');
 
     expect($result)->toBe([]);

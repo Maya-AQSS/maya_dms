@@ -868,6 +868,34 @@ class TemplatesApiTest extends TestCase
         ]);
     }
 
+    public function test_template_publish_fails_without_blocks(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headersCreator = $this->authHeaders($creatorId, []);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Sin bloques',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.blocks.0', 'La plantilla debe tener al menos un bloque antes de publicarse.');
+    }
+
     public function test_template_publish_requires_changelog_from_second_version_onward(): void
     {
         $creatorId = (string) Str::uuid();

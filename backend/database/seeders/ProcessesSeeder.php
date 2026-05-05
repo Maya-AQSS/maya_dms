@@ -23,7 +23,7 @@ class ProcessesSeeder extends Seeder
         $now = Carbon::now();
 
         $rows = array_map(static function (array $row) use ($now): array {
-            $row['parent_id']   ??= null;
+            $row['process_parent_id'] ??= null;
             $row['description'] ??= null;
             $row['created_at']  ??= $now;
             $row['updated_at']  ??= $now;
@@ -31,16 +31,16 @@ class ProcessesSeeder extends Seeder
             return $row;
         }, $data);
 
-        // Insertamos primero los procesos top-level (parent_id = null) para
+        // Insertamos primero los procesos top-level (process_parent_id = null) para
         // que la FK no falle al upsertar los subprocesos.
-        $top  = array_values(array_filter($rows, static fn (array $r): bool => $r['parent_id'] === null));
-        $subs = array_values(array_filter($rows, static fn (array $r): bool => $r['parent_id'] !== null));
+        $top  = array_values(array_filter($rows, static fn (array $r): bool => $r['process_parent_id'] === null));
+        $subs = array_values(array_filter($rows, static fn (array $r): bool => $r['process_parent_id'] !== null));
 
         if ($top !== []) {
             DB::table('processes')->upsert(
                 $top,
                 ['id'],
-                ['code', 'name', 'alias', 'description', 'parent_id', 'updated_at'],
+                ['code', 'name', 'alias', 'description', 'process_parent_id', 'updated_at'],
             );
         }
 
@@ -48,7 +48,7 @@ class ProcessesSeeder extends Seeder
             DB::table('processes')->upsert(
                 $subs,
                 ['id'],
-                ['code', 'name', 'alias', 'description', 'parent_id', 'updated_at'],
+                ['code', 'name', 'alias', 'description', 'process_parent_id', 'updated_at'],
             );
         }
     }

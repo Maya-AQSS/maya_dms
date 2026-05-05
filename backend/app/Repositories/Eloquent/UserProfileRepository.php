@@ -99,8 +99,16 @@ class UserProfileRepository implements UserProfileRepositoryInterface
      */
     public function findTeamsByUserId(string $userId): array
     {
-        return DB::table('team_members')
-            ->join('teams', 'teams.id', '=', 'team_members.team_id')
+        $query = DB::table('team_members');
+
+        // teams.id = VARCHAR (vista FDW); team_members.team_id = UUID en mocks → comparar como texto.
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $query->join('teams', DB::raw('teams.id::text'), '=', DB::raw('team_members.team_id::text'));
+        } else {
+            $query->join('teams', 'teams.id', '=', 'team_members.team_id');
+        }
+
+        return $query
             ->where('team_members.user_id', '=', $userId)
             ->whereNull('teams.deleted_at')
             ->select([

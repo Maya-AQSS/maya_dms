@@ -20,6 +20,7 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
+use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\AuditLogRepository;
@@ -32,6 +33,7 @@ use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\TemplateVersionRepository;
 use App\Repositories\Eloquent\UserPermissionRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
+use App\Repositories\Eloquent\UserFavoriteRepository;
 use App\Repositories\Eloquent\UserDirectoryRepository;
 use App\Services\AcademicHierarchyService;
 use App\Services\AuditLogService;
@@ -51,6 +53,7 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
+use App\Services\Contracts\UserFavoriteServiceInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 use App\Services\DocumentService;
 use App\Services\ProcessService;
@@ -61,6 +64,7 @@ use App\Services\SnapshotService;
 use App\Services\TemplateBlockService;
 use App\Services\TemplateService;
 use App\Services\UserProfileService;
+use App\Services\UserFavoriteService;
 use App\Services\UserDirectoryService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -80,6 +84,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateVersionRepositoryInterface::class, TemplateVersionRepository::class);
         $this->app->bind(CommentRepositoryInterface::class, CommentRepository::class);
         $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
+        $this->app->bind(UserFavoriteRepositoryInterface::class, UserFavoriteRepository::class);
         $this->app->bind(UserDirectoryRepositoryInterface::class, UserDirectoryRepository::class);
         $this->app->bind(UserPermissionRepositoryInterface::class, UserPermissionRepository::class);
         $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
@@ -97,6 +102,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateBlockServiceInterface::class, TemplateBlockService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
+        $this->app->bind(UserFavoriteServiceInterface::class, UserFavoriteService::class);
         $this->app->bind(UserDirectoryServiceInterface::class, UserDirectoryService::class);
         $this->app->bind(AcademicHierarchyServiceInterface::class, AcademicHierarchyService::class);
     }
@@ -107,16 +113,31 @@ class AppServiceProvider extends ServiceProvider
         // que JwtMiddleware deposita en el request tras validar el token.
         // Auth::user() / $request->user() lo invocan de forma diferida, sin sesión.
         Auth::viaRequest('jwt-token', function ($request) {
-            $profile = $request->attributes->get('jwt_user');
+            $jwtProfile = $request->attributes->get('jwt_user');
 
-            if (! $profile) {
+            if (! $jwtProfile) {
                 return null;
             }
 
-            $permissions = app(UserPermissionRepositoryInterface::class)
-                ->findPermissionCodesByUserId((string) $profile['id']);
+            $userId = (string) $jwtProfile['id'];
 
-            $profile['permissions'] = $permissions;
+            /** @var array<string, mixed> $fromDb Perfil unificado (FDW o fallback JWT vía {@see UserProfileService}). */
+            $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, $jwtProfile);
+
+            $profile = array_merge($jwtProfile, [
+                'study_type_ids'    => $fromDb['study_type_ids'] ?? [],
+                'study_type_id'     => null,
+                'study_ids'         => $fromDb['study_ids'] ?? [],
+                'study_id'          => null,
+                'module_ids'        => $fromDb['module_ids'] ?? [],
+                'module_id'         => null,
+                'course_module_ids' => null,
+                'course_module_id'  => null,
+                'team_ids'          => $fromDb['team_ids'] ?? [],
+                'team_id'           => null,
+            ]);
+
+            $profile['permissions'] = $fromDb['permissions'] ?? [];
 
             return new JwtUser($profile);
         });

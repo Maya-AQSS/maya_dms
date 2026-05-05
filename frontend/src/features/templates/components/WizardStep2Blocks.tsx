@@ -148,6 +148,7 @@ interface WizardStep2BlocksProps {
   reviewComments?: any[];
   onResolveComment?: (commentId: string) => Promise<void>;
   onBlocksCountChange?: (count: number) => void;
+  onBlocksLoadingChange?: (loading: boolean) => void;
 }
 
 export type WizardStep2BlocksHandle = {
@@ -159,7 +160,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   isDark = false,
   reviewComments = [],
   onResolveComment,
-  onBlocksCountChange
+  onBlocksCountChange,
+  onBlocksLoadingChange,
 }, ref) => {
   const {
     blocks,
@@ -174,8 +176,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const effectiveIsDark = isDark || globalIsDark;
 
   useEffect(() => {
-    onBlocksCountChange?.(blocks.length);
-  }, [blocks.length, onBlocksCountChange]);
+    onBlocksLoadingChange?.(loading);
+  }, [loading, onBlocksLoadingChange]);
+
+  useEffect(() => {
+    if (!loading) {
+      onBlocksCountChange?.(blocks.length);
+    }
+  }, [blocks.length, loading, onBlocksCountChange]);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -278,12 +286,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const handleToggleSelectAll = () => {
     if (selectedBlockIds.length === blocks.length && blocks.length > 0) {
       setSelectedBlockIds([]);
+      setActiveSingleId(null);
       setPanelMode('empty');
     } else {
       setSelectedBlockIds(blocks.map(b => b.id));
       // setMultiIndex(0);
       setPanelMode('multi');
-      if (blocks[0]) loadFormFromBlock(blocks[0]);
+      if (blocks[0]) {
+        setActiveSingleId(blocks[0].id);
+        loadFormFromBlock(blocks[0]);
+      }
     }
   };
 

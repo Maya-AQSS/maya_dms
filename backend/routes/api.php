@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentVersionController;
+use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\Api\ProcessController;
 use App\Http\Controllers\Api\ReviewController;
@@ -153,6 +154,17 @@ Route::prefix('v1')->group(function () {
 
         // Dashboard (BFF)
         Route::get('/dashboard', [DashboardController::class, 'index']);
+
+        // Favoritos (plantillas y documentos)
+        Route::get('/favorites', [FavoriteController::class, 'index']);
+        Route::post('/favorites/templates/{template}', [FavoriteController::class, 'storeTemplate'])
+            ->whereUuid('template');
+        Route::delete('/favorites/templates/{template}', [FavoriteController::class, 'destroyTemplate'])
+            ->whereUuid('template');
+        Route::post('/favorites/documents/{document}', [FavoriteController::class, 'storeDocument'])
+            ->whereUuid('document');
+        Route::delete('/favorites/documents/{document}', [FavoriteController::class, 'destroyDocument'])
+            ->whereUuid('document');
 
     });
 

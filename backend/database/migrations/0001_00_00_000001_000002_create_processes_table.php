@@ -14,16 +14,15 @@ return new class extends Migration
             $table->string('name');
             $table->string('alias');
             $table->text('description')->nullable();
-            $table->uuid('parent_id')->nullable();
-            $table->index('parent_id');
+            $table->uuid('process_parent_id')->nullable();
             $table->timestamps();
+
+            $table->index('process_parent_id');
         });
 
-        // FK self-referencial: la añadimos después de crear la tabla porque
-        // Postgres exige que la unique/PK de la columna referenciada exista
-        // antes de aceptar la FK (no se puede en el mismo CREATE TABLE).
+        // FK self-referencial
         Schema::table('processes', function (Blueprint $table): void {
-            $table->foreign('parent_id')
+            $table->foreign('process_parent_id')
                 ->references('id')
                 ->on('processes')
                 ->nullOnDelete();
