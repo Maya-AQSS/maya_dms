@@ -51,7 +51,12 @@ export function TemplatePreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const locationState = location.state as { selectionMode?: boolean; backTo?: string; moduleId?: string } | null;
+  const locationState = location.state as {
+    selectionMode?: boolean;
+    backTo?: string;
+    moduleId?: string;
+    processId?: string;
+  } | null;
   const selectionMode = locationState?.selectionMode === true;
   const backTo = locationState?.backTo ?? '/nueva-programacion';
   const { profile, hasPermission } = useUserProfile();
@@ -212,7 +217,7 @@ export function TemplatePreviewPage() {
             variant="primary"
             size="sm"
             onClick={() => navigate(`/nueva-programacion/${id}/wizard`, {
-              state: { moduleId: locationState?.moduleId },
+              state: { moduleId: locationState?.moduleId, processId: locationState?.processId },
             })}
           >
             Usar plantilla

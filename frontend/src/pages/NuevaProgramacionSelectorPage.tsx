@@ -216,6 +216,7 @@ export function NuevaProgramacionSelectorPage() {
               selectionMode: true,
               backTo: '/nueva-programacion',
               moduleId: selectedModuleId,
+              processId: selectedProcessId,
             },
           })
         }

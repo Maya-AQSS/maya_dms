@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
+import { fetchProcesses } from '../../../api/processes';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
 import {
@@ -71,6 +72,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [comments, setComments] = useState<any[]>([]);
   const [blocksCount, setBlocksCount] = useState(0);
   const [blocksLoading, setBlocksLoading] = useState(true);
+  const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
 
   useEffect(() => {
     if (initial?.id && initial?.has_review_comments) {
@@ -79,6 +81,31 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         .catch(console.error);
     }
   }, [initial?.id, initial?.has_review_comments]);
+
+  useEffect(() => {
+    const effectiveProcessId = processId ?? template?.process_id ?? initial?.process_id ?? null;
+    if (!effectiveProcessId) {
+      setProcessSubtitle(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchProcesses()
+      .then((res) => {
+        if (cancelled) return;
+        const selectedProcess = res.data.find((p) => p.id === effectiveProcessId) ?? null;
+        if (!selectedProcess) {
+          setProcessSubtitle(null);
+          return;
+        }
+        setProcessSubtitle(`Proceso: ${selectedProcess.code} — ${selectedProcess.name}`);
+      })
+      .catch(() => {
+        if (!cancelled) setProcessSubtitle(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initial?.process_id, processId, template?.process_id]);
 
   const handleResolveComment = async (commentId: string) => {
     try {
@@ -443,7 +470,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     <>
     <WizardShell<Step>
       title={template ? template.name : 'Nueva plantilla'}
-      subtitle={template ? 'Editar plantilla' : undefined}
+      subtitle={processSubtitle ?? (template ? 'Editar plantilla' : undefined)}
       onBack={handleBackArrow}
       actions={headerActions}
       steps={stepsData}
