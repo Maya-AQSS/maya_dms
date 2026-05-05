@@ -89,7 +89,6 @@ services:
       - ../maya_infra/packages:/maya_infra/packages
       - ../maya_infra/configs:/maya_infra/configs:ro
       - ./.env:/app/.env
-      - ./frontend/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
       - /app/node_modules
     ports:
       - "${FRONTEND_PORT:-5174}:5173"

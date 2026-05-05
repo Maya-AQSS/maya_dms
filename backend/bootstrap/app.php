@@ -16,14 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
             'jwt' => \Maya\Auth\Middleware\JwtMiddleware::class,
         ]);
         $middleware->api(prepend: [\Illuminate\Http\Middleware\HandleCors::class]);
-        // Block rich-content fields contain inline text nodes whose leading/trailing
-        // spaces are semantically significant (spaces between bold/italic runs).
-        // TrimStrings must not recurse into these fields; SanitizesBlockContent
-        // handles sanitization for them after the request is parsed.
-        $middleware->trimStrings(except: [
-            'default_content.*',
-            'description.*',
-        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
