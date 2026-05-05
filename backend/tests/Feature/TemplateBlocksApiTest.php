@@ -226,5 +226,62 @@ class TemplateBlocksApiTest extends TestCase
         $this->assertSame(1, $orders[$secondBlockId]);
         $this->assertSame(2, $orders[$firstBlockId]);
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('spaceAdjacentToInlineMarkProvider')]
+    public function test_update_block_preserves_spaces_adjacent_to_inline_marks(
+        array $blocks,
+        array $expectedTexts,
+    ): void {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+        [, $blockId] = $this->seedTemplateAndBlock($userId);
+
+        $response = $this->putJson("/api/v1/blocks/{$blockId}", [
+            'default_content' => $blocks,
+        ], $headers);
+
+        $response->assertOk();
+
+        $saved = $response->json('data.default_content');
+        $texts = array_values(array_map(
+            fn (array $node) => $node['text'],
+            array_filter(
+                array_merge(...array_map(fn (array $b) => $b['content'] ?? [], $saved ?? [])),
+                fn (array $n) => ($n['type'] ?? '') === 'text',
+            ),
+        ));
+
+        $this->assertSame($expectedTexts, $texts);
+    }
+
+    /** @return array<string, array{0: list<array<string, mixed>>, 1: list<string>}> */
+    public static function spaceAdjacentToInlineMarkProvider(): array
+    {
+        $para = static fn (array $content): array => [
+            'id' => 'test-para', 'type' => 'paragraph', 'props' => [], 'children' => [],
+            'content' => $content,
+        ];
+        $bold  = static fn (string $t): array => ['type' => 'text', 'text' => $t, 'styles' => ['bold' => true]];
+        $plain = static fn (string $t): array => ['type' => 'text', 'text' => $t, 'styles' => []];
+
+        return [
+            '"**buen** dia" — space after closing mark' => [
+                [$para([$bold('buen'), $plain(' dia')])],
+                ['buen', ' dia'],
+            ],
+            '"dia **buen**" — space before opening mark' => [
+                [$para([$plain('dia '), $bold('buen')])],
+                ['dia ', 'buen'],
+            ],
+            '"a **b** c **d** e" — multiple inline marks' => [
+                [$para([$plain('a '), $bold('b'), $plain(' c '), $bold('d'), $plain(' e')])],
+                ['a ', 'b', ' c ', 'd', ' e'],
+            ],
+            '"**buen**dia" — no space between mark and text' => [
+                [$para([$bold('buen'), $plain('dia')])],
+                ['buen', 'dia'],
+            ],
+        ];
+    }
 }
 

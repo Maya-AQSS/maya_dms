@@ -37,7 +37,7 @@ trait SanitizesBlockContent
 
     /**
      * Mensajes de error para las reglas de validación.
-     * 
+     *
      * @return array<string, string>
      */
     public function messages(): array
@@ -49,7 +49,7 @@ trait SanitizesBlockContent
 
     /**
      * Normaliza el contenido enriquecido.
-     * 
+     *
      * @param  mixed  $value
      * @param  string|null  $parentKey
      * @return mixed
@@ -57,6 +57,12 @@ trait SanitizesBlockContent
     private function sanitizeRichContent(mixed $value, ?string $parentKey = null): mixed
     {
         if (is_string($value)) {
+            // Inline text node values keyed "text" carry meaningful whitespace
+            // (spaces between bold/italic runs). Trimming them eats those spaces.
+            if ($parentKey === 'text') {
+                return $value === '' ? null : $value;
+            }
+
             $normalized = trim($value);
 
             return $normalized === '' ? null : $normalized;
