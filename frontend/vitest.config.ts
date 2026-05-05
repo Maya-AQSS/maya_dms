@@ -1,19 +1,20 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { mergeConfig } from 'vite';
 import { defineConfig } from 'vitest/config';
+import viteConfig from './vite.config';
 
-const configDir = path.dirname(fileURLToPath(import.meta.url));
-const sharedAuthShim = path.resolve(configDir, 'src/test/shims/shared-auth-react.tsx');
+/** Vitest puede cargar vite.config antes de que exista `process.env.VITEST`; el shim debe aplicarse aquí. */
+const dir = path.dirname(fileURLToPath(import.meta.url));
+const sharedAuthShim = path.resolve(dir, 'src/test/shims/shared-auth-react.tsx');
 
-export default defineConfig({
-  resolve: {
-    alias: {
-      '@maya/shared-auth-react': sharedAuthShim,
+export default mergeConfig(
+  viteConfig,
+  defineConfig({
+    resolve: {
+      alias: {
+        '@maya/shared-auth-react': sharedAuthShim,
+      },
     },
-  },
-  test: {
-    environment: 'jsdom',
-    include: ['src/**/*.test.{ts,tsx}'],
-    setupFiles: ['./vitest.setup.ts'],
-  },
-});
+  }),
+);

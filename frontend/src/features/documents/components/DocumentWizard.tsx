@@ -254,27 +254,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const isDraft = !detail || detail.status === 'draft';
   const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
 
-  /**
-   * Misma regla que el envío a revisión en backend: se excluye titular y creador del documento.
-   * Si el pool efectivo queda vacío pero había candidatos, el envío fallaría (SoD).
-   */
-  const reviewerSubmitBlocked = useMemo(() => {
-    if (!detail || detail.status !== 'draft') {
-      return false;
-    }
-    const owner = detail.owner_id;
-    const created = detail.created_by;
-    const pool =
-      documentReviewerPoolIds.length > 0 ? documentReviewerPoolIds : templateReviewerPoolIds;
-    const filtered = pool.filter((id: string) => id !== owner && id !== created);
-    return pool.length > 0 && filtered.length === 0;
-  }, [detail, documentReviewerPoolIds, templateReviewerPoolIds]);
-
-  const reviewerSubmitBlockedMessage =
-    'No se puede enviar a validar: los revisores configurados en la plantilla coinciden todos contigo '
-    + '(titular o creador del documento). Pide que en la plantilla se definan validadores de documento distintos '
-    + 'del titular, o que los revisores normativos de la plantilla no sean solo el titular.';
-
   const reload = useCallback(async () => {
     if (!documentId) return;
     setLoading(true);
@@ -952,7 +931,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             variant="primary"
             size="sm"
             loading={submittingForReview}
-            disabled={!isDraft || reviewerSubmitBlocked}
+            disabled={!isDraft}
             onClick={() => setSummaryConfirmAction('submit')}
           >
             Enviar a validar
@@ -1369,9 +1348,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     ? 'La plantilla no tiene revisores ni validadores de documento configurados.'
                     : '—'}
                 </p>
-              )}
-              {reviewerSubmitBlocked && (
-                <p className="mt-2 text-xs text-danger-dark dark:text-danger">{reviewerSubmitBlockedMessage}</p>
               )}
               {summaryError && (
                 <p className="mt-2 text-xs text-danger-dark dark:text-danger">{summaryError}</p>

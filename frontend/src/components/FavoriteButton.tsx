@@ -1,21 +1,73 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import {
+  addDocumentFavorite,
+  addTemplateFavorite,
+  fetchFavorites,
+  removeDocumentFavorite,
+  removeTemplateFavorite,
+} from '../api/favorites';
 
 type Props = {
   entityType: 'template' | 'document';
   entityId: string;
 };
 
-// TODO: conectar con endpoint de favoritos cuando exista (persistencia en BD)
-export function FavoriteButton({ entityType: _entityType, entityId: _entityId }: Props) {
+export function FavoriteButton({ entityType, entityId }: Props) {
   const [isFavorite, setIsFavorite] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [toggling, setToggling] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+
+    void (async () => {
+      try {
+        const { data } = await fetchFavorites();
+        if (cancelled) return;
+        const ids = entityType === 'template' ? data.template_ids : data.document_ids;
+        setIsFavorite(ids.includes(entityId));
+      } catch {
+        if (!cancelled) setIsFavorite(false);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [entityType, entityId]);
+
+  const onClick = useCallback(async () => {
+    if (toggling || loading) return;
+    setToggling(true);
+    const next = !isFavorite;
+    setIsFavorite(next);
+    try {
+      if (entityType === 'template') {
+        if (next) await addTemplateFavorite(entityId);
+        else await removeTemplateFavorite(entityId);
+      } else {
+        if (next) await addDocumentFavorite(entityId);
+        else await removeDocumentFavorite(entityId);
+      }
+    } catch {
+      setIsFavorite(!next);
+    } finally {
+      setToggling(false);
+    }
+  }, [entityType, entityId, isFavorite, loading, toggling]);
 
   return (
     <button
       type="button"
-      onClick={() => setIsFavorite((v) => !v)}
+      disabled={loading || toggling}
+      onClick={() => void onClick()}
       title={isFavorite ? 'Quitar de favoritos' : 'Añadir a favoritos'}
-      className="flex items-center justify-center w-7 h-7 rounded-md text-text-muted dark:text-text-dark-muted hover:text-warning-dark dark:hover:text-warning-light transition-colors cursor-pointer"
+      className="flex items-center justify-center w-7 h-7 rounded-md text-text-muted dark:text-text-dark-muted hover:text-warning-dark dark:hover:text-warning-light transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       aria-pressed={isFavorite}
+      aria-busy={loading || toggling}
     >
       {isFavorite ? (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-warning-dark dark:text-warning-light">

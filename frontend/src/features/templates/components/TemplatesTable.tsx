@@ -17,6 +17,8 @@ import { useTemplates } from '../hooks/useTemplates';
 import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
+import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
+import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 
 const STATUS_LABEL: Record<TemplateStatus, string> = {
   draft: 'Borrador',
@@ -43,7 +45,7 @@ export function TemplatesTable({ processId }: Props = {}) {
 
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
     useTablePreferences({ storageKey: 'maya:dms:templates-table' });
-
+  const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
     templates,
     meta,
@@ -137,6 +139,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
+            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
             <span className="truncate font-medium">{t.name}</span>
             {t.has_review_comments && t.status === 'draft' && profile && t.created_by === profile.id && (
               <span
@@ -191,7 +194,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         ),
       },
     ],
-    [profile],
+    [profile, favoriteTemplateIds],
   );
 
   return (
