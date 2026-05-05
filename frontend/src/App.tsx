@@ -1,5 +1,5 @@
-import { lazy, Suspense, useEffect } from 'react';
-import { Route, Routes, Navigate } from 'react-router-dom';
+import { lazy, Suspense, useEffect, useRef } from 'react';
+import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import i18n from './i18n';
 import { AppLayout } from '@maya/shared-layout-react';
 import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
@@ -29,7 +29,7 @@ function AppRoutes() {
   return (
     <Suspense fallback={<div className="p-8">Cargando...</div>}>
       <Routes>
-        <Route path="/" element={<Navigate to="/procesos" replace />} />
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/procesos" element={<ProcesosPage />} />
         <Route path="/procesos/:processId" element={<ProcesosPage />} />
@@ -95,12 +95,24 @@ function Main() {
 
 function App() {
   const { isLoading, isAuthenticated, login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const wasAuthenticatedRef = useRef(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       login();
     }
   }, [isLoading, isAuthenticated, login]);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const wasAuthenticated = wasAuthenticatedRef.current;
+    if (!wasAuthenticated && isAuthenticated && location.pathname !== '/dashboard') {
+      navigate('/dashboard', { replace: true });
+    }
+    wasAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated, isLoading, location.pathname, navigate]);
 
   if (isLoading) {
     return (
