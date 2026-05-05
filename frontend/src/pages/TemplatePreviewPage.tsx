@@ -61,6 +61,15 @@ export function TemplatePreviewPage() {
   const backTo = locationState?.backTo ?? '/documentos/nuevo';
   const defaultBackTo = locationState?.backTo ?? '/dashboard';
   const handleBack = () => {
+    if (selectionMode) {
+      navigate(backTo, {
+        state: {
+          moduleId: locationState?.moduleId,
+          processId: locationState?.processId,
+        },
+      });
+      return;
+    }
     if (window.history.length > 1) {
       navigate(-1);
       return;

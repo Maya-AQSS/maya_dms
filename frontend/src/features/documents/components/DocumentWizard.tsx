@@ -254,8 +254,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   const isValidateMode = mode === 'validate';
   const isDraft = !detail || detail.status === 'draft';
-  const returnToSummary = (location.state as { step?: string } | null)?.step === 'summary';
-  const locationProcessId = (location.state as { processId?: string } | null)?.processId;
+  const locationState = location.state as {
+    step?: string;
+    processId?: string;
+    moduleId?: string;
+  } | null;
+  const returnToSummary = locationState?.step === 'summary';
+  const locationProcessId = locationState?.processId;
+  const locationModuleId = locationState?.moduleId;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
@@ -1007,7 +1013,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     // step === 'properties'
     const tId = detail?.template_id || templateId;
     if (tId) {
-      navigate(`/templates/${tId}`);
+      navigate(`/templates/${tId}`, {
+        state: {
+          selectionMode: !documentId,
+          backTo: '/documentos/nuevo',
+          moduleId: locationModuleId,
+          processId: locationProcessId,
+        },
+      });
     } else if (documentId) {
       navigate(`/documents/${documentId}`);
     } else {
