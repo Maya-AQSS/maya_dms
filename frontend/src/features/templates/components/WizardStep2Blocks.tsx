@@ -457,7 +457,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     <div className="p-6 space-y-4">
                       <div>
                         <FieldLabel required>Nombre del bloque</FieldLabel>
-                        <TextInput value={formName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                        <TextInput value={formName} placeholder="Nuevo bloque" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }} />
                       </div>
                       <div>
                         <FieldLabel>Estado</FieldLabel>

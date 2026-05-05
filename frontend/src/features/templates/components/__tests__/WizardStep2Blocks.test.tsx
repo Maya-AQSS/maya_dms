@@ -159,6 +159,14 @@ describe('WizardStep2Blocks', () => {
     expect(screen.queryByText('Propiedades')).toBeNull();
   });
 
+  it('block name input shows "Nuevo bloque" placeholder', async () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Bloque 1/i }));
+    await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+    const input = screen.getByDisplayValue('Bloque 1') as HTMLInputElement;
+    expect(input.placeholder).toBe('Nuevo bloque');
+  });
+
   it('duplicate deep-clones content and description', async () => {
     const createBlock = vi.fn().mockResolvedValue({ id: 'b3', title: 'Bloque 1 (copia)', mandatory: true, block_state: 'locked', type: 'paragraph' });
     mockUseTemplateBlocks.mockReturnValue({
