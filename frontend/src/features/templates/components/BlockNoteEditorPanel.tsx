@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { BlockNoteEditor } from '@blocknote/core';
 import { FormattingToolbar } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
@@ -14,9 +14,28 @@ interface Props {
   onChange?: (content: unknown) => void;
 }
 
+function FullscreenIcon({ expanded }: { expanded: boolean }) {
+  return expanded ? (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 3v3a2 2 0 0 1-2 2H3" />
+      <path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+      <path d="M3 16h3a2 2 0 0 1 2 2v3" />
+      <path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+    </svg>
+  ) : (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M8 3H5a2 2 0 0 0-2 2v3" />
+      <path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+      <path d="M3 16v3a2 2 0 0 0 2 2h3" />
+      <path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+    </svg>
+  );
+}
+
 export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const normalized = normalizeBlockContentForEditor(initialContent);
   const safeContent =
@@ -44,14 +63,19 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     if (!editable) return;
     const target = e.target as HTMLElement;
     if (target.closest('.bn-toolbar') || target.closest('[role="toolbar"]')) return;
+    if (target.closest('.bn-fullscreen-btn') !== null) return;
     if (target.closest('.ProseMirror') !== null) return;
     editor.focus();
   };
 
+  const containerCls = isFullscreen
+    ? 'maya-bn-panel fixed inset-0 z-50 flex flex-col bg-white dark:bg-ui-dark-card overflow-hidden'
+    : 'maya-bn-panel flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden';
+
   return (
     <div
       ref={containerRef}
-      className="maya-bn-panel flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden"
+      className={containerCls}
       onClick={handleAreaClick}
     >
       {!editable && (
@@ -73,8 +97,19 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
           }}
         >
           {editable && (
-            <div className="order-first sticky top-0 z-10 w-full border-b border-ui-border dark:border-ui-dark-border bg-ui-card/95 dark:bg-ui-dark-card/95 backdrop-blur-md px-2 py-1 shadow-sm">
-              <FormattingToolbar />
+            <div className="order-first sticky top-0 z-10 w-full border-b border-ui-border dark:border-ui-dark-border bg-ui-card/95 dark:bg-ui-dark-card/95 backdrop-blur-md px-2 py-1 shadow-sm flex items-center gap-1">
+              <div className="flex-1 min-w-0">
+                <FormattingToolbar />
+              </div>
+              <button
+                type="button"
+                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                aria-pressed={isFullscreen}
+                onClick={(e) => { e.stopPropagation(); setIsFullscreen(v => !v); }}
+                className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+              >
+                <FullscreenIcon expanded={isFullscreen} />
+              </button>
             </div>
           )}
         </BlockNoteView>
