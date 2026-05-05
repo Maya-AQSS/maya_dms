@@ -15,7 +15,8 @@ if [ ! -d "node_modules" ] \
   || [ "package-lock.json" -nt "node_modules/.package-lock.json" ] \
   || [ ! -x "node_modules/.bin/vite" ]; then
     echo "[entrypoint] Installing npm dependencies..."
-    npm install
+    npm cache clean --force
+    npm install --no-package-lock --no-audit --no-fund
 else
     echo "[entrypoint] Dependencies up to date, skipping npm install"
 fi

@@ -17,7 +17,7 @@ export const repairBlockNoteBlocks = (blocks: unknown): any[] => {
       if (STRUCTURAL_BLOCK_TYPES.has(block.type)) {
         return {
           ...block,
-          id: typeof block.id === 'string' ? block.id : Math.random().toString(36).substring(7),
+          id: typeof block.id === 'string' ? block.id : crypto.randomUUID(),
           type: block.type,
           props: (typeof block.props === 'object' && block.props !== null) ? { ...block.props } : {},
           content: block.content ?? [],
@@ -27,7 +27,7 @@ export const repairBlockNoteBlocks = (blocks: unknown): any[] => {
 
       const repairedBlock = {
         ...block,
-        id: typeof block.id === 'string' ? block.id : Math.random().toString(36).substring(7),
+        id: typeof block.id === 'string' ? block.id : crypto.randomUUID(),
         type: block.type,
         props: (typeof block.props === 'object' && block.props !== null) ? { ...block.props } : {},
         content: Array.isArray(block.content)
@@ -35,10 +35,13 @@ export const repairBlockNoteBlocks = (blocks: unknown): any[] => {
               if (typeof c === 'string') return { type: 'text', text: c, styles: {} };
               if (c && typeof c === 'object' && !Array.isArray(c)) {
                 return {
+                  ...c,
                   type: c.type || 'text',
                   text: typeof c.text === 'string' ? c.text : '',
-                  styles: (c.styles && typeof c.styles === 'object') ? { ...c.styles } : {},
-                  ...c,
+                  // PHP round-trip converts {} to [] for empty objects; normalise back to {}.
+                  styles: (c.styles && typeof c.styles === 'object' && !Array.isArray(c.styles))
+                    ? { ...c.styles }
+                    : {},
                 };
               }
               return { type: 'text', text: '', styles: {} };

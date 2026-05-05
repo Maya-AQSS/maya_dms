@@ -644,9 +644,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   }, [activeBlock]);
 
   const handleGoToStep = (s: Step) => {
-    if (s === 'properties') setStep(s);
-    else if (s === 'blocks' && completedSteps.includes('properties')) setStep(s);
-    else if (s === 'summary' && completedSteps.includes('blocks')) setStep(s);
+    if (s === 'properties') { setStep(s); return; }
+    if (s === 'blocks' && completedSteps.includes('properties')) { setStep(s); return; }
+    if (s === 'summary' && completedSteps.includes('blocks')) {
+      void forceSave().then(() => setStep(s));
+    }
   };
 
   const handleContinue = async () => {
@@ -719,6 +721,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'blocks') {
+      await forceSave();
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
       setStep('summary');
       return;
