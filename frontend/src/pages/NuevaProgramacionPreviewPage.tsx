@@ -62,7 +62,7 @@ export function NuevaProgramacionPreviewPage() {
       <header className="sticky top-0 z-10 bg-ui-card dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center gap-3 px-6 h-[52px]">
         <button
           type="button"
-          onClick={() => navigate('/nueva-programacion')}
+          onClick={() => navigate('/documentos/nuevo')}
           className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold text-text-secondary dark:text-text-dark-secondary bg-ui-body dark:bg-ui-dark-bg hover:bg-ui-border dark:hover:bg-ui-dark-border transition-colors cursor-pointer"
         >
           ← Seleccionar plantilla
@@ -91,7 +91,7 @@ export function NuevaProgramacionPreviewPage() {
                 type="button"
                 variant="primary"
                 size="sm"
-                onClick={() => navigate(`/nueva-programacion/${templateId}/wizard`)}
+                onClick={() => navigate(`/documentos/nuevo/${templateId}/wizard`)}
               >
                 Usar plantilla
               </Button>

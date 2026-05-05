@@ -240,7 +240,7 @@ export function NuevaProgramacionSelectorPage() {
           navigate(`/templates/${t.id}`, {
             state: {
               selectionMode: true,
-              backTo: '/nueva-programacion',
+              backTo: '/documentos/nuevo',
               moduleId: selectedModuleId,
               processId: selectedProcessId,
             },

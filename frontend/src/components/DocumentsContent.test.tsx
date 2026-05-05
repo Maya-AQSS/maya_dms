@@ -238,7 +238,7 @@ describe('DocumentsContent creation flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
     await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion/tpl-1/wizard', {
+      expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo/tpl-1/wizard', {
         state: { moduleId: 'm1' },
       }),
     );
@@ -302,7 +302,7 @@ describe('DocumentsContent creation flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
     await waitFor(() =>
-      expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion', {
+      expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
         state: { moduleId: 'm1' },
       }),
     );
@@ -346,7 +346,7 @@ describe('DocumentsContent creation flow', () => {
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
-    expect(mockNavigate).toHaveBeenCalledWith('/nueva-programacion', {
+    expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
       state: { moduleId: 'm1' },
     });
   });

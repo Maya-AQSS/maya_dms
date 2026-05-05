@@ -58,7 +58,7 @@ export function TemplatePreviewPage() {
     processId?: string;
   } | null;
   const selectionMode = locationState?.selectionMode === true;
-  const backTo = locationState?.backTo ?? '/nueva-programacion';
+  const backTo = locationState?.backTo ?? '/documentos/nuevo';
   const { profile, hasPermission } = useUserProfile();
 
   const [template, setTemplate] = useState<Template | null>(null);
@@ -216,7 +216,7 @@ export function TemplatePreviewPage() {
             type="button"
             variant="primary"
             size="sm"
-            onClick={() => navigate(`/nueva-programacion/${id}/wizard`, {
+            onClick={() => navigate(`/documentos/nuevo/${id}/wizard`, {
               state: { moduleId: locationState?.moduleId, processId: locationState?.processId },
             })}
           >

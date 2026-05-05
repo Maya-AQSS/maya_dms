@@ -33,8 +33,8 @@ function AppRoutes() {
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/procesos" element={<ProcesosPage />} />
         <Route path="/procesos/:processId" element={<ProcesosPage />} />
-        <Route path="/nueva-programacion" element={<NuevaProgramacionSelectorPage />} />
-        <Route path="/nueva-programacion/:templateId/wizard" element={<DocumentEditorPage />} />
+        <Route path="/documentos/nuevo" element={<NuevaProgramacionSelectorPage />} />
+        <Route path="/documentos/nuevo/:templateId/wizard" element={<DocumentEditorPage />} />
         <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
         <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
         <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />

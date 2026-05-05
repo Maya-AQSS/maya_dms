@@ -67,7 +67,7 @@ export function ProcesosPage() {
               type="button"
               variant="primary"
               size="sm"
-              onClick={() => navigate('/nueva-programacion', { state: navState })}
+              onClick={() => navigate('/documentos/nuevo', { state: navState })}
             >
               Nuevo Documento
             </Button>

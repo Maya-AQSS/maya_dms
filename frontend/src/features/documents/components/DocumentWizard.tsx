@@ -1007,7 +1007,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     } else if (documentId) {
       navigate(`/documents/${documentId}`);
     } else {
-      navigate('/nueva-programacion');
+      navigate('/documentos/nuevo');
     }
   };
 
@@ -1048,7 +1048,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     </span>
                     <button
                       type="button"
-                      onClick={() => navigate('/nueva-programacion')}
+                      onClick={() => navigate('/documentos/nuevo')}
                       className="text-xs text-odoo-purple dark:text-odoo-dark-purple hover:underline cursor-pointer shrink-0"
                     >
                       Cambiar plantilla
