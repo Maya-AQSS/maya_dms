@@ -155,8 +155,7 @@ export function DocumentsTable({ processId }: Props = {}) {
       let valB: string | number = '';
 
       if (columnId === 'title') {
-        valA = a.title ?? '';
-        valB = b.title ?? '';
+        return (a.title ?? '').localeCompare(b.title ?? '', 'es') * dir;
       } else if (columnId === 'delivery_deadline') {
         valA = a.delivery_deadline ?? '';
         valB = b.delivery_deadline ?? '';

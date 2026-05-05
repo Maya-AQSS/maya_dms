@@ -80,8 +80,7 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
       let valB: string | number = '';
 
       if (columnId === 'name') {
-        valA = a.name ?? '';
-        valB = b.name ?? '';
+        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
       } else if (columnId === 'delivery_deadline') {
         valA = a.delivery_deadline ?? '';
         valB = b.delivery_deadline ?? '';
