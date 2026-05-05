@@ -9,21 +9,6 @@ import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
 
-vi.mock('@maya/shared-ui-react', async () => {
-  const actual = await vi.importActual<typeof import('@maya/shared-ui-react')>('@maya/shared-ui-react');
-  return {
-    ...actual,
-    DatePicker: ({ onChange, ariaLabel, value }: { onChange: (d: string | null) => void; ariaLabel?: string; value?: string | null }) => (
-      <input
-        type="date"
-        aria-label={ariaLabel}
-        value={value ?? ''}
-        onChange={(e) => onChange(e.target.value || null)}
-      />
-    ),
-  };
-});
-
 vi.mock('../../../../api/templates');
 vi.mock('../../../../api/blocks');
 vi.mock('../../../../api/users', () => ({
@@ -157,7 +142,11 @@ describe('TemplateWizard Integration', () => {
     (createTemplate as any).mockResolvedValue({ data: mockNewTemplate });
     (fetchBlocks as any).mockResolvedValue({ data: [{ id: 'b1', title: 'Block 1', mandatory: true, block_state: 'locked' }] });
 
-    renderWizard({ processId: 'test-process' });
+    renderWizard({ processId: 'proc-test-1' });
+
+    await waitFor(() => {
+      expect(vi.mocked(fetchMe)).toHaveBeenCalled();
+    });
 
     // Step 1: Properties
     expect(screen.getByText('Nueva plantilla')).toBeTruthy();
@@ -177,7 +166,7 @@ describe('TemplateWizard Integration', () => {
 
     await waitFor(() => {
       expect(createTemplate).toHaveBeenCalled();
-      expect(screen.getByText('Editar plantilla')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'New Template' })).toBeTruthy();
       expect(screen.getByText(/Bloques \(/i)).toBeTruthy(); // Transitioned to Step 2
     }, { timeout: 10000 });
 

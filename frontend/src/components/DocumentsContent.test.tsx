@@ -193,11 +193,8 @@ describe('DocumentsContent creation flow', () => {
     });
 
     renderWithProfile(<DocumentsContent />);
-    const filtrosBtn = screen.getByRole('button', { name: /Filtros/i });
-    if (filtrosBtn.getAttribute('aria-expanded') !== 'true') {
-      fireEvent.click(filtrosBtn);
-    }
-    fireEvent.click(await screen.findByRole('button', { name: 'seleccionar-modulo' }));
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(mockFetchDocumentCreationOptions).toHaveBeenCalledWith('m1'),
@@ -232,11 +229,8 @@ describe('DocumentsContent creation flow', () => {
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-new' });
 
     renderWithProfile(<DocumentsContent />);
-    const filtrosBtn = screen.getByRole('button', { name: /Filtros/i });
-    if (filtrosBtn.getAttribute('aria-expanded') !== 'true') {
-      fireEvent.click(filtrosBtn);
-    }
-    fireEvent.click(await screen.findByRole('button', { name: 'seleccionar-modulo' }));
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
@@ -299,11 +293,8 @@ describe('DocumentsContent creation flow', () => {
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-sel' });
 
     renderWithProfile(<DocumentsContent />);
-    const filtrosBtn = screen.getByRole('button', { name: /Filtros/i });
-    if (filtrosBtn.getAttribute('aria-expanded') !== 'true') {
-      fireEvent.click(filtrosBtn);
-    }
-    fireEvent.click(await screen.findByRole('button', { name: 'seleccionar-modulo' }));
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
@@ -348,11 +339,8 @@ describe('DocumentsContent creation flow', () => {
     });
 
     renderWithProfile(<DocumentsContent />);
-    const filtrosBtn = screen.getByRole('button', { name: /Filtros/i });
-    if (filtrosBtn.getAttribute('aria-expanded') !== 'true') {
-      fireEvent.click(filtrosBtn);
-    }
-    fireEvent.click(await screen.findByRole('button', { name: 'seleccionar-modulo' }));
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),

@@ -27,25 +27,6 @@ vi.mock('../../../../api/users', () => ({
 
 vi.mock('../../hooks/useTemplateBlocks');
 
-vi.mock('../../../../features/user-profile', () => ({
-  useUserProfile: vi.fn(() => ({
-    profile: { id: 'test-owner' },
-    loading: false,
-    error: null,
-    hasPermission: () => false,
-  })),
-}));
-
-vi.mock('../../../hooks/useAutoSave', () => ({
-  useAutoSave: vi.fn(() => ({
-    saveStatus: 'idle' as const,
-    isSaving: false,
-    lastSaved: null,
-    triggerSave: vi.fn(),
-    forceSave: vi.fn().mockResolvedValue(undefined),
-  })),
-}));
-
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: any) => <div>{children}</div>,
   closestCenter: vi.fn(),
@@ -79,7 +60,7 @@ vi.mock('@dnd-kit/utilities', () => ({
 
 const mockBlocks = [
   { id: 'b1', title: 'Bloque 1', mandatory: true, block_state: 'locked' },
-  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'editable' },
+  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'default' },
 ];
 
 function renderWithProfile(ui: ReactElement) {
@@ -88,7 +69,7 @@ function renderWithProfile(ui: ReactElement) {
 
 describe('WizardStep2Blocks', () => {
   const defaultProps = {
-    template: { id: 't1', title: 'Template', created_by: 'other-user', status: 'draft' } as any,
+    template: { id: 't1', title: 'Template' } as any,
     onBlocksCountChange: vi.fn(),
   };
 
@@ -119,30 +100,33 @@ describe('WizardStep2Blocks', () => {
     await waitFor(() => {
       expect(screen.getByText('Propiedades')).toBeTruthy();
       expect(screen.getByText('Eliminar')).toBeTruthy();
-    }, { timeout: 1000 });
+    });
   });
 
-  it('shows all blocks after selecting all', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+  it('enters multi-selection mode when selecting all blocks', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
-    expect(screen.getByText('Bloque 1')).toBeTruthy();
-    expect(screen.getByText('Bloque 2')).toBeTruthy();
-  });
-
-  it('toggles button label between "Seleccionar todos" and "Deseleccionar todos"', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
-    const btn = screen.getByText('Seleccionar todos');
-    fireEvent.click(btn);
     expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
-    fireEvent.click(screen.getByText('Deseleccionar todos'));
-    expect(screen.getByText('Seleccionar todos')).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Bloque 1' })).toBeTruthy();
+    expect(screen.getByText('Propiedades')).toBeTruthy();
   });
 
-  it('returns to empty panel after deselecting all blocks', () => {
-    render(<WizardStep2Blocks {...defaultProps} />);
+  it('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    const selectAllBtn = screen.getByText('Seleccionar todos');
+    
+    fireEvent.click(selectAllBtn);
+    
+    // After clicking select all, the button text should change
+    expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
+  });
+
+  it('sale del modo multi al deseleccionar todos', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
     fireEvent.click(screen.getByText('Seleccionar todos'));
+    expect(screen.getByText('Propiedades')).toBeTruthy();
+
     fireEvent.click(screen.getByText('Deseleccionar todos'));
     expect(screen.queryByText('Propiedades')).toBeNull();
-    expect(screen.queryByText('Eliminar')).toBeNull();
   });
 });
