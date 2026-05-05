@@ -335,12 +335,12 @@ export function DocumentsContent() {
     if (creationMode === 'none') return;
     if (creationMode === 'auto') {
       const templateId = creationOptions[0]?.template_id;
-      navigate(`/nueva-programacion/${templateId}/wizard`, {
+      navigate(`/documentos/nuevo/${templateId}/wizard`, {
         state: { moduleId: selectedModuleId }
       });
       return;
     }
-    navigate('/nueva-programacion', {
+    navigate('/documentos/nuevo', {
       state: { moduleId: selectedModuleId }
     });
   };

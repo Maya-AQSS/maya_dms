@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { fetchTemplates } from '../api/templates';
+import { fetchProcesses } from '../api/processes';
 import {
   buildTemplatesListMeta,
   sliceTemplatesPage,
 } from '../features/templates/clientTemplatePagination';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
 import type { Template, TemplateListFilters, TemplateVisibilityLevel } from '../types/templates';
+import type { Process } from '../types/processes';
 import {
   DataTable,
   DatePicker,
@@ -74,6 +76,7 @@ export function NuevaProgramacionSelectorPage() {
   const locationState = location.state as { moduleId?: string; processId?: string } | null;
   const selectedModuleId = locationState?.moduleId;
   const selectedProcessId = locationState?.processId;
+  const [process, setProcess] = useState<Process | null>(null);
 
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:nueva-programacion-selector',
@@ -88,6 +91,25 @@ export function NuevaProgramacionSelectorPage() {
   const [listError, setListError] = useState<string | null>(null);
   const [authorInput, setAuthorInput] = useState('');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!selectedProcessId) {
+      setProcess(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchProcesses()
+      .then((res) => {
+        if (cancelled) return;
+        setProcess(res.data.find((p) => p.id === selectedProcessId) ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setProcess(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedProcessId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,8 +205,12 @@ export function NuevaProgramacionSelectorPage() {
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
       <PageTitle
-        title="Nueva Programación"
-        subtitle="Selecciona una plantilla"
+        title="Nuevo Documento"
+        subtitle={
+          process
+            ? `Proceso: ${process.code} — ${process.name} · Selecciona una plantilla`
+            : 'Selecciona una plantilla'
+        }
         onBack={() => navigate('/procesos', { state: { tab: 'documents' } })}
         backLabel="Documentos"
       />
@@ -214,8 +240,9 @@ export function NuevaProgramacionSelectorPage() {
           navigate(`/templates/${t.id}`, {
             state: {
               selectionMode: true,
-              backTo: '/nueva-programacion',
+              backTo: '/documentos/nuevo',
               moduleId: selectedModuleId,
+              processId: selectedProcessId,
             },
           })
         }
