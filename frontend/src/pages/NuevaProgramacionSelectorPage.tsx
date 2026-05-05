@@ -238,7 +238,11 @@ export function NuevaProgramacionSelectorPage() {
             ? `Proceso: ${process.code} — ${process.name} · Selecciona una plantilla`
             : 'Selecciona una plantilla'
         }
-        onBack={() => navigate('/procesos', { state: { tab: 'documents' } })}
+        onBack={() =>
+          navigate(selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard', {
+            state: { tab: 'documents' },
+          })
+        }
         backLabel="Documentos"
       />
 

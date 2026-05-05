@@ -1,5 +1,7 @@
+import { useEffect, useState } from 'react';
 import type { Template } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
+import { fetchProcesses } from '../../../api/processes';
 import { visibilityLabel } from '../constants';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
@@ -23,8 +25,40 @@ function formatDate(iso: string | null | undefined): string {
  * wizard sin cambiar de ruta.
  */
 export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
+  const [processLabel, setProcessLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!template.process_id) {
+      setProcessLabel(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchProcesses()
+      .then((res) => {
+        if (cancelled) return;
+        const process = res.data.find((p) => p.id === template.process_id) ?? null;
+        if (!process) {
+          setProcessLabel(null);
+          return;
+        }
+        setProcessLabel(`Proceso: ${process.code} — ${process.name}`);
+      })
+      .catch(() => {
+        if (!cancelled) setProcessLabel(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [template.process_id]);
+
   const headerMetaInfo = (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
+      {processLabel ? (
+        <>
+          {processLabel}
+          {' · '}
+        </>
+      ) : null}
       {template.author_name ?? 'Autor desconocido'}
       {' · '}
       {visibilityLabel(template.visibility_level)}
