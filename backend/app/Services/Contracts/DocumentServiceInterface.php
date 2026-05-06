@@ -85,6 +85,22 @@ interface DocumentServiceInterface
     public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
 
     /**
+     * Detalle de versión del documento aceptando id legacy o id polimórfico.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   snapshot_data: array<string, mixed>,
+     *   created_at: ?string
+     * }
+     */
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array;
+
+    /**
      * Metadatos de versiones del documento ordenados descendentemente.
      *
      * @return list<array{

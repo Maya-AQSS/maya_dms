@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class DocumentVersionService
 {
@@ -22,6 +23,58 @@ class DocumentVersionService
         $document = $this->documentRepository->findOrFail($documentId);
 
         return $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
+    }
+
+    /**
+     * Detalle de versión del documento aceptando id legacy o id polimórfico.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   snapshot_data: array<string, mixed>,
+     *   created_at: ?string
+     * }
+     */
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array
+    {
+        $this->documentRepository->findOrFail($documentId);
+
+        try {
+            $version = $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
+
+            return [
+                'id' => $version->id,
+                'document_id' => $version->document_id,
+                'version_number' => (int) $version->version_number,
+                'trigger_event' => (string) $version->trigger_event,
+                'triggered_by' => (string) $version->triggered_by,
+                'changelog' => $version->notes,
+                'snapshot_data' => is_array($version->snapshot_data) ? $version->snapshot_data : [],
+                'created_at' => $version->created_at?->toIso8601String(),
+            ];
+        } catch (ModelNotFoundException) {
+            $entityVersion = $this->entityVersionRepository->findOrFail($versionId);
+
+            if ((string) $entityVersion->versionable_type !== Document::class
+                || (string) $entityVersion->versionable_id !== $documentId) {
+                throw new ModelNotFoundException;
+            }
+
+            return [
+                'id' => $entityVersion->id,
+                'document_id' => (string) $entityVersion->versionable_id,
+                'version_number' => (int) $entityVersion->version_number,
+                'trigger_event' => 'published',
+                'triggered_by' => (string) ($entityVersion->published_by ?? $entityVersion->created_by),
+                'changelog' => $entityVersion->changelog,
+                'snapshot_data' => is_array($entityVersion->snapshot_data) ? $entityVersion->snapshot_data : [],
+                'created_at' => ($entityVersion->published_at ?? $entityVersion->created_at)?->toIso8601String(),
+            ];
+        }
     }
 
     /**
@@ -46,28 +99,20 @@ class DocumentVersionService
         $entityVersions = $this->entityVersionRepository->listPublishedForEntityOrdered(
             Document::class,
             $documentId,
-        );
+        )->map(static function ($v): array {
+            return [
+                'id' => $v->id,
+                'document_id' => $v->versionable_id,
+                'version_number' => (int) $v->version_number,
+                'trigger_event' => 'published',
+                'triggered_by' => (string) ($v->published_by ?? $v->created_by),
+                'changelog' => $v->changelog,
+                'notes' => $v->changelog,
+                'created_at' => ($v->published_at ?? $v->created_at)?->toIso8601String(),
+            ];
+        });
 
-        if ($entityVersions->isNotEmpty()) {
-            return $entityVersions
-                ->sortByDesc('version_number')
-                ->values()
-                ->map(static function ($v): array {
-                    return [
-                        'id' => $v->id,
-                        'document_id' => $v->versionable_id,
-                        'version_number' => (int) $v->version_number,
-                        'trigger_event' => 'published',
-                        'triggered_by' => (string) ($v->published_by ?? $v->created_by),
-                        'changelog' => $v->changelog,
-                        'notes' => $v->changelog,
-                        'created_at' => ($v->published_at ?? $v->created_at)?->toIso8601String(),
-                    ];
-                })
-                ->all();
-        }
-
-        return $document->versions()
+        $legacyVersions = $document->versions()
             ->orderByDesc('version_number')
             ->get()
             ->map(static function (DocumentVersion $v): array {
@@ -81,7 +126,24 @@ class DocumentVersionService
                     'notes' => $v->notes,
                     'created_at' => $v->created_at?->toIso8601String(),
                 ];
-            })
+            });
+
+        if ($entityVersions->isEmpty()) {
+            return $legacyVersions
+                ->values()
+                ->all();
+        }
+
+        if ($legacyVersions->isEmpty()) {
+            return $entityVersions
+                ->values()
+                ->all();
+        }
+
+        return $entityVersions
+            ->concat($legacyVersions)
+            ->unique('version_number')
+            ->sortByDesc('version_number')
             ->values()
             ->all();
     }

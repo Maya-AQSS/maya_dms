@@ -1234,6 +1234,146 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonPath('data.0.changelog', 'entity-doc-changelog');
     }
 
+    public function test_document_version_detail_endpoint_accepts_entity_version_id_for_document(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $entityVersionId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Template detalle entity doc',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc detalle entity',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => now(),
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => $entityVersionId,
+            'versionable_type' => Document::class,
+            'versionable_id' => $documentId,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
+            'published_by' => $userId,
+            'published_at' => now(),
+            'changelog' => 'entity-doc-detail',
+            'snapshot_data' => json_encode(['document' => ['id' => $documentId], 'blocks' => []], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/documents/{$documentId}/versions/{$entityVersionId}", $headers)
+            ->assertOk()
+            ->assertJsonPath('data.id', $entityVersionId)
+            ->assertJsonPath('data.document_id', $documentId)
+            ->assertJsonPath('data.changelog', 'entity-doc-detail')
+            ->assertJsonPath('data.snapshot_data.document.id', $documentId);
+    }
+
+    public function test_document_version_detail_endpoint_rejects_entity_version_of_other_type(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $entityVersionId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Template detalle tipo invalido',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc detalle tipo invalido',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => now(),
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => $entityVersionId,
+            'versionable_type' => Template::class,
+            'versionable_id' => $documentId,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
+            'published_by' => $userId,
+            'published_at' => now(),
+            'changelog' => 'template-wrong-type',
+            'snapshot_data' => json_encode(['template' => ['id' => $documentId]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/documents/{$documentId}/versions/{$entityVersionId}", $headers)
+            ->assertNotFound();
+    }
+
     public function test_document_versions_endpoint_separates_document_history_from_template_history(): void
     {
         $userId = (string) Str::uuid();

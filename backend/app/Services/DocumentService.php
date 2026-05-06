@@ -593,6 +593,25 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Detalle de versión del documento aceptando id legacy o id polimórfico.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   snapshot_data: array<string, mixed>,
+     *   created_at: ?string
+     * }
+     */
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array
+    {
+        return $this->documentVersionService->findDocumentVersionDetailOrFail($documentId, $versionId);
+    }
+
+    /**
      * Metadatos de versiones del documento (sin snapshot completo).
      *
      * @return list<array{
