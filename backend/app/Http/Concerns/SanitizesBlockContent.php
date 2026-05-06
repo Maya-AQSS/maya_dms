@@ -57,6 +57,11 @@ trait SanitizesBlockContent
     private function sanitizeRichContent(mixed $value, ?string $parentKey = null): mixed
     {
         if (is_string($value)) {
+            // Los campos 'text' dentro de BlockNote preservan sus espacios iniciales/finales
+            if ($parentKey === 'text') {
+                return $value === '' ? null : $value;
+            }
+
             $normalized = trim($value);
 
             return $normalized === '' ? null : $normalized;

@@ -33,6 +33,15 @@ function FullscreenIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
+function cleanHtmlForPaste(html: string): string {
+  // Replace newlines and multiple spaces between tags with a single space.
+  // This prevents ProseMirror from collapsing newlines between inline tags into "nothing".
+  return html
+    .replace(/\r?\n/g, ' ')
+    .replace(/>\s+</g, '> <')
+    .replace(/\s+/g, ' ');
+}
+
 export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange, onFullscreenChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -74,6 +83,84 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editor = editorRef.current as any;
+
+  useEffect(() => {
+    const dom = (editor as any)._tiptapEditor?.view?.dom as HTMLElement | undefined;
+    if (!dom) return;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const plain = e.clipboardData?.getData('text/plain') ?? '';
+      const html = e.clipboardData?.getData('text/html') ?? '';
+
+      // Empty paste — nothing to do.
+      if (!plain.trim() && !html.trim()) return;
+
+      let parsedBlocks: any[] | undefined;
+      let handled = false;
+
+      // 1. Prioritize HTML if it looks like rich content (has tags).
+      // We clean it to ensure spaces between tags are preserved.
+      if (html && html.includes('<')) {
+        const cleaned = cleanHtmlForPaste(html);
+        try {
+          parsedBlocks = (editor as any).tryParseHTMLToBlocks(cleaned);
+          if (parsedBlocks && parsedBlocks.length > 0) {
+            handled = true;
+          }
+        } catch (err) {
+          console.warn('Failed to parse pasted HTML:', err);
+        }
+      }
+
+      // 2. Fallback to plain text if HTML failed or wasn't provided.
+      if (!handled && plain) {
+        try {
+          parsedBlocks = (editor as any).tryParseMarkdownToBlocks(plain);
+          if (parsedBlocks && parsedBlocks.length > 0) {
+            handled = true;
+          }
+        } catch (err) {
+          console.warn('Failed to parse pasted text/markdown:', err);
+        }
+      }
+
+      if (handled && parsedBlocks) {
+        // Intercepted and parsed — insert blocks at current selection.
+        const currentBlocks = editor.document;
+        const selection = editor.getTextCursorPosition();
+        const blockId = selection.block.id;
+        const blockIdx = currentBlocks.findIndex((b: any) => b.id === blockId);
+
+        if (blockIdx !== -1) {
+          editor.insertBlocks(parsedBlocks as any[], blockId, 'after');
+          // If the current block was empty, remove it so
+          // the pasted content lands in-place instead of after an empty line.
+          const currentBlock = currentBlocks[blockIdx];
+          const isEmpty =
+            currentBlock.content.length === 0 ||
+            (currentBlock.content.length === 1 &&
+              currentBlock.content[0].type === 'text' &&
+              !currentBlock.content[0].text);
+
+          if (isEmpty) {
+            editor.removeBlocks([blockId]);
+          }
+        } else {
+          editor.insertBlocks(parsedBlocks as any[], currentBlocks[currentBlocks.length - 1].id, 'after');
+        }
+
+        // Trigger onChange so autosave picks up the pasted content.
+        onChange?.(editor.document);
+
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+
+    // Use capture phase to ensure we intercept before the default handler.
+    dom.addEventListener('paste', handlePaste, true);
+    return () => dom.removeEventListener('paste', handlePaste, true);
+  }, [editor, onChange]);
 
   // Click anywhere in the empty editor area focuses the editor at the end.
   const handleAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
