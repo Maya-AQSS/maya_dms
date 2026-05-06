@@ -956,6 +956,14 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertSame('published', $row->trigger_event);
         $this->assertSame($reviewerId, $row->triggered_by);
         $this->assertSame('Cierre v1 liberado', $row->notes);
+        $this->assertDatabaseHas('entity_versions', [
+            'versionable_type' => Document::class,
+            'versionable_id' => $docId,
+            'version_number' => 1,
+            'status' => 'published',
+            'published_by' => $reviewerId,
+            'is_snapshot_immutable' => 1,
+        ]);
 
         $raw = $row->snapshot_data;
         $snapshot = is_string($raw) ? json_decode($raw, true) : $raw;

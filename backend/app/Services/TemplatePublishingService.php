@@ -6,6 +6,7 @@ use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use Illuminate\Validation\ValidationException;
 
 class TemplatePublishingService
@@ -13,6 +14,7 @@ class TemplatePublishingService
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
+        private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
     ) {}
 
     /**
@@ -113,6 +115,30 @@ class TemplatePublishingService
                 'status' => 'published',
                 'version' => $next,
             ]);
+
+            $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
+                Template::class,
+                (string) $template->id,
+                $next,
+                [
+                    'template' => [
+                        'id' => $template->id,
+                        'process_id' => $template->process_id,
+                        'name' => $template->name,
+                        'description' => $template->description,
+                        'visibility_level' => $template->visibility_level,
+                        'study_type_id' => $template->study_type_id,
+                        'study_id' => $template->study_id,
+                        'module_id' => $template->module_id,
+                        'team_id' => $template->team_id,
+                        'status' => 'published',
+                        'version' => $next,
+                    ],
+                    'blocks' => $blocksSnapshot,
+                ],
+                $actorId,
+                $resolvedChangelog,
+            );
 
             event(new TemplateStateChanged(
                 template: $updated,

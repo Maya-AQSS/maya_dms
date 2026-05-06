@@ -340,6 +340,17 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
+     * Última versión de snapshot del documento por número de versión.
+     */
+    public function findLatestDocumentVersionOrFail(string $documentId): DocumentVersion
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->orderByDesc('version_number')
+            ->firstOrFail();
+    }
+
+    /**
      * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
      */
     public function upsertDocumentShare(

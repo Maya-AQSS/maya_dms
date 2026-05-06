@@ -13,6 +13,7 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
@@ -31,6 +32,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentShareService $documentShareService,
         private readonly DocumentStateService $documentStateService,
         private readonly DocumentReviewService $documentReviewService,
+        private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
     ) {}
 
     /**
@@ -432,6 +434,16 @@ class DocumentService implements DocumentServiceInterface
                 triggeredBy: $actorId,
                 notes: $changelog,
             ));
+            $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($documentId);
+
+            $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
+                Document::class,
+                $documentId,
+                (int) $latestVersion->version_number,
+                is_array($latestVersion->snapshot_data) ? $latestVersion->snapshot_data : [],
+                $actorId,
+                $changelog,
+            );
 
             return $this->documentRepository->findOrFail($documentId);
         });

@@ -58,4 +58,59 @@ class EntityVersionLifecycleService implements EntityVersionLifecycleServiceInte
             ]);
         });
     }
+
+    /**
+     * Crea una nueva versión publicada inmutable para una entidad versionable.
+     */
+    public function createPublishedSnapshotVersion(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+        array $snapshotData,
+        string $actorId,
+        ?string $changelog = null,
+    ): EntityVersion {
+        if ($versionNumber < 1) {
+            throw ValidationException::withMessages([
+                'version_number' => ['El número de versión debe ser mayor o igual a 1.'],
+            ]);
+        }
+
+        if ($snapshotData === []) {
+            throw ValidationException::withMessages([
+                'snapshot_data' => ['El snapshot de publicación es obligatorio.'],
+            ]);
+        }
+
+        $resolvedChangelog = is_string($changelog) ? trim($changelog) : null;
+        if ($resolvedChangelog === '') {
+            $resolvedChangelog = null;
+        }
+
+        return $this->entityVersionRepository->transaction(function () use (
+            $versionableType,
+            $versionableId,
+            $versionNumber,
+            $snapshotData,
+            $actorId,
+            $resolvedChangelog
+        ) {
+            $baseVersion = $this->entityVersionRepository->findLatestPublishedForEntity($versionableType, $versionableId);
+
+            return $this->entityVersionRepository->create([
+                'versionable_type' => $versionableType,
+                'versionable_id' => $versionableId,
+                'version_number' => $versionNumber,
+                'base_version_id' => $baseVersion?->id,
+                'change_set' => null,
+                'status' => 'published',
+                'created_by' => $actorId,
+                'published_by' => $actorId,
+                'published_at' => now(),
+                'changelog' => $resolvedChangelog,
+                'snapshot_data' => $snapshotData,
+                'is_snapshot_immutable' => true,
+            ]);
+        });
+    }
 }

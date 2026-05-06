@@ -1006,6 +1006,14 @@ class TemplatesApiTest extends TestCase
             'version_number' => 1,
             'published_by' => $reviewerId,
         ]);
+        $this->assertDatabaseHas('entity_versions', [
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'status' => 'published',
+            'published_by' => $reviewerId,
+            'is_snapshot_immutable' => 1,
+        ]);
 
         $vid = TemplateVersion::query()->where('template_id', $tid)->value('id');
         $this->assertNotEmpty($vid);

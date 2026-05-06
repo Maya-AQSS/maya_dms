@@ -17,4 +17,18 @@ interface EntityVersionLifecycleServiceInterface
         string $actorId,
         ?string $changelog = null,
     ): EntityVersion;
+
+    /**
+     * Crea una nueva versión publicada inmutable para una entidad versionable.
+     *
+     * @param  array<string, mixed>  $snapshotData
+     */
+    public function createPublishedSnapshotVersion(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+        array $snapshotData,
+        string $actorId,
+        ?string $changelog = null,
+    ): EntityVersion;
 }

@@ -34,6 +34,11 @@ interface EntityVersionRepositoryInterface
     public function nextVersionNumber(string $versionableType, string $versionableId): int;
 
     /**
+     * Obtiene la última versión publicada para una entidad.
+     */
+    public function findLatestPublishedForEntity(string $versionableType, string $versionableId): ?EntityVersion;
+
+    /**
      * Crea una nueva versión.
      *
      * @param array<string, mixed> $attributes Los atributos de la versión.

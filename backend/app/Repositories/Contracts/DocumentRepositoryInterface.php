@@ -124,6 +124,11 @@ interface DocumentRepositoryInterface
     public function findDocumentVersionInDocumentOrFail(string $documentId, string $versionId): DocumentVersion;
 
     /**
+     * Última versión de snapshot del documento por número de versión.
+     */
+    public function findLatestDocumentVersionOrFail(string $documentId): DocumentVersion;
+
+    /**
      * Crea o actualiza un compartido (document_id, user_id) único.
      */
     public function upsertDocumentShare(

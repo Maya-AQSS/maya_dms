@@ -103,6 +103,58 @@ class EntityVersionLifecycleServiceTest extends TestCase
         $this->assertNull($published->changelog);
     }
 
+    public function test_create_published_snapshot_version_creates_immutable_entity_version(): void
+    {
+        $templateId = $this->createTemplateForVersioning();
+        $actorId = (string) Str::uuid();
+        $service = app(EntityVersionLifecycleServiceInterface::class);
+
+        $created = $service->createPublishedSnapshotVersion(
+            Template::class,
+            $templateId,
+            1,
+            ['template' => ['id' => $templateId], 'blocks' => []],
+            $actorId,
+            'Publicación inicial',
+        );
+
+        $this->assertSame('published', $created->status);
+        $this->assertSame(1, $created->version_number);
+        $this->assertTrue($created->is_snapshot_immutable);
+        $this->assertSame($actorId, $created->published_by);
+        $this->assertSame('Publicación inicial', $created->changelog);
+        $this->assertNull($created->base_version_id);
+    }
+
+    public function test_create_published_snapshot_version_links_previous_published_version_as_base(): void
+    {
+        $templateId = $this->createTemplateForVersioning();
+        $service = app(EntityVersionLifecycleServiceInterface::class);
+        $actorA = (string) Str::uuid();
+        $actorB = (string) Str::uuid();
+
+        $v1 = $service->createPublishedSnapshotVersion(
+            Template::class,
+            $templateId,
+            1,
+            ['template' => ['id' => $templateId, 'version' => 1]],
+            $actorA,
+            'v1',
+        );
+
+        $v2 = $service->createPublishedSnapshotVersion(
+            Template::class,
+            $templateId,
+            2,
+            ['template' => ['id' => $templateId, 'version' => 2]],
+            $actorB,
+            'v2',
+        );
+
+        $this->assertSame($v1->id, $v2->base_version_id);
+        $this->assertSame(2, $v2->version_number);
+    }
+
     private function createEntityVersion(string $templateId, string $status): EntityVersion
     {
         return EntityVersion::query()->create([
