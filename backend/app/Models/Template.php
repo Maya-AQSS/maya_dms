@@ -202,9 +202,11 @@ class Template extends Model
         return $this->hasMany(UserFavoriteTemplate::class);
     }
 
-    public function publishedVersions(): HasMany
+    public function publishedVersions(): MorphMany
     {
-        return $this->hasMany(TemplateVersion::class)->orderBy('version_number');
+        return $this->morphMany(EntityVersion::class, 'versionable')
+            ->where('status', 'published')
+            ->orderBy('version_number');
     }
 
     public function entityVersions(): MorphMany

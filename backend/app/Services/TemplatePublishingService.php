@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use Illuminate\Validation\ValidationException;
 
@@ -13,7 +13,7 @@ class TemplatePublishingService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
-        private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
         private readonly TemplateVersionBlockLayerWriter $templateVersionBlockLayerWriter,
     ) {}
@@ -108,7 +108,7 @@ class TemplatePublishingService
                 ->values()
                 ->all();
 
-            $next = $this->templateVersionRepository->nextVersionNumber($templateId);
+            $next = $this->entityVersionRepository->nextVersionNumber(Template::class, $templateId);
             $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
 
             // changelog === null indica publicación automática (sin revisores o aprobación unánime).
@@ -151,16 +151,7 @@ class TemplatePublishingService
                 $resolvedChangelog,
             );
 
-            $createdVersion = $this->templateVersionRepository->createSnapshot(
-                $templateId,
-                $next,
-                $blocksSnapshot,
-                $resolvedChangelog,
-                $actorId,
-                (string) $entityVersion->id,
-            );
-
-            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($createdVersion, $template);
+            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($entityVersion, $template);
 
             $oldStatus = $template->status;
             $updated = $this->templateRepository->update($template, [

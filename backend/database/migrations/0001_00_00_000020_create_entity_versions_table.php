@@ -38,19 +38,22 @@ return new class extends Migration
                 ->nullOnDelete();
         });
 
-        Schema::table('template_versions', function (Blueprint $table) {
-            $table->foreign('entity_version_id')
-                ->references('id')
-                ->on('entity_versions')
-                ->nullOnDelete();
-        });
-
         Schema::table('document_versions', function (Blueprint $table) {
             $table->foreign('entity_version_id')
                 ->references('id')
                 ->on('entity_versions')
                 ->nullOnDelete();
         });
+
+        /* documents.template_version_id → entity_versions.id (publicación de plantilla anclada). */
+        if (Schema::hasTable('documents')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->foreign('template_version_id')
+                    ->references('id')
+                    ->on('entity_versions')
+                    ->restrictOnDelete();
+            });
+        }
 
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::unprepared(<<<'SQL'
@@ -69,9 +72,11 @@ SQL);
             DB::unprepared('DROP TRIGGER IF EXISTS entity_versions_append_only_snapshots ON entity_versions;');
         }
 
-        Schema::table('template_versions', function (Blueprint $table) {
-            $table->dropForeign(['entity_version_id']);
-        });
+        if (Schema::hasTable('documents')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->dropForeign(['template_version_id']);
+            });
+        }
 
         Schema::table('document_versions', function (Blueprint $table) {
             $table->dropForeign(['entity_version_id']);

@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -99,13 +98,16 @@ class DocumentsModuleCreationApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @return string Id en {@see entity_versions} de la publicación.
+     */
     private function createPublishedTemplateWithVersion(
         string $templateId,
         string $creatorId,
         string $moduleId,
         string $name,
         ?string $description = null,
-    ): TemplateVersion {
+    ): string {
         $templateBlockId = (string) Str::uuid();
 
         Template::query()->forceCreate([
@@ -136,23 +138,38 @@ class DocumentsModuleCreationApiTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        return TemplateVersion::query()->forceCreate([
-            'id' => (string) Str::uuid(),
-            'template_id' => $templateId,
+        $entityVersionId = (string) Str::uuid();
+        $publishedAt = now();
+
+        DB::table('entity_versions')->insert([
+            'id' => $entityVersionId,
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateId,
             'version_number' => 1,
-            'blocks_snapshot' => [[
-                'id' => $templateBlockId,
-                'title' => 'Objetivos',
-                'default_content' => null,
-                'block_state' => 'editable',
-                'sort_order' => 1,
-            ]],
-            'changelog' => 'Versión inicial',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
             'published_by' => $creatorId,
-            'published_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'published_at' => $publishedAt,
+            'changelog' => 'Versión inicial',
+            'snapshot_data' => json_encode([
+                'blocks' => [[
+                    'id' => $templateBlockId,
+                    'title' => 'Objetivos',
+                    'default_content' => null,
+                    'block_state' => 'editable',
+                    'sort_order' => 1,
+                    'type' => '',
+                    'mandatory' => false,
+                ]],
+            ]),
+            'is_snapshot_immutable' => true,
+            'created_at' => $publishedAt,
+            'updated_at' => $publishedAt,
         ]);
+
+        return $entityVersionId;
     }
 
     public function test_creation_options_returns_none_when_module_has_no_published_templates(): void
@@ -188,7 +205,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.can_create', true)
             ->assertJsonPath('data.mode', 'auto')
-            ->assertJsonPath('data.options.0.template_version_id', $version->id)
+            ->assertJsonPath('data.options.0.template_version_id', $version)
             ->assertJsonPath('data.options.0.name', 'Plantilla Única');
     }
 
@@ -236,7 +253,7 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
-            'template_version_id' => $version->id,
+            'template_version_id' => $version,
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers);
@@ -253,7 +270,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             'id' => $response->json('data.id'),
             'created_by' => $userId,
             'owner_id' => $userId,
-            'template_version_id' => $version->id,
+            'template_version_id' => $version,
             'study_type_id' => 'TYPE-1',
             'module_id' => 'MOD-1',
             'status' => 'draft',
@@ -306,7 +323,7 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $first = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
-            'template_version_id' => $version->id,
+            'template_version_id' => $version,
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)->assertCreated();
@@ -318,7 +335,7 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $second = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
-            'template_version_id' => $version->id,
+            'template_version_id' => $version,
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)->assertCreated();

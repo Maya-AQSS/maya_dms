@@ -11,7 +11,6 @@ use App\Models\DocumentBlock;
 use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateBlock;
-use App\Models\TemplateVersion;
 use Database\Seeders\PermissionsSeeder;
 use Database\Seeders\UserPermissionsSeeder;
 use Database\Seeders\UsersSourceSeeder;
@@ -21,6 +20,7 @@ use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
+use Tests\Concerns\SeedsTemplatePublicationAnchor;
 use Tests\TestCase;
 
 /**
@@ -31,6 +31,7 @@ class DocumentShareApiTest extends TestCase
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+    use SeedsTemplatePublicationAnchor;
 
     /** Par RSA fijo por caso de prueba: varios usuarios deben firmar con la misma clave que expone el mock JWKS. */
     private ?string $testJwtPrivatePem = null;
@@ -101,7 +102,6 @@ class DocumentShareApiTest extends TestCase
         $collabId = (string) Str::uuid();
         $templateId = (string) Str::uuid();
         $blockSnapId = (string) Str::uuid();
-        $versionId = (string) Str::uuid();
         $documentId = (string) Str::uuid();
         $docBlockId = (string) Str::uuid();
 
@@ -132,26 +132,26 @@ class DocumentShareApiTest extends TestCase
             'sort_order' => 0,
         ]);
 
-        TemplateVersion::query()->forceCreate([
-            'id' => $versionId,
-            'template_id' => $templateId,
-            'version_number' => 1,
-            'blocks_snapshot' => [[
+        $anchor = $this->seedCanonicalPublicationForTemplate(
+            $templateId,
+            1,
+            $ownerId,
+            [[
                 'id' => $blockSnapId,
                 'title' => 'B1',
                 'default_content' => null,
                 'block_state' => 'editable',
                 'sort_order' => 0,
+                'type' => '',
+                'mandatory' => false,
             ]],
-            'changelog' => 'v1',
-            'published_by' => $ownerId,
-            'published_at' => now(),
-        ]);
+        );
 
         Document::query()->forceCreate([
             'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
             'template_id' => $templateId,
-            'template_version_id' => $versionId,
+            'template_version_id' => $anchor['entity_version_id'],
             'title' => 'Doc compartir',
             'study_id' => null,
             'created_by' => $creatorId,

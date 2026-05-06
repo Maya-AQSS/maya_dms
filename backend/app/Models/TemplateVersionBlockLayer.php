@@ -6,8 +6,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
- * Tabla pivote versión↔bloque con payload incremental; PK compuesta (sin columna `id` propia).
- * El trait AsPivot de Laravel usa `foreignKey` + `relatedKey` cuando no hay `id` en los atributos.
+ * Tabla pivote publicación↔bloque con payload incremental; PK compuesta (sin columna `id` propia).
  */
 class TemplateVersionBlockLayer extends Pivot
 {
@@ -15,12 +14,12 @@ class TemplateVersionBlockLayer extends Pivot
 
     protected $table = 'template_version_block_layers';
 
-    protected $foreignKey = 'template_version_id';
+    protected $foreignKey = 'entity_version_id';
 
     protected $relatedKey = 'template_block_id';
 
     protected $fillable = [
-        'template_version_id',
+        'entity_version_id',
         'template_block_id',
         'sort_order',
         'inherits_from_previous_publication',
@@ -38,8 +37,8 @@ class TemplateVersionBlockLayer extends Pivot
         ];
     }
 
-    public function templateVersion(): BelongsTo
+    public function entityVersion(): BelongsTo
     {
-        return $this->belongsTo(TemplateVersion::class);
+        return $this->belongsTo(EntityVersion::class, 'entity_version_id');
     }
 }

@@ -5,11 +5,11 @@ namespace App\Services;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
+use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -19,8 +19,8 @@ class DocumentBlockService
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
-        private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly TemplateVersionBlockLayerResolver $templateVersionBlockLayerResolver,
     ) {}
 
     /**
@@ -167,56 +167,60 @@ class DocumentBlockService
 
         $document->loadMissing('templateVersion');
 
-        $versionNumber = null;
-
-        if ($document->templateVersion !== null) {
-            $versionNumber = (int) $document->templateVersion->version_number;
-            $fromLegacy = $this->sortedSnapshotBlocks($document->templateVersion->blocksSnapshotRows());
-            if ($fromLegacy !== []) {
-                return $fromLegacy;
-            }
-        } else {
-            $meta = $this->templateVersionRepository->findPublishedMetaById((string) $document->template_version_id);
-            if ($meta !== null) {
-                $versionNumber = (int) $meta['version_number'];
-                $tv = $this->templateVersionRepository->findOptional((string) $document->template_version_id);
-                if ($tv !== null) {
-                    $fromLegacy = $this->sortedSnapshotBlocks($tv->blocksSnapshotRows());
-                    if ($fromLegacy !== []) {
-                        return $fromLegacy;
-                    }
-                }
-            } else {
-                $entityRow = $this->entityVersionRepository->findPublishedByIdForVersionable(
-                    (string) $document->template_version_id,
-                    Template::class,
-                    (string) $document->template_id,
-                );
-                if ($entityRow !== null) {
-                    $versionNumber = (int) $entityRow->version_number;
-                    $fromEntity = $this->sortedBlocksFromEntitySnapshot($entityRow->snapshot_data);
-                    if ($fromEntity !== []) {
-                        return $fromEntity;
-                    }
-                }
-            }
-        }
-
-        if ($versionNumber !== null) {
-            $entityVersion = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+        $ev = $document->templateVersion;
+        if ($ev === null) {
+            $ev = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                (string) $document->template_version_id,
                 Template::class,
                 (string) $document->template_id,
-                $versionNumber,
             );
-            if ($entityVersion !== null) {
-                $fromEntity = $this->sortedBlocksFromEntitySnapshot($entityVersion->snapshot_data);
-                if ($fromEntity !== []) {
-                    return $fromEntity;
+        }
+
+        if ($ev !== null) {
+            $rows = $this->sortedBlocksFromEntitySnapshot($ev->snapshot_data);
+            if ($rows === []) {
+                $resolved = $this->templateVersionBlockLayerResolver->resolveBlocksSnapshot((string) $ev->id);
+                $rows = $this->sortedSnapshotBlocks($resolved);
+            }
+            if ($rows !== []) {
+                return $rows;
+            }
+
+            $retryEntity = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+                Template::class,
+                (string) $document->template_id,
+                (int) $ev->version_number,
+            );
+            if ($retryEntity !== null) {
+                $rows = $this->sortedBlocksFromEntitySnapshot($retryEntity->snapshot_data);
+                if ($rows === []) {
+                    $resolved = $this->templateVersionBlockLayerResolver->resolveBlocksSnapshot((string) $retryEntity->id);
+                    $rows = $this->sortedSnapshotBlocks($resolved);
+                }
+                if ($rows !== []) {
+                    return $rows;
                 }
             }
         }
 
         return $this->blockDefinitionsFromLiveTemplate((string) $document->template_id);
+    }
+
+    /**
+     * Filas de definición de bloques desde el snapshot publicado de plantilla ({@see EntityVersion}).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function templatePublicationDefinitionRowsFromEntityVersion(EntityVersion $entityVersion): array
+    {
+        $rows = $this->sortedBlocksFromEntitySnapshot($entityVersion->snapshot_data);
+        if ($rows !== []) {
+            return $rows;
+        }
+
+        $resolved = $this->templateVersionBlockLayerResolver->resolveBlocksSnapshot((string) $entityVersion->id);
+
+        return $this->sortedSnapshotBlocks($resolved);
     }
 
     /**

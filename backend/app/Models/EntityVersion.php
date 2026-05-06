@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -43,6 +44,23 @@ class EntityVersion extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::updating(function (EntityVersion $model) {
+            // Permite transición draft → publicado (p. ej. marcar inmutable al publicar);
+            // bloquea cualquier mutación si la fila ya era inmutable en BD.
+            if ((bool) $model->getOriginal('is_snapshot_immutable', false)) {
+                throw new AuthorizationException('Las versiones de snapshot inmutables no se pueden modificar.');
+            }
+        });
+
+        static::deleting(function (EntityVersion $model) {
+            if ($model->is_snapshot_immutable) {
+                throw new AuthorizationException('Las versiones de snapshot inmutables no se pueden eliminar.');
+            }
+        });
+    }
+
     public function versionable(): MorphTo
     {
         return $this->morphTo();
@@ -51,5 +69,21 @@ class EntityVersion extends Model
     public function baseVersion(): BelongsTo
     {
         return $this->belongsTo(self::class, 'base_version_id');
+    }
+
+    /**
+     * Filas de bloques desde {@see $snapshot_data} (publicación de plantilla o documento).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function blocksSnapshotRows(): array
+    {
+        if (! is_array($this->snapshot_data)) {
+            return [];
+        }
+
+        $blocks = $this->snapshot_data['blocks'] ?? null;
+
+        return is_array($blocks) ? array_values($blocks) : [];
     }
 }

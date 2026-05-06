@@ -6,7 +6,6 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Database\Seeders\PermissionsSeeder;
 use Database\Seeders\UserPermissionsSeeder;
 use Database\Seeders\UsersSourceSeeder;
@@ -17,6 +16,7 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
+use Tests\Concerns\SeedsTemplatePublicationAnchor;
 use Tests\TestCase;
  
 class DashboardApiTest extends TestCase
@@ -24,6 +24,7 @@ class DashboardApiTest extends TestCase
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+    use SeedsTemplatePublicationAnchor;
 
     private function anyStudyId(): string
     {
@@ -255,7 +256,6 @@ class DashboardApiTest extends TestCase
         $headers = $this->authHeaders($rev1);
 
         $templateId = (string) Str::uuid();
-        $versionId = (string) Str::uuid();
         $documentId = (string) Str::uuid();
         $blockSnapId = (string) Str::uuid();
         $studyId = $this->anyStudyId();
@@ -277,26 +277,26 @@ class DashboardApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        TemplateVersion::query()->forceCreate([
-            'id' => $versionId,
-            'template_id' => $templateId,
-            'version_number' => 1,
-            'blocks_snapshot' => [[
+        $anchor = $this->seedCanonicalPublicationForTemplate(
+            $templateId,
+            1,
+            $ownerId,
+            [[
                 'id' => $blockSnapId,
                 'title' => 'B',
                 'default_content' => null,
                 'block_state' => 'optional',
                 'sort_order' => 0,
+                'type' => '',
+                'mandatory' => false,
             ]],
-            'changelog' => 'v1',
-            'published_by' => $ownerId,
-            'published_at' => now(),
-        ]);
+        );
 
         Document::query()->forceCreate([
             'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
             'template_id' => $templateId,
-            'template_version_id' => $versionId,
+            'template_version_id' => $anchor['entity_version_id'],
             'title' => 'Programación en revisión',
             'study_type_id' => null,
             'study_id' => $studyId,

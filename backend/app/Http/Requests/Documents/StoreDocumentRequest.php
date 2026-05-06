@@ -3,10 +3,11 @@
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class StoreDocumentRequest extends FormRequest
@@ -29,11 +30,12 @@ class StoreDocumentRequest extends FormRequest
         if ($this->filled('template_id')) {
             $template = Template::query()->find($this->input('template_id'));
         } elseif ($this->filled('template_version_id')) {
-            $templateId = TemplateVersion::query()
+            $ev = EntityVersion::query()
                 ->whereKey($this->input('template_version_id'))
-                ->value('template_id');
-            if (is_string($templateId)) {
-                $template = Template::query()->find($templateId);
+                ->where('versionable_type', Template::class)
+                ->first();
+            if ($ev !== null) {
+                $template = Template::query()->find($ev->versionable_id);
             }
         }
 
@@ -58,7 +60,9 @@ class StoreDocumentRequest extends FormRequest
             'template_version_id' => [
                 'required_without:template_id',
                 'uuid',
-                'exists:template_versions,id',
+                Rule::exists('entity_versions', 'id')->where(
+                    static fn ($q) => $q->where('versionable_type', Template::class),
+                ),
             ],
         ];
     }
@@ -79,11 +83,12 @@ class StoreDocumentRequest extends FormRequest
             if ($this->filled('template_id')) {
                 $template = Template::query()->find($this->input('template_id'));
             } elseif ($this->filled('template_version_id')) {
-                $tid = TemplateVersion::query()
+                $ev = EntityVersion::query()
                     ->whereKey($this->input('template_version_id'))
-                    ->value('template_id');
-                if (is_string($tid)) {
-                    $template = Template::query()->find($tid);
+                    ->where('versionable_type', Template::class)
+                    ->first();
+                if ($ev !== null) {
+                    $template = Template::query()->find($ev->versionable_id);
                 }
             }
 
@@ -109,9 +114,10 @@ class StoreDocumentRequest extends FormRequest
         $templateId = $this->validated('template_id');
 
         if (! is_string($templateId) && is_string($templateVersionId)) {
-            $templateId = (string) TemplateVersion::query()
+            $templateId = (string) (EntityVersion::query()
                 ->whereKey($templateVersionId)
-                ->value('template_id');
+                ->where('versionable_type', Template::class)
+                ->value('versionable_id') ?? '');
         }
 
         return new CreateDocumentDto(

@@ -145,9 +145,14 @@ class Document extends Model
         return $this->belongsTo(Template::class)->withoutGlobalScopes(['user_access']);
     }
 
+    /**
+     * Publicación de plantilla usada al crear el documento: FK a {@see EntityVersion} (snapshot canónico).
+     *
+     * Nombre de columna histórico: {@code template_version_id}.
+     */
     public function templateVersion(): BelongsTo
     {
-        return $this->belongsTo(TemplateVersion::class);
+        return $this->belongsTo(EntityVersion::class, 'template_version_id');
     }
 
     public function process(): BelongsTo

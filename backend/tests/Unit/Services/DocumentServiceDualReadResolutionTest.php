@@ -8,7 +8,6 @@ use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
 use App\Services\DocumentReviewService;
@@ -32,7 +31,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
     {
         $docRepo = Mockery::mock(DocumentRepositoryInterface::class);
         $tplRepo = Mockery::mock(TemplateRepositoryInterface::class);
-        $verRepo = Mockery::mock(TemplateVersionRepositoryInterface::class);
         $snap = Mockery::mock(SnapshotServiceInterface::class);
         $blockSvc = Mockery::mock(DocumentBlockService::class);
         $verSvc = Mockery::mock(DocumentVersionService::class);
@@ -40,11 +38,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
-
-        $verRepo->shouldReceive('findPublishedMetaById')
-            ->once()
-            ->with('entity-anchor-uuid')
-            ->andReturn(null);
 
         $entityVersionRepo->shouldReceive('findPublishedMetaByIdForVersionable')
             ->once()
@@ -58,7 +51,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
         $service = new DocumentService(
             $docRepo,
             $tplRepo,
-            $verRepo,
             $snap,
             $blockSvc,
             $verSvc,
@@ -89,7 +81,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
     {
         $docRepo = Mockery::mock(DocumentRepositoryInterface::class);
         $tplRepo = Mockery::mock(TemplateRepositoryInterface::class);
-        $verRepo = Mockery::mock(TemplateVersionRepositoryInterface::class);
         $snap = Mockery::mock(SnapshotServiceInterface::class);
         $blockSvc = Mockery::mock(DocumentBlockService::class);
         $verSvc = Mockery::mock(DocumentVersionService::class);
@@ -97,11 +88,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
-
-        $verRepo->shouldReceive('findPublishedMetaById')
-            ->once()
-            ->with('entity-anchor-uuid')
-            ->andReturn(null);
 
         $entityVersion = new EntityVersion;
         $entityVersion->forceFill([
@@ -123,7 +109,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
         $service = new DocumentService(
             $docRepo,
             $tplRepo,
-            $verRepo,
             $snap,
             $blockSvc,
             $verSvc,

@@ -210,7 +210,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonValidationErrors(['template_id']);
     }
 
-    public function test_store_document_fails_when_entity_version_is_ahead_without_matching_legacy_row(): void
+    public function test_store_document_without_template_version_id_anchors_to_highest_published_entity_version(): void
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
@@ -222,7 +222,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'Plantilla desincronizada',
+            'name' => 'Plantilla con v1 publicada y v2 sólo en entity_versions',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
@@ -268,21 +268,36 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $creatorId,
             'published_by' => $reviewerId,
             'published_at' => $now,
-            'changelog' => 'v2 solo entity',
-            'snapshot_data' => json_encode(['blocks' => [['id' => $b1, 'sort_order' => 0]]], JSON_THROW_ON_ERROR),
+            'changelog' => 'v2 publicación adicional',
+            'snapshot_data' => json_encode([
+                'blocks' => [[
+                    'id' => $b1,
+                    'title' => 'Bloque',
+                    'default_content' => null,
+                    'block_state' => 'editable',
+                    'sort_order' => 0,
+                ]],
+            ], JSON_THROW_ON_ERROR),
             'is_snapshot_immutable' => 1,
             'created_at' => $now,
             'updated_at' => $now,
         ]);
 
+        $v2Id = (string) DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 2)
+            ->value('id');
+
         $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
-            'title' => 'Doc bloqueado por desincronía',
+            'title' => 'Doc anclado a la publicación mayor',
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['template_id']);
+            ->assertCreated()
+            ->assertJsonPath('data.template_version_id', $v2Id)
+            ->assertJsonPath('data.template_version_number', 2);
     }
 
     public function test_store_document_can_be_created_with_template_version_only(): void
@@ -333,9 +348,12 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
-        $versionId = (string) DB::table('template_versions')
-            ->where('template_id', $tid)
+        $versionId = (string) DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 1)
             ->value('id');
+        $this->assertNotNull($versionId);
 
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_version_id' => $versionId,
@@ -1001,8 +1019,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $docId = (string) $createDoc->json('data.id');
         $versionIdV1 = (string) $createDoc->json('data.template_version_id');
 
-        DB::table('template_versions')->where('id', $versionIdV1)->update([
-            'blocks_snapshot' => json_encode([], JSON_THROW_ON_ERROR),
+        DB::table('entity_versions')->where('id', $versionIdV1)->update([
+            'snapshot_data' => json_encode(['blocks' => []], JSON_THROW_ON_ERROR),
         ]);
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
@@ -1663,27 +1681,18 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
-        // Elimina snapshot versionado para forzar fallback a config viva.
-        DB::table('entity_versions')
+        // Mantiene la fila canónica (FK en documentos) pero elimina revisores del snapshot para forzar fallback a config viva.
+        $evRow = DB::table('entity_versions')
             ->where('versionable_type', Template::class)
             ->where('versionable_id', $tid)
             ->where('version_number', 1)
-            ->delete();
-
-        // Sin entity_versions la fila legacy debe seguir teniendo bloques (solo JSON en template_versions) para poder crear documentos.
-        $blocksSnapshot = TemplateBlock::query()->where('template_id', $tid)->orderBy('sort_order')->get()->map(static function (TemplateBlock $b): array {
-            return [
-                'id' => (string) $b->id,
-                'title' => $b->title,
-                'description' => $b->description,
-                'default_content' => $b->default_content,
-                'block_state' => $b->block_state,
-                'sort_order' => (int) $b->sort_order,
-            ];
-        })->values()->all();
-        DB::table('template_versions')->where('template_id', $tid)->where('version_number', 1)->update([
-            'blocks_snapshot' => json_encode($blocksSnapshot, JSON_THROW_ON_ERROR),
-            'entity_version_id' => null,
+            ->first();
+        $this->assertNotNull($evRow);
+        $snapshot = json_decode((string) $evRow->snapshot_data, true);
+        $this->assertIsArray($snapshot);
+        unset($snapshot['reviewers']);
+        DB::table('entity_versions')->where('id', $evRow->id)->update([
+            'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
         ]);
 
         DB::table('template_reviewers')->where('template_id', $tid)->delete();
@@ -2462,14 +2471,20 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $v2Id = (string) Str::uuid();
         $now = now();
-        DB::table('template_versions')->insert([
+        DB::table('entity_versions')->insert([
             'id' => $v2Id,
-            'template_id' => $tid,
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
             'version_number' => 2,
-            'blocks_snapshot' => json_encode([]),
-            'changelog' => 'Normativa v2 publicada',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $reviewerId,
             'published_by' => $reviewerId,
             'published_at' => $now,
+            'changelog' => 'Normativa v2 publicada',
+            'snapshot_data' => json_encode(['blocks' => []], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
             'created_at' => $now,
             'updated_at' => $now,
         ]);
@@ -2762,14 +2777,20 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $legacyV2Id = (string) Str::uuid();
         $now = now();
-        DB::table('template_versions')->insert([
+        DB::table('entity_versions')->insert([
             'id' => $legacyV2Id,
-            'template_id' => $tid,
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
             'version_number' => 2,
-            'blocks_snapshot' => json_encode([]),
-            'changelog' => 'legacy v2',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $reviewerId,
             'published_by' => $reviewerId,
             'published_at' => $now,
+            'changelog' => 'legacy v2',
+            'snapshot_data' => json_encode(['blocks' => []], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
             'created_at' => $now,
             'updated_at' => $now,
         ]);

@@ -3,12 +3,15 @@
 /**
  * Documentos mock para local/testing.
  * Plazos y envíos con fechas fijas (curso 2025-26) para dashboard y bandejas realistas.
+ *
+ * `template_version_id` es el UUID de la publicación en `entity_versions` (mismo valor que
+ * `entity_version_id` en database/data/template_versions_mock.php), no el id legacy de `template_versions`.
  */
 return [
     [
         'id' => '77777777-7777-7777-7777-777777777901',
         'template_id' => '33333333-3333-3333-3333-333333333309',
-        'template_version_id' => '66666666-6666-6666-6666-666666666609',
+        'template_version_id' => 'a0000000-0000-4000-8000-000000000609',
         'title' => 'FP DAW - Despliegue de Aplicaciones Web (Presentacion 24-25)',
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
@@ -24,7 +27,7 @@ return [
     [
         'id' => '77777777-7777-7777-7777-777777777902',
         'template_id' => '33333333-3333-3333-3333-333333333309',
-        'template_version_id' => '66666666-6666-6666-6666-666666666609',
+        'template_version_id' => 'a0000000-0000-4000-8000-000000000609',
         'title' => 'FP DAW - Web Application Deployment (English content)',
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
@@ -40,7 +43,7 @@ return [
     [
         'id' => '77777777-7777-7777-7777-777777777903',
         'template_id' => '33333333-3333-3333-3333-333333333309',
-        'template_version_id' => '66666666-6666-6666-6666-666666666609',
+        'template_version_id' => 'a0000000-0000-4000-8000-000000000609',
         'title' => 'FP DAW - Lenguajes de Marcas (Guia didactica 24-25)',
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',
@@ -56,7 +59,7 @@ return [
     [
         'id' => '77777777-7777-7777-7777-777777777904',
         'template_id' => '33333333-3333-3333-3333-333333333304',
-        'template_version_id' => '66666666-6666-6666-6666-666666666607',
+        'template_version_id' => 'a0000000-0000-4000-8000-000000000607',
         'title' => 'ESPA - Ambito de Comunicacion: La palabra en el trabajo',
         'study_type_id' => 'ST_ESPA',
         'study_id' => 'S_ESPA',
@@ -72,7 +75,7 @@ return [
     [
         'id' => '77777777-7777-7777-7777-777777777905',
         'template_id' => '33333333-3333-3333-3333-333333333308',
-        'template_version_id' => '66666666-6666-6666-6666-666666666608',
+        'template_version_id' => 'a0000000-0000-4000-8000-000000000608',
         'title' => 'BACH 2o - Fisica: Campo gravitatorio (Mision a Marte)',
         'study_type_id' => 'ST_BACH',
         'study_id' => 'S_BACH_1_C',
@@ -88,7 +91,7 @@ return [
     [
         'id' => '77777777-7777-7777-7777-777777777906',
         'template_id' => '33333333-3333-3333-3333-333333333308',
-        'template_version_id' => '66666666-6666-6666-6666-666666666608',
+        'template_version_id' => 'a0000000-0000-4000-8000-000000000608',
         'title' => 'BACH 2o - Fisica: Campo gravitatorio (borrador docente)',
         'study_type_id' => 'ST_BACH',
         'study_id' => 'S_BACH_1_C',
@@ -104,7 +107,7 @@ return [
     [
         'id' => '77777777-7777-7777-7777-777777777907',
         'template_id' => '33333333-3333-3333-3333-333333333320',
-        'template_version_id' => '66666666-6666-6666-6666-666666666610',
+        'template_version_id' => 'a0000000-0000-4000-8000-000000000610',
         'title' => 'Programación didáctica DWES — curso 2025-26 (demo)',
         'study_type_id' => 'ST_FP',
         'study_id' => 'S_FP_DAW',

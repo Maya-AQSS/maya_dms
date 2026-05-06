@@ -7,7 +7,6 @@ use App\Models\Document;
 use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
-use App\Models\TemplateVersion;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +15,7 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Database\Seeders\PermissionsSeeder;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
+use Tests\Concerns\SeedsTemplatePublicationAnchor;
 use Tests\TestCase;
 
 /**
@@ -54,6 +54,7 @@ class DocumentReviewModeFlowTest extends TestCase
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+    use SeedsTemplatePublicationAnchor;
 
     protected function setUp(): void
     {
@@ -84,7 +85,6 @@ class DocumentReviewModeFlowTest extends TestCase
         $rev1 = (string) Str::uuid();
         $rev2 = (string) Str::uuid();
         $templateId = (string) Str::uuid();
-        $versionId = (string) Str::uuid();
         $documentId = (string) Str::uuid();
         $blockSnapId = (string) Str::uuid();
         $studyId = $this->anyStudyId();
@@ -106,21 +106,20 @@ class DocumentReviewModeFlowTest extends TestCase
             'review_mode' => $reviewMode,
         ]);
 
-        TemplateVersion::query()->forceCreate([
-            'id' => $versionId,
-            'template_id' => $templateId,
-            'version_number' => 1,
-            'blocks_snapshot' => [[
+        $anchor = $this->seedCanonicalPublicationForTemplate(
+            $templateId,
+            1,
+            $submitterId,
+            [[
                 'id' => $blockSnapId,
                 'title' => 'Bloque',
                 'default_content' => null,
                 'block_state' => 'optional',
                 'sort_order' => 0,
+                'type' => '',
+                'mandatory' => false,
             ]],
-            'changelog' => 'v1',
-            'published_by' => $submitterId,
-            'published_at' => now(),
-        ]);
+        );
 
         foreach ([[$rev1, 1], [$rev2, 2]] as [$uid, $stage]) {
             TemplateReviewer::query()->forceCreate([
@@ -133,8 +132,9 @@ class DocumentReviewModeFlowTest extends TestCase
 
         Document::query()->forceCreate([
             'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
             'template_id' => $templateId,
-            'template_version_id' => $versionId,
+            'template_version_id' => $anchor['entity_version_id'],
             'title' => 'Doc flujo',
             'study_id' => $studyId,
             'created_by' => $ownerId,

@@ -4,16 +4,13 @@ namespace App\Services;
 
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
-use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 
 /**
- * Resuelve el número de versión publicada a partir del id anclado:
- * primero fila {@see TemplateVersion}, si no, meta en {@see EntityVersion} para ese template.
+ * Resuelve el número de versión publicada a partir del id anclado en {@see EntityVersion}.
  */
 final class DocumentTemplateVersionNumberResolver
 {
     public function __construct(
-        private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
     ) {}
 
@@ -30,21 +27,17 @@ final class DocumentTemplateVersionNumberResolver
             return null;
         }
 
-        $legacy = $this->templateVersionRepository->findOptional($templateVersionId);
-        if ($legacy !== null) {
-            return (int) $legacy->version_number;
+        if ($templateId !== null && $templateId !== '') {
+            $meta = $this->entityVersionRepository->findPublishedMetaByIdForVersionable(
+                $templateVersionId,
+                Template::class,
+                $templateId,
+            );
+            if ($meta !== null) {
+                return (int) $meta['version_number'];
+            }
         }
 
-        if ($templateId === null || $templateId === '') {
-            return null;
-        }
-
-        $meta = $this->entityVersionRepository->findPublishedMetaByIdForVersionable(
-            $templateVersionId,
-            Template::class,
-            $templateId,
-        );
-
-        return $meta !== null ? (int) $meta['version_number'] : null;
+        return null;
     }
 }

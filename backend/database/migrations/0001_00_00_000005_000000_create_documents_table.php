@@ -11,8 +11,8 @@ return new class extends Migration
      *   draft → in_review → published
      *   in_review → draft  (si se rechaza)
      *
-     * template_version_id: ancla a la versión publicada de plantilla usada al crear el documento (nullable
-     * si el documento se creó antes de fijar versión o en flujos legacy).
+     * template_version_id: UUID de entity_versions (publicación de plantilla). La FK se añade en la migración
+     * create_entity_versions_table una vez creada entity_versions.
      * study_type_id / study_id / module_id: referencias lógicas al catálogo académico (FDW); sin FK en BD.
      * softDeletes: borrado lógico; el Global Scope de acceso sigue aplicando a filas no eliminadas.
      */
@@ -22,11 +22,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('process_id')->constrained('processes')->restrictOnDelete();
             $table->foreignUuid('template_id')->constrained('templates')->restrictOnDelete();
-            $table->foreignUuid('template_version_id')
-                ->nullable()
-                ->after('template_id')
-                ->constrained('template_versions')
-                ->restrictOnDelete();
+            $table->uuid('template_version_id')->nullable()->after('template_id');
             $table->string('title');
             $table->string('study_type_id')->nullable();
             $table->string('study_id')->nullable();

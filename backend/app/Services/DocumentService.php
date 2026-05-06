@@ -8,12 +8,11 @@ use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentVersion;
+use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -25,7 +24,6 @@ class DocumentService implements DocumentServiceInterface
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
-        private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly SnapshotServiceInterface $snapshotService,
         private readonly DocumentBlockService $documentBlockService,
         private readonly DocumentVersionService $documentVersionService,
@@ -51,17 +49,26 @@ class DocumentService implements DocumentServiceInterface
         $this->templateRepository->findOrFail($dto->templateId);
 
         if ($dto->templateVersionId !== null) {
-            $version = $this->templateVersionRepository->findOrFail($dto->templateVersionId);
-            if ($version->template_id !== $dto->templateId) {
+            $ev = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $dto->templateVersionId,
+                Template::class,
+                $dto->templateId,
+            );
+            if ($ev === null) {
                 throw ValidationException::withMessages([
-                    'template_version_id' => ['La versión no pertenece a la plantilla indicada.'],
+                    'template_version_id' => ['La versión publicada no existe o no pertenece a esta plantilla.'],
                 ]);
             }
         } else {
-            $version = $this->resolveTemplateVersionRowForNewDocument($dto->templateId);
+            $ev = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $dto->templateId);
+            if ($ev === null) {
+                throw ValidationException::withMessages([
+                    'template_id' => ['La plantilla no tiene versiones publicadas; no se puede crear un documento.'],
+                ]);
+            }
         }
 
-        $snapshot = $version->blocksSnapshotRows();
+        $snapshot = $this->documentBlockService->templatePublicationDefinitionRowsFromEntityVersion($ev);
         if ($snapshot === []) {
             throw ValidationException::withMessages([
                 'template_id' => ['La versión de plantilla no contiene bloques.'],
@@ -81,7 +88,7 @@ class DocumentService implements DocumentServiceInterface
         return $this->documentRepository->createDocumentWithBlocks([
             'process_id' => $dto->processId,
             'template_id' => $dto->templateId,
-            'template_version_id' => $version->id,
+            'template_version_id' => (string) $ev->id,
             'title' => $dto->title,
             'study_type_id' => $dto->studyTypeId,
             'study_id' => $dto->studyId,
@@ -266,19 +273,14 @@ class DocumentService implements DocumentServiceInterface
 
         $options = [];
         foreach ($templates as $template) {
-            $targetNumber = $this->resolveEffectivePublishedTemplateVersionNumber((string) $template->id);
-            if ($targetNumber === null) {
-                continue;
-            }
-
-            $version = $this->templateVersionRepository->findByTemplateIdAndVersionNumber((string) $template->id, $targetNumber);
-            if ($version === null) {
+            $published = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, (string) $template->id);
+            if ($published === null) {
                 continue;
             }
 
             $options[] = [
                 'template_id' => $template->id,
-                'template_version_id' => $version->id,
+                'template_version_id' => (string) $published->id,
                 'process_id' => (string) $template->process_id,
                 'name' => (string) $template->name,
                 'description' => $template->description,
@@ -392,47 +394,17 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
-     * Última versión publicada de plantilla (merge entity_versions + template_versions en el repositorio).
+     * Última versión publicada de plantilla ({@see EntityVersion}).
      *
      * @return array{id: string, version_number: int, changelog: string}|null
      */
     private function resolveLatestPublishedTemplateVersionMeta(string $templateId): ?array
     {
-        return $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
-    }
-
-    private function resolveEffectivePublishedTemplateVersionNumber(string $templateId): ?int
-    {
-        $meta = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
-
-        return $meta !== null ? $meta['version_number'] : null;
+        return $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Template::class, $templateId);
     }
 
     /**
-     * Versión legacy ({@see TemplateVersion}) a usar al crear un documento sin {@see CreateDocumentDto::$templateVersionId}.
-     * Exige fila en {@code template_versions} para el número efectivo (FK); si entity_versions va por delante sin fila legacy, error explícito.
-     */
-    private function resolveTemplateVersionRowForNewDocument(string $templateId): TemplateVersion
-    {
-        $targetNumber = $this->resolveEffectivePublishedTemplateVersionNumber($templateId);
-        if ($targetNumber === null) {
-            throw ValidationException::withMessages([
-                'template_id' => ['La plantilla no tiene versiones publicadas; no se puede crear un documento.'],
-            ]);
-        }
-
-        $version = $this->templateVersionRepository->findByTemplateIdAndVersionNumber($templateId, $targetNumber);
-        if ($version === null) {
-            throw ValidationException::withMessages([
-                'template_id' => ['La plantilla tiene una versión publicada desincronizada respecto al historial clásico. Contacte con soporte o vuelva a publicar la plantilla.'],
-            ]);
-        }
-
-        return $version;
-    }
-
-    /**
-     * Versión de plantilla anclada al documento: template_versions primero, luego entity_versions.
+     * Meta de la publicación anclada: {@see EntityVersion} (columna {@code template_version_id}).
      *
      * @return array{id: string, version_number: int, changelog: string}|null
      */
@@ -444,16 +416,30 @@ class DocumentService implements DocumentServiceInterface
             return null;
         }
 
-        $legacy = $this->templateVersionRepository->findPublishedMetaById($versionId);
-        if ($legacy !== null) {
-            return $legacy;
-        }
-
-        return $this->entityVersionRepository->findPublishedMetaByIdForVersionable(
+        $entity = $this->entityVersionRepository->findPublishedMetaByIdForVersionable(
             $versionId,
             Template::class,
             (string) $document->template_id,
         );
+        if ($entity !== null) {
+            return $entity;
+        }
+
+        $ev = EntityVersion::query()
+            ->whereKey($versionId)
+            ->where('versionable_type', Template::class)
+            ->where('status', 'published')
+            ->first();
+
+        if ($ev === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $ev->id,
+            'version_number' => (int) $ev->version_number,
+            'changelog' => (string) ($ev->changelog ?? ''),
+        ];
     }
 
     /**
@@ -611,21 +597,11 @@ class DocumentService implements DocumentServiceInterface
             return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
         }
 
-        $entityVersion = null;
-        $templateVersionMeta = $this->templateVersionRepository->findPublishedMetaById($versionId);
-        if ($templateVersionMeta !== null) {
-            $entityVersion = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
-                Template::class,
-                (string) $document->template_id,
-                (int) $templateVersionMeta['version_number'],
-            );
-        } else {
-            $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
-                $versionId,
-                Template::class,
-                (string) $document->template_id,
-            );
-        }
+        $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
+            $versionId,
+            Template::class,
+            (string) $document->template_id,
+        );
 
         if ($entityVersion === null || ! is_array($entityVersion->snapshot_data)) {
             return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);

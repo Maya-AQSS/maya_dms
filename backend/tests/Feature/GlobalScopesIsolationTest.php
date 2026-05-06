@@ -8,10 +8,10 @@ use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Models\Team;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\AssignsTestUserPermissions;
@@ -403,14 +403,23 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        TemplateVersion::query()->forceCreate([
-            'id'             => (string) Str::uuid(),
-            'template_id'    => $templateId,
+        $now = now();
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateId,
             'version_number' => 1,
-            'blocks_snapshot'=> [],
-            'changelog'      => 'Publicacion inicial',
-            'published_by'   => $userA,
-            'published_at'   => now(),
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userA,
+            'published_by' => $userA,
+            'published_at' => $now,
+            'changelog' => 'Publicacion inicial',
+            'snapshot_data' => json_encode(['blocks' => []]),
+            'is_snapshot_immutable' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
 
         $this->getJson(

@@ -14,7 +14,7 @@ return new class extends Migration
      * enlazado por `entity_version_id`. `snapshot_data` puede ser null en esa fila cuando existe enlace (sin duplicar JSON).
      * Otros `trigger_event` pueden seguir usando solo esta tabla.
      *
-     * En PostgreSQL se reutiliza forbid_append_only_mutation() (migración template_versions).
+     * En PostgreSQL se reutiliza forbid_append_only_mutation() (migración append-only inicial).
      * En SQLite (tests) solo aplica la capa de aplicación.
      */
     public function up(): void

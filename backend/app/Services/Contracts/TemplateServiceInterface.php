@@ -8,7 +8,6 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Illuminate\Support\Collection;
 
 interface TemplateServiceInterface
@@ -35,7 +34,7 @@ interface TemplateServiceInterface
     /**
      * Localiza una versión de plantilla por su ID.
      */
-    public function findVersionOrFail(string $versionId): TemplateVersion;
+    public function findVersionOrFail(string $versionId): EntityVersion;
 
     /**
      * Localiza una versión polimórfica por su ID.
@@ -60,7 +59,7 @@ interface TemplateServiceInterface
     /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
-     * @return Collection<int, TemplateVersion|EntityVersion>
+     * @return Collection<int, EntityVersion>
      */
     public function listPublishedVersions(string $templateId): Collection;
 

@@ -10,14 +10,13 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
 /**
- * Inserta versiones publicadas de plantilla alineadas con el modelo canónico:
- * cada fila en {@see template_versions} enlaza {@see entity_versions} y no duplica JSON en {@see blocks_snapshot}.
+ * Inserta publicaciones de plantilla solo en {@see entity_versions} (snapshot canónico).
  */
 class TemplateVersionsSeeder extends Seeder
 {
     public function run(): void
     {
-        if (! Schema::hasTable('template_versions') || ! Schema::hasTable('entity_versions')) {
+        if (! Schema::hasTable('entity_versions')) {
             return;
         }
 
@@ -70,7 +69,10 @@ class TemplateVersionsSeeder extends Seeder
                 ->first();
 
             if ($existingEntity === null) {
-                $entityVersionId = (string) Str::uuid();
+                $explicit = $row['entity_version_id'] ?? null;
+                $entityVersionId = is_string($explicit) && $explicit !== ''
+                    ? $explicit
+                    : (string) Str::uuid();
                 DB::table('entity_versions')->insert([
                     'id' => $entityVersionId,
                     'versionable_type' => Template::class,
@@ -88,24 +90,7 @@ class TemplateVersionsSeeder extends Seeder
                     'created_at' => $now,
                     'updated_at' => $now,
                 ]);
-            } else {
-                $entityVersionId = (string) $existingEntity->id;
             }
-
-            $tvRow = [
-                'id' => (string) ($row['id'] ?? Str::uuid()),
-                'template_id' => $templateId,
-                'entity_version_id' => $entityVersionId,
-                'version_number' => $versionNumber,
-                'blocks_snapshot' => null,
-                'changelog' => $changelog,
-                'published_by' => $publishedBy,
-                'published_at' => $publishedAt,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ];
-
-            DB::table('template_versions')->insertOrIgnore($tvRow);
         }
     }
 

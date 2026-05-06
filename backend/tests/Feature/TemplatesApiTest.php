@@ -14,7 +14,7 @@ use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Models\TemplateDocumentReviewer;
 use App\Models\TemplateReviewer;
-use App\Models\TemplateVersion;
+use App\Models\EntityVersion;
 use App\Models\User;
 use App\Services\TemplateVersionBlockLayerResolver;
 use Maya\Auth\Contracts\JwksServiceInterface;
@@ -655,18 +655,19 @@ class TemplatesApiTest extends TestCase
 
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Segunda versi?n'], $headers)->assertOk();
 
-        $tv2 = TemplateVersion::query()
-            ->where('template_id', $tid)
+        $tv2 = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
             ->where('version_number', 2)
             ->firstOrFail();
 
         $resolver = app(TemplateVersionBlockLayerResolver::class);
-        $fromLayers = $resolver->resolveBlocksSnapshot($tv2->id);
+        $fromLayers = $resolver->resolveBlocksSnapshot((string) $tv2->id);
 
         $this->assertEquals($tv2->blocksSnapshotRows(), $fromLayers);
 
         $inheritsCount = DB::table('template_version_block_layers')
-            ->where('template_version_id', $tv2->id)
+            ->where('entity_version_id', $tv2->id)
             ->where('inherits_from_previous_publication', true)
             ->count();
 
@@ -1004,8 +1005,9 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
-        $versionRow = DB::table('template_versions')
-            ->where('template_id', $tid)
+        $versionRow = DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
             ->where('version_number', 1)
             ->first();
         $this->assertNotNull($versionRow);
@@ -1049,8 +1051,9 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'published')
             ->assertJsonPath('data.version', 1);
 
-        $versionRow = DB::table('template_versions')
-            ->where('template_id', $tid)
+        $versionRow = DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
             ->where('version_number', 1)
             ->where('published_by', $creatorId)
             ->first();
@@ -1120,14 +1123,20 @@ class TemplatesApiTest extends TestCase
         ]);
 
         // Existe versi?n previa publicada -> pr?ximo publish ser? v2 y requiere changelog.
-        TemplateVersion::query()->forceCreate([
+        EntityVersion::query()->forceCreate([
             'id' => (string) Str::uuid(),
-            'template_id' => $tid,
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
             'version_number' => 1,
-            'blocks_snapshot' => [],
-            'changelog' => 'Versi?n inicial',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
             'published_by' => $creatorId,
             'published_at' => now(),
+            'changelog' => 'Versi?n inicial',
+            'snapshot_data' => ['blocks' => []],
+            'is_snapshot_immutable' => true,
         ]);
 
         $this->seedTemplateReviewer($tid, $reviewerId);
@@ -1195,11 +1204,6 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'published')
             ->assertJsonPath('data.version', 1);
 
-        $this->assertDatabaseHas('template_versions', [
-            'template_id' => $tid,
-            'version_number' => 1,
-            'published_by' => $reviewerId,
-        ]);
         $this->assertDatabaseHas('entity_versions', [
             'versionable_type' => Template::class,
             'versionable_id' => $tid,
@@ -1223,7 +1227,11 @@ class TemplatesApiTest extends TestCase
         $this->assertSame('pending', $snapshot['reviewers']['template_reviewers'][0]['status'] ?? null);
         $this->assertSame($reviewerId, $snapshot['reviewers']['document_reviewers'][0]['user_id'] ?? null);
 
-        $vid = TemplateVersion::query()->where('template_id', $tid)->value('id');
+        $vid = DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 1)
+            ->value('id');
         $this->assertNotEmpty($vid);
 
         $this->getJson("/api/v1/templates/{$tid}/versions", $headersCreator)
@@ -1260,22 +1268,28 @@ class TemplatesApiTest extends TestCase
         ]);
 
         $vid = (string) Str::uuid();
-        TemplateVersion::query()->forceCreate([
+        EntityVersion::query()->forceCreate([
             'id' => $vid,
-            'template_id' => $tid,
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
             'version_number' => 1,
-            'blocks_snapshot' => [],
-            'changelog' => 'x',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
             'published_by' => $userId,
             'published_at' => now(),
+            'changelog' => 'x',
+            'snapshot_data' => ['blocks' => []],
+            'is_snapshot_immutable' => true,
         ]);
 
-        $version = TemplateVersion::query()->findOrFail($vid);
+        $version = EntityVersion::query()->findOrFail($vid);
         $this->expectException(AuthorizationException::class);
         $version->update(['changelog' => 'hack']);
     }
 
-    public function test_template_versions_endpoint_prefers_entity_versions_over_legacy_table(): void
+    public function test_template_versions_endpoint_returns_canonical_entity_versions(): void
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
@@ -1296,16 +1310,6 @@ class TemplatesApiTest extends TestCase
             'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
-        ]);
-
-        TemplateVersion::query()->forceCreate([
-            'id' => (string) Str::uuid(),
-            'template_id' => $tid,
-            'version_number' => 1,
-            'blocks_snapshot' => [],
-            'changelog' => 'legacy-changelog',
-            'published_by' => $userId,
-            'published_at' => now(),
         ]);
 
         DB::table('entity_versions')->insert([
@@ -1399,7 +1403,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.0.changelog', 'template-only-history');
     }
 
-    public function test_template_versions_endpoint_falls_back_to_legacy_when_entity_versions_do_not_exist(): void
+    public function test_template_versions_endpoint_lists_publications_from_entity_versions_only(): void
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
@@ -1407,7 +1411,7 @@ class TemplatesApiTest extends TestCase
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'Historial legacy template',
+            'name' => 'Historial canonical template',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
@@ -1422,20 +1426,28 @@ class TemplatesApiTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        TemplateVersion::query()->forceCreate([
+        DB::table('entity_versions')->insert([
             'id' => (string) Str::uuid(),
-            'template_id' => $tid,
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
             'version_number' => 1,
-            'blocks_snapshot' => [],
-            'changelog' => 'legacy-template-fallback',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
             'published_by' => $userId,
             'published_at' => now(),
+            'changelog' => 'canonical-template-history',
+            'snapshot_data' => json_encode(['blocks' => []], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
             ->assertOk()
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.changelog', 'legacy-template-fallback');
+            ->assertJsonPath('data.0.changelog', 'canonical-template-history');
     }
 
     public function test_template_version_detail_endpoint_accepts_entity_version_id_for_template(): void
@@ -1753,14 +1765,20 @@ class TemplatesApiTest extends TestCase
         ]);
 
         $vid = (string) Str::uuid();
-        TemplateVersion::query()->forceCreate([
+        EntityVersion::query()->forceCreate([
             'id' => $vid,
-            'template_id' => $tid,
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
             'version_number' => 1,
-            'blocks_snapshot' => [],
-            'changelog' => 'x',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
             'published_by' => $userId,
             'published_at' => now(),
+            'changelog' => 'x',
+            'snapshot_data' => ['blocks' => []],
+            'is_snapshot_immutable' => true,
         ]);
 
         $this->putJson("/api/v1/template-versions/{$vid}", ['changelog' => 'hack'], $headers)->assertForbidden();
@@ -1811,7 +1829,13 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'draft');
 
-        $this->assertDatabaseCount('template_versions', 0);
+        $this->assertSame(
+            0,
+            (int) DB::table('entity_versions')
+                ->where('versionable_type', Template::class)
+                ->where('versionable_id', $tid)
+                ->count(),
+        );
     }
 
     public function test_creator_can_approve_when_assigned_and_has_templates_review_permission(): void

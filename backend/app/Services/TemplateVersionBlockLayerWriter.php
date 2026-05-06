@@ -2,28 +2,27 @@
 
 namespace App\Services;
 
+use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Models\TemplateBlock;
-use App\Models\TemplateVersion;
 use App\Models\TemplateVersionBlockLayer;
 
 /**
- * Persistencia incremental de definición de bloques por versión publicada de plantilla.
+ * Persistencia incremental de definición de bloques por publicación de plantilla en {@see entity_versions}.
  */
 final class TemplateVersionBlockLayerWriter
 {
     /**
      * Sincroniza capas de bloques para una nueva versión publicada de plantilla.
-     *
-     * @param TemplateVersion $createdVersion La versión publicada recién creada.
-     * @param Template $template La plantilla a la que pertenece la versión.
      */
-    public function syncLayersForNewPublication(TemplateVersion $createdVersion, Template $template): void
+    public function syncLayersForNewPublication(EntityVersion $createdVersion, Template $template): void
     {
         $template->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
 
-        $previous = TemplateVersion::query()
-            ->where('template_id', $createdVersion->template_id)
+        $previous = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $createdVersion->versionable_id)
+            ->where('status', 'published')
             ->where('version_number', $createdVersion->version_number - 1)
             ->first();
 
@@ -33,7 +32,7 @@ final class TemplateVersionBlockLayerWriter
             foreach ($draftBlocks as $block) {
                 $payload = $this->blockPayloadFromTemplateBlock($block);
                 TemplateVersionBlockLayer::query()->create([
-                    'template_version_id' => $createdVersion->id,
+                    'entity_version_id' => $createdVersion->id,
                     'template_block_id' => (string) $block->getKey(),
                     'sort_order' => (int) $block->sort_order,
                     'inherits_from_previous_publication' => false,
@@ -62,7 +61,7 @@ final class TemplateVersionBlockLayerWriter
             $inherits = $prev !== null && $this->payloadsEqual($prev, $payload);
 
             TemplateVersionBlockLayer::query()->create([
-                'template_version_id' => $createdVersion->id,
+                'entity_version_id' => $createdVersion->id,
                 'template_block_id' => (string) $block->getKey(),
                 'sort_order' => (int) $block->sort_order,
                 'inherits_from_previous_publication' => $inherits,
@@ -74,7 +73,7 @@ final class TemplateVersionBlockLayerWriter
         foreach ($prevById as $id => $_prevRow) {
             if (! in_array((string) $id, $draftIdStrings, true)) {
                 TemplateVersionBlockLayer::query()->create([
-                    'template_version_id' => $createdVersion->id,
+                    'entity_version_id' => $createdVersion->id,
                     'template_block_id' => (string) $id,
                     'sort_order' => 0,
                     'inherits_from_previous_publication' => false,
@@ -86,8 +85,6 @@ final class TemplateVersionBlockLayerWriter
     }
 
     /**
-     * Convierte un bloque de plantilla a su payload para persistencia.
-     * 
      * @return array<string, mixed>
      */
     private function blockPayloadFromTemplateBlock(TemplateBlock $block): array
@@ -105,8 +102,6 @@ final class TemplateVersionBlockLayerWriter
     }
 
     /**
-     * Compara payloads de bloques para determinar si son iguales.
-     * 
      * @param  array<string, mixed>  $prev
      * @param  array<string, mixed>  $curr
      */
@@ -116,8 +111,6 @@ final class TemplateVersionBlockLayerWriter
     }
 
     /**
-     * Normaliza un payload de bloque para comparación (ordena claves y subarrays).
-     * 
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */

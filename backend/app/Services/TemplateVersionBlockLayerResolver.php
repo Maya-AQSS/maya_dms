@@ -2,28 +2,24 @@
 
 namespace App\Services;
 
-use App\Models\TemplateVersion;
+use App\Models\EntityVersion;
+use App\Models\Template;
 use App\Models\TemplateVersionBlockLayer;
 
 /**
- * Reconstruye el snapshot efectivo de bloques solo desde capas incrementales (sin usar blocks_snapshot).
- * Si {@see TemplateVersion::$blocks_snapshot} es null, se usan bloques desde {@see TemplateVersion::blocksSnapshotRows()}
- * (entity_versions enlazada).
+ * Reconstruye el snapshot efectivo de bloques desde capas incrementales (sin duplicar JSON completo).
  */
 final class TemplateVersionBlockLayerResolver
 {
     /**
-     * Reconstruye el snapshot efectivo de bloques solo desde capas incrementales (sin usar blocks_snapshot).
-     * 
-     * @param string $templateVersionId ID de la versión de plantilla.
-     * @return list<array<string, mixed>> El snapshot efectivo de bloques.
+     * @return list<array<string, mixed>>
      */
-    public function resolveBlocksSnapshot(string $templateVersionId): array
+    public function resolveBlocksSnapshot(string $entityVersionId): array
     {
-        $version = TemplateVersion::query()->findOrFail($templateVersionId);
+        $version = EntityVersion::query()->findOrFail($entityVersionId);
 
         $layers = TemplateVersionBlockLayer::query()
-            ->where('template_version_id', $templateVersionId)
+            ->where('entity_version_id', $entityVersionId)
             ->orderBy('sort_order')
             ->orderBy('template_block_id')
             ->get();
@@ -48,19 +44,17 @@ final class TemplateVersionBlockLayerResolver
     }
 
     /**
-     * Calcula el payload efectivo de un bloque desde capas incrementales.
-     * 
      * @return array<string, mixed>|null
      */
-    private function effectiveBlockPayload(string $templateBlockId, TemplateVersion $version): ?array
+    private function effectiveBlockPayload(string $templateBlockId, EntityVersion $version): ?array
     {
         $layer = TemplateVersionBlockLayer::query()
-            ->where('template_version_id', $version->id)
+            ->where('entity_version_id', $version->id)
             ->where('template_block_id', $templateBlockId)
             ->first();
 
         if ($layer === null) {
-            return $this->blockFromLegacySnapshotOnly($version, $templateBlockId);
+            return $this->blockFromSnapshotOnly($version, $templateBlockId);
         }
 
         if ($layer->removed) {
@@ -72,8 +66,10 @@ final class TemplateVersionBlockLayerResolver
                 return is_array($layer->override_payload) ? $layer->override_payload : null;
             }
 
-            $parent = TemplateVersion::query()
-                ->where('template_id', $version->template_id)
+            $parent = EntityVersion::query()
+                ->where('versionable_type', Template::class)
+                ->where('versionable_id', $version->versionable_id)
+                ->where('status', 'published')
                 ->where('version_number', $version->version_number - 1)
                 ->firstOrFail();
 
@@ -84,11 +80,9 @@ final class TemplateVersionBlockLayerResolver
     }
 
     /**
-     * Obtiene el payload de un bloque desde el snapshot de la versión anterior.
-     * 
      * @return array<string, mixed>|null
      */
-    private function blockFromLegacySnapshotOnly(TemplateVersion $version, string $templateBlockId): ?array
+    private function blockFromSnapshotOnly(EntityVersion $version, string $templateBlockId): ?array
     {
         foreach ($version->blocksSnapshotRows() as $b) {
             if (is_array($b) && isset($b['id']) && (string) $b['id'] === $templateBlockId) {

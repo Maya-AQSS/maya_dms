@@ -15,7 +15,7 @@ declare(strict_types=1);
  *   template_versions: list<array<string, mixed>>,
  *   template_reviewers: list<array<string, mixed>>,
  *   template_document_reviewers: list<array<string, mixed>>,
- *   documents: list<array<string, mixed>>,
+ *   documents: list<array<string, mixed>> (`template_version_id` = id en entity_versions / publicación),
  *   document_blocks: list<array<string, mixed>>
  * }
  */
@@ -268,6 +268,7 @@ return (static function (): array {
     $tid = 340;
     $blockHex = 0x5c0000;
     $vidHex = 0x7a0000;
+    $evHex = 0x1;
     $ridHex = 0x1b0;
 
     foreach ($modules as $mi => $mod) {
@@ -384,8 +385,10 @@ return (static function (): array {
 
             if ($slot['status'] === 'published') {
                 $vUuid = sprintf('66666666-6666-6666-6666-%012x', $vidHex++);
+                $evUuid = sprintf('b0000000-0000-4000-8000-%012x', $evHex++);
                 $versions[] = [
                     'id' => $vUuid,
+                    'entity_version_id' => $evUuid,
                     'template_id' => $tUuid,
                     'version_number' => 1,
                     'blocks_snapshot' => $snapshot,
@@ -395,7 +398,7 @@ return (static function (): array {
                 ];
                 $publishedIndex[] = [
                     'template_id' => $tUuid,
-                    'template_version_id' => $vUuid,
+                    'template_version_id' => $evUuid,
                     'study_type_id' => $stype,
                     'study_id' => $studyId,
                     'module_id' => $m,

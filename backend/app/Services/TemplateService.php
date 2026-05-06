@@ -9,7 +9,6 @@ use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
@@ -61,7 +60,7 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Localiza una versión de plantilla por su ID.
      */
-    public function findVersionOrFail(string $versionId): TemplateVersion
+    public function findVersionOrFail(string $versionId): EntityVersion
     {
         return $this->templateVersionRepository->findOrFail($versionId);
     }
@@ -122,53 +121,11 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
-     * @return Collection<int, TemplateVersion|EntityVersion>
+     * @return Collection<int, EntityVersion>
      */
     public function listPublishedVersions(string $templateId): Collection
     {
-        $entityVersions = $this->entityVersionRepository->listPublishedForEntityOrdered(
-            Template::class,
-            $templateId,
-        );
-        $legacyVersions = $this->templateVersionRepository->listForTemplateOrdered($templateId);
-
-        if ($entityVersions->isEmpty()) {
-            return $legacyVersions;
-        }
-
-        if ($legacyVersions->isEmpty()) {
-            return $entityVersions;
-        }
-
-        return $this->mergePublishedTemplateVersionsPreferringEntity($entityVersions, $legacyVersions);
-    }
-
-    /**
-     * Una entrada por número de versión; si coincide entity y legacy, conserva entity.
-     * Misma prioridad que {@see \App\Repositories\Eloquent\TemplateVersionRepository::findLatestPublishedMetaForTemplate}.
-     *
-     * @param  Collection<int, EntityVersion>  $entityVersions
-     * @param  Collection<int, TemplateVersion>  $legacyVersions
-     * @return Collection<int, TemplateVersion|EntityVersion>
-     */
-    private function mergePublishedTemplateVersionsPreferringEntity(
-        Collection $entityVersions,
-        Collection $legacyVersions,
-    ): Collection {
-        /** @var array<int, TemplateVersion|EntityVersion> $byNumber */
-        $byNumber = [];
-        foreach ($entityVersions as $v) {
-            $byNumber[(int) $v->version_number] = $v;
-        }
-        foreach ($legacyVersions as $v) {
-            $n = (int) $v->version_number;
-            if (! array_key_exists($n, $byNumber)) {
-                $byNumber[$n] = $v;
-            }
-        }
-        ksort($byNumber);
-
-        return collect(array_values($byNumber));
+        return $this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId);
     }
 
     /**
@@ -278,7 +235,7 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Clona una plantilla origen hacia una nueva en borrador.
      *
-     * Si existe versión publicada (dual-read entity_versions / template_versions), la copia se materializa desde ese
+     * Si existe versión publicada en {@see EntityVersion}, la copia se materializa desde ese
      * snapshot; si no, desde bloques y revisores vivos.
      */
     public function clone(string $sourceTemplateId, string $actorId): Template
@@ -440,7 +397,7 @@ class TemplateService implements TemplateServiceInterface
      */
     private function resolveLatestPublishedTemplateSnapshotForClone(string $templateId): ?array
     {
-        $winner = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
+        $winner = $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Template::class, $templateId);
         if ($winner === null) {
             return $this->resolveFallbackPublishedTemplateSnapshot($templateId);
         }
@@ -460,26 +417,11 @@ class TemplateService implements TemplateServiceInterface
             }
         }
 
-        $legacyRow = $this->templateVersionRepository->findByTemplateIdAndVersionNumber($templateId, $versionNumber);
-        if ($legacyRow !== null) {
-            $legacyBlocks = $legacyRow->blocksSnapshotRows();
-            if ($legacyBlocks !== []) {
-                return [
-                    'kind' => 'legacy',
-                    'template_meta' => [],
-                    'blocks' => $legacyBlocks,
-                    'reviewers_from_snapshot' => false,
-                    'template_reviewers' => [],
-                    'document_reviewers' => [],
-                ];
-            }
-        }
-
         return $this->resolveFallbackPublishedTemplateSnapshot($templateId);
     }
 
     /**
-     * Última versión publicada con bloques materializables si la prioridad dual-read no produce snapshot usable.
+     * Última versión publicada con bloques materializables si el ganador por meta no produce snapshot usable.
      *
      * @return ?array{
      *     kind: 'entity'|'legacy',
@@ -492,20 +434,6 @@ class TemplateService implements TemplateServiceInterface
      */
     private function resolveFallbackPublishedTemplateSnapshot(string $templateId): ?array
     {
-        foreach ($this->templateVersionRepository->listForTemplateOrdered($templateId)->sortByDesc('version_number') as $tv) {
-            $rows = $tv->blocksSnapshotRows();
-            if ($rows !== []) {
-                return [
-                    'kind' => 'legacy',
-                    'template_meta' => [],
-                    'blocks' => $rows,
-                    'reviewers_from_snapshot' => false,
-                    'template_reviewers' => [],
-                    'document_reviewers' => [],
-                ];
-            }
-        }
-
         foreach ($this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId)->sortByDesc('version_number') as $ev) {
             if (! is_array($ev->snapshot_data)) {
                 continue;
