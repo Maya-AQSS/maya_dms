@@ -458,16 +458,22 @@ class DocumentService implements DocumentServiceInterface
             return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
         }
 
+        $entityVersion = null;
         $templateVersionMeta = $this->templateVersionRepository->findPublishedMetaById($versionId);
-        if ($templateVersionMeta === null) {
-            return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
+        if ($templateVersionMeta !== null) {
+            $entityVersion = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+                Template::class,
+                (string) $document->template_id,
+                (int) $templateVersionMeta['version_number'],
+            );
+        } else {
+            $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $versionId,
+                Template::class,
+                (string) $document->template_id,
+            );
         }
 
-        $entityVersion = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
-            Template::class,
-            (string) $document->template_id,
-            (int) $templateVersionMeta['version_number'],
-        );
         if ($entityVersion === null || ! is_array($entityVersion->snapshot_data)) {
             return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
         }

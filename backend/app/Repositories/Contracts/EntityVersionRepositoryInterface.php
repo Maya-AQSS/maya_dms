@@ -67,6 +67,15 @@ interface EntityVersionRepositoryInterface
     ): ?array;
 
     /**
+     * Versión publicada por id de entity_versions (incluye snapshot_data).
+     */
+    public function findPublishedByIdForVersionable(
+        string $entityVersionId,
+        string $versionableType,
+        string $versionableId,
+    ): ?EntityVersion;
+
+    /**
      * Crea una nueva versión.
      *
      * @param array<string, mixed> $attributes Los atributos de la versión.

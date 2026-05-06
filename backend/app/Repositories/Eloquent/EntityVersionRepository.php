@@ -132,6 +132,22 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     }
 
     /**
+     * Versión publicada por id de entity_versions (incluye snapshot_data).
+     */
+    public function findPublishedByIdForVersionable(
+        string $entityVersionId,
+        string $versionableType,
+        string $versionableId,
+    ): ?EntityVersion {
+        return EntityVersion::query()
+            ->whereKey($entityVersionId)
+            ->where('versionable_type', $versionableType)
+            ->where('versionable_id', $versionableId)
+            ->where('status', 'published')
+            ->first();
+    }
+
+    /**
      * Crea una nueva versión.
      *
      * @param array<string, mixed> $attributes Los atributos de la versión.

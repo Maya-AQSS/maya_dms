@@ -1862,6 +1862,81 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonPath('data.latest_version.version_number', 1);
     }
 
+    public function test_template_version_status_on_version_number_tie_prefers_entity_versions_for_latest(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla empate latest',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1 empate'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc empate latest',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $legacyV1Id = (string) $createDoc->json('data.template_version_id');
+
+        $entityV1Id = (string) DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 1)
+            ->where('status', 'published')
+            ->value('id');
+
+        $this->assertNotSame('', $entityV1Id);
+        $this->assertNotSame('', $legacyV1Id);
+
+        $this->getJson("/api/v1/documents/{$docId}/template-version-status", $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.has_update', false)
+            ->assertJsonPath('data.latest_version.id', $entityV1Id)
+            ->assertJsonPath('data.latest_version.version_number', 1)
+            ->assertJsonPath('data.current_version.id', $legacyV1Id)
+            ->assertJsonPath('data.current_version.version_number', 1);
+    }
+
     public function test_template_version_status_prefers_entity_versions_when_latest_only_published_in_entity_versions(): void
     {
         $creatorId = (string) Str::uuid();
