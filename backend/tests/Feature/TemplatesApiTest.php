@@ -175,6 +175,28 @@ class TemplatesApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function getTemplateEntityVersionSnapshot(string $templateId, int $versionNumber): array
+    {
+        $entityVersion = DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
+            ->where('version_number', $versionNumber)
+            ->first();
+
+        $this->assertNotNull($entityVersion);
+
+        $snapshot = is_string($entityVersion->snapshot_data)
+            ? json_decode($entityVersion->snapshot_data, true)
+            : $entityVersion->snapshot_data;
+
+        $this->assertIsArray($snapshot);
+
+        return $snapshot;
+    }
+
     public function test_user_can_crud_personal_template_via_api(): void
     {
         $userId = (string) Str::uuid();
@@ -823,11 +845,12 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
-        $this->assertDatabaseHas('template_versions', [
-            'template_id' => $tid,
-            'version_number' => 1,
-            'changelog' => 'Versión inicial',
-        ]);
+        $versionRow = DB::table('template_versions')
+            ->where('template_id', $tid)
+            ->where('version_number', 1)
+            ->first();
+        $this->assertNotNull($versionRow);
+        $this->assertStringContainsString('inicial', (string) $versionRow->changelog);
     }
 
     public function test_template_creator_can_publish_draft_without_reviewers_and_autofills_v1_changelog(): void
@@ -867,12 +890,13 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'published')
             ->assertJsonPath('data.version', 1);
 
-        $this->assertDatabaseHas('template_versions', [
-            'template_id' => $tid,
-            'version_number' => 1,
-            'changelog' => 'Versión inicial',
-            'published_by' => $creatorId,
-        ]);
+        $versionRow = DB::table('template_versions')
+            ->where('template_id', $tid)
+            ->where('version_number', 1)
+            ->where('published_by', $creatorId)
+            ->first();
+        $this->assertNotNull($versionRow);
+        $this->assertStringContainsString('inicial', (string) $versionRow->changelog);
     }
 
     public function test_template_publish_fails_without_blocks(): void
@@ -942,7 +966,7 @@ class TemplatesApiTest extends TestCase
             'template_id' => $tid,
             'version_number' => 1,
             'blocks_snapshot' => [],
-            'changelog' => 'Versión inicial',
+            'changelog' => 'Versi?n inicial',
             'published_by' => $creatorId,
             'published_at' => now(),
         ]);
@@ -1090,6 +1114,189 @@ class TemplatesApiTest extends TestCase
         $version = TemplateVersion::query()->findOrFail($vid);
         $this->expectException(AuthorizationException::class);
         $version->update(['changelog' => 'hack']);
+    }
+
+    public function test_template_v2_entity_snapshot_inherits_reviewers_when_not_changed(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = (string) Str::uuid();
+        $docReviewerId = (string) Str::uuid();
+        $this->assignUserPermissions($reviewerId, ['templates.review', 'documents.review']);
+        $this->assignUserPermissions($docReviewerId, ['documents.review']);
+        [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+            [],
+        );
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Herencia reviewers v2',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Bloque base',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+        $this->seedTemplateReviewer($tid, $reviewerId);
+        TemplateDocumentReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $docReviewerId,
+        ]);
+
+        // Publicacion v1
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Versi?n inicial'], $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.version', 1);
+
+        // Simula inicio de nuevo ciclo de versionado desde la ultima publicada.
+        Template::query()->whereKey($tid)->update(['status' => 'draft']);
+
+        // Publicacion v2 sin tocar revisores/validadores.
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Versi?n 2 sin cambios'], $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.version', 2);
+
+        $v2Snapshot = $this->getTemplateEntityVersionSnapshot($tid, 2);
+        $this->assertSame(
+            [$reviewerId],
+            array_column($v2Snapshot['reviewers']['template_reviewers'] ?? [], 'user_id')
+        );
+        $this->assertSame(
+            [1],
+            array_column($v2Snapshot['reviewers']['template_reviewers'] ?? [], 'stage')
+        );
+        $this->assertSame(
+            ['pending'],
+            array_column($v2Snapshot['reviewers']['template_reviewers'] ?? [], 'status')
+        );
+        $this->assertSame(
+            [$docReviewerId],
+            array_column($v2Snapshot['reviewers']['document_reviewers'] ?? [], 'user_id')
+        );
+        $this->assertDatabaseHas('entity_versions', [
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 2,
+            'status' => 'published',
+            'is_snapshot_immutable' => 1,
+        ]);
+    }
+
+    public function test_template_v2_entity_snapshot_reflects_reviewer_changes_before_publish(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerV1Id = (string) Str::uuid();
+        $reviewerV2Id = (string) Str::uuid();
+        $docReviewerV2Id = (string) Str::uuid();
+        User::query()->forceCreate([
+            'id' => $reviewerV2Id,
+            'name' => 'Reviewer V2',
+            'email' => "reviewer-v2-{$reviewerV2Id}@example.test",
+        ]);
+        User::query()->forceCreate([
+            'id' => $docReviewerV2Id,
+            'name' => 'Doc Reviewer V2',
+            'email' => "doc-reviewer-v2-{$docReviewerV2Id}@example.test",
+        ]);
+        $this->assignUserPermissions($reviewerV1Id, ['templates.review', 'documents.review']);
+        $this->assignUserPermissions($reviewerV2Id, ['templates.review', 'documents.review']);
+        $this->assignUserPermissions($docReviewerV2Id, ['documents.review']);
+        [$headersCreator, $headersReviewerV1] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerV1Id,
+            [],
+        );
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Cambio reviewers v2',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Bloque base',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+        $this->seedTemplateReviewer($tid, $reviewerV1Id);
+        TemplateDocumentReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerV1Id,
+        ]);
+
+        // Publicacion v1 con configuracion inicial.
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Versi?n inicial'], $headersReviewerV1)
+            ->assertOk()
+            ->assertJsonPath('data.version', 1);
+
+        // Simula inicio de nuevo ciclo de versionado desde la ultima publicada.
+        Template::query()->whereKey($tid)->update(['status' => 'draft']);
+
+        // Cambia reviewers de plantilla y de documentos antes de publicar v2.
+        $this->postJson("/api/v1/templates/{$tid}/reviewers", [
+            'user_ids' => [$reviewerV2Id],
+        ], $headersCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/document-reviewers", [
+            'user_ids' => [$docReviewerV2Id],
+        ], $headersCreator)->assertOk();
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
+        $headersReviewerV2 = $this->authHeaders($reviewerV2Id);
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Versi?n 2 con cambios'], $headersReviewerV2)
+            ->assertOk()
+            ->assertJsonPath('data.version', 2);
+
+        $v2Snapshot = $this->getTemplateEntityVersionSnapshot($tid, 2);
+        $this->assertSame(
+            [$reviewerV2Id],
+            array_column($v2Snapshot['reviewers']['template_reviewers'] ?? [], 'user_id')
+        );
+        $this->assertSame(
+            [1],
+            array_column($v2Snapshot['reviewers']['template_reviewers'] ?? [], 'stage')
+        );
+        $this->assertSame(
+            ['pending'],
+            array_column($v2Snapshot['reviewers']['template_reviewers'] ?? [], 'status')
+        );
+        $this->assertSame(
+            [$docReviewerV2Id],
+            array_column($v2Snapshot['reviewers']['document_reviewers'] ?? [], 'user_id')
+        );
     }
 
     public function test_template_version_snapshot_mutation_via_http_returns_403(): void
