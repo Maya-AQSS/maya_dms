@@ -90,6 +90,48 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->update($user, $template));
     }
 
+    public function test_update_allows_templates_update_on_foreign_published_when_user_can_view(): void
+    {
+        $user = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['templates.read', 'templates.update'],
+        );
+        $template = $this->makeTemplate(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            status: 'published',
+        );
+
+        $this->assertTrue($this->policy->update($user, $template));
+    }
+
+    public function test_update_denied_on_foreign_published_without_templates_update(): void
+    {
+        $user = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['templates.read'],
+        );
+        $template = $this->makeTemplate(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->update($user, $template));
+    }
+
+    public function test_update_denied_on_foreign_published_without_templates_read(): void
+    {
+        $user = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['templates.update'],
+        );
+        $template = $this->makeTemplate(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->update($user, $template));
+    }
+
     public function test_update_with_target_shared_visibility_denied_without_role(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
@@ -138,12 +180,12 @@ class TemplatePolicyTest extends TestCase
         ]);
     }
 
-    private function makeTemplate(string $createdBy): Template
+    private function makeTemplate(string $createdBy, string $status = 'draft'): Template
     {
         $t = new Template;
         $t->forceFill([
             'created_by' => $createdBy,
-            'status'     => 'draft',
+            'status'     => $status,
         ]);
 
         return $t;

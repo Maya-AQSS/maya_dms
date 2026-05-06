@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\DB;
  * Autorización sobre plantillas normativas y Segregación de Funciones (SoD).
  *
  * REGLAS DE EDICIÓN:
- * - Solo el creador puede editar una plantilla, y únicamente cuando está en borrador (`draft`).
+ * - En borrador (`draft`): solo el creador puede editar.
+ * - En publicada (`published`): puede editar el creador o quien tenga `templates.update`,
+ *   siempre que además pueda ver la plantilla (scope/contexto académico + `templates.read`).
  * - La visibilidad no personal (compartida) exige además `templates.create`.
  *
  * REGLAS DE BORRADO:
@@ -132,11 +134,28 @@ class TemplatePolicy
      */
     public function update(JwtUser $user, Template $template, ?string $targetVisibilityLevel = null): bool
     {
-        if ($user->getAuthIdentifier() !== $template->created_by) {
+        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+
+        if ($template->status === 'draft') {
+            if (! $isCreator) {
+                return false;
+            }
+            if ($targetVisibilityLevel !== null) {
+                return $this->create($user, $targetVisibilityLevel);
+            }
+
+            return true;
+        }
+
+        if ($template->status !== 'published') {
             return false;
         }
 
-        if ($template->status !== 'draft') {
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        if (! $isCreator && ! $user->hasPermission('templates.update')) {
             return false;
         }
 
