@@ -3,6 +3,7 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\EntityVersion;
+use Illuminate\Support\Collection;
 
 interface EntityVersionRepositoryInterface
 {
@@ -46,6 +47,13 @@ interface EntityVersionRepositoryInterface
         string $versionableId,
         int $versionNumber,
     ): ?EntityVersion;
+
+    /**
+     * Lista versiones publicadas de una entidad ordenadas por número de versión.
+     *
+     * @return Collection<int, EntityVersion>
+     */
+    public function listPublishedForEntityOrdered(string $versionableType, string $versionableId): Collection;
 
     /**
      * Crea una nueva versión.

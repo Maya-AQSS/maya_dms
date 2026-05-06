@@ -1116,6 +1116,169 @@ class TemplatesApiTest extends TestCase
         $version->update(['changelog' => 'hack']);
     }
 
+    public function test_template_versions_endpoint_prefers_entity_versions_over_legacy_table(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Historial prioridad entity',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'version_number' => 1,
+            'blocks_snapshot' => [],
+            'changelog' => 'legacy-changelog',
+            'published_by' => $userId,
+            'published_at' => now(),
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
+            'published_by' => $userId,
+            'published_at' => now(),
+            'changelog' => 'entity-changelog',
+            'snapshot_data' => json_encode(['template' => ['id' => $tid]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.version_number', 1)
+            ->assertJsonPath('data.0.changelog', 'entity-changelog');
+    }
+
+    public function test_template_versions_endpoint_separates_template_history_from_document_history(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Historial separado por tipo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        DB::table('entity_versions')->insert([
+            [
+                'id' => (string) Str::uuid(),
+                'versionable_type' => Template::class,
+                'versionable_id' => $tid,
+                'version_number' => 1,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => 'published',
+                'created_by' => $userId,
+                'published_by' => $userId,
+                'published_at' => now(),
+                'changelog' => 'template-only-history',
+                'snapshot_data' => json_encode(['template' => ['id' => $tid]], JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'versionable_type' => Document::class,
+                'versionable_id' => $tid,
+                'version_number' => 1,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => 'published',
+                'created_by' => $userId,
+                'published_by' => $userId,
+                'published_at' => now(),
+                'changelog' => 'document-history-should-not-appear',
+                'snapshot_data' => json_encode(['document' => ['id' => $tid]], JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.changelog', 'template-only-history');
+    }
+
+    public function test_template_versions_endpoint_falls_back_to_legacy_when_entity_versions_do_not_exist(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Historial legacy template',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'version_number' => 1,
+            'blocks_snapshot' => [],
+            'changelog' => 'legacy-template-fallback',
+            'published_by' => $userId,
+            'published_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.changelog', 'legacy-template-fallback');
+    }
+
     public function test_template_v2_entity_snapshot_inherits_reviewers_when_not_changed(): void
     {
         $creatorId = (string) Str::uuid();

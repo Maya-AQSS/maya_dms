@@ -4,6 +4,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\EntityVersion;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class EntityVersionRepository implements EntityVersionRepositoryInterface
@@ -85,6 +86,21 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
             ->where('status', 'published')
             ->where('version_number', $versionNumber)
             ->first();
+    }
+
+    /**
+     * Lista versiones publicadas de una entidad ordenadas por número de versión.
+     *
+     * @return Collection<int, EntityVersion>
+     */
+    public function listPublishedForEntityOrdered(string $versionableType, string $versionableId): Collection
+    {
+        return EntityVersion::query()
+            ->where('versionable_type', $versionableType)
+            ->where('versionable_id', $versionableId)
+            ->where('status', 'published')
+            ->orderBy('version_number')
+            ->get();
     }
 
     /**

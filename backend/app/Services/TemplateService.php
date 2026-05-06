@@ -9,6 +9,7 @@ use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Models\TemplateVersion;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
@@ -21,6 +22,7 @@ class TemplateService implements TemplateServiceInterface
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly TemplatePublishingService $templatePublishingService,
         private readonly TemplateReviewService $templateReviewService,
         private readonly TemplateReviewerAssignmentService $templateReviewerAssignmentService,
@@ -114,6 +116,15 @@ class TemplateService implements TemplateServiceInterface
      */
     public function listPublishedVersions(string $templateId): Collection
     {
+        $entityVersions = $this->entityVersionRepository->listPublishedForEntityOrdered(
+            Template::class,
+            $templateId,
+        );
+
+        if ($entityVersions->isNotEmpty()) {
+            return $entityVersions;
+        }
+
         return $this->templateVersionRepository->listForTemplateOrdered($templateId);
     }
 

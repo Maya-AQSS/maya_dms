@@ -1153,6 +1153,237 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertSame('Cierre v1 liberado', $show['changelog']);
     }
 
+    public function test_document_versions_endpoint_prefers_entity_versions_over_legacy_table(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Template historial documento',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc historial',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => now(),
+        ]);
+
+        DocumentVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'version_number' => 1,
+            'trigger_event' => 'published',
+            'triggered_by' => $userId,
+            'notes' => 'legacy-doc-changelog',
+            'snapshot_data' => ['document' => ['id' => $documentId], 'blocks' => []],
+            'created_at' => now(),
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Document::class,
+            'versionable_id' => $documentId,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
+            'published_by' => $userId,
+            'published_at' => now(),
+            'changelog' => 'entity-doc-changelog',
+            'snapshot_data' => json_encode(['document' => ['id' => $documentId]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/documents/{$documentId}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.version_number', 1)
+            ->assertJsonPath('data.0.changelog', 'entity-doc-changelog');
+    }
+
+    public function test_document_versions_endpoint_separates_document_history_from_template_history(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Template isolation',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc isolation',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => now(),
+        ]);
+
+        DB::table('entity_versions')->insert([
+            [
+                'id' => (string) Str::uuid(),
+                'versionable_type' => Document::class,
+                'versionable_id' => $documentId,
+                'version_number' => 1,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => 'published',
+                'created_by' => $userId,
+                'published_by' => $userId,
+                'published_at' => now(),
+                'changelog' => 'document-only-history',
+                'snapshot_data' => json_encode(['document' => ['id' => $documentId]], JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'versionable_type' => Template::class,
+                'versionable_id' => $documentId,
+                'version_number' => 1,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => 'published',
+                'created_by' => $userId,
+                'published_by' => $userId,
+                'published_at' => now(),
+                'changelog' => 'template-history-should-not-appear',
+                'snapshot_data' => json_encode(['template' => ['id' => $documentId]], JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $this->getJson("/api/v1/documents/{$documentId}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.changelog', 'document-only-history');
+    }
+
+    public function test_document_versions_endpoint_falls_back_to_legacy_when_entity_versions_do_not_exist(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Template legacy doc fallback',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc legacy fallback',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'published',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => now(),
+        ]);
+
+        DocumentVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'version_number' => 1,
+            'trigger_event' => 'published',
+            'triggered_by' => $userId,
+            'notes' => 'legacy-doc-fallback',
+            'snapshot_data' => ['document' => ['id' => $documentId], 'blocks' => []],
+            'created_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/documents/{$documentId}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.changelog', 'legacy-doc-fallback');
+    }
+
     public function test_publish_document_requires_changelog(): void
     {
         $creatorId = (string) Str::uuid();
