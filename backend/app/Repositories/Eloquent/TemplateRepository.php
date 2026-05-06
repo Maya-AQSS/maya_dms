@@ -75,7 +75,6 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'templates.created_by',
                 'users.name as author_name',
                 'templates.status',
-                'templates.version',
                 'templates.review_stages',
                 'templates.review_mode',
                 'templates.created_at',

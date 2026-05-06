@@ -195,7 +195,6 @@ class EntityVersionLifecycleServiceTest extends TestCase
             'team_id' => null,
             'created_by' => (string) Str::uuid(),
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'parallel',
         ]);

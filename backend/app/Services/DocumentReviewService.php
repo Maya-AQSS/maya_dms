@@ -67,9 +67,7 @@ class DocumentReviewService
             $this->documentRepository->saveReview($review);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
-                $this->stateService->transition($documentId, 'published', $actorId, [
-                    'published_at' => now(),
-                ]);
+                $this->stateService->transition($documentId, 'published', $actorId);
                 $changelog = $publicationChangelog !== null && trim($publicationChangelog) !== ''
                     ? trim($publicationChangelog)
                     : 'Aprobado por todos los revisores.';
@@ -124,10 +122,7 @@ class DocumentReviewService
             $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
 
-            $updated = $this->stateService->transition($documentId, 'draft', $actorId, [
-                'submitted_at' => null,
-                'published_at' => null,
-            ]);
+            $updated = $this->stateService->transition($documentId, 'draft', $actorId);
 
             $this->documentRepository->deletePendingReviewsForDocument($documentId);
 

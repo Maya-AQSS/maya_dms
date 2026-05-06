@@ -147,17 +147,32 @@ class Template extends Model
         'team_id',
         'created_by',
         'status',
-        'version',
         'review_stages',
         'review_mode',
     ];
+
+    /**
+     * Número de la última publicación en {@see EntityVersion} (sin columna duplicada en `templates`).
+     * Accesor clásico: el API `Attribute::make(get:)` provocaba que Eloquent incluyera `version` en INSERT.
+     *
+     * @param  mixed  $value  Ignorado (la columna ya no existe).
+     */
+    public function getVersionAttribute(mixed $value): int
+    {
+        $max = EntityVersion::query()
+            ->where('versionable_type', self::class)
+            ->where('versionable_id', $this->getKey())
+            ->where('status', 'published')
+            ->max('version_number');
+
+        return $max !== null ? (int) $max : 1;
+    }
 
     protected function casts(): array
     {
         return [
             'visibility_level' => TemplateVisibilityLevel::class,
             'delivery_deadline' => 'datetime',
-            'version' => 'integer',
             'review_stages' => 'integer',
         ];
     }

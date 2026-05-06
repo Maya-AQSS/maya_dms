@@ -122,7 +122,6 @@ class DocumentsModuleCreationApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -124,18 +125,83 @@ class Document extends Model
         'created_by',
         'owner_id',
         'status',
-        'current_version',
-        'submitted_at',
-        'published_at',
     ];
+
+    /**
+     * Número de versión publicada canónica ({@see EntityVersion}), con convención «1» antes de la primera publicación.
+     *
+     * @param  mixed  $value  Ignorado (la columna ya no existe).
+     */
+    public function getCurrentVersionAttribute(mixed $value): int
+    {
+        $max = EntityVersion::query()
+            ->where('versionable_type', self::class)
+            ->where('versionable_id', $this->getKey())
+            ->where('status', 'published')
+            ->max('version_number');
+        $n = $max !== null ? (int) $max : 0;
+
+        return $n > 0 ? $n : 1;
+    }
+
+    /**
+     * Inicio del ciclo de revisión actual o, si publicó sin revisores, el mismo instante de publicación (auto-publicación).
+     *
+     * @param  mixed  $value  Ignorado (la columna ya no existe).
+     */
+    public function getSubmittedAtAttribute(mixed $value): ?Carbon
+    {
+        if ($this->status === 'draft') {
+            return null;
+        }
+
+        $reviewFirst = DB::table('document_reviews')
+            ->where('document_id', $this->getKey())
+            ->min('created_at');
+
+        if ($reviewFirst !== null) {
+            return Carbon::parse($reviewFirst);
+        }
+
+        if ($this->status === 'published') {
+            $ev = EntityVersion::query()
+                ->where('versionable_type', self::class)
+                ->where('versionable_id', $this->getKey())
+                ->where('status', 'published')
+                ->orderBy('version_number')
+                ->first();
+
+            return $ev?->published_at;
+        }
+
+        return null;
+    }
+
+    /**
+     * Solo si el documento está publicado en el ciclo actual; la historia permanece en {@see EntityVersion}.
+     *
+     * @param  mixed  $value  Ignorado (la columna ya no existe).
+     */
+    public function getPublishedAtAttribute(mixed $value): ?Carbon
+    {
+        if ($this->status !== 'published') {
+            return null;
+        }
+
+        $ev = EntityVersion::query()
+            ->where('versionable_type', self::class)
+            ->where('versionable_id', $this->getKey())
+            ->where('status', 'published')
+            ->orderByDesc('version_number')
+            ->first();
+
+        return $ev?->published_at;
+    }
 
     protected function casts(): array
     {
         return [
             'delivery_deadline' => 'datetime',
-            'submitted_at' => 'datetime',
-            'published_at' => 'datetime',
-            'current_version' => 'integer',
         ];
     }
 

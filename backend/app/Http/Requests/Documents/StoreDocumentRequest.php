@@ -61,7 +61,7 @@ class StoreDocumentRequest extends FormRequest
                 'required_without:template_id',
                 'uuid',
                 Rule::exists('entity_versions', 'id')->where(
-                    static fn ($q) => $q->where('versionable_type', Template::class),
+                    static fn ($q) => $q->where('versionable_type', Template::class)->where('status', 'published'),
                 ),
             ],
         ];

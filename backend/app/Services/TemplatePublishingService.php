@@ -156,7 +156,6 @@ class TemplatePublishingService
             $oldStatus = $template->status;
             $updated = $this->templateRepository->update($template, [
                 'status' => 'published',
-                'version' => $next,
             ]);
 
             event(new TemplateStateChanged(

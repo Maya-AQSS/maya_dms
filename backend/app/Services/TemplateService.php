@@ -158,7 +158,6 @@ class TemplateService implements TemplateServiceInterface
             'team_id' => $dto->teamId,
             'created_by' => (string) $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => $dto->reviewStages,
             'review_mode' => $dto->reviewMode,
         ]);
@@ -296,7 +295,6 @@ class TemplateService implements TemplateServiceInterface
                 'team_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'team_id'),
                 'created_by' => $actorId,
                 'status' => 'draft',
-                'version' => 1,
                 'review_stages' => $source->review_stages,
                 'review_mode' => $source->review_mode,
             ]);
@@ -361,7 +359,6 @@ class TemplateService implements TemplateServiceInterface
                 'team_id' => $source->team_id,
                 'created_by' => $actorId,
                 'status' => 'draft',
-                'version' => 1,
                 'review_stages' => $source->review_stages,
                 'review_mode' => $source->review_mode,
             ]);

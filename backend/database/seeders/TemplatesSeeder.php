@@ -30,6 +30,7 @@ class TemplatesSeeder extends Seeder
             $row['process_id'] ??= self::DEFAULT_PROCESS_ID;
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
+            unset($row['version']);
 
             return $row;
         }, $templates);
@@ -49,7 +50,6 @@ class TemplatesSeeder extends Seeder
                 'team_id',
                 'created_by',
                 'status',
-                'version',
                 'review_stages',
                 'review_mode',
                 'updated_at',

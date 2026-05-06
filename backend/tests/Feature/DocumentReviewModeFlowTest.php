@@ -101,7 +101,6 @@ class DocumentReviewModeFlowTest extends TestCase
             'team_id' => null,
             'created_by' => $submitterId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 2,
             'review_mode' => $reviewMode,
         ]);
@@ -140,9 +139,6 @@ class DocumentReviewModeFlowTest extends TestCase
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         DocumentShare::query()->forceCreate([

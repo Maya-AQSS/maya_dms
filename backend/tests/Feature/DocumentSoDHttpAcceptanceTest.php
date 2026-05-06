@@ -37,7 +37,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'study_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -58,9 +57,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'created_by' => $creatorId,
             'owner_id' => $creatorId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         return [$templateId, $documentId];
@@ -123,7 +119,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'study_id' => null,
             'created_by' => $ownerId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -136,9 +131,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         DocumentShare::query()->forceCreate([
@@ -238,7 +230,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'study_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -251,9 +242,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'created_by' => $creatorId,
             'owner_id' => $ownerId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
@@ -290,7 +278,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'study_id' => null,
             'created_by' => $ownerId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -309,9 +296,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();

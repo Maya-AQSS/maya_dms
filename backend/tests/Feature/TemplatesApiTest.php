@@ -313,7 +313,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -330,7 +329,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -367,7 +365,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -384,7 +381,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -447,7 +443,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -476,7 +471,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 2,
             'review_stages' => 1,
             'review_mode' => 'parallel',
         ]);
@@ -536,7 +530,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -591,7 +584,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -635,7 +627,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -694,7 +685,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -707,9 +697,6 @@ class TemplatesApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         $this->deleteJson("/api/v1/templates/{$tid}", [], $headers)
@@ -740,7 +727,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -799,7 +785,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userA,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -829,7 +814,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userA,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -858,7 +842,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userA,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -895,7 +878,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userA,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -947,7 +929,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => $gid,
             'created_by' => $userA,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -982,7 +963,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'in_review',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1033,7 +1013,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1079,7 +1058,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1109,7 +1087,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'in_review',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1174,7 +1151,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1262,7 +1238,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1307,7 +1282,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1355,7 +1329,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1421,7 +1394,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1469,7 +1441,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1531,7 +1502,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1584,7 +1554,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1681,7 +1650,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1759,7 +1727,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1809,7 +1776,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1856,7 +1822,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1896,7 +1861,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1925,7 +1889,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1960,7 +1923,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1991,7 +1953,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'parallel',
         ]);
@@ -2026,7 +1987,6 @@ class TemplatesApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'parallel',
         ]);

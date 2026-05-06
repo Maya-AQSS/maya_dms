@@ -43,7 +43,6 @@ class GlobalScopesIsolationTest extends TestCase
             'study_id'        => null,
             'created_by'      => $creatorId,
             'status'          => 'draft',
-            'version'         => 1,
             'review_stages'   => 0,
             'review_mode'     => 'sequential',
         ]);
@@ -56,9 +55,6 @@ class GlobalScopesIsolationTest extends TestCase
             'created_by'       => $creatorId,
             'owner_id'         => $creatorId,
             'status'           => 'draft',
-            'current_version'  => 1,
-            'submitted_at'     => null,
-            'published_at'     => null,
         ]);
 
         return [$templateId, $documentId];
@@ -186,7 +182,6 @@ class GlobalScopesIsolationTest extends TestCase
             'team_id' => $teamId,
             'created_by' => $userA,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);

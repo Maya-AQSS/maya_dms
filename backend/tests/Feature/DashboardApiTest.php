@@ -120,7 +120,6 @@ class DashboardApiTest extends TestCase
             'team_id' => null,
             'created_by' => (string) Str::uuid(),
             'status' => 'in_review',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -137,7 +136,6 @@ class DashboardApiTest extends TestCase
             'team_id' => null,
             'created_by' => (string) Str::uuid(),
             'status' => 'in_review',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -154,7 +152,6 @@ class DashboardApiTest extends TestCase
             'team_id' => null,
             'created_by' => (string) Str::uuid(),
             'status' => 'in_review',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -171,7 +168,6 @@ class DashboardApiTest extends TestCase
             'team_id' => null,
             'created_by' => (string) Str::uuid(),
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -272,7 +268,6 @@ class DashboardApiTest extends TestCase
             'team_id' => null,
             'created_by' => $ownerId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 2,
             'review_mode' => 'sequential',
         ]);
@@ -305,9 +300,6 @@ class DashboardApiTest extends TestCase
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'in_review',
-            'current_version' => 1,
-            'submitted_at' => now(),
-            'published_at' => null,
         ]);
 
         DocumentReview::query()->forceCreate([
@@ -377,7 +369,6 @@ class DashboardApiTest extends TestCase
             'team_id' => null,
             'created_by' => $ownerId,
             'status' => 'in_review',
-            'version' => 1,
             'review_stages' => 2,
             'review_mode' => 'sequential',
         ]);

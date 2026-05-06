@@ -343,7 +343,6 @@ return (static function (): array {
                 'team_id' => null,
                 'created_by' => $slot['creator'],
                 'status' => $slot['status'],
-                'version' => 1,
                 'review_stages' => $slot['review_stages'],
                 'review_mode' => $slot['review_mode'],
             ];
@@ -488,9 +487,6 @@ return (static function (): array {
                 'created_by' => $ownerId,
                 'owner_id' => $ownerId,
                 'status' => 'draft',
-                'current_version' => 1,
-                'submitted_at' => null,
-                'published_at' => null,
             ];
 
             foreach ($blocks as $b) {

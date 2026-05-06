@@ -7,6 +7,8 @@ use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class SnapshotService implements SnapshotServiceInterface
 {
@@ -60,8 +62,6 @@ class SnapshotService implements SnapshotServiceInterface
 
         $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($dto->documentId);
         $this->documentVersionBlockLayerWriter->syncLayersForNewPublication($latestVersion, $document);
-
-        $document->update(['current_version' => $nextNumber]);
     }
 
     /**
@@ -74,6 +74,8 @@ class SnapshotService implements SnapshotServiceInterface
     private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array
     {
         $document->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+
+        $lifecycle = $this->snapshotDocumentLifecycleIso8601($document);
 
         return [
             'snapshot_version_number' => $snapshotVersionNumber,
@@ -89,8 +91,8 @@ class SnapshotService implements SnapshotServiceInterface
                 'owner_id' => $document->owner_id,
                 'status' => $document->status,
                 'current_version' => (int) $document->current_version,
-                'submitted_at' => $document->submitted_at?->toIso8601String(),
-                'published_at' => $document->published_at?->toIso8601String(),
+                'submitted_at' => $lifecycle['submitted_at'],
+                'published_at' => $lifecycle['published_at'],
             ],
             'blocks' => $document->blocks->map(static function ($b): array {
                 return [
@@ -104,6 +106,31 @@ class SnapshotService implements SnapshotServiceInterface
                     'locked_at' => $b->locked_at?->toIso8601String(),
                 ];
             })->values()->all(),
+        ];
+    }
+
+    /**
+     * Valores ISO para el JSON del snapshot en el momento de la captura (antes de persistir la nueva {@see EntityVersion}).
+     *
+     * @return array{submitted_at: ?string, published_at: ?string}
+     */
+    private function snapshotDocumentLifecycleIso8601(Document $document): array
+    {
+        if ($document->status !== 'published') {
+            return ['submitted_at' => null, 'published_at' => null];
+        }
+
+        $reviewFirst = DB::table('document_reviews')
+            ->where('document_id', $document->id)
+            ->min('created_at');
+
+        $submitted = $reviewFirst !== null
+            ? Carbon::parse($reviewFirst)->toIso8601String()
+            : now()->toIso8601String();
+
+        return [
+            'submitted_at' => $submitted,
+            'published_at' => now()->toIso8601String(),
         ];
     }
 }

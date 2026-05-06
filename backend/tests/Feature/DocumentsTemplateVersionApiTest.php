@@ -195,7 +195,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -232,7 +231,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -324,7 +322,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -392,7 +389,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -466,7 +462,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -573,7 +568,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -680,7 +674,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -724,7 +717,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonPath('data.status', 'draft');
 
         $this->assertSame('draft', (string) DB::table('documents')->where('id', $docId)->value('status'));
-        $this->assertNull(DB::table('documents')->where('id', $docId)->value('published_at'));
+        $docAfterNewVersion = Document::query()->find($docId);
+        $this->assertNotNull($docAfterNewVersion);
+        $this->assertNull($docAfterNewVersion->published_at);
     }
 
     public function test_document_version_block_layers_resolve_equal_snapshot_blocks_after_second_publish(): void
@@ -755,7 +750,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -843,7 +837,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $ownerId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -912,7 +905,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -985,7 +977,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1071,7 +1062,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => $gid,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1137,7 +1127,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1206,7 +1195,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1268,7 +1256,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1332,7 +1319,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1392,7 +1378,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -1452,7 +1437,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -1517,7 +1501,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -1578,7 +1561,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -1659,7 +1641,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -1753,7 +1734,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -1835,7 +1815,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertSame('published', $snapshot['document']['status']);
         $this->assertNotEmpty($snapshot['blocks']);
 
-        $this->assertSame(1, (int) DB::table('documents')->where('id', $docId)->value('current_version'));
+        $this->assertSame(1, (int) Document::query()->find($docId)?->current_version);
 
         $versionId = (string) $row->id;
         $show = $this->getJson("/api/v1/documents/{$docId}/versions/{$versionId}", $hCreator)
@@ -1868,7 +1848,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1886,9 +1865,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'published',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => now(),
         ]);
 
         DocumentVersion::query()->forceCreate([
@@ -1950,7 +1926,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -1968,9 +1943,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'published',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => now(),
         ]);
 
         DB::table('entity_versions')->insert([
@@ -2022,7 +1994,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -2040,9 +2011,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'published',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => now(),
         ]);
 
         DB::table('entity_versions')->insert([
@@ -2089,7 +2057,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -2107,9 +2074,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'published',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => now(),
         ]);
 
         DB::table('entity_versions')->insert([
@@ -2177,7 +2141,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -2195,9 +2158,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'published',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => now(),
         ]);
 
         DocumentVersion::query()->forceCreate([
@@ -2239,7 +2199,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -2314,7 +2273,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -2331,9 +2289,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'published',
-            'current_version' => 1,
-            'submitted_at' => now(),
-            'published_at' => now(),
         ]);
 
         DocumentVersion::query()->forceCreate([
@@ -2375,7 +2330,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -2392,9 +2346,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'published',
-            'current_version' => 1,
-            'submitted_at' => now(),
-            'published_at' => now(),
         ]);
 
         DocumentVersion::query()->forceCreate([
@@ -2436,7 +2387,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -2520,7 +2470,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -2583,7 +2532,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -2658,7 +2606,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
@@ -2742,7 +2689,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);

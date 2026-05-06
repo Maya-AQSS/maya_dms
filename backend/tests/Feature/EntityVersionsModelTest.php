@@ -53,7 +53,6 @@ class EntityVersionsModelTest extends TestCase
             'team_id' => null,
             'created_by' => $actorId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'parallel',
         ]);
@@ -72,9 +71,6 @@ class EntityVersionsModelTest extends TestCase
             'created_by' => $actorId,
             'owner_id' => $actorId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         $templateVersion = EntityVersion::query()->create([
@@ -134,7 +130,6 @@ class EntityVersionsModelTest extends TestCase
             'team_id' => null,
             'created_by' => (string) Str::uuid(),
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'parallel',
         ]);

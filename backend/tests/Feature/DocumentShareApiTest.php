@@ -117,7 +117,6 @@ class DocumentShareApiTest extends TestCase
             'team_id' => null,
             'created_by' => $ownerId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 1,
             'review_mode' => 'parallel',
         ]);
@@ -157,9 +156,6 @@ class DocumentShareApiTest extends TestCase
             'created_by' => $creatorId,
             'owner_id' => $ownerId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         DocumentBlock::query()->forceCreate([

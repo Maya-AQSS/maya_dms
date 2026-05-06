@@ -97,9 +97,6 @@ class DocumentService implements DocumentServiceInterface
             'created_by' => $dto->createdBy,
             'owner_id' => $dto->ownerId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ], $blockRows);
     }
 
@@ -160,9 +157,6 @@ class DocumentService implements DocumentServiceInterface
                 'created_by' => $actorId,
                 'owner_id' => $actorId,
                 'status' => 'draft',
-                'current_version' => 1,
-                'submitted_at' => null,
-                'published_at' => null,
             ], $blockRows);
         });
     }
@@ -235,9 +229,6 @@ class DocumentService implements DocumentServiceInterface
             'created_by' => $actorId,
             'owner_id' => $actorId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ];
     }
 
@@ -532,10 +523,7 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->documentStateService->transition($documentId, 'draft', $actorId, [
-            'submitted_at' => null,
-            'published_at' => null,
-        ]);
+        return $this->documentStateService->transition($documentId, 'draft', $actorId);
     }
 
     /**
@@ -559,10 +547,7 @@ class DocumentService implements DocumentServiceInterface
             $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
 
             if ($candidates === []) {
-                $this->documentStateService->transition($documentId, 'published', $actorId, [
-                    'submitted_at' => now(),
-                    'published_at' => now(),
-                ]);
+                $this->documentStateService->transition($documentId, 'published', $actorId);
 
                 // Misma convención que {@see TemplatePublishingService} (plantilla ya numerada en creación).
                 $autoChangelog = 'Publicación automática';
@@ -576,9 +561,7 @@ class DocumentService implements DocumentServiceInterface
                 return $this->documentRepository->findOrFail($documentId);
             }
 
-            $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, [
-                'submitted_at' => now(),
-            ]);
+            $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 
             return $document;
@@ -704,9 +687,7 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
-            $this->documentStateService->transition($documentId, 'published', $actorId, [
-                'published_at' => now(),
-            ]);
+            $this->documentStateService->transition($documentId, 'published', $actorId);
             $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                 documentId: $documentId,
                 triggerEvent: 'published',
