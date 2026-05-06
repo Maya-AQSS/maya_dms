@@ -4,9 +4,11 @@ namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
+use App\Models\EntityVersion;
 use App\Models\DocumentVersion;
 use App\Models\DocumentShare;
 use App\Services\DocumentVersionBlockLayerResolver;
+use App\Support\DocumentHeadSnapshot;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Template;
@@ -34,6 +36,20 @@ class DocumentsTemplateVersionApiTest extends TestCase
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+
+    private function setDocumentHeadWorkingStatus(string $docId, string $status): void
+    {
+        $ev = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $docId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $merged = DocumentHeadSnapshot::mergeDocumentKey($ev->snapshot_data ?? [], ['status' => $status]);
+        $ev->update([
+            'status' => $status,
+            'snapshot_data' => $merged,
+        ]);
+    }
 
     private function anyStudyId(): string
     {
@@ -510,7 +526,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         ], $hCreator)->assertOk();
 
         // Sin flujo productivo publicado→borrador en esta suite: se simula una nueva edición para divergir del snapshot.
-        DB::table('documents')->where('id', $docId)->update(['status' => 'draft']);
+        $this->setDocumentHeadWorkingStatus($docId, 'draft');
 
         $this->putJson("/api/v1/documents/{$docId}", [
             'title' => 'Título solo en borrador vivo',
@@ -614,7 +630,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'changelog' => 'Pub',
         ], $hCreator)->assertOk();
 
-        DB::table('documents')->where('id', $docId)->update(['status' => 'draft']);
+        $this->setDocumentHeadWorkingStatus($docId, 'draft');
 
         $snapshotRow = DB::table('document_versions')->where('document_id', $docId)->orderByDesc('version_number')->first();
         $this->assertNotNull($snapshotRow);
@@ -709,14 +725,22 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $this->assertSame(
             'published',
-            (string) DB::table('documents')->where('id', $docId)->value('status'),
+            (string) DB::table('entity_versions')
+                ->where('versionable_type', Document::class)
+                ->where('versionable_id', $docId)
+                ->where('version_number', 0)
+                ->value('status'),
         );
 
         $this->postJson("/api/v1/documents/{$docId}/new-version", [], $headers)
             ->assertOk()
             ->assertJsonPath('data.status', 'draft');
 
-        $this->assertSame('draft', (string) DB::table('documents')->where('id', $docId)->value('status'));
+        $this->assertSame('draft', (string) DB::table('entity_versions')
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $docId)
+            ->where('version_number', 0)
+            ->value('status'));
         $docAfterNewVersion = Document::query()->find($docId);
         $this->assertNotNull($docAfterNewVersion);
         $this->assertNull($docAfterNewVersion->published_at);

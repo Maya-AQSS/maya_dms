@@ -195,7 +195,10 @@ class TemplateBlockController extends Controller
 
     private function findTemplateOrFail(string $templateId): Template
     {
-        return $this->templateService->findOrFail($templateId);
+        // Misma resolución que {@see TemplateController::show}: la política puede autorizar ver una
+        // plantilla fuera del catálogo (p. ej. anclada a un documento visible); el scope user_access
+        // no debe devolver 404 antes de {@see authorizeAndValidateTemplateContext}.
+        return $this->templateService->findOrFailWithoutCatalogScope($templateId);
     }
 
     private function authorizeAndValidateTemplateContext(

@@ -17,6 +17,7 @@ use App\Models\TemplateReviewer;
 use App\Models\EntityVersion;
 use App\Models\User;
 use App\Services\TemplateVersionBlockLayerResolver;
+use App\Support\TemplateHeadSnapshot;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -196,6 +197,20 @@ class TemplatesApiTest extends TestCase
         $this->assertIsArray($snapshot);
 
         return $snapshot;
+    }
+
+    private function setHeadTemplateStatusDraft(string $templateId): void
+    {
+        $ev = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($ev->snapshot_data ?? [], ['status' => 'draft']);
+        $ev->update([
+            'status' => 'draft',
+            'snapshot_data' => $snapshotData,
+        ]);
     }
 
     public function test_user_can_crud_personal_template_via_api(): void
@@ -545,7 +560,14 @@ class TemplatesApiTest extends TestCase
 
         $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)->assertOk();
 
-        DB::table('templates')->where('id', $tid)->update(['name' => 'Nombre solo en vivo']);
+        $headEv = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($headEv->snapshot_data ?? [], ['name' => 'Nombre solo en vivo']);
+        $headEv->update(['snapshot_data' => $snapshotData]);
+
         DB::table('template_blocks')->where('id', $bid)->update(['title' => 'Titulo solo en vivo']);
 
         $response = $this->postJson("/api/v1/templates/{$tid}/clone", [], $headersCreator);
@@ -603,7 +625,11 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'draft');
 
-        $this->assertSame('draft', (string) DB::table('templates')->where('id', $tid)->value('status'));
+        $this->assertSame('draft', (string) DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->value('status'));
     }
 
     public function test_template_version_block_layers_resolve_equal_blocks_snapshot_after_second_publish(): void
@@ -703,10 +729,13 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'archived');
 
-        $this->assertDatabaseHas('templates', [
-            'id' => $tid,
-            'status' => 'archived',
-        ]);
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $data = $head->snapshot_data ?? [];
+        $this->assertSame('archived', data_get($data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.status'));
     }
 
     public function test_destroy_no_content_when_no_documents(): void
@@ -1578,7 +1607,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.version', 1);
 
         // Simula inicio de nuevo ciclo de versionado desde la ultima publicada.
-        Template::query()->whereKey($tid)->update(['status' => 'draft']);
+        $this->setHeadTemplateStatusDraft($tid);
 
         // Publicacion v2 sin tocar revisores/validadores.
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
@@ -1674,7 +1703,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.version', 1);
 
         // Simula inicio de nuevo ciclo de versionado desde la ultima publicada.
-        Template::query()->whereKey($tid)->update(['status' => 'draft']);
+        $this->setHeadTemplateStatusDraft($tid);
 
         // Cambia reviewers de plantilla y de documentos antes de publicar v2.
         $this->postJson("/api/v1/templates/{$tid}/reviewers", [
@@ -1800,6 +1829,7 @@ class TemplatesApiTest extends TestCase
             (int) DB::table('entity_versions')
                 ->where('versionable_type', Template::class)
                 ->where('versionable_id', $tid)
+                ->where('version_number', '>', 0)
                 ->count(),
         );
     }

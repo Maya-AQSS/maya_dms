@@ -6,10 +6,14 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Policies\TemplatePolicy;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TemplatePolicyTest extends TestCase
 {
+    use RefreshDatabase;
+
     private TemplatePolicy $policy;
 
     protected function setUp(): void
@@ -27,15 +31,33 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->viewAny($con));
     }
 
-    public function test_view_requires_templates_read(): void
+    public function test_view_requires_templates_read_or_documents_create_for_transient_model(): void
     {
         $creatorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-        $sin       = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd');
-        $con       = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['templates.read']);
-        $template  = $this->makeTemplate($creatorId);
+        $sin = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd');
+        $conRead = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['templates.read']);
+        $conDoc = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff', ['documents.create']);
+        $template = new Template;
 
         $this->assertFalse($this->policy->view($sin, $template));
-        $this->assertTrue($this->policy->view($con, $template));
+        $this->assertTrue($this->policy->view($conRead, $template));
+        $this->assertTrue($this->policy->view($conDoc, $template));
+    }
+
+    public function test_view_allows_admin_and_templates_delete_without_catalog_scope(): void
+    {
+        $template = new Template;
+        $template->forceFill([
+            'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            'created_by' => 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            'status' => 'published',
+        ]);
+
+        $admin = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['admin']);
+        $deleter = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['templates.delete']);
+
+        $this->assertTrue($this->policy->view($admin, $template));
+        $this->assertTrue($this->policy->view($deleter, $template));
     }
 
     public function test_creator_without_templates_review_permission_cannot_review_template(): void
@@ -96,9 +118,11 @@ class TemplatePolicyTest extends TestCase
             '11111111-2222-3333-4444-555555555555',
             ['templates.read', 'templates.update'],
         );
+        auth()->setUser($user);
         $template = $this->makeTemplate(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
 
         $this->assertTrue($this->policy->update($user, $template));
@@ -110,6 +134,7 @@ class TemplatePolicyTest extends TestCase
             '11111111-2222-3333-4444-555555555555',
             ['templates.read'],
         );
+        auth()->setUser($user);
         $template = $this->makeTemplate(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             status: 'published',
@@ -189,9 +214,11 @@ class TemplatePolicyTest extends TestCase
             '11111111-2222-3333-4444-555555555555',
             ['templates.read', 'templates.update'],
         );
+        auth()->setUser($user);
         $template = $this->makeTemplate(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
 
         $this->assertTrue($this->policy->startRevision($user, $template));
@@ -203,6 +230,7 @@ class TemplatePolicyTest extends TestCase
             '11111111-2222-3333-4444-555555555555',
             ['templates.read'],
         );
+        auth()->setUser($user);
         $template = $this->makeTemplate(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             status: 'published',
@@ -240,16 +268,39 @@ class TemplatePolicyTest extends TestCase
         ]);
     }
 
-    private function makeTemplate(string $createdBy, string $status = 'draft'): Template
-    {
-        $t = new Template;
-        $t->forceFill([
-            'created_by' => $createdBy,
-            'status'     => $status,
-        ]);
+    /**
+     * Plantilla persistida con cabezal (metadatos en entity_versions), como en producción.
+     *
+     * @param  non-empty-string|null  $visibilityLevel  Valor de {@see TemplateVisibilityLevel}.
+     */
+    private function makeTemplate(
+        string $createdBy,
+        string $status = 'draft',
+        ?string $visibilityLevel = null,
+    ): Template {
+        $visibilityLevel ??= TemplateVisibilityLevel::Personal->value;
 
-        return $t;
+        $template = Template::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla unit policy',
+            'description' => null,
+            'visibility_level' => $visibilityLevel,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $createdBy,
+            'status' => $status,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        $template->refresh();
+
+        return $template;
     }
 
 }
+
 

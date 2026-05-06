@@ -2,14 +2,20 @@
 
 namespace Tests\Unit\Policies;
 
+use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\DocumentShare;
 use App\Models\JwtUser;
+use App\Models\Template;
 use App\Policies\DocumentPolicy;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DocumentPolicyTest extends TestCase
 {
+    use RefreshDatabase;
+
     private DocumentPolicy $policy;
 
     protected function setUp(): void
@@ -298,13 +304,39 @@ class DocumentPolicyTest extends TestCase
 
     private function makeDocument(string $createdBy, string $ownerId, string $status = 'draft'): Document
     {
-        $doc = new Document;
-        $doc->forceFill([
+        $templateId = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla doc policy',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
             'created_by' => $createdBy,
-            'owner_id'   => $ownerId,
-            'status'     => $status,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
-        return $doc;
+        $document = Document::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'title' => 'Documento unit policy',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $createdBy,
+            'owner_id' => $ownerId,
+            'status' => $status,
+        ]);
+        $document->refresh();
+
+        return $document;
     }
 }

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Support\TemplateHeadSnapshot;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use Illuminate\Validation\ValidationException;
@@ -126,7 +127,7 @@ class TemplatePublishingService
                     'process_id' => $template->process_id,
                     'name' => $template->name,
                     'description' => $template->description,
-                    'visibility_level' => $template->visibility_level,
+                    'visibility_level' => TemplateHeadSnapshot::normalizeVisibilityForSnapshot($template->visibility_level),
                     'study_type_id' => $template->study_type_id,
                     'study_id' => $template->study_id,
                     'module_id' => $template->module_id,

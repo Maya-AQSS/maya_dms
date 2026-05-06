@@ -99,8 +99,9 @@ class EntityVersionsModelTest extends TestCase
 
         $this->assertInstanceOf(Template::class, $templateVersion->versionable);
         $this->assertInstanceOf(Document::class, $documentVersion->versionable);
-        $this->assertCount(1, Template::query()->findOrFail($templateId)->entityVersions);
-        $this->assertCount(1, Document::query()->findOrFail($documentId)->entityVersions);
+        // forceCreate del modelo crea la fila cabezal v0 además de las versiones insertadas arriba.
+        $this->assertCount(2, Template::query()->findOrFail($templateId)->entityVersions);
+        $this->assertCount(2, Document::query()->findOrFail($documentId)->entityVersions);
     }
 
     public function test_entity_versions_enforce_unique_version_number_per_entity(): void

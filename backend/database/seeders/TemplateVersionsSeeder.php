@@ -43,8 +43,21 @@ class TemplateVersionsSeeder extends Seeder
                 continue;
             }
 
+            $headTemplate = [];
+            if ($template->head_entity_version_id ?? null) {
+                $headEv = DB::table('entity_versions')->where('id', $template->head_entity_version_id)->first();
+                if ($headEv !== null && is_string($headEv->snapshot_data)) {
+                    try {
+                        $decoded = json_decode($headEv->snapshot_data, true, 512, JSON_THROW_ON_ERROR);
+                        $headTemplate = is_array($decoded['template'] ?? null) ? $decoded['template'] : [];
+                    } catch (\JsonException) {
+                        $headTemplate = [];
+                    }
+                }
+            }
+
             $blocks = $this->normalizeBlocksSnapshot($row['blocks_snapshot'] ?? []);
-            $publishedBy = (string) ($row['published_by'] ?? $template->created_by ?? '');
+            $publishedBy = (string) ($row['published_by'] ?? $headTemplate['created_by'] ?? '');
             if ($publishedBy === '') {
                 continue;
             }
@@ -56,6 +69,7 @@ class TemplateVersionsSeeder extends Seeder
             $changelog = (string) ($row['changelog'] ?? '');
             $snapshotData = $this->buildPublishedSnapshotPayload(
                 $template,
+                $headTemplate,
                 $versionNumber,
                 $blocks,
                 $this->templateReviewersSnapshot($templateId),
@@ -139,6 +153,7 @@ class TemplateVersionsSeeder extends Seeder
     }
 
     /**
+     * @param  array<string, mixed>  $headTemplate  Clave `template` del snapshot cabezal (entity_versions v0).
      * @param  list<array<string, mixed>>  $blocks
      * @param  list<array<string, mixed>>  $templateReviewers
      * @param  list<array<string, mixed>>  $documentReviewers
@@ -146,6 +161,7 @@ class TemplateVersionsSeeder extends Seeder
      */
     private function buildPublishedSnapshotPayload(
         object $template,
+        array $headTemplate,
         int $versionNumber,
         array $blocks,
         array $templateReviewers,
@@ -155,13 +171,13 @@ class TemplateVersionsSeeder extends Seeder
             'template' => [
                 'id' => (string) $template->id,
                 'process_id' => (string) $template->process_id,
-                'name' => (string) $template->name,
-                'description' => $template->description,
-                'visibility_level' => (string) $template->visibility_level,
-                'study_type_id' => $template->study_type_id,
-                'study_id' => $template->study_id,
-                'module_id' => $template->module_id,
-                'team_id' => $template->team_id,
+                'name' => (string) ($headTemplate['name'] ?? ''),
+                'description' => $headTemplate['description'] ?? null,
+                'visibility_level' => (string) ($headTemplate['visibility_level'] ?? 'personal'),
+                'study_type_id' => $headTemplate['study_type_id'] ?? null,
+                'study_id' => $headTemplate['study_id'] ?? null,
+                'module_id' => $headTemplate['module_id'] ?? null,
+                'team_id' => $headTemplate['team_id'] ?? null,
                 'status' => 'published',
                 'version' => $versionNumber,
             ],

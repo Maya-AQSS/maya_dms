@@ -5,6 +5,8 @@ namespace App\Policies;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
+use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -47,14 +49,21 @@ class TemplatePolicy
     }
 
     /**
-     * Ver una plantilla: requiere `templates.read` y visibilidad de catálogo o vínculo con un documento
-     * que el usuario ya puede ver (misma idea que el scope de {@see \App\Models\Document}).
+     * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see \App\Models\Template})
+     * o vínculo con un documento visible; además hace falta al menos `templates.read` o `documents.create`
+     * (quien puede crear programaciones desde módulo puede previsualizar plantillas ofrecidas allí).
      *
      * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
      */
     public function view(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('templates.read')) {
+        // Gestión global / auditoría: mismo espíritu que {@see AcademicHierarchyController} (`admin`)
+        // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `templates.delete`).
+        if ($user->hasPermission('admin') || $user->hasPermission('templates.delete')) {
+            return true;
+        }
+
+        if (! $user->hasPermission('templates.read') && ! $user->hasPermission('documents.create')) {
             return false;
         }
 
@@ -66,11 +75,31 @@ class TemplatePolicy
             return true;
         }
 
+        $userId = (string) $user->getAuthIdentifier();
+
+        $template->loadMissing('headVersion');
+        $snapshot = $template->headVersion?->snapshot_data;
+        $createdBy = is_array($snapshot)
+            ? data_get($snapshot, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.created_by')
+            : null;
+        if ($createdBy !== null && $createdBy !== '' && (string) $createdBy === $userId) {
+            return true;
+        }
+
+        if (DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->where('user_id', $userId)
+            ->exists()) {
+            return true;
+        }
+
         if (Template::query()->whereKey($templateId)->exists()) {
             return true;
         }
 
-        return $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
+        // Fuera del listado del scope: p. ej. anclada solo vía documento; requiere leer plantillas.
+        return $user->hasPermission('templates.read')
+            && $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
     }
 
     /**
@@ -84,11 +113,12 @@ class TemplatePolicy
         }
 
         return DB::table('documents')
-            ->where('template_id', $templateId)
-            ->whereNull('deleted_at')
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
+            ->where('documents.template_id', $templateId)
+            ->whereNull('documents.deleted_at')
             ->where(function ($outer) use ($userId) {
-                $outer->where('owner_id', $userId)
-                    ->orWhere('created_by', $userId)
+                $outer->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' = ?', [$userId])
+                    ->orWhereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'created_by').' = ?', [$userId])
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
                             ->from('document_reviews')

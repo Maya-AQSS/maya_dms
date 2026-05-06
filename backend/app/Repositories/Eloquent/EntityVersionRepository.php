@@ -116,6 +116,7 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
             ->where('versionable_type', $versionableType)
             ->where('versionable_id', $versionableId)
             ->where('status', 'published')
+            ->where('version_number', '>', 0)
             ->orderBy('version_number')
             ->get();
     }

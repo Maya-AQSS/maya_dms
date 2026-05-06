@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
+use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
@@ -354,13 +355,17 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
-        $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
-            ->assertOk()
-            ->json('data');
-        $ids = $this->reviewIdsByStage($list);
+        $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
+            ->assertOk();
+
+        $review1Id = (string) DocumentReview::query()
+            ->where('document_id', $ctx['documentId'])
+            ->where('reviewer_id', $ctx['rev1'])
+            ->value('id');
+        $this->assertNotSame('', $review1Id);
 
         $this->postJson(
-            "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review1Id']}/reject",
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$review1Id}/reject",
             ['rejection_reason' => 'No procede'],
             $hR1,
         )->assertOk()

@@ -10,11 +10,14 @@ use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
+use RuntimeException;
 
 class DocumentRepository implements DocumentRepositoryInterface
 {
@@ -26,7 +29,16 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function findOrFail(string $id): Document
     {
-        return Document::query()->with(['templateVersion'])->whereKey($id)->firstOrFail();
+        return Document::query()->with(['templateVersion', 'headVersion'])->whereKey($id)->firstOrFail();
+    }
+
+    public function findOrFailForRefreshAfterMutation(string $id): Document
+    {
+        return Document::query()
+            ->withoutGlobalScope('user_access')
+            ->with(['templateVersion', 'headVersion'])
+            ->whereKey($id)
+            ->firstOrFail();
     }
 
     /**
@@ -44,15 +56,13 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function updateDocumentMetadata(Document $document, array $attributes): Document
     {
-        $document->update([
+        return $this->mergeHeadWorkingCopy($document, [
             'title' => $attributes['title'],
             'delivery_deadline' => $attributes['delivery_deadline'] ?? null,
             'study_type_id' => $attributes['study_type_id'] ?? $document->study_type_id,
             'study_id' => $attributes['study_id'] ?? $document->study_id,
             'module_id' => $attributes['module_id'] ?? $document->module_id,
         ]);
-
-        return $document->fresh();
     }
 
     /**
@@ -60,9 +70,48 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function updateOwner(Document $document, string $newOwnerId): Document
     {
-        $document->update(['owner_id' => $newOwnerId]);
+        return $this->mergeHeadWorkingCopy($document, ['owner_id' => $newOwnerId]);
+    }
 
-        return $document->fresh();
+    public function mergeHeadWorkingCopy(Document $document, array $updates): Document
+    {
+        $delegatedFlip = array_flip(DocumentHeadSnapshot::DELEGATED_ATTRIBUTES);
+        $headUpdates = array_intersect_key($updates, $delegatedFlip);
+        if ($headUpdates === []) {
+            return $document->fresh(['headVersion']);
+        }
+
+        $document->loadMissing('headVersion');
+        $ev = $document->headVersion;
+        if ($ev === null) {
+            throw new RuntimeException('Documento sin versión cabezal en entity_versions.');
+        }
+
+        $normalized = $this->normalizeHeadSnapshotUpdates($headUpdates);
+        $ev->snapshot_data = DocumentHeadSnapshot::mergeDocumentKey($ev->snapshot_data ?? [], $normalized);
+        if (array_key_exists('status', $headUpdates)) {
+            $ev->status = (string) $headUpdates['status'];
+        }
+        $ev->save();
+
+        return $document->fresh(['headVersion']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $updates
+     * @return array<string, mixed>
+     */
+    private function normalizeHeadSnapshotUpdates(array $updates): array
+    {
+        $out = [];
+        foreach ($updates as $k => $v) {
+            $out[$k] = match ($k) {
+                'delivery_deadline' => TemplateHeadSnapshot::normalizeDeadlineForSnapshot($v),
+                default => $v,
+            };
+        }
+
+        return $out;
     }
 
     /**
@@ -74,7 +123,56 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document
     {
         return DB::transaction(function () use ($documentAttributes, $blockRows) {
-            $document = Document::query()->create($documentAttributes);
+            $delegatedFlip = array_flip(DocumentHeadSnapshot::DELEGATED_ATTRIBUTES);
+            $delegated = array_intersect_key($documentAttributes, $delegatedFlip);
+            $anchor = array_diff_key($documentAttributes, $delegatedFlip);
+
+            $document = new Document;
+            if (! empty($anchor['id'])) {
+                $document->setAttribute('id', $anchor['id']);
+            }
+            $document->process_id = $anchor['process_id'];
+            $document->template_id = $anchor['template_id'];
+            $document->template_version_id = $anchor['template_version_id'] ?? null;
+            $document->save();
+
+            $row = array_merge($delegated, [
+                'id' => $document->getKey(),
+                'process_id' => $document->process_id,
+                'template_id' => $document->template_id,
+                'status' => $delegated['status'] ?? 'draft',
+            ]);
+
+            $snapshot = DocumentHeadSnapshot::buildPayloadFromLegacyRow(
+                $row,
+                $document->getKey(),
+                (string) $document->process_id,
+                (string) $document->template_id,
+            );
+
+            $now = Carbon::now();
+            $headId = (string) Str::uuid();
+
+            DB::table('entity_versions')->insert([
+                'id' => $headId,
+                'versionable_type' => Document::class,
+                'versionable_id' => $document->getKey(),
+                'version_number' => 0,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => (string) ($delegated['status'] ?? 'draft'),
+                'created_by' => (string) ($delegated['created_by'] ?? ''),
+                'published_by' => null,
+                'published_at' => null,
+                'changelog' => null,
+                'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            $document->head_entity_version_id = $headId;
+            $document->save();
 
             if ($blockRows !== []) {
                 $now = now();
@@ -93,7 +191,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                 DocumentBlock::query()->insert($rowsToInsert);
             }
 
-            return $document->fresh(['blocks']);
+            return $document->fresh(['blocks', 'headVersion']);
         });
     }
 
@@ -209,9 +307,14 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function listOrderedByCreatedAtDesc(?string $processId = null): Collection
     {
-        $query = Document::query()
+        $query = Document::withoutGlobalScopes(['join_head_document_entity_version'])
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
             ->select(['documents.*', 'owner_user.name as owner_name'])
-            ->leftJoin('users as owner_user', 'owner_user.id', '=', 'documents.owner_id')
+            ->leftJoin('users as owner_user', function ($join) {
+                $join->whereRaw(
+                    'owner_user.id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id')
+                );
+            })
             ->with(['template', 'templateVersion'])
             ->orderByDesc('documents.created_at');
 
@@ -239,19 +342,25 @@ class DocumentRepository implements DocumentRepositoryInterface
 
         $query = DB::table('document_reviews as dr')
             ->join('documents as d', 'd.id', '=', 'dr.document_id')
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'd.head_entity_version_id')
             ->join('templates as t', 't.id', '=', 'd.template_id')
-            ->leftJoin('users as owner_user', 'owner_user.id', '=', 'd.owner_id')
+            ->join('entity_versions as template_head_ev', 'template_head_ev.id', '=', 't.head_entity_version_id')
+            ->leftJoin('users as owner_user', function ($join) {
+                $join->whereRaw(
+                    'owner_user.id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id')
+                );
+            })
             ->leftJoinSub($minPendingByDocument, 'ps', function ($join) {
                 $join->on('ps.document_id', '=', 'd.id');
             })
             ->where('dr.reviewer_id', $userId)
             ->where('dr.status', 'pending')
-            ->where('d.status', 'in_review')
+            ->where('document_head_ev.snapshot_data->document->status', 'in_review')
             ->where(function ($q) {
-                $q->whereNull('t.review_mode')
-                    ->orWhere('t.review_mode', 'parallel')
+                $q->whereNull('template_head_ev.snapshot_data->template->review_mode')
+                    ->orWhere('template_head_ev.snapshot_data->template->review_mode', 'parallel')
                     ->orWhere(function ($q2) {
-                        $q2->where('t.review_mode', 'sequential')
+                        $q2->where('template_head_ev.snapshot_data->template->review_mode', 'sequential')
                             ->whereColumn('dr.stage', 'ps.min_stage');
                     });
             });
@@ -261,18 +370,20 @@ class DocumentRepository implements DocumentRepositoryInterface
         });
 
         $rows = $query
-            ->orderByRaw('CASE WHEN d.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
-            ->orderBy('d.delivery_deadline', 'asc')
+            ->orderByRaw(
+                'CASE WHEN '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'delivery_deadline').' IS NULL THEN 1 ELSE 0 END ASC'
+            )
+            ->orderByRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'delivery_deadline').' ASC')
             ->orderByDesc('d.updated_at')
             ->get([
                 'd.id as document_id',
-                'd.title',
-                'd.owner_id',
-                'd.delivery_deadline',
-                'd.status',
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'title').' as title'),
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' as owner_id'),
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'delivery_deadline').' as delivery_deadline'),
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status').' as status'),
                 'dr.id as review_id',
                 'dr.stage',
-                't.review_mode',
+                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'review_mode').' as review_mode'),
                 'owner_user.name as owner_name',
             ]);
 
@@ -311,10 +422,11 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function isAuthorOrReviewer(string $documentId, string $userId): bool
     {
         $isAuthor = DB::table('documents')
-            ->where('id', $documentId)
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
+            ->where('documents.id', $documentId)
             ->where(fn ($q) => $q
-                ->where('owner_id', $userId)
-                ->orWhere('created_by', $userId)
+                ->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' = ?', [$userId])
+                ->orWhereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'created_by').' = ?', [$userId])
             )
             ->exists();
 

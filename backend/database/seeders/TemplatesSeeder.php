@@ -2,8 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -24,36 +24,23 @@ class TemplatesSeeder extends Seeder
             return;
         }
 
-        $now = Carbon::now();
+        $repo = app(TemplateRepositoryInterface::class);
 
-        $rows = array_map(static function (array $row) use ($now): array {
+        foreach ($templates as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $id = isset($row['id']) ? (string) $row['id'] : null;
+            if ($id !== null && DB::table('templates')->where('id', $id)->exists()) {
+                continue;
+            }
+
             $row['process_id'] ??= self::DEFAULT_PROCESS_ID;
-            $row['created_at'] ??= $now;
-            $row['updated_at'] ??= $now;
+            $row['status'] ??= 'draft';
 
-            return $row;
-        }, $templates);
-
-        DB::table('templates')->upsert(
-            $rows,
-            ['id'],
-            [
-                'name',
-                'description',
-                'process_id',
-                'visibility_level',
-                'delivery_deadline',
-                'study_id',
-                'study_type_id',
-                'module_id',
-                'team_id',
-                'created_by',
-                'status',
-                'review_stages',
-                'review_mode',
-                'updated_at',
-            ]
-        );
+            $repo->create($row);
+        }
     }
 
     /**

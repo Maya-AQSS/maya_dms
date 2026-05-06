@@ -3,7 +3,10 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Document;
+use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Support\DocumentHeadSnapshot;
 use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -265,15 +268,22 @@ class DocumentsModuleCreationApiTest extends TestCase
             ->assertJsonPath('data.study_type_id', 'TYPE-1')
             ->assertJsonPath('data.study_id', 'STUDY-1');
 
+        $docId = (string) $response->json('data.id');
         $this->assertDatabaseHas('documents', [
-            'id' => $response->json('data.id'),
-            'created_by' => $userId,
-            'owner_id' => $userId,
+            'id' => $docId,
             'template_version_id' => $version,
-            'study_type_id' => 'TYPE-1',
-            'module_id' => 'MOD-1',
-            'status' => 'draft',
         ]);
+
+        $head = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $docId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $this->assertSame('draft', $head->status);
+        $this->assertSame($userId, (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.created_by'));
+        $this->assertSame($userId, (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.owner_id'));
+        $this->assertSame('TYPE-1', (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.study_type_id'));
+        $this->assertSame('MOD-1', (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.module_id'));
     }
 
     public function test_create_from_module_requires_template_version_when_multiple_options_exist(): void

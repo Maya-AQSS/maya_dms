@@ -16,6 +16,14 @@ interface DocumentRepositoryInterface
     public function findOrFail(string $id): Document;
 
     /**
+     * Recarga el documento sin el scope `user_access` (cabezal unido).
+     *
+     * Tras mutar el cabezal, el actor puede dejar de cumplir visibilidad (p. ej. revisor tras rechazo → borrador).
+     * Solo usar cuando el id ya pasó autorización en la misma operación.
+     */
+    public function findOrFailForRefreshAfterMutation(string $id): Document;
+
+    /**
      * Borrado lógico de documento.
      */
     public function delete(Document $document): void;
@@ -31,6 +39,13 @@ interface DocumentRepositoryInterface
      * Actualiza owner del documento.
      */
     public function updateOwner(Document $document, string $newOwnerId): Document;
+
+    /**
+     * Fusiona atributos delegados en la versión cabezal y sincroniza {@see EntityVersion::status} si viene `status`.
+     *
+     * @param  array<string, mixed>  $updates  Claves de {@see \App\Support\DocumentHeadSnapshot::DELEGATED_ATTRIBUTES}.
+     */
+    public function mergeHeadWorkingCopy(Document $document, array $updates): Document;
 
     /**
      * Crea el documento y sus bloques iniciales en una transacción.

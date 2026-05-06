@@ -7,7 +7,10 @@ use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Models\Team;
+use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -376,9 +379,14 @@ class GlobalScopesIsolationTest extends TestCase
     {
         $userA = 'user-a-uuid-123';
         [$templateId] = $this->seedTemplateAndDocument($userA);
+        $headTemplateEv = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
+            ->where('version_number', 0)
+            ->firstOrFail();
         $this->assertSame(
             'draft',
-            (string) Template::withoutGlobalScopes()->whereKey($templateId)->value('status'),
+            (string) data_get($headTemplateEv->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.status'),
         );
         $tokenA = $this->buildAuthTokensForUser($userA);
         $commentId = (string) Str::uuid();
@@ -464,7 +472,16 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        Template::withoutGlobalScopes()->whereKey($templateId)->update(['status' => 'published']);
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($head->snapshot_data ?? [], ['status' => 'published']);
+        $head->update([
+            'status' => 'published',
+            'snapshot_data' => $snapshotData,
+        ]);
 
         $this->getJson(
             "/api/v1/templates/{$templateId}/comments",
@@ -489,9 +506,14 @@ class GlobalScopesIsolationTest extends TestCase
     {
         $userA = 'user-a-uuid-123';
         [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $headDocEv = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
+            ->where('version_number', 0)
+            ->firstOrFail();
         $this->assertSame(
             'draft',
-            (string) Document::withoutGlobalScopes()->whereKey($documentId)->value('status'),
+            (string) data_get($headDocEv->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.status'),
         );
         $tokenA = $this->buildAuthTokensForUser($userA);
         $commentId = (string) Str::uuid();
@@ -570,7 +592,16 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        Document::withoutGlobalScopes()->whereKey($documentId)->update(['status' => 'published']);
+        $headDoc = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $mergedDoc = DocumentHeadSnapshot::mergeDocumentKey($headDoc->snapshot_data ?? [], ['status' => 'published']);
+        $headDoc->update([
+            'status' => 'published',
+            'snapshot_data' => $mergedDoc,
+        ]);
 
         $this->getJson(
             "/api/v1/documents/{$documentId}/comments",

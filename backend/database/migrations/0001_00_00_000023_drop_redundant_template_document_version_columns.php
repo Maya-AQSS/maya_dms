@@ -5,8 +5,12 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Versión publicada de plantilla: {@see entity_versions.version_number}.
- * Versión de documento publicada y fechas de ciclo: {@see entity_versions} + {@see document_versions} / revisión.
+ * Quita columnas que duplicaban {@see \App\Models\EntityVersion} (y el flujo de revisión en documentos).
+ *
+ * - templates.version → sustituido por {@code entity_versions.version_number} + resto de metadatos de publicación
+ *   (changelog/contexto, {@code published_at}, {@code created_by}/{@code published_by} de la versión).
+ * - documents.current_version, submitted_at, published_at → la versión publicada y sus fechas/autor viven en
+ *   {@code entity_versions}; el arranque del ciclo de revisión en {@code document_reviews}.
  */
 return new class extends Migration
 {
