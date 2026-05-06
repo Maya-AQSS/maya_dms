@@ -529,6 +529,106 @@ class DocumentsTemplateVersionApiTest extends TestCase
         );
     }
 
+    public function test_clone_document_falls_back_to_live_blocks_when_published_snapshot_has_no_usable_blocks(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+        );
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla clon fallback bloques',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc fallback bloques',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [
+                ['type' => 'paragraph', 'content' => 'Texto inicial para revisión y publicación'],
+            ],
+        ], $hCreator)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)->assertOk();
+        DB::table('document_reviews')->where('document_id', $docId)->delete();
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => 'Pub',
+        ], $hCreator)->assertOk();
+
+        DB::table('documents')->where('id', $docId)->update(['status' => 'draft']);
+
+        $snapshotRow = DB::table('document_versions')->where('document_id', $docId)->orderByDesc('version_number')->first();
+        $this->assertNotNull($snapshotRow);
+        /** @var array<string, mixed> $decoded */
+        $decoded = json_decode((string) $snapshotRow->snapshot_data, true, 512, JSON_THROW_ON_ERROR);
+        $decoded['blocks'] = [];
+        DB::table('document_versions')->where('id', $snapshotRow->id)->update([
+            'snapshot_data' => json_encode($decoded, JSON_THROW_ON_ERROR),
+        ]);
+
+        $fallbackText = 'Contenido solo en borrador vivo';
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [
+                ['type' => 'paragraph', 'content' => $fallbackText],
+            ],
+        ], $hCreator)->assertOk();
+
+        $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator)->assertCreated();
+        $copyId = (string) $clone->json('data.id');
+
+        $showCopy = $this->getJson("/api/v1/documents/{$copyId}", $hCreator)->assertOk();
+        $this->assertSame(
+            $fallbackText,
+            data_get($showCopy->json(), 'data.blocks.0.content.0.content'),
+        );
+    }
+
     public function test_clone_document_returns_forbidden_for_read_only_collaborator(): void
     {
         $ownerId = (string) Str::uuid();

@@ -181,6 +181,42 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
+     * Inserta bloques en una plantilla desde el JSON de un snapshot publicado (ids de origen ignorados).
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
+     */
+    public function insertBlocksFromPublishedSnapshot(string $templateId, array $blocksSnapshot): void
+    {
+        DB::transaction(function () use ($templateId, $blocksSnapshot) {
+            foreach ($blocksSnapshot as $block) {
+                if (! is_array($block)) {
+                    continue;
+                }
+
+                $rawTitle = $block['title'] ?? null;
+                $title = match (true) {
+                    $rawTitle === null => null,
+                    is_string($rawTitle) => $rawTitle,
+                    is_scalar($rawTitle) => (string) $rawTitle,
+                    default => null,
+                };
+
+                TemplateBlock::query()->forceCreate([
+                    'id' => (string) Str::uuid(),
+                    'template_id' => $templateId,
+                    'title' => $title,
+                    'description' => array_key_exists('description', $block) ? $block['description'] : null,
+                    'default_content' => array_key_exists('default_content', $block) ? $block['default_content'] : null,
+                    'block_state' => isset($block['block_state']) && is_string($block['block_state'])
+                        ? $block['block_state']
+                        : 'editable',
+                    'sort_order' => isset($block['sort_order']) ? (int) $block['sort_order'] : 0,
+                ]);
+            }
+        });
+    }
+
+    /**
      * Carga múltiples plantillas por sus IDs (con el global scope activo), indexadas por ID.
      *
      * @param  list<string>  $ids

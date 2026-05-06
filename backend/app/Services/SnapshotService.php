@@ -11,8 +11,14 @@ class SnapshotService implements SnapshotServiceInterface
 {
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly DocumentVersionBlockLayerWriter $documentVersionBlockLayerWriter,
     ) {}
 
+    /**
+     * Crea un snapshot de versión de documento y sincroniza capas de bloques.
+     *
+     * @param CreateDocumentSnapshotDto $dto Datos de creación del snapshot.
+     */
     public function createDocumentSnapshot(CreateDocumentSnapshotDto $dto): void
     {
         $document = $this->documentRepository->findOrFail($dto->documentId);
@@ -28,10 +34,20 @@ class SnapshotService implements SnapshotServiceInterface
             $dto->notes,
         );
 
+        $document->refresh();
+        $document->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+
+        $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($dto->documentId);
+        $this->documentVersionBlockLayerWriter->syncLayersForNewPublication($latestVersion, $document);
+
         $document->update(['current_version' => $nextNumber]);
     }
 
     /**
+     * Construye el snapshot de versión de documento.
+     * 
+     * @param Document $document El documento a snapshotear.
+     * @param int $snapshotVersionNumber El número de versión del snapshot.
      * @return array<string, mixed>
      */
     private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array

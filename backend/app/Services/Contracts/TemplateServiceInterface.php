@@ -98,6 +98,11 @@ interface TemplateServiceInterface
     public function clone(string $sourceTemplateId, string $actorId): Template;
 
     /**
+     * Plantilla publicada → borrador para iniciar el ciclo de una nueva versión.
+     */
+    public function startNewRevisionCycle(string $templateId, string $actorId): Template;
+
+    /**
      * Registra la aprobación del revisor activo. Si todos los revisores han aprobado,
      * publica la plantilla automáticamente con un snapshot.
      *

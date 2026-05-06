@@ -199,6 +199,18 @@ class TemplatePolicy
     }
 
     /**
+     * Publicada → borrador para preparar una nueva versión (misma plantilla).
+     */
+    public function startRevision(JwtUser $user, Template $template): bool
+    {
+        if ($template->status !== 'published') {
+            return false;
+        }
+
+        return $user->getAuthIdentifier() === $template->created_by;
+    }
+
+    /**
      * Revisión / aprobación.
      *
      * Requiere permiso `templates.review` y estar asignado en `template_reviewers`.

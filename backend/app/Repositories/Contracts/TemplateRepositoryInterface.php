@@ -63,6 +63,13 @@ interface TemplateRepositoryInterface
     public function replicateBlocks(Template $source, Template $target): void;
 
     /**
+     * Inserta bloques en una plantilla desde el JSON de un snapshot publicado (ids de origen ignorados).
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
+     */
+    public function insertBlocksFromPublishedSnapshot(string $templateId, array $blocksSnapshot): void;
+
+    /**
      * Carga múltiples plantillas por sus IDs (con el global scope activo).
      * El resultado está indexado por ID (keyBy).
      *

@@ -15,6 +15,7 @@ class TemplatePublishingService
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
+        private readonly TemplateVersionBlockLayerWriter $templateVersionBlockLayerWriter,
     ) {}
 
     /**
@@ -120,13 +121,15 @@ class TemplatePublishingService
                 $resolvedChangelog = $trimmedChangelog;
             }
 
-            $this->templateVersionRepository->createSnapshot(
+            $createdVersion = $this->templateVersionRepository->createSnapshot(
                 $templateId,
                 $next,
                 $blocksSnapshot,
                 $resolvedChangelog,
                 $actorId,
             );
+
+            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($createdVersion, $template);
 
             $oldStatus = $template->status;
             $updated = $this->templateRepository->update($template, [

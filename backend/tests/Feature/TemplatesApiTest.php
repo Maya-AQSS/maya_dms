@@ -16,6 +16,7 @@ use App\Models\TemplateDocumentReviewer;
 use App\Models\TemplateReviewer;
 use App\Models\TemplateVersion;
 use App\Models\User;
+use App\Services\TemplateVersionBlockLayerResolver;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -512,6 +513,164 @@ class TemplatesApiTest extends TestCase
         $copyId = $response->json('data.id');
         $this->assertNotSame($tid, $copyId);
         $this->assertSame(2, TemplateBlock::query()->where('template_id', $copyId)->count());
+    }
+
+    public function test_clone_template_materializes_from_latest_published_snapshot_when_live_differs(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headersCreator = $this->authHeaders($creatorId, []);
+        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Nombre al publicar',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'Titulo publicado',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)->assertOk();
+
+        DB::table('templates')->where('id', $tid)->update(['name' => 'Nombre solo en vivo']);
+        DB::table('template_blocks')->where('id', $bid)->update(['title' => 'Titulo solo en vivo']);
+
+        $response = $this->postJson("/api/v1/templates/{$tid}/clone", [], $headersCreator);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'Nombre al publicar (copia)')
+            ->assertJsonPath('data.status', 'draft');
+
+        $copyId = (string) $response->json('data.id');
+        $this->assertNotSame($tid, $copyId);
+
+        $this->assertSame(
+            'Titulo publicado',
+            (string) DB::table('template_blocks')->where('template_id', $copyId)->value('title'),
+        );
+    }
+
+    public function test_post_template_new_version_sets_draft_when_published(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId, []);
+        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'T',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headers)->assertOk();
+
+        $this->postJson("/api/v1/templates/{$tid}/new-version", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->assertSame('draft', (string) DB::table('templates')->where('id', $tid)->value('status'));
+    }
+
+    public function test_template_version_block_layers_resolve_equal_blocks_snapshot_after_second_publish(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId, []);
+        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'T',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headers)->assertOk();
+
+        $this->postJson("/api/v1/templates/{$tid}/new-version", [], $headers)->assertOk();
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Segunda versión'], $headers)->assertOk();
+
+        $tv2 = TemplateVersion::query()
+            ->where('template_id', $tid)
+            ->where('version_number', 2)
+            ->firstOrFail();
+
+        $resolver = app(TemplateVersionBlockLayerResolver::class);
+        $fromLayers = $resolver->resolveBlocksSnapshot($tv2->id);
+
+        $this->assertEquals($tv2->blocks_snapshot, $fromLayers);
+
+        $inheritsCount = DB::table('template_version_block_layers')
+            ->where('template_version_id', $tv2->id)
+            ->where('inherits_from_previous_publication', true)
+            ->count();
+
+        $this->assertGreaterThan(0, $inheritsCount);
     }
 
     public function test_destroy_archives_when_documents_exist(): void

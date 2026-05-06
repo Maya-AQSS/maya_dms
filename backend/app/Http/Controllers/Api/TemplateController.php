@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
 use App\Http\Requests\Templates\PublishTemplateRequest;
+use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
 use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
@@ -205,6 +206,27 @@ class TemplateController extends Controller
             $model->id,
             $request->validated('changelog'),
             (string) Auth::id(),
+        );
+
+        return new TemplateResource($updated);
+    }
+
+    /**
+     * Publicada → borrador (nueva versión de edición sobre la misma plantilla).
+     */
+    public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $updated = $this->templateService->startNewRevisionCycle(
+            $model->id,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
         );
 
         return new TemplateResource($updated);

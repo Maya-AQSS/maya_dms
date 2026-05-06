@@ -116,11 +116,14 @@ class DocumentService implements DocumentServiceInterface
                 $snap = $publishedSnapshot->snapshot_data;
                 $docSnap = isset($snap['document']) && is_array($snap['document']) ? $snap['document'] : [];
                 $blockSnapshots = isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
+                $blockRows = $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId);
 
-                return $this->documentRepository->createDocumentWithBlocks(
-                    $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId),
-                    $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId),
-                );
+                if ($blockRows !== []) {
+                    return $this->documentRepository->createDocumentWithBlocks(
+                        $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId),
+                        $blockRows,
+                    );
+                }
             }
 
             $source->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
