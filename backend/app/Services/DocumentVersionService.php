@@ -7,6 +7,7 @@ use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
 
 class DocumentVersionService
 {
@@ -148,10 +149,32 @@ class DocumentVersionService
                 ->all();
         }
 
-        return $entityVersions
-            ->concat($legacyVersions)
-            ->unique('version_number')
-            ->sortByDesc('version_number')
+        return $this->mergeDocumentVersionListRowsPreferringEntity($entityVersions, $legacyVersions);
+    }
+
+    /**
+     * Lista combinada por número de versión; si existe fila en entity_versions y en document_versions, conserva entity.
+     *
+     * @param  Collection<int, array<string, mixed>>  $entityRows
+     * @param  Collection<int, array<string, mixed>>  $legacyRows
+     * @return list<array<string, mixed>>
+     */
+    private function mergeDocumentVersionListRowsPreferringEntity(Collection $entityRows, Collection $legacyRows): array
+    {
+        /** @var array<int, array<string, mixed>> $byNumber */
+        $byNumber = [];
+        foreach ($entityRows as $row) {
+            $byNumber[(int) $row['version_number']] = $row;
+        }
+        foreach ($legacyRows as $row) {
+            $n = (int) $row['version_number'];
+            if (! array_key_exists($n, $byNumber)) {
+                $byNumber[$n] = $row;
+            }
+        }
+
+        return collect($byNumber)
+            ->sortByDesc(static fn (array $row): int => (int) $row['version_number'])
             ->values()
             ->all();
     }

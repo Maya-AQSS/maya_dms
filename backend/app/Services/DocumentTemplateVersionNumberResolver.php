@@ -7,8 +7,8 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 
 /**
- * Expone el número de versión publicada de plantilla anclada a un documento,
- * leyendo solo vía repositorios (legacy primero, luego entity_versions).
+ * Resuelve el número de versión publicada a partir del id anclado:
+ * primero fila {@see TemplateVersion}, si no, meta en {@see EntityVersion} para ese template.
  */
 final class DocumentTemplateVersionNumberResolver
 {

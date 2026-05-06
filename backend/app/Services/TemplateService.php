@@ -140,14 +140,35 @@ class TemplateService implements TemplateServiceInterface
             return $entityVersions;
         }
 
-        // En transición parcial, combina ambas fuentes y deduplica por número,
-        // priorizando entity_versions frente a legacy cuando colisionan
-        // (misma regla que {@see \App\Repositories\Eloquent\TemplateVersionRepository::findLatestPublishedMetaForTemplate}).
-        return $entityVersions
-            ->concat($legacyVersions)
-            ->sortBy(static fn (TemplateVersion|EntityVersion $v): int => (int) $v->version_number)
-            ->unique(static fn (TemplateVersion|EntityVersion $v): int => (int) $v->version_number)
-            ->values();
+        return $this->mergePublishedTemplateVersionsPreferringEntity($entityVersions, $legacyVersions);
+    }
+
+    /**
+     * Una entrada por número de versión; si coincide entity y legacy, conserva entity.
+     * Misma prioridad que {@see \App\Repositories\Eloquent\TemplateVersionRepository::findLatestPublishedMetaForTemplate}.
+     *
+     * @param  Collection<int, EntityVersion>  $entityVersions
+     * @param  Collection<int, TemplateVersion>  $legacyVersions
+     * @return Collection<int, TemplateVersion|EntityVersion>
+     */
+    private function mergePublishedTemplateVersionsPreferringEntity(
+        Collection $entityVersions,
+        Collection $legacyVersions,
+    ): Collection {
+        /** @var array<int, TemplateVersion|EntityVersion> $byNumber */
+        $byNumber = [];
+        foreach ($entityVersions as $v) {
+            $byNumber[(int) $v->version_number] = $v;
+        }
+        foreach ($legacyVersions as $v) {
+            $n = (int) $v->version_number;
+            if (! array_key_exists($n, $byNumber)) {
+                $byNumber[$n] = $v;
+            }
+        }
+        ksort($byNumber);
+
+        return collect(array_values($byNumber));
     }
 
     /**
