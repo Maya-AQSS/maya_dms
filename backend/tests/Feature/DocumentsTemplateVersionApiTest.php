@@ -419,6 +419,75 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $show->assertJsonPath('data.team', null);
     }
 
+    public function test_show_document_blocks_fall_back_to_entity_snapshot_when_legacy_blocks_snapshot_empty(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+        );
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Normativa entity blocks',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque desde snapshot entity',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Expediente entity blocks',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $versionIdV1 = (string) $createDoc->json('data.template_version_id');
+
+        DB::table('template_versions')->where('id', $versionIdV1)->update([
+            'blocks_snapshot' => json_encode([], JSON_THROW_ON_ERROR),
+        ]);
+
+        $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
+        $show->assertOk();
+        $show->assertJsonCount(1, 'data.blocks');
+        $show->assertJsonPath('data.blocks.0.title', 'Bloque desde snapshot entity');
+    }
+
     public function test_show_document_includes_team_when_template_is_team_scoped(): void
     {
         $creatorId = (string) Str::uuid();

@@ -19,6 +19,14 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
     }
 
     /**
+     * Localiza una versión de plantilla por su ID o null si no existe.
+     */
+    public function findOptional(string $id): ?TemplateVersion
+    {
+        return TemplateVersion::query()->whereKey($id)->first();
+    }
+
+    /**
      * Última versión publicada de la plantilla (mayor {@see TemplateVersion::$version_number}), o null.
      */
     public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion

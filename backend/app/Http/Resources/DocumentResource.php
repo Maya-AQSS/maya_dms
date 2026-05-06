@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Models\TemplateVersion;
+use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -54,8 +54,9 @@ class DocumentResource extends JsonResource
             return (int) $this->templateVersion->version_number;
         }
 
-        $n = TemplateVersion::query()->whereKey($this->template_version_id)->value('version_number');
-
-        return $n !== null ? (int) $n : null;
+        return app(DocumentTemplateVersionNumberResolver::class)->resolve(
+            $this->template_id !== null ? (string) $this->template_id : null,
+            (string) $this->template_version_id,
+        );
     }
 }

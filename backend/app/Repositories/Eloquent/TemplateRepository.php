@@ -42,6 +42,18 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
+     * Plantilla sin scope de catálogo con bloques cargados y ordenados por sort_order.
+     * Para definición de bloques de documento cuando no hay snapshot de versión usable.
+     */
+    public function findOrFailWithBlocksOrderedWithoutCatalogScope(string $id): Template
+    {
+        return Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order')])
+            ->findOrFail($id);
+    }
+
+    /**
      * Listado con filtros (sin cargar bloques); sin paginación en servidor.
      *
      * @return EloquentCollection<int, Template>

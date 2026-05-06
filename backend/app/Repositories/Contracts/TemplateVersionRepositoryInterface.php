@@ -10,6 +10,11 @@ interface TemplateVersionRepositoryInterface
     public function findOrFail(string $id): TemplateVersion;
 
     /**
+     * Localiza una versión legacy por id o null si no existe.
+     */
+    public function findOptional(string $id): ?TemplateVersion;
+
+    /**
      * Última versión publicada de la plantilla (mayor {@see TemplateVersion::$version_number}), o null.
      */
     public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion;

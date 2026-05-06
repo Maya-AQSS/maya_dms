@@ -25,6 +25,12 @@ interface TemplateRepositoryInterface
     public function findOrFailWithoutCatalogScope(string $id): Template;
 
     /**
+     * Plantilla sin scope de catálogo con bloques cargados y ordenados por sort_order.
+     * Para definición de bloques de documento cuando no hay snapshot de versión usable.
+     */
+    public function findOrFailWithBlocksOrderedWithoutCatalogScope(string $id): Template;
+
+    /**
      * Listado con filtros (sin cargar bloques); sin paginación en servidor.
      *
      * @return Collection<int, Template>

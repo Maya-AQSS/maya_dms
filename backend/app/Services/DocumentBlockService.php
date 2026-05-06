@@ -7,6 +7,9 @@ use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +18,9 @@ class DocumentBlockService
 {
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
     ) {}
 
     /**
@@ -155,22 +161,72 @@ class DocumentBlockService
 
     private function blockDefinitionsForDocument(Document $document): array
     {
-        if ($document->template_version_id !== null) {
-            $document->loadMissing('templateVersion');
-            if ($document->templateVersion !== null) {
-                $snap = $document->templateVersion->blocks_snapshot;
+        if ($document->template_version_id === null) {
+            return $this->blockDefinitionsFromLiveTemplate((string) $document->template_id);
+        }
 
-                return collect(is_array($snap) ? $snap : [])
-                    ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
-                    ->values()
-                    ->all();
+        $document->loadMissing('templateVersion');
+
+        $versionNumber = null;
+
+        if ($document->templateVersion !== null) {
+            $versionNumber = (int) $document->templateVersion->version_number;
+            $snap = $document->templateVersion->blocks_snapshot;
+            $fromLegacy = $this->sortedSnapshotBlocks(is_array($snap) ? $snap : []);
+            if ($fromLegacy !== []) {
+                return $fromLegacy;
+            }
+        } else {
+            $meta = $this->templateVersionRepository->findPublishedMetaById((string) $document->template_version_id);
+            if ($meta !== null) {
+                $versionNumber = (int) $meta['version_number'];
+                $tv = $this->templateVersionRepository->findOptional((string) $document->template_version_id);
+                if ($tv !== null) {
+                    $snap = $tv->blocks_snapshot;
+                    $fromLegacy = $this->sortedSnapshotBlocks(is_array($snap) ? $snap : []);
+                    if ($fromLegacy !== []) {
+                        return $fromLegacy;
+                    }
+                }
+            } else {
+                $entityRow = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                    (string) $document->template_version_id,
+                    Template::class,
+                    (string) $document->template_id,
+                );
+                if ($entityRow !== null) {
+                    $versionNumber = (int) $entityRow->version_number;
+                    $fromEntity = $this->sortedBlocksFromEntitySnapshot($entityRow->snapshot_data);
+                    if ($fromEntity !== []) {
+                        return $fromEntity;
+                    }
+                }
             }
         }
 
-        $template = Template::query()
-            ->withoutGlobalScopes(['user_access'])
-            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order')])
-            ->findOrFail($document->template_id);
+        if ($versionNumber !== null) {
+            $entityVersion = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+                Template::class,
+                (string) $document->template_id,
+                $versionNumber,
+            );
+            if ($entityVersion !== null) {
+                $fromEntity = $this->sortedBlocksFromEntitySnapshot($entityVersion->snapshot_data);
+                if ($fromEntity !== []) {
+                    return $fromEntity;
+                }
+            }
+        }
+
+        return $this->blockDefinitionsFromLiveTemplate((string) $document->template_id);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function blockDefinitionsFromLiveTemplate(string $templateId): array
+    {
+        $template = $this->templateRepository->findOrFailWithBlocksOrderedWithoutCatalogScope($templateId);
 
         return $template->blocks->map(fn ($b) => [
             'id' => $b->id,
@@ -182,6 +238,36 @@ class DocumentBlockService
             'mandatory' => $b->mandatory,
             'sort_order' => $b->sort_order,
         ])->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $blocks
+     * @return list<array<string, mixed>>
+     */
+    private function sortedSnapshotBlocks(array $blocks): array
+    {
+        if ($blocks === []) {
+            return [];
+        }
+
+        return collect($blocks)
+            ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function sortedBlocksFromEntitySnapshot(mixed $snapshotData): array
+    {
+        if (! is_array($snapshotData)) {
+            return [];
+        }
+
+        $blocks = $snapshotData['blocks'] ?? null;
+
+        return is_array($blocks) ? $this->sortedSnapshotBlocks($blocks) : [];
     }
 
     private function documentBlockContentEquals(mixed $a, mixed $b): bool
