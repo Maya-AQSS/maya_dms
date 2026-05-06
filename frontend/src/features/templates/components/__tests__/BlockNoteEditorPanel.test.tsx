@@ -107,4 +107,21 @@ describe('BlockNoteEditorPanel', () => {
 
     expect(panel.className).toBe(originalClasses);
   });
+
+  it('fullscreen uses CSS class for positioning only, no inline styles that shift layout', () => {
+    const { container } = render(
+      <BlockNoteEditorPanel initialContent={null} editable={true} isDark={false} />,
+    );
+    const panel = container.querySelector('.maya-bn-panel') as HTMLElement;
+    fireEvent.click(screen.getByRole('button', { name: /pantalla completa/i }));
+
+    expect(panel.classList.contains('maya-bn-panel--fullscreen')).toBe(true);
+    expect(panel.classList.contains('overflow-hidden')).toBe(true);
+    // Positioning must come from the CSS class, not inline styles or Tailwind utilities
+    expect(panel.style.position).toBe('');
+    expect(panel.style.top).toBe('');
+    expect(panel.style.left).toBe('');
+    expect(panel.classList.contains('top-0')).toBe(false);
+    expect(panel.classList.contains('inset-0')).toBe(false);
+  });
 });
