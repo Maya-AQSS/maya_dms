@@ -13,6 +13,7 @@ class DocumentVersionService
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly DocumentVersionBlockLayerResolver $documentVersionBlockLayerResolver,
     ) {}
 
     /**
@@ -27,6 +28,9 @@ class DocumentVersionService
 
     /**
      * Detalle de versión del documento aceptando id legacy o id polimórfico.
+     *
+     * Para filas en `document_versions`, `snapshot_data.blocks` se reconstruye con
+     * {@see DocumentVersionBlockLayerResolver} (capas + fallback al JSON guardado).
      *
      * @return array{
      *   id: string,
@@ -46,6 +50,9 @@ class DocumentVersionService
         try {
             $version = $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
 
+            $snapshotData = is_array($version->snapshot_data) ? $version->snapshot_data : [];
+            $snapshotData['blocks'] = $this->documentVersionBlockLayerResolver->resolveBlocksSnapshot((string) $version->id);
+
             return [
                 'id' => $version->id,
                 'document_id' => $version->document_id,
@@ -53,7 +60,7 @@ class DocumentVersionService
                 'trigger_event' => (string) $version->trigger_event,
                 'triggered_by' => (string) $version->triggered_by,
                 'changelog' => $version->notes,
-                'snapshot_data' => is_array($version->snapshot_data) ? $version->snapshot_data : [],
+                'snapshot_data' => $snapshotData,
                 'created_at' => $version->created_at?->toIso8601String(),
             ];
         } catch (ModelNotFoundException) {
