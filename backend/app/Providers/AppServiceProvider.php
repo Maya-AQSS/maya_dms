@@ -10,7 +10,6 @@ use App\Policies\CommentPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
-use App\Repositories\Contracts\AuditLogRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
@@ -23,7 +22,6 @@ use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
-use App\Repositories\Eloquent\AuditLogRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\ProcessRepository;
@@ -36,12 +34,10 @@ use App\Repositories\Eloquent\UserProfileRepository;
 use App\Repositories\Eloquent\UserFavoriteRepository;
 use App\Repositories\Eloquent\UserDirectoryRepository;
 use App\Services\AcademicHierarchyService;
-use App\Services\AuditLogService;
 use App\Services\CommentService;
 use App\Services\ApiTeamEmbedService;
 use App\Services\Contracts\AcademicHierarchyServiceInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
-use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DashboardServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -75,7 +71,6 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Repository bindings
-        $this->app->bind(AuditLogRepositoryInterface::class, AuditLogRepository::class);
         $this->app->bind(DocumentRepositoryInterface::class, DocumentRepository::class);
         $this->app->bind(ProcessRepositoryInterface::class, ProcessRepository::class);
         $this->app->bind(TeamReadRepositoryInterface::class, TeamReadRepository::class);
@@ -90,7 +85,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
 
         // Service bindings
-        $this->app->bind(AuditLogServiceInterface::class, AuditLogService::class);
         $this->app->bind(ApiTeamEmbedServiceInterface::class, ApiTeamEmbedService::class);
         $this->app->bind(SnapshotServiceInterface::class, SnapshotService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);

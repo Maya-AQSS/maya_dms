@@ -7,8 +7,8 @@ use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use Maya\Auth\Contracts\JwksServiceInterface;
+use Maya\Messaging\Publishers\AuditPublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\BuildsTestJwt;
@@ -93,9 +93,9 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     }
 
     /**
-     * Usuario compartido (no titular) no puede enviar a revisión → 403 y audit_log.
+     * Usuario compartido (no titular) no puede enviar a revisión → 403 y publica evento de auditoría.
      */
-    public function test_shared_user_submit_returns_403_and_writes_audit_log(): void
+    public function test_shared_user_submit_returns_403_and_publishes_audit_event(): void
     {
         $ownerId = 'owner-sod-share-01';
         $sharedId = 'shared-sod-share-02';
@@ -135,6 +135,28 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'granted_by' => $ownerId,
         ]);
 
+        $auditPublisher = $this->mock(AuditPublisher::class);
+        $auditPublisher->shouldReceive('publish')
+            ->once()
+            ->withArgs(function (
+                string $applicationSlug,
+                string $entityType,
+                string $entityId,
+                string $action,
+                string $userId,
+                ?string $blockId,
+                ?array $previousValue,
+                ?array $newValue,
+            ) use ($documentId, $sharedId): bool {
+                return $applicationSlug === 'maya-dms'
+                    && $entityType === 'document'
+                    && $entityId === $documentId
+                    && $action === 'sod_violation'
+                    && $userId === $sharedId
+                    && ($newValue['level'] ?? null) === 'WARNING'
+                    && array_key_exists('ability', $newValue ?? []);
+            });
+
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-sh', $sharedId);
 
@@ -152,25 +174,6 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             [],
             ['Authorization' => 'Bearer '.$token],
         )->assertForbidden();
-
-        $this->assertDatabaseHas('audit_log', [
-            'entity_type' => 'document',
-            'entity_id' => $documentId,
-            'action' => 'sod_violation',
-            'user_id' => $sharedId,
-        ]);
-
-        $row = DB::table('audit_log')
-            ->where('entity_id', $documentId)
-            ->where('action', 'sod_violation')
-            ->first();
-
-        $this->assertNotNull($row);
-        $newValue = is_string($row->new_value) ? json_decode($row->new_value, true) : $row->new_value;
-        $this->assertIsArray($newValue);
-        $this->assertSame('WARNING', $newValue['level'] ?? null);
-        $this->assertArrayHasKey('ability', $newValue);
-        $this->assertNotEmpty($row->timestamp);
     }
 
     /**

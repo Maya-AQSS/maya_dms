@@ -7,8 +7,8 @@ use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
+use Maya\Messaging\Publishers\AuditPublisher;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -17,7 +17,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     public function __construct(
         private readonly TemplateBlockRepositoryInterface $blockRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
-        private readonly AuditLogServiceInterface $auditLogService,
+        private readonly AuditPublisher $auditPublisher,
     ) {
     }
 
@@ -112,14 +112,13 @@ class TemplateBlockService implements TemplateBlockServiceInterface
 
         $this->blockRepository->reorderForTemplate($templateId, $orderedBlockIds);
 
-        $this->auditLogService->record(
-            entityType: 'template',
-            entityId: $templateId,
-            action: 'blocks_reordered',
-            userId: $userId,
-            blockId: null,
-            previousValue: null,
-            newValue: ['block_ids' => $orderedBlockIds],
+        $this->auditPublisher->publish(
+            applicationSlug: 'maya-dms',
+            entityType:      'template',
+            entityId:        $templateId,
+            action:          'blocks_reordered',
+            userId:          $userId,
+            newValue:        ['block_ids' => $orderedBlockIds],
         );
     }
 
@@ -136,16 +135,14 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $template = $this->templateRepository->findOrFail($templateId);
         $block = $this->blockRepository->create($template, $attributes);
 
-        $this->auditLogService->record(
-            entityType: 'template',
-            entityId: $templateId,
-            action: 'block_created',
-            userId: $userId,
-            blockId: $block->getKey(),
-            previousValue: null,
-            newValue: [
-                'block_state' => $block->block_state,
-            ],
+        $this->auditPublisher->publish(
+            applicationSlug: 'maya-dms',
+            entityType:      'template',
+            entityId:        $templateId,
+            action:          'block_created',
+            userId:          $userId,
+            blockId:         $block->getKey(),
+            newValue:        ['block_state' => $block->block_state],
         );
 
         return $block;
@@ -197,16 +194,15 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $updated = $this->blockRepository->update($block, $attributes);
 
         if ($stateOrMandatoryChanged) {
-            $this->auditLogService->record(
-                entityType: 'template',
-                entityId: $updated->template_id,
-                action: 'block_state_changed',
-                userId: $userId,
-                blockId: $blockId,
-                previousValue: $previous,
-                newValue: [
-                    'block_state' => $updated->block_state,
-                ],
+            $this->auditPublisher->publish(
+                applicationSlug: 'maya-dms',
+                entityType:      'template',
+                entityId:        $updated->template_id,
+                action:          'block_state_changed',
+                userId:          $userId,
+                blockId:         $blockId,
+                previousValue:   $previous,
+                newValue:        ['block_state' => $updated->block_state],
             );
         }
 
@@ -224,16 +220,14 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     {
         $block = $this->blockRepository->findOrFail($blockId);
 
-        $this->auditLogService->record(
-            entityType: 'template',
-            entityId: $block->template_id,
-            action: 'block_deleted',
-            userId: $userId,
-            blockId: $blockId,
-            previousValue: [
-                'block_state' => $block->block_state,
-            ],
-            newValue: null,
+        $this->auditPublisher->publish(
+            applicationSlug: 'maya-dms',
+            entityType:      'template',
+            entityId:        $block->template_id,
+            action:          'block_deleted',
+            userId:          $userId,
+            blockId:         $blockId,
+            previousValue:   ['block_state' => $block->block_state],
         );
 
         $this->blockRepository->delete($block);
@@ -267,18 +261,15 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             $changedState = $dto->set_block_state && $prev && $prev->block_state !== $block->block_state;
 
             if ($changedState) {
-                $this->auditLogService->record(
-                    entityType: 'template',
-                    entityId: $block->template_id,
-                    action: 'block_state_changed',
-                    userId: $userId,
-                    blockId: $block->getKey(),
-                    previousValue: [
-                        'block_state' => $prev->block_state,
-                    ],
-                    newValue: [
-                        'block_state' => $block->block_state,
-                    ],
+                $this->auditPublisher->publish(
+                    applicationSlug: 'maya-dms',
+                    entityType:      'template',
+                    entityId:        $block->template_id,
+                    action:          'block_state_changed',
+                    userId:          $userId,
+                    blockId:         $block->getKey(),
+                    previousValue:   ['block_state' => $prev->block_state],
+                    newValue:        ['block_state' => $block->block_state],
                 );
             }
         }

@@ -4,21 +4,21 @@ namespace App\Listeners;
 
 use App\Models\Document;
 use App\Models\Template;
-use App\Services\Contracts\AuditLogServiceInterface;
 use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Log;
+use Maya\Messaging\Publishers\AuditPublisher;
 
 /**
- * Registra en audit_log (y deja traza en log de aplicación) cuando una política SoD
- * deniega explícitamente {@see DocumentPolicy} / {@see TemplatePolicy}.
+ * Registra en el bus de auditoría cuando una política SoD deniega
+ * explícitamente {@see DocumentPolicy} / {@see TemplatePolicy}.
  */
 class RecordSegregationOfDutiesDenial
 {
     private const ABILITIES = ['review', 'submit'];
 
     public function __construct(
-        private readonly AuditLogServiceInterface $auditLogService,
+        private readonly AuditPublisher $auditPublisher,
     ) {}
 
     public function handle(GateEvaluated $event): void
@@ -40,8 +40,8 @@ class RecordSegregationOfDutiesDenial
 
         $entityType = match (true) {
             $subject instanceof Document => 'document',
-            $subject instanceof Template   => 'template',
-            default                        => null,
+            $subject instanceof Template => 'template',
+            default                      => null,
         };
 
         if ($entityType === null || ! $subject->getKey()) {
@@ -56,30 +56,29 @@ class RecordSegregationOfDutiesDenial
         $request = request();
 
         Log::warning('SoD policy denied', [
-            'ability'      => $event->ability,
-            'entity_type'  => $entityType,
-            'entity_id'    => (string) $subject->getKey(),
-            'user_id'      => $userId,
+            'ability'     => $event->ability,
+            'entity_type' => $entityType,
+            'entity_id'   => (string) $subject->getKey(),
+            'user_id'     => $userId,
         ]);
 
         try {
-            $this->auditLogService->record(
-                entityType:    $entityType,
-                entityId:      (string) $subject->getKey(),
-                action:        'sod_violation',
-                userId:        (string) $userId,
-                blockId:       null,
-                previousValue: null,
-                newValue:      [
+            $this->auditPublisher->publish(
+                applicationSlug: 'maya-dms',
+                entityType:      $entityType,
+                entityId:        (string) $subject->getKey(),
+                action:          'sod_violation',
+                userId:          (string) $userId,
+                newValue:        [
                     'ability' => $event->ability,
                     'level'   => 'WARNING',
                     'reason'  => 'segregation_of_duties',
                 ],
-                ipAddress:     $request?->ip(),
-                userAgent:     $request?->userAgent(),
+                ipAddress:       $request?->ip(),
+                userAgent:       $request?->userAgent(),
             );
         } catch (\Throwable $e) {
-            Log::error('Failed to persist SoD audit entry', [
+            Log::error('Failed to publish SoD audit event', [
                 'exception' => $e->getMessage(),
             ]);
         }

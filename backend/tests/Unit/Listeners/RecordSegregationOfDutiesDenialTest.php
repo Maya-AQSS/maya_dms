@@ -3,24 +3,23 @@
 namespace Tests\Unit\Listeners;
 
 use App\Listeners\RecordSegregationOfDutiesDenial;
-use App\Models\AuditLog;
 use App\Models\Document;
 use App\Models\JwtUser;
-use App\Services\Contracts\AuditLogServiceInterface;
 use Illuminate\Auth\Access\Events\GateEvaluated;
+use Maya\Messaging\Publishers\AuditPublisher;
 use Tests\TestCase;
 
 class RecordSegregationOfDutiesDenialTest extends TestCase
 {
-    public function test_persists_audit_when_document_submit_is_denied(): void
+    public function test_publishes_audit_event_when_document_submit_is_denied(): void
     {
         $user = new JwtUser([
-            'id'            => 'not-owner',
-            'email'         => null,
-            'name'          => null,
-            'department'    => null,
-            'permissions'   => [],
-            'scope'         => '',
+            'id'          => 'not-owner',
+            'email'       => null,
+            'name'        => null,
+            'department'  => null,
+            'permissions' => [],
+            'scope'       => '',
         ]);
 
         $document = new Document;
@@ -31,10 +30,11 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
             'status'     => 'draft',
         ]);
 
-        $audit = $this->createMock(AuditLogServiceInterface::class);
-        $audit->expects($this->once())
-            ->method('record')
+        $publisher = $this->createMock(AuditPublisher::class);
+        $publisher->expects($this->once())
+            ->method('publish')
             ->with(
+                'maya-dms',
                 'document',
                 'doc-uuid-1',
                 'sod_violation',
@@ -45,25 +45,24 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
                     && ($v['reason'] ?? null) === 'segregation_of_duties'),
                 $this->anything(),
                 $this->anything(),
-            )
-            ->willReturn(new AuditLog);
+            );
 
-        $listener = new RecordSegregationOfDutiesDenial($audit);
+        $listener = new RecordSegregationOfDutiesDenial($publisher);
         $listener->handle(new GateEvaluated($user, 'submit', false, [$document]));
     }
 
     public function test_skips_when_gate_allows(): void
     {
-        $audit = $this->createMock(AuditLogServiceInterface::class);
-        $audit->expects($this->never())->method('record');
+        $publisher = $this->createMock(AuditPublisher::class);
+        $publisher->expects($this->never())->method('publish');
 
         $user = new JwtUser([
-            'id'            => 'reviewer',
-            'email'         => null,
-            'name'          => null,
-            'department'    => null,
-            'permissions'   => [],
-            'scope'         => '',
+            'id'          => 'reviewer',
+            'email'       => null,
+            'name'        => null,
+            'department'  => null,
+            'permissions' => [],
+            'scope'       => '',
         ]);
 
         $document = new Document;
@@ -74,7 +73,7 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
             'status'     => 'draft',
         ]);
 
-        $listener = new RecordSegregationOfDutiesDenial($audit);
+        $listener = new RecordSegregationOfDutiesDenial($publisher);
         $listener->handle(new GateEvaluated($user, 'submit', true, [$document]));
     }
 }

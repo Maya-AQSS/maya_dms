@@ -173,6 +173,18 @@ return [
             'table'    => env('FDW_USER_PERMISSIONS_TABLE', 'user_permissions'),
         ],
 
+        // Catálogo de permisos DMS — FDW de solo lectura sobre maya_auth.v_dms_permissions.
+        // En local se apunta al mismo Postgres (BD maya_auth, usuario maya).
+        'permissions' => [
+            'host'     => env('FDW_PERMISSIONS_HOST', 'maya_infra_postgres'),
+            'port'     => env('FDW_PERMISSIONS_PORT', '5432'),
+            'database' => env('FDW_PERMISSIONS_DATABASE', 'maya_auth'),
+            'username' => env('FDW_PERMISSIONS_USERNAME', 'maya'),
+            'password' => env('FDW_PERMISSIONS_PASSWORD', 'secret'),
+            'schema'   => env('FDW_PERMISSIONS_SCHEMA', 'public'),
+            'table'    => env('FDW_PERMISSIONS_TABLE', 'v_dms_permissions'),
+        ],
+
     ],
 
     /*

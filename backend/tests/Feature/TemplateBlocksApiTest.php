@@ -8,10 +8,10 @@ use App\Models\TemplateBlock;
 use Database\Seeders\PermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Maya\Auth\Contracts\JwksServiceInterface;
+use Maya\Messaging\Publishers\AuditPublisher;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -124,32 +124,34 @@ class TemplateBlocksApiTest extends TestCase
             ->assertJsonValidationErrors(['block_state']);
     }
 
-    public function test_state_change_creates_audit_log_with_old_and_new_values(): void
+    public function test_state_change_publishes_audit_event_with_old_and_new_values(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId);
         [, $blockId] = $this->seedTemplateAndBlock($userId);
 
+        $capturedArgs = null;
+        $auditPublisher = $this->mock(AuditPublisher::class);
+        $auditPublisher->shouldReceive('publish')
+            ->once()
+            ->withArgs(function () use (&$capturedArgs): bool {
+                $capturedArgs = func_get_args();
+                return true;
+            });
+
+        $headers = $this->authHeaders($userId);
         $this->putJson("/api/v1/blocks/{$blockId}", [
             'block_state' => 'locked',
         ], $headers)->assertOk();
 
-        $row = DB::table('audit_log')
-            ->where('action', 'block_state_changed')
-            ->where('block_id', $blockId)
-            ->orderByDesc('timestamp')
-            ->first();
-
-        $this->assertNotNull($row);
-        $this->assertSame($userId, $row->user_id);
-        $this->assertSame($blockId, $row->block_id);
-
-        $previous = json_decode((string) $row->previous_value, true);
-        $new = json_decode((string) $row->new_value, true);
-
-        $this->assertSame('editable', $previous['block_state'] ?? null);
-        $this->assertSame('locked', $new['block_state'] ?? null);
-        $this->assertNotNull($row->timestamp);
+        $this->assertNotNull($capturedArgs);
+        // positional: applicationSlug, entityType, entityId, action, userId, blockId, previousValue, newValue
+        $this->assertSame('maya-dms', $capturedArgs[0]);
+        $this->assertSame('template', $capturedArgs[1]);
+        $this->assertSame('block_state_changed', $capturedArgs[3]);
+        $this->assertSame($userId, $capturedArgs[4]);
+        $this->assertSame($blockId, $capturedArgs[5]);
+        $this->assertSame('editable', ($capturedArgs[6] ?? [])['block_state'] ?? null);
+        $this->assertSame('locked', ($capturedArgs[7] ?? [])['block_state'] ?? null);
     }
 
     public function test_user_with_only_templates_read_cannot_mutate_blocks_on_foreign_template(): void

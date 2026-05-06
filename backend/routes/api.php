@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AcademicHierarchyController;
-use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
@@ -108,14 +107,6 @@ Route::prefix('v1')->group(function () {
         Route::match(['put', 'patch', 'delete'], 'documents/{document}/versions/{version}', fn () => abort(403, 'Los snapshots de documento son de solo inserción (append-only).'))
             ->whereUuid('document')
             ->whereUuid('version');
-
-        // Auditoría
-        Route::get('documents/{document}/audit', [AuditLogController::class, 'indexForDocument'])
-            ->whereUuid('document');
-        Route::get('templates/{template}/audit', [AuditLogController::class, 'indexForTemplate'])
-            ->whereUuid('template');
-        Route::get('comments/{comment}/audit', [AuditLogController::class, 'indexForComment'])
-            ->whereUuid('comment');
 
         // Compartición de documentos
         Route::post('documents/{document}/shares', [DocumentShareController::class, 'store'])

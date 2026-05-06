@@ -11,6 +11,9 @@ class PermissionsSeeder extends Seeder
 {
     public function run(): void
     {
+        // En local/prod, permissions es una VIEW FDW (solo lectura desde maya_auth).
+        // Schema::hasTable devuelve false para vistas en PostgreSQL → seeder no-op.
+        // En testing es una tabla física; se puebla desde database/data/permissions_mock.php.
         if (! Schema::hasTable('permissions')) {
             return;
         }
