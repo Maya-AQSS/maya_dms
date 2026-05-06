@@ -1,9 +1,10 @@
 <?php
 
 /**
- * Versiones publicadas mock de plantilla.
+ * Versiones publicadas mock de plantilla (filas append-only en `template_versions`).
  *
- * blocks_snapshot replica el shape que genera {@see TemplateService::publishWithSnapshot()}.
+ * El JSON canónico (`snapshot_data`) lo inserta {@see \Database\Seeders\TemplateVersionsSeeder}
+ * en `entity_versions`; aquí solo defines bloques fuente para construir ese snapshot.
  * Los template_id deben existir en database/data/templates_mock.php.
  */
 $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';

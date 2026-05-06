@@ -2,14 +2,22 @@
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\EntityVersion;
+use App\Models\Template;
 use App\Models\TemplateVersion;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Support\PublishedTemplateVersionMetaMerge;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class TemplateVersionRepository implements TemplateVersionRepositoryInterface
 {
+    public function __construct(
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+    ) {}
+
     /**
      * Localiza una versión de plantilla por su ID.
      */
@@ -78,21 +86,26 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
      */
     public function findLatestPublishedMetaForTemplate(string $templateId): ?array
     {
-        $row = DB::table('template_versions')
+        $legacyRow = DB::table('template_versions')
             ->where('template_id', $templateId)
             ->orderByDesc('version_number')
             ->select(['id', 'version_number', 'changelog'])
             ->first();
 
-        if ($row === null) {
-            return null;
-        }
-
-        return [
-            'id' => (string) $row->id,
-            'version_number' => (int) $row->version_number,
-            'changelog' => (string) $row->changelog,
+        $legacyMeta = $legacyRow === null ? null : [
+            'id' => (string) $legacyRow->id,
+            'version_number' => (int) $legacyRow->version_number,
+            'changelog' => (string) $legacyRow->changelog,
         ];
+
+        $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        $entityMeta = $entityLatest === null ? null : [
+            'id' => (string) $entityLatest->id,
+            'version_number' => (int) $entityLatest->version_number,
+            'changelog' => (string) ($entityLatest->changelog ?? ''),
+        ];
+
+        return PublishedTemplateVersionMetaMerge::preferLatestMeta($entityMeta, $legacyMeta);
     }
 
     /**
@@ -107,15 +120,16 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
     }
 
     /**
-     * Obtiene el próximo número de versión para una plantilla.
+     * Próximo número de versión según {@see EntityVersion} (fuente canónica).
      */
     public function nextVersionNumber(string $templateId): int
     {
-        $max = TemplateVersion::query()
-            ->where('template_id', $templateId)
+        $max = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
             ->max('version_number');
 
-        return (int) $max + 1;
+        return ($max !== null ? (int) $max : 0) + 1;
     }
 
     /**

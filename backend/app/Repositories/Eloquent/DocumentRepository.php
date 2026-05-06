@@ -4,6 +4,7 @@ namespace App\Repositories\Eloquent;
 
 use App\Models\BlockVersion;
 use App\Models\Document;
+use App\Models\EntityVersion;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentShare;
@@ -328,12 +329,13 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
-     * Mayor número de versión de snapshot guardado para el documento.
+     * Mayor número de versión según {@see EntityVersion} (fuente canónica).
      */
     public function maxDocumentVersionNumber(string $documentId): int
     {
-        $max = DocumentVersion::query()
-            ->where('document_id', $documentId)
+        $max = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
             ->max('version_number');
 
         return $max !== null ? (int) $max : 0;

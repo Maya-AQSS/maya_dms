@@ -2,16 +2,22 @@
 
 namespace Database\Seeders;
 
+use App\Models\Template;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
+/**
+ * Inserta versiones publicadas de plantilla alineadas con el modelo canónico:
+ * cada fila en {@see template_versions} enlaza {@see entity_versions} y no duplica JSON en {@see blocks_snapshot}.
+ */
 class TemplateVersionsSeeder extends Seeder
 {
     public function run(): void
     {
-        if (! Schema::hasTable('template_versions')) {
+        if (! Schema::hasTable('template_versions') || ! Schema::hasTable('entity_versions')) {
             return;
         }
 
@@ -22,21 +28,85 @@ class TemplateVersionsSeeder extends Seeder
 
         $now = Carbon::now();
 
-        $rows = array_map(static function (array $row) use ($now): array {
-            $row['published_at'] ??= $now;
+        foreach ($rows as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
 
-            $snapshot = $row['blocks_snapshot'] ?? [];
-            $row['blocks_snapshot'] = is_string($snapshot)
-                ? $snapshot
-                : json_encode($snapshot);
+            $templateId = (string) ($row['template_id'] ?? '');
+            $versionNumber = (int) ($row['version_number'] ?? 0);
+            if ($templateId === '' || $versionNumber < 1) {
+                continue;
+            }
 
-            $row['created_at'] ??= $now;
-            $row['updated_at'] ??= $now;
+            $template = DB::table('templates')->where('id', $templateId)->first();
+            if ($template === null) {
+                continue;
+            }
 
-            return $row;
-        }, $rows);
+            $blocks = $this->normalizeBlocksSnapshot($row['blocks_snapshot'] ?? []);
+            $publishedBy = (string) ($row['published_by'] ?? $template->created_by ?? '');
+            if ($publishedBy === '') {
+                continue;
+            }
 
-        DB::table('template_versions')->insertOrIgnore($rows);
+            $publishedAt = isset($row['published_at']) && $row['published_at'] !== null
+                ? Carbon::parse((string) $row['published_at'])
+                : $now;
+
+            $changelog = (string) ($row['changelog'] ?? '');
+            $snapshotData = $this->buildPublishedSnapshotPayload(
+                $template,
+                $versionNumber,
+                $blocks,
+                $this->templateReviewersSnapshot($templateId),
+                $this->documentReviewersSnapshot($templateId),
+            );
+
+            $existingEntity = DB::table('entity_versions')
+                ->where('versionable_type', Template::class)
+                ->where('versionable_id', $templateId)
+                ->where('version_number', $versionNumber)
+                ->first();
+
+            if ($existingEntity === null) {
+                $entityVersionId = (string) Str::uuid();
+                DB::table('entity_versions')->insert([
+                    'id' => $entityVersionId,
+                    'versionable_type' => Template::class,
+                    'versionable_id' => $templateId,
+                    'version_number' => $versionNumber,
+                    'base_version_id' => null,
+                    'change_set' => null,
+                    'status' => 'published',
+                    'created_by' => $publishedBy,
+                    'published_by' => $publishedBy,
+                    'published_at' => $publishedAt,
+                    'changelog' => $changelog,
+                    'snapshot_data' => json_encode($snapshotData, JSON_THROW_ON_ERROR),
+                    'is_snapshot_immutable' => true,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
+            } else {
+                $entityVersionId = (string) $existingEntity->id;
+            }
+
+            $tvRow = [
+                'id' => (string) ($row['id'] ?? Str::uuid()),
+                'template_id' => $templateId,
+                'entity_version_id' => $entityVersionId,
+                'version_number' => $versionNumber,
+                'blocks_snapshot' => null,
+                'changelog' => $changelog,
+                'published_by' => $publishedBy,
+                'published_at' => $publishedAt,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
+
+            DB::table('template_versions')->insertOrIgnore($tvRow);
+        }
     }
 
     /**
@@ -53,5 +123,116 @@ class TemplateVersionsSeeder extends Seeder
         $rows = require $filePath;
 
         return is_array($rows) ? $rows : [];
+    }
+
+    /**
+     * @param  mixed  $raw
+     * @return list<array<string, mixed>>
+     */
+    private function normalizeBlocksSnapshot(mixed $raw): array
+    {
+        if ($raw === null || $raw === '') {
+            return [];
+        }
+        if (is_string($raw)) {
+            try {
+                $decoded = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+            } catch (\JsonException) {
+                return [];
+            }
+            if (! is_array($decoded)) {
+                return [];
+            }
+
+            return array_values($decoded);
+        }
+        if (is_array($raw)) {
+            return array_values($raw);
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $blocks
+     * @param  list<array<string, mixed>>  $templateReviewers
+     * @param  list<array<string, mixed>>  $documentReviewers
+     * @return array<string, mixed>
+     */
+    private function buildPublishedSnapshotPayload(
+        object $template,
+        int $versionNumber,
+        array $blocks,
+        array $templateReviewers,
+        array $documentReviewers,
+    ): array {
+        return [
+            'template' => [
+                'id' => (string) $template->id,
+                'process_id' => (string) $template->process_id,
+                'name' => (string) $template->name,
+                'description' => $template->description,
+                'visibility_level' => (string) $template->visibility_level,
+                'study_type_id' => $template->study_type_id,
+                'study_id' => $template->study_id,
+                'module_id' => $template->module_id,
+                'team_id' => $template->team_id,
+                'status' => 'published',
+                'version' => $versionNumber,
+            ],
+            'blocks' => $blocks,
+            'reviewers' => [
+                'template_reviewers' => $templateReviewers,
+                'document_reviewers' => $documentReviewers,
+            ],
+        ];
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function templateReviewersSnapshot(string $templateId): array
+    {
+        if (! Schema::hasTable('template_reviewers')) {
+            return [];
+        }
+
+        return DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->orderBy('stage')
+            ->orderBy('user_id')
+            ->get()
+            ->map(static function (object $r): array {
+                return [
+                    'user_id' => (string) $r->user_id,
+                    'stage' => (int) $r->stage,
+                    'status' => (string) ($r->status ?? 'pending'),
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function documentReviewersSnapshot(string $templateId): array
+    {
+        if (! Schema::hasTable('template_document_reviewers')) {
+            return [];
+        }
+
+        return DB::table('template_document_reviewers')
+            ->where('template_id', $templateId)
+            ->orderBy('created_at')
+            ->orderBy('user_id')
+            ->get()
+            ->map(static function (object $r): array {
+                return [
+                    'user_id' => (string) $r->user_id,
+                ];
+            })
+            ->values()
+            ->all();
     }
 }
