@@ -111,10 +111,9 @@ class TemplatePublishingService
             $next = $this->entityVersionRepository->nextVersionNumber(Template::class, $templateId);
             $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
 
-            // changelog === null indica publicación automática (sin revisores o aprobación unánime).
-            // La plantilla ya lleva número de versión en fila (p. ej. v1 en creación); aquí solo fijamos
-            // un texto genérico si no hubo changelog explícito.
-            // Solo el flujo explícito (POST /publish) exige changelog en republicaciones, vía PublishTemplateRequest.
+            // Sin changelog explícito (tras trim): texto por defecto en la fila publicada en entity_versions.
+            // El número de versión ($next) solo vive en entity_versions y en este snapshot, no en la tabla templates.
+            // El flujo POST /publish puede exigir changelog en republicaciones vía PublishTemplateRequest.
             if ($trimmedChangelog === '') {
                 $resolvedChangelog = 'Publicación automática';
             } else {

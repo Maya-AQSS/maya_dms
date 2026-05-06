@@ -30,7 +30,6 @@ class TemplatesSeeder extends Seeder
             $row['process_id'] ??= self::DEFAULT_PROCESS_ID;
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
-            unset($row['version']);
 
             return $row;
         }, $templates);

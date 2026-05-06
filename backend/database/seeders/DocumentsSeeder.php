@@ -29,7 +29,6 @@ class DocumentsSeeder extends Seeder
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
             $row['deleted_at'] ??= null;
-            unset($row['current_version'], $row['submitted_at'], $row['published_at']);
 
             return $row;
         }, $rows);

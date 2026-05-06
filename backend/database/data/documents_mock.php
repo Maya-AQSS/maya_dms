@@ -6,6 +6,9 @@
  *
  * `template_version_id` es el UUID de la publicación en `entity_versions` (mismo valor que
  * `entity_version_id` en database/data/template_versions_mock.php), no el id legacy de `template_versions`.
+ *
+ * Versión actual, submitted_at y published_at ya no van en esta tabla: se derivan de
+ * {@see \App\Models\Document} y `entity_versions` / `document_reviews`.
  */
 return [
     [
@@ -20,9 +23,6 @@ return [
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'draft',
-        'current_version' => 1,
-        'submitted_at' => null,
-        'published_at' => null,
     ],
     [
         'id' => '77777777-7777-7777-7777-777777777902',
@@ -36,9 +36,6 @@ return [
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'in_review',
-        'current_version' => 1,
-        'submitted_at' => '2026-04-18 10:15:00',
-        'published_at' => null,
     ],
     [
         'id' => '77777777-7777-7777-7777-777777777903',
@@ -52,9 +49,6 @@ return [
         'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
         'status' => 'in_review',
-        'current_version' => 1,
-        'submitted_at' => '2026-04-16 09:00:00',
-        'published_at' => null,
     ],
     [
         'id' => '77777777-7777-7777-7777-777777777904',
@@ -68,9 +62,6 @@ return [
         'created_by' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
         'owner_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
         'status' => 'in_review',
-        'current_version' => 1,
-        'submitted_at' => '2026-04-12 11:45:00',
-        'published_at' => null,
     ],
     [
         'id' => '77777777-7777-7777-7777-777777777905',
@@ -84,9 +75,6 @@ return [
         'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'status' => 'in_review',
-        'current_version' => 1,
-        'submitted_at' => '2026-04-14 16:20:00',
-        'published_at' => null,
     ],
     [
         'id' => '77777777-7777-7777-7777-777777777906',
@@ -100,9 +88,6 @@ return [
         'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
         'status' => 'draft',
-        'current_version' => 1,
-        'submitted_at' => null,
-        'published_at' => null,
     ],
     [
         'id' => '77777777-7777-7777-7777-777777777907',
@@ -116,8 +101,5 @@ return [
         'created_by' => '848dc299-240e-4a75-9d8e-f0a04089309d',
         'owner_id' => '848dc299-240e-4a75-9d8e-f0a04089309d',
         'status' => 'draft',
-        'current_version' => 1,
-        'submitted_at' => null,
-        'published_at' => null,
     ],
 ];
