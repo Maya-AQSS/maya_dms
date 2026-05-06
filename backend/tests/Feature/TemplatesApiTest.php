@@ -12,12 +12,14 @@ use Database\Seeders\UsersSourceSeeder;
 use App\Models\TeamMember;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\TemplateDocumentReviewer;
 use App\Models\TemplateReviewer;
 use App\Models\TemplateVersion;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\AssignsTestUserPermissions;
@@ -411,7 +413,7 @@ class TemplatesApiTest extends TestCase
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'Mía',
+            'name' => 'M?a',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
@@ -787,7 +789,7 @@ class TemplatesApiTest extends TestCase
         $bid = (string) Str::uuid();
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'En revisión',
+            'name' => 'En revisi?n',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
@@ -811,6 +813,10 @@ class TemplatesApiTest extends TestCase
         ]);
 
         $this->seedTemplateReviewer($tid, $reviewerId);
+        TemplateDocumentReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+        ]);
 
         $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersReviewer)
             ->assertOk()
@@ -906,7 +912,7 @@ class TemplatesApiTest extends TestCase
         $bid = (string) Str::uuid();
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'En revisión v2',
+            'name' => 'En revisi?n v2',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
@@ -929,7 +935,7 @@ class TemplatesApiTest extends TestCase
             'sort_order' => 0,
         ]);
 
-        // Existe versión previa publicada -> próximo publish será v2 y requiere changelog.
+        // Existe versi?n previa publicada -> pr?ximo publish ser? v2 y requiere changelog.
         TemplateVersion::query()->forceCreate([
             'id' => (string) Str::uuid(),
             'template_id' => $tid,
@@ -989,6 +995,10 @@ class TemplatesApiTest extends TestCase
         ]);
 
         $this->seedTemplateReviewer($tid, $reviewerId);
+        TemplateDocumentReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+        ]);
 
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)
             ->assertOk()
@@ -1014,6 +1024,20 @@ class TemplatesApiTest extends TestCase
             'published_by' => $reviewerId,
             'is_snapshot_immutable' => 1,
         ]);
+        $entityVersion = DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 1)
+            ->first();
+        $this->assertNotNull($entityVersion);
+        $snapshot = is_string($entityVersion->snapshot_data)
+            ? json_decode($entityVersion->snapshot_data, true)
+            : $entityVersion->snapshot_data;
+        $this->assertIsArray($snapshot);
+        $this->assertSame($reviewerId, $snapshot['reviewers']['template_reviewers'][0]['user_id'] ?? null);
+        $this->assertSame(1, $snapshot['reviewers']['template_reviewers'][0]['stage'] ?? null);
+        $this->assertSame('pending', $snapshot['reviewers']['template_reviewers'][0]['status'] ?? null);
+        $this->assertSame($reviewerId, $snapshot['reviewers']['document_reviewers'][0]['user_id'] ?? null);
 
         $vid = TemplateVersion::query()->where('template_id', $tid)->value('id');
         $this->assertNotEmpty($vid);
@@ -1160,7 +1184,7 @@ class TemplatesApiTest extends TestCase
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
             'id' => $tid,
-            'name' => 'Aprobación creador asignado',
+            'name' => 'Aprobaci?n creador asignado',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
             'delivery_deadline' => null,
@@ -1177,7 +1201,7 @@ class TemplatesApiTest extends TestCase
         TemplateBlock::query()->forceCreate([
             'id' => (string) Str::uuid(),
             'template_id' => $tid,
-            'title' => 'Bloque aprobación',
+            'title' => 'Bloque aprobaci?n',
             'default_content' => null,
             'block_state' => 'editable',
             'sort_order' => 0,

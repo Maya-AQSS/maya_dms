@@ -72,7 +72,11 @@ class TemplatePublishingService
                 }
             }
 
-            $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+            $template->load([
+                'blocks' => fn ($q) => $q->orderBy('sort_order'),
+                'reviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
+                'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+            ]);
 
             if ($template->blocks->isEmpty()) {
                 throw ValidationException::withMessages([
@@ -88,6 +92,20 @@ class TemplatePublishingService
                 'block_state' => $b->block_state,
                 'sort_order' => $b->sort_order,
             ])->values()->all();
+            $templateReviewersSnapshot = $template->reviewers
+                ->map(fn ($r): array => [
+                    'user_id' => (string) $r->user_id,
+                    'stage' => (int) $r->stage,
+                    'status' => (string) ($r->status ?? 'pending'),
+                ])
+                ->values()
+                ->all();
+            $documentReviewersSnapshot = $template->documentReviewers
+                ->map(fn ($r): array => [
+                    'user_id' => (string) $r->user_id,
+                ])
+                ->values()
+                ->all();
 
             $next = $this->templateVersionRepository->nextVersionNumber($templateId);
             $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
@@ -135,6 +153,10 @@ class TemplatePublishingService
                         'version' => $next,
                     ],
                     'blocks' => $blocksSnapshot,
+                    'reviewers' => [
+                        'template_reviewers' => $templateReviewersSnapshot,
+                        'document_reviewers' => $documentReviewersSnapshot,
+                    ],
                 ],
                 $actorId,
                 $resolvedChangelog,
