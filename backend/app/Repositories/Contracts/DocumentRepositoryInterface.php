@@ -36,7 +36,7 @@ interface DocumentRepositoryInterface
      * Crea el documento y sus bloques iniciales en una transacción.
      *
      * @param  array<string, mixed>  $documentAttributes
-     * @param  list<array{template_block_id: string, content: mixed, sort_order: int}>  $blockRows
+     * @param  list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}>  $blockRows
      */
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document;
 
@@ -144,6 +144,11 @@ interface DocumentRepositoryInterface
      * Última versión de snapshot del documento por número de versión.
      */
     public function findLatestDocumentVersionOrFail(string $documentId): DocumentVersion;
+
+    /**
+     * Última fila de {@see DocumentVersion} con trigger_event «published».
+     */
+    public function findLatestPublishedDocumentVersion(string $documentId): ?DocumentVersion;
 
     /**
      * Contexto académico de módulo para creación documental.

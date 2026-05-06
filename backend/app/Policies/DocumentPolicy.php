@@ -127,4 +127,12 @@ class DocumentPolicy
     {
         return $user->getAuthIdentifier() === $document->owner_id;
     }
+
+    /**
+     * Clonar documento: requiere poder crear documentos y mutar el origen (titular/creador/colaborador edit o permiso global).
+     */
+    public function clone(JwtUser $user, Document $document): bool
+    {
+        return $user->hasPermission('documents.create') && $this->update($user, $document);
+    }
 }

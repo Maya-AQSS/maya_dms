@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Documents\CloneDocumentRequest;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
 use App\Http\Requests\Documents\DelegateDocumentRequest;
@@ -58,6 +59,27 @@ class DocumentController extends Controller
         return response()->json([
             'data' => array_merge(
                 (new DocumentResource($document))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ], 201);
+    }
+
+    /**
+     * Clonar documento en borrador con sufijo "(copia)"; si hubo publicaciones, según último snapshot publicado.
+     */
+    public function clone(CloneDocumentRequest $request, string $document): JsonResponse
+    {
+        $source = $this->documentService->findOrFail($document);
+        $this->assertOptionalProcessContextMatches((string) $source->process_id);
+
+        $userId = (string) $request->user()->getAuthIdentifier();
+        $copy = $this->documentService->clone($document, $userId);
+        $this->apiTeamEmbedService->embedOnDocument($copy, $userId);
+        $blocks = $this->documentService->blocksForDisplay($copy);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($copy))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ], 201);

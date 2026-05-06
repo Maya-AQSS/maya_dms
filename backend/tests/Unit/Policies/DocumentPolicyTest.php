@@ -193,6 +193,37 @@ class DocumentPolicyTest extends TestCase
     }
 
     /**
+     * Clonar exige documents.create y capacidad de update sobre el documento origen.
+     */
+    public function test_clone_denied_without_documents_create(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($userId, ['documents.update']);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId);
+
+        $this->assertFalse($this->policy->clone($user, $doc));
+    }
+
+    public function test_clone_denied_when_update_denied(): void
+    {
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $user = $this->makeJwtUser($strangerId, ['documents.create']);
+        $doc = $this->makeDocument(createdBy: $ownerId, ownerId: $ownerId);
+
+        $this->assertFalse($this->policy->clone($user, $doc));
+    }
+
+    public function test_clone_allowed_for_owner_with_documents_create(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($userId, ['documents.create']);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId);
+
+        $this->assertTrue($this->policy->clone($user, $doc));
+    }
+
+    /**
      * Solo el titular puede delegar la titularidad.
      */
     public function test_delegate_allowed_only_for_owner(): void

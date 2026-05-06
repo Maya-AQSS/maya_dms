@@ -68,7 +68,7 @@ class DocumentRepository implements DocumentRepositoryInterface
      * Crea el documento y sus bloques iniciales en una transacción.
      *
      * @param  array<string, mixed>  $documentAttributes
-     * @param  list<array{template_block_id: string, content: mixed, sort_order: int}>  $blockRows
+     * @param  list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}>  $blockRows
      */
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document
     {
@@ -82,7 +82,8 @@ class DocumentRepository implements DocumentRepositoryInterface
                     'document_id' => $document->getKey(),
                     'template_block_id' => $row['template_block_id'],
                     'content' => $this->encodeDocumentBlockContentForInsert($row['content']),
-                    'is_filled' => false,
+                    'is_filled' => array_key_exists('is_filled', $row) ? (bool) $row['is_filled'] : false,
+                    'last_edited_by' => array_key_exists('last_edited_by', $row) ? $row['last_edited_by'] : null,
                     'sort_order' => $row['sort_order'],
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -384,6 +385,15 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('document_id', $documentId)
             ->orderByDesc('version_number')
             ->firstOrFail();
+    }
+
+    public function findLatestPublishedDocumentVersion(string $documentId): ?DocumentVersion
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->where('trigger_event', 'published')
+            ->orderByDesc('version_number')
+            ->first();
     }
 
     /**

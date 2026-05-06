@@ -22,6 +22,11 @@ interface DocumentServiceInterface
     public function create(CreateDocumentDto $dto): Document;
 
     /**
+     * Clona un documento visible hacia un nuevo borrador con el mismo ancla de plantilla y contenido de bloques copiado.
+     */
+    public function clone(string $sourceDocumentId, string $actorId): Document;
+
+    /**
      * Actualiza metadatos editables del documento.
      *
      * @param  array<string, mixed>  $attributes

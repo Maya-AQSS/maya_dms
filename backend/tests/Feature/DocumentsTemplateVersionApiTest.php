@@ -348,6 +348,256 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonPath('data.template_version_id', $versionId);
     }
 
+    public function test_clone_document_creates_draft_copy_with_suffix_and_blocks(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+        );
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Normativa clon doc',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Expediente original',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $versionId = (string) $createDoc->json('data.template_version_id');
+
+        $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator);
+        $clone->assertCreated()
+            ->assertJsonPath('data.title', 'Expediente original (copia)')
+            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.template_id', $tid)
+            ->assertJsonPath('data.template_version_id', $versionId)
+            ->assertJsonPath('data.created_by', $creatorId)
+            ->assertJsonPath('data.owner_id', $creatorId)
+            ->assertJsonPath('data.template_version_number', 1);
+
+        $copyId = (string) $clone->json('data.id');
+        $this->assertNotSame($docId, $copyId);
+        $clone->assertJsonCount(1, 'data.blocks');
+    }
+
+    public function test_clone_document_materializes_from_latest_published_snapshot_when_live_blocks_differ(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer(
+            $creatorId,
+            $reviewerId,
+        );
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla clon snapshot',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Título al publicar',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $snapshotParagraph = 'Texto congelado en publicación';
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [
+                ['type' => 'paragraph', 'content' => $snapshotParagraph],
+            ],
+        ], $hCreator)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)->assertOk();
+        DB::table('document_reviews')->where('document_id', $docId)->delete();
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => 'Primera publicación',
+        ], $hCreator)->assertOk();
+
+        // Sin flujo productivo publicado→borrador en esta suite: se simula una nueva edición para divergir del snapshot.
+        DB::table('documents')->where('id', $docId)->update(['status' => 'draft']);
+
+        $this->putJson("/api/v1/documents/{$docId}", [
+            'title' => 'Título solo en borrador vivo',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertOk();
+
+        $liveParagraph = 'Texto solo en borrador actual';
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [
+                ['type' => 'paragraph', 'content' => $liveParagraph],
+            ],
+        ], $hCreator)->assertOk();
+
+        $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator);
+        $clone->assertCreated()
+            ->assertJsonPath('data.title', 'Título al publicar (copia)');
+
+        $copyId = (string) $clone->json('data.id');
+        $this->assertNotSame($docId, $copyId);
+
+        $showCopy = $this->getJson("/api/v1/documents/{$copyId}", $hCreator)->assertOk();
+        $this->assertSame(
+            $snapshotParagraph,
+            data_get($showCopy->json(), 'data.blocks.0.content.0.content'),
+        );
+        $this->assertNotSame(
+            $liveParagraph,
+            data_get($showCopy->json(), 'data.blocks.0.content.0.content'),
+        );
+    }
+
+    public function test_clone_document_returns_forbidden_for_read_only_collaborator(): void
+    {
+        $ownerId = (string) Str::uuid();
+        $readerId = (string) Str::uuid();
+        $this->grantPermissionsForUser($ownerId);
+        $this->grantPermissionsForUser($readerId, ['documents.create', 'templates.read', 'users.search']);
+
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hOwner, $hReviewer] = $this->authHeadersCreatorAndReviewer($ownerId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla clon 403',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $ownerId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hOwner)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $docId = (string) $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc compartido lectura',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hOwner)->assertCreated()->json('data.id');
+
+        DocumentShare::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $docId,
+            'user_id' => $readerId,
+            'permission' => 'read',
+            'granted_by' => $ownerId,
+        ]);
+
+        $hReader = $this->authHeaders($readerId);
+
+        $this->postJson("/api/v1/documents/{$docId}/clone", [], $hReader)->assertForbidden();
+    }
+
     public function test_show_document_references_snapshot_from_publish_time(): void
     {
         $creatorId = (string) Str::uuid();

@@ -6,6 +6,7 @@ use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\DocumentVersion;
 use App\Models\Template;
 use App\Models\TemplateVersion;
@@ -96,6 +97,140 @@ class DocumentService implements DocumentServiceInterface
             'submitted_at' => null,
             'published_at' => null,
         ], $blockRows);
+    }
+
+    /**
+     * Clona un documento origen hacia uno nuevo en borrador.
+     *
+     * Si existe al menos una versión publicada en {@see DocumentVersion}, el borrador copiado se materializa desde el
+     * último snapshot con trigger_event «published» (no desde los bloques vivos del documento).
+     */
+    public function clone(string $sourceDocumentId, string $actorId): Document
+    {
+        return $this->documentRepository->transaction(function () use ($sourceDocumentId, $actorId) {
+            $source = $this->documentRepository->findOrFail($sourceDocumentId);
+
+            $publishedSnapshot = $this->documentRepository->findLatestPublishedDocumentVersion($sourceDocumentId);
+
+            if ($publishedSnapshot !== null && is_array($publishedSnapshot->snapshot_data)) {
+                $snap = $publishedSnapshot->snapshot_data;
+                $docSnap = isset($snap['document']) && is_array($snap['document']) ? $snap['document'] : [];
+                $blockSnapshots = isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
+
+                return $this->documentRepository->createDocumentWithBlocks(
+                    $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId),
+                    $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId),
+                );
+            }
+
+            $source->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+
+            /** @var list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}> $blockRows */
+            $blockRows = $source->blocks->map(function (DocumentBlock $b) use ($actorId): array {
+                $row = [
+                    'template_block_id' => (string) $b->template_block_id,
+                    'content' => $b->content,
+                    'sort_order' => (int) $b->sort_order,
+                    'is_filled' => (bool) $b->is_filled,
+                ];
+                if ($b->is_filled) {
+                    $row['last_edited_by'] = $actorId;
+                }
+
+                return $row;
+            })->all();
+
+            return $this->documentRepository->createDocumentWithBlocks([
+                'process_id' => $source->process_id,
+                'template_id' => $source->template_id,
+                'template_version_id' => $source->template_version_id,
+                'title' => $source->title.' (copia)',
+                'study_type_id' => $source->study_type_id,
+                'study_id' => $source->study_id,
+                'module_id' => $source->module_id,
+                'delivery_deadline' => $source->delivery_deadline,
+                'created_by' => $actorId,
+                'owner_id' => $actorId,
+                'status' => 'draft',
+                'current_version' => 1,
+                'submitted_at' => null,
+                'published_at' => null,
+            ], $blockRows);
+        });
+    }
+
+    /**
+     * @param  array<int, mixed>  $blockSnapshots
+     * @return list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}>
+     */
+    private function cloneBlockRowsFromSnapshotBlocks(array $blockSnapshots, string $actorId): array
+    {
+        $rows = [];
+        foreach ($blockSnapshots as $b) {
+            if (! is_array($b)) {
+                continue;
+            }
+
+            $tid = $b['template_block_id'] ?? null;
+            if (! is_string($tid) || $tid === '') {
+                continue;
+            }
+
+            $isFilled = (bool) ($b['is_filled'] ?? false);
+            $row = [
+                'template_block_id' => $tid,
+                'content' => $b['content'] ?? null,
+                'sort_order' => isset($b['sort_order']) ? (int) $b['sort_order'] : 0,
+                'is_filled' => $isFilled,
+            ];
+            if ($isFilled) {
+                $row['last_edited_by'] = $actorId;
+            }
+
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Metadatos para el documento copiado: ancla de plantilla y contexto académico según el último snapshot publicado;
+     * proceso y fechas de programación se heredan del documento vivo (no figuran en el snapshot).
+     *
+     * @param  array<string, mixed>  $docSnap
+     * @return array<string, mixed>
+     */
+    private function cloneDocumentAttributesFromPublishedSnapshot(Document $source, array $docSnap, string $actorId): array
+    {
+        $templateId = isset($docSnap['template_id']) && is_string($docSnap['template_id']) && $docSnap['template_id'] !== ''
+            ? $docSnap['template_id']
+            : (string) $source->template_id;
+
+        $templateVersionId = $docSnap['template_version_id'] ?? $source->template_version_id;
+        if ($templateVersionId !== null && ! is_string($templateVersionId)) {
+            $templateVersionId = $source->template_version_id;
+        }
+
+        $titleBase = isset($docSnap['title']) && is_string($docSnap['title'])
+            ? $docSnap['title']
+            : (string) $source->title;
+
+        return [
+            'process_id' => $source->process_id,
+            'template_id' => $templateId,
+            'template_version_id' => $templateVersionId,
+            'title' => $titleBase.' (copia)',
+            'study_type_id' => array_key_exists('study_type_id', $docSnap) ? $docSnap['study_type_id'] : $source->study_type_id,
+            'study_id' => array_key_exists('study_id', $docSnap) ? $docSnap['study_id'] : $source->study_id,
+            'module_id' => array_key_exists('module_id', $docSnap) ? $docSnap['module_id'] : $source->module_id,
+            'delivery_deadline' => $source->delivery_deadline,
+            'created_by' => $actorId,
+            'owner_id' => $actorId,
+            'status' => 'draft',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => null,
+        ];
     }
 
     /**
