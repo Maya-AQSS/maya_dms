@@ -230,13 +230,9 @@ class DocumentService implements DocumentServiceInterface
     public function templateVersionStatus(string $documentId): array
     {
         $document = $this->documentRepository->findOrFail($documentId);
-        $versionId = $document->template_version_id;
 
-        $currentFull = is_string($versionId)
-            ? $this->templateVersionRepository->findPublishedMetaById($versionId)
-            : null;
-
-        $latestFull = $this->templateVersionRepository->findLatestPublishedMetaForTemplate((string) $document->template_id);
+        $currentFull = $this->resolveCurrentPublishedTemplateVersionMeta($document);
+        $latestFull = $this->resolveLatestPublishedTemplateVersionMeta((string) $document->template_id);
 
         $current = $currentFull !== null
             ? [
@@ -255,6 +251,67 @@ class DocumentService implements DocumentServiceInterface
             'has_update' => $hasUpdate,
             'changelog' => $hasUpdate ? $latestFull['changelog'] : null,
         ];
+    }
+
+    /**
+     * Última versión publicada de plantilla: prioriza el mayor version_number entre entity_versions y template_versions;
+     * si empatan, se prioriza entity_versions.
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    private function resolveLatestPublishedTemplateVersionMeta(string $templateId): ?array
+    {
+        $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        $legacyLatest = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
+
+        if ($entityLatest === null) {
+            return $legacyLatest;
+        }
+
+        $entityMeta = [
+            'id' => (string) $entityLatest->id,
+            'version_number' => (int) $entityLatest->version_number,
+            'changelog' => (string) ($entityLatest->changelog ?? ''),
+        ];
+
+        if ($legacyLatest === null) {
+            return $entityMeta;
+        }
+
+        if ($entityMeta['version_number'] > $legacyLatest['version_number']) {
+            return $entityMeta;
+        }
+
+        if ($legacyLatest['version_number'] > $entityMeta['version_number']) {
+            return $legacyLatest;
+        }
+
+        return $entityMeta;
+    }
+
+    /**
+     * Versión de plantilla anclada al documento: template_versions primero, luego entity_versions.
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    private function resolveCurrentPublishedTemplateVersionMeta(Document $document): ?array
+    {
+        $versionId = $document->template_version_id;
+
+        if (! is_string($versionId) || $versionId === '') {
+            return null;
+        }
+
+        $legacy = $this->templateVersionRepository->findPublishedMetaById($versionId);
+        if ($legacy !== null) {
+            return $legacy;
+        }
+
+        return $this->entityVersionRepository->findPublishedMetaByIdForVersionable(
+            $versionId,
+            Template::class,
+            (string) $document->template_id,
+        );
     }
 
     /**

@@ -56,6 +56,17 @@ interface EntityVersionRepositoryInterface
     public function listPublishedForEntityOrdered(string $versionableType, string $versionableId): Collection;
 
     /**
+     * Metadatos de una fila publicada en entity_versions por id (sin snapshot).
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    public function findPublishedMetaByIdForVersionable(
+        string $entityVersionId,
+        string $versionableType,
+        string $versionableId,
+    ): ?array;
+
+    /**
      * Crea una nueva versión.
      *
      * @param array<string, mixed> $attributes Los atributos de la versión.

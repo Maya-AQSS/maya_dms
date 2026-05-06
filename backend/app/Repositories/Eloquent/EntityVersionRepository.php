@@ -104,6 +104,34 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     }
 
     /**
+     * Metadatos de una versión publicada por id de entity_versions (consulta ligera).
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    public function findPublishedMetaByIdForVersionable(
+        string $entityVersionId,
+        string $versionableType,
+        string $versionableId,
+    ): ?array {
+        $row = EntityVersion::query()
+            ->whereKey($entityVersionId)
+            ->where('versionable_type', $versionableType)
+            ->where('versionable_id', $versionableId)
+            ->where('status', 'published')
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row->id,
+            'version_number' => (int) $row->version_number,
+            'changelog' => (string) ($row->changelog ?? ''),
+        ];
+    }
+
+    /**
      * Crea una nueva versión.
      *
      * @param array<string, mixed> $attributes Los atributos de la versión.

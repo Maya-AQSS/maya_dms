@@ -1861,4 +1861,165 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonPath('data.current_version.version_number', 1)
             ->assertJsonPath('data.latest_version.version_number', 1);
     }
+
+    public function test_template_version_status_prefers_entity_versions_when_latest_only_published_in_entity_versions(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla entity latest',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1 plantilla'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc entity latest',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $entityV2Id = (string) Str::uuid();
+        $now = now();
+        DB::table('entity_versions')->insert([
+            'id' => $entityV2Id,
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 2,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $reviewerId,
+            'published_at' => $now,
+            'changelog' => 'Solo en entity_versions v2',
+            'snapshot_data' => json_encode(['blocks' => []], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->getJson("/api/v1/documents/{$docId}/template-version-status", $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.has_update', true)
+            ->assertJsonPath('data.changelog', 'Solo en entity_versions v2')
+            ->assertJsonPath('data.current_version.version_number', 1)
+            ->assertJsonPath('data.latest_version.version_number', 2)
+            ->assertJsonPath('data.latest_version.id', $entityV2Id);
+    }
+
+    public function test_template_version_status_uses_legacy_when_entity_has_lower_version_number(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla legacy gana',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc legacy latest',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $legacyV2Id = (string) Str::uuid();
+        $now = now();
+        DB::table('template_versions')->insert([
+            'id' => $legacyV2Id,
+            'template_id' => $tid,
+            'version_number' => 2,
+            'blocks_snapshot' => json_encode([]),
+            'changelog' => 'legacy v2',
+            'published_by' => $reviewerId,
+            'published_at' => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->getJson("/api/v1/documents/{$docId}/template-version-status", $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.has_update', true)
+            ->assertJsonPath('data.changelog', 'legacy v2')
+            ->assertJsonPath('data.latest_version.version_number', 2)
+            ->assertJsonPath('data.latest_version.id', $legacyV2Id);
+    }
 }
