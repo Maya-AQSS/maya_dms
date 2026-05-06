@@ -16,6 +16,23 @@ interface DocumentRepositoryInterface
     public function findOrFail(string $id): Document;
 
     /**
+     * Borrado lógico de documento.
+     */
+    public function delete(Document $document): void;
+
+    /**
+     * Actualiza metadatos editables del documento.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateDocumentMetadata(Document $document, array $attributes): Document;
+
+    /**
+     * Actualiza owner del documento.
+     */
+    public function updateOwner(Document $document, string $newOwnerId): Document;
+
+    /**
      * Crea el documento y sus bloques iniciales en una transacción.
      *
      * @param  array<string, mixed>  $documentAttributes
@@ -129,6 +146,13 @@ interface DocumentRepositoryInterface
     public function findLatestDocumentVersionOrFail(string $documentId): DocumentVersion;
 
     /**
+     * Contexto académico de módulo para creación documental.
+     *
+     * @return array{module_id: string, study_id: string, study_type_id: ?string}|null
+     */
+    public function findModuleContext(string $moduleId): ?array;
+
+    /**
      * Crea o actualiza un compartido (document_id, user_id) único.
      */
     public function upsertDocumentShare(
@@ -170,4 +194,9 @@ interface DocumentRepositoryInterface
         ?array $diff,
         string $editedBy,
     ): void;
+
+    /**
+     * Ejecuta una operación dentro de transacción.
+     */
+    public function transaction(callable $callback): mixed;
 }

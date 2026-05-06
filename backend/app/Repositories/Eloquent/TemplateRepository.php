@@ -192,6 +192,21 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
+     * Localiza una plantilla para candidatos de revisión documental sin scope de catálogo.
+     * Debe incluir relaciones de reviewers y documentReviewers ordenadas.
+     */
+    public function findForDocumentReviewCandidatesWithoutCatalogScope(string $templateId): ?Template
+    {
+        return Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with([
+                'reviewers' => fn ($q) => $q->orderBy('stage'),
+                'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+            ])
+            ->find($templateId);
+    }
+
+    /**
      * Bandeja de revisión de plantillas pendientes para un revisor.
      */
     public function listPendingReviewInboxForUser(string $userId): Collection

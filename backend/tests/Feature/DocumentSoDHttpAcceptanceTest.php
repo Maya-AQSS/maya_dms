@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\TemplateReviewer;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -89,7 +90,20 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             [],
             ['Authorization' => 'Bearer '.$token],
         )->assertOk()
-            ->assertJsonPath('data.status', 'in_review');
+            ->assertJsonPath('data.status', 'published');
+
+        $this->assertDatabaseHas('document_versions', [
+            'document_id' => $documentId,
+            'trigger_event' => 'published',
+            'triggered_by' => 'creator-doc-uuid-01',
+        ]);
+        $this->assertDatabaseHas('entity_versions', [
+            'versionable_type' => Document::class,
+            'versionable_id' => $documentId,
+            'status' => 'published',
+            'published_by' => 'creator-doc-uuid-01',
+            'is_snapshot_immutable' => 1,
+        ]);
     }
 
     /**
@@ -259,6 +273,71 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             [],
             ['Authorization' => 'Bearer '.$token],
         )->assertOk()
+            ->assertJsonPath('data.status', 'published');
+    }
+
+    public function test_submit_document_with_reviewer_enters_in_review_and_creates_pending_review(): void
+    {
+        $ownerId = 'owner-with-reviewer-01';
+        $reviewerId = 'reviewer-with-reviewer-02';
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'T con revisor',
+            'description' => null,
+            'study_id' => null,
+            'created_by' => $ownerId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $templateId,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'title' => 'Doc con revisor',
+            'study_id' => null,
+            'created_by' => $ownerId,
+            'owner_id' => $ownerId,
+            'status' => 'draft',
+            'current_version' => 1,
+            'submitted_at' => null,
+            'published_at' => null,
+        ]);
+
+        [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
+        $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-with-reviewer', $ownerId);
+
+        config([
+            'auth.jwt_issuer' => 'test-issuer',
+            'auth.jwt_audience' => 'test-audience',
+        ]);
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($publicPem));
+
+        $this->postJson(
+            "/api/v1/documents/{$documentId}/submit",
+            [],
+            ['Authorization' => 'Bearer '.$token],
+        )->assertOk()
             ->assertJsonPath('data.status', 'in_review');
+
+        $this->assertDatabaseHas('document_reviews', [
+            'document_id' => $documentId,
+            'reviewer_id' => $reviewerId,
+            'status' => 'pending',
+            'stage' => 1,
+        ]);
     }
 }

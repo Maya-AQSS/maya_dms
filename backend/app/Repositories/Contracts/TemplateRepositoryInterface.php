@@ -73,6 +73,12 @@ interface TemplateRepositoryInterface
     public function listPublishedByModule(string $moduleId): \Illuminate\Support\Collection;
 
     /**
+     * Recupera plantilla para resolver candidatos de revisión documental sin scope de catálogo.
+     * Debe incluir relaciones de reviewers y documentReviewers ordenadas.
+     */
+    public function findForDocumentReviewCandidatesWithoutCatalogScope(string $templateId): ?Template;
+
+    /**
      * Bandeja de revisión de plantillas pendientes para un revisor.
      *
      * @return \Illuminate\Support\Collection<int, array<string, mixed>>

@@ -29,6 +29,42 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
+     * Borrado lógico de documento.
+     */
+    public function delete(Document $document): void
+    {
+        $document->delete();
+    }
+
+    /**
+     * Actualiza metadatos editables del documento.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateDocumentMetadata(Document $document, array $attributes): Document
+    {
+        $document->update([
+            'title' => $attributes['title'],
+            'delivery_deadline' => $attributes['delivery_deadline'] ?? null,
+            'study_type_id' => $attributes['study_type_id'] ?? $document->study_type_id,
+            'study_id' => $attributes['study_id'] ?? $document->study_id,
+            'module_id' => $attributes['module_id'] ?? $document->module_id,
+        ]);
+
+        return $document->fresh();
+    }
+
+    /**
+     * Actualiza owner del documento.
+     */
+    public function updateOwner(Document $document, string $newOwnerId): Document
+    {
+        $document->update(['owner_id' => $newOwnerId]);
+
+        return $document->fresh();
+    }
+
+    /**
      * Crea el documento y sus bloques iniciales en una transacción.
      *
      * @param  array<string, mixed>  $documentAttributes
@@ -351,6 +387,34 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
+     * Contexto académico de módulo para creación documental.
+     *
+     * @return array{module_id: string, study_id: string, study_type_id: ?string}|null
+     */
+    public function findModuleContext(string $moduleId): ?array
+    {
+        $row = DB::table('course_modules as cm')
+            ->leftJoin('studies as s', 's.id', '=', 'cm.study_id')
+            ->where('cm.id', $moduleId)
+            ->select([
+                'cm.id as module_id',
+                'cm.study_id',
+                's.study_type_id',
+            ])
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'module_id' => (string) $row->module_id,
+            'study_id' => (string) $row->study_id,
+            'study_type_id' => $row->study_type_id !== null ? (string) $row->study_type_id : null,
+        ];
+    }
+
+    /**
      * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).
      */
     public function upsertDocumentShare(
@@ -471,5 +535,13 @@ class DocumentRepository implements DocumentRepositoryInterface
         }
 
         return json_encode($content, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Ejecuta una operación dentro de transacción.
+     */
+    public function transaction(callable $callback): mixed
+    {
+        return DB::transaction($callback);
     }
 }

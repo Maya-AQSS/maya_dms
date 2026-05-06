@@ -5,10 +5,8 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
-use App\Models\CourseModule;
 use App\Models\Document;
 use App\Models\DocumentVersion;
-use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
@@ -17,7 +15,6 @@ use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class DocumentService implements DocumentServiceInterface
@@ -110,15 +107,7 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        $document->update([
-            'title' => $attributes['title'],
-            'delivery_deadline' => $attributes['delivery_deadline'] ?? null,
-            'study_type_id' => $attributes['study_type_id'] ?? $document->study_type_id,
-            'study_id' => $attributes['study_id'] ?? $document->study_id,
-            'module_id' => $attributes['module_id'] ?? $document->module_id,
-        ]);
-
-        return $document->fresh();
+        return $this->documentRepository->updateDocumentMetadata($document, $attributes);
     }
 
     /**
@@ -127,7 +116,7 @@ class DocumentService implements DocumentServiceInterface
     public function delete(string $documentId): void
     {
         $document = $this->documentRepository->findOrFail($documentId);
-        $document->delete();
+        $this->documentRepository->delete($document);
     }
 
     /**
@@ -204,14 +193,12 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        $module = CourseModule::query()->with('study')->find($moduleId);
-        if ($module === null) {
+        $moduleContext = $this->documentRepository->findModuleContext($moduleId);
+        if ($moduleContext === null) {
             throw ValidationException::withMessages([
                 'module_id' => ['El módulo no existe.'],
             ]);
         }
-
-        $studyTypeId = $module->study !== null ? (string) $module->study->study_type_id : null;
 
         return $this->create(new CreateDocumentDto(
             templateId: $selected['template_id'],
@@ -219,9 +206,9 @@ class DocumentService implements DocumentServiceInterface
             createdBy: $creatorId,
             ownerId: $creatorId,
             processId: $processId,
-            studyTypeId: $studyTypeId,
-            studyId: (string) $module->study_id,
-            moduleId: $moduleId,
+            studyTypeId: $moduleContext['study_type_id'],
+            studyId: $moduleContext['study_id'],
+            moduleId: $moduleContext['module_id'],
             deliveryDeadline: $deliveryDeadline,
             templateVersionId: $selected['template_version_id'],
         ));
@@ -359,16 +346,11 @@ class DocumentService implements DocumentServiceInterface
 
         $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
 
-        return DB::transaction(function () use ($documentId, $actorId, $document) {
+        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
 
-            $template = Template::query()
-                ->withoutGlobalScopes(['user_access'])
-                ->with([
-                    'reviewers' => fn ($q) => $q->orderBy('stage'),
-                    'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
-                ])
-                ->find($document->template_id);
+            $template = $this->templateRepository
+                ->findForDocumentReviewCandidatesWithoutCatalogScope((string) $document->template_id);
 
             $candidates = [];
             if ($template !== null) {
@@ -393,13 +375,36 @@ class DocumentService implements DocumentServiceInterface
                 }
             }
 
+            if ($candidates === []) {
+                $this->documentStateService->transition($documentId, 'published', $actorId, [
+                    'submitted_at' => now(),
+                    'published_at' => now(),
+                ]);
+
+                $autoChangelog = 'Publicado automáticamente: no hay validadores configurados.';
+                $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
+                    documentId: $documentId,
+                    triggerEvent: 'published',
+                    triggeredBy: $actorId,
+                    notes: $autoChangelog,
+                ));
+                $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($documentId);
+                $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
+                    Document::class,
+                    $documentId,
+                    (int) $latestVersion->version_number,
+                    is_array($latestVersion->snapshot_data) ? $latestVersion->snapshot_data : [],
+                    $actorId,
+                    $autoChangelog,
+                );
+
+                return $this->documentRepository->findOrFail($documentId);
+            }
+
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, [
                 'submitted_at' => now(),
             ]);
-
-            if ($candidates !== []) {
-                $this->documentRepository->createPendingReviews($documentId, $candidates);
-            }
+            $this->documentRepository->createPendingReviews($documentId, $candidates);
 
             return $document;
         });
@@ -424,7 +429,7 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return DB::transaction(function () use ($documentId, $actorId, $changelog) {
+        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
             $this->documentStateService->transition($documentId, 'published', $actorId, [
                 'published_at' => now(),
             ]);
@@ -468,9 +473,7 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        $document->update(['owner_id' => $newOwnerId]);
-
-        return $document->fresh();
+        return $this->documentRepository->updateOwner($document, $newOwnerId);
     }
 
     /**
