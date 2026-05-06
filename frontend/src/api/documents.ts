@@ -92,7 +92,6 @@ export async function createDocument(payload: {
   template_id: string;
   process_id: string;
   title: string;
-  process_id: string;
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;
@@ -147,6 +146,15 @@ export async function updateDocument(documentId: string, payload: {
 export async function submitDocumentForReview(documentId: string): Promise<Document> {
   const body = await apiFetchJson<DocumentSubmitApiResponse>(
     `documents/${encodeURIComponent(documentId)}/submit`,
+    { method: 'POST', body: {} },
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/new-version — publicado → borrador (mismo expediente). */
+export async function startDocumentNewVersion(documentId: string): Promise<DocumentDetail> {
+  const body = await apiFetchJson<DocumentDetailApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/new-version`,
     { method: 'POST', body: {} },
   );
   return body.data;

@@ -7,6 +7,7 @@ import {
   deleteDocument,
   approveDocumentReview,
   rejectDocumentReview,
+  startDocumentNewVersion,
   type DocumentReview,
 } from '../api/documents';
 import { fetchTemplate } from '../api/templates';
@@ -79,7 +80,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { profile } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
   const isValidateMode = mode === 'validate';
 
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
@@ -175,7 +176,18 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   };
 
   const isDraft = detail?.status === 'draft';
+  const isPublished = detail?.status === 'published';
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
+  const uid = profile?.id;
+  /** Paridad con `DocumentPolicy::update` para poder mutar un publicado. */
+  const canMutatePublished =
+    !!detail &&
+    !!uid &&
+    (detail.owner_id === uid ||
+      detail.created_by === uid ||
+      detail.share_permission === 'edit' ||
+      hasPermission('documents.update'));
+  const canStartNewVersion = !isValidateMode && isPublished && canMutatePublished;
 
   useEffect(() => {
     if (!isValidateMode) {
@@ -288,6 +300,21 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     }
   };
 
+  const handleStartNewVersion = async () => {
+    if (!documentId) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const data = await startDocumentNewVersion(documentId);
+      setDetail(data);
+      navigate(`/documents/${documentId}/editor`);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleApproveValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
@@ -376,6 +403,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           onClick={() => void handleSubmit()}
         >
           Enviar a validar
+        </Button>
+      )}
+      {!isValidateMode && canStartNewVersion && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={actionLoading}
+          onClick={() => void handleStartNewVersion()}
+        >
+          Nueva versión
         </Button>
       )}
       {isValidateMode && (

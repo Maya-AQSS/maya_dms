@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate } from '../api/templates';
+import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate, startTemplateNewVersion } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
 import { fetchProcesses } from '../api/processes';
 import { apiFetchJson } from '../api/http';
@@ -185,6 +185,9 @@ export function TemplatePreviewPage() {
     (isDraft && isOwner) ||
     (isPublished && (isOwner || hasPermission('templates.update')));
   const canSubmit = isOwner && isDraft && hasReviewers && !template.has_review_comments;
+  /** Alineado con `TemplatePolicy::startRevision`: creador o `templates.update` en publicada. */
+  const canStartNewVersion =
+    isPublished && !selectionMode && (isOwner || hasPermission('templates.update'));
 
   useEffect(() => {
     if (!template?.process_id) {
@@ -234,6 +237,21 @@ export function TemplatePreviewPage() {
       navigate(`/templates/${res.data.id}/edit`);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo clonar la plantilla.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartNewVersion = async () => {
+    if (!id) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const res = await startTemplateNewVersion(id);
+      setTemplate(res.data);
+      navigate(`/templates/${id}/edit`);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
     } finally {
       setActionLoading(false);
     }
@@ -301,6 +319,11 @@ export function TemplatePreviewPage() {
           {canClone && (
             <Button type="button" variant="outline" size="sm" loading={actionLoading} onClick={() => void handleClone()}>
               Clonar
+            </Button>
+          )}
+          {canStartNewVersion && (
+            <Button type="button" variant="outline" size="sm" loading={actionLoading} onClick={() => void handleStartNewVersion()}>
+              Nueva versión
             </Button>
           )}
           {canSubmit && (
