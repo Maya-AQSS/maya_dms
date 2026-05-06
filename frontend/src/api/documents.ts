@@ -48,6 +48,26 @@ export async function fetchDocument(documentId: string): Promise<DocumentDetail>
   return body.data;
 }
 
+/** Metadatos de una fila del historial (`GET documents/{id}/versions`). */
+export type DocumentVersionSummary = {
+  id: string;
+  document_id: string;
+  version_number: number;
+  trigger_event: string;
+  triggered_by: string;
+  changelog: string | null;
+  notes: string | null;
+  created_at: string | null;
+};
+
+/** GET /api/v1/documents/{id}/versions — metadatos de versiones publicadas (sin snapshot completo). */
+export async function fetchDocumentVersionSummaries(documentId: string): Promise<DocumentVersionSummary[]> {
+  const body = await apiGetJson<{ data: DocumentVersionSummary[] }>(
+    `documents/${encodeURIComponent(documentId)}/versions`,
+  );
+  return body.data;
+}
+
 /**
  * GET /api/v1/documents/creation-options?module_id={id}
  * 
