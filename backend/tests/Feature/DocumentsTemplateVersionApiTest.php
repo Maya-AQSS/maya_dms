@@ -6,6 +6,7 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Models\DocumentShare;
+use App\Services\DocumentVersionBlockLayerResolver;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\Template;
@@ -703,6 +704,97 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $this->assertSame('draft', (string) DB::table('documents')->where('id', $docId)->value('status'));
         $this->assertNull(DB::table('documents')->where('id', $docId)->value('published_at'));
+    }
+
+    public function test_document_version_block_layers_resolve_equal_snapshot_blocks_after_second_publish(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId, [
+            'documents.create',
+            'templates.read',
+            'templates.create',
+            'users.search',
+        ]);
+
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla resolver doc capas',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headers)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Expediente capas',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $stableParagraph = 'Contenido estable entre v1 y v2';
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [
+                ['type' => 'paragraph', 'content' => $stableParagraph],
+            ],
+        ], $headers)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $headers)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/new-version", [], $headers)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $headers)->assertOk();
+
+        $dv2 = DocumentVersion::query()
+            ->where('document_id', $docId)
+            ->where('version_number', 2)
+            ->where('trigger_event', 'published')
+            ->firstOrFail();
+
+        $resolver = app(DocumentVersionBlockLayerResolver::class);
+        $fromLayers = $resolver->resolveBlocksSnapshot($dv2->id);
+
+        $snap = $dv2->snapshot_data;
+        $blocksFromSnap = is_array($snap) && isset($snap['blocks']) && is_array($snap['blocks'])
+            ? array_values($snap['blocks'])
+            : [];
+
+        $this->assertEquals($blocksFromSnap, $fromLayers);
+
+        $inheritsCount = DB::table('document_version_block_layers')
+            ->where('document_version_id', $dv2->id)
+            ->where('inherits_from_previous_publication', true)
+            ->count();
+
+        $this->assertGreaterThan(0, $inheritsCount);
     }
 
     public function test_clone_document_returns_forbidden_for_read_only_collaborator(): void
