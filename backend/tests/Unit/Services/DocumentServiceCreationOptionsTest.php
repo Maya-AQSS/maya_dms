@@ -5,6 +5,7 @@ namespace Tests\Unit\Services;
 use App\Models\Template;
 use App\Models\TemplateVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
@@ -73,8 +74,9 @@ class DocumentServiceCreationOptionsTest extends TestCase
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
+        $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionLifecycleSvc);
+        $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionLifecycleSvc, $entityVersionRepo);
 
         $out = $service->creationOptionsForModule('MOD-1');
 
@@ -102,8 +104,9 @@ class DocumentServiceCreationOptionsTest extends TestCase
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
+        $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionLifecycleSvc);
+        $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionLifecycleSvc, $entityVersionRepo);
 
         $this->expectException(ValidationException::class);
 

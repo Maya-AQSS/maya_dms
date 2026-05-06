@@ -67,6 +67,27 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     }
 
     /**
+     * Obtiene una versión publicada concreta por número de versión.
+     *
+     * @param string $versionableType El tipo de versionable.
+     * @param string $versionableId El id de la versionable.
+     * @param int $versionNumber El número de versión.
+     * @return ?EntityVersion La versión encontrada o null si no existe.
+     */
+    public function findPublishedForEntityVersionNumber(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+    ): ?EntityVersion {
+        return EntityVersion::query()
+            ->where('versionable_type', $versionableType)
+            ->where('versionable_id', $versionableId)
+            ->where('status', 'published')
+            ->where('version_number', $versionNumber)
+            ->first();
+    }
+
+    /**
      * Crea una nueva versión.
      *
      * @param array<string, mixed> $attributes Los atributos de la versión.

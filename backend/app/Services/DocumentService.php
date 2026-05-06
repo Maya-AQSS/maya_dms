@@ -7,7 +7,9 @@ use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentVersion;
+use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -30,6 +32,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentStateService $documentStateService,
         private readonly DocumentReviewService $documentReviewService,
         private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
     ) {}
 
     /**
@@ -349,31 +352,7 @@ class DocumentService implements DocumentServiceInterface
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
 
-            $template = $this->templateRepository
-                ->findForDocumentReviewCandidatesWithoutCatalogScope((string) $document->template_id);
-
-            $candidates = [];
-            if ($template !== null) {
-                if ($template->documentReviewers->isNotEmpty()) {
-                    $stage = 1;
-                    foreach ($template->documentReviewers as $dr) {
-                        $candidates[] = [
-                            'reviewer_id' => (string) $dr->user_id,
-                            'stage' => $stage,
-                        ];
-                        $stage++;
-                    }
-                } elseif ($template->reviewers->isNotEmpty()) {
-                    $candidates = $template->reviewers
-                        ->sortBy('stage')
-                        ->values()
-                        ->map(fn ($r): array => [
-                            'reviewer_id' => (string) $r->user_id,
-                            'stage' => (int) $r->stage,
-                        ])
-                        ->all();
-                }
-            }
+            $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
 
             if ($candidates === []) {
                 $this->documentStateService->transition($documentId, 'published', $actorId, [
@@ -408,6 +387,109 @@ class DocumentService implements DocumentServiceInterface
 
             return $document;
         });
+    }
+
+    /**
+     * Resuelve candidatos de revisión desde la versión de plantilla anclada al documento.
+     * 
+     * @return list<array{reviewer_id: string, stage: int}>
+     */
+    private function resolveReviewCandidatesFromTemplateVersion(Document $document): array
+    {
+        $versionId = $document->template_version_id;
+        if (! is_string($versionId) || $versionId === '') {
+            return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
+        }
+
+        $templateVersionMeta = $this->templateVersionRepository->findPublishedMetaById($versionId);
+        if ($templateVersionMeta === null) {
+            return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
+        }
+
+        $entityVersion = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+            Template::class,
+            (string) $document->template_id,
+            (int) $templateVersionMeta['version_number'],
+        );
+        if ($entityVersion === null || ! is_array($entityVersion->snapshot_data)) {
+            return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
+        }
+
+        $reviewersPayload = $entityVersion->snapshot_data['reviewers'] ?? null;
+        if (! is_array($reviewersPayload)) {
+            return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
+        }
+
+        $documentReviewers = $reviewersPayload['document_reviewers'] ?? [];
+        if (is_array($documentReviewers) && $documentReviewers !== []) {
+            $candidates = [];
+            $stage = 1;
+            foreach ($documentReviewers as $row) {
+                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                    continue;
+                }
+                $candidates[] = [
+                    'reviewer_id' => $row['user_id'],
+                    'stage' => $stage,
+                ];
+                $stage++;
+            }
+
+            return $candidates;
+        }
+
+        $templateReviewers = $reviewersPayload['template_reviewers'] ?? [];
+        if (! is_array($templateReviewers) || $templateReviewers === []) {
+            return [];
+        }
+
+        $candidates = [];
+        foreach ($templateReviewers as $row) {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                continue;
+            }
+
+            $candidates[] = [
+                'reviewer_id' => $row['user_id'],
+                'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
+            ];
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * @return list<array{reviewer_id: string, stage: int}>
+     */
+    private function resolveReviewCandidatesFromTemplateLiveConfig(Document $document): array
+    {
+        $template = $this->templateRepository
+            ->findForDocumentReviewCandidatesWithoutCatalogScope((string) $document->template_id);
+
+        $candidates = [];
+        if ($template !== null) {
+            if ($template->documentReviewers->isNotEmpty()) {
+                $stage = 1;
+                foreach ($template->documentReviewers as $dr) {
+                    $candidates[] = [
+                        'reviewer_id' => (string) $dr->user_id,
+                        'stage' => $stage,
+                    ];
+                    $stage++;
+                }
+            } elseif ($template->reviewers->isNotEmpty()) {
+                $candidates = $template->reviewers
+                    ->sortBy('stage')
+                    ->values()
+                    ->map(fn ($r): array => [
+                        'reviewer_id' => (string) $r->user_id,
+                        'stage' => (int) $r->stage,
+                    ])
+                    ->all();
+            }
+        }
+
+        return $candidates;
     }
 
     /**

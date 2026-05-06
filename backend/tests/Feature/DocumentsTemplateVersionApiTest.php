@@ -869,6 +869,174 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonPath('data.status', 'in_review');
     }
 
+    public function test_submit_document_uses_reviewers_from_published_template_version_snapshot(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerFromVersion = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $reviewerLiveConfig = (string) Str::uuid();
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerFromVersion);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla reviewers versionados',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerFromVersion,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        // Cambia la configuración viva de revisores tras publicar v1.
+        DB::table('template_reviewers')->where('template_id', $tid)->delete();
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerLiveConfig,
+            'stage' => 1,
+        ]);
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc reviewers versionados',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+
+        $this->assertDatabaseHas('document_reviews', [
+            'document_id' => $docId,
+            'reviewer_id' => $reviewerFromVersion,
+            'status' => 'pending',
+            'stage' => 1,
+        ]);
+        $this->assertDatabaseMissing('document_reviews', [
+            'document_id' => $docId,
+            'reviewer_id' => $reviewerLiveConfig,
+            'status' => 'pending',
+            'stage' => 1,
+        ]);
+    }
+
+    public function test_submit_document_falls_back_to_live_reviewers_when_version_snapshot_is_missing(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerFromVersion = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $reviewerLiveConfig = (string) Str::uuid();
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerFromVersion);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla fallback reviewers',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerFromVersion,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        // Elimina snapshot versionado para forzar fallback a config viva.
+        DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 1)
+            ->delete();
+
+        DB::table('template_reviewers')->where('template_id', $tid)->delete();
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerLiveConfig,
+            'stage' => 1,
+        ]);
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc fallback reviewers',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+
+        $this->assertDatabaseHas('document_reviews', [
+            'document_id' => $docId,
+            'reviewer_id' => $reviewerLiveConfig,
+            'status' => 'pending',
+            'stage' => 1,
+        ]);
+        $this->assertDatabaseMissing('document_reviews', [
+            'document_id' => $docId,
+            'reviewer_id' => $reviewerFromVersion,
+            'status' => 'pending',
+            'stage' => 1,
+        ]);
+    }
+
     public function test_approve_last_review_persists_published_document_version_snapshot(): void
     {
         $creatorId = (string) Str::uuid();
