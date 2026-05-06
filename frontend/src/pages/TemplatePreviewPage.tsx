@@ -247,12 +247,8 @@ export function TemplatePreviewPage() {
       (isDraft && isOwner) ||
       (isPublished && (isOwner || hasPermission('templates.delete')))
     );
-  const canClone =
-    !viewingPublishedSnapshot &&
-    (
-      (isDraft && isOwner) ||
-      (isPublished && (isOwner || hasPermission('templates.update')))
-    );
+  /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
+  const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
   const canSubmit =
     !viewingPublishedSnapshot && isOwner && isDraft && hasReviewers && !template.has_review_comments;
   /** Alineado con `TemplatePolicy::startRevision`: creador o `templates.update` en publicada. */

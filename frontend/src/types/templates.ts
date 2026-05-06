@@ -38,6 +38,8 @@ export type Template = {
   reviewers?: TemplateReviewer[];
   document_reviewers?: string[];
   has_review_comments?: boolean;
+  /** Alineado con `TemplatePolicy::clone` en el servidor. */
+  can_clone?: boolean;
   created_at?: string;
   updated_at?: string;
 };
