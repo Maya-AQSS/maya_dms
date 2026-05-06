@@ -15,6 +15,7 @@ use App\Models\TemplateBlock;
 use App\Models\TemplateDocumentReviewer;
 use App\Models\TemplateReviewer;
 use App\Models\TemplateVersion;
+use App\Models\User;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -1005,7 +1006,7 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'in_review');
 
         $this->postJson("/api/v1/templates/{$tid}/publish", [
-            'changelog' => 'Primera publicación',
+            'changelog' => 'Primera publicaci?n',
         ], $headersReviewer)
             ->assertOk()
             ->assertJsonPath('data.status', 'published')
@@ -1046,7 +1047,7 @@ class TemplatesApiTest extends TestCase
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.version_number', 1)
-            ->assertJsonPath('data.0.changelog', 'Primera publicación');
+            ->assertJsonPath('data.0.changelog', 'Primera publicaci?n');
 
         $this->getJson("/api/v1/template-versions/{$vid}", $headersCreator)
             ->assertOk()
@@ -1274,6 +1275,42 @@ class TemplatesApiTest extends TestCase
             ->assertOk();
     }
 
+    public function test_sync_template_reviewers_requires_templates_review_permission(): void
+    {
+        $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $headers = $this->authHeaders($creatorId);
+        $userWithoutPermission = (string) Str::uuid();
+        User::query()->forceCreate([
+            'id' => $userWithoutPermission,
+            'name' => 'Sin permiso templates.review',
+            'email' => "sin-perm-tpl-{$userWithoutPermission}@example.test",
+        ]);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft revisores sin permiso',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/reviewers", [
+            'user_ids' => [$userWithoutPermission],
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user_ids']);
+    }
+
     public function test_sync_template_document_reviewers_allows_creator_included(): void
     {
         $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
@@ -1302,5 +1339,41 @@ class TemplatesApiTest extends TestCase
             'user_ids' => [$otherId, $creatorId],
         ], $headers)
             ->assertOk();
+    }
+
+    public function test_sync_template_document_reviewers_requires_documents_review_permission(): void
+    {
+        $creatorId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        $headers = $this->authHeaders($creatorId);
+        $userWithoutPermission = (string) Str::uuid();
+        User::query()->forceCreate([
+            'id' => $userWithoutPermission,
+            'name' => 'Sin permiso documents.review',
+            'email' => "sin-perm-doc-{$userWithoutPermission}@example.test",
+        ]);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft validadores doc sin permiso',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'parallel',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/document-reviewers", [
+            'user_ids' => [$userWithoutPermission],
+        ], $headers)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['user_ids']);
     }
 }
