@@ -653,7 +653,7 @@ class TemplatesApiTest extends TestCase
 
         $this->postJson("/api/v1/templates/{$tid}/new-version", [], $headers)->assertOk();
 
-        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Segunda versión'], $headers)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'Segunda versi?n'], $headers)->assertOk();
 
         $tv2 = TemplateVersion::query()
             ->where('template_id', $tid)
@@ -1009,10 +1009,10 @@ class TemplatesApiTest extends TestCase
             ->where('version_number', 1)
             ->first();
         $this->assertNotNull($versionRow);
-        $this->assertStringContainsString('inicial', (string) $versionRow->changelog);
+        $this->assertSame("Publicaci\u{00f3}n autom\u{00e1}tica", (string) $versionRow->changelog);
     }
 
-    public function test_template_creator_can_publish_draft_without_reviewers_and_autofills_v1_changelog(): void
+    public function test_template_creator_can_publish_draft_without_reviewers_and_autofills_default_changelog(): void
     {
         $creatorId = (string) Str::uuid();
         $headersCreator = $this->authHeaders($creatorId, []);
@@ -1055,7 +1055,7 @@ class TemplatesApiTest extends TestCase
             ->where('published_by', $creatorId)
             ->first();
         $this->assertNotNull($versionRow);
-        $this->assertStringContainsString('inicial', (string) $versionRow->changelog);
+        $this->assertSame("Publicaci\u{00f3}n autom\u{00e1}tica", (string) $versionRow->changelog);
     }
 
     public function test_template_publish_fails_without_blocks(): void

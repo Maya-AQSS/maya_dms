@@ -21,6 +21,8 @@ return new class extends Migration
         Schema::create('document_versions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('document_id')->constrained('documents')->cascadeOnDelete();
+            // Opcional: vínculo con entity_versions; la FK se define en create_entity_versions_table.
+            $table->uuid('entity_version_id')->nullable();
             $table->integer('version_number');
             $table->string('trigger_event');     // submitted | published | rejected
             $table->string('triggered_by');      // FK lógica → users (FDW)
@@ -30,6 +32,7 @@ return new class extends Migration
             $table->timestamp('created_at');
 
             $table->unique(['document_id', 'version_number']);
+            $table->unique('entity_version_id');
             $table->index(['document_id', 'version_number']);
         });
 

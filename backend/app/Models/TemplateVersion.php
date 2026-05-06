@@ -17,6 +17,7 @@ class TemplateVersion extends Model
 
     protected $fillable = [
         'template_id',
+        'entity_version_id',
         'version_number',
         'blocks_snapshot',
         'changelog',
@@ -47,5 +48,10 @@ class TemplateVersion extends Model
     public function template(): BelongsTo
     {
         return $this->belongsTo(Template::class);
+    }
+
+    public function entityVersion(): BelongsTo
+    {
+        return $this->belongsTo(EntityVersion::class, 'entity_version_id');
     }
 }

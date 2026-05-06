@@ -37,9 +37,9 @@ class PublishTemplateRequest extends FormRequest
     /**
      * Reglas de validación para la publicación de una plantilla.
      *
-     * El changelog es obligatorio a partir de la segunda versión (cuando ya existe
-     * al menos una versión publicada), independientemente del estado de la plantilla.
-     * Para la primera publicación se autorrellena con "Versión inicial".
+     * El changelog es obligatorio a partir de la segunda versión publicada (cuando ya existe
+     * al menos una fila en template_versions). La primera publicación puede omitir changelog;
+     * el servicio usa entonces un texto por defecto genérico.
      *
      * @return array<string, mixed>
      */

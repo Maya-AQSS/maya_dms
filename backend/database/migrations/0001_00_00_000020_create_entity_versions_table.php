@@ -14,7 +14,8 @@ return new class extends Migration
             $table->string('versionable_type');
             $table->uuid('versionable_id');
             $table->unsignedInteger('version_number');
-            $table->foreignUuid('base_version_id')->nullable()->constrained('entity_versions')->nullOnDelete();
+            // Auto-referencia: la FK se añade después del CREATE (PostgreSQL exige PK establecida).
+            $table->uuid('base_version_id')->nullable();
             $table->json('change_set')->nullable();
             $table->string('status')->default('draft');
             $table->string('created_by');
@@ -28,6 +29,27 @@ return new class extends Migration
             $table->unique(['versionable_type', 'versionable_id', 'version_number'], 'entity_versions_unique_per_entity');
             $table->index(['versionable_type', 'versionable_id'], 'entity_versions_versionable_idx');
             $table->index(['status'], 'entity_versions_status_idx');
+        });
+
+        Schema::table('entity_versions', function (Blueprint $table) {
+            $table->foreign('base_version_id')
+                ->references('id')
+                ->on('entity_versions')
+                ->nullOnDelete();
+        });
+
+        Schema::table('template_versions', function (Blueprint $table) {
+            $table->foreign('entity_version_id')
+                ->references('id')
+                ->on('entity_versions')
+                ->nullOnDelete();
+        });
+
+        Schema::table('document_versions', function (Blueprint $table) {
+            $table->foreign('entity_version_id')
+                ->references('id')
+                ->on('entity_versions')
+                ->nullOnDelete();
         });
 
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
@@ -46,6 +68,18 @@ SQL);
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::unprepared('DROP TRIGGER IF EXISTS entity_versions_append_only_snapshots ON entity_versions;');
         }
+
+        Schema::table('template_versions', function (Blueprint $table) {
+            $table->dropForeign(['entity_version_id']);
+        });
+
+        Schema::table('document_versions', function (Blueprint $table) {
+            $table->dropForeign(['entity_version_id']);
+        });
+
+        Schema::table('entity_versions', function (Blueprint $table) {
+            $table->dropForeign(['base_version_id']);
+        });
 
         Schema::dropIfExists('entity_versions');
     }

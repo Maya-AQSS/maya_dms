@@ -61,5 +61,6 @@ interface TemplateVersionRepositoryInterface
         array $blocksSnapshot,
         string $changelog,
         string $publishedBy,
+        ?string $entityVersionId = null,
     ): TemplateVersion;
 }

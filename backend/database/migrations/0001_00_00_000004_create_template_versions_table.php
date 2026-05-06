@@ -17,6 +17,8 @@ return new class extends Migration
         Schema::create('template_versions', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('template_id')->constrained('templates')->restrictOnDelete();
+            // Opcional: vínculo con entity_versions; la FK se define en create_entity_versions_table.
+            $table->uuid('entity_version_id')->nullable();
             $table->unsignedInteger('version_number');
             $table->json('blocks_snapshot');
             $table->text('changelog');
@@ -25,6 +27,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['template_id', 'version_number']);
+            $table->unique('entity_version_id');
         });
 
         if (Schema::getConnection()->getDriverName() === 'pgsql') {

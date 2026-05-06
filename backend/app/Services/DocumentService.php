@@ -594,7 +594,8 @@ class DocumentService implements DocumentServiceInterface
                     'published_at' => now(),
                 ]);
 
-                $autoChangelog = 'Publicado automáticamente: no hay validadores configurados.';
+                // Misma convención que {@see TemplatePublishingService} (plantilla ya numerada en creación).
+                $autoChangelog = 'Publicación automática';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',

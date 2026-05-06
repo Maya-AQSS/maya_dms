@@ -112,14 +112,44 @@ class TemplatePublishingService
             $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
 
             // changelog === null indica publicación automática (sin revisores o aprobación unánime).
-            // En ese caso se usa un texto por defecto según si es la primera versión o una sucesiva.
-            // Solo el flujo explícito (POST /publish) exige changelog, y esa validación la aplica
-            // PublishTemplateRequest antes de llegar aquí.
+            // La plantilla ya lleva número de versión en fila (p. ej. v1 en creación); aquí solo fijamos
+            // un texto genérico si no hubo changelog explícito.
+            // Solo el flujo explícito (POST /publish) exige changelog en republicaciones, vía PublishTemplateRequest.
             if ($trimmedChangelog === '') {
-                $resolvedChangelog = $next === 1 ? 'Versión inicial' : 'Publicación automática';
+                $resolvedChangelog = 'Publicación automática';
             } else {
                 $resolvedChangelog = $trimmedChangelog;
             }
+
+            $snapshotPayload = [
+                'template' => [
+                    'id' => $template->id,
+                    'process_id' => $template->process_id,
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'visibility_level' => $template->visibility_level,
+                    'study_type_id' => $template->study_type_id,
+                    'study_id' => $template->study_id,
+                    'module_id' => $template->module_id,
+                    'team_id' => $template->team_id,
+                    'status' => 'published',
+                    'version' => $next,
+                ],
+                'blocks' => $blocksSnapshot,
+                'reviewers' => [
+                    'template_reviewers' => $templateReviewersSnapshot,
+                    'document_reviewers' => $documentReviewersSnapshot,
+                ],
+            ];
+
+            $entityVersion = $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
+                Template::class,
+                (string) $template->id,
+                $next,
+                $snapshotPayload,
+                $actorId,
+                $resolvedChangelog,
+            );
 
             $createdVersion = $this->templateVersionRepository->createSnapshot(
                 $templateId,
@@ -127,6 +157,7 @@ class TemplatePublishingService
                 $blocksSnapshot,
                 $resolvedChangelog,
                 $actorId,
+                (string) $entityVersion->id,
             );
 
             $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($createdVersion, $template);
@@ -136,34 +167,6 @@ class TemplatePublishingService
                 'status' => 'published',
                 'version' => $next,
             ]);
-
-            $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
-                Template::class,
-                (string) $template->id,
-                $next,
-                [
-                    'template' => [
-                        'id' => $template->id,
-                        'process_id' => $template->process_id,
-                        'name' => $template->name,
-                        'description' => $template->description,
-                        'visibility_level' => $template->visibility_level,
-                        'study_type_id' => $template->study_type_id,
-                        'study_id' => $template->study_id,
-                        'module_id' => $template->module_id,
-                        'team_id' => $template->team_id,
-                        'status' => 'published',
-                        'version' => $next,
-                    ],
-                    'blocks' => $blocksSnapshot,
-                    'reviewers' => [
-                        'template_reviewers' => $templateReviewersSnapshot,
-                        'document_reviewers' => $documentReviewersSnapshot,
-                    ],
-                ],
-                $actorId,
-                $resolvedChangelog,
-            );
 
             event(new TemplateStateChanged(
                 template: $updated,

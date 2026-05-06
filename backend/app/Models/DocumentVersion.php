@@ -22,6 +22,7 @@ class DocumentVersion extends Model
 
     protected $fillable = [
         'document_id',
+        'entity_version_id',
         'version_number',
         'trigger_event',
         'triggered_by',

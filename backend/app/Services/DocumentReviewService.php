@@ -74,7 +74,7 @@ class DocumentReviewService
                 ]);
                 $changelog = $publicationChangelog !== null && trim($publicationChangelog) !== ''
                     ? trim($publicationChangelog)
-                    : 'Publicado tras aprobación de revisión.';
+                    : 'Aprobado por todos los revisores.';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',

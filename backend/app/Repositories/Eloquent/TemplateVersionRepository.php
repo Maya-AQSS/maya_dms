@@ -127,10 +127,11 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
         array $blocksSnapshot,
         string $changelog,
         string $publishedBy,
+        ?string $entityVersionId = null,
     ): TemplateVersion {
         $now = now();
 
-        return TemplateVersion::query()->forceCreate([
+        $attributes = [
             'id' => (string) Str::uuid(),
             'template_id' => $templateId,
             'version_number' => $versionNumber,
@@ -140,6 +141,12 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
             'published_at' => $now,
             'created_at' => $now,
             'updated_at' => $now,
-        ]);
+        ];
+
+        if ($entityVersionId !== null) {
+            $attributes['entity_version_id'] = $entityVersionId;
+        }
+
+        return TemplateVersion::query()->forceCreate($attributes);
     }
 }
