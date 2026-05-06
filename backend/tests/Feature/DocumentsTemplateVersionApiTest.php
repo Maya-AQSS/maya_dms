@@ -410,10 +410,12 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertNotEmpty($versionIdV1);
         $createDoc->assertJsonCount(1, 'data.blocks');
         $createDoc->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
+        $createDoc->assertJsonPath('data.template_version_number', 1);
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
         $show->assertOk();
         $show->assertJsonPath('data.template_version_id', $versionIdV1);
+        $show->assertJsonPath('data.template_version_number', 1);
         $show->assertJsonCount(1, 'data.blocks');
         $show->assertJsonPath('data.blocks.0.title', 'Bloque publicado');
         $show->assertJsonPath('data.team', null);
@@ -484,6 +486,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
         $show->assertOk();
+        $show->assertJsonPath('data.template_version_number', 1);
         $show->assertJsonCount(1, 'data.blocks');
         $show->assertJsonPath('data.blocks.0.title', 'Bloque desde snapshot entity');
     }
