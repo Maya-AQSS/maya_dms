@@ -28,7 +28,7 @@ import type { Process } from '../types/processes';
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
-  published: 'Aprobado',
+  published: 'Publicado',
 };
 
 function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
@@ -132,6 +132,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     returnToStep?: string;
     returnToValidate?: boolean;
     backTo?: string;
+    forceBackTo?: boolean;
   } | null;
   const cameFromSummary = previewState?.returnToStep === 'summary';
   const cameFromValidate = previewState?.returnToValidate === true;
@@ -156,6 +157,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       } else {
         navigate(`/documents/${documentId}/editor`, { state: { step: 'summary' } });
       }
+      return;
+    }
+    if (previewState?.forceBackTo) {
+      navigate(backTo);
       return;
     }
     if (window.history.length > 1) {

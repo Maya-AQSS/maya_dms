@@ -1423,7 +1423,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 size="sm"
                 onClick={() =>
                   navigate(`/documents/${documentId}`, {
-                    state: { returnToStep: 'summary', returnToValidate: isValidateMode },
+                    state: {
+                      returnToStep: isValidateMode || !!documentId ? 'summary' : undefined,
+                      returnToValidate: isValidateMode,
+                      backTo: processBackTo,
+                      forceBackTo: !documentId && !isValidateMode,
+                    },
                   })
                 }
               >

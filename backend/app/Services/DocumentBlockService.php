@@ -114,7 +114,11 @@ class DocumentBlockService
     public function assertMandatoryBlocksAreFilled(Document $document): void
     {
         $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->filter(fn (array $def) => ($def['block_state'] ?? 'editable') !== 'optional');
+            ->filter(function (array $def): bool {
+                $state = (string) ($def['block_state'] ?? 'editable');
+
+                return $state !== 'optional' && $state !== 'locked';
+            });
 
         if ($definitions->isEmpty()) {
             return;

@@ -25,14 +25,14 @@ import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 const STATUS_LABEL: Record<DocumentStatus, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
-  published: 'Aprobado',
+  published: 'Publicado',
 };
 
 const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: '', label: 'Todos' },
   { value: 'draft', label: 'Borrador' },
   { value: 'in_review', label: 'En revisión' },
-  { value: 'published', label: 'Aprobado' },
+  { value: 'published', label: 'Publicado' },
 ];
 
 const VISIBILITY_FILTER_OPTIONS: { value: string; label: string }[] = [
