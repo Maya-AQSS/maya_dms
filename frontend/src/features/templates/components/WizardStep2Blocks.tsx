@@ -449,13 +449,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 const pendingCount = tab === 'comments'
                   ? reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved).length
                   : 0;
+                const isTabDisabled = (tab === 'content' || tab === 'description') && !formName.trim();
+
                 return (
                   <button
                     key={tab}
-                    onClick={() => setActiveTab(tab)}
+                    onClick={() => !isTabDisabled && setActiveTab(tab)}
+                    disabled={isTabDisabled}
+                    title={isTabDisabled ? 'Asigna un nombre al bloque para habilitar esta pestaña' : ''}
                     className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
                       activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
-                    }`}
+                    } ${isTabDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
                   >
                     {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Descripción' : 'Comentarios'}
                     {tab === 'comments' && pendingCount > 0 && (
@@ -502,36 +506,54 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               {activeTab === 'content' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
-                    <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                      <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                        <BlockNoteEditorPanel
-                          key={`content-${activeSingleId ?? 'none'}`}
-                          initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                          onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
-                          editable={true}
-                          isDark={effectiveIsDark}
-                          onFullscreenChange={handleEditorFullscreenChange}
-                        />
-                      </Suspense>
-                    </div>
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
+                        <div className="text-4xl mb-4">📝</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de contenido.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                        <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                          <BlockNoteEditorPanel
+                            key={`content-${activeSingleId ?? 'none'}`}
+                            initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                            onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
+                            editable={true}
+                            isDark={effectiveIsDark}
+                            onFullscreenChange={handleEditorFullscreenChange}
+                          />
+                        </Suspense>
+                      </div>
+                    )}
                   </div>
                 </ErrorBoundary>
               )}
               {activeTab === 'description' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de descripción.</div>}>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
-                    <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                      <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                        <BlockNoteEditorPanel
-                          key={`description-${activeSingleId ?? 'none'}`}
-                          initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                          onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
-                          editable={true}
-                          isDark={effectiveIsDark}
-                          onFullscreenChange={handleEditorFullscreenChange}
-                        />
-                      </Suspense>
-                    </div>
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
+                        <div className="text-4xl mb-4">📝</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de descripción.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                        <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                          <BlockNoteEditorPanel
+                            key={`description-${activeSingleId ?? 'none'}`}
+                            initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                            onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
+                            editable={true}
+                            isDark={effectiveIsDark}
+                            onFullscreenChange={handleEditorFullscreenChange}
+                          />
+                        </Suspense>
+                      </div>
+                    )}
                   </div>
                 </ErrorBoundary>
               )}
