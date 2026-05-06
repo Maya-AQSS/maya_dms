@@ -124,4 +124,30 @@ describe('BlockNoteEditorPanel', () => {
     expect(panel.classList.contains('top-0')).toBe(false);
     expect(panel.classList.contains('inset-0')).toBe(false);
   });
+
+  it('calls onFullscreenChange(true) when entering fullscreen', () => {
+    const onFullscreenChange = vi.fn();
+    render(
+      <BlockNoteEditorPanel initialContent={null} editable={true} isDark={false} onFullscreenChange={onFullscreenChange} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /pantalla completa/i }));
+    expect(onFullscreenChange).toHaveBeenCalledTimes(1);
+    expect(onFullscreenChange).toHaveBeenCalledWith(true);
+  });
+
+  it('calls onFullscreenChange(false) when exiting fullscreen via button then Escape', () => {
+    const onFullscreenChange = vi.fn();
+    render(
+      <BlockNoteEditorPanel initialContent={null} editable={true} isDark={false} onFullscreenChange={onFullscreenChange} />,
+    );
+    const btn = screen.getByRole('button', { name: /pantalla completa/i });
+    fireEvent.click(btn);
+    fireEvent.click(btn);
+    expect(onFullscreenChange).toHaveBeenNthCalledWith(1, true);
+    expect(onFullscreenChange).toHaveBeenNthCalledWith(2, false);
+
+    fireEvent.click(btn);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onFullscreenChange).toHaveBeenLastCalledWith(false);
+  });
 });

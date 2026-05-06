@@ -160,6 +160,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     }
   }, [blocks.length, loading, onBlocksCountChange]);
 
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+
+  const handleEditorFullscreenChange = useCallback((v: boolean) => {
+    setIsEditorFullscreen(v);
+    document.documentElement.classList.toggle('editor-fullscreen', v);
+  }, []);
+
+  useEffect(() => {
+    return () => document.documentElement.classList.remove('editor-fullscreen');
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -379,8 +390,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   return (
     <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
+      {/* Sidebar — hidden when editor is in fullscreen */}
+      {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
         <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
           <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">Bloques ({blocks.length})</span>
           <Button variant="ghost" size="xs" onClick={handleToggleSelectAll}>
@@ -409,7 +420,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         <div className="p-4 border-t border-ui-border dark:border-ui-dark-border">
           <Button variant="outline" className="w-full border-dashed" onClick={handleAddBlock} loading={busy}>+ Añadir bloque</Button>
         </div>
-      </div>
+      </div>}
 
       {/* Main Panel */}
       <div className="flex-1 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
@@ -499,6 +510,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
                           editable={true}
                           isDark={effectiveIsDark}
+                          onFullscreenChange={handleEditorFullscreenChange}
                         />
                       </Suspense>
                     </div>
@@ -516,6 +528,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
                           editable={true}
                           isDark={effectiveIsDark}
+                          onFullscreenChange={handleEditorFullscreenChange}
                         />
                       </Suspense>
                     </div>

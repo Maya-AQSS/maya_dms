@@ -1,11 +1,26 @@
 import type { ReactElement } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WizardStep2Blocks } from '../WizardStep2Blocks';
 import { useTemplateBlocks } from '../../hooks/useTemplateBlocks';
 import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
+
+const editorMock = vi.hoisted(() => {
+  let _cb: ((v: boolean) => void) | undefined;
+  return {
+    getOnFullscreenChange: () => _cb,
+    setOnFullscreenChange: (fn: typeof _cb) => { _cb = fn; },
+  };
+});
+
+vi.mock('../BlockNoteEditorPanel', () => ({
+  BlockNoteEditorPanel: ({ onFullscreenChange }: { onFullscreenChange?: (v: boolean) => void }) => {
+    editorMock.setOnFullscreenChange(onFullscreenChange);
+    return <div data-testid="bn-editor-panel" />;
+  },
+}));
 
 vi.mock('../../../../api/users', () => ({
   fetchMe: vi.fn().mockResolvedValue({
@@ -102,6 +117,10 @@ describe('WizardStep2Blocks', () => {
   };
 
   const mockUseTemplateBlocks = useTemplateBlocks as any;
+
+  afterEach(() => {
+    document.documentElement.classList.remove('editor-fullscreen');
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -301,6 +320,39 @@ describe('WizardStep2Blocks', () => {
 
       await waitFor(() => expect(screen.getByText(/nombre del bloque es obligatorio/i)).toBeTruthy());
       expect(updateBlock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('editor fullscreen integration', () => {
+    const openContentTab = async () => {
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /Bloque 1/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+      fireEvent.click(screen.getByText('Contenido'));
+      await waitFor(() => expect(screen.getByTestId('bn-editor-panel')).toBeTruthy());
+    };
+
+    it('fullscreen hides block list and sets html.editor-fullscreen class', async () => {
+      await openContentTab();
+
+      expect(screen.getByText(/Bloques \(/i)).toBeTruthy();
+
+      await act(async () => { editorMock.getOnFullscreenChange()?.(true); });
+
+      expect(screen.queryByText(/Bloques \(/i)).toBeNull();
+      expect(document.documentElement.classList.contains('editor-fullscreen')).toBe(true);
+    });
+
+    it('exiting fullscreen restores block list and removes html.editor-fullscreen class', async () => {
+      await openContentTab();
+
+      await act(async () => { editorMock.getOnFullscreenChange()?.(true); });
+      expect(screen.queryByText(/Bloques \(/i)).toBeNull();
+
+      await act(async () => { editorMock.getOnFullscreenChange()?.(false); });
+
+      expect(screen.getByText(/Bloques \(/i)).toBeTruthy();
+      expect(document.documentElement.classList.contains('editor-fullscreen')).toBe(false);
     });
   });
 });

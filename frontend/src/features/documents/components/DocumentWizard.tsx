@@ -251,6 +251,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [showClearBlockConfirm, setShowClearBlockConfirm] = useState(false);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+
+  const handleEditorFullscreenChange = useCallback((v: boolean) => {
+    setIsEditorFullscreen(v);
+    document.documentElement.classList.toggle('editor-fullscreen', v);
+  }, []);
+
+  useEffect(() => {
+    return () => document.documentElement.classList.remove('editor-fullscreen');
+  }, []);
 
   const isValidateMode = mode === 'validate';
   const isDraft = !detail || detail.status === 'draft';
@@ -1199,7 +1209,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
       {!isValidateMode && step === 'blocks' && (
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
+          {/* Block tree — hidden when editor is in fullscreen */}
+          {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
             <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
               <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">
                 Bloques ({sortedBlocks.length})
@@ -1226,7 +1237,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 })
               )}
             </div>
-          </div>
+          </div>}
           <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
             {activeBlock && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
@@ -1295,6 +1306,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                 editable
                                 isDark={isDark}
                                 onChange={(content) => { setLocalContent(content); triggerSave(); }}
+                                onFullscreenChange={handleEditorFullscreenChange}
                               />
                             </Suspense>
                           </div>

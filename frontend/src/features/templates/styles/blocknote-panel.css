@@ -44,17 +44,8 @@
 .dark .bn-editor {
   color: var(--color-text-dark-primary) !important;
 }
-/* Fullscreen: sits below AppLayout topbar (4rem), respects sidebar via --sidebar-w */
+/* Fullscreen: layout managed by parent component (block list / tree hidden, AppLayout
+   sidebar hidden via html.editor-fullscreen). The panel itself stays in flex flow. */
 .maya-bn-panel--fullscreen {
-  position: fixed;
-  top: 4rem;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 50;
-}
-@media (min-width: 768px) {
-  .maya-bn-panel--fullscreen {
-    left: var(--sidebar-w, 0px);
-  }
+  /* intentionally no position override */
 }

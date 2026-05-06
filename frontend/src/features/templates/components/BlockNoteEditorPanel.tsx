@@ -12,6 +12,7 @@ interface Props {
   editable: boolean;
   isDark: boolean;
   onChange?: (content: unknown) => void;
+  onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
 function FullscreenIcon({ expanded }: { expanded: boolean }) {
@@ -32,19 +33,26 @@ function FullscreenIcon({ expanded }: { expanded: boolean }) {
   );
 }
 
-export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange }: Props) {
+export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange, onFullscreenChange }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const onFullscreenChangeRef = useRef(onFullscreenChange);
+  onFullscreenChangeRef.current = onFullscreenChange;
+
+  const applyFullscreen = (v: boolean) => {
+    setIsFullscreen(v);
+    onFullscreenChangeRef.current?.(v);
+  };
 
   useEffect(() => {
     if (!isFullscreen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsFullscreen(false);
+      if (e.key === 'Escape') applyFullscreen(false);
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [isFullscreen]);
+  }, [isFullscreen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const normalized = normalizeBlockContentForEditor(initialContent);
   const safeContent =
@@ -78,7 +86,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   };
 
   const containerCls = isFullscreen
-    ? 'maya-bn-panel maya-bn-panel--fullscreen flex flex-col bg-white dark:bg-ui-dark-card overflow-hidden'
+    ? 'maya-bn-panel maya-bn-panel--fullscreen flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden'
     : 'maya-bn-panel flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden';
 
   return (
@@ -114,7 +122,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                 type="button"
                 aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
                 aria-pressed={isFullscreen}
-                onClick={(e) => { e.stopPropagation(); setIsFullscreen(v => !v); }}
+                onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
                 className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
               >
                 <FullscreenIcon expanded={isFullscreen} />
