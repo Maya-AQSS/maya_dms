@@ -157,14 +157,45 @@ class EntityVersionReconstructionServiceTest extends TestCase
         $this->assertSame('v2', $state['name']);
     }
 
+    public function test_reconstruct_fails_when_base_chain_mixes_different_entities(): void
+    {
+        $templateIdA = $this->createTemplateForVersioning();
+        $templateIdB = $this->createTemplateForVersioning();
+
+        $baseFromA = EntityVersion::query()->create([
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateIdA,
+            'version_number' => 1,
+            'change_set' => ['name' => 'A v1'],
+            'status' => 'draft',
+            'created_by' => (string) Str::uuid(),
+        ]);
+
+        $targetFromB = EntityVersion::query()->create([
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateIdB,
+            'version_number' => 1,
+            'base_version_id' => $baseFromA->id,
+            'change_set' => ['name' => 'B v1'],
+            'status' => 'draft',
+            'created_by' => (string) Str::uuid(),
+        ]);
+
+        $service = new EntityVersionReconstructionService;
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('mezcla de entidades detectada');
+        $service->reconstruct($targetFromB);
+    }
+
     private function createTemplateForVersioning(): string
     {
         $processId = (string) Str::uuid();
+        $suffix = strtoupper(substr(str_replace('-', '', $processId), 0, 8));
         DB::table('processes')->insert([
             'id' => $processId,
-            'code' => 'PROC-VER',
+            'code' => 'PROC-VER-'.$suffix,
             'name' => 'Proceso versionado',
-            'alias' => 'PV',
+            'alias' => 'PV-'.$suffix,
             'description' => null,
             'created_at' => now(),
             'updated_at' => now(),

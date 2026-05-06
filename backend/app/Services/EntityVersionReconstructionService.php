@@ -46,11 +46,18 @@ class EntityVersionReconstructionService
         $visited = [];
         $chain = [];
         $cursor = $target;
+        $expectedType = (string) $target->versionable_type;
+        $expectedId = (string) $target->versionable_id;
 
         while ($cursor !== null) {
             $id = (string) $cursor->id;
             if ($id === '') {
                 throw new RuntimeException('Versión inválida sin identificador.');
+            }
+            $cursorType = (string) $cursor->versionable_type;
+            $cursorEntityId = (string) $cursor->versionable_id;
+            if ($cursorType !== $expectedType || $cursorEntityId !== $expectedId) {
+                throw new RuntimeException('Cadena de versiones inválida: mezcla de entidades detectada.');
             }
             if (isset($visited[$id])) {
                 throw new RuntimeException('Cadena de versiones inválida: ciclo detectado.');
