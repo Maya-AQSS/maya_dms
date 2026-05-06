@@ -7,6 +7,7 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Models\TemplateVersion;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
@@ -65,6 +66,14 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Localiza una versión polimórfica por su ID.
+     */
+    public function findEntityVersionOrFail(string $versionId): EntityVersion
+    {
+        return $this->entityVersionRepository->findOrFail($versionId);
+    }
+
+    /**
      * Envía el borrador a revisión. Solo el creador de la plantilla puede ejecutar esta acción.
      *
      * - Sin revisores asignados → publica automáticamente.
@@ -112,7 +121,7 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
-     * @return Collection<int, TemplateVersion>
+     * @return Collection<int, TemplateVersion|EntityVersion>
      */
     public function listPublishedVersions(string $templateId): Collection
     {
@@ -120,12 +129,23 @@ class TemplateService implements TemplateServiceInterface
             Template::class,
             $templateId,
         );
+        $legacyVersions = $this->templateVersionRepository->listForTemplateOrdered($templateId);
 
-        if ($entityVersions->isNotEmpty()) {
+        if ($entityVersions->isEmpty()) {
+            return $legacyVersions;
+        }
+
+        if ($legacyVersions->isEmpty()) {
             return $entityVersions;
         }
 
-        return $this->templateVersionRepository->listForTemplateOrdered($templateId);
+        // En transición parcial, combina ambas fuentes y deduplica por número,
+        // priorizando entity_versions frente a legacy cuando colisionan.
+        return $entityVersions
+            ->concat($legacyVersions)
+            ->sortBy(static fn (TemplateVersion|EntityVersion $v): int => (int) $v->version_number)
+            ->unique(static fn (TemplateVersion|EntityVersion $v): int => (int) $v->version_number)
+            ->values();
     }
 
     /**

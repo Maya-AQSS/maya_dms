@@ -13,8 +13,10 @@ use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
 use App\Http\Resources\TemplateVersionResource;
 use App\Http\Resources\TemplateVersionSummaryResource;
+use App\Models\Template;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -229,8 +231,20 @@ class TemplateController extends Controller
      */
     public function showVersion(string $template_version): TemplateVersionResource
     {
-        $version = $this->templateService->findVersionOrFail($template_version);
-        $template = $this->templateService->findOrFailWithoutCatalogScope((string) $version->template_id);
+        try {
+            $version = $this->templateService->findVersionOrFail($template_version);
+            $templateId = (string) $version->template_id;
+        } catch (ModelNotFoundException) {
+            $version = $this->templateService->findEntityVersionOrFail($template_version);
+
+            if ((string) $version->versionable_type !== Template::class) {
+                abort(404);
+            }
+
+            $templateId = (string) $version->versionable_id;
+        }
+
+        $template = $this->templateService->findOrFailWithoutCatalogScope($templateId);
         if (! Gate::forUser(Auth::user())->allows('view', $template)) {
             abort(404);
         }

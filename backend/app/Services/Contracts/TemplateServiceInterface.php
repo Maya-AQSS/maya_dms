@@ -6,6 +6,7 @@ use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\UpdateTemplateDto;
+use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Models\TemplateVersion;
 use Illuminate\Support\Collection;
@@ -37,6 +38,11 @@ interface TemplateServiceInterface
     public function findVersionOrFail(string $versionId): TemplateVersion;
 
     /**
+     * Localiza una versión polimórfica por su ID.
+     */
+    public function findEntityVersionOrFail(string $versionId): EntityVersion;
+
+    /**
      * Envía el borrador a revisión. Solo el creador puede ejecutar esta acción.
      */
     public function submitForReview(string $templateId, string $actorId): Template;
@@ -54,7 +60,7 @@ interface TemplateServiceInterface
     /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
-     * @return Collection<int, TemplateVersion>
+     * @return Collection<int, TemplateVersion|EntityVersion>
      */
     public function listPublishedVersions(string $templateId): Collection;
 
