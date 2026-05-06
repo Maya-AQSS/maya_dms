@@ -663,7 +663,7 @@ class TemplatesApiTest extends TestCase
         $resolver = app(TemplateVersionBlockLayerResolver::class);
         $fromLayers = $resolver->resolveBlocksSnapshot($tv2->id);
 
-        $this->assertEquals($tv2->blocks_snapshot, $fromLayers);
+        $this->assertEquals($tv2->blocksSnapshotRows(), $fromLayers);
 
         $inheritsCount = DB::table('template_version_block_layers')
             ->where('template_version_id', $tv2->id)

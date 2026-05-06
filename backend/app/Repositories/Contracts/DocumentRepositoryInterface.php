@@ -124,15 +124,16 @@ interface DocumentRepositoryInterface
     /**
      * Inserta un registro append-only en document_versions.
      *
-     * @param  array<string, mixed>  $snapshotData
+     * @param  array<string, mixed>|null  $snapshotData  Null si el snapshot canónico está solo en entity_versions.
      */
     public function insertDocumentVersion(
         string $documentId,
         int $versionNumber,
         string $triggerEvent,
         string $triggeredBy,
-        array $snapshotData,
+        ?array $snapshotData,
         ?string $notes = null,
+        ?string $entityVersionId = null,
     ): void;
 
     /**

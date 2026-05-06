@@ -47,7 +47,7 @@ final class DocumentVersionBlockLayerWriter
 
         /** @var array<string, array<string, mixed>> $prevById */
         $prevById = [];
-        $snap = $previous->snapshot_data;
+        $snap = $previous->resolvedSnapshotData();
         $prevBlocks = is_array($snap) && isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
         foreach ($prevBlocks as $row) {
             if (is_array($row) && isset($row['id']) && is_string($row['id'])) {

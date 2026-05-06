@@ -606,10 +606,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $snapshotRow = DB::table('document_versions')->where('document_id', $docId)->orderByDesc('version_number')->first();
         $this->assertNotNull($snapshotRow);
+        $this->assertNotNull($snapshotRow->entity_version_id);
+        $evRow = DB::table('entity_versions')->where('id', (string) $snapshotRow->entity_version_id)->first();
+        $this->assertNotNull($evRow);
         /** @var array<string, mixed> $decoded */
-        $decoded = json_decode((string) $snapshotRow->snapshot_data, true, 512, JSON_THROW_ON_ERROR);
+        $decoded = json_decode((string) $evRow->snapshot_data, true, 512, JSON_THROW_ON_ERROR);
         $decoded['blocks'] = [];
-        DB::table('document_versions')->where('id', $snapshotRow->id)->update([
+        DB::table('entity_versions')->where('id', (string) $snapshotRow->entity_version_id)->update([
             'snapshot_data' => json_encode($decoded, JSON_THROW_ON_ERROR),
         ]);
 
@@ -782,9 +785,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $resolver = app(DocumentVersionBlockLayerResolver::class);
         $fromLayers = $resolver->resolveBlocksSnapshot($dv2->id);
 
-        $snap = $dv2->snapshot_data;
-        $blocksFromSnap = is_array($snap) && isset($snap['blocks']) && is_array($snap['blocks'])
-            ? array_values($snap['blocks'])
+        $resolved = $dv2->resolvedSnapshotData();
+        $blocksFromSnap = is_array($resolved) && isset($resolved['blocks']) && is_array($resolved['blocks'])
+            ? array_values($resolved['blocks'])
             : [];
 
         $this->assertEquals($blocksFromSnap, $fromLayers);
@@ -1667,6 +1670,22 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->where('version_number', 1)
             ->delete();
 
+        // Sin entity_versions la fila legacy debe seguir teniendo bloques (solo JSON en template_versions) para poder crear documentos.
+        $blocksSnapshot = TemplateBlock::query()->where('template_id', $tid)->orderBy('sort_order')->get()->map(static function (TemplateBlock $b): array {
+            return [
+                'id' => (string) $b->id,
+                'title' => $b->title,
+                'description' => $b->description,
+                'default_content' => $b->default_content,
+                'block_state' => $b->block_state,
+                'sort_order' => (int) $b->sort_order,
+            ];
+        })->values()->all();
+        DB::table('template_versions')->where('template_id', $tid)->where('version_number', 1)->update([
+            'blocks_snapshot' => json_encode($blocksSnapshot, JSON_THROW_ON_ERROR),
+            'entity_version_id' => null,
+        ]);
+
         DB::table('template_reviewers')->where('template_id', $tid)->delete();
         TemplateReviewer::query()->forceCreate([
             'id' => (string) Str::uuid(),
@@ -1798,8 +1817,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'is_snapshot_immutable' => 1,
         ]);
 
-        $raw = $row->snapshot_data;
-        $snapshot = is_string($raw) ? json_decode($raw, true) : $raw;
+        $legacyDv = DocumentVersion::query()->where('document_id', $docId)->firstOrFail();
+        $snapshot = $legacyDv->resolvedSnapshotData();
         $this->assertIsArray($snapshot);
         $this->assertArrayHasKey('document', $snapshot);
         $this->assertArrayHasKey('blocks', $snapshot);

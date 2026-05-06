@@ -9,7 +9,6 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
-use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
 use App\Services\DocumentReviewService;
@@ -40,7 +39,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
         $shareSvc = Mockery::mock(DocumentShareService::class);
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
-        $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
         $verRepo->shouldReceive('findPublishedMetaById')
@@ -67,7 +65,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             $shareSvc,
             $stateSvc,
             $reviewSvc,
-            $entityVersionLifecycleSvc,
             $entityVersionRepo,
         );
 
@@ -99,7 +96,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
         $shareSvc = Mockery::mock(DocumentShareService::class);
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
-        $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
         $verRepo->shouldReceive('findPublishedMetaById')
@@ -134,7 +130,6 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             $shareSvc,
             $stateSvc,
             $reviewSvc,
-            $entityVersionLifecycleSvc,
             $entityVersionRepo,
         );
 

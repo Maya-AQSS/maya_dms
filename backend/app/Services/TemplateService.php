@@ -450,15 +450,18 @@ class TemplateService implements TemplateServiceInterface
         }
 
         $legacyRow = $this->templateVersionRepository->findByTemplateIdAndVersionNumber($templateId, $versionNumber);
-        if ($legacyRow !== null && is_array($legacyRow->blocks_snapshot) && $legacyRow->blocks_snapshot !== []) {
-            return [
-                'kind' => 'legacy',
-                'template_meta' => [],
-                'blocks' => $legacyRow->blocks_snapshot,
-                'reviewers_from_snapshot' => false,
-                'template_reviewers' => [],
-                'document_reviewers' => [],
-            ];
+        if ($legacyRow !== null) {
+            $legacyBlocks = $legacyRow->blocksSnapshotRows();
+            if ($legacyBlocks !== []) {
+                return [
+                    'kind' => 'legacy',
+                    'template_meta' => [],
+                    'blocks' => $legacyBlocks,
+                    'reviewers_from_snapshot' => false,
+                    'template_reviewers' => [],
+                    'document_reviewers' => [],
+                ];
+            }
         }
 
         return $this->resolveFallbackPublishedTemplateSnapshot($templateId);
@@ -479,11 +482,12 @@ class TemplateService implements TemplateServiceInterface
     private function resolveFallbackPublishedTemplateSnapshot(string $templateId): ?array
     {
         foreach ($this->templateVersionRepository->listForTemplateOrdered($templateId)->sortByDesc('version_number') as $tv) {
-            if (is_array($tv->blocks_snapshot) && $tv->blocks_snapshot !== []) {
+            $rows = $tv->blocksSnapshotRows();
+            if ($rows !== []) {
                 return [
                     'kind' => 'legacy',
                     'template_meta' => [],
-                    'blocks' => $tv->blocks_snapshot,
+                    'blocks' => $rows,
                     'reviewers_from_snapshot' => false,
                     'template_reviewers' => [],
                     'document_reviewers' => [],

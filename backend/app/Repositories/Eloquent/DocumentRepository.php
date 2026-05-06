@@ -349,10 +349,11 @@ class DocumentRepository implements DocumentRepositoryInterface
         int $versionNumber,
         string $triggerEvent,
         string $triggeredBy,
-        array $snapshotData,
+        ?array $snapshotData,
         ?string $notes = null,
+        ?string $entityVersionId = null,
     ): void {
-        DocumentVersion::forceCreate([
+        $attributes = [
             'id' => (string) Str::uuid(),
             'document_id' => $documentId,
             'version_number' => $versionNumber,
@@ -362,7 +363,13 @@ class DocumentRepository implements DocumentRepositoryInterface
             'notes' => $notes,
             'is_immutable' => true,
             'created_at' => now(),
-        ]);
+        ];
+
+        if ($entityVersionId !== null) {
+            $attributes['entity_version_id'] = $entityVersionId;
+        }
+
+        DocumentVersion::forceCreate($attributes);
     }
 
     /**

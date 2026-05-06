@@ -28,7 +28,7 @@ final class DocumentVersionBlockLayerResolver
             ->get();
 
         if ($layers->isEmpty()) {
-            $snap = $version->snapshot_data;
+            $snap = $version->resolvedSnapshotData();
 
             if (! is_array($snap) || ! isset($snap['blocks']) || ! is_array($snap['blocks'])) {
                 return [];
@@ -99,7 +99,7 @@ final class DocumentVersionBlockLayerResolver
      */
     private function blockFromLegacySnapshotOnly(DocumentVersion $version, string $documentBlockId): ?array
     {
-        $snap = $version->snapshot_data;
+        $snap = $version->resolvedSnapshotData();
         $blocks = is_array($snap) && isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
 
         foreach ($blocks as $b) {

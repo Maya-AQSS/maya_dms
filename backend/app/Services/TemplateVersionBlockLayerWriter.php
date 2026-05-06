@@ -47,7 +47,7 @@ final class TemplateVersionBlockLayerWriter
 
         /** @var array<string, array<string, mixed>> $prevById */
         $prevById = [];
-        foreach ($previous->blocks_snapshot ?? [] as $row) {
+        foreach ($previous->blocksSnapshotRows() as $row) {
             if (is_array($row) && isset($row['id']) && is_string($row['id'])) {
                 $prevById[$row['id']] = $row;
             }

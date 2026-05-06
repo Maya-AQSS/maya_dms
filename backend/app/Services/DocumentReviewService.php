@@ -6,7 +6,6 @@ use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
-use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -20,7 +19,6 @@ class DocumentReviewService
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly SnapshotServiceInterface $snapshotService,
         private readonly DocumentStateService $stateService,
-        private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
     ) {}
 
     /**
@@ -81,16 +79,6 @@ class DocumentReviewService
                     triggeredBy: $actorId,
                     notes: $changelog,
                 ));
-                $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($documentId);
-
-                $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
-                    Document::class,
-                    $documentId,
-                    (int) $latestVersion->version_number,
-                    is_array($latestVersion->snapshot_data) ? $latestVersion->snapshot_data : [],
-                    $actorId,
-                    $changelog,
-                );
 
                 return $this->documentRepository->findOrFail($documentId);
             }

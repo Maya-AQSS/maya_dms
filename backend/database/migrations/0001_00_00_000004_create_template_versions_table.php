@@ -6,7 +6,11 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Snapshots inmutables de plantilla publicada.
+ * Fila legacy por versión publicada de plantilla (append-only).
+ *
+ * El JSON completo de publicación vive en {@see \App\Models\EntityVersion} (`snapshot_data`), enlazado por
+ * `entity_version_id`. `blocks_snapshot` puede ser null cuando existe ese enlace (sin duplicar JSON).
+ *
  * En PostgreSQL se define forbid_append_only_mutation() y el trigger append-only; la misma función
  * se reutiliza en block_versions (migración posterior). En SQLite (tests) solo aplica la capa de aplicación.
  */
@@ -20,7 +24,7 @@ return new class extends Migration
             // Opcional: vínculo con entity_versions; la FK se define en create_entity_versions_table.
             $table->uuid('entity_version_id')->nullable();
             $table->unsignedInteger('version_number');
-            $table->json('blocks_snapshot');
+            $table->json('blocks_snapshot')->nullable();
             $table->text('changelog');
             $table->string('published_by');
             $table->timestamp('published_at');

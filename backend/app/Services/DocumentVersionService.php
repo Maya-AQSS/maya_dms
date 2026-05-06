@@ -50,7 +50,8 @@ class DocumentVersionService
         try {
             $version = $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
 
-            $snapshotData = is_array($version->snapshot_data) ? $version->snapshot_data : [];
+            $resolved = $version->resolvedSnapshotData();
+            $snapshotData = is_array($resolved) ? $resolved : [];
             $snapshotData['blocks'] = $this->documentVersionBlockLayerResolver->resolveBlocksSnapshot((string) $version->id);
 
             return [

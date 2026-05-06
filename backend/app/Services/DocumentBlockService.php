@@ -171,8 +171,7 @@ class DocumentBlockService
 
         if ($document->templateVersion !== null) {
             $versionNumber = (int) $document->templateVersion->version_number;
-            $snap = $document->templateVersion->blocks_snapshot;
-            $fromLegacy = $this->sortedSnapshotBlocks(is_array($snap) ? $snap : []);
+            $fromLegacy = $this->sortedSnapshotBlocks($document->templateVersion->blocksSnapshotRows());
             if ($fromLegacy !== []) {
                 return $fromLegacy;
             }
@@ -182,8 +181,7 @@ class DocumentBlockService
                 $versionNumber = (int) $meta['version_number'];
                 $tv = $this->templateVersionRepository->findOptional((string) $document->template_version_id);
                 if ($tv !== null) {
-                    $snap = $tv->blocks_snapshot;
-                    $fromLegacy = $this->sortedSnapshotBlocks(is_array($snap) ? $snap : []);
+                    $fromLegacy = $this->sortedSnapshotBlocks($tv->blocksSnapshotRows());
                     if ($fromLegacy !== []) {
                         return $fromLegacy;
                     }

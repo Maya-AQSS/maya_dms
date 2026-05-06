@@ -135,7 +135,7 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
             'id' => (string) Str::uuid(),
             'template_id' => $templateId,
             'version_number' => $versionNumber,
-            'blocks_snapshot' => $blocksSnapshot,
+            'blocks_snapshot' => $entityVersionId !== null ? null : $blocksSnapshot,
             'changelog' => $changelog,
             'published_by' => $publishedBy,
             'published_at' => $now,

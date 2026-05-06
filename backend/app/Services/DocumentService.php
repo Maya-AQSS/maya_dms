@@ -15,7 +15,6 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
-use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Support\PublishedTemplateVersionMetaMerge;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -34,7 +33,6 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentShareService $documentShareService,
         private readonly DocumentStateService $documentStateService,
         private readonly DocumentReviewService $documentReviewService,
-        private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
     ) {}
 
@@ -64,8 +62,8 @@ class DocumentService implements DocumentServiceInterface
             $version = $this->resolveTemplateVersionRowForNewDocument($dto->templateId);
         }
 
-        $snapshot = $version->blocks_snapshot;
-        if (! is_array($snapshot) || $snapshot === []) {
+        $snapshot = $version->blocksSnapshotRows();
+        if ($snapshot === []) {
             throw ValidationException::withMessages([
                 'template_id' => ['La versión de plantilla no contiene bloques.'],
             ]);
@@ -112,8 +110,9 @@ class DocumentService implements DocumentServiceInterface
 
             $publishedSnapshot = $this->documentRepository->findLatestPublishedDocumentVersion($sourceDocumentId);
 
-            if ($publishedSnapshot !== null && is_array($publishedSnapshot->snapshot_data)) {
-                $snap = $publishedSnapshot->snapshot_data;
+            $resolvedPublish = $publishedSnapshot !== null ? $publishedSnapshot->resolvedSnapshotData() : null;
+            if ($publishedSnapshot !== null && is_array($resolvedPublish)) {
+                $snap = $resolvedPublish;
                 $docSnap = isset($snap['document']) && is_array($snap['document']) ? $snap['document'] : [];
                 $blockSnapshots = isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
                 $blockRows = $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId);
@@ -602,15 +601,6 @@ class DocumentService implements DocumentServiceInterface
                     triggeredBy: $actorId,
                     notes: $autoChangelog,
                 ));
-                $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($documentId);
-                $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
-                    Document::class,
-                    $documentId,
-                    (int) $latestVersion->version_number,
-                    is_array($latestVersion->snapshot_data) ? $latestVersion->snapshot_data : [],
-                    $actorId,
-                    $autoChangelog,
-                );
 
                 return $this->documentRepository->findOrFail($documentId);
             }
@@ -762,16 +752,6 @@ class DocumentService implements DocumentServiceInterface
                 triggeredBy: $actorId,
                 notes: $changelog,
             ));
-            $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($documentId);
-
-            $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
-                Document::class,
-                $documentId,
-                (int) $latestVersion->version_number,
-                is_array($latestVersion->snapshot_data) ? $latestVersion->snapshot_data : [],
-                $actorId,
-                $changelog,
-            );
 
             return $this->documentRepository->findOrFail($documentId);
         });

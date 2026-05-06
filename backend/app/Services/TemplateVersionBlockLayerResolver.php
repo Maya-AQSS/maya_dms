@@ -7,7 +7,8 @@ use App\Models\TemplateVersionBlockLayer;
 
 /**
  * Reconstruye el snapshot efectivo de bloques solo desde capas incrementales (sin usar blocks_snapshot).
- * Sirve para validación y futuras lecturas; hoy {@see TemplateVersion::$blocks_snapshot} sigue siendo la fuente principal en API.
+ * Si {@see TemplateVersion::$blocks_snapshot} es null, se usan bloques desde {@see TemplateVersion::blocksSnapshotRows()}
+ * (entity_versions enlazada).
  */
 final class TemplateVersionBlockLayerResolver
 {
@@ -28,9 +29,7 @@ final class TemplateVersionBlockLayerResolver
             ->get();
 
         if ($layers->isEmpty()) {
-            $snap = $version->blocks_snapshot;
-
-            return is_array($snap) ? array_values($snap) : [];
+            return $version->blocksSnapshotRows();
         }
 
         $out = [];
@@ -91,7 +90,7 @@ final class TemplateVersionBlockLayerResolver
      */
     private function blockFromLegacySnapshotOnly(TemplateVersion $version, string $templateBlockId): ?array
     {
-        foreach ($version->blocks_snapshot ?? [] as $b) {
+        foreach ($version->blocksSnapshotRows() as $b) {
             if (is_array($b) && isset($b['id']) && (string) $b['id'] === $templateBlockId) {
                 return $b;
             }

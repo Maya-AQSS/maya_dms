@@ -7,7 +7,6 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
-use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
 use App\Services\DocumentReviewService;
@@ -51,10 +50,9 @@ class DocumentServiceSubmitTest extends TestCase
         $shareSvc  = Mockery::mock(DocumentShareService::class);
         $stateSvc  = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
-        $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $service = new DocumentService($repo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionLifecycleSvc, $entityVersionRepo);
+        $service = new DocumentService($repo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo);
 
         $this->expectException(AuthorizationException::class);
 
@@ -83,10 +81,9 @@ class DocumentServiceSubmitTest extends TestCase
         $shareSvc = Mockery::mock(DocumentShareService::class);
         $stateSvc = Mockery::mock(DocumentStateService::class);
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
-        $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $service = new DocumentService($repo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionLifecycleSvc, $entityVersionRepo);
+        $service = new DocumentService($repo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo);
 
         $this->expectException(ValidationException::class);
 

@@ -34,6 +34,29 @@ class TemplateVersion extends Model
         ];
     }
 
+    /**
+     * Filas de bloques: columna legacy o, si es null, `snapshot_data.blocks` en {@see EntityVersion} enlazada.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function blocksSnapshotRows(): array
+    {
+        if ($this->blocks_snapshot !== null) {
+            return array_values($this->blocks_snapshot);
+        }
+
+        $this->loadMissing('entityVersion');
+        $entity = $this->entityVersion;
+        if ($entity !== null && is_array($entity->snapshot_data)) {
+            $blocks = $entity->snapshot_data['blocks'] ?? null;
+            if (is_array($blocks)) {
+                return array_values($blocks);
+            }
+        }
+
+        return [];
+    }
+
     protected static function booted(): void
     {
         static::updating(function () {

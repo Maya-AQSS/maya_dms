@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 
 class SnapshotService implements SnapshotServiceInterface
@@ -12,6 +13,7 @@ class SnapshotService implements SnapshotServiceInterface
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly DocumentVersionBlockLayerWriter $documentVersionBlockLayerWriter,
+        private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
     ) {}
 
     /**
@@ -25,13 +27,32 @@ class SnapshotService implements SnapshotServiceInterface
         $nextNumber = $this->documentRepository->maxDocumentVersionNumber($dto->documentId) + 1;
         $snapshot = $this->buildDocumentVersionSnapshot($document, $nextNumber);
 
+        $entityVersionId = null;
+        if ($dto->triggerEvent === 'published') {
+            $changelog = is_string($dto->notes) ? trim($dto->notes) : null;
+            if ($changelog === '') {
+                $changelog = null;
+            }
+
+            $entityVersion = $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
+                Document::class,
+                $dto->documentId,
+                $nextNumber,
+                $snapshot,
+                $dto->triggeredBy,
+                $changelog,
+            );
+            $entityVersionId = (string) $entityVersion->id;
+        }
+
         $this->documentRepository->insertDocumentVersion(
             $dto->documentId,
             $nextNumber,
             $dto->triggerEvent,
             $dto->triggeredBy,
-            $snapshot,
+            $entityVersionId !== null ? null : $snapshot,
             $dto->notes,
+            $entityVersionId,
         );
 
         $document->refresh();
