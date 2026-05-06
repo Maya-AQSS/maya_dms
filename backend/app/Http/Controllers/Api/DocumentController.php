@@ -9,6 +9,7 @@ use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
 use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
+use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
@@ -243,6 +244,28 @@ class DocumentController extends Controller
         );
 
         return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+    }
+
+    /**
+     * Publicado → borrador (nueva versión de edición sobre el mismo expediente).
+     */
+    public function startNewVersion(StartNewDocumentRevisionRequest $request, string $document): JsonResponse
+    {
+        $model = $this->documentService->findOrFail($document);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $userId = (string) $request->user()->getAuthIdentifier();
+        $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);
+
+        $this->apiTeamEmbedService->embedOnDocument($updated, $userId);
+        $blocks = $this->documentService->blocksForDisplay($updated);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($updated))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ]);
     }
 
     /**

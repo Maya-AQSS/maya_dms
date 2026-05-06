@@ -68,6 +68,11 @@ interface DocumentServiceInterface
     public function publishDocument(string $documentId, string $actorId, string $changelog): Document;
 
     /**
+     * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión antes de volver a publicar.
+     */
+    public function startNewRevisionCycle(string $documentId, string $actorId): Document;
+
+    /**
      * Delega la propiedad del documento a otro usuario.
      */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document;

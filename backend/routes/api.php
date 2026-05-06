@@ -95,6 +95,8 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('document');
         Route::post('documents/{document}/publish', [DocumentController::class, 'publish'])
             ->whereUuid('document');
+        Route::post('documents/{document}/new-version', [DocumentController::class, 'startNewVersion'])
+            ->whereUuid('document');
         Route::post('documents/{document}/delegate', [DocumentController::class, 'delegate'])
             ->whereUuid('document');
 

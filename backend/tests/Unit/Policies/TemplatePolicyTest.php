@@ -165,6 +165,66 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->update($user, $template));
     }
 
+    public function test_start_revision_denied_when_not_published(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user      = $this->makeJwtUser($creatorId, ['templates.read']);
+        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
+
+        $this->assertFalse($this->policy->startRevision($user, $template));
+    }
+
+    public function test_start_revision_allows_creator_when_published_and_can_view(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user      = $this->makeJwtUser($creatorId, ['templates.read']);
+        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'published');
+
+        $this->assertTrue($this->policy->startRevision($user, $template));
+    }
+
+    public function test_start_revision_allows_templates_update_on_foreign_published_when_user_can_view(): void
+    {
+        $user = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['templates.read', 'templates.update'],
+        );
+        $template = $this->makeTemplate(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            status: 'published',
+        );
+
+        $this->assertTrue($this->policy->startRevision($user, $template));
+    }
+
+    public function test_start_revision_denied_on_foreign_published_without_templates_update(): void
+    {
+        $user = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['templates.read'],
+        );
+        $template = $this->makeTemplate(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->startRevision($user, $template));
+    }
+
+    public function test_start_revision_denied_on_foreign_published_without_templates_read(): void
+    {
+        $user = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['templates.update'],
+        );
+        $template = $this->makeTemplate(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->startRevision($user, $template));
+    }
+
     /**
      * @param  list<string>  $permissions
      */

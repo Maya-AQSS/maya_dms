@@ -200,6 +200,9 @@ class TemplatePolicy
 
     /**
      * Publicada → borrador para preparar una nueva versión (misma plantilla).
+     *
+     * Misma idea que {@see self::update} en estado `published`: hace falta poder ver la plantilla
+     * y ser creador o tener `templates.update`.
      */
     public function startRevision(JwtUser $user, Template $template): bool
     {
@@ -207,7 +210,13 @@ class TemplatePolicy
             return false;
         }
 
-        return $user->getAuthIdentifier() === $template->created_by;
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+
+        return $isCreator || $user->hasPermission('templates.update');
     }
 
     /**

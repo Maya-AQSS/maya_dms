@@ -629,6 +629,82 @@ class DocumentsTemplateVersionApiTest extends TestCase
         );
     }
 
+    public function test_post_document_new_version_sets_draft_when_published(): void
+    {
+        // Sin revisores en plantilla: submit puede publicar directo; el objetivo es tener published antes de new-version.
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId, [
+            'documents.create',
+            'templates.read',
+            'templates.create',
+            'users.search',
+        ]);
+
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla doc nueva versión',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headers)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Expediente nueva versión',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [
+                ['type' => 'paragraph', 'content' => 'Texto para publicación automática'],
+            ],
+        ], $headers)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $headers)->assertOk();
+
+        $this->assertSame(
+            'published',
+            (string) DB::table('documents')->where('id', $docId)->value('status'),
+        );
+
+        $this->postJson("/api/v1/documents/{$docId}/new-version", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->assertSame('draft', (string) DB::table('documents')->where('id', $docId)->value('status'));
+        $this->assertNull(DB::table('documents')->where('id', $docId)->value('published_at'));
+    }
+
     public function test_clone_document_returns_forbidden_for_read_only_collaborator(): void
     {
         $ownerId = (string) Str::uuid();

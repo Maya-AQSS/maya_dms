@@ -550,6 +550,25 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Publicado → borrador para preparar una nueva versión publicada del mismo expediente.
+     */
+    public function startNewRevisionCycle(string $documentId, string $actorId): Document
+    {
+        $document = $this->documentRepository->findOrFail($documentId);
+
+        if ($document->status !== 'published') {
+            throw ValidationException::withMessages([
+                'status' => ['Solo un documento publicado puede pasar a borrador para una nueva versión.'],
+            ]);
+        }
+
+        return $this->documentStateService->transition($documentId, 'draft', $actorId, [
+            'submitted_at' => null,
+            'published_at' => null,
+        ]);
+    }
+
+    /**
      * Envia el documento a revisión.
      */
     public function submitToReview(string $documentId, string $actorId): Document

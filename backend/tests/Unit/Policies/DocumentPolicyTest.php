@@ -239,6 +239,48 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->delegate($creator, $doc));
     }
 
+    public function test_start_revision_denied_when_not_published(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user   = $this->makeJwtUser($userId);
+        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'draft');
+
+        $this->assertFalse($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_start_revision_allows_owner_when_published_and_can_update(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user   = $this->makeJwtUser($userId);
+        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'published');
+
+        $this->assertTrue($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_start_revision_allows_documents_update_when_published_and_can_update(): void
+    {
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['documents.update']);
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'published',
+        );
+
+        $this->assertTrue($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_start_revision_denied_when_published_but_update_denied(): void
+    {
+        $user = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff');
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->startRevision($user, $doc));
+    }
+
     /**
      * @param  list<string>  $permissions
      */
@@ -254,13 +296,13 @@ class DocumentPolicyTest extends TestCase
         ]);
     }
 
-    private function makeDocument(string $createdBy, string $ownerId): Document
+    private function makeDocument(string $createdBy, string $ownerId, string $status = 'draft'): Document
     {
         $doc = new Document;
         $doc->forceFill([
             'created_by' => $createdBy,
             'owner_id'   => $ownerId,
-            'status'     => 'draft',
+            'status'     => $status,
         ]);
 
         return $doc;
