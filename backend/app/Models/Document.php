@@ -170,6 +170,11 @@ class Document extends Model
         return $this->hasMany(DocumentVersion::class);
     }
 
+    public function entityVersions(): MorphMany
+    {
+        return $this->morphMany(EntityVersion::class, 'versionable')->orderBy('version_number');
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(DocumentReview::class);

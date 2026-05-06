@@ -207,6 +207,11 @@ class Template extends Model
         return $this->hasMany(TemplateVersion::class)->orderBy('version_number');
     }
 
+    public function entityVersions(): MorphMany
+    {
+        return $this->morphMany(EntityVersion::class, 'versionable')->orderBy('version_number');
+    }
+
     public function comments(): MorphMany
     {
         return $this->morphMany(Comment::class, 'commentable');
