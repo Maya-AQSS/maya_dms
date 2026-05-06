@@ -15,6 +15,11 @@ interface TemplateVersionRepositoryInterface
     public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion;
 
     /**
+     * Fila legacy por plantilla y número de versión publicada.
+     */
+    public function findByTemplateIdAndVersionNumber(string $templateId, int $versionNumber): ?TemplateVersion;
+
+    /**
      * Metadatos de una versión publicada por id (sin cargar blocks_snapshot).
      *
      * @return array{id: string, version_number: int, changelog: string}|null

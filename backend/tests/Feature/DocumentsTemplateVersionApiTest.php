@@ -209,6 +209,81 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonValidationErrors(['template_id']);
     }
 
+    public function test_store_document_fails_when_entity_version_is_ahead_without_matching_legacy_row(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla desincronizada',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'version' => 1,
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $now = now();
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 2,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $reviewerId,
+            'published_at' => $now,
+            'changelog' => 'v2 solo entity',
+            'snapshot_data' => json_encode(['blocks' => [['id' => $b1, 'sort_order' => 0]]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => $now,
+            'updated_at' => $now,
+        ]);
+
+        $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc bloqueado por desincronía',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['template_id']);
+    }
+
     public function test_store_document_can_be_created_with_template_version_only(): void
     {
         $creatorId = (string) Str::uuid();

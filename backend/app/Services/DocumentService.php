@@ -8,6 +8,7 @@ use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Models\Template;
+use App\Models\TemplateVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -15,6 +16,7 @@ use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Support\PublishedTemplateVersionMetaMerge;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -58,12 +60,7 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
         } else {
-            $version = $this->templateVersionRepository->findLatestPublishedForTemplate($dto->templateId);
-            if ($version === null) {
-                throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla no tiene versiones publicadas; no se puede crear un documento.'],
-                ]);
-            }
+            $version = $this->resolveTemplateVersionRowForNewDocument($dto->templateId);
         }
 
         $snapshot = $version->blocks_snapshot;
@@ -133,7 +130,12 @@ class DocumentService implements DocumentServiceInterface
 
         $options = [];
         foreach ($templates as $template) {
-            $version = $this->templateVersionRepository->findLatestPublishedForTemplate($template->id);
+            $targetNumber = $this->resolveEffectivePublishedTemplateVersionNumber((string) $template->id);
+            if ($targetNumber === null) {
+                continue;
+            }
+
+            $version = $this->templateVersionRepository->findByTemplateIdAndVersionNumber((string) $template->id, $targetNumber);
             if ($version === null) {
                 continue;
             }
@@ -264,29 +266,47 @@ class DocumentService implements DocumentServiceInterface
         $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
         $legacyLatest = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
 
-        if ($entityLatest === null) {
-            return $legacyLatest;
-        }
-
-        $entityMeta = [
+        $entityMeta = $entityLatest === null ? null : [
             'id' => (string) $entityLatest->id,
             'version_number' => (int) $entityLatest->version_number,
             'changelog' => (string) ($entityLatest->changelog ?? ''),
         ];
 
-        if ($legacyLatest === null) {
-            return $entityMeta;
+        return PublishedTemplateVersionMetaMerge::preferLatestMeta($entityMeta, $legacyLatest);
+    }
+
+    private function resolveEffectivePublishedTemplateVersionNumber(string $templateId): ?int
+    {
+        $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        $legacyLatest = $this->templateVersionRepository->findLatestPublishedForTemplate($templateId);
+
+        return PublishedTemplateVersionMetaMerge::preferLatestVersionNumber(
+            $entityLatest !== null ? (int) $entityLatest->version_number : null,
+            $legacyLatest !== null ? (int) $legacyLatest->version_number : null,
+        );
+    }
+
+    /**
+     * Versión legacy ({@see TemplateVersion}) a usar al crear un documento sin {@see CreateDocumentDto::$templateVersionId}.
+     * Exige fila en {@code template_versions} para el número efectivo (FK); si entity_versions va por delante sin fila legacy, error explícito.
+     */
+    private function resolveTemplateVersionRowForNewDocument(string $templateId): TemplateVersion
+    {
+        $targetNumber = $this->resolveEffectivePublishedTemplateVersionNumber($templateId);
+        if ($targetNumber === null) {
+            throw ValidationException::withMessages([
+                'template_id' => ['La plantilla no tiene versiones publicadas; no se puede crear un documento.'],
+            ]);
         }
 
-        if ($entityMeta['version_number'] > $legacyLatest['version_number']) {
-            return $entityMeta;
+        $version = $this->templateVersionRepository->findByTemplateIdAndVersionNumber($templateId, $targetNumber);
+        if ($version === null) {
+            throw ValidationException::withMessages([
+                'template_id' => ['La plantilla tiene una versión publicada desincronizada respecto al historial clásico. Contacte con soporte o vuelva a publicar la plantilla.'],
+            ]);
         }
 
-        if ($legacyLatest['version_number'] > $entityMeta['version_number']) {
-            return $legacyLatest;
-        }
-
-        return $entityMeta;
+        return $version;
     }
 
     /**

@@ -140,7 +140,8 @@ class TemplateService implements TemplateServiceInterface
         }
 
         // En transición parcial, combina ambas fuentes y deduplica por número,
-        // priorizando entity_versions frente a legacy cuando colisionan.
+        // priorizando entity_versions frente a legacy cuando colisionan
+        // (misma regla de empate que {@see PublishedTemplateVersionMetaMerge::preferLatestMeta}).
         return $entityVersions
             ->concat($legacyVersions)
             ->sortBy(static fn (TemplateVersion|EntityVersion $v): int => (int) $v->version_number)

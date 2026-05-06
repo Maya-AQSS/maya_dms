@@ -30,6 +30,17 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
     }
 
     /**
+     * Fila legacy por plantilla y número de versión publicada.
+     */
+    public function findByTemplateIdAndVersionNumber(string $templateId, int $versionNumber): ?TemplateVersion
+    {
+        return TemplateVersion::query()
+            ->where('template_id', $templateId)
+            ->where('version_number', $versionNumber)
+            ->first();
+    }
+
+    /**
      * Metadatos de una versión por id (consulta ligera, sin JSON de bloques).
      *
      * @return array{id: string, version_number: int, changelog: string}|null

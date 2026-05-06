@@ -54,8 +54,21 @@ class DocumentServiceCreationOptionsTest extends TestCase
             ->with('MOD-1')
             ->andReturn(collect([$templateWithVersion, $templateWithoutVersion]));
 
+        $snap = Mockery::mock(SnapshotServiceInterface::class);
+        $blockSvc = Mockery::mock(DocumentBlockService::class);
+        $verSvc = Mockery::mock(DocumentVersionService::class);
+        $shareSvc = Mockery::mock(DocumentShareService::class);
+        $stateSvc = Mockery::mock(DocumentStateService::class);
+        $reviewSvc = Mockery::mock(DocumentReviewService::class);
+        $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
+        $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
+
         $version = new TemplateVersion;
-        $version->forceFill(['id' => 'ver-1', 'template_id' => 'tpl-1']);
+        $version->forceFill([
+            'id' => 'ver-1',
+            'template_id' => 'tpl-1',
+            'version_number' => 1,
+        ]);
 
         $verRepo->shouldReceive('findLatestPublishedForTemplate')
             ->once()
@@ -67,14 +80,20 @@ class DocumentServiceCreationOptionsTest extends TestCase
             ->with('tpl-2')
             ->andReturn(null);
 
-        $snap = Mockery::mock(SnapshotServiceInterface::class);
-        $blockSvc = Mockery::mock(DocumentBlockService::class);
-        $verSvc = Mockery::mock(DocumentVersionService::class);
-        $shareSvc = Mockery::mock(DocumentShareService::class);
-        $stateSvc = Mockery::mock(DocumentStateService::class);
-        $reviewSvc = Mockery::mock(DocumentReviewService::class);
-        $entityVersionLifecycleSvc = Mockery::mock(EntityVersionLifecycleServiceInterface::class);
-        $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
+        $verRepo->shouldReceive('findByTemplateIdAndVersionNumber')
+            ->once()
+            ->with('tpl-1', 1)
+            ->andReturn($version);
+
+        $entityVersionRepo->shouldReceive('findLatestPublishedForEntity')
+            ->once()
+            ->with(Template::class, 'tpl-1')
+            ->andReturn(null);
+
+        $entityVersionRepo->shouldReceive('findLatestPublishedForEntity')
+            ->once()
+            ->with(Template::class, 'tpl-2')
+            ->andReturn(null);
 
         $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionLifecycleSvc, $entityVersionRepo);
 
