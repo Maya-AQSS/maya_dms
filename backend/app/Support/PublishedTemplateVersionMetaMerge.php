@@ -3,32 +3,14 @@
 namespace App\Support;
 
 /**
- * Regla única para comparar la última versión publicada de plantilla entre
+ * Regla única para comparar metadatos de versión publicada entre
  * {@see \App\Models\EntityVersion} y {@see \App\Models\TemplateVersion} (legacy).
  *
- * Debe mantenerse alineada con {@see \App\Services\TemplateService::listPublishedVersions}:
- * misma prioridad a entity_versions cuando el número de versión coincide.
+ * Usada por {@see \App\Repositories\Eloquent\TemplateVersionRepository::findLatestPublishedMetaForTemplate}.
+ * Listados como {@see \App\Services\TemplateService::listPublishedVersions} deduplican por número con la misma prioridad.
  */
 final class PublishedTemplateVersionMetaMerge
 {
-    /**
-     * Prefiere la versión más reciente entre entity_versions y template_versions.
-     */
-    public static function preferLatestVersionNumber(?int $entityVersionNumber, ?int $legacyVersionNumber): ?int
-    {
-        if ($entityVersionNumber === null && $legacyVersionNumber === null) {
-            return null;
-        }
-        if ($entityVersionNumber === null) {
-            return $legacyVersionNumber;
-        }
-        if ($legacyVersionNumber === null) {
-            return $entityVersionNumber;
-        }
-
-        return max($entityVersionNumber, $legacyVersionNumber);
-    }
-
     /**
      * Prefiere la versión más reciente entre entity_versions y template_versions.
      *

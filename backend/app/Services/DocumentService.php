@@ -16,7 +16,6 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
-use App\Support\PublishedTemplateVersionMetaMerge;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
@@ -393,34 +392,20 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
-     * Última versión publicada de plantilla: prioriza el mayor version_number entre entity_versions y template_versions;
-     * si empatan, se prioriza entity_versions.
+     * Última versión publicada de plantilla (merge entity_versions + template_versions en el repositorio).
      *
      * @return array{id: string, version_number: int, changelog: string}|null
      */
     private function resolveLatestPublishedTemplateVersionMeta(string $templateId): ?array
     {
-        $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
-        $legacyLatest = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
-
-        $entityMeta = $entityLatest === null ? null : [
-            'id' => (string) $entityLatest->id,
-            'version_number' => (int) $entityLatest->version_number,
-            'changelog' => (string) ($entityLatest->changelog ?? ''),
-        ];
-
-        return PublishedTemplateVersionMetaMerge::preferLatestMeta($entityMeta, $legacyLatest);
+        return $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
     }
 
     private function resolveEffectivePublishedTemplateVersionNumber(string $templateId): ?int
     {
-        $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
-        $legacyLatest = $this->templateVersionRepository->findLatestPublishedForTemplate($templateId);
+        $meta = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
 
-        return PublishedTemplateVersionMetaMerge::preferLatestVersionNumber(
-            $entityLatest !== null ? (int) $entityLatest->version_number : null,
-            $legacyLatest !== null ? (int) $legacyLatest->version_number : null,
-        );
+        return $meta !== null ? $meta['version_number'] : null;
     }
 
     /**

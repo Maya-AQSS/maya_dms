@@ -40,6 +40,13 @@ interface EntityVersionRepositoryInterface
     public function findLatestPublishedForEntity(string $versionableType, string $versionableId): ?EntityVersion;
 
     /**
+     * Metadatos ligeros de la última versión publicada de una entidad (sin snapshot).
+     *
+     * @return array{id: string, version_number: int, changelog: string}|null
+     */
+    public function findLatestPublishedMetaForVersionable(string $versionableType, string $versionableId): ?array;
+
+    /**
      * Obtiene una versión publicada concreta por número de versión.
      */
     public function findPublishedForEntityVersionNumber(

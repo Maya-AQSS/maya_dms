@@ -98,12 +98,7 @@ class TemplateVersionRepository implements TemplateVersionRepositoryInterface
             'changelog' => (string) $legacyRow->changelog,
         ];
 
-        $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
-        $entityMeta = $entityLatest === null ? null : [
-            'id' => (string) $entityLatest->id,
-            'version_number' => (int) $entityLatest->version_number,
-            'changelog' => (string) ($entityLatest->changelog ?? ''),
-        ];
+        $entityMeta = $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Template::class, $templateId);
 
         return PublishedTemplateVersionMetaMerge::preferLatestMeta($entityMeta, $legacyMeta);
     }

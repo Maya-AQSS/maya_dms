@@ -68,6 +68,23 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function findLatestPublishedMetaForVersionable(string $versionableType, string $versionableId): ?array
+    {
+        $row = $this->findLatestPublishedForEntity($versionableType, $versionableId);
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row->id,
+            'version_number' => (int) $row->version_number,
+            'changelog' => (string) ($row->changelog ?? ''),
+        ];
+    }
+
+    /**
      * Obtiene una versión publicada concreta por número de versión.
      *
      * @param string $versionableType El tipo de versionable.

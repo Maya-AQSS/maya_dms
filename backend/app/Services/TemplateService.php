@@ -14,7 +14,6 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
-use App\Support\PublishedTemplateVersionMetaMerge;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
@@ -143,7 +142,7 @@ class TemplateService implements TemplateServiceInterface
 
         // En transición parcial, combina ambas fuentes y deduplica por número,
         // priorizando entity_versions frente a legacy cuando colisionan
-        // (misma regla de empate que {@see PublishedTemplateVersionMetaMerge::preferLatestMeta}).
+        // (misma regla que {@see \App\Repositories\Eloquent\TemplateVersionRepository::findLatestPublishedMetaForTemplate}).
         return $entityVersions
             ->concat($legacyVersions)
             ->sortBy(static fn (TemplateVersion|EntityVersion $v): int => (int) $v->version_number)
@@ -420,16 +419,7 @@ class TemplateService implements TemplateServiceInterface
      */
     private function resolveLatestPublishedTemplateSnapshotForClone(string $templateId): ?array
     {
-        $entityLatest = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
-        $legacyMeta = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
-
-        $entityMeta = $entityLatest !== null ? [
-            'id' => (string) $entityLatest->id,
-            'version_number' => (int) $entityLatest->version_number,
-            'changelog' => (string) ($entityLatest->changelog ?? ''),
-        ] : null;
-
-        $winner = PublishedTemplateVersionMetaMerge::preferLatestMeta($entityMeta, $legacyMeta);
+        $winner = $this->templateVersionRepository->findLatestPublishedMetaForTemplate($templateId);
         if ($winner === null) {
             return $this->resolveFallbackPublishedTemplateSnapshot($templateId);
         }

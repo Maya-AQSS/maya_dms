@@ -68,12 +68,16 @@ class DocumentServiceCreationOptionsTest extends TestCase
             'version_number' => 1,
         ]);
 
-        $verRepo->shouldReceive('findLatestPublishedForTemplate')
+        $verRepo->shouldReceive('findLatestPublishedMetaForTemplate')
             ->once()
             ->with('tpl-1')
-            ->andReturn($version);
+            ->andReturn([
+                'id' => 'ver-1',
+                'version_number' => 1,
+                'changelog' => '',
+            ]);
 
-        $verRepo->shouldReceive('findLatestPublishedForTemplate')
+        $verRepo->shouldReceive('findLatestPublishedMetaForTemplate')
             ->once()
             ->with('tpl-2')
             ->andReturn(null);
@@ -82,16 +86,6 @@ class DocumentServiceCreationOptionsTest extends TestCase
             ->once()
             ->with('tpl-1', 1)
             ->andReturn($version);
-
-        $entityVersionRepo->shouldReceive('findLatestPublishedForEntity')
-            ->once()
-            ->with(Template::class, 'tpl-1')
-            ->andReturn(null);
-
-        $entityVersionRepo->shouldReceive('findLatestPublishedForEntity')
-            ->once()
-            ->with(Template::class, 'tpl-2')
-            ->andReturn(null);
 
         $service = new DocumentService($docRepo, $tplRepo, $verRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo);
 
