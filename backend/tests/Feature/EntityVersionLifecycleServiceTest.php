@@ -5,7 +5,7 @@ namespace Tests\Feature;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Services\EntityVersionLifecycleService;
+use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -21,7 +21,7 @@ class EntityVersionLifecycleServiceTest extends TestCase
         $templateId = $this->createTemplateForVersioning();
         $version = $this->createEntityVersion($templateId, 'draft');
 
-        $service = app(EntityVersionLifecycleService::class);
+        $service = app(EntityVersionLifecycleServiceInterface::class);
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('snapshot de publicación es obligatorio');
@@ -34,7 +34,7 @@ class EntityVersionLifecycleServiceTest extends TestCase
         $version = $this->createEntityVersion($templateId, 'in_review');
         $actorId = (string) Str::uuid();
 
-        $service = app(EntityVersionLifecycleService::class);
+        $service = app(EntityVersionLifecycleServiceInterface::class);
         $published = $service->publish(
             $version->id,
             ['name' => 'Snapshot final', 'blocks' => [['id' => 'b1']]],
@@ -55,7 +55,7 @@ class EntityVersionLifecycleServiceTest extends TestCase
         $templateId = $this->createTemplateForVersioning();
         $version = $this->createEntityVersion($templateId, 'published');
 
-        $service = app(EntityVersionLifecycleService::class);
+        $service = app(EntityVersionLifecycleServiceInterface::class);
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('Solo se puede publicar una versión');
@@ -78,7 +78,7 @@ class EntityVersionLifecycleServiceTest extends TestCase
             'published_at' => now(),
         ]);
 
-        $service = app(EntityVersionLifecycleService::class);
+        $service = app(EntityVersionLifecycleServiceInterface::class);
 
         $this->expectException(ValidationException::class);
         $this->expectExceptionMessage('snapshot inmutable publicado');
@@ -91,7 +91,7 @@ class EntityVersionLifecycleServiceTest extends TestCase
         $version = $this->createEntityVersion($templateId, 'draft');
         $actorId = (string) Str::uuid();
 
-        $service = app(EntityVersionLifecycleService::class);
+        $service = app(EntityVersionLifecycleServiceInterface::class);
         $published = $service->publish(
             $version->id,
             ['name' => 'Snapshot final'],
