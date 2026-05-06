@@ -1,6 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { fetchTemplate, submitTemplateForReview, deleteTemplate, cloneTemplate, startTemplateNewVersion } from '../api/templates';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  fetchTemplate,
+  fetchTemplateVersionSummaries,
+  submitTemplateForReview,
+  deleteTemplate,
+  cloneTemplate,
+  startTemplateNewVersion,
+  fetchTemplateVersion,
+} from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
 import { fetchProcesses } from '../api/processes';
 import { apiFetchJson } from '../api/http';
@@ -8,7 +16,7 @@ import { normalizeBlockContentForEditor } from '../features/documents/lib/normal
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
-import type { TemplateBlock } from '../types/blocks';
+import type { BlockState, TemplateBlock } from '../types/blocks';
 import { Button, ConfirmDialog, PageTitle, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
@@ -48,9 +56,25 @@ function formatDate(iso: string | null | undefined): string {
   return iso.slice(0, 10);
 }
 
+function mapSnapshotToTemplateBlocks(templateId: string, snapshot: import('../api/templates').TemplateVersionSnapshotBlock[]): TemplateBlock[] {
+  return snapshot.map((b, idx) => ({
+    id: b.id,
+    template_id: templateId,
+    type: b.type,
+    title: b.title ?? null,
+    default_content: b.default_content ?? null,
+    description: null,
+    block_state: (b.block_state as BlockState) ?? 'locked',
+    mandatory: Boolean(b.mandatory),
+    sort_order: typeof b.sort_order === 'number' ? b.sort_order : idx,
+  }));
+}
+
 export function TemplatePreviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const templateVersionId = searchParams.get('templateVersionId');
   const location = useLocation();
   const locationState = location.state as {
     selectionMode?: boolean;
@@ -87,6 +111,7 @@ export function TemplatePreviewPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [snapshotVersionNumber, setSnapshotVersionNumber] = useState<number | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -98,6 +123,25 @@ export function TemplatePreviewPage() {
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
+  const [publishedVersionCount, setPublishedVersionCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!id) {
+      setPublishedVersionCount(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchTemplateVersionSummaries(id)
+      .then((rows) => {
+        if (!cancelled) setPublishedVersionCount(rows.length);
+      })
+      .catch(() => {
+        if (!cancelled) setPublishedVersionCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
 
   useEffect(() => {
     if (!id) {
@@ -111,19 +155,37 @@ export function TemplatePreviewPage() {
       try {
         setLoading(true);
         setError(null);
-        const [tRes, bRes] = await Promise.all([
-          fetchTemplate(id),
-          fetchBlocks(id),
-        ]);
-        if (!cancelled) {
+        setSnapshotVersionNumber(null);
+        setReviewComments([]);
+
+        if (templateVersionId) {
+          const [tRes, vRes] = await Promise.all([fetchTemplate(id), fetchTemplateVersion(templateVersionId)]);
+          if (cancelled) return;
+          if (vRes.template_id !== id) {
+            setError('La versión seleccionada no pertenece a esta plantilla.');
+            setTemplate(null);
+            setBlocks([]);
+            return;
+          }
           const t = tRes.data;
           setTemplate(t);
-          setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
-          // Fetch review comments if owner has pending feedback
-          if (t.created_by === profile?.id && t.has_review_comments) {
-            void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
-              .then((res) => { if (!cancelled) setReviewComments(res.data); })
-              .catch(() => { /* non-critical */ });
+          setSnapshotVersionNumber(vRes.version_number);
+          const snap = Array.isArray(vRes.blocks_snapshot) ? vRes.blocks_snapshot : [];
+          setBlocks(mapSnapshotToTemplateBlocks(id, snap).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+        } else {
+          const [tRes, bRes] = await Promise.all([
+            fetchTemplate(id),
+            fetchBlocks(id),
+          ]);
+          if (!cancelled) {
+            const t = tRes.data;
+            setTemplate(t);
+            setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+            if (t.created_by === profile?.id && t.has_review_comments) {
+              void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
+                .then((res) => { if (!cancelled) setReviewComments(res.data); })
+                .catch(() => { /* non-critical */ });
+            }
           }
         }
       } catch (e) {
@@ -136,7 +198,7 @@ export function TemplatePreviewPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [id, profile?.id]);
+  }, [id, profile?.id, templateVersionId]);
 
 
   const handleSendReply = async (parentId: string) => {
@@ -173,21 +235,32 @@ export function TemplatePreviewPage() {
     (isOwner ? profile?.name?.trim() : '') ||
     'Autor desconocido';
 
-  const canEdit = isOwner && isDraft;
+  const viewingPublishedSnapshot = snapshotVersionNumber !== null;
+  const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 1;
+
+  const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
   /** Igual que `TemplatePolicy::delete` (backend): creador o `templates.delete`, cualquier estado. */
   const canDelete =
+    !viewingPublishedSnapshot &&
     template != null &&
     (
       (isDraft && isOwner) ||
       (isPublished && (isOwner || hasPermission('templates.delete')))
     );
   const canClone =
-    (isDraft && isOwner) ||
-    (isPublished && (isOwner || hasPermission('templates.update')));
-  const canSubmit = isOwner && isDraft && hasReviewers && !template.has_review_comments;
+    !viewingPublishedSnapshot &&
+    (
+      (isDraft && isOwner) ||
+      (isPublished && (isOwner || hasPermission('templates.update')))
+    );
+  const canSubmit =
+    !viewingPublishedSnapshot && isOwner && isDraft && hasReviewers && !template.has_review_comments;
   /** Alineado con `TemplatePolicy::startRevision`: creador o `templates.update` en publicada. */
   const canStartNewVersion =
-    isPublished && !selectionMode && (isOwner || hasPermission('templates.update'));
+    !viewingPublishedSnapshot &&
+    isPublished &&
+    !selectionMode &&
+    (isOwner || hasPermission('templates.update'));
 
   useEffect(() => {
     if (!template?.process_id) {
@@ -272,17 +345,37 @@ export function TemplatePreviewPage() {
 
   const headerToolbar = template ? (
     <div className="flex items-center justify-center gap-2 flex-wrap">
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(template.status)}`}>
-        {STATUS_LABEL[template.status] ?? template.status}
-      </span>
-      <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-        v{template.version}
-      </span>
+      {viewingPublishedSnapshot ? (
+        <>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary-dark dark:text-primary-light border border-primary/25">
+            Versión publicada v{snapshotVersionNumber}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(`/templates/${id}`, { replace: true })}
+          >
+            Estado actual
+          </Button>
+        </>
+      ) : (
+        <>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(template.status)}`}>
+            {STATUS_LABEL[template.status] ?? template.status}
+          </span>
+          <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
+            v{template.version}
+          </span>
+        </>
+      )}
       {selectionMode ? (
         <>
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
-            Versiones
-          </Button>
+          {showVersionHistory ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
+              Versiones
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="primary"
@@ -296,10 +389,12 @@ export function TemplatePreviewPage() {
         </>
       ) : (
         <>
-          {id && <FavoriteButton entityType="template" entityId={id} />}
-          <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
-            Historial
-          </Button>
+          {!viewingPublishedSnapshot && id ? <FavoriteButton entityType="template" entityId={id} /> : null}
+          {showVersionHistory ? (
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
+              Historial
+            </Button>
+          ) : null}
           {canDelete && (
             <Button
               type="button"

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@maya/shared-ui-react';
 import { ApiHttpError } from '../api/http';
 import { fetchDocumentVersionSummaries, type DocumentVersionSummary } from '../api/documents';
@@ -21,6 +22,7 @@ function formatWhen(iso: string | null | undefined): string {
 }
 
 export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Props) {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [templateRows, setTemplateRows] = useState<TemplateVersionSummary[]>([]);
@@ -129,23 +131,30 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
           {!loading && !error && entityType === 'template' && templateRows.length > 0 && (
             <ul className="space-y-3" role="list">
               {templateRows.map((row) => (
-                <li
-                  key={row.id}
-                  className="rounded-lg border border-ui-border dark:border-ui-dark-border bg-white/80 dark:bg-ui-dark-card/70 px-3 py-2.5"
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-                      v{row.version_number}
-                    </span>
-                    <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
-                      {formatWhen(row.published_at)}
-                    </span>
-                  </div>
-                  {row.changelog ? (
-                    <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">
-                      {row.changelog}
-                    </p>
-                  ) : null}
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    className="w-full text-left rounded-lg border border-ui-border dark:border-ui-dark-border bg-white/80 dark:bg-ui-dark-card/70 px-3 py-2.5 hover:bg-white dark:hover:bg-ui-dark-card hover:border-text-muted/30 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    onClick={() => {
+                      navigate(`/templates/${encodeURIComponent(entityId)}?templateVersionId=${encodeURIComponent(row.id)}`);
+                      onClose();
+                    }}
+                    aria-label={`Ver vista previa de la plantilla en la versión ${row.version_number}`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
+                        v{row.version_number}
+                      </span>
+                      <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
+                        {formatWhen(row.published_at)}
+                      </span>
+                    </div>
+                    {row.changelog ? (
+                      <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">
+                        {row.changelog}
+                      </p>
+                    ) : null}
+                  </button>
                 </li>
               ))}
             </ul>
@@ -153,27 +162,36 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
           {!loading && !error && entityType === 'document' && documentRows.length > 0 && (
             <ul className="space-y-3" role="list">
               {documentRows.map((row) => (
-                <li
-                  key={row.id}
-                  className="rounded-lg border border-ui-border dark:border-ui-dark-border bg-white/80 dark:bg-ui-dark-card/70 px-3 py-2.5"
-                >
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-                      v{row.version_number}
-                    </span>
-                    <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
-                      {formatWhen(row.created_at)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
-                    {row.trigger_event}
-                    {row.triggered_by ? ` · ${row.triggered_by}` : ''}
-                  </p>
-                  {(row.notes ?? row.changelog) ? (
-                    <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">
-                      {row.notes ?? row.changelog}
+                <li key={row.id}>
+                  <button
+                    type="button"
+                    className="w-full text-left rounded-lg border border-ui-border dark:border-ui-dark-border bg-white/80 dark:bg-ui-dark-card/70 px-3 py-2.5 hover:bg-white dark:hover:bg-ui-dark-card hover:border-text-muted/30 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    onClick={() => {
+                      navigate(
+                        `/documents/${encodeURIComponent(entityId)}?documentVersionId=${encodeURIComponent(row.id)}`,
+                      );
+                      onClose();
+                    }}
+                    aria-label={`Ver vista previa del documento en la versión ${row.version_number}`}
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
+                        v{row.version_number}
+                      </span>
+                      <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
+                        {formatWhen(row.created_at)}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
+                      {row.trigger_event}
+                      {row.triggered_by ? ` · ${row.triggered_by}` : ''}
                     </p>
-                  ) : null}
+                    {(row.notes ?? row.changelog) ? (
+                      <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">
+                        {row.notes ?? row.changelog}
+                      </p>
+                    ) : null}
+                  </button>
                 </li>
               ))}
             </ul>

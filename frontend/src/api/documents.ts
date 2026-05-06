@@ -68,6 +68,29 @@ export async function fetchDocumentVersionSummaries(documentId: string): Promise
   return body.data;
 }
 
+/** Detalle de una versión publicada del documento (`GET documents/{id}/versions/{version}`). */
+export type DocumentVersionDetail = {
+  id: string;
+  document_id: string;
+  version_number: number;
+  trigger_event: string;
+  triggered_by: string;
+  changelog: string | null;
+  snapshot_data: Record<string, unknown>;
+  created_at: string | null;
+};
+
+/** GET /api/v1/documents/{documentId}/versions/{versionId} — snapshot completo (solo lectura). */
+export async function fetchDocumentVersionDetail(
+  documentId: string,
+  versionId: string,
+): Promise<DocumentVersionDetail> {
+  const body = await apiGetJson<{ data: DocumentVersionDetail }>(
+    `documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}`,
+  );
+  return body.data;
+}
+
 /**
  * GET /api/v1/documents/creation-options?module_id={id}
  * 
