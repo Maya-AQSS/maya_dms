@@ -37,7 +37,7 @@ vi.mock('../../../../features/user-profile', () => ({
   UserProfileProvider: ({ children }: any) => <>{children}</>,
 }));
 
-vi.mock('../../../hooks/useAutoSave', () => ({
+vi.mock('../../../../hooks/useAutoSave', () => ({
   useAutoSave: vi.fn(() => ({
     saveStatus: 'idle' as const,
     isSaving: false,
@@ -198,5 +198,109 @@ describe('WizardStep2Blocks', () => {
     expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
     expect(screen.getAllByText('Bloque 1').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Bloque 2').length).toBeGreaterThan(0);
+  });
+
+  describe('block title placeholder behavior', () => {
+    const newBlockStub = {
+      id: 'new-b',
+      title: null,
+      mandatory: false,
+      block_state: 'editable' as const,
+      type: 'paragraph',
+      default_content: null,
+      description: null,
+    };
+
+    it('new block has empty input value with "Nuevo bloque" placeholder', async () => {
+      const createBlockFn = vi.fn().mockResolvedValue(newBlockStub);
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: createBlockFn,
+        updateBlock: vi.fn(),
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      const input = screen.getByPlaceholderText('Nuevo bloque') as HTMLInputElement;
+      expect(input.value).toBe('');
+      expect(createBlockFn).toHaveBeenCalledWith(
+        expect.objectContaining({ title: null }),
+      );
+    });
+
+    it('shows validation error on blur when title is empty', async () => {
+      const createBlockFn = vi.fn().mockResolvedValue(newBlockStub);
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: createBlockFn,
+        updateBlock: vi.fn(),
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      const input = screen.getByPlaceholderText('Nuevo bloque');
+      fireEvent.blur(input);
+
+      expect(screen.getByText(/nombre del bloque es obligatorio/i)).toBeTruthy();
+    });
+
+    it('clears validation error when user types a title', async () => {
+      const createBlockFn = vi.fn().mockResolvedValue(newBlockStub);
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: createBlockFn,
+        updateBlock: vi.fn(),
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      const input = screen.getByPlaceholderText('Nuevo bloque');
+      fireEvent.blur(input);
+      expect(screen.getByText(/nombre del bloque es obligatorio/i)).toBeTruthy();
+
+      fireEvent.change(input, { target: { value: 'Mi bloque' } });
+      expect(screen.queryByText(/nombre del bloque es obligatorio/i)).toBeNull();
+    });
+
+    it('doSave blocks API call and shows error when title is empty', async () => {
+      const { useAutoSave } = await import('../../../../hooks/useAutoSave');
+      const updateBlock = vi.fn();
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: vi.fn().mockResolvedValue(newBlockStub),
+        updateBlock,
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      // Retrieve the doSave callback captured by useAutoSave mock
+      const doSave = (useAutoSave as any).mock.calls.at(-1)?.[0] as (() => Promise<void>) | undefined;
+      expect(doSave).toBeDefined();
+      await doSave?.();
+
+      await waitFor(() => expect(screen.getByText(/nombre del bloque es obligatorio/i)).toBeTruthy());
+      expect(updateBlock).not.toHaveBeenCalled();
+    });
   });
 });

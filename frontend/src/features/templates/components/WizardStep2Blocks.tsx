@@ -178,6 +178,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formDesc, setFormDesc] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
+  const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
@@ -203,6 +204,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
+    setNameError('');
     setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
     setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
     setFormUiState(blockToUiState(block));
@@ -213,6 +215,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const doSave = useCallback(async () => {
     const blockId = activeSingleIdRef.current;
     if (!blockId) return;
+    if (!formName.trim()) {
+      setNameError('El nombre del bloque es obligatorio');
+      return;
+    }
+    setNameError('');
     const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
     let parsedContent: unknown = null;
     let parsedDesc: unknown = null;
@@ -293,7 +300,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
       const newBlock = await createBlock({
-        title: 'Nuevo bloque',
+        title: null,
         type: 'paragraph',
         block_state,
         mandatory,
@@ -457,7 +464,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     <div className="p-6 space-y-4">
                       <div>
                         <FieldLabel required>Nombre del bloque</FieldLabel>
-                        <TextInput value={formName} placeholder="Nuevo bloque" onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                        <TextInput
+                          value={formName}
+                          placeholder="Nuevo bloque"
+                          error={!!nameError}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            setFormName(e.target.value);
+                            if (e.target.value.trim()) setNameError('');
+                            setTabIsDirty(true);
+                          }}
+                          onBlur={() => { if (!formName.trim()) setNameError('El nombre del bloque es obligatorio'); }}
+                        />
+                        {nameError && <p className="mt-1 text-xs text-danger">{nameError}</p>}
                       </div>
                       <div>
                         <FieldLabel>Estado</FieldLabel>
