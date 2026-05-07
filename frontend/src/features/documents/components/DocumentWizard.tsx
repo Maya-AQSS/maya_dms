@@ -1167,8 +1167,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   return (
     <>
     <WizardShell<Step>
-      title={detail?.title || 'Nueva programación'}
-      subtitle={processSubtitle ?? (detail?.title ? 'Editar programación' : undefined)}
+      title={
+        detail?.title
+          ? `Editando: ${detail.title}`
+          : (documentId ? 'Documento' : 'Nuevo documento')
+      }
+      subtitle={processSubtitle}
       onBack={handleWizardBack}
       backLabel={isValidateMode ? 'Volver al panel principal' : 'Volver'}
       actions={headerActions}
@@ -1211,12 +1215,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
                       Visibilidad: {visibilityLabel(template.visibility_level)}
                     </span>
-                    {templateScopeLabel && (
+                    {templateScopeLabel && template.visibility_level !== 'team' && (
                       <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
                         Ámbito: {templateScopeLabel}
                       </span>
                     )}
-                    {(template.team?.name || fixedTeamId || teamId) && (
+                    {(visibilityRule === 'team' || visibilityRule === 'global') && (template.team?.name || fixedTeamId || teamId) && (
                       <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
                         Equipo: {template.team?.name ?? availableTeams.find((t) => t.id === (fixedTeamId || teamId))?.name ?? 'Asignado'}
                       </span>
