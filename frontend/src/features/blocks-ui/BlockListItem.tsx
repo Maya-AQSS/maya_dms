@@ -64,7 +64,9 @@ export function BlockListItem({
     <div
       className={[
         'flex items-center gap-2 rounded-lg px-3 py-2.5 border transition-all cursor-pointer group',
-        VARIANT_CLS[variant],
+        hasReviewComments && variant === 'default'
+          ? 'bg-warning-light/20 dark:bg-warning/10 border-warning/40 dark:border-warning/30 hover:border-warning/60'
+          : VARIANT_CLS[variant],
       ].join(' ')}
       onClick={onClick}
     >

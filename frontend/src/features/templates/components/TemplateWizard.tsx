@@ -141,6 +141,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   };
 
+  const handleCommentAdded = (comment: any) => {
+    setComments(prev => [...prev, comment]);
+  };
+
   // Dirty check
   const isDirty = useMemo(() => {
     if (step === 'properties') {
@@ -545,6 +549,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             onBlocksLoadingChange={setBlocksLoading}
             onContinue={() => void handleContinue()}
             onInvalidBlocksChange={setHasInvalidBlocks}
+            onCommentAdded={handleCommentAdded}
           />
         )}
         {step === 'users' && (
