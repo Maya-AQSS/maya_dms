@@ -231,11 +231,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   // ── useAutoSave (debounce 1500ms) — compartido en edit y multi ───────────────
+  const validateBlockName = (name: string): string => {
+    if (!name.trim()) return 'El nombre del bloque es obligatorio';
+    if (name.trim().toLowerCase() === 'bloque sin nombre') return '"Bloque sin nombre" no es un nombre válido';
+    return '';
+  };
+
   const doSave = useCallback(async () => {
     const blockId = activeSingleIdRef.current;
     if (!blockId) return;
-    if (!formName.trim()) {
-      setNameError('El nombre del bloque es obligatorio');
+    const nameErr = validateBlockName(formName);
+    if (nameErr) {
+      setNameError(nameErr);
       return;
     }
     setNameError('');
@@ -555,10 +562,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           error={!!nameError}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             setFormName(e.target.value);
-                            if (e.target.value.trim()) setNameError('');
+                            setNameError(validateBlockName(e.target.value));
                             setTabIsDirty(true);
                           }}
-                          onBlur={() => { if (!formName.trim()) setNameError('El nombre del bloque es obligatorio'); }}
+                          onBlur={() => setNameError(validateBlockName(formName))}
                         />
                         {nameError && <p className="mt-1 text-xs text-danger">{nameError}</p>}
                       </div>
