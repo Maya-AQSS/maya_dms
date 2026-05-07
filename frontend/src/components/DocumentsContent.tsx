@@ -97,9 +97,13 @@ export function DocumentsContent() {
       const hasPublishedFallback =
         d.status !== 'published' &&
         !!d.latest_published_version_id;
+      const isAssignedReviewer =
+        d.status === 'in_review' &&
+        hasPermission('documents.review');
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
-        d.share_permission === 'edit';
+        d.share_permission === 'edit' ||
+        isAssignedReviewer;
 
       if (!hasPublishedFallback) {
         out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
@@ -120,7 +124,7 @@ export function DocumentsContent() {
       out.push(publishedFallback);
     }
     return out;
-  }, [documents, profile?.id]);
+  }, [documents, hasPermission, profile?.id]);
 
   const filtered = useFilteredDocuments(displayDocuments, activeFilters, hierarchy);
   const filtersActiveCount =

@@ -43,7 +43,6 @@ class DocumentController extends Controller
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
         $this->attachLatestPublishedVersionMeta($documents);
-        $this->attachCanCloneMeta($documents, $request);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
