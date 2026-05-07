@@ -13,6 +13,7 @@ export type Document = {
   study_type_id: string | null;
   study_id: string | null;
   module_id: string | null;
+  team_id: string | null;
   delivery_deadline?: string | null;
   created_by: string;
   owner_id: string;
@@ -30,6 +31,12 @@ export type Document = {
   share_permission?: string | null;
   team?: unknown;
   has_review_comments?: boolean;
+  can_clone?: boolean;
+  working_version_id?: string | null;
+  latest_published_version_id?: string | null;
+  latest_published_version_number?: number | null;
+  list_variant?: 'live' | 'published_fallback';
+  list_row_id?: string;
 };
 
 /**

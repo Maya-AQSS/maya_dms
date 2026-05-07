@@ -1,18 +1,24 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchDocument,
   fetchDocumentReviews,
+  fetchDocumentVersionSummaries,
+  fetchDocumentVersionDetail,
   submitDocumentForReview,
   deleteDocument,
   approveDocumentReview,
   rejectDocumentReview,
+  startDocumentNewVersion,
+  cloneDocument,
+  discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
 import { fetchTemplate } from '../api/templates';
 import { fetchProcesses } from '../api/processes';
 import { fetchMe } from '../api/users';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
+import type { BlockState } from '../types/blocks';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { visibilityLabel } from '../features/templates/constants';
 import { Button, ConfirmDialog, TextArea, statusBadgeClass } from '@maya/shared-ui-react';
@@ -43,6 +49,38 @@ function formatDate(iso: string | null | undefined): string {
 }
 
 const DOCUMENT_REJECT_REASON_MIN_LEN = 5;
+
+function mapSnapshotDocumentBlocks(raw: unknown): DocumentDisplayBlock[] {
+  if (!Array.isArray(raw)) return [];
+  const out: DocumentDisplayBlock[] = [];
+  for (let idx = 0; idx < raw.length; idx++) {
+    const item = raw[idx];
+    if (!item || typeof item !== 'object') continue;
+    const o = item as Record<string, unknown>;
+    const blockState = (typeof o.block_state === 'string' ? o.block_state : 'locked') as BlockState;
+    out.push({
+      document_block_id: typeof o.document_block_id === 'string' ? o.document_block_id : null,
+      template_block_id: String(o.template_block_id ?? o.id ?? ''),
+      type: typeof o.type === 'string' ? o.type : 'text',
+      title: o.title != null ? String(o.title) : null,
+      description: o.description,
+      default_content: o.default_content ?? null,
+      block_state: blockState,
+      mandatory: Boolean(o.mandatory),
+      sort_order: typeof o.sort_order === 'number' ? o.sort_order : idx,
+      content: o.content ?? null,
+      is_filled: Boolean(o.is_filled),
+    });
+  }
+  return out;
+}
+
+function snapshotDocumentTitle(snapshotData: Record<string, unknown>): string | undefined {
+  const doc = snapshotData.document;
+  if (!doc || typeof doc !== 'object') return undefined;
+  const t = (doc as Record<string, unknown>).title;
+  return typeof t === 'string' ? t : undefined;
+}
 
 function pickActionableDocumentReview(
   reviews: DocumentReview[],
@@ -78,8 +116,10 @@ type Props = {
 export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const documentVersionId = searchParams.get('documentVersionId');
   const location = useLocation();
-  const { profile } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
   const isValidateMode = mode === 'validate';
 
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
@@ -88,9 +128,21 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [versionSnapshot, setVersionSnapshot] = useState<{
+    versionNumber: number;
+    blocks: DocumentDisplayBlock[];
+    title?: string;
+    authorName?: string | null;
+    ownerName?: string | null;
+    createdAt?: string | null;
+  } | null>(null);
+  const [versionPreviewError, setVersionPreviewError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
+  const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
+  const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
   const [actionableReviewId, setActionableReviewId] = useState<string | null>(null);
@@ -99,6 +151,25 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [processLabel, setProcessLabel] = useState<string | null>(null);
+  const [publishedDocumentVersionCount, setPublishedDocumentVersionCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!documentId) {
+      setPublishedDocumentVersionCount(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchDocumentVersionSummaries(documentId)
+      .then((rows) => {
+        if (!cancelled) setPublishedDocumentVersionCount(rows.length);
+      })
+      .catch(() => {
+        if (!cancelled) setPublishedDocumentVersionCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId]);
 
   useEffect(() => {
     if (!documentId) {
@@ -112,8 +183,33 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       try {
         setLoading(true);
         setError(null);
+        setVersionSnapshot(null);
+        setVersionPreviewError(null);
+
         const data = await fetchDocument(documentId);
-        if (!cancelled) setDetail(data);
+        if (cancelled) return;
+        setDetail(data);
+
+        if (documentVersionId) {
+          try {
+            const v = await fetchDocumentVersionDetail(documentId, documentVersionId);
+            if (cancelled) return;
+            const snap = v.snapshot_data && typeof v.snapshot_data === 'object' ? v.snapshot_data : {};
+            const blocks = mapSnapshotDocumentBlocks(snap.blocks);
+            setVersionSnapshot({
+              versionNumber: v.version_number,
+              blocks,
+              title: snapshotDocumentTitle(snap as Record<string, unknown>),
+              authorName: v.author_name ?? null,
+              ownerName: v.owner_name ?? null,
+              createdAt: v.created_at ?? null,
+            });
+          } catch (ve) {
+            if (!cancelled) {
+              setVersionPreviewError(ve instanceof Error ? ve.message : 'No se pudo cargar esta versión.');
+            }
+          }
+        }
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : 'No se pudo cargar el documento.');
@@ -126,12 +222,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
     void load();
     return () => { cancelled = true; };
-  }, [documentId]);
+  }, [documentId, documentVersionId]);
 
   const previewState = location.state as {
     returnToStep?: string;
     returnToValidate?: boolean;
     backTo?: string;
+    forceBackTo?: boolean;
   } | null;
   const cameFromSummary = previewState?.returnToStep === 'summary';
   const cameFromValidate = previewState?.returnToValidate === true;
@@ -158,6 +255,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       }
       return;
     }
+    if (previewState?.forceBackTo) {
+      navigate(backTo);
+      return;
+    }
     if (window.history.length > 1) {
       navigate(-1);
       return;
@@ -170,7 +271,33 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   };
 
   const isDraft = detail?.status === 'draft';
+  const isPublished = detail?.status === 'published';
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
+  const uid = profile?.id;
+  /** Paridad con `DocumentPolicy::update` para poder mutar un publicado. */
+  const canMutatePublished =
+    !!detail &&
+    !!uid &&
+    (detail.owner_id === uid ||
+      detail.created_by === uid ||
+      detail.share_permission === 'edit' ||
+      hasPermission('documents.update'));
+  const isHistoricalSnapshot = versionSnapshot !== null;
+  const showVersionHistory =
+    publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
+  const canStartNewVersion =
+    !isValidateMode && isPublished && canMutatePublished && !isHistoricalSnapshot;
+  const canClone =
+    !isValidateMode &&
+    !isHistoricalSnapshot &&
+    detail?.can_clone === true;
+  const canDiscardWorkingVersion =
+    !isValidateMode &&
+    !isHistoricalSnapshot &&
+    (detail?.status === 'draft' || detail?.status === 'in_review') &&
+    canMutatePublished &&
+    !!detail?.latest_published_version_id &&
+    !!detail?.working_version_id;
 
   useEffect(() => {
     if (!isValidateMode) {
@@ -269,6 +396,23 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     }
   };
 
+  const handleDiscardWorkingVersion = async () => {
+    if (!documentId || !detail?.working_version_id) return;
+    setDiscardVersionLoading(true);
+    setDiscardVersionError(null);
+    try {
+      const restored = await discardDocumentWorkingVersion(documentId, detail.working_version_id);
+      setDetail(restored);
+      setVersionSnapshot(null);
+      setShowDiscardVersionModal(false);
+      setActionError(null);
+    } catch (e) {
+      setDiscardVersionError(e instanceof Error ? e.message : 'No se pudo descartar la versión en curso.');
+    } finally {
+      setDiscardVersionLoading(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!documentId || !detail) return;
     setActionLoading(true);
@@ -278,6 +422,35 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       setDetail((prev) => prev ? ({ ...prev, status: res.status, submitted_at: res.submitted_at } as typeof prev) : prev);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo enviar a validar.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleStartNewVersion = async () => {
+    if (!documentId) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const data = await startDocumentNewVersion(documentId);
+      setDetail(data);
+      navigate(`/documents/${documentId}/editor`, { state: { step: 'properties' } });
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleClone = async () => {
+    if (!documentId) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const cloned = await cloneDocument(documentId);
+      navigate(`/documents/${cloned.id}/editor`);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo clonar el documento.');
     } finally {
       setActionLoading(false);
     }
@@ -333,17 +506,37 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const headerActions = detail ? (
     <>
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
-        {STATUS_LABEL[detail.status] ?? detail.status}
-      </span>
-      <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-        v{detail.current_version}
-      </span>
-      {documentId && <FavoriteButton entityType="document" entityId={documentId} />}
-      <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
-        Historial
-      </Button>
-      {!isValidateMode && isDraft && isOwner && (
+      {isHistoricalSnapshot && !isValidateMode ? (
+        <>
+          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary-dark dark:text-primary-light border border-primary/25">
+            Versión publicada v{versionSnapshot.versionNumber}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => documentId && navigate(`/documents/${documentId}`, { replace: true })}
+          >
+            Versión actual
+          </Button>
+        </>
+      ) : (
+        <>
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
+            {STATUS_LABEL[detail.status] ?? detail.status}
+          </span>
+          <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
+            v{detail.current_version}
+          </span>
+        </>
+      )}
+      {documentId && !isHistoricalSnapshot ? <FavoriteButton entityType="document" entityId={documentId} /> : null}
+      {showVersionHistory ? (
+        <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
+          Historial
+        </Button>
+      ) : null}
+      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
         <Button
           type="button"
           variant="outline"
@@ -354,14 +547,14 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           Eliminar
         </Button>
       )}
-      {!isValidateMode && isDraft && isOwner && documentId && (
+      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && documentId && (
         <Link to={`/documents/${documentId}/editor`}>
           <Button type="button" size="sm" variant="outline">
             Editar
           </Button>
         </Link>
       )}
-      {!isValidateMode && isDraft && isOwner && (
+      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
         <Button
           type="button"
           variant="primary"
@@ -371,6 +564,39 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           onClick={() => void handleSubmit()}
         >
           Enviar a validar
+        </Button>
+      )}
+      {!isValidateMode && canStartNewVersion && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={actionLoading}
+          onClick={() => void handleStartNewVersion()}
+        >
+          Nueva versión
+        </Button>
+      )}
+      {!isValidateMode && canClone && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={actionLoading}
+          onClick={() => void handleClone()}
+        >
+          Clonar
+        </Button>
+      )}
+      {!isValidateMode && canDiscardWorkingVersion && (
+        <Button
+          type="button"
+          variant="outlineWarning"
+          size="sm"
+          loading={discardVersionLoading}
+          onClick={() => setShowDiscardVersionModal(true)}
+        >
+          Descartar nueva versión
         </Button>
       )}
       {isValidateMode && (
@@ -412,17 +638,19 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           {' · '}
         </>
       ) : null}
-      {detail.owner_name ?? 'Autor desconocido'}
+      {(versionSnapshot?.ownerName ?? versionSnapshot?.authorName ?? detail.owner_name) ?? 'Autor desconocido'}
       {' · '}
       {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
       {' · '}
       Fecha límite: {formatDate(detail.delivery_deadline)}
       {' · '}
-      Última edición: {formatDate(detail.updated_at)}
+      Última edición: {formatDate(versionSnapshot?.createdAt ?? detail.updated_at)}
     </p>
   ) : null;
 
-  const articleBlocks: PaperArticleBlock[] = (detail?.blocks ?? []).map((b) => ({
+  const previewTitle = versionSnapshot?.title ?? detail?.title ?? 'Programación';
+  const blocksForArticle = versionSnapshot?.blocks ?? detail?.blocks ?? [];
+  const articleBlocks: PaperArticleBlock[] = blocksForArticle.map((b) => ({
     id: b.template_block_id,
     title: b.title,
     mandatory: b.mandatory,
@@ -509,7 +737,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             >
               {!loading && !error && detail ? (
                 <PaperBlocksArticle
-                  title={detail.title}
+                  title={previewTitle}
                   blocks={articleBlocks}
                   emptyMessage="Este documento no tiene bloques."
                 />
@@ -569,7 +797,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   return (
     <>
       <PaperPreviewLayout
-        title={detail?.title ?? 'Programación'}
+        title={previewTitle}
         onBack={handleBack}
         backLabel={backLabel}
         metaInfo={headerMetaInfo}
@@ -580,6 +808,18 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         )}
         {error && !loading && (
           <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
+        )}
+        {versionPreviewError && (
+          <p className="text-sm text-warning-dark dark:text-warning-light mb-4">
+            {versionPreviewError}{' '}
+            <button
+              type="button"
+              className="underline font-medium"
+              onClick={() => documentId && navigate(`/documents/${documentId}`, { replace: true })}
+            >
+              Quitar filtro de versión
+            </button>
+          </p>
         )}
         {actionError && (
           <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{actionError}</p>
@@ -592,7 +832,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         )}
         {!loading && !error && detail && (
           <PaperBlocksArticle
-            title={detail.title}
+            title={previewTitle}
             blocks={articleBlocks}
             emptyMessage="Este documento no tiene bloques."
           />
@@ -619,6 +859,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         error={deleteError}
         onConfirm={() => void handleDelete()}
         onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+      />
+
+      <ConfirmDialog
+        open={showDiscardVersionModal}
+        variant="danger"
+        title="¿Descartar nueva versión?"
+        description="Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada del documento."
+        confirmLabel="Descartar versión"
+        cancelLabel="Cancelar"
+        loading={discardVersionLoading}
+        error={discardVersionError}
+        onConfirm={() => void handleDiscardWorkingVersion()}
+        onCancel={() => {
+          setShowDiscardVersionModal(false);
+          setDiscardVersionError(null);
+        }}
       />
     </>
   );

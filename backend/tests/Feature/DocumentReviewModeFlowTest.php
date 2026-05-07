@@ -4,10 +4,10 @@ namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
+use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
-use App\Models\TemplateVersion;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +16,7 @@ use Lcobucci\JWT\Signer\Key\InMemory;
 use Database\Seeders\PermissionsSeeder;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
+use Tests\Concerns\SeedsTemplatePublicationAnchor;
 use Tests\TestCase;
 
 /**
@@ -54,6 +55,7 @@ class DocumentReviewModeFlowTest extends TestCase
     use AssignsTestUserPermissions;
     use BuildsTestJwt;
     use RefreshDatabase;
+    use SeedsTemplatePublicationAnchor;
 
     protected function setUp(): void
     {
@@ -84,7 +86,6 @@ class DocumentReviewModeFlowTest extends TestCase
         $rev1 = (string) Str::uuid();
         $rev2 = (string) Str::uuid();
         $templateId = (string) Str::uuid();
-        $versionId = (string) Str::uuid();
         $documentId = (string) Str::uuid();
         $blockSnapId = (string) Str::uuid();
         $studyId = $this->anyStudyId();
@@ -101,26 +102,24 @@ class DocumentReviewModeFlowTest extends TestCase
             'team_id' => null,
             'created_by' => $submitterId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 2,
             'review_mode' => $reviewMode,
         ]);
 
-        TemplateVersion::query()->forceCreate([
-            'id' => $versionId,
-            'template_id' => $templateId,
-            'version_number' => 1,
-            'blocks_snapshot' => [[
+        $anchor = $this->seedCanonicalPublicationForTemplate(
+            $templateId,
+            1,
+            $submitterId,
+            [[
                 'id' => $blockSnapId,
                 'title' => 'Bloque',
                 'default_content' => null,
                 'block_state' => 'optional',
                 'sort_order' => 0,
+                'type' => '',
+                'mandatory' => false,
             ]],
-            'changelog' => 'v1',
-            'published_by' => $submitterId,
-            'published_at' => now(),
-        ]);
+        );
 
         foreach ([[$rev1, 1], [$rev2, 2]] as [$uid, $stage]) {
             TemplateReviewer::query()->forceCreate([
@@ -133,16 +132,14 @@ class DocumentReviewModeFlowTest extends TestCase
 
         Document::query()->forceCreate([
             'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
             'template_id' => $templateId,
-            'template_version_id' => $versionId,
+            'template_version_id' => $anchor['entity_version_id'],
             'title' => 'Doc flujo',
             'study_id' => $studyId,
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         DocumentShare::query()->forceCreate([
@@ -254,6 +251,74 @@ class DocumentReviewModeFlowTest extends TestCase
             ->assertJsonPath('data.status', 'published');
     }
 
+    public function test_assigned_reviewer_can_view_in_review_document_without_academic_context(): void
+    {
+        $ownerId = (string) Str::uuid();
+        $reviewerId = 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc';
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $studyId = $this->anyStudyId();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Plantilla doc in review',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $ownerId,
+            'status' => 'published',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc in review sin contexto',
+            'study_id' => $studyId,
+            'created_by' => $ownerId,
+            'owner_id' => $ownerId,
+            'status' => 'in_review',
+        ]);
+
+        DocumentReview::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'reviewer_id' => $reviewerId,
+            'status' => 'pending',
+            'stage' => 1,
+        ]);
+
+        $this->assertDatabaseMissing('user_studies', [
+            'user_id' => $reviewerId,
+            'study_id' => $studyId,
+        ]);
+
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $headersReviewer = $this->bearerFor(
+            $reviewerId,
+            $priv,
+            $pub,
+            'reviewer-no-context',
+            ['documents.read', 'documents.review'],
+        );
+
+        $this->getJson("/api/v1/documents/{$documentId}", $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.id', $documentId)
+            ->assertJsonPath('data.status', 'in_review');
+    }
+
     public function test_sequential_reject_higher_stage_is_blocked_until_lower_pending(): void
     {
         $ctx = $this->seedDocumentInReview('sequential');
@@ -358,13 +423,17 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
 
-        $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
-            ->assertOk()
-            ->json('data');
-        $ids = $this->reviewIdsByStage($list);
+        $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
+            ->assertOk();
+
+        $review1Id = (string) DocumentReview::query()
+            ->where('document_id', $ctx['documentId'])
+            ->where('reviewer_id', $ctx['rev1'])
+            ->value('id');
+        $this->assertNotSame('', $review1Id);
 
         $this->postJson(
-            "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review1Id']}/reject",
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$review1Id}/reject",
             ['rejection_reason' => 'No procede'],
             $hR1,
         )->assertOk()

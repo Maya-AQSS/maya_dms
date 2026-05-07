@@ -20,15 +20,20 @@ class DocumentStateService
         $document = $this->documentRepository->findOrFail($documentId);
         $oldStatus = $document->status;
 
-        $document->update(array_merge(['status' => $newStatus], $extraAttributes));
+        $this->documentRepository->mergeHeadWorkingCopy(
+            $document,
+            array_merge(['status' => $newStatus], $extraAttributes),
+        );
+
+        $fresh = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
 
         event(new DocumentStateChanged(
-            document: $document->fresh(),
+            document: $fresh,
             oldStatus: $oldStatus,
             newStatus: $newStatus,
             actorId: $actorId,
         ));
 
-        return $document->fresh();
+        return $fresh;
     }
 }

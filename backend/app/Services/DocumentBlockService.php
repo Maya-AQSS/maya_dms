@@ -5,8 +5,11 @@ namespace App\Services;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
+use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -15,6 +18,9 @@ class DocumentBlockService
 {
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly TemplateVersionBlockLayerResolver $templateVersionBlockLayerResolver,
     ) {}
 
     /**
@@ -114,7 +120,11 @@ class DocumentBlockService
     public function assertMandatoryBlocksAreFilled(Document $document): void
     {
         $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->filter(fn (array $def) => ($def['block_state'] ?? 'editable') !== 'optional');
+            ->filter(function (array $def): bool {
+                $state = (string) ($def['block_state'] ?? 'editable');
+
+                return $state !== 'optional' && $state !== 'locked';
+            });
 
         if ($definitions->isEmpty()) {
             return;
@@ -151,22 +161,74 @@ class DocumentBlockService
 
     private function blockDefinitionsForDocument(Document $document): array
     {
-        if ($document->template_version_id !== null) {
-            $document->loadMissing('templateVersion');
-            if ($document->templateVersion !== null) {
-                $snap = $document->templateVersion->blocks_snapshot;
+        if ($document->template_version_id === null) {
+            return $this->blockDefinitionsFromLiveTemplate((string) $document->template_id);
+        }
 
-                return collect(is_array($snap) ? $snap : [])
-                    ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
-                    ->values()
-                    ->all();
+        $document->loadMissing('templateVersion');
+
+        $ev = $document->templateVersion;
+        if ($ev === null) {
+            $ev = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                (string) $document->template_version_id,
+                Template::class,
+                (string) $document->template_id,
+            );
+        }
+
+        if ($ev !== null) {
+            $rows = $this->sortedBlocksFromEntitySnapshot($ev->snapshot_data);
+            if ($rows === []) {
+                $resolved = $this->templateVersionBlockLayerResolver->resolveBlocksSnapshot((string) $ev->id);
+                $rows = $this->sortedSnapshotBlocks($resolved);
+            }
+            if ($rows !== []) {
+                return $rows;
+            }
+
+            $retryEntity = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+                Template::class,
+                (string) $document->template_id,
+                (int) $ev->version_number,
+            );
+            if ($retryEntity !== null) {
+                $rows = $this->sortedBlocksFromEntitySnapshot($retryEntity->snapshot_data);
+                if ($rows === []) {
+                    $resolved = $this->templateVersionBlockLayerResolver->resolveBlocksSnapshot((string) $retryEntity->id);
+                    $rows = $this->sortedSnapshotBlocks($resolved);
+                }
+                if ($rows !== []) {
+                    return $rows;
+                }
             }
         }
 
-        $template = Template::query()
-            ->withoutGlobalScopes(['user_access'])
-            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order')])
-            ->findOrFail($document->template_id);
+        return $this->blockDefinitionsFromLiveTemplate((string) $document->template_id);
+    }
+
+    /**
+     * Filas de definición de bloques desde el snapshot publicado de plantilla ({@see EntityVersion}).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function templatePublicationDefinitionRowsFromEntityVersion(EntityVersion $entityVersion): array
+    {
+        $rows = $this->sortedBlocksFromEntitySnapshot($entityVersion->snapshot_data);
+        if ($rows !== []) {
+            return $rows;
+        }
+
+        $resolved = $this->templateVersionBlockLayerResolver->resolveBlocksSnapshot((string) $entityVersion->id);
+
+        return $this->sortedSnapshotBlocks($resolved);
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function blockDefinitionsFromLiveTemplate(string $templateId): array
+    {
+        $template = $this->templateRepository->findOrFailWithBlocksOrderedWithoutCatalogScope($templateId);
 
         return $template->blocks->map(fn ($b) => [
             'id' => $b->id,
@@ -178,6 +240,36 @@ class DocumentBlockService
             'mandatory' => $b->mandatory,
             'sort_order' => $b->sort_order,
         ])->all();
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $blocks
+     * @return list<array<string, mixed>>
+     */
+    private function sortedSnapshotBlocks(array $blocks): array
+    {
+        if ($blocks === []) {
+            return [];
+        }
+
+        return collect($blocks)
+            ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function sortedBlocksFromEntitySnapshot(mixed $snapshotData): array
+    {
+        if (! is_array($snapshotData)) {
+            return [];
+        }
+
+        $blocks = $snapshotData['blocks'] ?? null;
+
+        return is_array($blocks) ? $this->sortedSnapshotBlocks($blocks) : [];
     }
 
     private function documentBlockContentEquals(mixed $a, mixed $b): bool

@@ -22,6 +22,11 @@ interface DocumentServiceInterface
     public function create(CreateDocumentDto $dto): Document;
 
     /**
+     * Clona un documento visible hacia un nuevo borrador con el mismo ancla de plantilla y contenido de bloques copiado.
+     */
+    public function clone(string $sourceDocumentId, string $actorId): Document;
+
+    /**
      * Actualiza metadatos editables del documento.
      *
      * @param  array<string, mixed>  $attributes
@@ -63,6 +68,16 @@ interface DocumentServiceInterface
     public function publishDocument(string $documentId, string $actorId, string $changelog): Document;
 
     /**
+     * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión antes de volver a publicar.
+     */
+    public function startNewRevisionCycle(string $documentId, string $actorId): Document;
+
+    /**
+     * Descarta una versión no publicada en curso y restaura la última publicación.
+     */
+    public function destroyVersion(string $documentId, string $versionId, string $actorId): Document;
+
+    /**
      * Delega la propiedad del documento a otro usuario.
      */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document;
@@ -83,6 +98,22 @@ interface DocumentServiceInterface
      * Localiza una versión snapshot del documento por id.
      */
     public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
+
+    /**
+     * Detalle de versión del documento aceptando id legacy o id polimórfico.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   snapshot_data: array<string, mixed>,
+     *   created_at: ?string
+     * }
+     */
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array;
 
     /**
      * Metadatos de versiones del documento ordenados descendentemente.
@@ -115,7 +146,16 @@ interface DocumentServiceInterface
     /**
      * Opciones de creación de documento disponibles para un módulo.
      *
-     * @return list<array{template_id: string, template_version_id: string, process_id: string, name: string, description: ?string}>
+     * @return list<array{
+     *   template_id: string,
+     *   template_version_id: string,
+     *   process_id: string,
+     *   name: string,
+     *   description: ?string,
+     *   visibility_level: string,
+     *   team_id: ?string,
+     *   team_name: ?string
+     * }>
      */
     public function creationOptionsForModule(string $moduleId): array;
 

@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests\Templates;
 
+use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -37,17 +37,19 @@ class PublishTemplateRequest extends FormRequest
     /**
      * Reglas de validación para la publicación de una plantilla.
      *
-     * El changelog es obligatorio a partir de la segunda versión (cuando ya existe
-     * al menos una versión publicada), independientemente del estado de la plantilla.
-     * Para la primera publicación se autorrellena con "Versión inicial".
+     * El changelog es obligatorio a partir de la segunda versión publicada (cuando ya existe
+     * al menos una fila publicada en entity_versions). La primera publicación puede omitir changelog;
+     * el servicio usa entonces un texto por defecto genérico.
      *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         $template = $this->resolveTemplate();
-        $hasPublishedVersions = TemplateVersion::query()
-            ->where('template_id', $template->id)
+        $hasPublishedVersions = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $template->id)
+            ->where('status', 'published')
             ->exists();
 
         return [

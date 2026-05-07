@@ -12,6 +12,7 @@ use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
@@ -24,6 +25,7 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentRepository;
+use App\Repositories\Eloquent\EntityVersionRepository;
 use App\Repositories\Eloquent\ProcessRepository;
 use App\Repositories\Eloquent\TeamReadRepository;
 use App\Repositories\Eloquent\TemplateBlockRepository;
@@ -41,6 +43,7 @@ use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DashboardServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\ProcessServiceInterface;
 use App\Services\Contracts\HealthCheckServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
@@ -52,6 +55,7 @@ use App\Services\Contracts\UserProfileServiceInterface;
 use App\Services\Contracts\UserFavoriteServiceInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 use App\Services\DocumentService;
+use App\Services\EntityVersionLifecycleService;
 use App\Services\ProcessService;
 use App\Services\DashboardService;
 use App\Services\HealthCheckService;
@@ -72,6 +76,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Repository bindings
         $this->app->bind(DocumentRepositoryInterface::class, DocumentRepository::class);
+        $this->app->bind(EntityVersionRepositoryInterface::class, EntityVersionRepository::class);
         $this->app->bind(ProcessRepositoryInterface::class, ProcessRepository::class);
         $this->app->bind(TeamReadRepositoryInterface::class, TeamReadRepository::class);
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
@@ -88,6 +93,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ApiTeamEmbedServiceInterface::class, ApiTeamEmbedService::class);
         $this->app->bind(SnapshotServiceInterface::class, SnapshotService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
+        $this->app->bind(EntityVersionLifecycleServiceInterface::class, EntityVersionLifecycleService::class);
         $this->app->bind(ProcessServiceInterface::class, ProcessService::class);
         $this->app->bind(TeamReadServiceInterface::class, TeamReadService::class);
         $this->app->bind(CommentServiceInterface::class, CommentService::class);

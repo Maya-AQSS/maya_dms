@@ -1,9 +1,11 @@
 <?php
 
 /**
- * Versiones publicadas mock de plantilla.
+ * Datos fuente de publicaciones mock de plantilla (solo consumidos para construir `entity_versions`).
  *
- * blocks_snapshot replica el shape que genera {@see TemplateService::publishWithSnapshot()}.
+ * {@see \Database\Seeders\TemplateVersionsSeeder} inserta las filas publicadas en `entity_versions`.
+ * Opcional `entity_version_id`: UUID fijo de la publicación (ancla en `documents.template_version_id`).
+ * La clave `id` por fila es solo referencia estable en datos de prueba (ya no existe tabla `template_versions`).
  * Los template_id deben existir en database/data/templates_mock.php.
  */
 $programacionPack = require __DIR__ . '/programacion_per_module_templates_pack.php';
@@ -45,6 +47,7 @@ $snapshotSyllabusDwesEsqueleto = $buildTemplateVersionSnapshotFromBlocks('333333
 return array_merge([
     [
         'id' => '66666666-6666-6666-6666-666666666607',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000607',
         'template_id' => '33333333-3333-3333-3333-333333333304',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -91,6 +94,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666608',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000608',
         'template_id' => '33333333-3333-3333-3333-333333333308',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -137,6 +141,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666609',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000609',
         'template_id' => '33333333-3333-3333-3333-333333333309',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -183,6 +188,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666601',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000601',
         'template_id' => '33333333-3333-3333-3333-333333333301',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -201,6 +207,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666602',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000602',
         'template_id' => '33333333-3333-3333-3333-333333333302',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -219,6 +226,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666603',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000603',
         'template_id' => '33333333-3333-3333-3333-333333333306',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -237,6 +245,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666604',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000604',
         'template_id' => '33333333-3333-3333-3333-333333333311',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -255,6 +264,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666605',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000605',
         'template_id' => '33333333-3333-3333-3333-333333333318',
         'version_number' => 1,
         'blocks_snapshot' => [
@@ -273,6 +283,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666606',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000606',
         'template_id' => '33333333-3333-3333-3333-333333333319',
         'version_number' => 1,
         'blocks_snapshot' => $snapshotPublishedSecretariaPersonal,
@@ -282,6 +293,7 @@ return array_merge([
     ],
     [
         'id' => '66666666-6666-6666-6666-666666666610',
+        'entity_version_id' => 'a0000000-0000-4000-8000-000000000610',
         'template_id' => '33333333-3333-3333-3333-333333333320',
         'version_number' => 1,
         'blocks_snapshot' => $snapshotSyllabusDwesEsqueleto,

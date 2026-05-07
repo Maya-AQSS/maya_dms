@@ -46,6 +46,9 @@ function buildListQuery(filters: TemplateListFilters): string {
   if (filters.status) {
     q.set('status', filters.status);
   }
+  if (filters.usable_for_documents) {
+    q.set('usable_for_documents', '1');
+  }
   if (filters.study_type_id) {
     q.set('study_type_id', filters.study_type_id);
   }
@@ -96,9 +99,18 @@ export type TemplateVersionDetail = {
   id: string;
   template_id: string;
   version_number: number;
+  template_snapshot?: {
+    name?: string;
+    created_by?: string;
+    visibility_level?: string;
+    delivery_deadline?: string | null;
+    updated_at?: string | null;
+  } | null;
   blocks_snapshot: TemplateVersionSnapshotBlock[];
   changelog: string | null;
   published_by: string | null;
+  published_by_name?: string | null;
+  author_name?: string | null;
   published_at: string | null;
   created_at?: string;
   updated_at?: string;
@@ -118,6 +130,8 @@ export type TemplateVersionSummary = {
   version_number: number;
   published_at: string | null;
   published_by: string | null;
+  published_by_name?: string | null;
+  author_name?: string | null;
   changelog: string | null;
 };
 
@@ -160,6 +174,11 @@ export async function deleteTemplate(
 /** POST /api/v1/templates/{id}/clone */
 export async function cloneTemplate(id: string): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>(`templates/${id}/clone`, { method: 'POST', body: {} });
+}
+
+/** POST /api/v1/templates/{id}/new-version — publicada → borrador (misma plantilla). */
+export async function startTemplateNewVersion(id: string): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/new-version`, { method: 'POST', body: {} });
 }
 
 /** POST /api/v1/templates/{id}/publish */

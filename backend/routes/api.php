@@ -66,6 +66,11 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
             ->whereUuid('template');
+        Route::post('templates/{template}/new-version', [TemplateController::class, 'startNewVersion'])
+            ->whereUuid('template');
+        Route::delete('templates/{template}/versions/{version}', [TemplateController::class, 'destroyVersion'])
+            ->whereUuid('template')
+            ->whereUuid('version');
         Route::get('templates/{template}/versions', [TemplateController::class, 'versions'])
             ->whereUuid('template');
         Route::get('template-versions/{template_version}', [TemplateController::class, 'showVersion'])
@@ -78,6 +83,8 @@ Route::prefix('v1')->group(function () {
         Route::post('documents/create-from-module', [DocumentController::class, 'createFromModule']);
         Route::get('documents', [DocumentController::class, 'index']);
         Route::post('documents', [DocumentController::class, 'store']);
+        Route::post('documents/{document}/clone', [DocumentController::class, 'clone'])
+            ->whereUuid('document');
         Route::get('documents/{document}/template-version-status', [DocumentController::class, 'templateVersionStatus'])
             ->whereUuid('document');
         Route::get('documents/{document}', [DocumentController::class, 'show'])
@@ -89,6 +96,8 @@ Route::prefix('v1')->group(function () {
         Route::post('documents/{document}/submit', [DocumentController::class, 'submit'])
             ->whereUuid('document');
         Route::post('documents/{document}/publish', [DocumentController::class, 'publish'])
+            ->whereUuid('document');
+        Route::post('documents/{document}/new-version', [DocumentController::class, 'startNewVersion'])
             ->whereUuid('document');
         Route::post('documents/{document}/delegate', [DocumentController::class, 'delegate'])
             ->whereUuid('document');
@@ -104,7 +113,10 @@ Route::prefix('v1')->group(function () {
         Route::get('documents/{document}/versions/{version}', [DocumentVersionController::class, 'show'])
             ->whereUuid('document')
             ->whereUuid('version');
-        Route::match(['put', 'patch', 'delete'], 'documents/{document}/versions/{version}', fn () => abort(403, 'Los snapshots de documento son de solo inserción (append-only).'))
+        Route::delete('documents/{document}/versions/{version}', [DocumentController::class, 'destroyVersion'])
+            ->whereUuid('document')
+            ->whereUuid('version');
+        Route::match(['put', 'patch'], 'documents/{document}/versions/{version}', fn () => abort(403, 'Los snapshots de documento son de solo inserción (append-only).'))
             ->whereUuid('document')
             ->whereUuid('version');
 

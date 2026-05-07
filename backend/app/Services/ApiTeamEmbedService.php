@@ -44,7 +44,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     public function embedOnDocument(Document $document, string $viewerUserId): void
     {
         $document->loadMissing('template');
-        $teamCatalogId = $document->template?->team_id;
+        $teamCatalogId = $document->team_id ?? $document->template?->team_id;
 
         $team = $this->teamReadService->embeddableTeam(
             $teamCatalogId !== null ? (string) $teamCatalogId : null,

@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
             TemplateBlocksSeeder::class,
             TemplateVersionsSeeder::class,
             DocumentsSeeder::class,
+            EntityVersionsSeeder::class,
             UserFavoritesSeeder::class,
             DocumentBlocksSeeder::class,
             DocumentReviewsSeeder::class,

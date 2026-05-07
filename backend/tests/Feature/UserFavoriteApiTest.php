@@ -146,7 +146,6 @@ class UserFavoriteApiTest extends TestCase
             'team_id' => null,
             'created_by' => $userId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -163,9 +162,6 @@ class UserFavoriteApiTest extends TestCase
             'created_by' => $userId,
             'owner_id' => $userId,
             'status' => 'draft',
-            'current_version' => 1,
-            'submitted_at' => null,
-            'published_at' => null,
         ]);
 
         $this->postJson("/api/v1/favorites/documents/{$documentId}", [], $headers)

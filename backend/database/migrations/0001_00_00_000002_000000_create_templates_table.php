@@ -6,12 +6,19 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Plantillas normativas: datos base + visibilidad, plazo y claves de jerarquía.
+ * Ancla de plantilla en un proceso (`process_id`). Identidad estable del recurso en catálogo y FKs desde documentos.
  *
- * Los valores de visibility_level coinciden con {@see TemplateVisibilityLevel}.
+ * Dominio (modelo objetivo): nombre, descripción, {@see TemplateVisibilityLevel}, plazos, jerarquía académica,
+ * equipo, estado del ciclo (draft / in_review / published / archived), configuración del flujo de revisión y la
+ * autoría de esa **copia de trabajo** pertenecen al agregado **versión** ({@see \App\Models\EntityVersion}), no a la
+ * plantilla como concepto abstracto.
  *
- * `team_id` guarda el id del equipo en el catálogo lógico `teams`.
- * No hay FK física: en entornos con FDW `teams` es una vista; en `testing` es tabla (validación con exists:teams,id).
+ * Implementación actual: el borrador editable y el estado hasta publicar siguen persistiendo en esta tabla para no
+ * duplicar todavía una fila {@code entity_versions} “cabezal” por plantilla; cada **publicación** canónica sí se
+ * guarda en {@code entity_versions} con snapshot inmutable (changelog, {@code published_at}, {@code published_by}, …).
+ * Trasladar también el borrador a {@code entity_versions} es un refactor amplio (repositorios, scopes, políticas, tests).
+ *
+ * `team_id`: catálogo lógico `teams`; sin FK física (FDW vista / testing tabla).
  */
 return new class extends Migration
 {
@@ -37,7 +44,6 @@ return new class extends Migration
 
             $table->string('created_by');                  // FK lógica → users (FDW)
             $table->string('status')->default('draft');    // draft | published | archived
-            $table->integer('version')->default(1);
 
             // Configuración del flujo de revisión
             $table->integer('review_stages')->default(0);  // 0 = sin revisión

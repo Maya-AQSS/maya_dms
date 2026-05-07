@@ -2,23 +2,124 @@
 
 namespace App\Services;
 
+use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 class DocumentVersionService
 {
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly DocumentVersionBlockLayerResolver $documentVersionBlockLayerResolver,
     ) {}
 
+    /**
+     * Localiza una versión snapshot del documento por id.
+     */
     public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion
     {
-        $this->documentRepository->findOrFail($documentId);
+        $document = $this->documentRepository->findOrFail($documentId);
 
         return $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
     }
 
     /**
+     * Detalle de versión del documento aceptando id legacy o id polimórfico.
+     *
+     * Para filas en `document_versions`, `snapshot_data.blocks` se reconstruye con
+     * {@see DocumentVersionBlockLayerResolver} (capas + fallback al JSON guardado).
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   snapshot_data: array<string, mixed>,
+     *   created_at: ?string
+     * }
+     */
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array
+    {
+        $this->documentRepository->findOrFail($documentId);
+
+        try {
+            $version = $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
+
+            $resolved = $version->resolvedSnapshotData();
+            $snapshotData = is_array($resolved) ? $resolved : [];
+            $snapshotData['blocks'] = $this->documentVersionBlockLayerResolver->resolveBlocksSnapshot((string) $version->id);
+            $documentMeta = isset($snapshotData['document']) && is_array($snapshotData['document'])
+                ? $snapshotData['document']
+                : [];
+            $authorId = isset($documentMeta['created_by']) && is_string($documentMeta['created_by']) && $documentMeta['created_by'] !== ''
+                ? $documentMeta['created_by']
+                : null;
+            $ownerId = isset($documentMeta['owner_id']) && is_string($documentMeta['owner_id']) && $documentMeta['owner_id'] !== ''
+                ? $documentMeta['owner_id']
+                : null;
+            $publishedBy = is_string($version->triggered_by) && $version->triggered_by !== '' ? $version->triggered_by : null;
+
+            return [
+                'id' => $version->id,
+                'document_id' => $version->document_id,
+                'version_number' => (int) $version->version_number,
+                'trigger_event' => (string) $version->trigger_event,
+                'triggered_by' => (string) $version->triggered_by,
+                'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
+                'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
+                'owner_name' => $ownerId !== null ? self::resolveUserNameById($ownerId) : null,
+                'changelog' => $version->notes,
+                'snapshot_data' => $snapshotData,
+                'created_at' => $version->created_at?->toIso8601String(),
+            ];
+        } catch (ModelNotFoundException) {
+            $entityVersion = $this->entityVersionRepository->findOrFail($versionId);
+
+            if ((string) $entityVersion->versionable_type !== Document::class
+                || (string) $entityVersion->versionable_id !== $documentId) {
+                throw new ModelNotFoundException;
+            }
+            $snapshotData = is_array($entityVersion->snapshot_data) ? $entityVersion->snapshot_data : [];
+            $documentMeta = isset($snapshotData['document']) && is_array($snapshotData['document'])
+                ? $snapshotData['document']
+                : [];
+            $authorId = isset($documentMeta['created_by']) && is_string($documentMeta['created_by']) && $documentMeta['created_by'] !== ''
+                ? $documentMeta['created_by']
+                : (is_string($entityVersion->created_by) && $entityVersion->created_by !== '' ? $entityVersion->created_by : null);
+            $ownerId = isset($documentMeta['owner_id']) && is_string($documentMeta['owner_id']) && $documentMeta['owner_id'] !== ''
+                ? $documentMeta['owner_id']
+                : null;
+            $publishedBy = is_string($entityVersion->published_by) && $entityVersion->published_by !== ''
+                ? $entityVersion->published_by
+                : (is_string($entityVersion->created_by) && $entityVersion->created_by !== '' ? $entityVersion->created_by : null);
+
+            return [
+                'id' => $entityVersion->id,
+                'document_id' => (string) $entityVersion->versionable_id,
+                'version_number' => (int) $entityVersion->version_number,
+                'trigger_event' => 'published',
+                'triggered_by' => (string) ($entityVersion->published_by ?? $entityVersion->created_by),
+                'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
+                'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
+                'owner_name' => $ownerId !== null ? self::resolveUserNameById($ownerId) : null,
+                'changelog' => $entityVersion->changelog,
+                'snapshot_data' => $snapshotData,
+                'created_at' => ($entityVersion->published_at ?? $entityVersion->created_at)?->toIso8601String(),
+            ];
+        }
+    }
+
+    /**
+     * Metadatos de versiones del documento ordenados descendentemente.
+     * No incluye el snapshot completo en el listado.
+     * 
      * @return list<array{
      *   id: string,
      *   document_id: string,
@@ -33,23 +134,121 @@ class DocumentVersionService
     public function listDocumentVersions(string $documentId): array
     {
         $document = $this->documentRepository->findOrFail($documentId);
+        $excludeCurrentPublishedVersion = (string) $document->status === 'published';
 
-        return $document->versions()
+        $entityVersions = $this->entityVersionRepository->listPublishedForEntityOrdered(
+            Document::class,
+            $documentId,
+        )->map(static function ($v): array {
+            $snapshot = is_array($v->snapshot_data) ? $v->snapshot_data : [];
+            $authorId = data_get($snapshot, 'document.created_by');
+            $authorId = is_string($authorId) && $authorId !== '' ? $authorId : (is_string($v->created_by) ? $v->created_by : null);
+            $publishedBy = is_string($v->published_by) && $v->published_by !== '' ? $v->published_by : (is_string($v->created_by) ? $v->created_by : null);
+            return [
+                'id' => $v->id,
+                'document_id' => $v->versionable_id,
+                'version_number' => (int) $v->version_number,
+                'trigger_event' => 'published',
+                'triggered_by' => (string) ($v->published_by ?? $v->created_by),
+                'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
+                'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
+                'changelog' => $v->changelog,
+                'notes' => $v->changelog,
+                'created_at' => ($v->published_at ?? $v->created_at)?->toIso8601String(),
+            ];
+        });
+
+        $legacyVersions = $document->versions()
             ->orderByDesc('version_number')
             ->get()
             ->map(static function (DocumentVersion $v): array {
+                $snapshot = $v->snapshot_data;
+                if (is_string($snapshot)) {
+                    $decoded = json_decode($snapshot, true);
+                    $snapshot = is_array($decoded) ? $decoded : [];
+                }
+                $snapshot = is_array($snapshot) ? $snapshot : [];
+                $authorId = data_get($snapshot, 'document.created_by');
+                $authorId = is_string($authorId) && $authorId !== '' ? $authorId : null;
+                $publishedBy = is_string($v->triggered_by) && $v->triggered_by !== '' ? $v->triggered_by : null;
                 return [
                     'id' => $v->id,
                     'document_id' => $v->document_id,
                     'version_number' => $v->version_number,
                     'trigger_event' => $v->trigger_event,
                     'triggered_by' => $v->triggered_by,
+                    'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
+                    'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
                     'changelog' => $v->notes,
                     'notes' => $v->notes,
                     'created_at' => $v->created_at?->toIso8601String(),
                 ];
-            })
+            });
+
+        if ($entityVersions->isEmpty()) {
+            return $legacyVersions
+                ->reject(
+                    fn (array $row): bool =>
+                        $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
+                )
+                ->values()
+                ->all();
+        }
+
+        if ($legacyVersions->isEmpty()) {
+            return $entityVersions
+                ->reject(
+                    fn (array $row): bool =>
+                        $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
+                )
+                ->values()
+                ->all();
+        }
+
+        return collect($this->mergeDocumentVersionListRowsPreferringEntity($entityVersions, $legacyVersions))
+            ->reject(
+                fn (array $row): bool =>
+                    $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
+            )
             ->values()
             ->all();
+    }
+
+    /**
+     * Lista combinada por número de versión; si existe fila en entity_versions y en document_versions, conserva entity.
+     *
+     * @param  Collection<int, array<string, mixed>>  $entityRows
+     * @param  Collection<int, array<string, mixed>>  $legacyRows
+     * @return list<array<string, mixed>>
+     */
+    private function mergeDocumentVersionListRowsPreferringEntity(Collection $entityRows, Collection $legacyRows): array
+    {
+        /** @var array<int, array<string, mixed>> $byNumber */
+        $byNumber = [];
+        foreach ($entityRows as $row) {
+            $byNumber[(int) $row['version_number']] = $row;
+        }
+        foreach ($legacyRows as $row) {
+            $n = (int) $row['version_number'];
+            if (! array_key_exists($n, $byNumber)) {
+                $byNumber[$n] = $row;
+            }
+        }
+
+        return collect($byNumber)
+            ->sortByDesc(static fn (array $row): int => (int) $row['version_number'])
+            ->values()
+            ->all();
+    }
+
+    private static function resolveUserNameById(string $userId): ?string
+    {
+        static $cache = [];
+        if (array_key_exists($userId, $cache)) {
+            return $cache[$userId];
+        }
+        $name = DB::table('users')->where('id', $userId)->value('name');
+        $cache[$userId] = is_string($name) && trim($name) !== '' ? trim($name) : null;
+        return $cache[$userId];
     }
 }

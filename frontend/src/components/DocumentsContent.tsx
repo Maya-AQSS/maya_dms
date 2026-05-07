@@ -91,7 +91,42 @@ export function DocumentsContent() {
   const { documents, loading, error, reload } = useDocuments();
   const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
-  const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
+  const displayDocuments = useMemo(() => {
+    const out: Document[] = [];
+    for (const d of documents) {
+      const hasPublishedFallback =
+        d.status !== 'published' &&
+        !!d.latest_published_version_id;
+      const isAssignedReviewer =
+        d.status === 'in_review' &&
+        hasPermission('documents.review');
+      const canSeeLive =
+        (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
+        d.share_permission === 'edit' ||
+        isAssignedReviewer;
+
+      if (!hasPublishedFallback) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+        continue;
+      }
+
+      const publishedFallback: Document = {
+        ...d,
+        status: 'published',
+        current_version: d.latest_published_version_number ?? d.current_version,
+        list_variant: 'published_fallback',
+        list_row_id: `${d.id}:published`,
+      };
+
+      if (canSeeLive) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+      }
+      out.push(publishedFallback);
+    }
+    return out;
+  }, [documents, hasPermission, profile?.id]);
+
+  const filtered = useFilteredDocuments(displayDocuments, activeFilters, hierarchy);
   const filtersActiveCount =
     (activeFilters.studyTypeId ? 1 : 0) +
     (activeFilters.studyId ? 1 : 0) +
@@ -195,14 +230,18 @@ export function DocumentsContent() {
       setPage(1);
     });
 
-  const handleCreateFromModule = async (templateVersionId?: string) => {
+  const handleCreateFromModule = async (templateVersionId?: string, processId?: string) => {
     if (!selectedModuleId) return;
+    if (!processId) {
+      setCreationError('No se pudo resolver el proceso de la plantilla seleccionada.');
+      return;
+    }
     setCreatingDocument(true);
     setCreationError(null);
     try {
       const created = await createDocumentFromModule({
         module_id: selectedModuleId,
-        process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
+        process_id: processId,
         ...(templateVersionId ? { template_version_id: templateVersionId } : {}),
       });
       navigate(`/documents/${created.id}/editor`);
@@ -308,6 +347,10 @@ export function DocumentsContent() {
             size="xs"
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
+              if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
+                navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
+                return;
+              }
               navigate(`/documents/${d.id}`);
             }}
           >
@@ -436,6 +479,10 @@ export function DocumentsContent() {
                         <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary block">
                           {option.name}
                         </span>
+                        <span className="text-[11px] text-text-muted dark:text-text-dark-muted mt-1 block">
+                          Visibilidad: {option.visibility_level ?? '—'}
+                          {option.team_name ? ` · Equipo: ${option.team_name}` : ''}
+                        </span>
                         {option.description ? (
                           <span className="text-xs text-text-muted dark:text-text-dark-muted mt-1 block line-clamp-2">
                             {option.description}
@@ -521,7 +568,7 @@ export function DocumentsContent() {
                     type="button"
                     loading={creatingDocument}
                     disabled={previewLoading || !!previewError || !previewOption}
-                    onClick={() => void handleCreateFromModule(previewOption.template_version_id)}
+                    onClick={() => void handleCreateFromModule(previewOption.template_version_id, previewOption.process_id)}
                   >
                     Usar esta plantilla
                   </Button>
@@ -550,7 +597,7 @@ export function DocumentsContent() {
                   }
                   columns={columns}
                   rows={pageRows}
-                  rowKey={(d) => d.id}
+                  rowKey={(d) => d.list_row_id ?? d.id}
                   loading={loading}
                   pageSize={pageSize}
                   onPageSizeChange={(size) => {
@@ -561,7 +608,13 @@ export function DocumentsContent() {
                   onToggleHiddenColumn={toggleColumn}
                   sortBy={sortBy}
                   onSortChange={setSortBy}
-                  onRowClick={(d) => navigate(`/documents/${d.id}`)}
+                  onRowClick={(d) => {
+                    if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
+                      navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
+                      return;
+                    }
+                    navigate(`/documents/${d.id}`);
+                  }}
                   emptyMessage="No hay programaciones didácticas con los filtros actuales."
                   className="rounded-none border-0 shadow-none"
                   filtersStorageKey="maya:dms:documents-table"

@@ -23,7 +23,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
   const { profile, hasPermission } = useUserProfile();
   const [dialog, setDialog] = useState<'delete' | 'clone' | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
-  const canClone = t.status === 'published';
+  const canClone = t.can_clone === true;
   const canEdit = t.status === 'draft' && profile?.id === t.created_by;
   const canDelete = profile?.id === t.created_by || hasPermission('templates.delete');
 

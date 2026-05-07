@@ -67,12 +67,10 @@ class DocumentReviewService
             $this->documentRepository->saveReview($review);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
-                $this->stateService->transition($documentId, 'published', $actorId, [
-                    'published_at' => now(),
-                ]);
+                $this->stateService->transition($documentId, 'published', $actorId);
                 $changelog = $publicationChangelog !== null && trim($publicationChangelog) !== ''
                     ? trim($publicationChangelog)
-                    : 'Publicado tras aprobación de revisión.';
+                    : 'Aprobado por todos los revisores.';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',
@@ -80,7 +78,7 @@ class DocumentReviewService
                     notes: $changelog,
                 ));
 
-                return $this->documentRepository->findOrFail($documentId);
+                return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
 
             return $this->documentRepository->findOrFail($documentId);
@@ -124,10 +122,7 @@ class DocumentReviewService
             $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
 
-            $updated = $this->stateService->transition($documentId, 'draft', $actorId, [
-                'submitted_at' => null,
-                'published_at' => null,
-            ]);
+            $updated = $this->stateService->transition($documentId, 'draft', $actorId);
 
             $this->documentRepository->deletePendingReviewsForDocument($documentId);
 

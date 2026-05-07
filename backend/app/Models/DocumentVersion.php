@@ -22,6 +22,7 @@ class DocumentVersion extends Model
 
     protected $fillable = [
         'document_id',
+        'entity_version_id',
         'version_number',
         'trigger_event',
         'triggered_by',
@@ -55,5 +56,31 @@ class DocumentVersion extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class);
+    }
+
+    public function entityVersion(): BelongsTo
+    {
+        return $this->belongsTo(EntityVersion::class, 'entity_version_id');
+    }
+
+    /**
+     * Snapshot completo: columna legacy o, si es null, {@see EntityVersion::snapshot_data} enlazada.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function resolvedSnapshotData(): ?array
+    {
+        if ($this->snapshot_data !== null) {
+            return $this->snapshot_data;
+        }
+
+        $this->loadMissing('entityVersion');
+        $entity = $this->entityVersion;
+
+        if ($entity !== null && is_array($entity->snapshot_data)) {
+            return $entity->snapshot_data;
+        }
+
+        return null;
     }
 }

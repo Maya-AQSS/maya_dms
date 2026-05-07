@@ -4,18 +4,24 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Documents\CloneDocumentRequest;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
 use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
+use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
+use App\Models\Document;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class DocumentController extends Controller
 {
@@ -36,6 +42,7 @@ class DocumentController extends Controller
         $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
+        $this->attachLatestPublishedVersionMeta($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
@@ -46,18 +53,85 @@ class DocumentController extends Controller
     }
 
     /**
+     * Adjunta metadatos de última versión publicada por documento para construir vistas fallback.
+     *
+     * @param  \Illuminate\Support\Collection<int, Document>  $documents
+     */
+    private function attachLatestPublishedVersionMeta(\Illuminate\Support\Collection $documents): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $ids = $documents->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
+        if ($ids === []) {
+            return;
+        }
+
+        $rows = DB::table('entity_versions')
+            ->where('versionable_type', Document::class)
+            ->whereIn('versionable_id', $ids)
+            ->where('status', 'published')
+            ->where('version_number', '>', 0)
+            ->orderByDesc('version_number')
+            ->get(['versionable_id', 'id', 'version_number']);
+
+        /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByDocument */
+        $latestByDocument = [];
+        foreach ($rows as $row) {
+            $documentId = (string) $row->versionable_id;
+            if (! isset($latestByDocument[$documentId])) {
+                $latestByDocument[$documentId] = (object) [
+                    'versionable_id' => $documentId,
+                    'id' => (string) $row->id,
+                    'version_number' => (int) $row->version_number,
+                ];
+            }
+        }
+
+        foreach ($documents as $document) {
+            $meta = $latestByDocument[(string) $document->id] ?? null;
+            $document->setAttribute('latest_published_version_id', $meta?->id);
+            $document->setAttribute('latest_published_version_number', $meta?->version_number);
+        }
+    }
+
+    /**
      * Crear documento anclado a la última versión publicada de la plantilla (o a una indicada).
      */
     public function store(StoreDocumentRequest $request): JsonResponse
     {
         $userId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->create($request->toDto($userId, $userId));
+        $this->attachCanCloneMeta($document, $request);
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
         return response()->json([
             'data' => array_merge(
                 (new DocumentResource($document))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ], 201);
+    }
+
+    /**
+     * Clonar documento en borrador con sufijo "(copia)"; si hubo publicaciones, según último snapshot publicado.
+     */
+    public function clone(CloneDocumentRequest $request, string $document): JsonResponse
+    {
+        $source = $this->documentService->findOrFail($document);
+        $this->assertOptionalProcessContextMatches((string) $source->process_id);
+
+        $userId = (string) $request->user()->getAuthIdentifier();
+        $copy = $this->documentService->clone($document, $userId);
+        $this->attachCanCloneMeta($copy, $request);
+        $this->apiTeamEmbedService->embedOnDocument($copy, $userId);
+        $blocks = $this->documentService->blocksForDisplay($copy);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($copy))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ], 201);
@@ -105,6 +179,7 @@ class DocumentController extends Controller
             $request->validated('template_version_id') ?? null,
             $request->validated('delivery_deadline'),
         );
+        $this->attachCanCloneMeta($document, $request);
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
@@ -141,6 +216,7 @@ class DocumentController extends Controller
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $document->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument(
@@ -167,6 +243,7 @@ class DocumentController extends Controller
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $updated = $this->documentService->update($id, $request->validated());
+        $this->attachCanCloneMeta($updated, $request);
         $this->apiTeamEmbedService->embedOnDocument(
             $updated,
             (string) $request->user()->getAuthIdentifier(),
@@ -200,6 +277,7 @@ class DocumentController extends Controller
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->submitToReview($document->id, $actorId);
+        $this->attachCanCloneMeta($updated, $request);
 
         return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
     }
@@ -219,8 +297,54 @@ class DocumentController extends Controller
             $actorId,
             $request->validated('changelog'),
         );
+        $this->attachCanCloneMeta($updated, $request);
 
         return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+    }
+
+    /**
+     * Publicado → borrador (nueva versión de edición sobre el mismo expediente).
+     */
+    public function startNewVersion(StartNewDocumentRevisionRequest $request, string $document): JsonResponse
+    {
+        $model = $this->documentService->findOrFail($document);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $userId = (string) $request->user()->getAuthIdentifier();
+        $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);
+        $this->attachCanCloneMeta($updated, $request);
+
+        $this->apiTeamEmbedService->embedOnDocument($updated, $userId);
+        $blocks = $this->documentService->blocksForDisplay($updated);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($updated))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ]);
+    }
+
+    /**
+     * Descarta una versión no publicada (head mutable) y restaura la última publicada.
+     */
+    public function destroyVersion(Request $request, string $document, string $version): JsonResponse
+    {
+        $model = $this->documentService->findOrFail($document);
+        $this->authorize('update', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $actorId = (string) $request->user()->getAuthIdentifier();
+        $updated = $this->documentService->destroyVersion($model->id, $version, $actorId);
+        $this->attachCanCloneMeta($updated, $request);
+        $blocks = $this->documentService->blocksForDisplay($updated);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($updated))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ]);
     }
 
     /**
@@ -238,7 +362,34 @@ class DocumentController extends Controller
             (string) $request->validated('new_owner_id'),
             $actorId,
         );
+        $this->attachCanCloneMeta($updated, $request);
 
         return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+    }
+
+    /**
+     * Adjunta `can_clone` desde policy para evitar Gate dentro de Resource.
+     *
+     * @param  Document|Collection<int, Document>  $documents
+     */
+    private function attachCanCloneMeta(Document|Collection $documents, Request $request): void
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return;
+        }
+
+        $attach = function (Document $document) use ($user): void {
+            $document->setAttribute('can_clone', Gate::forUser($user)->allows('clone', $document));
+        };
+
+        if ($documents instanceof Document) {
+            $attach($documents);
+            return;
+        }
+
+        foreach ($documents as $document) {
+            $attach($document);
+        }
     }
 }

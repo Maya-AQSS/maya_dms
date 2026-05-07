@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources;
 
-use App\Models\TemplateVersion;
+use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -25,6 +25,7 @@ class DocumentResource extends JsonResource
             'study_type_id' => $this->study_type_id,
             'study_id' => $this->study_id,
             'module_id' => $this->module_id,
+            'team_id' => $this->team_id,
             'delivery_deadline' => $this->delivery_deadline?->toIso8601String(),
             'created_by' => $this->created_by,
             'owner_id' => $this->owner_id,
@@ -41,6 +42,10 @@ class DocumentResource extends JsonResource
             'updated_at' => $this->updated_at?->toIso8601String(),
             'is_shared_with_me' => (bool) ($this->resource->getAttribute('is_shared_with_me') ?? false),
             'share_permission' => $this->resource->getAttribute('viewer_share_permission'),
+            'can_clone' => (bool) ($this->resource->getAttribute('can_clone') ?? false),
+            'working_version_id' => $this->head_entity_version_id,
+            'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),
+            'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
         ];
     }
 
@@ -54,8 +59,9 @@ class DocumentResource extends JsonResource
             return (int) $this->templateVersion->version_number;
         }
 
-        $n = TemplateVersion::query()->whereKey($this->template_version_id)->value('version_number');
-
-        return $n !== null ? (int) $n : null;
+        return app(DocumentTemplateVersionNumberResolver::class)->resolve(
+            $this->template_id !== null ? (string) $this->template_id : null,
+            (string) $this->template_version_id,
+        );
     }
 }

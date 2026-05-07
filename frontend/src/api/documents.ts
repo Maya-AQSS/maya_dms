@@ -8,8 +8,12 @@ type CreationMode = 'none' | 'auto' | 'select';
 export type DocumentCreationOption = {
   template_id: string;
   template_version_id: string;
+  process_id: string;
   name: string;
   description: string | null;
+  visibility_level?: string;
+  team_id?: string | null;
+  team_name?: string | null;
 };
 
 export type DocumentCreationOptionsResponse = {
@@ -45,6 +49,54 @@ export async function fetchDocuments(filters: { process_id?: string } = {}): Pro
  */
 export async function fetchDocument(documentId: string): Promise<DocumentDetail> {
   const body = await apiGetJson<DocumentDetailApiResponse>(`documents/${encodeURIComponent(documentId)}`);
+  return body.data;
+}
+
+/** Metadatos de una fila del historial (`GET documents/{id}/versions`). */
+export type DocumentVersionSummary = {
+  id: string;
+  document_id: string;
+  version_number: number;
+  trigger_event: string;
+  triggered_by: string;
+  published_by_name?: string | null;
+  author_name?: string | null;
+  changelog: string | null;
+  notes: string | null;
+  created_at: string | null;
+};
+
+/** GET /api/v1/documents/{id}/versions — metadatos de versiones publicadas (sin snapshot completo). */
+export async function fetchDocumentVersionSummaries(documentId: string): Promise<DocumentVersionSummary[]> {
+  const body = await apiGetJson<{ data: DocumentVersionSummary[] }>(
+    `documents/${encodeURIComponent(documentId)}/versions`,
+  );
+  return body.data;
+}
+
+/** Detalle de una versión publicada del documento (`GET documents/{id}/versions/{version}`). */
+export type DocumentVersionDetail = {
+  id: string;
+  document_id: string;
+  version_number: number;
+  trigger_event: string;
+  triggered_by: string;
+  published_by_name?: string | null;
+  author_name?: string | null;
+  owner_name?: string | null;
+  changelog: string | null;
+  snapshot_data: Record<string, unknown>;
+  created_at: string | null;
+};
+
+/** GET /api/v1/documents/{documentId}/versions/{versionId} — snapshot completo (solo lectura). */
+export async function fetchDocumentVersionDetail(
+  documentId: string,
+  versionId: string,
+): Promise<DocumentVersionDetail> {
+  const body = await apiGetJson<{ data: DocumentVersionDetail }>(
+    `documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}`,
+  );
   return body.data;
 }
 
@@ -92,10 +144,10 @@ export async function createDocument(payload: {
   template_id: string;
   process_id: string;
   title: string;
-  process_id: string;
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;
+  team_id?: string | null;
   template_version_id?: string | null;
   delivery_deadline?: string | null;
 }): Promise<Document> {
@@ -148,6 +200,36 @@ export async function submitDocumentForReview(documentId: string): Promise<Docum
   const body = await apiFetchJson<DocumentSubmitApiResponse>(
     `documents/${encodeURIComponent(documentId)}/submit`,
     { method: 'POST', body: {} },
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/new-version — publicado → borrador (mismo expediente). */
+export async function startDocumentNewVersion(documentId: string): Promise<DocumentDetail> {
+  const body = await apiFetchJson<DocumentDetailApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/new-version`,
+    { method: 'POST', body: {} },
+  );
+  return body.data;
+}
+
+/** POST /api/v1/documents/{id}/clone */
+export async function cloneDocument(documentId: string): Promise<DocumentDetail> {
+  const body = await apiFetchJson<DocumentDetailApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/clone`,
+    { method: 'POST', body: {} },
+  );
+  return body.data;
+}
+
+/** DELETE /api/v1/documents/{id}/versions/{versionId} — descarta borrador/en revisión y restaura última publicada. */
+export async function discardDocumentWorkingVersion(
+  documentId: string,
+  versionId: string,
+): Promise<DocumentDetail> {
+  const body = await apiFetchJson<DocumentDetailApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}`,
+    { method: 'DELETE' },
   );
   return body.data;
 }

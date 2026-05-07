@@ -18,6 +18,11 @@ export type TemplateReviewer = {
   status?: 'pending' | 'approved' | 'rejected';
 };
 
+export type TemplateDocumentReviewerUser = {
+  user_id: string;
+  user_name?: string | null;
+};
+
 export type Template = {
   id: string;
   name: string;
@@ -29,6 +34,12 @@ export type Template = {
   module_id: string | null;
   team_id: string | null;
   process_id: string | null;
+  team?: {
+    id: string;
+    name: string;
+    is_department: boolean;
+    description?: string | null;
+  } | null;
   created_by: string;
   author_name?: string | null;
   status: TemplateStatus;
@@ -37,7 +48,14 @@ export type Template = {
   review_mode: ReviewMode;
   reviewers?: TemplateReviewer[];
   document_reviewers?: string[];
+  document_reviewer_users?: TemplateDocumentReviewerUser[];
   has_review_comments?: boolean;
+  latest_published_version_id?: string | null;
+  latest_published_version_number?: number | null;
+  list_variant?: 'live' | 'published_fallback';
+  list_row_id?: string;
+  /** Alineado con `TemplatePolicy::clone` en el servidor. */
+  can_clone?: boolean;
   created_at?: string;
   updated_at?: string;
 };
@@ -58,6 +76,7 @@ export type TemplatesListResponse = {
 export type TemplateListFilters = {
   visibility_level?: string;
   status?: string;
+  usable_for_documents?: boolean;
   study_type_id?: string;
   study_id?: string;
   module_id?: string;

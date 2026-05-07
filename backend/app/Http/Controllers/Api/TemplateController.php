@@ -7,12 +7,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
 use App\Http\Requests\Templates\PublishTemplateRequest;
+use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
 use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
 use App\Http\Resources\TemplateVersionResource;
 use App\Http\Resources\TemplateVersionSummaryResource;
+use App\Models\Template;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -21,6 +23,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -43,6 +46,7 @@ class TemplateController extends Controller
     public function index(IndexTemplateRequest $request): AnonymousResourceCollection
     {
         $templates = $this->templateService->listFiltered($request->toFilterDto());
+        $this->attachLatestPublishedVersionMeta($templates);
 
         $this->apiTeamEmbedService->embedOnTemplates(
             $templates,
@@ -50,6 +54,50 @@ class TemplateController extends Controller
         );
 
         return TemplateResource::collection($templates);
+    }
+
+    /**
+     * Adjunta metadatos de última versión publicada por plantilla para construir vistas fallback.
+     *
+     * @param  \Illuminate\Support\Collection<int, Template>  $templates
+     */
+    private function attachLatestPublishedVersionMeta(\Illuminate\Support\Collection $templates): void
+    {
+        if ($templates->isEmpty()) {
+            return;
+        }
+
+        $ids = $templates->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
+        if ($ids === []) {
+            return;
+        }
+
+        $rows = DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->whereIn('versionable_id', $ids)
+            ->where('status', 'published')
+            ->where('version_number', '>', 0)
+            ->orderByDesc('version_number')
+            ->get(['versionable_id', 'id', 'version_number']);
+
+        /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByTemplate */
+        $latestByTemplate = [];
+        foreach ($rows as $row) {
+            $templateId = (string) $row->versionable_id;
+            if (! isset($latestByTemplate[$templateId])) {
+                $latestByTemplate[$templateId] = (object) [
+                    'versionable_id' => $templateId,
+                    'id' => (string) $row->id,
+                    'version_number' => (int) $row->version_number,
+                ];
+            }
+        }
+
+        foreach ($templates as $template) {
+            $meta = $latestByTemplate[(string) $template->id] ?? null;
+            $template->setAttribute('latest_published_version_id', $meta?->id);
+            $template->setAttribute('latest_published_version_number', $meta?->version_number);
+        }
     }
 
     /**
@@ -77,7 +125,7 @@ class TemplateController extends Controller
             abort(404);
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
-        $model->loadMissing(['reviewers', 'documentReviewers', 'creator']);
+        $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
@@ -209,6 +257,50 @@ class TemplateController extends Controller
     }
 
     /**
+     * Publicada → borrador (nueva versión de edición sobre la misma plantilla).
+     */
+    public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $updated = $this->templateService->startNewRevisionCycle(
+            $model->id,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return new TemplateResource($updated);
+    }
+
+    /**
+     * Descarta una versión no publicada en curso y restaura la última publicación.
+     */
+    public function destroyVersion(Request $request, string $template, string $version): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $updated = $this->templateService->destroyVersion(
+            $model->id,
+            $version,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return new TemplateResource($updated);
+    }
+
+    /**
      * Historial de versiones publicadas (metadatos).
      */
     public function versions(string $template): ResourceCollection
@@ -219,8 +311,17 @@ class TemplateController extends Controller
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
+        $excludeCurrentPublishedVersion = (string) $model->status === 'published';
+        $currentVersion = (int) $model->version;
+
         return TemplateVersionSummaryResource::collection(
-            $this->templateService->listPublishedVersions($model->id),
+            $this->templateService
+                ->listPublishedVersions($model->id)
+                ->reject(
+                    static fn ($row): bool =>
+                        $excludeCurrentPublishedVersion && (int) $row->version_number === $currentVersion,
+                )
+                ->values(),
         );
     }
 
@@ -230,7 +331,9 @@ class TemplateController extends Controller
     public function showVersion(string $template_version): TemplateVersionResource
     {
         $version = $this->templateService->findVersionOrFail($template_version);
-        $template = $this->templateService->findOrFailWithoutCatalogScope((string) $version->template_id);
+        $templateId = (string) $version->versionable_id;
+
+        $template = $this->templateService->findOrFailWithoutCatalogScope($templateId);
         if (! Gate::forUser(Auth::user())->allows('view', $template)) {
             abort(404);
         }

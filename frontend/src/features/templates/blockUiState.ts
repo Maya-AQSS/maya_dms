@@ -27,7 +27,7 @@ export const BLOCK_UI_STATE_CONFIG: Record<
     label: 'Opcional',
     badgeCls:
       'bg-odoo-purple/10 text-odoo-purple-d dark:bg-odoo-dark-purple-d/30 dark:text-odoo-dark-purple-l',
-    payload: { block_state: 'editable', mandatory: false },
+    payload: { block_state: 'optional', mandatory: false },
   },
 };
 
