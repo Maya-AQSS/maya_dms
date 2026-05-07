@@ -26,6 +26,7 @@ services:
       FDW_USERS_SCHEMA: ${FDW_USERS_SCHEMA:-public}
       FDW_USERS_TABLE: ${FDW_USERS_TABLE:-users}
       # ─── Redis ────────────────────────────────────────────────
+      CACHE_STORE: redis
       REDIS_HOST: maya_redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-secret}
       REDIS_PORT: 6379
