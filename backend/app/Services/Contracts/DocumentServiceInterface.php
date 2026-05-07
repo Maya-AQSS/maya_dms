@@ -73,6 +73,11 @@ interface DocumentServiceInterface
     public function startNewRevisionCycle(string $documentId, string $actorId): Document;
 
     /**
+     * Descarta una versión no publicada en curso y restaura la última publicación.
+     */
+    public function destroyVersion(string $documentId, string $versionId, string $actorId): Document;
+
+    /**
      * Delega la propiedad del documento a otro usuario.
      */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document;

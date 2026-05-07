@@ -10,6 +10,7 @@ import {
   approveDocumentReview,
   rejectDocumentReview,
   startDocumentNewVersion,
+  discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
 import { fetchTemplate } from '../api/templates';
@@ -138,6 +139,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
+  const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
+  const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
   const [actionableReviewId, setActionableReviewId] = useState<string | null>(null);
@@ -282,6 +286,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
   const canStartNewVersion =
     !isValidateMode && isPublished && canMutatePublished && !isHistoricalSnapshot;
+  const canDiscardWorkingVersion =
+    !isValidateMode &&
+    !isHistoricalSnapshot &&
+    (detail?.status === 'draft' || detail?.status === 'in_review') &&
+    canMutatePublished &&
+    !!detail?.latest_published_version_id &&
+    !!detail?.working_version_id;
 
   useEffect(() => {
     if (!isValidateMode) {
@@ -377,6 +388,23 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     } catch (e) {
       setDeleteError(e instanceof Error ? e.message : 'No se pudo eliminar el documento.');
       setDeleteLoading(false);
+    }
+  };
+
+  const handleDiscardWorkingVersion = async () => {
+    if (!documentId || !detail?.working_version_id) return;
+    setDiscardVersionLoading(true);
+    setDiscardVersionError(null);
+    try {
+      const restored = await discardDocumentWorkingVersion(documentId, detail.working_version_id);
+      setDetail(restored);
+      setVersionSnapshot(null);
+      setShowDiscardVersionModal(false);
+      setActionError(null);
+    } catch (e) {
+      setDiscardVersionError(e instanceof Error ? e.message : 'No se pudo descartar la versión en curso.');
+    } finally {
+      setDiscardVersionLoading(false);
     }
   };
 
@@ -528,6 +556,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           onClick={() => void handleStartNewVersion()}
         >
           Nueva versión
+        </Button>
+      )}
+      {!isValidateMode && canDiscardWorkingVersion && (
+        <Button
+          type="button"
+          variant="outlineWarning"
+          size="sm"
+          loading={discardVersionLoading}
+          onClick={() => setShowDiscardVersionModal(true)}
+        >
+          Descartar nueva versión
         </Button>
       )}
       {isValidateMode && (
@@ -790,6 +829,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         error={deleteError}
         onConfirm={() => void handleDelete()}
         onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+      />
+
+      <ConfirmDialog
+        open={showDiscardVersionModal}
+        variant="danger"
+        title="¿Descartar nueva versión?"
+        description="Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada del documento."
+        confirmLabel="Descartar versión"
+        cancelLabel="Cancelar"
+        loading={discardVersionLoading}
+        error={discardVersionError}
+        onConfirm={() => void handleDiscardWorkingVersion()}
+        onCancel={() => {
+          setShowDiscardVersionModal(false);
+          setDiscardVersionError(null);
+        }}
       />
     </>
   );

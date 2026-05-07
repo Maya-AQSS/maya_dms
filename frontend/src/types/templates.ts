@@ -18,6 +18,11 @@ export type TemplateReviewer = {
   status?: 'pending' | 'approved' | 'rejected';
 };
 
+export type TemplateDocumentReviewerUser = {
+  user_id: string;
+  user_name?: string | null;
+};
+
 export type Template = {
   id: string;
   name: string;
@@ -43,6 +48,7 @@ export type Template = {
   review_mode: ReviewMode;
   reviewers?: TemplateReviewer[];
   document_reviewers?: string[];
+  document_reviewer_users?: TemplateDocumentReviewerUser[];
   has_review_comments?: boolean;
   latest_published_version_id?: string | null;
   latest_published_version_number?: number | null;

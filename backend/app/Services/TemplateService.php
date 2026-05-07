@@ -271,6 +271,90 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Descarta la versión de trabajo actual (head mutable) y restaura snapshot/revisores de la última publicación.
+     */
+    public function destroyVersion(string $templateId, string $versionId, string $actorId): Template
+    {
+        return $this->templateRepository->transaction(function () use ($templateId, $versionId, $actorId) {
+            $template = $this->templateRepository->findOrFail($templateId);
+            $template->loadMissing('headVersion');
+            $head = $template->headVersion;
+
+            if ($head === null || (string) $head->id !== $versionId || (int) $head->version_number !== 0) {
+                throw ValidationException::withMessages([
+                    'version' => ['Solo se puede descartar la versión de trabajo actual de la plantilla.'],
+                ]);
+            }
+
+            if (! in_array((string) $head->status, ['draft', 'in_review'], true)) {
+                throw ValidationException::withMessages([
+                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review).'],
+                ]);
+            }
+
+            $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+            if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
+                throw ValidationException::withMessages([
+                    'version' => ['No existe una versión publicada a la que restaurar.'],
+                ]);
+            }
+
+            $publishedSnapshot = $latestPublished->snapshot_data;
+            $publishedTemplate = isset($publishedSnapshot['template']) && is_array($publishedSnapshot['template'])
+                ? $publishedSnapshot['template']
+                : [];
+
+            $head->snapshot_data = $publishedSnapshot;
+            $head->status = 'published';
+            $head->updated_at = now();
+            $head->save();
+
+            // Asegura coherencia de revisores desde el snapshot publicado.
+            $reviewersSection = isset($publishedSnapshot['reviewers']) && is_array($publishedSnapshot['reviewers'])
+                ? $publishedSnapshot['reviewers']
+                : [];
+            $templateReviewers = isset($reviewersSection['template_reviewers']) && is_array($reviewersSection['template_reviewers'])
+                ? $reviewersSection['template_reviewers']
+                : [];
+            $documentReviewers = isset($reviewersSection['document_reviewers']) && is_array($reviewersSection['document_reviewers'])
+                ? $reviewersSection['document_reviewers']
+                : [];
+
+            $template->reviewers()->withTrashed()->forceDelete();
+            foreach ($templateReviewers as $row) {
+                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                    continue;
+                }
+                $template->reviewers()->create([
+                    'user_id' => $row['user_id'],
+                    'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
+                    'status' => 'pending',
+                ]);
+            }
+
+            $template->documentReviewers()->delete();
+            foreach ($documentReviewers as $row) {
+                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                    continue;
+                }
+                $template->documentReviewers()->create([
+                    'user_id' => $row['user_id'],
+                ]);
+            }
+
+            // Refresca campos delegados críticos para consistencia con el snapshot restaurado.
+            $template = $this->templateRepository->update($template, [
+                'status' => 'published',
+                'created_by' => isset($publishedTemplate['created_by']) && is_string($publishedTemplate['created_by'])
+                    ? $publishedTemplate['created_by']
+                    : $actorId,
+            ]);
+
+            return $template->loadMissing(['reviewers', 'documentReviewers']);
+        });
+    }
+
+    /**
      * @param  array{
      *     kind: 'entity'|'legacy',
      *     template_meta: array<string, mixed>,

@@ -49,6 +49,13 @@ class TemplateResource extends JsonResource
                 ->map(fn ($v) => $v->user_id)
                 ->values()
                 ->all()),
+            'document_reviewer_users' => $this->whenLoaded('documentReviewers', fn () => $this->documentReviewers
+                ->map(fn ($v) => [
+                    'user_id' => $v->user_id,
+                    'user_name' => optional($v->user)->name,
+                ])
+                ->values()
+                ->all()),
             'created_at'         => $this->created_at?->toIso8601String(),
             'updated_at'         => $this->updated_at?->toIso8601String(),
             'has_review_comments' => (bool) ($this->resource->has_review_comments ?? false),

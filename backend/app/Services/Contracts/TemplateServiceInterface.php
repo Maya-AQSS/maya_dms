@@ -102,6 +102,11 @@ interface TemplateServiceInterface
     public function startNewRevisionCycle(string $templateId, string $actorId): Template;
 
     /**
+     * Descarta una versión no publicada en curso y restaura la última publicación.
+     */
+    public function destroyVersion(string $templateId, string $versionId, string $actorId): Template;
+
+    /**
      * Registra la aprobación del revisor activo. Si todos los revisores han aprobado,
      * publica la plantilla automáticamente con un snapshot.
      *

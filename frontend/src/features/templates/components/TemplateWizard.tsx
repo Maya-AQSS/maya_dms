@@ -63,7 +63,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
   const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>(
-    initial?.document_reviewers?.map((userId) => ({ userId, name: userId })) ?? [],
+    initial?.document_reviewer_users?.length
+      ? initial.document_reviewer_users.map((reviewer) => ({
+          userId: reviewer.user_id,
+          name: reviewer.user_name?.trim() || reviewer.user_id,
+        }))
+      : initial?.document_reviewers?.map((userId) => ({ userId, name: userId })) ?? [],
   );
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>('libre');
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');

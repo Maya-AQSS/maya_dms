@@ -19,6 +19,7 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class DocumentService implements DocumentServiceInterface
@@ -754,6 +755,121 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $this->documentStateService->transition($documentId, 'draft', $actorId);
+    }
+
+    /**
+     * Descarta la versión de trabajo del documento y restaura la última publicación.
+     */
+    public function destroyVersion(string $documentId, string $versionId, string $actorId): Document
+    {
+        return $this->documentRepository->transaction(function () use ($documentId, $versionId) {
+            $document = $this->documentRepository->findOrFail($documentId);
+            $document->loadMissing('headVersion');
+            $head = $document->headVersion;
+
+            if ($head === null || (string) $head->id !== $versionId || (int) $head->version_number !== 0) {
+                throw ValidationException::withMessages([
+                    'version' => ['Solo se puede descartar la versión de trabajo actual del documento.'],
+                ]);
+            }
+
+            if (! in_array((string) $head->status, ['draft', 'in_review'], true)) {
+                throw ValidationException::withMessages([
+                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review).'],
+                ]);
+            }
+
+            $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
+            if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
+                throw ValidationException::withMessages([
+                    'version' => ['No existe una versión publicada a la que restaurar.'],
+                ]);
+            }
+
+            $publishedSnapshot = $latestPublished->snapshot_data;
+            $publishedBlocks = isset($publishedSnapshot['blocks']) && is_array($publishedSnapshot['blocks'])
+                ? $publishedSnapshot['blocks']
+                : [];
+
+            $head->snapshot_data = $publishedSnapshot;
+            $head->status = 'published';
+            $head->updated_at = now();
+            $head->save();
+
+            $this->restorePublishedDocumentBlocks($documentId, $publishedBlocks);
+            $this->documentRepository->deleteReviewsForDocument($documentId);
+
+            // Re-sincroniza estado de cabecera delegado tras restaurar snapshot.
+            $this->documentRepository->mergeHeadWorkingCopy($document, [
+                'status' => 'published',
+            ]);
+
+            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+        });
+    }
+
+    /**
+     * Restaura los bloques de un documento desde una versión publicada.
+     * 
+     * @param list<array<string, mixed>> $publishedBlocks
+     */
+    private function restorePublishedDocumentBlocks(string $documentId, array $publishedBlocks): void
+    {
+        $existingByTemplateBlock = DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->get()
+            ->filter(fn (DocumentBlock $block): bool => is_string($block->template_block_id) && $block->template_block_id !== '')
+            ->keyBy(fn (DocumentBlock $block): string => (string) $block->template_block_id);
+
+        $seenTemplateBlockIds = [];
+        foreach ($publishedBlocks as $index => $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $templateBlockId = isset($row['template_block_id']) && is_string($row['template_block_id']) && $row['template_block_id'] !== ''
+                ? $row['template_block_id']
+                : null;
+            if ($templateBlockId === null) {
+                continue;
+            }
+
+            $seenTemplateBlockIds[] = $templateBlockId;
+
+            $payload = [
+                'content' => array_key_exists('content', $row) ? $row['content'] : null,
+                'is_filled' => (bool) ($row['is_filled'] ?? false),
+                'sort_order' => isset($row['sort_order']) ? (int) $row['sort_order'] : $index,
+                'last_edited_by' => isset($row['last_edited_by']) && is_string($row['last_edited_by']) ? $row['last_edited_by'] : null,
+                'locked_by' => isset($row['locked_by']) && is_string($row['locked_by']) ? $row['locked_by'] : null,
+                'locked_at' => isset($row['locked_at']) && is_string($row['locked_at']) && trim($row['locked_at']) !== '' ? $row['locked_at'] : null,
+            ];
+
+            /** @var DocumentBlock|null $existing */
+            $existing = $existingByTemplateBlock->get($templateBlockId);
+            if ($existing !== null) {
+                $existing->fill($payload);
+                $existing->save();
+                continue;
+            }
+
+            DocumentBlock::query()->create([
+                'id' => (string) Str::uuid(),
+                'document_id' => $documentId,
+                'template_block_id' => $templateBlockId,
+                ...$payload,
+            ]);
+        }
+
+        if ($seenTemplateBlockIds === []) {
+            DocumentBlock::query()->where('document_id', $documentId)->delete();
+            return;
+        }
+
+        DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->whereNotIn('template_block_id', $seenTemplateBlockIds)
+            ->delete();
     }
 
     /**

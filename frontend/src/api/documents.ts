@@ -212,6 +212,18 @@ export async function startDocumentNewVersion(documentId: string): Promise<Docum
   return body.data;
 }
 
+/** DELETE /api/v1/documents/{id}/versions/{versionId} — descarta borrador/en revisión y restaura última publicada. */
+export async function discardDocumentWorkingVersion(
+  documentId: string,
+  versionId: string,
+): Promise<DocumentDetail> {
+  const body = await apiFetchJson<DocumentDetailApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}`,
+    { method: 'DELETE' },
+  );
+  return body.data;
+}
+
 /** GET /api/v1/documents/{id}/reviews */
 export async function fetchDocumentReviews(documentId: string): Promise<DocumentReview[]> {
   const body = await apiGetJson<DocumentReviewsApiResponse>(

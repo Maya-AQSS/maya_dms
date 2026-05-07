@@ -125,7 +125,7 @@ class TemplateController extends Controller
             abort(404);
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
-        $model->loadMissing(['reviewers', 'documentReviewers', 'creator']);
+        $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator']);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
@@ -266,6 +266,29 @@ class TemplateController extends Controller
 
         $updated = $this->templateService->startNewRevisionCycle(
             $model->id,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return new TemplateResource($updated);
+    }
+
+    /**
+     * Descarta una versión no publicada en curso y restaura la última publicación.
+     */
+    public function destroyVersion(Request $request, string $template, string $version): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->authorize('update', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $updated = $this->templateService->destroyVersion(
+            $model->id,
+            $version,
             (string) $request->user()->getAuthIdentifier(),
         );
 

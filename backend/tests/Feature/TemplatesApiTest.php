@@ -801,6 +801,116 @@ class TemplatesApiTest extends TestCase
         $this->assertSame($actorId, (string) Template::query()->findOrFail($tid)->created_by);
     }
 
+    public function test_delete_template_version_discards_live_draft_and_restores_last_published_snapshot(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId, []);
+        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+
+        $reviewerTemplatePublished = (string) Str::uuid();
+        $reviewerDocumentPublished = (string) Str::uuid();
+        $reviewerTemplateLive = (string) Str::uuid();
+        $reviewerDocumentLive = (string) Str::uuid();
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla con borrador descartable',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerTemplateLive,
+            'stage' => 1,
+            'status' => 'pending',
+        ]);
+        TemplateDocumentReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerDocumentLive,
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $creatorId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => json_encode([
+                'template' => [
+                    'id' => $tid,
+                    'process_id' => '00000000-0000-0000-0000-000000000001',
+                    'name' => 'Plantilla publicada v1',
+                    'description' => null,
+                    'visibility_level' => TemplateVisibilityLevel::Personal->value,
+                    'delivery_deadline' => null,
+                    'study_type_id' => null,
+                    'study_id' => null,
+                    'module_id' => null,
+                    'team_id' => null,
+                    'status' => 'published',
+                    'version' => 1,
+                    'created_by' => $creatorId,
+                ],
+                'blocks' => [],
+                'reviewers' => [
+                    'template_reviewers' => [
+                        ['user_id' => $reviewerTemplatePublished, 'stage' => 1, 'status' => 'approved'],
+                    ],
+                    'document_reviewers' => [
+                        ['user_id' => $reviewerDocumentPublished],
+                    ],
+                ],
+            ], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $headId = (string) DB::table('templates')->where('id', $tid)->value('head_entity_version_id');
+        $this->assertNotEmpty($headId);
+
+        $this->deleteJson("/api/v1/templates/{$tid}/versions/{$headId}", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.name', 'Plantilla publicada v1');
+
+        $this->assertDatabaseHas('template_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerTemplatePublished,
+            'stage' => 1,
+        ]);
+        $this->assertDatabaseMissing('template_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerTemplateLive,
+        ]);
+        $this->assertDatabaseHas('template_document_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerDocumentPublished,
+        ]);
+        $this->assertDatabaseMissing('template_document_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerDocumentLive,
+        ]);
+    }
+
     public function test_template_version_block_layers_resolve_equal_blocks_snapshot_after_second_publish(): void
     {
         $creatorId = (string) Str::uuid();

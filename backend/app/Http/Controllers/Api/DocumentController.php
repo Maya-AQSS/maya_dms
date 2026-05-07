@@ -316,6 +316,27 @@ class DocumentController extends Controller
     }
 
     /**
+     * Descarta una versión no publicada (head mutable) y restaura la última publicada.
+     */
+    public function destroyVersion(Request $request, string $document, string $version): JsonResponse
+    {
+        $model = $this->documentService->findOrFail($document);
+        $this->authorize('update', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $actorId = (string) $request->user()->getAuthIdentifier();
+        $updated = $this->documentService->destroyVersion($model->id, $version, $actorId);
+        $blocks = $this->documentService->blocksForDisplay($updated);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource($updated))->toArray($request),
+                ['blocks' => $blocks],
+            ),
+        ]);
+    }
+
+    /**
      * Delegar documento a otro usuario.
      */
     public function delegate(DelegateDocumentRequest $request, string $id): JsonResponse

@@ -2799,7 +2799,146 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $this->putJson("/api/v1/documents/{$documentId}/versions/{$versionId}", ['notes' => 'hack'], $headers)->assertForbidden();
         $this->patchJson("/api/v1/documents/{$documentId}/versions/{$versionId}", ['notes' => 'hack'], $headers)->assertForbidden();
-        $this->deleteJson("/api/v1/documents/{$documentId}/versions/{$versionId}", [], $headers)->assertForbidden();
+        $this->deleteJson("/api/v1/documents/{$documentId}/versions/{$versionId}", [], $headers)->assertUnprocessable();
+    }
+
+    public function test_delete_document_version_discards_live_draft_and_restores_last_published_snapshot(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId, ['templates.read', 'documents.read', 'documents.create', 'documents.update']);
+        $headers = $this->authHeaders($creatorId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $templateBlockId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Plantilla doc descarte',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'published',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $templateBlockId,
+            'template_id' => $templateId,
+            'title' => 'Bloque base',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Documento live draft',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $creatorId,
+            'owner_id' => $creatorId,
+            'status' => 'draft',
+        ]);
+
+        DB::table('document_blocks')->insert([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'template_block_id' => $templateBlockId,
+            'content' => json_encode(['text' => 'contenido draft'], JSON_THROW_ON_ERROR),
+            'is_filled' => 1,
+            'last_edited_by' => $creatorId,
+            'locked_by' => null,
+            'locked_at' => null,
+            'sort_order' => 0,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('document_reviews')->insert([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'reviewer_id' => $creatorId,
+            'stage' => 1,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Document::class,
+            'versionable_id' => $documentId,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $creatorId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => json_encode([
+                'document' => [
+                    'id' => $documentId,
+                    'template_id' => $templateId,
+                    'template_version_id' => null,
+                    'title' => 'Documento publicado v1',
+                    'study_type_id' => null,
+                    'study_id' => null,
+                    'module_id' => null,
+                    'team_id' => null,
+                    'created_by' => $creatorId,
+                    'owner_id' => $creatorId,
+                    'status' => 'published',
+                    'current_version' => 1,
+                    'submitted_at' => now()->toIso8601String(),
+                    'published_at' => now()->toIso8601String(),
+                ],
+                'blocks' => [[
+                    'id' => (string) Str::uuid(),
+                    'template_block_id' => $templateBlockId,
+                    'content' => ['text' => 'contenido publicado'],
+                    'is_filled' => true,
+                    'sort_order' => 0,
+                    'last_edited_by' => $creatorId,
+                    'locked_by' => null,
+                    'locked_at' => null,
+                ]],
+            ], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $headId = (string) DB::table('documents')->where('id', $documentId)->value('head_entity_version_id');
+        $this->assertNotEmpty($headId);
+
+        $this->deleteJson("/api/v1/documents/{$documentId}/versions/{$headId}", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.title', 'Documento publicado v1');
+
+        $blockContent = DB::table('document_blocks')
+            ->where('document_id', $documentId)
+            ->where('template_block_id', $templateBlockId)
+            ->value('content');
+        $this->assertIsString($blockContent);
+        $decodedBlockContent = json_decode($blockContent, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertSame(['text' => 'contenido publicado'], $decodedBlockContent);
+
+        $this->assertDatabaseMissing('document_reviews', [
+            'document_id' => $documentId,
+        ]);
     }
 
     public function test_template_version_status_reports_update_when_newer_published_template_version_exists(): void

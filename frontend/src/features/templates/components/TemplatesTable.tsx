@@ -65,11 +65,44 @@ export function TemplatesTable({ processId }: Props = {}) {
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const displayTemplates = useMemo(() => {
+    const out: Template[] = [];
+    for (const t of templates) {
+      const hasPublishedFallback =
+        t.status !== 'published' &&
+        !!t.latest_published_version_id;
+      const isAssignedReviewer =
+        t.status === 'in_review' &&
+        !!profile?.id &&
+        (t.reviewers?.some((r) => r.user_id === profile.id) ?? false);
+      const canSeeLive = (!!profile?.id && t.created_by === profile.id) || isAssignedReviewer;
+
+      if (!hasPublishedFallback) {
+        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+        continue;
+      }
+
+      const publishedFallback: Template = {
+        ...t,
+        status: 'published',
+        version: t.latest_published_version_number ?? t.version,
+        list_variant: 'published_fallback',
+        list_row_id: `${t.id}:published`,
+      };
+
+      if (canSeeLive) {
+        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+      }
+      out.push(publishedFallback);
+    }
+    return out;
+  }, [templates, profile?.id]);
+
   const filteredTemplates = useMemo(() => {
-    if (!nameFilter) return templates;
+    if (!nameFilter) return displayTemplates;
     const needle = nameFilter.toLowerCase();
-    return templates.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
-  }, [templates, nameFilter]);
+    return displayTemplates.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
+  }, [displayTemplates, nameFilter]);
 
   const filterUi = useMemo(
     () => ({
@@ -125,6 +158,10 @@ export function TemplatesTable({ processId }: Props = {}) {
   };
 
   const handleRowClick = (t: Template) => {
+    if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
+      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`);
+      return;
+    }
     const isReviewer =
       t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
     const backTo = processId ? `/procesos/${processId}` : '/dashboard';
@@ -220,7 +257,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         columns={columns}
         rows={filteredTemplates}
         loading={loading && templates.length === 0}
-        rowKey={(t) => t.id}
+        rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}

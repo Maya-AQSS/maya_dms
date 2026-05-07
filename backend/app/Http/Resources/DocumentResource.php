@@ -42,6 +42,7 @@ class DocumentResource extends JsonResource
             'updated_at' => $this->updated_at?->toIso8601String(),
             'is_shared_with_me' => (bool) ($this->resource->getAttribute('is_shared_with_me') ?? false),
             'share_permission' => $this->resource->getAttribute('viewer_share_permission'),
+            'working_version_id' => $this->head_entity_version_id,
             'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),
             'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
         ];
