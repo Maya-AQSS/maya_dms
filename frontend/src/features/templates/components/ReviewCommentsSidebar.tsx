@@ -133,7 +133,7 @@ export function ReviewCommentsSidebar({
                     </time>
                   </div>
                   <div
-                    className={`text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed ${isResolved ? 'bg-success/5' : 'bg-ui-body/40 dark:bg-ui-dark-bg/40'
+                    className={`text-sm text-text-primary dark:text-text-dark-primary leading-relaxed ${isResolved ? 'bg-success/5' : 'bg-ui-body/40 dark:bg-ui-dark-bg'
                       } px-4 py-3 rounded-lg border border-ui-border/60 dark:border-ui-dark-border/60 whitespace-pre-wrap`}
                   >
                     {c.body}
@@ -177,7 +177,7 @@ export function ReviewCommentsSidebar({
                             {new Date(r.created_at).toLocaleDateString()}
                           </time>
                         </div>
-                        <div className="text-xs text-text-secondary dark:text-text-dark-secondary bg-ui-body/20 dark:bg-ui-dark-bg/20 p-2 rounded border border-ui-border/30">
+                        <div className="text-xs text-text-primary dark:text-text-dark-primary bg-ui-body/20 dark:bg-ui-dark-bg p-2 rounded border border-ui-border/30 dark:border-ui-dark-border/30">
                           {r.body}
                         </div>
                       </div>

@@ -509,7 +509,7 @@ export function TemplateReviewView({ template }: Props) {
                                         {new Date(comment.created_at).toLocaleDateString()}
                                       </span>
                                     </div>
-                                    <div className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed bg-ui-body/30 p-5 rounded-xl border border-ui-border/50 shadow-sm">
+                                    <div className="text-sm text-text-primary dark:text-text-dark-primary leading-relaxed bg-ui-body/30 dark:bg-ui-dark-bg p-5 rounded-xl border border-ui-border/50 dark:border-ui-dark-border/50 shadow-sm">
                                       {comment.body}
                                     </div>
                                   </div>
@@ -527,7 +527,7 @@ export function TemplateReviewView({ template }: Props) {
                                               {new Date(r.created_at).toLocaleDateString()}
                                             </span>
                                           </div>
-                                          <div className="text-xs text-text-secondary dark:text-text-dark-secondary bg-ui-body/10 p-3 rounded-lg border border-ui-border/20 italic">
+                                          <div className="text-xs text-text-primary dark:text-text-dark-primary bg-ui-body/10 dark:bg-ui-dark-bg p-3 rounded-lg border border-ui-border/20 dark:border-ui-dark-border/20 italic">
                                             {r.body}
                                           </div>
                                         </div>
