@@ -10,6 +10,7 @@ import {
   approveDocumentReview,
   rejectDocumentReview,
   startDocumentNewVersion,
+  cloneDocument,
   discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
@@ -286,6 +287,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
   const canStartNewVersion =
     !isValidateMode && isPublished && canMutatePublished && !isHistoricalSnapshot;
+  const canClone =
+    !isValidateMode &&
+    !isHistoricalSnapshot &&
+    detail?.can_clone === true;
   const canDiscardWorkingVersion =
     !isValidateMode &&
     !isHistoricalSnapshot &&
@@ -437,6 +442,20 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     }
   };
 
+  const handleClone = async () => {
+    if (!documentId) return;
+    setActionLoading(true);
+    setActionError(null);
+    try {
+      const cloned = await cloneDocument(documentId);
+      navigate(`/documents/${cloned.id}/editor`);
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo clonar el documento.');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   const handleApproveValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
@@ -556,6 +575,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           onClick={() => void handleStartNewVersion()}
         >
           Nueva versión
+        </Button>
+      )}
+      {!isValidateMode && canClone && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={actionLoading}
+          onClick={() => void handleClone()}
+        >
+          Clonar
         </Button>
       )}
       {!isValidateMode && canDiscardWorkingVersion && (

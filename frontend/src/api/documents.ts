@@ -212,6 +212,15 @@ export async function startDocumentNewVersion(documentId: string): Promise<Docum
   return body.data;
 }
 
+/** POST /api/v1/documents/{id}/clone */
+export async function cloneDocument(documentId: string): Promise<DocumentDetail> {
+  const body = await apiFetchJson<DocumentDetailApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/clone`,
+    { method: 'POST', body: {} },
+  );
+  return body.data;
+}
+
 /** DELETE /api/v1/documents/{id}/versions/{versionId} — descarta borrador/en revisión y restaura última publicada. */
 export async function discardDocumentWorkingVersion(
   documentId: string,

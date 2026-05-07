@@ -19,7 +19,9 @@ use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class DocumentController extends Controller
 {
@@ -41,6 +43,7 @@ class DocumentController extends Controller
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
         $this->attachLatestPublishedVersionMeta($documents);
+        $this->attachCanCloneMeta($documents, $request);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
@@ -101,6 +104,7 @@ class DocumentController extends Controller
     {
         $userId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->create($request->toDto($userId, $userId));
+        $this->attachCanCloneMeta($document, $request);
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
@@ -122,6 +126,7 @@ class DocumentController extends Controller
 
         $userId = (string) $request->user()->getAuthIdentifier();
         $copy = $this->documentService->clone($document, $userId);
+        $this->attachCanCloneMeta($copy, $request);
         $this->apiTeamEmbedService->embedOnDocument($copy, $userId);
         $blocks = $this->documentService->blocksForDisplay($copy);
 
@@ -175,6 +180,7 @@ class DocumentController extends Controller
             $request->validated('template_version_id') ?? null,
             $request->validated('delivery_deadline'),
         );
+        $this->attachCanCloneMeta($document, $request);
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
@@ -211,6 +217,7 @@ class DocumentController extends Controller
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $document->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument(
@@ -237,6 +244,7 @@ class DocumentController extends Controller
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $updated = $this->documentService->update($id, $request->validated());
+        $this->attachCanCloneMeta($updated, $request);
         $this->apiTeamEmbedService->embedOnDocument(
             $updated,
             (string) $request->user()->getAuthIdentifier(),
@@ -270,6 +278,7 @@ class DocumentController extends Controller
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->submitToReview($document->id, $actorId);
+        $this->attachCanCloneMeta($updated, $request);
 
         return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
     }
@@ -289,6 +298,7 @@ class DocumentController extends Controller
             $actorId,
             $request->validated('changelog'),
         );
+        $this->attachCanCloneMeta($updated, $request);
 
         return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
     }
@@ -303,6 +313,7 @@ class DocumentController extends Controller
 
         $userId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);
+        $this->attachCanCloneMeta($updated, $request);
 
         $this->apiTeamEmbedService->embedOnDocument($updated, $userId);
         $blocks = $this->documentService->blocksForDisplay($updated);
@@ -326,6 +337,7 @@ class DocumentController extends Controller
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->destroyVersion($model->id, $version, $actorId);
+        $this->attachCanCloneMeta($updated, $request);
         $blocks = $this->documentService->blocksForDisplay($updated);
 
         return response()->json([
@@ -351,7 +363,34 @@ class DocumentController extends Controller
             (string) $request->validated('new_owner_id'),
             $actorId,
         );
+        $this->attachCanCloneMeta($updated, $request);
 
         return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+    }
+
+    /**
+     * Adjunta `can_clone` desde policy para evitar Gate dentro de Resource.
+     *
+     * @param  Document|Collection<int, Document>  $documents
+     */
+    private function attachCanCloneMeta(Document|Collection $documents, Request $request): void
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return;
+        }
+
+        $attach = function (Document $document) use ($user): void {
+            $document->setAttribute('can_clone', Gate::forUser($user)->allows('clone', $document));
+        };
+
+        if ($documents instanceof Document) {
+            $attach($documents);
+            return;
+        }
+
+        foreach ($documents as $document) {
+            $attach($document);
+        }
     }
 }

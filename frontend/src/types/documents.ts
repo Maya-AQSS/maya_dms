@@ -31,6 +31,7 @@ export type Document = {
   share_permission?: string | null;
   team?: unknown;
   has_review_comments?: boolean;
+  can_clone?: boolean;
   working_version_id?: string | null;
   latest_published_version_id?: string | null;
   latest_published_version_number?: number | null;
