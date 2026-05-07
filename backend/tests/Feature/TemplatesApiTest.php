@@ -636,6 +636,7 @@ class TemplatesApiTest extends TestCase
     {
         $originalCreatorId = (string) Str::uuid();
         $actorId = (string) Str::uuid();
+        $studyId = $this->anyStudyId();
         $actorHeaders = $this->authHeaders($actorId, []);
         $this->assignUserPermissions($actorId, ['templates.read', 'templates.update', 'templates.create']);
 
@@ -646,10 +647,10 @@ class TemplatesApiTest extends TestCase
             'process_id' => '00000000-0000-0000-0000-000000000001',
             'name' => 'T',
             'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'visibility_level' => TemplateVisibilityLevel::Study->value,
             'delivery_deadline' => null,
             'study_type_id' => null,
-            'study_id' => null,
+            'study_id' => $studyId,
             'module_id' => null,
             'team_id' => null,
             'created_by' => $originalCreatorId,
@@ -683,6 +684,13 @@ class TemplatesApiTest extends TestCase
             'user_id' => $actorId,
             'stage' => 1,
             'status' => 'pending',
+        ]);
+        DB::table('user_studies')->insertOrIgnore([
+            'id' => (string) Str::uuid(),
+            'user_id' => $actorId,
+            'study_id' => $studyId,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         $this->postJson("/api/v1/templates/{$tid}/new-version", [], $actorHeaders)
