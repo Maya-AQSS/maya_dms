@@ -524,7 +524,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             validators={validators}
             onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
             validationType={validationType}
-            onValidationTypeChange={(t) => { setValidationType(t); setUsersDirty(true); }}
+            onValidationTypeChange={(t) => {
+              setValidationType(t);
+              setUsersDirty(true);
+              if (template?.id) {
+                const reviewMode: ReviewMode = t === 'ordenada' ? 'sequential' : 'parallel';
+                void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch(() => {/* non-blocking */});
+              }
+            }}
             documentValidators={documentValidators}
             onDocumentValidatorsChange={(v) => { setDocumentValidators(v); setUsersDirty(true); }}
             documentValidationType={documentValidationType}
