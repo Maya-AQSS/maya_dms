@@ -4,6 +4,7 @@ import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
+import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { fetchProcesses } from '../../../api/processes';
@@ -311,18 +312,8 @@ export function TemplateReviewView({ template }: Props) {
               <div className="space-y-12">
                 {blocks.map((block) => {
                   const isSelected = selectedBlockId === block.id;
-                  const content = block.default_content;
                   const hasComments = comments.some(c => c.blockable_id === block.id);
-
-                  let parsed: unknown[] | null = null;
-                  if (Array.isArray(content)) {
-                    if (content.length > 0) parsed = content;
-                  } else if (typeof content === 'string') {
-                    try {
-                      const p = JSON.parse(content);
-                      if (Array.isArray(p) && p.length > 0) parsed = p;
-                    } catch { /* fallback */ }
-                  }
+                  const nodes = normalizeBlockContentForEditor(block.default_content);
 
                   return (
                     <section
@@ -406,12 +397,8 @@ export function TemplateReviewView({ template }: Props) {
                       </div>
 
                       <div className="prose prose-sm dark:prose-invert max-w-none">
-                        {parsed ? (
-                          <BlockContentHtml content={parsed as any} />
-                        ) : typeof content === 'string' && content.trim() !== '' ? (
-                          <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed">
-                            {content}
-                          </p>
+                        {nodes.length > 0 ? (
+                          <BlockContentHtml content={nodes} />
                         ) : (
                           <p className="text-xs text-text-muted italic">Sin contenido configurado.</p>
                         )}
