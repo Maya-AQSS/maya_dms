@@ -262,10 +262,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     step?: string;
     processId?: string;
     moduleId?: string;
+    fromTemplateSelection?: boolean;
   } | null;
   const returnToSummary = locationState?.step === 'summary';
   const locationProcessId = locationState?.processId;
   const locationModuleId = locationState?.moduleId;
+  const fromTemplateSelection = locationState?.fromTemplateSelection === true;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
@@ -850,7 +852,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           });
 
           // Navigate to the editor route with the new ID
-          navigate(`/documents/${created.id}/editor`, { replace: true });
+          navigate(`/documents/${created.id}/editor`, {
+            replace: true,
+            state: {
+              processId: locationProcessId,
+              moduleId: locationModuleId,
+              fromTemplateSelection: true,
+            },
+          });
           setStep('blocks');
           setCompletedSteps((prev: Step[]) => (prev.includes('properties') ? prev : [...prev, 'properties']));
         } else {
@@ -1120,7 +1129,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       navigate('/dashboard');
       return;
     }
-    if (!documentId && step === 'properties') {
+    if (step === 'properties' && (!documentId || fromTemplateSelection)) {
       navigate('/documentos/nuevo', {
         state: {
           moduleId: locationModuleId,
