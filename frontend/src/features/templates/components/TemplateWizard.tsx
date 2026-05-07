@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useBlocker } from 'react-router-dom';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { fetchProcesses } from '../../../api/processes';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
@@ -43,6 +43,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
   );
   const [leaveGuard, setLeaveGuard] = useState(false);
+  const [hasInvalidBlocks, setHasInvalidBlocks] = useState(false);
+  const [invalidBlocksModal, setInvalidBlocksModal] = useState<{ onProceed: () => void } | null>(null);
 
   // Template state (synchronized with API)
   const [template, setTemplate] = useState<Template | null>(initial || null);
@@ -121,6 +123,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     };
   }, [initial?.process_id, processId, template?.process_id]);
 
+  const blocker = useBlocker(step === 'blocks' && hasInvalidBlocks);
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setInvalidBlocksModal({ onProceed: () => blocker.proceed() });
+    }
+  }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleResolveComment = async (commentId: string) => {
     try {
       await apiResolveComment(commentId);
@@ -143,6 +152,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const handleBackArrow = () => {
     if (isDirty) {
       setLeaveGuard(true);
+      return;
+    }
+    if (step === 'blocks' && hasInvalidBlocks) {
+      setInvalidBlocksModal({ onProceed: () => setStep('properties') });
       return;
     }
     if (step === 'properties') {
@@ -302,6 +315,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
         return;
       }
+      if (hasInvalidBlocks) {
+        setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de continuar.' });
+        return;
+      }
       setErrors((prev) => {
         const { blocks: _b, ...rest } = prev;
         return rest;
@@ -325,6 +342,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
 
   const handleGoToStep = (s: Step) => {
     if (s === 'properties') {
+      if (step === 'blocks' && hasInvalidBlocks) {
+        setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de cambiar de paso.' });
+        return;
+      }
       setStep(s);
       return;
     }
@@ -335,6 +356,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (s === 'users' && completedSteps.includes('blocks')) {
       if (blocksLoading || blocksCount < 1) {
         setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+        return;
+      }
+      if (hasInvalidBlocks) {
+        setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de continuar.' });
         return;
       }
       setStep(s);
@@ -517,6 +542,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             onBlocksCountChange={setBlocksCount}
             onBlocksLoadingChange={setBlocksLoading}
             onContinue={() => void handleContinue()}
+            onInvalidBlocksChange={setHasInvalidBlocks}
           />
         )}
         {step === 'users' && (
@@ -544,6 +570,25 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         )}
       </>
     </WizardShell>
+
+      {/* Invalid blocks navigation guard */}
+      <ConfirmDialog
+        open={!!invalidBlocksModal}
+        title="Bloques sin título"
+        description="Hay bloques sin título. Debes completarlos antes de salir, o puedes descartarlos."
+        confirmLabel="Descartar bloques sin título"
+        variant="danger"
+        onConfirm={async () => {
+          const cb = invalidBlocksModal?.onProceed;
+          await blocksRef.current?.discardInvalidBlocks();
+          setInvalidBlocksModal(null);
+          cb?.();
+        }}
+        onCancel={() => {
+          if (blocker.state === 'blocked') blocker.reset();
+          setInvalidBlocksModal(null);
+        }}
+      />
 
       {/* Validation modal */}
       <ConfirmDialog
