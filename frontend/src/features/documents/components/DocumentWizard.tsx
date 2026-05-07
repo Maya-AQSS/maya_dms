@@ -1120,6 +1120,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       navigate('/dashboard');
       return;
     }
+    if (!documentId && step === 'properties') {
+      navigate('/documentos/nuevo', {
+        state: {
+          moduleId: locationModuleId,
+          processId: locationProcessId,
+        },
+      });
+      return;
+    }
     if (step === 'blocks') {
       setStep('properties');
       return;
