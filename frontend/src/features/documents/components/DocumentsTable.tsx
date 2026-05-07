@@ -18,6 +18,7 @@ import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
+import { useUserProfile } from '../../../features/user-profile';
 
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
 // (los colores hex viven en `maya_infra/configs/styles/index.css`).
@@ -83,6 +84,7 @@ type Props = {
 
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
@@ -159,7 +161,38 @@ export function DocumentsTable({ processId }: Props = {}) {
   const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const filtered = useMemo(() => applyClientFilters(documents, filters), [documents, filters]);
+  const displayDocuments = useMemo(() => {
+    const out: Document[] = [];
+    for (const d of documents) {
+      const hasPublishedFallback =
+        d.status !== 'published' &&
+        !!d.latest_published_version_id;
+      const canSeeLive =
+        (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
+        d.share_permission === 'edit';
+
+      if (!hasPublishedFallback) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+        continue;
+      }
+
+      const publishedFallback: Document = {
+        ...d,
+        status: 'published',
+        current_version: d.latest_published_version_number ?? d.current_version,
+        list_variant: 'published_fallback',
+        list_row_id: `${d.id}:published`,
+      };
+
+      if (canSeeLive) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+      }
+      out.push(publishedFallback);
+    }
+    return out;
+  }, [documents, profile?.id]);
+
+  const filtered = useMemo(() => applyClientFilters(displayDocuments, filters), [displayDocuments, filters]);
 
   const sorted = useMemo(() => {
     if (!sortBy) return filtered;
@@ -236,7 +269,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         columns={columns}
         rows={pageSlice}
         loading={loading && documents.length === 0}
-        rowKey={(doc) => doc.id}
+        rowKey={(doc) => doc.list_row_id ?? doc.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         sortBy={sortBy}
@@ -250,11 +283,17 @@ export function DocumentsTable({ processId }: Props = {}) {
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:documents-table"
-        onRowClick={(doc) =>
+        onRowClick={(doc) => {
+          if (doc.list_variant === 'published_fallback' && doc.latest_published_version_id) {
+            navigate(`/documents/${doc.id}?documentVersionId=${encodeURIComponent(doc.latest_published_version_id)}`, {
+              state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
+            });
+            return;
+          }
           navigate(`/documents/${doc.id}`, {
             state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
-          })
-        }
+          });
+        }}
         filtersPanel={
           <>
             <FilterField label="Nombre">

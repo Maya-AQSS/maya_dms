@@ -8,6 +8,7 @@ type CreationMode = 'none' | 'auto' | 'select';
 export type DocumentCreationOption = {
   template_id: string;
   template_version_id: string;
+  process_id: string;
   name: string;
   description: string | null;
   visibility_level?: string;

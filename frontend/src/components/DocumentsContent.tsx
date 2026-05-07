@@ -226,14 +226,18 @@ export function DocumentsContent() {
       setPage(1);
     });
 
-  const handleCreateFromModule = async (templateVersionId?: string) => {
+  const handleCreateFromModule = async (templateVersionId?: string, processId?: string) => {
     if (!selectedModuleId) return;
+    if (!processId) {
+      setCreationError('No se pudo resolver el proceso de la plantilla seleccionada.');
+      return;
+    }
     setCreatingDocument(true);
     setCreationError(null);
     try {
       const created = await createDocumentFromModule({
         module_id: selectedModuleId,
-        process_id: '33333333-3333-3333-3333-333333333301', // Hardcoded for "Programación didáctica"
+        process_id: processId,
         ...(templateVersionId ? { template_version_id: templateVersionId } : {}),
       });
       navigate(`/documents/${created.id}/editor`);
@@ -560,7 +564,7 @@ export function DocumentsContent() {
                     type="button"
                     loading={creatingDocument}
                     disabled={previewLoading || !!previewError || !previewOption}
-                    onClick={() => void handleCreateFromModule(previewOption.template_version_id)}
+                    onClick={() => void handleCreateFromModule(previewOption.template_version_id, previewOption.process_id)}
                   >
                     Usar esta plantilla
                   </Button>
