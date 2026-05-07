@@ -190,7 +190,12 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
                     </div>
                     <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
                       {row.trigger_event}
-                      {row.triggered_by ? ` · ${row.triggered_by}` : ''}
+                    </p>
+                    <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
+                      Publicado por: {row.published_by_name ?? 'Desconocido'}
+                    </p>
+                    <p className="text-xs text-text-muted dark:text-text-dark-muted">
+                      Autor versión: {row.author_name ?? 'Desconocido'}
                     </p>
                     {(row.notes ?? row.changelog) ? (
                       <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">

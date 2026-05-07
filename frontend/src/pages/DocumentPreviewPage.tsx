@@ -130,6 +130,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     versionNumber: number;
     blocks: DocumentDisplayBlock[];
     title?: string;
+    authorName?: string | null;
+    ownerName?: string | null;
+    createdAt?: string | null;
   } | null>(null);
   const [versionPreviewError, setVersionPreviewError] = useState<string | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -192,6 +195,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               versionNumber: v.version_number,
               blocks,
               title: snapshotDocumentTitle(snap as Record<string, unknown>),
+              authorName: v.author_name ?? null,
+              ownerName: v.owner_name ?? null,
+              createdAt: v.created_at ?? null,
             });
           } catch (ve) {
             if (!cancelled) {
@@ -563,13 +569,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           {' · '}
         </>
       ) : null}
-      {detail.owner_name ?? 'Autor desconocido'}
+      {(versionSnapshot?.ownerName ?? versionSnapshot?.authorName ?? detail.owner_name) ?? 'Autor desconocido'}
       {' · '}
       {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
       {' · '}
       Fecha límite: {formatDate(detail.delivery_deadline)}
       {' · '}
-      Última edición: {formatDate(detail.updated_at)}
+      Última edición: {formatDate(versionSnapshot?.createdAt ?? detail.updated_at)}
     </p>
   ) : null;
 

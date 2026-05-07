@@ -55,6 +55,8 @@ export type DocumentVersionSummary = {
   version_number: number;
   trigger_event: string;
   triggered_by: string;
+  published_by_name?: string | null;
+  author_name?: string | null;
   changelog: string | null;
   notes: string | null;
   created_at: string | null;
@@ -75,6 +77,9 @@ export type DocumentVersionDetail = {
   version_number: number;
   trigger_event: string;
   triggered_by: string;
+  published_by_name?: string | null;
+  author_name?: string | null;
+  owner_name?: string | null;
   changelog: string | null;
   snapshot_data: Record<string, unknown>;
   created_at: string | null;
