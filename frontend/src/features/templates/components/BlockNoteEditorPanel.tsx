@@ -163,6 +163,13 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   }, [editor, onChange]);
 
   // Click anywhere in the empty editor area focuses the editor at the end.
+  const handleUndo = () => {
+    try { (editor as any)._tiptapEditor?.chain().focus().undo().run(); } catch { /* noop */ }
+  };
+  const handleRedo = () => {
+    try { (editor as any)._tiptapEditor?.chain().focus().redo().run(); } catch { /* noop */ }
+  };
+
   const handleAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!editable) return;
     const target = e.target as HTMLElement;
@@ -202,6 +209,30 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         >
           {editable && (
             <div className="order-first sticky top-0 z-10 w-full border-b border-ui-border dark:border-ui-dark-border bg-ui-card/95 dark:bg-ui-dark-card/95 backdrop-blur-md px-2 py-1 shadow-sm flex items-center gap-1">
+              <div className="flex items-center gap-0.5 shrink-0 pr-1 border-r border-ui-border dark:border-ui-dark-border mr-1">
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  aria-label="Deshacer"
+                  title="Deshacer (Ctrl+Z)"
+                  className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRedo}
+                  aria-label="Rehacer"
+                  title="Rehacer (Ctrl+Y)"
+                  className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+                  </svg>
+                </button>
+              </div>
               <div className="flex-1 min-w-0">
                 <FormattingToolbar />
               </div>
