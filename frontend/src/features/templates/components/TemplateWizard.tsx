@@ -62,7 +62,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [validators, setValidators] = useState<ValidatorEntry[]>(
     initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
-  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
+  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>(
+    initial?.document_reviewers?.map((userId) => ({ userId, name: userId })) ?? [],
+  );
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>('libre');
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
   // Dirty flag: only sync reviewers to API if the user actually changed them in Step 3

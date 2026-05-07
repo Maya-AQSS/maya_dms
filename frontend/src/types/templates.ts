@@ -44,6 +44,10 @@ export type Template = {
   reviewers?: TemplateReviewer[];
   document_reviewers?: string[];
   has_review_comments?: boolean;
+  latest_published_version_id?: string | null;
+  latest_published_version_number?: number | null;
+  list_variant?: 'live' | 'published_fallback';
+  list_row_id?: string;
   /** Alineado con `TemplatePolicy::clone` en el servidor. */
   can_clone?: boolean;
   created_at?: string;
@@ -66,6 +70,7 @@ export type TemplatesListResponse = {
 export type TemplateListFilters = {
   visibility_level?: string;
   status?: string;
+  usable_for_documents?: boolean;
   study_type_id?: string;
   study_id?: string;
   module_id?: string;

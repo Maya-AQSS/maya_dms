@@ -12,12 +12,14 @@ use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
+use App\Models\Document;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class DocumentController extends Controller
 {
@@ -38,6 +40,7 @@ class DocumentController extends Controller
         $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
+        $this->attachLatestPublishedVersionMeta($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
@@ -45,6 +48,50 @@ class DocumentController extends Controller
         );
 
         return DocumentResource::collection($documents);
+    }
+
+    /**
+     * Adjunta metadatos de última versión publicada por documento para construir vistas fallback.
+     *
+     * @param  \Illuminate\Support\Collection<int, Document>  $documents
+     */
+    private function attachLatestPublishedVersionMeta(\Illuminate\Support\Collection $documents): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $ids = $documents->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
+        if ($ids === []) {
+            return;
+        }
+
+        $rows = DB::table('entity_versions')
+            ->where('versionable_type', Document::class)
+            ->whereIn('versionable_id', $ids)
+            ->where('status', 'published')
+            ->where('version_number', '>', 0)
+            ->orderByDesc('version_number')
+            ->get(['versionable_id', 'id', 'version_number']);
+
+        /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByDocument */
+        $latestByDocument = [];
+        foreach ($rows as $row) {
+            $documentId = (string) $row->versionable_id;
+            if (! isset($latestByDocument[$documentId])) {
+                $latestByDocument[$documentId] = (object) [
+                    'versionable_id' => $documentId,
+                    'id' => (string) $row->id,
+                    'version_number' => (int) $row->version_number,
+                ];
+            }
+        }
+
+        foreach ($documents as $document) {
+            $meta = $latestByDocument[(string) $document->id] ?? null;
+            $document->setAttribute('latest_published_version_id', $meta?->id);
+            $document->setAttribute('latest_published_version_number', $meta?->version_number);
+        }
     }
 
     /**

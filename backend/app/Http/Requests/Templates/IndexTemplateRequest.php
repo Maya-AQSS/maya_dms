@@ -31,6 +31,7 @@ class IndexTemplateRequest extends FormRequest
         return [
             'visibility_level' => ['sometimes', 'nullable', Rule::enum(TemplateVisibilityLevel::class)],
             'status'           => ['sometimes', 'nullable', 'string', 'in:draft,in_review,published,archived'],
+            'usable_for_documents' => ['sometimes', 'boolean'],
             'study_type_id'    => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id'         => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id'        => ['sometimes', 'nullable', 'string', 'max:255'],
@@ -51,6 +52,7 @@ class IndexTemplateRequest extends FormRequest
         return new FilterTemplatesDto(
             visibilityLevel: $v['visibility_level'] ?? null,
             status: $v['status'] ?? null,
+            usableForDocuments: (bool) ($v['usable_for_documents'] ?? false),
             studyTypeId: $v['study_type_id'] ?? null,
             studyId: $v['study_id'] ?? null,
             moduleId: $v['module_id'] ?? null,

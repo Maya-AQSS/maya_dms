@@ -31,6 +31,10 @@ export type Document = {
   share_permission?: string | null;
   team?: unknown;
   has_review_comments?: boolean;
+  latest_published_version_id?: string | null;
+  latest_published_version_number?: number | null;
+  list_variant?: 'live' | 'published_fallback';
+  list_row_id?: string;
 };
 
 /**

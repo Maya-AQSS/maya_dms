@@ -52,6 +52,8 @@ class TemplateResource extends JsonResource
             'created_at'         => $this->created_at?->toIso8601String(),
             'updated_at'         => $this->updated_at?->toIso8601String(),
             'has_review_comments' => (bool) ($this->resource->has_review_comments ?? false),
+            'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),
+            'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
             'can_clone' => $request->user() !== null
                 && Gate::forUser($request->user())->allows('clone', $this->resource),
         ];

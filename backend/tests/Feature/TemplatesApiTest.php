@@ -359,6 +359,106 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.0.id', $t2);
     }
 
+    public function test_index_usable_for_documents_returns_templates_with_published_versions_even_if_live_is_draft(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $withPublishedVersion = (string) Str::uuid();
+        $withoutPublishedVersion = (string) Str::uuid();
+        $archivedWithPublishedVersion = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $withPublishedVersion,
+            'name' => 'Con publicada y head draft',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Template::query()->forceCreate([
+            'id' => $withoutPublishedVersion,
+            'name' => 'Sin versiones publicadas',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Template::query()->forceCreate([
+            'id' => $archivedWithPublishedVersion,
+            'name' => 'Archivada',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'archived',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        DB::table('entity_versions')->insert([
+            [
+                'id' => (string) Str::uuid(),
+                'versionable_type' => Template::class,
+                'versionable_id' => $withPublishedVersion,
+                'version_number' => 1,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => 'published',
+                'created_by' => $userId,
+                'published_by' => $userId,
+                'published_at' => now(),
+                'changelog' => 'v1',
+                'snapshot_data' => json_encode(['template' => ['id' => $withPublishedVersion]], JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            [
+                'id' => (string) Str::uuid(),
+                'versionable_type' => Template::class,
+                'versionable_id' => $archivedWithPublishedVersion,
+                'version_number' => 1,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => 'published',
+                'created_by' => $userId,
+                'published_by' => $userId,
+                'published_at' => now(),
+                'changelog' => 'v1',
+                'snapshot_data' => json_encode(['template' => ['id' => $archivedWithPublishedVersion]], JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => 1,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+        ]);
+
+        $this->getJson('/api/v1/templates?usable_for_documents=1', $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $withPublishedVersion);
+    }
+
     public function test_index_includes_has_review_comments_flag(): void
     {
         $userId = (string) Str::uuid();

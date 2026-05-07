@@ -81,6 +81,17 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filters->status !== null) {
             $query->where('template_head_ev.snapshot_data->template->status', $filters->status);
         }
+        if ($filters->usableForDocuments) {
+            $query->where('template_head_ev.snapshot_data->template->status', '!=', 'archived')
+                ->whereExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('entity_versions as published_ev')
+                        ->whereColumn('published_ev.versionable_id', 'templates.id')
+                        ->where('published_ev.versionable_type', Template::class)
+                        ->where('published_ev.status', 'published')
+                        ->where('published_ev.version_number', '>', 0);
+                });
+        }
         if ($filters->studyTypeId !== null) {
             $query->where('template_head_ev.snapshot_data->template->study_type_id', $filters->studyTypeId);
         }
@@ -321,8 +332,15 @@ class TemplateRepository implements TemplateRepositoryInterface
     public function listPublishedByModule(string $moduleId): Collection
     {
         return Template::query()
-            ->where('template_head_ev.snapshot_data->template->status', 'published')
             ->where('template_head_ev.snapshot_data->template->module_id', $moduleId)
+            ->whereExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('entity_versions as published_ev')
+                    ->whereColumn('published_ev.versionable_id', 'templates.id')
+                    ->where('published_ev.versionable_type', Template::class)
+                    ->where('published_ev.status', 'published')
+                    ->where('published_ev.version_number', '>', 0);
+            })
             ->orderByDesc('templates.updated_at')
             ->get();
     }

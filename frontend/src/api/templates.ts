@@ -46,6 +46,9 @@ function buildListQuery(filters: TemplateListFilters): string {
   if (filters.status) {
     q.set('status', filters.status);
   }
+  if (filters.usable_for_documents) {
+    q.set('usable_for_documents', '1');
+  }
   if (filters.study_type_id) {
     q.set('study_type_id', filters.study_type_id);
   }

@@ -85,7 +85,7 @@ export function NuevaProgramacionSelectorPage() {
   });
 
   const [filters, setFilters] = useState<TemplateListFilters>({
-    status: 'published',
+    usable_for_documents: true,
     per_page: pageSize,
   });
   const [allTemplates, setAllTemplates] = useState<Template[]>([]);
@@ -120,7 +120,7 @@ export function NuevaProgramacionSelectorPage() {
       setListError(null);
       try {
         const res = await fetchTemplates({
-          status: 'published',
+          usable_for_documents: true,
           visibility_level: filters.visibility_level,
           author_name: filters.author_name,
           delivery_deadline: filters.delivery_deadline,
@@ -193,7 +193,7 @@ export function NuevaProgramacionSelectorPage() {
   }, [pageSize]);
 
   const applyFilters = (patch: Partial<TemplateListFilters>) => {
-    setFilters((f) => ({ ...f, ...patch, status: 'published', page: 1 }));
+    setFilters((f) => ({ ...f, ...patch, usable_for_documents: true, page: 1 }));
   };
 
   const goToPage = (page: number) => {
@@ -212,7 +212,7 @@ export function NuevaProgramacionSelectorPage() {
   const clearFilters = () => {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setAuthorInput('');
-    setFilters({ status: 'published', per_page: pageSize, page: 1 });
+    setFilters({ usable_for_documents: true, per_page: pageSize, page: 1 });
   };
 
   const filterUi = useMemo(
@@ -263,7 +263,7 @@ export function NuevaProgramacionSelectorPage() {
         onPageSizeChange={setPageSize}
         sortBy={sortBy}
         onSortChange={setSortBy}
-        emptyMessage="No hay plantillas publicadas con los filtros actuales."
+        emptyMessage="No hay plantillas utilizables para crear documentos con los filtros actuales."
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:nueva-programacion-selector"

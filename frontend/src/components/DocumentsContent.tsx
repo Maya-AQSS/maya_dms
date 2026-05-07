@@ -91,7 +91,38 @@ export function DocumentsContent() {
   const { documents, loading, error, reload } = useDocuments();
   const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
-  const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
+  const displayDocuments = useMemo(() => {
+    const out: Document[] = [];
+    for (const d of documents) {
+      const hasPublishedFallback =
+        d.status !== 'published' &&
+        !!d.latest_published_version_id;
+      const canSeeLive =
+        (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
+        d.share_permission === 'edit';
+
+      if (!hasPublishedFallback) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+        continue;
+      }
+
+      const publishedFallback: Document = {
+        ...d,
+        status: 'published',
+        current_version: d.latest_published_version_number ?? d.current_version,
+        list_variant: 'published_fallback',
+        list_row_id: `${d.id}:published`,
+      };
+
+      if (canSeeLive) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+      }
+      out.push(publishedFallback);
+    }
+    return out;
+  }, [documents, profile?.id]);
+
+  const filtered = useFilteredDocuments(displayDocuments, activeFilters, hierarchy);
   const filtersActiveCount =
     (activeFilters.studyTypeId ? 1 : 0) +
     (activeFilters.studyId ? 1 : 0) +
@@ -308,6 +339,10 @@ export function DocumentsContent() {
             size="xs"
             onClick={(e: React.MouseEvent) => {
               e.stopPropagation();
+              if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
+                navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
+                return;
+              }
               navigate(`/documents/${d.id}`);
             }}
           >
@@ -554,7 +589,7 @@ export function DocumentsContent() {
                   }
                   columns={columns}
                   rows={pageRows}
-                  rowKey={(d) => d.id}
+                  rowKey={(d) => d.list_row_id ?? d.id}
                   loading={loading}
                   pageSize={pageSize}
                   onPageSizeChange={(size) => {
@@ -565,7 +600,13 @@ export function DocumentsContent() {
                   onToggleHiddenColumn={toggleColumn}
                   sortBy={sortBy}
                   onSortChange={setSortBy}
-                  onRowClick={(d) => navigate(`/documents/${d.id}`)}
+                  onRowClick={(d) => {
+                    if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
+                      navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
+                      return;
+                    }
+                    navigate(`/documents/${d.id}`);
+                  }}
                   emptyMessage="No hay programaciones didácticas con los filtros actuales."
                   className="rounded-none border-0 shadow-none"
                   filtersStorageKey="maya:dms:documents-table"

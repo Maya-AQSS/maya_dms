@@ -239,6 +239,31 @@ class DocumentsModuleCreationApiTest extends TestCase
             ->assertJsonCount(2, 'data.options');
     }
 
+    public function test_creation_options_keeps_published_template_when_live_head_is_draft(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
+        $this->seedAcademicHierarchy();
+
+        $templateId = (string) Str::uuid();
+        $version = $this->createPublishedTemplateWithVersion(
+            templateId: $templateId,
+            creatorId: $userId,
+            moduleId: 'MOD-1',
+            name: 'Plantilla con v1 publicada',
+        );
+
+        $template = Template::query()->withoutGlobalScopes()->findOrFail($templateId);
+        $template->update(['status' => 'draft']);
+
+        $this->getJson('/api/v1/documents/creation-options?module_id=MOD-1', $headers)
+            ->assertOk()
+            ->assertJsonPath('data.can_create', true)
+            ->assertJsonPath('data.options.0.template_id', $templateId)
+            ->assertJsonPath('data.options.0.template_version_id', $version);
+    }
+
     public function test_create_from_module_uses_sub_claim_as_creator_and_owner(): void
     {
         $userId = (string) Str::uuid();
