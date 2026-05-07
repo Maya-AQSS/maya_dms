@@ -516,6 +516,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             onResolveComment={handleResolveComment}
             onBlocksCountChange={setBlocksCount}
             onBlocksLoadingChange={setBlocksLoading}
+            onContinue={() => void handleContinue()}
           />
         )}
         {step === 'users' && (

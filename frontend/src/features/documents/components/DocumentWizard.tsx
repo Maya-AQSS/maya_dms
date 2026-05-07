@@ -1208,7 +1208,34 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       )}
 
       {!isValidateMode && step === 'blocks' && (
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+        <div className={isEditorFullscreen
+          ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
+          : 'flex-1 overflow-hidden flex flex-col md:flex-row'
+        }>
+          {/* Compact fullscreen header */}
+          {isEditorFullscreen && activeBlock && (
+            <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
+              <button
+                type="button"
+                aria-label="Salir de pantalla completa"
+                title="Salir de pantalla completa (Esc)"
+                onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}
+                className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                  <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                </svg>
+              </button>
+              <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">{activeBlock.title || 'Bloque'}</h3>
+              {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
+              {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
+              {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
+              <Button type="button" variant="primary" size="xs" onClick={() => void handleContinue()} className="shrink-0">
+                Continuar →
+              </Button>
+            </div>
+          )}
           {/* Block tree — hidden when editor is in fullscreen */}
           {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
             <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
@@ -1241,6 +1268,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
             {activeBlock && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
+                {!isEditorFullscreen && (
                 <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
                   <div className="flex items-center gap-3 min-w-0">
                     <h3 className="text-sm font-bold truncate uppercase tracking-widest">
@@ -1262,8 +1290,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     </Button>
                   )}
                 </div>
+              )}
 
-                <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+                {!isEditorFullscreen && <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
                   {([
                     { id: 'content', label: 'Contenido' },
                     { id: 'description', label: 'Descripción' },
@@ -1284,7 +1313,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       </button>
                     );
                   })}
-                </div>
+                </div>}
 
                 {blockSaveError && (
                   <p className="text-xs text-danger-dark dark:text-danger px-5 py-2 shrink-0 bg-white dark:bg-ui-dark-card">
