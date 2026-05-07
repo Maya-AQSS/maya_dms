@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams, useSearchParams } from 'react-rout
 import {
   fetchTemplate,
   fetchTemplateVersionSummaries,
+  type TemplateVersionDetail,
   submitTemplateForReview,
   deleteTemplate,
   cloneTemplate,
@@ -54,6 +55,17 @@ function blockContentNodes(block: TemplateBlock): unknown[] {
 function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—';
   return iso.slice(0, 10);
+}
+
+function isTemplateVisibilityLevel(
+  value: string | null | undefined,
+): value is Template['visibility_level'] {
+  return value === 'global'
+    || value === 'study_type'
+    || value === 'study'
+    || value === 'module'
+    || value === 'team'
+    || value === 'personal';
 }
 
 function mapSnapshotToTemplateBlocks(templateId: string, snapshot: import('../api/templates').TemplateVersionSnapshotBlock[]): TemplateBlock[] {
@@ -116,6 +128,7 @@ export function TemplatePreviewPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [processLabel, setProcessLabel] = useState<string | null>(null);
+  const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
 
   // Review comments (only loaded when owner & has_review_comments)
   const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
@@ -156,6 +169,7 @@ export function TemplatePreviewPage() {
         setLoading(true);
         setError(null);
         setSnapshotVersionNumber(null);
+        setHistoricalVersionDetail(null);
         setReviewComments([]);
 
         if (templateVersionId) {
@@ -170,6 +184,7 @@ export function TemplatePreviewPage() {
           const t = tRes.data;
           setTemplate(t);
           setSnapshotVersionNumber(vRes.version_number);
+          setHistoricalVersionDetail(vRes);
           const snap = Array.isArray(vRes.blocks_snapshot) ? vRes.blocks_snapshot : [];
           setBlocks(mapSnapshotToTemplateBlocks(id, snap).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
         } else {
@@ -230,12 +245,39 @@ export function TemplatePreviewPage() {
   const isOwner = profile?.id === template?.created_by;
   const isPublished = template?.status === 'published';
   const hasReviewers = (template?.reviewers?.length ?? 0) > 0;
-  const authorDisplay =
-    template?.author_name?.trim() ||
-    (isOwner ? profile?.name?.trim() : '') ||
-    'Autor desconocido';
-
   const viewingPublishedSnapshot = snapshotVersionNumber !== null;
+  const snapshotTemplate = historicalVersionDetail?.template_snapshot ?? null;
+  const snapshotAuthorName = historicalVersionDetail?.author_name?.trim() ?? null;
+  const authorDisplay = viewingPublishedSnapshot
+    ? (snapshotAuthorName && snapshotAuthorName !== ''
+      ? snapshotAuthorName
+      : 'Autor desconocido')
+    : (
+      template?.author_name?.trim() ||
+      (isOwner ? profile?.name?.trim() : '') ||
+      'Autor desconocido'
+    );
+  const displayVisibilityRaw = viewingPublishedSnapshot
+    ? (typeof snapshotTemplate?.visibility_level === 'string'
+      ? snapshotTemplate.visibility_level
+      : template?.visibility_level)
+    : template?.visibility_level;
+  const displayVisibility = isTemplateVisibilityLevel(displayVisibilityRaw) ? displayVisibilityRaw : null;
+  const displayDeadline = viewingPublishedSnapshot
+    ? (typeof snapshotTemplate?.delivery_deadline === 'string' || snapshotTemplate?.delivery_deadline === null
+      ? snapshotTemplate.delivery_deadline
+      : template?.delivery_deadline)
+    : template?.delivery_deadline;
+  const displayUpdatedAt = viewingPublishedSnapshot
+    ? (typeof snapshotTemplate?.updated_at === 'string' || snapshotTemplate?.updated_at === null
+      ? snapshotTemplate.updated_at
+      : historicalVersionDetail?.published_at ?? template?.updated_at)
+    : template?.updated_at;
+  const displayTitle = viewingPublishedSnapshot
+    ? (typeof snapshotTemplate?.name === 'string' && snapshotTemplate.name.trim() !== ''
+      ? snapshotTemplate.name
+      : template?.name)
+    : template?.name;
   const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 0;
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
@@ -437,18 +479,18 @@ export function TemplatePreviewPage() {
       ) : null}
       {authorDisplay}
       {' · '}
-      {visibilityLabel(template.visibility_level)}
+      {displayVisibility ? visibilityLabel(displayVisibility) : '—'}
       {' · '}
-      Fecha límite de validación: {formatDate(template.delivery_deadline)}
+      Fecha límite de validación: {formatDate(displayDeadline)}
       {' · '}
-      Última edición: {formatDate(template.updated_at)}
+      Última edición: {formatDate(displayUpdatedAt)}
     </p>
   ) : null;
 
   return (
     <div className="min-h-full overflow-y-auto">
       <PageTitle
-        title={template?.name ?? 'Plantilla'}
+        title={displayTitle ?? 'Plantilla'}
         subtitle="Previsualización"
         onBack={handleBack}
         backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}

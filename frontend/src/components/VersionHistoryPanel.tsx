@@ -154,6 +154,12 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
                         {row.changelog}
                       </p>
                     ) : null}
+                    <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
+                      Publicado por: {row.published_by_name ?? 'Desconocido'}
+                    </p>
+                    <p className="text-xs text-text-muted dark:text-text-dark-muted">
+                      Autor versión: {row.author_name ?? 'Desconocido'}
+                    </p>
                   </button>
                 </li>
               ))}

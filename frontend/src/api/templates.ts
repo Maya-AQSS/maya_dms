@@ -96,9 +96,18 @@ export type TemplateVersionDetail = {
   id: string;
   template_id: string;
   version_number: number;
+  template_snapshot?: {
+    name?: string;
+    created_by?: string;
+    visibility_level?: string;
+    delivery_deadline?: string | null;
+    updated_at?: string | null;
+  } | null;
   blocks_snapshot: TemplateVersionSnapshotBlock[];
   changelog: string | null;
   published_by: string | null;
+  published_by_name?: string | null;
+  author_name?: string | null;
   published_at: string | null;
   created_at?: string;
   updated_at?: string;
@@ -118,6 +127,8 @@ export type TemplateVersionSummary = {
   version_number: number;
   published_at: string | null;
   published_by: string | null;
+  published_by_name?: string | null;
+  author_name?: string | null;
   changelog: string | null;
 };
 
