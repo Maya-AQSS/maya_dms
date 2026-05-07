@@ -125,10 +125,12 @@ interface WizardStep2BlocksProps {
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
   onContinue?: () => void;
+  onInvalidBlocksChange?: (hasInvalid: boolean) => void;
 }
 
 export type WizardStep2BlocksHandle = {
   saveIfPending: () => Promise<void>;
+  discardInvalidBlocks: () => Promise<void>;
 };
 
 export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(({
@@ -139,6 +141,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   onBlocksCountChange,
   onBlocksLoadingChange,
   onContinue,
+  onInvalidBlocksChange,
 }, ref) => {
   const {
     blocks,
@@ -161,6 +164,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       onBlocksCountChange?.(blocks.length);
     }
   }, [blocks.length, loading, onBlocksCountChange]);
+
+  const hasInvalidBlocks = !loading && blocks.some(b => !b.title?.trim());
+
+  useEffect(() => {
+    onInvalidBlocksChange?.(hasInvalidBlocks);
+  }, [hasInvalidBlocks, onInvalidBlocksChange]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => { if (hasInvalidBlocks) e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasInvalidBlocks]);
 
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
 
@@ -331,7 +346,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   useImperativeHandle(ref, () => ({
     saveIfPending: async () => {
       if (tabIsDirty) await forceSave();
-    }
+    },
+    discardInvalidBlocks: async () => {
+      const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
+      for (const id of invalidIds) await deleteBlock(id);
+      if (activeSingleId && invalidIds.includes(activeSingleId)) {
+        setActiveSingleId(null);
+        setSelectedBlockIds([]);
+        setPanelMode('empty');
+      }
+    },
   }));
 
   const handleAddBlock = async () => {
@@ -357,6 +381,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setActiveSingleId(newBlock.id);
       setPanelMode('edit');
       loadFormFromBlock(newBlock);
+      setActiveTab('properties');
     } finally {
       setBusy(false);
     }

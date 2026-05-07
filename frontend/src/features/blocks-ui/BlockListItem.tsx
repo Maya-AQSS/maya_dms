@@ -84,7 +84,7 @@ export function BlockListItem({
             </span>
           )}
           <span className={`flex-1 truncate text-xs font-bold ${titleColor}`}>
-            {title || 'Bloque sin nombre'}
+            {title || '(Sin título)'}
           </span>
           {hasReviewComments && (
             <span
