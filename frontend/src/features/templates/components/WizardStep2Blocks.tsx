@@ -298,6 +298,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const handleBlockClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
     clickTimerRef.current = setTimeout(async () => {
+      // Abort navigation if the current block has an invalid name.
+      if (activeSingleId && blockId !== activeSingleId) {
+        const nameErr = validateBlockName(formName);
+        if (nameErr) {
+          setNameError(nameErr);
+          setActiveTab('properties');
+          return;
+        }
+      }
       if (tabIsDirty && activeSingleId) await saveCurrentTab();
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
@@ -342,6 +351,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   }));
 
   const handleAddBlock = async () => {
+    // Block creation if the current block still has an invalid name.
+    if (activeSingleId) {
+      const nameErr = validateBlockName(formName);
+      if (nameErr) {
+        setNameError(nameErr);
+        setActiveTab('properties');
+        return;
+      }
+    }
     setBusy(true);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
@@ -517,7 +535,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   const pendingCount = tab === 'comments'
                     ? reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved).length
                     : 0;
-                  const isTabDisabled = (tab === 'content' || tab === 'description') && !formName.trim();
+                  const isTabDisabled = (tab === 'content' || tab === 'description') && validateBlockName(formName) !== '';
 
                   return (
                     <button
@@ -532,7 +550,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       }
                     }}
                       disabled={isTabDisabled}
-                      title={isTabDisabled ? 'Asigna un nombre al bloque para habilitar esta pestaña' : ''}
+                      title={isTabDisabled ? (validateBlockName(formName) || 'Asigna un nombre válido al bloque para habilitar esta pestaña') : ''}
                       className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
                         activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
                       } ${isTabDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
