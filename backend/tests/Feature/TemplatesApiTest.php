@@ -1033,6 +1033,44 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.team.is_department', false);
     }
 
+    public function test_assigned_reviewer_can_view_in_review_template_without_academic_context(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $reviewerId = 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc';
+        $studyId = $this->anyStudyId();
+        $tid = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla in review sin contexto',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Study->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => $studyId,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'in_review',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->seedTemplateReviewer($tid, $reviewerId);
+
+        $this->assertDatabaseMissing('user_studies', [
+            'user_id' => $reviewerId,
+            'study_id' => $studyId,
+        ]);
+
+        $headersReviewer = $this->authHeaders($reviewerId);
+
+        $this->getJson("/api/v1/templates/{$tid}", $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.id', $tid)
+            ->assertJsonPath('data.status', 'in_review');
+    }
+
     public function test_template_first_publish_in_review_autofills_changelog_when_missing(): void
     {
         $creatorId = (string) Str::uuid();

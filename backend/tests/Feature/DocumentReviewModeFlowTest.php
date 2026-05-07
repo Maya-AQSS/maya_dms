@@ -251,6 +251,74 @@ class DocumentReviewModeFlowTest extends TestCase
             ->assertJsonPath('data.status', 'published');
     }
 
+    public function test_assigned_reviewer_can_view_in_review_document_without_academic_context(): void
+    {
+        $ownerId = (string) Str::uuid();
+        $reviewerId = 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc';
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+        $studyId = $this->anyStudyId();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'name' => 'Plantilla doc in review',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $ownerId,
+            'status' => 'published',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc in review sin contexto',
+            'study_id' => $studyId,
+            'created_by' => $ownerId,
+            'owner_id' => $ownerId,
+            'status' => 'in_review',
+        ]);
+
+        DocumentReview::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'reviewer_id' => $reviewerId,
+            'status' => 'pending',
+            'stage' => 1,
+        ]);
+
+        $this->assertDatabaseMissing('user_studies', [
+            'user_id' => $reviewerId,
+            'study_id' => $studyId,
+        ]);
+
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $headersReviewer = $this->bearerFor(
+            $reviewerId,
+            $priv,
+            $pub,
+            'reviewer-no-context',
+            ['documents.read', 'documents.review'],
+        );
+
+        $this->getJson("/api/v1/documents/{$documentId}", $headersReviewer)
+            ->assertOk()
+            ->assertJsonPath('data.id', $documentId)
+            ->assertJsonPath('data.status', 'in_review');
+    }
+
     public function test_sequential_reject_higher_stage_is_blocked_until_lower_pending(): void
     {
         $ctx = $this->seedDocumentInReview('sequential');

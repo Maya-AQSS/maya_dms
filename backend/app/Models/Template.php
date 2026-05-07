@@ -53,11 +53,14 @@ class Template extends Model
 
             $builder->where(function (Builder $outer) use ($userId) {
                 $outer->where('template_head_ev.snapshot_data->template->created_by', $userId)
-                    ->orWhereExists(function ($subQuery) use ($userId) {
-                        $subQuery->select(DB::raw(1))
-                            ->from('template_reviewers')
-                            ->whereColumn('template_reviewers.template_id', 'templates.id')
-                            ->where('template_reviewers.user_id', $userId);
+                    ->orWhere(function (Builder $reviewScope) use ($userId) {
+                        $reviewScope->where('template_head_ev.snapshot_data->template->status', 'in_review')
+                            ->whereExists(function ($subQuery) use ($userId) {
+                                $subQuery->select(DB::raw(1))
+                                    ->from('template_reviewers')
+                                    ->whereColumn('template_reviewers.template_id', 'templates.id')
+                                    ->where('template_reviewers.user_id', $userId);
+                            });
                     });
 
                 $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $userId));
