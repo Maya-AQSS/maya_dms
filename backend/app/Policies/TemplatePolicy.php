@@ -5,13 +5,17 @@ namespace App\Policies;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
+use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Autorización sobre plantillas normativas y Segregación de Funciones (SoD).
  *
  * REGLAS DE EDICIÓN:
- * - Solo el creador puede editar una plantilla, y únicamente cuando está en borrador (`draft`).
+ * - En borrador (`draft`): solo el creador puede editar.
+ * - En publicada (`published`): puede editar el creador o quien tenga `templates.update`,
+ *   siempre que además pueda ver la plantilla (scope/contexto académico + `templates.read`).
  * - La visibilidad no personal (compartida) exige además `templates.create`.
  *
  * REGLAS DE BORRADO:
@@ -45,14 +49,21 @@ class TemplatePolicy
     }
 
     /**
-     * Ver una plantilla: requiere `templates.read` y visibilidad de catálogo o vínculo con un documento
-     * que el usuario ya puede ver (misma idea que el scope de {@see \App\Models\Document}).
+     * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see \App\Models\Template})
+     * o vínculo con un documento visible; además hace falta al menos `templates.read` o `documents.create`
+     * (quien puede crear programaciones desde módulo puede previsualizar plantillas ofrecidas allí).
      *
      * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
      */
     public function view(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('templates.read')) {
+        // Gestión global / auditoría: mismo espíritu que {@see AcademicHierarchyController} (`admin`)
+        // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `templates.delete`).
+        if ($user->hasPermission('admin') || $user->hasPermission('templates.delete')) {
+            return true;
+        }
+
+        if (! $user->hasPermission('templates.read') && ! $user->hasPermission('documents.create')) {
             return false;
         }
 
@@ -64,11 +75,31 @@ class TemplatePolicy
             return true;
         }
 
+        $userId = (string) $user->getAuthIdentifier();
+
+        $template->loadMissing('headVersion');
+        $snapshot = $template->headVersion?->snapshot_data;
+        $createdBy = is_array($snapshot)
+            ? data_get($snapshot, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.created_by')
+            : null;
+        if ($createdBy !== null && $createdBy !== '' && (string) $createdBy === $userId) {
+            return true;
+        }
+
+        if (DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->where('user_id', $userId)
+            ->exists()) {
+            return true;
+        }
+
         if (Template::query()->whereKey($templateId)->exists()) {
             return true;
         }
 
-        return $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
+        // Fuera del listado del scope: p. ej. anclada solo vía documento; requiere leer plantillas.
+        return $user->hasPermission('templates.read')
+            && $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
     }
 
     /**
@@ -82,11 +113,12 @@ class TemplatePolicy
         }
 
         return DB::table('documents')
-            ->where('template_id', $templateId)
-            ->whereNull('deleted_at')
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
+            ->where('documents.template_id', $templateId)
+            ->whereNull('documents.deleted_at')
             ->where(function ($outer) use ($userId) {
-                $outer->where('owner_id', $userId)
-                    ->orWhere('created_by', $userId)
+                $outer->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' = ?', [$userId])
+                    ->orWhereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'created_by').' = ?', [$userId])
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
                             ->from('document_reviews')
@@ -132,11 +164,28 @@ class TemplatePolicy
      */
     public function update(JwtUser $user, Template $template, ?string $targetVisibilityLevel = null): bool
     {
-        if ($user->getAuthIdentifier() !== $template->created_by) {
+        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+
+        if ($template->status === 'draft') {
+            if (! $isCreator) {
+                return false;
+            }
+            if ($targetVisibilityLevel !== null) {
+                return $this->create($user, $targetVisibilityLevel);
+            }
+
+            return true;
+        }
+
+        if ($template->status !== 'published') {
             return false;
         }
 
-        if ($template->status !== 'draft') {
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        if (! $isCreator && ! $user->hasPermission('templates.update')) {
             return false;
         }
 
@@ -177,6 +226,27 @@ class TemplatePolicy
         return $this->view($user, $template)
             && $template->status === 'published'
             && $this->create($user, $visibility);
+    }
+
+    /**
+     * Publicada → borrador para preparar una nueva versión (misma plantilla).
+     *
+     * Misma idea que {@see self::update} en estado `published`: hace falta poder ver la plantilla
+     * y ser creador o tener `templates.update`.
+     */
+    public function startRevision(JwtUser $user, Template $template): bool
+    {
+        if ($template->status !== 'published') {
+            return false;
+        }
+
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+
+        return $isCreator || $user->hasPermission('templates.update');
     }
 
     /**

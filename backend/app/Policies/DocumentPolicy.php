@@ -127,4 +127,27 @@ class DocumentPolicy
     {
         return $user->getAuthIdentifier() === $document->owner_id;
     }
+
+    /**
+     * Clonar documento: requiere poder crear documentos y mutar el origen (titular/creador/colaborador edit o permiso global).
+     */
+    public function clone(JwtUser $user, Document $document): bool
+    {
+        return $user->hasPermission('documents.create') && $this->update($user, $document);
+    }
+
+    /**
+     * Publicado → borrador para preparar una nueva versión publicada del mismo expediente.
+     *
+     * Quién puede editar el borrador lo define {@see self::update}; aquí solo se exige documento `published`.
+     * Quién puede cargar el modelo desde la API queda acotado por el scope del modelo (equivalente práctico a “ver”).
+     */
+    public function startRevision(JwtUser $user, Document $document): bool
+    {
+        if ($document->status !== 'published') {
+            return false;
+        }
+
+        return $this->update($user, $document);
+    }
 }

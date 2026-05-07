@@ -28,8 +28,8 @@ class TemplateBlockService implements TemplateBlockServiceInterface
      */
     public function listForTemplate(string $templateId): Collection
     {
-        // Validate the template exists (also applies global scopes / visibility)
-        $this->templateRepository->findOrFail($templateId);
+        // Existencia sin scope de catálogo: la visibilidad la marca el controlador con policy tras cargar.
+        $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
 
         return $this->blockRepository->allForTemplate($templateId);
     }
@@ -89,7 +89,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             ]);
         }
 
-        $this->templateRepository->findOrFail($templateId);
+        $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
 
         $currentBlocks = $this->blockRepository->allForTemplate($templateId);
         $currentIds = $currentBlocks->pluck('id')->map(static fn($id): string => (string) $id)->all();
@@ -133,7 +133,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
      */
     public function create(string $templateId, array $attributes, string $userId): TemplateBlock
     {
-        $template = $this->templateRepository->findOrFail($templateId);
+        $template = $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
         $block = $this->blockRepository->create($template, $attributes);
 
         $this->auditLogService->record(

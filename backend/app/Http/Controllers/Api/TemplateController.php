@@ -7,12 +7,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
 use App\Http\Requests\Templates\PublishTemplateRequest;
+use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
 use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
 use App\Http\Resources\TemplateVersionResource;
 use App\Http\Resources\TemplateVersionSummaryResource;
+use App\Models\Template;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -209,6 +211,27 @@ class TemplateController extends Controller
     }
 
     /**
+     * Publicada → borrador (nueva versión de edición sobre la misma plantilla).
+     */
+    public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource
+    {
+        $model = $this->templateService->findOrFail($template);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $updated = $this->templateService->startNewRevisionCycle(
+            $model->id,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        $this->apiTeamEmbedService->embedOnTemplate(
+            $updated,
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return new TemplateResource($updated);
+    }
+
+    /**
      * Historial de versiones publicadas (metadatos).
      */
     public function versions(string $template): ResourceCollection
@@ -230,7 +253,9 @@ class TemplateController extends Controller
     public function showVersion(string $template_version): TemplateVersionResource
     {
         $version = $this->templateService->findVersionOrFail($template_version);
-        $template = $this->templateService->findOrFailWithoutCatalogScope((string) $version->template_id);
+        $templateId = (string) $version->versionable_id;
+
+        $template = $this->templateService->findOrFailWithoutCatalogScope($templateId);
         if (! Gate::forUser(Auth::user())->allows('view', $template)) {
             abort(404);
         }

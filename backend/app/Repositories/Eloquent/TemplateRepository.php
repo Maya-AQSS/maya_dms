@@ -6,11 +6,13 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use RuntimeException;
 
 class TemplateRepository implements TemplateRepositoryInterface
 {
@@ -19,7 +21,7 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function findOrFail(string $id): Template
     {
-        return Template::query()->findOrFail($id);
+        return Template::query()->with('headVersion')->findOrFail($id);
     }
 
     /**
@@ -27,7 +29,7 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function findOrFailForUpdate(string $id): Template
     {
-        return Template::query()->whereKey($id)->lockForUpdate()->firstOrFail();
+        return Template::query()->with('headVersion')->whereKey($id)->lockForUpdate()->firstOrFail();
     }
 
     /**
@@ -38,6 +40,19 @@ class TemplateRepository implements TemplateRepositoryInterface
     {
         return Template::query()
             ->withoutGlobalScopes(['user_access'])
+            ->with('headVersion')
+            ->findOrFail($id);
+    }
+
+    /**
+     * Plantilla sin scope de catálogo con bloques cargados y ordenados por sort_order.
+     * Para definición de bloques de documento cuando no hay snapshot de versión usable.
+     */
+    public function findOrFailWithBlocksOrderedWithoutCatalogScope(string $id): Template
+    {
+        return Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with(['headVersion', 'blocks' => fn ($q) => $q->orderBy('sort_order')])
             ->findOrFail($id);
     }
 
@@ -48,52 +63,44 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function listFiltered(FilterTemplatesDto $filters): Collection
     {
-        $query = Template::query()
-            ->select([
-                'templates.id',
-                'templates.name',
-                'templates.description',
-                'templates.visibility_level',
-                'templates.delivery_deadline',
-                'templates.study_type_id',
-                'templates.study_id',
-                'templates.module_id',
-                'templates.process_id',
-                'templates.team_id',
-                'templates.created_by',
-                'users.name as author_name',
-                'templates.status',
-                'templates.version',
-                'templates.review_stages',
-                'templates.review_mode',
-                'templates.created_at',
-                'templates.updated_at',
-            ])
-            ->leftJoin('users', 'users.id', '=', 'templates.created_by');
+        // Join explícito al cabezal antes que el LEFT JOIN a users: en algunos drivers el orden
+        // de JOIN encadenados puede colocar `users` antes de `template_head_ev` y romper la referencia.
+        $query = Template::withoutGlobalScopes(['join_head_entity_version'])
+            ->join('entity_versions as template_head_ev', 'template_head_ev.id', '=', 'templates.head_entity_version_id')
+            ->select('templates.*')
+            ->addSelect(DB::raw('users.name as author_name'))
+            ->leftJoin('users', function ($join) {
+                $join->whereRaw(
+                    'users.id = '.TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'created_by')
+                );
+            });
 
         if ($filters->visibilityLevel !== null) {
-            $query->where('templates.visibility_level', $filters->visibilityLevel);
+            $query->where('template_head_ev.snapshot_data->template->visibility_level', $filters->visibilityLevel);
         }
         if ($filters->status !== null) {
-            $query->where('templates.status', $filters->status);
+            $query->where('template_head_ev.snapshot_data->template->status', $filters->status);
         }
         if ($filters->studyTypeId !== null) {
-            $query->where('templates.study_type_id', $filters->studyTypeId);
+            $query->where('template_head_ev.snapshot_data->template->study_type_id', $filters->studyTypeId);
         }
         if ($filters->studyId !== null) {
-            $query->where('templates.study_id', $filters->studyId);
+            $query->where('template_head_ev.snapshot_data->template->study_id', $filters->studyId);
         }
         if ($filters->moduleId !== null) {
-            $query->where('templates.module_id', $filters->moduleId);
+            $query->where('template_head_ev.snapshot_data->template->module_id', $filters->moduleId);
         }
         if ($filters->teamId !== null) {
-            $query->where('templates.team_id', $filters->teamId);
+            $query->where('template_head_ev.snapshot_data->template->team_id', $filters->teamId);
         }
         if ($filters->authorName !== null) {
             $query->where('users.name', 'like', '%'.$filters->authorName.'%');
         }
         if ($filters->deliveryDeadline !== null) {
-            $query->whereDate('templates.delivery_deadline', $filters->deliveryDeadline);
+            $query->whereDate(
+                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline')),
+                $filters->deliveryDeadline,
+            );
         }
         if ($filters->processId !== null) {
             $query->where('templates.process_id', $filters->processId);
@@ -101,11 +108,13 @@ class TemplateRepository implements TemplateRepositoryInterface
 
         /** @var EloquentCollection<int, Template> $rows */
         $rows = $query
+            ->with(['headVersion'])
             ->withExists([
                 'comments as has_review_comments' => fn ($q) => $q->where('resolved', false),
             ])
             ->with('reviewers')
             ->orderByDesc('templates.updated_at')
+            ->distinct()
             ->get();
 
         return $rows;
@@ -118,7 +127,51 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function create(array $attributes): Template
     {
-        return Template::create($attributes);
+        return DB::transaction(function () use ($attributes) {
+            $template = new Template;
+            if (! empty($attributes['id'])) {
+                $template->setAttribute('id', $attributes['id']);
+            }
+            $template->process_id = $attributes['process_id'];
+            $template->save();
+
+            $row = array_merge($attributes, [
+                'id' => $template->getKey(),
+                'status' => $attributes['status'] ?? 'draft',
+            ]);
+
+            $snapshot = TemplateHeadSnapshot::buildPayloadFromLegacyRow(
+                $row,
+                $template->getKey(),
+                (string) $template->process_id,
+            );
+
+            $now = Carbon::now();
+            $headId = (string) Str::uuid();
+
+            DB::table('entity_versions')->insert([
+                'id' => $headId,
+                'versionable_type' => Template::class,
+                'versionable_id' => $template->getKey(),
+                'version_number' => 0,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => (string) ($attributes['status'] ?? 'draft'),
+                'created_by' => (string) ($attributes['created_by'] ?? ''),
+                'published_by' => null,
+                'published_at' => null,
+                'changelog' => null,
+                'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            $template->head_entity_version_id = $headId;
+            $template->save();
+
+            return $template->fresh(['headVersion']);
+        });
     }
 
     /**
@@ -128,11 +181,56 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function update(Template $template, array $attributes): Template
     {
-        if ($attributes !== []) {
-            $template->update($attributes);
+        if ($attributes === []) {
+            return $template->fresh(['headVersion']);
         }
 
-        return $template->fresh();
+        $delegated = array_flip(TemplateHeadSnapshot::DELEGATED_ATTRIBUTES);
+        $headUpdates = array_intersect_key($attributes, $delegated);
+        $rest = array_diff_key($attributes, $delegated);
+
+        if ($headUpdates !== []) {
+            $template->loadMissing('headVersion');
+            $ev = $template->headVersion;
+            if ($ev === null) {
+                throw new RuntimeException('Plantilla sin versión cabezal en entity_versions.');
+            }
+
+            $normalized = $this->normalizeHeadSnapshotUpdates($headUpdates);
+            $ev->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey($ev->snapshot_data ?? [], $normalized);
+            if (array_key_exists('status', $headUpdates)) {
+                $ev->status = (string) $headUpdates['status'];
+            }
+            $ev->save();
+        }
+
+        if ($rest !== []) {
+            $template->fill($rest);
+            $template->save();
+        }
+
+        return $template->fresh(['headVersion']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $updates
+     * @return array<string, mixed>
+     */
+    private function normalizeHeadSnapshotUpdates(array $updates): array
+    {
+        $out = [];
+        foreach ($updates as $k => $v) {
+            $out[$k] = match ($k) {
+                'visibility_level' => TemplateHeadSnapshot::normalizeVisibilityForSnapshot($v),
+                'delivery_deadline' => TemplateHeadSnapshot::normalizeDeadlineForSnapshot(
+                    $v instanceof Carbon ? $v : $v
+                ),
+                'review_stages' => (int) $v,
+                default => $v,
+            };
+        }
+
+        return $out;
     }
 
     /**
@@ -169,6 +267,42 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
+     * Inserta bloques en una plantilla desde el JSON de un snapshot publicado (ids de origen ignorados).
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
+     */
+    public function insertBlocksFromPublishedSnapshot(string $templateId, array $blocksSnapshot): void
+    {
+        DB::transaction(function () use ($templateId, $blocksSnapshot) {
+            foreach ($blocksSnapshot as $block) {
+                if (! is_array($block)) {
+                    continue;
+                }
+
+                $rawTitle = $block['title'] ?? null;
+                $title = match (true) {
+                    $rawTitle === null => null,
+                    is_string($rawTitle) => $rawTitle,
+                    is_scalar($rawTitle) => (string) $rawTitle,
+                    default => null,
+                };
+
+                TemplateBlock::query()->forceCreate([
+                    'id' => (string) Str::uuid(),
+                    'template_id' => $templateId,
+                    'title' => $title,
+                    'description' => array_key_exists('description', $block) ? $block['description'] : null,
+                    'default_content' => array_key_exists('default_content', $block) ? $block['default_content'] : null,
+                    'block_state' => isset($block['block_state']) && is_string($block['block_state'])
+                        ? $block['block_state']
+                        : 'editable',
+                    'sort_order' => isset($block['sort_order']) ? (int) $block['sort_order'] : 0,
+                ]);
+            }
+        });
+    }
+
+    /**
      * Carga múltiples plantillas por sus IDs (con el global scope activo), indexadas por ID.
      *
      * @param  list<string>  $ids
@@ -176,7 +310,9 @@ class TemplateRepository implements TemplateRepositoryInterface
      */
     public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection
     {
-        return Template::query()->whereIn('id', $ids)->get()->keyBy('id');
+        $table = (new Template)->getTable();
+
+        return Template::query()->with('headVersion')->whereIn($table.'.id', $ids)->get()->keyBy('id');
     }
 
     /**
@@ -185,10 +321,26 @@ class TemplateRepository implements TemplateRepositoryInterface
     public function listPublishedByModule(string $moduleId): Collection
     {
         return Template::query()
-            ->where('status', 'published')
-            ->where('module_id', $moduleId)
-            ->orderByDesc('updated_at')
+            ->where('template_head_ev.snapshot_data->template->status', 'published')
+            ->where('template_head_ev.snapshot_data->template->module_id', $moduleId)
+            ->orderByDesc('templates.updated_at')
             ->get();
+    }
+
+    /**
+     * Localiza una plantilla para candidatos de revisión documental sin scope de catálogo.
+     * Debe incluir relaciones de reviewers y documentReviewers ordenadas.
+     */
+    public function findForDocumentReviewCandidatesWithoutCatalogScope(string $templateId): ?Template
+    {
+        return Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with(['headVersion'])
+            ->with([
+                'reviewers' => fn ($q) => $q->orderBy('stage'),
+                'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+            ])
+            ->find($templateId);
     }
 
     /**
@@ -202,34 +354,42 @@ class TemplateRepository implements TemplateRepositoryInterface
             ->where('tr_min.status', 'pending')
             ->groupBy('tr_min.template_id');
 
+        $deadlineExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline');
+
         $rows = DB::table('template_reviewers')
             ->join('templates', 'templates.id', '=', 'template_reviewers.template_id')
-            ->leftJoin('users as author_user', 'author_user.id', '=', 'templates.created_by')
+            ->join('entity_versions as template_head_ev', 'template_head_ev.id', '=', 'templates.head_entity_version_id')
+            ->leftJoin('users as author_user', function ($join) {
+                $join->whereRaw(
+                    'author_user.id = '.TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'created_by')
+                );
+            })
             ->leftJoinSub($minPendingByTemplate, 'ts', function ($join) {
                 $join->on('ts.template_id', '=', 'templates.id');
             })
             ->where('template_reviewers.user_id', $userId)
             ->where('template_reviewers.status', 'pending')
-            ->where('templates.status', 'in_review')
+            ->whereRaw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'status').' = ?', ['in_review'])
             ->where(function ($q) {
-                $q->whereNull('templates.review_mode')
-                    ->orWhere('templates.review_mode', 'parallel')
+                $rm = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'review_mode');
+                $q->whereRaw($rm.' IS NULL')
+                    ->orWhereRaw($rm.' = ?', ['parallel'])
                     ->orWhere(function ($q2) {
-                        $q2->where('templates.review_mode', 'sequential')
+                        $q2->whereRaw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'review_mode').' = ?', ['sequential'])
                             ->whereColumn('template_reviewers.stage', 'ts.min_stage');
                     });
             })
-            ->orderByRaw('CASE WHEN templates.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
-            ->orderBy('templates.delivery_deadline', 'asc')
+            ->orderByRaw('CASE WHEN '.$deadlineExpr.' IS NULL THEN 1 ELSE 0 END ASC')
+            ->orderByRaw($deadlineExpr.' asc')
             ->orderBy('templates.updated_at', 'desc')
             ->get([
                 'templates.id',
-                'templates.name',
-                'templates.created_by',
                 'templates.process_id',
-                'templates.delivery_deadline',
-                'templates.status',
                 'template_reviewers.stage',
+                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'name').' as name'),
+                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'created_by').' as created_by'),
+                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline').' as delivery_deadline'),
+                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'status').' as status'),
                 'author_user.name as author_name',
             ]);
 

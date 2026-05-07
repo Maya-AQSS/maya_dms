@@ -42,19 +42,10 @@ class DocumentVersionController extends Controller
         $this->authorize('view', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $v = $this->documentService->findDocumentVersionOrFail($document, $version);
+        $v = $this->documentService->findDocumentVersionDetailOrFail($document, $version);
 
         return response()->json([
-            'data' => [
-                'id' => $v->id,
-                'document_id' => $v->document_id,
-                'version_number' => $v->version_number,
-                'trigger_event' => $v->trigger_event,
-                'triggered_by' => $v->triggered_by,
-                'changelog' => $v->notes,
-                'snapshot_data' => $v->snapshot_data,
-                'created_at' => $v->created_at?->toIso8601String(),
-            ],
+            'data' => $v,
         ]);
     }
 }

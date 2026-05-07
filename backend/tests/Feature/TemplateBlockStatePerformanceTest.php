@@ -73,7 +73,6 @@ class TemplateBlockStatePerformanceTest extends TestCase
             'created_by' => $userId,
             'status' => 'draft',
             'visibility_level' => 'personal',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);

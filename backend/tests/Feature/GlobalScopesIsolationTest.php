@@ -7,11 +7,14 @@ use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Models\Team;
+use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
+use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\AssignsTestUserPermissions;
@@ -43,7 +46,6 @@ class GlobalScopesIsolationTest extends TestCase
             'study_id'        => null,
             'created_by'      => $creatorId,
             'status'          => 'draft',
-            'version'         => 1,
             'review_stages'   => 0,
             'review_mode'     => 'sequential',
         ]);
@@ -56,9 +58,6 @@ class GlobalScopesIsolationTest extends TestCase
             'created_by'       => $creatorId,
             'owner_id'         => $creatorId,
             'status'           => 'draft',
-            'current_version'  => 1,
-            'submitted_at'     => null,
-            'published_at'     => null,
         ]);
 
         return [$templateId, $documentId];
@@ -186,7 +185,6 @@ class GlobalScopesIsolationTest extends TestCase
             'team_id' => $teamId,
             'created_by' => $userA,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -381,9 +379,14 @@ class GlobalScopesIsolationTest extends TestCase
     {
         $userA = 'user-a-uuid-123';
         [$templateId] = $this->seedTemplateAndDocument($userA);
+        $headTemplateEv = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
+            ->where('version_number', 0)
+            ->firstOrFail();
         $this->assertSame(
             'draft',
-            (string) Template::withoutGlobalScopes()->whereKey($templateId)->value('status'),
+            (string) data_get($headTemplateEv->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.status'),
         );
         $tokenA = $this->buildAuthTokensForUser($userA);
         $commentId = (string) Str::uuid();
@@ -403,14 +406,23 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        TemplateVersion::query()->forceCreate([
-            'id'             => (string) Str::uuid(),
-            'template_id'    => $templateId,
+        $now = now();
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateId,
             'version_number' => 1,
-            'blocks_snapshot'=> [],
-            'changelog'      => 'Publicacion inicial',
-            'published_by'   => $userA,
-            'published_at'   => now(),
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userA,
+            'published_by' => $userA,
+            'published_at' => $now,
+            'changelog' => 'Publicacion inicial',
+            'snapshot_data' => json_encode(['blocks' => []]),
+            'is_snapshot_immutable' => true,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
 
         $this->getJson(
@@ -460,7 +472,16 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        Template::withoutGlobalScopes()->whereKey($templateId)->update(['status' => 'published']);
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($head->snapshot_data ?? [], ['status' => 'published']);
+        $head->update([
+            'status' => 'published',
+            'snapshot_data' => $snapshotData,
+        ]);
 
         $this->getJson(
             "/api/v1/templates/{$templateId}/comments",
@@ -485,9 +506,14 @@ class GlobalScopesIsolationTest extends TestCase
     {
         $userA = 'user-a-uuid-123';
         [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $headDocEv = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
+            ->where('version_number', 0)
+            ->firstOrFail();
         $this->assertSame(
             'draft',
-            (string) Document::withoutGlobalScopes()->whereKey($documentId)->value('status'),
+            (string) data_get($headDocEv->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.status'),
         );
         $tokenA = $this->buildAuthTokensForUser($userA);
         $commentId = (string) Str::uuid();
@@ -566,7 +592,16 @@ class GlobalScopesIsolationTest extends TestCase
             'resolved_at'         => null,
         ]);
 
-        Document::withoutGlobalScopes()->whereKey($documentId)->update(['status' => 'published']);
+        $headDoc = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $mergedDoc = DocumentHeadSnapshot::mergeDocumentKey($headDoc->snapshot_data ?? [], ['status' => 'published']);
+        $headDoc->update([
+            'status' => 'published',
+            'snapshot_data' => $mergedDoc,
+        ]);
 
         $this->getJson(
             "/api/v1/documents/{$documentId}/comments",

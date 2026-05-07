@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
+use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -11,6 +12,7 @@ class TemplateReviewerAssignmentService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly UserPermissionRepositoryInterface $userPermissionRepository,
     ) {}
 
     /**
@@ -44,6 +46,8 @@ class TemplateReviewerAssignmentService
                 ]);
             }
 
+            $this->assertUsersHavePermission($uniqueUserIds, 'templates.review', 'user_ids');
+
             // TemplateReviewer usa SoftDeletes; forceDelete elimina filas físicamente
             // para no violar la restricción única (template_id, user_id) al reinsertar.
             $template->reviewers()->withTrashed()->forceDelete();
@@ -73,6 +77,8 @@ class TemplateReviewerAssignmentService
                 ]);
             }
 
+            $this->assertUsersHavePermission($uniqueUserIds, 'documents.review', 'user_ids');
+
             // TemplateDocumentReviewer no usa SoftDeletes: delete() es borrado físico.
             // A diferencia de TemplateReviewer (que sí usa SoftDeletes y requiere forceDelete),
             // aquí no hay riesgo de violar la constraint única al reinsertar.
@@ -84,6 +90,32 @@ class TemplateReviewerAssignmentService
                 ]);
             }
         });
+    }
+
+    /**
+     * Aserta que los usuarios tienen el permiso requerido.
+     * 
+     * @param list<string> $userIds
+     */
+    private function assertUsersHavePermission(array $userIds, string $requiredPermission, string $field): void
+    {
+        $missingPermission = [];
+        foreach ($userIds as $userId) {
+            $codes = $this->userPermissionRepository->findPermissionCodesByUserId($userId);
+            if (! in_array($requiredPermission, $codes, true)) {
+                $missingPermission[] = $userId;
+            }
+        }
+
+        if ($missingPermission === []) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $field => [
+                'Todos los usuarios asignados deben tener el permiso '.$requiredPermission.'.',
+            ],
+        ]);
     }
 
 }

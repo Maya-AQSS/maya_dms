@@ -22,6 +22,11 @@ interface DocumentServiceInterface
     public function create(CreateDocumentDto $dto): Document;
 
     /**
+     * Clona un documento visible hacia un nuevo borrador con el mismo ancla de plantilla y contenido de bloques copiado.
+     */
+    public function clone(string $sourceDocumentId, string $actorId): Document;
+
+    /**
      * Actualiza metadatos editables del documento.
      *
      * @param  array<string, mixed>  $attributes
@@ -63,6 +68,11 @@ interface DocumentServiceInterface
     public function publishDocument(string $documentId, string $actorId, string $changelog): Document;
 
     /**
+     * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión antes de volver a publicar.
+     */
+    public function startNewRevisionCycle(string $documentId, string $actorId): Document;
+
+    /**
      * Delega la propiedad del documento a otro usuario.
      */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document;
@@ -83,6 +93,22 @@ interface DocumentServiceInterface
      * Localiza una versión snapshot del documento por id.
      */
     public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
+
+    /**
+     * Detalle de versión del documento aceptando id legacy o id polimórfico.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     *   trigger_event: string,
+     *   triggered_by: string,
+     *   changelog: ?string,
+     *   snapshot_data: array<string, mixed>,
+     *   created_at: ?string
+     * }
+     */
+    public function findDocumentVersionDetailOrFail(string $documentId, string $versionId): array;
 
     /**
      * Metadatos de versiones del documento ordenados descendentemente.
