@@ -84,7 +84,7 @@ export function ReviewCommentsSidebar({
   return (
     <aside className="w-96 shrink-0 border-l border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex flex-col sticky top-0 h-full overflow-hidden shadow-lg">
       {/* Header */}
-      <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-2 bg-danger/5">
+      <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center gap-2 bg-danger/5 dark:bg-danger/10">
         <span className="flex-1 text-xs font-black uppercase tracking-widest text-danger-dark dark:text-danger truncate">
           ⚠ Revisión de bloque
         </span>
@@ -128,7 +128,7 @@ export function ReviewCommentsSidebar({
                         </span>
                       )}
                     </span>
-                    <time className="text-xs text-text-muted font-bold uppercase tracking-wider shrink-0">
+                    <time className="text-xs text-text-muted dark:text-text-dark-muted font-bold uppercase tracking-wider shrink-0">
                       {new Date(c.created_at).toLocaleDateString()}
                     </time>
                   </div>
@@ -173,7 +173,7 @@ export function ReviewCommentsSidebar({
                           <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
                             {r.author?.name || 'Usuario'}
                           </span>
-                          <time className="text-xs text-text-muted font-bold">
+                          <time className="text-xs text-text-muted dark:text-text-dark-muted font-bold">
                             {new Date(r.created_at).toLocaleDateString()}
                           </time>
                         </div>
@@ -192,7 +192,7 @@ export function ReviewCommentsSidebar({
                       value={replyBody}
                       onChange={(e) => setReplyBody(e.target.value)}
                       placeholder="Escribe una respuesta..."
-                      className="w-full text-xs p-3 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-2 focus:ring-odoo-purple/20 outline-none transition-all resize-none h-20 shadow-inner"
+                      className="w-full text-xs p-3 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 outline-none transition-all resize-none h-20 shadow-inner"
                     />
                     <div className="flex justify-end">
                       <Button

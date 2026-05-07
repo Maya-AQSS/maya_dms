@@ -556,7 +556,7 @@ export function TemplateReviewView({ template }: Props) {
                             value={newCommentBody}
                             onChange={(e) => setNewCommentBody(e.target.value)}
                             placeholder="Escribe un mensaje de revisión..."
-                            className="w-full h-32 p-4 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
+                            className="w-full h-32 p-4 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
                           />
                           <div className="mt-4 flex justify-end">
                             <Button 
@@ -572,8 +572,8 @@ export function TemplateReviewView({ template }: Props) {
                           </div>
                         </div>
                       ) : (
-                        <div className="mt-4 p-6 border border-ui-border dark:border-ui-dark-border rounded-xl bg-ui-body/5 text-center shrink-0">
-                          <p className="text-sm text-text-muted italic font-medium">
+                        <div className="mt-4 p-6 border border-ui-border dark:border-ui-dark-border rounded-xl bg-ui-body/5 dark:bg-ui-dark-border/20 text-center shrink-0">
+                          <p className="text-sm text-text-muted dark:text-text-dark-muted italic font-medium">
                             No puedes añadir más mensajes porque ya has finalizado tu validación.
                           </p>
                         </div>
