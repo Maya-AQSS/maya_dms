@@ -262,7 +262,12 @@ class TemplateService implements TemplateServiceInterface
             ]);
         }
 
-        return $this->templatePublishingService->transitionStatus($template, 'draft', $actorId);
+        return $this->templatePublishingService->transitionStatus(
+            $template,
+            'draft',
+            $actorId,
+            ['created_by' => $actorId],
+        );
     }
 
     /**

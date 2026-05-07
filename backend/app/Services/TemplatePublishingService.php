@@ -20,14 +20,22 @@ class TemplatePublishingService
     ) {}
 
     /**
-     * Actualiza el estado de una plantilla y emite el evento de dominio TemplateStateChanged.
+     * Actualiza estado (y opcionalmente metadatos delegados del cabezal) y emite TemplateStateChanged.
      *
-     * Método compartido por TemplateService y TemplateReviewService para evitar duplicación.
+     * @param  array<string, mixed>  $extraHeadAttributes
      */
-    public function transitionStatus(Template $template, string $newStatus, string $actorId): Template
+    public function transitionStatus(
+        Template $template,
+        string $newStatus,
+        string $actorId,
+        array $extraHeadAttributes = [],
+    ): Template
     {
         $oldStatus = $template->status;
-        $updated = $this->templateRepository->update($template, ['status' => $newStatus]);
+        $updated = $this->templateRepository->update(
+            $template,
+            array_merge(['status' => $newStatus], $extraHeadAttributes),
+        );
 
         event(new TemplateStateChanged(
             template: $updated,

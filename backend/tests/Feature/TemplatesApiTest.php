@@ -320,7 +320,7 @@ class TemplatesApiTest extends TestCase
             'id' => $t1,
             'name' => 'A',
             'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
             'delivery_deadline' => null,
             'study_type_id' => null,
             'study_id' => null,
@@ -630,6 +630,67 @@ class TemplatesApiTest extends TestCase
             ->where('versionable_id', $tid)
             ->where('version_number', 0)
             ->value('status'));
+    }
+
+    public function test_post_template_new_version_reassigns_creator_to_actor(): void
+    {
+        $originalCreatorId = (string) Str::uuid();
+        $actorId = (string) Str::uuid();
+        $actorHeaders = $this->authHeaders($actorId, []);
+        $this->assignUserPermissions($actorId, ['templates.read', 'templates.update', 'templates.create']);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'T',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $originalCreatorId,
+            'status' => 'published',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => null,
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $head->status = 'published';
+        $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $head->snapshot_data ?? [],
+            ['status' => 'published'],
+        );
+        $head->save();
+        TemplateReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $actorId,
+            'stage' => 1,
+            'status' => 'pending',
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/new-version", [], $actorHeaders)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.created_by', $actorId);
+
+        $this->assertSame($actorId, (string) Template::query()->findOrFail($tid)->created_by);
     }
 
     public function test_template_version_block_layers_resolve_equal_blocks_snapshot_after_second_publish(): void
