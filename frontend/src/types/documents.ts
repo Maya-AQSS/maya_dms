@@ -13,6 +13,7 @@ export type Document = {
   study_type_id: string | null;
   study_id: string | null;
   module_id: string | null;
+  team_id: string | null;
   delivery_deadline?: string | null;
   created_by: string;
   owner_id: string;

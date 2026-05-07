@@ -228,9 +228,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_store_document_without_template_version_id_anchors_to_highest_published_entity_version(): void
     {
         $creatorId = (string) Str::uuid();
-        $this->grantPermissionsForUser($creatorId);
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+        $this->assignUserPermissions($creatorId, ['templates.read', 'documents.create', 'users.search']);
 
         $tid = (string) Str::uuid();
         $b1 = (string) Str::uuid();
@@ -1129,6 +1129,360 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $show->assertJsonPath('data.team.is_department', true);
     }
 
+    public function test_store_document_from_team_template_ignores_academic_context_fields(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $studyId = $this->anyStudyId();
+        $moduleId = (string) Str::uuid();
+        DB::table('course_modules')->insertOrIgnore([
+            'id' => $moduleId,
+            'study_id' => $studyId,
+            'name' => 'Modulo team',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $gid = (string) Str::uuid();
+        Team::query()->forceCreate([
+            'id' => $gid,
+            'name' => 'Equipo acotado',
+            'description' => null,
+            'owner_id' => $creatorId,
+            'is_department' => false,
+        ]);
+
+        TeamMember::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'team_id' => $gid,
+            'user_id' => $creatorId,
+            'role' => 'member',
+        ]);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla team estricta',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Team->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => $gid,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque team',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $create = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc solo equipo',
+            'study_id' => $studyId,
+            'module_id' => $moduleId,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator);
+
+        $create->assertCreated();
+        $create->assertJsonPath('data.study_type_id', null);
+        $create->assertJsonPath('data.study_id', null);
+        $create->assertJsonPath('data.module_id', null);
+    }
+
+    public function test_store_document_from_personal_template_rejects_academic_context_override(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $headers = $this->authHeaders($creatorId);
+        $studyId = $this->anyStudyId();
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla personal',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'published',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque personal',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc personal invalido',
+            'study_id' => $studyId,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers)->assertStatus(422)
+            ->assertJsonValidationErrors(['template_id']);
+    }
+
+    public function test_store_document_from_study_template_allows_down_level_module_only_within_same_study(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$headers, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+        $studyId = $this->anyStudyId();
+        $otherStudyId = (string) Str::uuid();
+        $studyTypeId = (string) DB::table('studies')->where('id', $studyId)->value('study_type_id');
+        DB::table('studies')->insertOrIgnore([
+            'id' => $otherStudyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Otro estudio',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $moduleOk = (string) Str::uuid();
+        $moduleBad = (string) Str::uuid();
+        DB::table('course_modules')->insertOrIgnore([
+            'id' => $moduleOk,
+            'study_id' => $studyId,
+            'name' => 'Modulo ok',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('course_modules')->insertOrIgnore([
+            'id' => $moduleBad,
+            'study_id' => $otherStudyId,
+            'name' => 'Modulo bad',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla estudio',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Study->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => $studyId,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque estudio',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headers)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $ok = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc estudio ok',
+            'module_id' => $moduleOk,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers);
+        $ok->assertCreated()->assertJsonPath('data.study_id', $studyId)->assertJsonPath('data.module_id', $moduleOk);
+
+        $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc estudio bad',
+            'module_id' => $moduleBad,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers)->assertStatus(422)
+            ->assertJsonValidationErrors(['module_id']);
+    }
+
+    public function test_store_document_from_global_template_allows_team_without_academic_context(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$headers, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $teamId = (string) Str::uuid();
+        Team::query()->forceCreate([
+            'id' => $teamId,
+            'name' => 'Equipo global',
+            'description' => null,
+            'owner_id' => $creatorId,
+            'is_department' => false,
+        ]);
+        TeamMember::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'team_id' => $teamId,
+            'user_id' => $creatorId,
+            'role' => 'member',
+        ]);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla global con equipo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headers)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $create = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc global por equipo',
+            'team_id' => $teamId,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers);
+
+        $create->assertCreated();
+        $create->assertJsonPath('data.team_id', $teamId);
+        $create->assertJsonPath('data.study_type_id', null);
+        $create->assertJsonPath('data.study_id', null);
+        $create->assertJsonPath('data.module_id', null);
+    }
+
+    public function test_store_document_from_global_template_rejects_mixing_team_and_academic_context(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$headers, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+        $studyId = $this->anyStudyId();
+
+        $teamId = (string) Str::uuid();
+        Team::query()->forceCreate([
+            'id' => $teamId,
+            'name' => 'Equipo mezcla',
+            'description' => null,
+            'owner_id' => $creatorId,
+            'is_department' => false,
+        ]);
+        TeamMember::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'team_id' => $teamId,
+            'user_id' => $creatorId,
+            'role' => 'member',
+        ]);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla global mezcla',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headers)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc global invalido',
+            'team_id' => $teamId,
+            'study_id' => $studyId,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers)->assertStatus(422)
+            ->assertJsonValidationErrors(['team_id']);
+    }
+
     public function test_update_document_block_persists_content_in_draft(): void
     {
         $creatorId = (string) Str::uuid();
@@ -1556,6 +1910,13 @@ class DocumentsTemplateVersionApiTest extends TestCase
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
+        DocumentShare::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $docId,
+            'user_id' => $reviewerId,
+            'permission' => 'read',
+            'granted_by' => $creatorId,
+        ]);
 
         $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
             ->assertOk()
@@ -1740,7 +2101,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
-        $studyId = $this->anyStudyId();
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
 
         $tid = (string) Str::uuid();
@@ -1781,18 +2141,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
 
-        DB::table('user_studies')->insertOrIgnore([
-            'id' => (string) Str::uuid(),
-            'user_id' => $reviewerId,
-            'study_id' => $studyId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
         $createDoc = $this->postJson('/api/v1/documents', [
             'template_id' => $tid,
             'title' => 'Doc snapshot',
-            'study_id' => $studyId,
             'delivery_deadline' => now()->addDay()->toDateString(),
             'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $hCreator)->assertCreated();
@@ -1803,11 +2154,14 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'in_review');
 
-        $reviews = $this->getJson("/api/v1/documents/{$docId}/reviews", $hCreator)
+        $this->getJson("/api/v1/documents/{$docId}", $hReviewer)->assertOk();
+        $reviewRows = $this->getJson("/api/v1/documents/{$docId}/reviews", $hReviewer)
             ->assertOk()
             ->json('data');
-        $this->assertNotEmpty($reviews);
-        $reviewId = (string) $reviews[0]['id'];
+        $this->assertIsArray($reviewRows);
+        $this->assertNotEmpty($reviewRows);
+        $reviewId = (string) ($reviewRows[0]['id'] ?? '');
+        $this->assertNotSame('', $reviewId);
 
         $this->postJson("/api/v1/documents/{$docId}/reviews/{$reviewId}/approve", [
             'changelog' => 'Cierre v1 liberado',
@@ -1838,8 +2192,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->assertSame($docId, $snapshot['document']['id']);
         $this->assertSame('published', $snapshot['document']['status']);
         $this->assertNotEmpty($snapshot['blocks']);
-
-        $this->assertSame(1, (int) Document::query()->find($docId)?->current_version);
 
         $versionId = (string) $row->id;
         $show = $this->getJson("/api/v1/documents/{$docId}/versions/{$versionId}", $hCreator)

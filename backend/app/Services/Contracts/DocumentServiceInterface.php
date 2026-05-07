@@ -141,7 +141,16 @@ interface DocumentServiceInterface
     /**
      * Opciones de creación de documento disponibles para un módulo.
      *
-     * @return list<array{template_id: string, template_version_id: string, process_id: string, name: string, description: ?string}>
+     * @return list<array{
+     *   template_id: string,
+     *   template_version_id: string,
+     *   process_id: string,
+     *   name: string,
+     *   description: ?string,
+     *   visibility_level: string,
+     *   team_id: ?string,
+     *   team_name: ?string
+     * }>
      */
     public function creationOptionsForModule(string $moduleId): array;
 

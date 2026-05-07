@@ -25,6 +25,7 @@ class DocumentResource extends JsonResource
             'study_type_id' => $this->study_type_id,
             'study_id' => $this->study_id,
             'module_id' => $this->module_id,
+            'team_id' => $this->team_id,
             'delivery_deadline' => $this->delivery_deadline?->toIso8601String(),
             'created_by' => $this->created_by,
             'owner_id' => $this->owner_id,

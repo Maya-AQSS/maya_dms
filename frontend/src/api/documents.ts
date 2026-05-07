@@ -10,6 +10,9 @@ export type DocumentCreationOption = {
   template_version_id: string;
   name: string;
   description: string | null;
+  visibility_level?: string;
+  team_id?: string | null;
+  team_name?: string | null;
 };
 
 export type DocumentCreationOptionsResponse = {
@@ -143,6 +146,7 @@ export async function createDocument(payload: {
   study_type_id?: string | null;
   study_id?: string | null;
   module_id?: string | null;
+  team_id?: string | null;
   template_version_id?: string | null;
   delivery_deadline?: string | null;
 }): Promise<Document> {

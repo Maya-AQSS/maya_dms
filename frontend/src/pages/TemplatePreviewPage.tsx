@@ -22,6 +22,7 @@ import { Button, ConfirmDialog, PageTitle, statusBadgeClass } from '@maya/shared
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
+import { useHierarchy } from '../features/hierarchy';
 
 type ReviewComment = {
   id: string;
@@ -128,6 +129,7 @@ export function TemplatePreviewPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [processLabel, setProcessLabel] = useState<string | null>(null);
+  const { hierarchy } = useHierarchy();
   const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
 
   // Review comments (only loaded when owner & has_review_comments)
@@ -480,6 +482,18 @@ export function TemplatePreviewPage() {
       {authorDisplay}
       {' · '}
       {displayVisibility ? visibilityLabel(displayVisibility) : '—'}
+      {displayVisibility === 'study_type' && template.study_type_id ? (
+        <> ({(hierarchy.find((t: any) => String(t.id) === String(template.study_type_id))?.name ?? template.study_type_id)})</>
+      ) : null}
+      {displayVisibility === 'study' && template.study_id ? (
+        <> ({(hierarchy.flatMap((t: any) => t.studies ?? []).find((s: any) => String(s.id) === String(template.study_id))?.name ?? template.study_id)})</>
+      ) : null}
+      {displayVisibility === 'module' && template.module_id ? (
+        <> ({(hierarchy.flatMap((t: any) => t.studies ?? []).flatMap((s: any) => s.course_modules ?? []).find((m: any) => String(m.id) === String(template.module_id))?.name ?? template.module_id)})</>
+      ) : null}
+      {displayVisibility === 'team' && (template.team?.name || template.team_id) ? (
+        <> ({template.team?.name ?? template.team_id})</>
+      ) : null}
       {' · '}
       Fecha límite de validación: {formatDate(displayDeadline)}
       {' · '}

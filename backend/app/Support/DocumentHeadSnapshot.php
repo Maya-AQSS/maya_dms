@@ -23,6 +23,7 @@ final class DocumentHeadSnapshot
         'study_type_id',
         'study_id',
         'module_id',
+        'team_id',
         'delivery_deadline',
         'created_by',
         'owner_id',
@@ -58,6 +59,7 @@ final class DocumentHeadSnapshot
                 'study_type_id' => $r['study_type_id'] ?? null,
                 'study_id' => $r['study_id'] ?? null,
                 'module_id' => $r['module_id'] ?? null,
+                'team_id' => $r['team_id'] ?? null,
                 'delivery_deadline' => $deadline,
                 'created_by' => (string) ($r['created_by'] ?? ''),
                 'owner_id' => (string) ($r['owner_id'] ?? ''),
@@ -95,7 +97,7 @@ final class DocumentHeadSnapshot
             $document = [];
         }
         foreach ($updates as $k => $v) {
-            if ($v === null && ! in_array($k, ['study_type_id', 'study_id', 'module_id', 'delivery_deadline'], true)) {
+            if ($v === null && ! in_array($k, ['study_type_id', 'study_id', 'module_id', 'team_id', 'delivery_deadline'], true)) {
                 continue;
             }
             $document[$k] = $v;

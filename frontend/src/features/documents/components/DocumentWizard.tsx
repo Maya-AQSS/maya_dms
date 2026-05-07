@@ -24,7 +24,7 @@ import {
 import { ApiHttpError } from '../../../api/http';
 import { fetchProcesses } from '../../../api/processes';
 import { fetchTemplate } from '../../../api/templates';
-import { fetchMe, searchDocumentReviewerCandidates, searchUsers } from '../../../api/users';
+import { fetchMe, searchDocumentReviewerCandidates, searchUsers, type UserTeam } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
@@ -33,6 +33,7 @@ import type { Template } from '../../../types/templates';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
+import { visibilityLabel } from '../../templates/constants';
 import {
   Button,
   ConfirmDialog,
@@ -56,6 +57,7 @@ type Step = 'properties' | 'blocks' | 'summary';
 type SummaryConfirmAction = 'save' | 'submit' | null;
 type BlockViewTab = 'content' | 'description';
 type ReviewModeView = 'sequential' | 'parallel';
+type VisibilityRuleMode = 'global' | 'study_type' | 'study' | 'module' | 'team' | 'personal' | 'unknown';
 type ReviewerView = {
   id: string;
   name: string;
@@ -216,6 +218,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [studyTypeId, setStudyTypeId] = useState('');
   const [studyId, setStudyId] = useState('');
   const [moduleId, setModuleId] = useState('');
+  const [teamId, setTeamId] = useState('');
+  const [availableTeams, setAvailableTeams] = useState<UserTeam[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [submittingForReview, setSubmittingForReview] = useState(false);
@@ -279,6 +283,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setStudyTypeId(data.study_type_id ?? '');
       setStudyId(data.study_id ?? '');
       setModuleId(data.module_id ?? '');
+      setTeamId(data.team_id ?? '');
       setActiveBlockKey((prev: string | null) => {
         if (prev) return prev;
         if (data.blocks.length === 0) return null;
@@ -303,6 +308,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setStudyTypeId(data.study_type_id ?? '');
       setStudyId(data.study_id ?? '');
       setModuleId(data.module_id ?? '');
+      setTeamId(data.team_id ?? '');
       setActiveBlockKey((prev: string | null) => {
         if (prev && data.blocks.some((b) => (b.document_block_id ?? b.template_block_id) === prev)) {
           return prev;
@@ -343,6 +349,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const me = await fetchMe();
+        if (!cancelled) setAvailableTeams(me.data.teams ?? []);
+      } catch {
+        if (!cancelled) setAvailableTeams([]);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     setFormError(null);
@@ -476,13 +497,105 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const activeBlockUiState = activeBlock ? blockToUiState(activeBlock) : null;
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
+  const selectedTemplateVisibility = template?.visibility_level ?? detail?.visibility_level ?? null;
+  const visibilityRule: VisibilityRuleMode = selectedTemplateVisibility ?? 'unknown';
+  const templateStudyTypeId = template?.study_type_id ?? null;
+  const templateStudyId = template?.study_id ?? null;
+  const templateModuleId = template?.module_id ?? null;
 
-  const filteredStudies = studyTypeId
-    ? (hierarchy.find((t: any) => String(t.id) === studyTypeId)?.studies ?? [])
-    : [];
-  const filteredModules = studyId
-    ? (allStudies.find((s: any) => String(s.id) === studyId)?.course_modules ?? [])
-    : [];
+  const selectedStudyNode = allStudies.find((s: any) => String(s.id) === studyId) ?? null;
+
+  const filteredStudies = useMemo(() => {
+    if (!studyTypeId) return [];
+    const byType = (hierarchy.find((t: any) => String(t.id) === studyTypeId)?.studies ?? []) as any[];
+    if (visibilityRule === 'study' || visibilityRule === 'module') {
+      return byType.filter((s: any) => String(s.id) === String(templateStudyId ?? ''));
+    }
+    return byType;
+  }, [studyTypeId, hierarchy, visibilityRule, templateStudyId]);
+
+  const filteredModules = useMemo(() => {
+    if (!studyId) return [];
+    const byStudy = (allStudies.find((s: any) => String(s.id) === studyId)?.course_modules ?? []) as any[];
+    if (visibilityRule === 'module') {
+      return byStudy.filter((m: any) => String(m.id) === String(templateModuleId ?? ''));
+    }
+    return byStudy;
+  }, [studyId, allStudies, visibilityRule, templateModuleId]);
+
+  const studyTypeEditable = visibilityRule === 'global' || visibilityRule === 'unknown';
+  const studyEditable = visibilityRule === 'global' || visibilityRule === 'study_type' || visibilityRule === 'unknown';
+  const moduleEditable = visibilityRule === 'global' || visibilityRule === 'study_type' || visibilityRule === 'study' || visibilityRule === 'unknown';
+  const teamEditable = visibilityRule === 'global';
+  const fixedTeamId = visibilityRule === 'team' ? (template?.team_id ?? '') : '';
+  const templateScopeLabel = useMemo(() => {
+    if (!template) return null;
+    const studyType = hierarchy.find((t: any) => String(t.id) === String(template.study_type_id ?? ''));
+    const studies = (studyType?.studies ?? hierarchy.flatMap((t: any) => t.studies ?? [])) as any[];
+    const study = studies.find((s: any) => String(s.id) === String(template.study_id ?? ''));
+    const modules = (study?.course_modules ?? []) as any[];
+    const module = modules.find((m: any) => String(m.id) === String(template.module_id ?? ''));
+    if (template.visibility_level === 'study_type') return studyType?.name ?? null;
+    if (template.visibility_level === 'study') return study?.name ?? null;
+    if (template.visibility_level === 'module') return module?.name ?? null;
+    if (template.visibility_level === 'team') return template.team?.name ?? null;
+    return null;
+  }, [template, hierarchy]);
+
+  const requireStudyType = visibilityRule === 'study_type' || visibilityRule === 'study' || visibilityRule === 'module';
+  const requireStudy = visibilityRule === 'study' || visibilityRule === 'module';
+  const requireModule = visibilityRule === 'module';
+  const isGlobalAcademicMode = visibilityRule !== 'global' ? true : (!teamId);
+
+  useEffect(() => {
+    if (!template) return;
+    if (visibilityRule === 'team' || visibilityRule === 'personal') {
+      setStudyTypeId('');
+      setStudyId('');
+      setModuleId('');
+      if (visibilityRule === 'team' && template.team_id) {
+        setTeamId(template.team_id);
+      }
+      return;
+    }
+    if (visibilityRule === 'study_type' && templateStudyTypeId) {
+      setStudyTypeId(templateStudyTypeId);
+      if (studyId && selectedStudyNode && String(selectedStudyNode.study_type_id) !== String(templateStudyTypeId)) {
+        setStudyId('');
+        setModuleId('');
+      }
+      return;
+    }
+    if (visibilityRule === 'study' && templateStudyId) {
+      const stFromStudy = allStudies.find((s: any) => String(s.id) === String(templateStudyId))?.study_type_id;
+      if (stFromStudy) setStudyTypeId(String(stFromStudy));
+      setStudyId(String(templateStudyId));
+      if (moduleId) {
+        const moduleInStudy = (allStudies.find((s: any) => String(s.id) === String(templateStudyId))?.course_modules ?? [])
+          .some((m: any) => String(m.id) === String(moduleId));
+        if (!moduleInStudy) setModuleId('');
+      }
+      return;
+    }
+    if (visibilityRule === 'module' && templateModuleId) {
+      const owningStudy = allStudies.find((s: any) => (s.course_modules ?? []).some((m: any) => String(m.id) === String(templateModuleId))) ?? null;
+      if (owningStudy) {
+        setStudyTypeId(String(owningStudy.study_type_id));
+        setStudyId(String(owningStudy.id));
+      }
+      setModuleId(String(templateModuleId));
+    }
+  }, [
+    template,
+    visibilityRule,
+    templateStudyTypeId,
+    templateStudyId,
+    templateModuleId,
+    allStudies,
+    studyId,
+    moduleId,
+    selectedStudyNode,
+  ]);
 
   const selectedSummaryBlock = useMemo(
     () =>
@@ -692,9 +805,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setErrors({});
     if (step === 'properties') {
       const newErrors: Record<string, string> = {};
-      if (!studyTypeId) newErrors.studyTypeId = 'Selecciona un tipo de estudio.';
-      if (!studyId) newErrors.studyId = 'Selecciona un estudio.';
-      if (!moduleId) newErrors.moduleId = 'Selecciona un módulo.';
+      if ((requireStudyType || (visibilityRule === 'global' && isGlobalAcademicMode && (studyId || moduleId || studyTypeId))) && !studyTypeId) {
+        newErrors.studyTypeId = 'Selecciona un tipo de estudio.';
+      }
+      if ((requireStudy || (visibilityRule === 'global' && isGlobalAcademicMode && (moduleId || studyId))) && !studyId) {
+        newErrors.studyId = 'Selecciona un estudio.';
+      }
+      if (requireModule && !moduleId) newErrors.moduleId = 'Selecciona un módulo.';
       if (!title.trim()) newErrors.title = 'El título es obligatorio.';
       if (!deliveryDeadline) {
         newErrors.deliveryDeadline = 'La fecha de entrega es obligatoria.';
@@ -725,9 +842,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             template_id: templateId,
             process_id: template.process_id,
             title: title.trim(),
-            study_type_id: studyTypeId,
-            study_id: studyId,
-            module_id: moduleId,
+            study_type_id: studyTypeId || undefined,
+            study_id: studyId || undefined,
+            module_id: moduleId || undefined,
+            team_id: teamId || undefined,
             delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
           });
 
@@ -740,9 +858,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           const updated = await updateDocument(documentId, {
             title: title.trim(),
             delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
-            study_type_id: studyTypeId,
-            study_id: studyId,
-            module_id: moduleId,
+            study_type_id: studyTypeId || undefined,
+            study_id: studyId || undefined,
+            module_id: moduleId || undefined,
           });
 
           setDetail((prev: DocumentDetail | null) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
@@ -1071,6 +1189,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       Cambiar plantilla
                     </button>
                   </div>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-secondary dark:text-text-dark-secondary">
+                    <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
+                      Visibilidad: {visibilityLabel(template.visibility_level)}
+                    </span>
+                    {templateScopeLabel && (
+                      <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
+                        Ámbito: {templateScopeLabel}
+                      </span>
+                    )}
+                    {(template.team?.name || fixedTeamId || teamId) && (
+                      <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
+                        Equipo: {template.team?.name ?? availableTeams.find((t) => t.id === (fixedTeamId || teamId))?.name ?? 'Asignado'}
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1079,16 +1212,42 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   Selecciona el contexto académico donde se archivará esta programación.
                 </p>
 
+                {teamEditable && (
+                  <div className="space-y-1">
+                    <FieldLabel>Equipo (opcional, exclusivo con contexto académico)</FieldLabel>
+                    <Select
+                      fieldSize="comfortable"
+                      value={teamId}
+                      disabled={!isDraft || !teamEditable}
+                      onChange={(e: ChangeEvent<HTMLSelectElement>) => {
+                        setTeamId(e.target.value);
+                        if (e.target.value) {
+                          setStudyTypeId('');
+                          setStudyId('');
+                          setModuleId('');
+                        }
+                        setErrors((prev: Record<string, string>) => ({ ...prev, studyTypeId: '', studyId: '', moduleId: '' }));
+                      }}
+                    >
+                      <option value="">— Sin equipo (global/académico) —</option>
+                      {availableTeams.map((t) => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </Select>
+                  </div>
+                )}
+
                 <div className="space-y-1">
-                  <FieldLabel required>Tipo de Estudio</FieldLabel>
+                  <FieldLabel required={requireStudyType}>Tipo de Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyTypeId}
-                    disabled={hierarchyLoading || !isDraft}
+                    disabled={hierarchyLoading || !isDraft || !studyTypeEditable || (visibilityRule === 'global' && !isGlobalAcademicMode)}
                     onChange={(e) => {
                       setStudyTypeId(e.target.value);
                       setStudyId('');
                       setModuleId('');
+                      if (visibilityRule === 'global') setTeamId('');
                       setErrors((prev: Record<string, string>) => ({ ...prev, studyTypeId: '', studyId: '', moduleId: '' }));
                     }}
                     error={!!errors.studyTypeId}
@@ -1110,14 +1269,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 </div>
 
                 <div className="space-y-1">
-                  <FieldLabel required>Estudio</FieldLabel>
+                  <FieldLabel required={requireStudy}>Estudio</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={studyId}
-                    disabled={hierarchyLoading || !studyTypeId || !isDraft}
+                    disabled={hierarchyLoading || !studyTypeId || !isDraft || !studyEditable || (visibilityRule === 'global' && !isGlobalAcademicMode)}
                     onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                       setStudyId(e.target.value);
                       setModuleId('');
+                      if (visibilityRule === 'global') setTeamId('');
                       setErrors((prev: Record<string, string>) => ({ ...prev, studyId: '', moduleId: '' }));
                     }}
                     error={!!errors.studyId}
@@ -1133,13 +1293,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 </div>
 
                 <div className="space-y-1">
-                  <FieldLabel required>Módulo</FieldLabel>
+                  <FieldLabel required={requireModule}>Módulo</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={moduleId}
-                    disabled={hierarchyLoading || !studyId || !isDraft}
+                    disabled={hierarchyLoading || !studyId || !isDraft || !moduleEditable || (visibilityRule === 'global' && !isGlobalAcademicMode)}
                     onChange={(e: ChangeEvent<HTMLSelectElement>) => {
                       setModuleId(e.target.value);
+                      if (visibilityRule === 'global') setTeamId('');
                       setErrors((prev: Record<string, string>) => ({ ...prev, moduleId: '' }));
                     }}
                     error={!!errors.moduleId}

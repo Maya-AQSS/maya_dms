@@ -25,7 +25,7 @@ class SnapshotService implements SnapshotServiceInterface
      */
     public function createDocumentSnapshot(CreateDocumentSnapshotDto $dto): void
     {
-        $document = $this->documentRepository->findOrFail($dto->documentId);
+        $document = $this->documentRepository->findOrFailForRefreshAfterMutation($dto->documentId);
         $nextNumber = $this->documentRepository->maxDocumentVersionNumber($dto->documentId) + 1;
         $snapshot = $this->buildDocumentVersionSnapshot($document, $nextNumber);
 
@@ -87,6 +87,7 @@ class SnapshotService implements SnapshotServiceInterface
                 'study_type_id' => $document->study_type_id,
                 'study_id' => $document->study_id,
                 'module_id' => $document->module_id,
+                'team_id' => $document->team_id,
                 'created_by' => $document->created_by,
                 'owner_id' => $document->owner_id,
                 'status' => $document->status,

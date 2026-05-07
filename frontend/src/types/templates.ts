@@ -29,6 +29,12 @@ export type Template = {
   module_id: string | null;
   team_id: string | null;
   process_id: string | null;
+  team?: {
+    id: string;
+    name: string;
+    is_department: boolean;
+    description?: string | null;
+  } | null;
   created_by: string;
   author_name?: string | null;
   status: TemplateStatus;
