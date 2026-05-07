@@ -103,6 +103,7 @@ class CommentController extends Controller
                 body: $body,
             );
 
+            $comment->loadMissing('author');
             return response()->json(['data' => $comment], 201);
         }
 
@@ -125,6 +126,7 @@ class CommentController extends Controller
                 body: $body,
             );
 
+            $comment->loadMissing('author');
             return response()->json(['data' => $comment], 201);
         }
 

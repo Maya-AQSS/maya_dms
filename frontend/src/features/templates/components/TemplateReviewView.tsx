@@ -503,7 +503,7 @@ export function TemplateReviewView({ template }: Props) {
                                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
                                     <div className="flex items-center justify-between mb-2">
                                       <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
-                                        {comment.author?.name || 'Validador'}
+                                        {comment.author?.name || 'Usuario'}
                                       </span>
                                       <span className="text-xs text-text-muted font-bold uppercase tracking-wider opacity-70">
                                         {new Date(comment.created_at).toLocaleDateString()}
@@ -521,7 +521,7 @@ export function TemplateReviewView({ template }: Props) {
                                         <div key={r.id} className="relative pl-4 border-l-2 border-ui-border/30">
                                           <div className="flex items-center justify-between mb-1">
                                             <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
-                                              {r.author?.name || 'Autor'}
+                                              {r.author?.name || 'Usuario'}
                                             </span>
                                             <span className="text-xs text-text-muted font-bold uppercase tracking-widest">
                                               {new Date(r.created_at).toLocaleDateString()}

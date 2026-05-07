@@ -121,7 +121,7 @@ export function ReviewCommentsSidebar({
                   />
                   <div className="flex items-center justify-between mb-1.5 gap-2">
                     <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
-                      {c.author?.name || 'Validador'}
+                      {c.author?.name || 'Usuario'}
                       {isResolved && (
                         <span className="ml-2 text-xs text-success-dark font-bold uppercase tracking-wider">
                           ✓ Resuelto
@@ -171,7 +171,7 @@ export function ReviewCommentsSidebar({
                       >
                         <div className="flex items-center justify-between mb-1 gap-2">
                           <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
-                            {r.author?.name || 'Autor'}
+                            {r.author?.name || 'Usuario'}
                           </span>
                           <time className="text-xs text-text-muted font-bold">
                             {new Date(r.created_at).toLocaleDateString()}
