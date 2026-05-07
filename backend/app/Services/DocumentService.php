@@ -553,21 +553,9 @@ class DocumentService implements DocumentServiceInterface
             $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
 
             if ($candidates === []) {
-                // Mirror TemplateReviewService: personal templates (and documents without a
-                // resolvable reviewer pool) auto-publish. Non-personal documents with no
-                // configured reviewers surface a clear error instead of silently publishing.
-                $templateVisibility = null;
-                if ($document->template_id) {
-                    $document->loadMissing(['template']);
-                    $templateVisibility = $document->template?->visibility_level;
-                }
-
-                if ($templateVisibility !== null && $templateVisibility !== 'personal') {
-                    throw ValidationException::withMessages([
-                        'reviewers' => ['Esta plantilla requiere validadores de documento pero ninguno está configurado. Configura al menos un validador antes de enviar a revisión.'],
-                    ]);
-                }
-
+                // No resolvable reviewer pool for this document → auto-publish regardless of
+                // visibility level. The template may simply have no validators configured, which
+                // is a valid state (e.g. personal use, or a coordinator who skipped step 3).
                 $this->documentStateService->transition($documentId, 'published', $actorId);
 
                 // Misma convención que {@see TemplatePublishingService} (plantilla ya numerada en creación).
