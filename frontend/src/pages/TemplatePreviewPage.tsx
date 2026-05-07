@@ -236,7 +236,7 @@ export function TemplatePreviewPage() {
     'Autor desconocido';
 
   const viewingPublishedSnapshot = snapshotVersionNumber !== null;
-  const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 1;
+  const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 0;
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
   /** Igual que `TemplatePolicy::delete` (backend): creador o `templates.delete`, cualquier estado. */

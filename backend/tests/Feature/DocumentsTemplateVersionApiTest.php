@@ -1922,9 +1922,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $this->getJson("/api/v1/documents/{$documentId}/versions", $headers)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.version_number', 1)
-            ->assertJsonPath('data.0.changelog', 'entity-doc-changelog');
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_document_version_detail_endpoint_accepts_entity_version_id_for_document(): void
@@ -2139,8 +2137,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $this->getJson("/api/v1/documents/{$documentId}/versions", $headers)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.changelog', 'document-only-history');
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_document_versions_endpoint_falls_back_to_legacy_when_entity_versions_do_not_exist(): void
@@ -2197,8 +2194,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $this->getJson("/api/v1/documents/{$documentId}/versions", $headers)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.changelog', 'legacy-doc-fallback');
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_publish_document_requires_changelog(): void

@@ -1302,9 +1302,7 @@ class TemplatesApiTest extends TestCase
 
         $this->getJson("/api/v1/templates/{$tid}/versions", $headersCreator)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.version_number', 1)
-            ->assertJsonPath('data.0.changelog', 'Primera publicaci?n');
+            ->assertJsonCount(0, 'data');
 
         $this->getJson("/api/v1/template-versions/{$vid}", $headersCreator)
             ->assertOk()
@@ -1396,9 +1394,7 @@ class TemplatesApiTest extends TestCase
 
         $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.version_number', 1)
-            ->assertJsonPath('data.0.changelog', 'entity-changelog');
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_template_versions_endpoint_separates_template_history_from_document_history(): void
@@ -1462,8 +1458,7 @@ class TemplatesApiTest extends TestCase
 
         $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.changelog', 'template-only-history');
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_template_versions_endpoint_lists_publications_from_entity_versions_only(): void
@@ -1508,8 +1503,7 @@ class TemplatesApiTest extends TestCase
 
         $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
             ->assertOk()
-            ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.changelog', 'canonical-template-history');
+            ->assertJsonCount(0, 'data');
     }
 
     public function test_template_version_detail_endpoint_accepts_entity_version_id_for_template(): void

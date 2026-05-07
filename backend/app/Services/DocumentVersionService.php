@@ -139,17 +139,22 @@ class DocumentVersionService
 
         if ($entityVersions->isEmpty()) {
             return $legacyVersions
+                ->reject(fn (array $row): bool => (int) $row['version_number'] === (int) $document->current_version)
                 ->values()
                 ->all();
         }
 
         if ($legacyVersions->isEmpty()) {
             return $entityVersions
+                ->reject(fn (array $row): bool => (int) $row['version_number'] === (int) $document->current_version)
                 ->values()
                 ->all();
         }
 
-        return $this->mergeDocumentVersionListRowsPreferringEntity($entityVersions, $legacyVersions);
+        return collect($this->mergeDocumentVersionListRowsPreferringEntity($entityVersions, $legacyVersions))
+            ->reject(fn (array $row): bool => (int) $row['version_number'] === (int) $document->current_version)
+            ->values()
+            ->all();
     }
 
     /**

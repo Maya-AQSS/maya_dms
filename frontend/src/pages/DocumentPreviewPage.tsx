@@ -273,7 +273,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       hasPermission('documents.update'));
   const isHistoricalSnapshot = versionSnapshot !== null;
   const showVersionHistory =
-    publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 1;
+    publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
   const canStartNewVersion =
     !isValidateMode && isPublished && canMutatePublished && !isHistoricalSnapshot;
 
