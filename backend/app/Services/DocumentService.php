@@ -558,7 +558,7 @@ class DocumentService implements DocumentServiceInterface
                     notes: $autoChangelog,
                 ));
 
-                return $this->documentRepository->findOrFail($documentId);
+                return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
 
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
@@ -695,7 +695,7 @@ class DocumentService implements DocumentServiceInterface
                 notes: $changelog,
             ));
 
-            return $this->documentRepository->findOrFail($documentId);
+            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
         });
     }
 

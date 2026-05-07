@@ -78,7 +78,7 @@ class DocumentReviewService
                     notes: $changelog,
                 ));
 
-                return $this->documentRepository->findOrFail($documentId);
+                return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
 
             return $this->documentRepository->findOrFail($documentId);
