@@ -124,10 +124,13 @@ interface WizardStep2BlocksProps {
   onResolveComment?: (commentId: string) => Promise<void>;
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
+  onContinue?: () => void;
+  onInvalidBlocksChange?: (hasInvalid: boolean) => void;
 }
 
 export type WizardStep2BlocksHandle = {
   saveIfPending: () => Promise<void>;
+  discardInvalidBlocks: () => Promise<void>;
 };
 
 export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(({
@@ -137,6 +140,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   onResolveComment,
   onBlocksCountChange,
   onBlocksLoadingChange,
+  onContinue,
+  onInvalidBlocksChange,
 }, ref) => {
   const {
     blocks,
@@ -160,6 +165,29 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     }
   }, [blocks.length, loading, onBlocksCountChange]);
 
+  const hasInvalidBlocks = !loading && blocks.some(b => !b.title?.trim());
+
+  useEffect(() => {
+    onInvalidBlocksChange?.(hasInvalidBlocks);
+  }, [hasInvalidBlocks, onInvalidBlocksChange]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => { if (hasInvalidBlocks) e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasInvalidBlocks]);
+
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+
+  const handleEditorFullscreenChange = useCallback((v: boolean) => {
+    setIsEditorFullscreen(v);
+    document.documentElement.classList.toggle('editor-fullscreen', v);
+  }, []);
+
+  useEffect(() => {
+    return () => document.documentElement.classList.remove('editor-fullscreen');
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -178,6 +206,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formDesc, setFormDesc] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
+  const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
@@ -203,6 +232,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
+    setNameError('');
     setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
     setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
     setFormUiState(blockToUiState(block));
@@ -210,14 +240,36 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   // ── useAutoSave (debounce 1500ms) — compartido en edit y multi ───────────────
+  const validateBlockName = (name: string): string => {
+    if (!name.trim()) return 'El nombre del bloque es obligatorio';
+    if (name.trim().toLowerCase() === 'bloque sin nombre') return '"Bloque sin nombre" no es un nombre válido';
+    return '';
+  };
+
   const doSave = useCallback(async () => {
     const blockId = activeSingleIdRef.current;
     if (!blockId) return;
+    const nameErr = validateBlockName(formName);
+    if (nameErr) {
+      setNameError(nameErr);
+      return;
+    }
+    setNameError('');
     const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
     let parsedContent: unknown = null;
     let parsedDesc: unknown = null;
     try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
     try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
+    // Normalize whitespace-only BlockNote content to null so it is stored as empty
+    // and the UI shows "Este bloque no tiene contenido." instead of blank text nodes.
+    if (Array.isArray(parsedContent) && parsedContent.length > 0) {
+      const isBlank = (parsedContent as any[]).every((b: any) =>
+        !Array.isArray(b.content) ||
+        b.content.length === 0 ||
+        b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
+      );
+      if (isBlank) parsedContent = null;
+    }
     await updateBlock(blockId, {
       title: formName.trim(),
       description: parsedDesc,
@@ -245,6 +297,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const handleBlockClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
     clickTimerRef.current = setTimeout(async () => {
+      // Abort navigation if the current block has an invalid name.
+      if (activeSingleId && blockId !== activeSingleId) {
+        const nameErr = validateBlockName(formName);
+        if (nameErr) {
+          setNameError(nameErr);
+          setActiveTab('properties');
+          return;
+        }
+      }
       if (tabIsDirty && activeSingleId) await saveCurrentTab();
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
@@ -285,15 +346,33 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   useImperativeHandle(ref, () => ({
     saveIfPending: async () => {
       if (tabIsDirty) await forceSave();
-    }
+    },
+    discardInvalidBlocks: async () => {
+      const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
+      for (const id of invalidIds) await deleteBlock(id);
+      if (activeSingleId && invalidIds.includes(activeSingleId)) {
+        setActiveSingleId(null);
+        setSelectedBlockIds([]);
+        setPanelMode('empty');
+      }
+    },
   }));
 
   const handleAddBlock = async () => {
+    // Block creation if the current block still has an invalid name.
+    if (activeSingleId) {
+      const nameErr = validateBlockName(formName);
+      if (nameErr) {
+        setNameError(nameErr);
+        setActiveTab('properties');
+        return;
+      }
+    }
     setBusy(true);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
       const newBlock = await createBlock({
-        title: 'Nuevo bloque',
+        title: null,
         type: 'paragraph',
         block_state,
         mandatory,
@@ -302,6 +381,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setActiveSingleId(newBlock.id);
       setPanelMode('edit');
       loadFormFromBlock(newBlock);
+      setActiveTab('properties');
     } finally {
       setBusy(false);
     }
@@ -340,9 +420,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[blockToUiState(source)].payload;
         await createBlock({
           title: `${source.title ?? 'Bloque'} (copia)`,
-          type: 'paragraph',
+          type: source.type,
           block_state,
           mandatory,
+          default_content: source.default_content,
+          description: source.description,
         });
       }
     } finally {
@@ -369,9 +451,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-      {/* Sidebar */}
-      <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
+    <div className={isEditorFullscreen
+      ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
+      : 'flex-1 overflow-hidden flex flex-col md:flex-row'
+    }>
+      {/* Sidebar — hidden when editor is in fullscreen */}
+      {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
         <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
           <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">Bloques ({blocks.length})</span>
           <Button variant="ghost" size="xs" onClick={handleToggleSelectAll}>
@@ -400,7 +485,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         <div className="p-4 border-t border-ui-border dark:border-ui-dark-border">
           <Button variant="outline" className="w-full border-dashed" onClick={handleAddBlock} loading={busy}>+ Añadir bloque</Button>
         </div>
-      </div>
+      </div>}
 
       {/* Main Panel */}
       <div className="flex-1 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
@@ -412,50 +497,100 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
         {(panelMode === 'edit' || panelMode === 'multi') && selectedBlock && (
           <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
-            <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
-              <div className="flex items-center gap-3 min-w-0">
-                <h3 className="text-sm font-bold truncate uppercase tracking-widest">{selectedBlock.title}</h3>
+            {/* Compact fullscreen header — replaces regular header + tabs when fullscreen */}
+            {isEditorFullscreen && (
+              <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
+                <button
+                  type="button"
+                  aria-label="Salir de pantalla completa"
+                  title="Salir de pantalla completa (Esc)"
+                  onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}
+                  className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                    <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                  </svg>
+                </button>
+                <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">{selectedBlock.title}</h3>
                 {renderSaveStatus()}
+                {onContinue && (
+                  <Button variant="primary" size="xs" onClick={onContinue} className="shrink-0">
+                    Guardar y continuar →
+                  </Button>
+                )}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
-                <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
-                <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
-              </div>
-            </div>
+            )}
 
-            <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
-              {((['properties', 'content', 'description'] as TabId[]).concat(showCommentsTab ? ['comments' as TabId] : [])).map(tab => {
-                const pendingCount = tab === 'comments'
-                  ? reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved).length
-                  : 0;
-                return (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
-                      activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
-                    }`}
-                  >
-                    {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Descripción' : 'Comentarios'}
-                    {tab === 'comments' && pendingCount > 0 && (
-                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-danger text-text-inverse text-xs font-black leading-none">
-                        {pendingCount}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            {/* Regular header — hidden in fullscreen */}
+            {!isEditorFullscreen && (
+              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
+                <div className="flex items-center gap-3 min-w-0">
+                  <h3 className="text-sm font-bold truncate uppercase tracking-widest">{selectedBlock.title}</h3>
+                  {renderSaveStatus()}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
+                  <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
+                  <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
+                </div>
+              </div>
+            )}
+
+            {/* Tabs — hidden in fullscreen */}
+            {!isEditorFullscreen && (
+              <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+                {((['properties', 'content', 'description'] as TabId[]).concat(showCommentsTab ? ['comments' as TabId] : [])).map(tab => {
+                  const pendingCount = tab === 'comments'
+                    ? reviewComments.filter(c => c.blockable_id === activeSingleId && !c.resolved).length
+                    : 0;
+                  const isTabDisabled = (tab === 'content' || tab === 'description') && validateBlockName(formName) !== '';
+
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                      if (!isTabDisabled) {
+                        setActiveTab(tab);
+                      }
+                    }}
+                      disabled={isTabDisabled}
+                      title={isTabDisabled ? (validateBlockName(formName) || 'Asigna un nombre válido al bloque para habilitar esta pestaña') : ''}
+                      className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
+                        activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
+                      } ${isTabDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    >
+                      {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : tab === 'description' ? 'Descripción' : 'Comentarios'}
+                      {tab === 'comments' && pendingCount > 0 && (
+                        <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-danger text-text-inverse text-xs font-black leading-none">
+                          {pendingCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              {activeTab === 'properties' && (
+              {activeTab === 'properties' && !isEditorFullscreen && (
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                     <div className="p-6 space-y-4">
                       <div>
                         <FieldLabel required>Nombre del bloque</FieldLabel>
-                        <TextInput value={formName} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }} />
+                        <TextInput
+                          value={formName}
+                          placeholder="Nuevo bloque"
+                          error={!!nameError}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            setFormName(e.target.value);
+                            setNameError(validateBlockName(e.target.value));
+                            setTabIsDirty(true);
+                          }}
+                          onBlur={() => setNameError(validateBlockName(formName))}
+                        />
+                        {nameError && <p className="mt-1 text-xs text-danger">{nameError}</p>}
                       </div>
                       <div>
                         <FieldLabel>Estado</FieldLabel>
@@ -471,38 +606,61 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               {activeTab === 'content' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
-                    <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                      <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                        <BlockNoteEditorPanel
-                          key={`content-${activeSingleId ?? 'none'}`}
-                          initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                          onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
-                          editable={true}
-                          isDark={effectiveIsDark}
-                        />
-                      </Suspense>
-                    </div>
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
+                        <div className="text-4xl mb-4">📝</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de contenido.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                        <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                          <BlockNoteEditorPanel
+                            key={`content-${activeSingleId ?? 'none'}`}
+                            initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                            onChange={json => {
+                              setFormContent(JSON.stringify(json));
+                              setTabIsDirty(true);
+                            }}
+                            editable={true}
+                            isDark={effectiveIsDark}
+                            onFullscreenChange={handleEditorFullscreenChange}
+                          />
+                        </Suspense>
+                      </div>
+                    )}
                   </div>
                 </ErrorBoundary>
               )}
               {activeTab === 'description' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de descripción.</div>}>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
-                    <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                      <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                        <BlockNoteEditorPanel
-                          key={`description-${activeSingleId ?? 'none'}`}
-                          initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                          onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
-                          editable={true}
-                          isDark={effectiveIsDark}
-                        />
-                      </Suspense>
-                    </div>
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
+                        <div className="text-4xl mb-4">📝</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de descripción.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                        <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                          <BlockNoteEditorPanel
+                            key={`description-${activeSingleId ?? 'none'}`}
+                            initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                            onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
+                            editable={true}
+                            isDark={effectiveIsDark}
+                            onFullscreenChange={handleEditorFullscreenChange}
+                          />
+                        </Suspense>
+                      </div>
+                    )}
                   </div>
                 </ErrorBoundary>
               )}
-              {activeTab === 'comments' && (
+              {activeTab === 'comments' && !isEditorFullscreen && (
                 <div className="flex-1 overflow-y-auto p-6">
                   <div className="space-y-4">
                     {reviewComments.filter(c => c.blockable_id === activeSingleId).map(c => (

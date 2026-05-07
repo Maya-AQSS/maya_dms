@@ -37,7 +37,10 @@ export const repairBlockNoteBlocks = (blocks: unknown): any[] => {
                 return {
                   type: c.type || 'text',
                   text: typeof c.text === 'string' ? c.text : '',
-                  styles: (c.styles && typeof c.styles === 'object') ? { ...c.styles } : {},
+                  // PHP round-trip converts {} to [] for empty objects; normalise back to {}.
+                  styles: (c.styles && typeof c.styles === 'object' && !Array.isArray(c.styles))
+                    ? { ...c.styles }
+                    : {},
                   ...c,
                 };
               }

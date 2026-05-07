@@ -13,6 +13,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   approveDocumentReview,
   createDocument,
+  deleteDocumentBlock,
   fetchDocument,
   fetchDocumentReviews,
   rejectDocumentReview,
@@ -248,9 +249,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [localContent, setLocalContent] = useState<unknown>(null);
-  const [showClearBlockConfirm, setShowClearBlockConfirm] = useState(false);
+  const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+
+  const handleEditorFullscreenChange = useCallback((v: boolean) => {
+    setIsEditorFullscreen(v);
+    document.documentElement.classList.toggle('editor-fullscreen', v);
+  }, []);
+
+  useEffect(() => {
+    return () => document.documentElement.classList.remove('editor-fullscreen');
+  }, []);
 
   const isValidateMode = mode === 'validate';
   const isDraft = !detail || detail.status === 'draft';
@@ -646,7 +657,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   }, [locationProcessId, template?.process_id]);
 
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
-  const canClearOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
+  const canDeleteOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
 
   useEffect(() => {
     setBlockViewTab('content');
@@ -669,7 +680,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   }, [documentId, isDraft, refreshDetail, localContent]);
 
-  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
+  const { saveStatus, triggerSave } = useAutoSave(doSave, 1500);
 
   useEffect(() => {
     activeBlockRef.current = activeBlock;
@@ -1198,8 +1209,36 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       )}
 
       {!isValidateMode && step === 'blocks' && (
-        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
+        <div className={isEditorFullscreen
+          ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
+          : 'flex-1 overflow-hidden flex flex-col md:flex-row'
+        }>
+          {/* Compact fullscreen header */}
+          {isEditorFullscreen && activeBlock && (
+            <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
+              <button
+                type="button"
+                aria-label="Salir de pantalla completa"
+                title="Salir de pantalla completa (Esc)"
+                onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}
+                className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                  <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                </svg>
+              </button>
+              <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">{activeBlock.title || 'Bloque'}</h3>
+              {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
+              {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
+              {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
+              <Button type="button" variant="primary" size="xs" onClick={() => void handleContinue()} className="shrink-0">
+                Continuar →
+              </Button>
+            </div>
+          )}
+          {/* Block tree — hidden when editor is in fullscreen */}
+          {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
             <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
               <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">
                 Bloques ({sortedBlocks.length})
@@ -1226,10 +1265,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 })
               )}
             </div>
-          </div>
+          </div>}
           <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
             {activeBlock && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
+                {!isEditorFullscreen && (
                 <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
                   <div className="flex items-center gap-3 min-w-0">
                     <h3 className="text-sm font-bold truncate uppercase tracking-widest">
@@ -1239,20 +1279,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
                     {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
-                  {canClearOptionalBlock && (
+                  {canDeleteOptionalBlock && (
                     <Button
                       type="button"
                       size="xs"
                       variant="outline"
                       className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                      onClick={() => setShowClearBlockConfirm(true)}
+                      onClick={() => setShowDeleteBlockConfirm(true)}
                     >
-                      Vaciar contenido
+                      Eliminar
                     </Button>
                   )}
                 </div>
+              )}
 
-                <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+                {!isEditorFullscreen && <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
                   {([
                     { id: 'content', label: 'Contenido' },
                     { id: 'description', label: 'Descripción' },
@@ -1273,7 +1314,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       </button>
                     );
                   })}
-                </div>
+                </div>}
 
                 {blockSaveError && (
                   <p className="text-xs text-danger-dark dark:text-danger px-5 py-2 shrink-0 bg-white dark:bg-ui-dark-card">
@@ -1295,6 +1336,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                 editable
                                 isDark={isDark}
                                 onChange={(content) => { setLocalContent(content); triggerSave(); }}
+                                onFullscreenChange={handleEditorFullscreenChange}
                               />
                             </Suspense>
                           </div>
@@ -1529,17 +1571,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       </>
     </WizardShell>
     <ConfirmDialog
-        open={showClearBlockConfirm}
+        open={showDeleteBlockConfirm}
         variant="danger"
-        title="¿Vaciar el contenido del bloque?"
-        description="Se guardará este bloque opcional sin contenido. Podrás volver a editarlo después si lo necesitas."
-        confirmLabel="Vaciar contenido"
+        title="¿Eliminar este bloque?"
+        description="Este bloque opcional se eliminará del documento. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
         cancelLabel="Cancelar"
-        onCancel={() => setShowClearBlockConfirm(false)}
+        onCancel={() => setShowDeleteBlockConfirm(false)}
         onConfirm={async () => {
-          setShowClearBlockConfirm(false);
-          setLocalContent([]);
-          await forceSave();
+          setShowDeleteBlockConfirm(false);
+          const blockId = activeBlock?.document_block_id;
+          if (!documentId || !blockId) return;
+          try {
+            await deleteDocumentBlock(documentId, blockId);
+            await refreshDetail();
+          } catch (e) {
+            setBlockSaveError(e instanceof Error ? e.message : 'No se pudo eliminar el bloque.');
+          }
         }}
       />
       <ConfirmDialog

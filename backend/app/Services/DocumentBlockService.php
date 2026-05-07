@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -39,8 +40,16 @@ class DocumentBlockService
         foreach ($definitions as $def) {
             $tid = (string) $def['id'];
             $row = $byTemplateBlockId->get($tid);
-            $mandatory = (bool) ($def['mandatory'] ?? false);
             $state = (string) ($def['block_state'] ?? 'editable');
+            // 'mandatory' is not stored as a separate column; it is fully determined by
+            // block_state: only 'optional' blocks are non-mandatory.  The snapshot field
+            // is absent in older published versions, so never rely on it.
+            $mandatory = $state !== 'optional';
+
+            // Optional blocks with no document_block row were explicitly removed by the user.
+            if ($state === 'optional' && $row === null) {
+                continue;
+            }
 
             $out[] = [
                 'document_block_id' => $row?->id,
@@ -369,6 +378,39 @@ class DocumentBlockService
             null,
             $dto->actorId,
         );
+    }
+
+    /**
+     * Removes an optional document block row, permanently hiding it from the document.
+     *
+     * Only optional blocks (block_state === 'optional') may be deleted this way.
+     * The document must still be in draft status.
+     */
+    public function deleteOptionalBlock(DeleteDocumentBlockDto $dto): void
+    {
+        DB::transaction(function () use ($dto) {
+            $document = $this->documentRepository->findOrFail($dto->documentId);
+
+            if ($document->status !== 'draft') {
+                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador.');
+            }
+
+            $block = $this->documentRepository->findBlockInDocumentOrFail(
+                $dto->documentId,
+                $dto->documentBlockId,
+            );
+
+            $definitions = collect($this->blockDefinitionsForDocument($document))
+                ->keyBy(fn (array $def) => (string) $def['id']);
+            $definition = $definitions->get((string) $block->template_block_id) ?? [];
+            $state = (string) ($definition['block_state'] ?? 'editable');
+            // 'mandatory' has no dedicated column — optionality is determined solely by block_state.
+            if ($state !== 'optional') {
+                throw new AuthorizationException('Solo se pueden eliminar bloques opcionales.');
+            }
+
+            $block->delete();
+        });
     }
 
     private function normalizeBlockVersionPayload(mixed $value): array

@@ -3,6 +3,7 @@
 namespace App\Services\Contracts;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentReview;
@@ -49,6 +50,12 @@ interface DocumentServiceInterface
      * Actualiza el contenido de un bloque de documento.
      */
     public function updateBlock(UpdateDocumentBlockDto $dto): array;
+
+    /**
+     * Elimina un bloque opcional de un documento en borrador.
+     * Solo permite bloques con block_state === 'optional'.
+     */
+    public function deleteOptionalBlock(DeleteDocumentBlockDto $dto): void;
 
     /**
      * Transiciona el documento a un nuevo estado y emite el evento de dominio DocumentStateChanged.
