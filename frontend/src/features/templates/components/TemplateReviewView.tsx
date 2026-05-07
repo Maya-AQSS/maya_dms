@@ -81,6 +81,9 @@ export function TemplateReviewView({ template }: Props) {
   const currentUserId = user?.sub || (user as any)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
   const isAlreadyValidated = myReview && myReview.status !== 'pending';
+  // Creator (template owner) can view but cannot approve/reject/comment
+  const isReviewer = !!myReview;
+  const isReadOnly = !isReviewer;
   
   const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
@@ -216,7 +219,13 @@ export function TemplateReviewView({ template }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          {!isAlreadyValidated ? (
+          {isReadOnly ? (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
+              <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
+                Vista de seguimiento
+              </span>
+            </div>
+          ) : !isAlreadyValidated ? (
             <>
               <Button
                 variant="outlineWarning"
@@ -541,7 +550,7 @@ export function TemplateReviewView({ template }: Props) {
                         )}
                       </div>
 
-                      {!isAlreadyValidated ? (
+                      {!isAlreadyValidated && !isReadOnly ? (
                         <div className="mt-4 pt-6 border-t border-ui-border dark:border-ui-dark-border shrink-0">
                           <textarea
                             value={newCommentBody}
