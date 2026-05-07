@@ -40,14 +40,14 @@ class DocumentBlockService
         foreach ($definitions as $def) {
             $tid = (string) $def['id'];
             $row = $byTemplateBlockId->get($tid);
-            $mandatory = (bool) ($def['mandatory'] ?? false);
             $state = (string) ($def['block_state'] ?? 'editable');
+            // 'mandatory' is not stored as a separate column; it is fully determined by
+            // block_state: only 'optional' blocks are non-mandatory.  The snapshot field
+            // is absent in older published versions, so never rely on it.
+            $mandatory = $state !== 'optional';
 
-            // Mirror frontend blockToUiState: optional when state==='optional' OR mandatory===false
-            // (locked takes priority regardless of mandatory).
-            $isOptional = $state !== 'locked' && ($state === 'optional' || ! $mandatory);
             // Optional blocks with no document_block row were explicitly removed by the user.
-            if ($isOptional && $row === null) {
+            if ($state === 'optional' && $row === null) {
                 continue;
             }
 
@@ -404,12 +404,8 @@ class DocumentBlockService
                 ->keyBy(fn (array $def) => (string) $def['id']);
             $definition = $definitions->get((string) $block->template_block_id) ?? [];
             $state = (string) ($definition['block_state'] ?? 'editable');
-            $defMandatory = (bool) ($definition['mandatory'] ?? true);
-            // Mirror frontend blockToUiState: optional when state==='optional' OR mandatory===false
-            // (locked takes priority and is never deletable).
-            $isOptional = $state !== 'locked' && ($state === 'optional' || ! $defMandatory);
-
-            if (! $isOptional) {
+            // 'mandatory' has no dedicated column — optionality is determined solely by block_state.
+            if ($state !== 'optional') {
                 throw new AuthorizationException('Solo se pueden eliminar bloques opcionales.');
             }
 
