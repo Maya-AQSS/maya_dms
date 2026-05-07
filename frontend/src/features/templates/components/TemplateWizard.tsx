@@ -65,7 +65,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
   const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
-  const [validationType, setValidationType] = useState<'libre' | 'ordenada'>('libre');
+  const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
+    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
+  );
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
   // Dirty flag: only sync reviewers to API if the user actually changed them in Step 3
   const [usersDirty, setUsersDirty] = useState(false);
