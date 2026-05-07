@@ -13,6 +13,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import {
   approveDocumentReview,
   createDocument,
+  deleteDocumentBlock,
   fetchDocument,
   fetchDocumentReviews,
   rejectDocumentReview,
@@ -248,7 +249,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [localContent, setLocalContent] = useState<unknown>(null);
-  const [showClearBlockConfirm, setShowClearBlockConfirm] = useState(false);
+  const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
@@ -656,7 +657,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   }, [locationProcessId, template?.process_id]);
 
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
-  const canClearOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
+  const canDeleteOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
 
   useEffect(() => {
     setBlockViewTab('content');
@@ -679,7 +680,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   }, [documentId, isDraft, refreshDetail, localContent]);
 
-  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
+  const { saveStatus, triggerSave } = useAutoSave(doSave, 1500);
 
   useEffect(() => {
     activeBlockRef.current = activeBlock;
@@ -1278,15 +1279,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
                     {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
-                  {canClearOptionalBlock && (
+                  {canDeleteOptionalBlock && (
                     <Button
                       type="button"
                       size="xs"
                       variant="outline"
                       className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                      onClick={() => setShowClearBlockConfirm(true)}
+                      onClick={() => setShowDeleteBlockConfirm(true)}
                     >
-                      Vaciar contenido
+                      Eliminar
                     </Button>
                   )}
                 </div>
@@ -1570,17 +1571,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       </>
     </WizardShell>
     <ConfirmDialog
-        open={showClearBlockConfirm}
+        open={showDeleteBlockConfirm}
         variant="danger"
-        title="¿Vaciar el contenido del bloque?"
-        description="Se guardará este bloque opcional sin contenido. Podrás volver a editarlo después si lo necesitas."
-        confirmLabel="Vaciar contenido"
+        title="¿Eliminar este bloque?"
+        description="Este bloque opcional se eliminará del documento. Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
         cancelLabel="Cancelar"
-        onCancel={() => setShowClearBlockConfirm(false)}
+        onCancel={() => setShowDeleteBlockConfirm(false)}
         onConfirm={async () => {
-          setShowClearBlockConfirm(false);
-          setLocalContent([]);
-          await forceSave();
+          setShowDeleteBlockConfirm(false);
+          const blockId = activeBlock?.document_block_id;
+          if (!documentId || !blockId) return;
+          try {
+            await deleteDocumentBlock(documentId, blockId);
+            await refreshDetail();
+          } catch (e) {
+            setBlockSaveError(e instanceof Error ? e.message : 'No se pudo eliminar el bloque.');
+          }
         }}
       />
       <ConfirmDialog

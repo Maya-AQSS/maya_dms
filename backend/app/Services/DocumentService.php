@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
+use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -498,6 +499,11 @@ class DocumentService implements DocumentServiceInterface
     public function updateBlock(UpdateDocumentBlockDto $dto): array
     {
         return $this->documentBlockService->updateBlock($dto);
+    }
+
+    public function deleteOptionalBlock(DeleteDocumentBlockDto $dto): void
+    {
+        $this->documentBlockService->deleteOptionalBlock($dto);
     }
 
     /**
