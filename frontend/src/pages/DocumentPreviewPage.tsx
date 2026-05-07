@@ -434,7 +434,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     try {
       const data = await startDocumentNewVersion(documentId);
       setDetail(data);
-      navigate(`/documents/${documentId}/editor`);
+      navigate(`/documents/${documentId}/editor`, { state: { step: 'properties' } });
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
     } finally {

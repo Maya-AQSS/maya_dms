@@ -265,6 +265,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     fromTemplateSelection?: boolean;
   } | null;
   const returnToSummary = locationState?.step === 'summary';
+  const forcePropertiesStep = locationState?.step === 'properties';
   const locationProcessId = locationState?.processId;
   const locationModuleId = locationState?.moduleId;
   const fromTemplateSelection = locationState?.fromTemplateSelection === true;
@@ -399,6 +400,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setStep('blocks');
       return;
     }
+    if (forcePropertiesStep) {
+      setStep('properties');
+      setCompletedSteps([]);
+      return;
+    }
     // Si es borrador pero le falta la fecha límite, forzamos paso de propiedades
     if (!detail.delivery_deadline) {
       setStep('properties');
@@ -407,7 +413,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setCompletedSteps(['properties']);
       setStep('blocks');
     }
-  }, [detail?.id, detail?.status, detail?.delivery_deadline, mode]);
+  }, [detail?.id, detail?.status, detail?.delivery_deadline, forcePropertiesStep, mode]);
 
   useEffect(() => {
     if (mode === 'validate') return;
