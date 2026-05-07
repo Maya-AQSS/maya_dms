@@ -551,7 +551,7 @@ export function TemplateReviewView({ template }: Props) {
                       </div>
 
                       {!isAlreadyValidated && !isReadOnly ? (
-                        <div className="mt-4 pt-6 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                        <div className="sticky bottom-0 mt-4 pt-4 border-t border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
                           <textarea
                             value={newCommentBody}
                             onChange={(e) => setNewCommentBody(e.target.value)}

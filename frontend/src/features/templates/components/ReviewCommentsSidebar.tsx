@@ -100,7 +100,7 @@ export function ReviewCommentsSidebar({
         </button>
       </div>
 
-      {/* Comment list */}
+      {/* Comment list — scrollable above the sticky reply form */}
       <div className="flex-1 overflow-y-auto px-5 py-5 space-y-8 custom-scrollbar">
         {topLevelComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
