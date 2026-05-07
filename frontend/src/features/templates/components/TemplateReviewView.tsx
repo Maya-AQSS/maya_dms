@@ -433,7 +433,7 @@ export function TemplateReviewView({ template }: Props) {
         >
           <div className="flex-1 overflow-y-auto p-8 scroll-smooth custom-scrollbar w-full relative">
             <article
-              className="mx-auto bg-white dark:bg-ui-card shadow-2xl rounded-sm transition-all duration-300 flex flex-col h-full"
+              className="mx-auto bg-white dark:bg-ui-dark-card shadow-xl rounded-sm transition-all duration-300 flex flex-col h-full"
               style={{ padding: '60px 70px' }}
             >
               {selectedBlock ? (
@@ -491,7 +491,7 @@ export function TemplateReviewView({ template }: Props) {
                       <InfoBlockDescription description={selectedBlock.description} />
                     </div>
                   ) : (
-                    <div className="flex flex-col flex-1 overflow-hidden">
+                    <div className="flex flex-col flex-1 min-h-0">
                       <div className="flex-1 overflow-y-auto pr-4 space-y-6 custom-scrollbar pb-6">
                         {blockComments.length === 0 ? (
                           <div className="flex flex-col items-center justify-center h-40 text-center opacity-40 mt-10">
