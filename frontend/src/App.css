@@ -21,3 +21,15 @@
 
 /* Animaciones canónicas (animate-in / fade-in / slide-in-from-top-* / zoom-in-95)
    ahora viven en `maya_infra/configs/styles/index.css`. */
+
+/* ─── Editor fullscreen mode ────────────────────────────── */
+/* Triggered by html.editor-fullscreen set via JS when BlockNoteEditorPanel enters
+   fullscreen. Hides the AppLayout fixed sidebar and removes its left-margin offset
+   so the content area expands to the full viewport width. */
+html.editor-fullscreen aside.fixed {
+  display: none !important;
+}
+html.editor-fullscreen div:has(> main#main-content) {
+  margin-left: 0 !important;
+  transition: none !important;
+}

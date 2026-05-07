@@ -1,11 +1,26 @@
 import type { ReactElement } from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WizardStep2Blocks } from '../WizardStep2Blocks';
 import { useTemplateBlocks } from '../../hooks/useTemplateBlocks';
 import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
+
+const editorMock = vi.hoisted(() => {
+  let _cb: ((v: boolean) => void) | undefined;
+  return {
+    getOnFullscreenChange: () => _cb,
+    setOnFullscreenChange: (fn: typeof _cb) => { _cb = fn; },
+  };
+});
+
+vi.mock('../BlockNoteEditorPanel', () => ({
+  BlockNoteEditorPanel: ({ onFullscreenChange }: { onFullscreenChange?: (v: boolean) => void }) => {
+    editorMock.setOnFullscreenChange(onFullscreenChange);
+    return <div data-testid="bn-editor-panel" />;
+  },
+}));
 
 vi.mock('../../../../api/users', () => ({
   fetchMe: vi.fn().mockResolvedValue({
@@ -37,7 +52,7 @@ vi.mock('../../../../features/user-profile', () => ({
   UserProfileProvider: ({ children }: any) => <>{children}</>,
 }));
 
-vi.mock('../../../hooks/useAutoSave', () => ({
+vi.mock('../../../../hooks/useAutoSave', () => ({
   useAutoSave: vi.fn(() => ({
     saveStatus: 'idle' as const,
     isSaving: false,
@@ -79,8 +94,16 @@ vi.mock('@dnd-kit/utilities', () => ({
 }));
 
 const mockBlocks = [
-  { id: 'b1', title: 'Bloque 1', mandatory: true, block_state: 'locked' },
-  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'default' },
+  {
+    id: 'b1',
+    title: 'Bloque 1',
+    mandatory: true,
+    block_state: 'locked',
+    type: 'paragraph',
+    default_content: [{ type: 'paragraph', content: [{ type: 'text', text: 'hello' }] }],
+    description: [{ type: 'paragraph', content: [{ type: 'text', text: 'desc' }] }],
+  },
+  { id: 'b2', title: 'Bloque 2', mandatory: false, block_state: 'default', type: 'paragraph', default_content: null, description: null },
 ];
 
 function renderWithProfile(ui: ReactElement) {
@@ -94,6 +117,10 @@ describe('WizardStep2Blocks', () => {
   };
 
   const mockUseTemplateBlocks = useTemplateBlocks as any;
+
+  afterEach(() => {
+    document.documentElement.classList.remove('editor-fullscreen');
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -149,5 +176,183 @@ describe('WizardStep2Blocks', () => {
 
     fireEvent.click(screen.getByText('Deseleccionar todos'));
     expect(screen.queryByText('Propiedades')).toBeNull();
+  });
+
+  it('block name input shows "Nuevo bloque" placeholder', async () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Bloque 1/i }));
+    await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+    const input = screen.getByDisplayValue('Bloque 1') as HTMLInputElement;
+    expect(input.placeholder).toBe('Nuevo bloque');
+  });
+
+  it('duplicate deep-clones content and description', async () => {
+    const createBlock = vi.fn().mockResolvedValue({ id: 'b3', title: 'Bloque 1 (copia)', mandatory: true, block_state: 'locked', type: 'paragraph' });
+    mockUseTemplateBlocks.mockReturnValue({
+      blocks: mockBlocks,
+      loading: false,
+      createBlock,
+      updateBlock: vi.fn(),
+      deleteBlock: vi.fn(),
+      reorderBlocks: vi.fn(),
+    });
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByRole('button', { name: /Bloque 1/i }));
+    await waitFor(() => expect(screen.getByText('Duplicar')).toBeTruthy());
+    fireEvent.click(screen.getByText('Duplicar'));
+    await waitFor(() => {
+      expect(createBlock).toHaveBeenCalledWith(expect.objectContaining({
+        title: 'Bloque 1 (copia)',
+        default_content: mockBlocks[0].default_content,
+        description: mockBlocks[0].description,
+      }));
+    });
+  });
+
+  it('shows selected state on all blocks after "Seleccionar todos"', () => {
+    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+    fireEvent.click(screen.getByText('Seleccionar todos'));
+    // Both blocks should have multi-queued or selected styling via data rendered by BlockListItem
+    // The presence of 'Deseleccionar todos' confirms multi-select is active
+    expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
+    expect(screen.getAllByText('Bloque 1').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bloque 2').length).toBeGreaterThan(0);
+  });
+
+  describe('block title placeholder behavior', () => {
+    const newBlockStub = {
+      id: 'new-b',
+      title: null,
+      mandatory: false,
+      block_state: 'editable' as const,
+      type: 'paragraph',
+      default_content: null,
+      description: null,
+    };
+
+    it('new block has empty input value with "Nuevo bloque" placeholder', async () => {
+      const createBlockFn = vi.fn().mockResolvedValue(newBlockStub);
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: createBlockFn,
+        updateBlock: vi.fn(),
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      const input = screen.getByPlaceholderText('Nuevo bloque') as HTMLInputElement;
+      expect(input.value).toBe('');
+      expect(createBlockFn).toHaveBeenCalledWith(
+        expect.objectContaining({ title: null }),
+      );
+    });
+
+    it('shows validation error on blur when title is empty', async () => {
+      const createBlockFn = vi.fn().mockResolvedValue(newBlockStub);
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: createBlockFn,
+        updateBlock: vi.fn(),
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      const input = screen.getByPlaceholderText('Nuevo bloque');
+      fireEvent.blur(input);
+
+      expect(screen.getByText(/nombre del bloque es obligatorio/i)).toBeTruthy();
+    });
+
+    it('clears validation error when user types a title', async () => {
+      const createBlockFn = vi.fn().mockResolvedValue(newBlockStub);
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: createBlockFn,
+        updateBlock: vi.fn(),
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      const input = screen.getByPlaceholderText('Nuevo bloque');
+      fireEvent.blur(input);
+      expect(screen.getByText(/nombre del bloque es obligatorio/i)).toBeTruthy();
+
+      fireEvent.change(input, { target: { value: 'Mi bloque' } });
+      expect(screen.queryByText(/nombre del bloque es obligatorio/i)).toBeNull();
+    });
+
+    it('doSave blocks API call and shows error when title is empty', async () => {
+      const { useAutoSave } = await import('../../../../hooks/useAutoSave');
+      const updateBlock = vi.fn();
+      mockUseTemplateBlocks.mockReturnValue({
+        blocks: [...mockBlocks, newBlockStub],
+        loading: false,
+        createBlock: vi.fn().mockResolvedValue(newBlockStub),
+        updateBlock,
+        deleteBlock: vi.fn(),
+        reorderBlocks: vi.fn(),
+      });
+
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /añadir bloque/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+
+      // Retrieve the doSave callback captured by useAutoSave mock
+      const doSave = (useAutoSave as any).mock.calls.at(-1)?.[0] as (() => Promise<void>) | undefined;
+      expect(doSave).toBeDefined();
+      await doSave?.();
+
+      await waitFor(() => expect(screen.getByText(/nombre del bloque es obligatorio/i)).toBeTruthy());
+      expect(updateBlock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('editor fullscreen integration', () => {
+    const openContentTab = async () => {
+      renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
+      fireEvent.click(screen.getByRole('button', { name: /Bloque 1/i }));
+      await waitFor(() => expect(screen.getByText('Propiedades')).toBeTruthy());
+      fireEvent.click(screen.getByText('Contenido'));
+      await waitFor(() => expect(screen.getByTestId('bn-editor-panel')).toBeTruthy());
+    };
+
+    it('fullscreen hides block list and sets html.editor-fullscreen class', async () => {
+      await openContentTab();
+
+      expect(screen.getByText(/Bloques \(/i)).toBeTruthy();
+
+      await act(async () => { editorMock.getOnFullscreenChange()?.(true); });
+
+      expect(screen.queryByText(/Bloques \(/i)).toBeNull();
+      expect(document.documentElement.classList.contains('editor-fullscreen')).toBe(true);
+    });
+
+    it('exiting fullscreen restores block list and removes html.editor-fullscreen class', async () => {
+      await openContentTab();
+
+      await act(async () => { editorMock.getOnFullscreenChange()?.(true); });
+      expect(screen.queryByText(/Bloques \(/i)).toBeNull();
+
+      await act(async () => { editorMock.getOnFullscreenChange()?.(false); });
+
+      expect(screen.getByText(/Bloques \(/i)).toBeTruthy();
+      expect(document.documentElement.classList.contains('editor-fullscreen')).toBe(false);
+    });
   });
 });

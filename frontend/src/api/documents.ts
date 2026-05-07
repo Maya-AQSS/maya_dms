@@ -294,3 +294,11 @@ export async function updateDocumentBlock(
   );
   return body.data;
 }
+
+/** DELETE /api/v1/documents/{id}/blocks/{block} — elimina un bloque opcional (204 sin body). */
+export async function deleteDocumentBlock(documentId: string, documentBlockId: string): Promise<void> {
+  await apiFetchJson<undefined>(
+    `documents/${encodeURIComponent(documentId)}/blocks/${encodeURIComponent(documentBlockId)}`,
+    { method: 'DELETE' },
+  );
+}

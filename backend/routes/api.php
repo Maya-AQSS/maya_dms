@@ -107,6 +107,9 @@ Route::prefix('v1')->group(function () {
         Route::put('documents/{document}/blocks/{block}', [DocumentBlockController::class, 'update'])
             ->whereUuid('document')
             ->whereUuid('block');
+        Route::delete('documents/{document}/blocks/{block}', [DocumentBlockController::class, 'destroy'])
+            ->whereUuid('document')
+            ->whereUuid('block');
 
         Route::get('documents/{document}/versions', [DocumentVersionController::class, 'index'])
             ->whereUuid('document');

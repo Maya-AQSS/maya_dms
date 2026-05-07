@@ -8,6 +8,7 @@
     "module": "ESNext",
     "types": ["vite/client", "react"],
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "skipLibCheck": true,
     "rootDirs": [".", "../../maya_infra"],
     "paths": {
