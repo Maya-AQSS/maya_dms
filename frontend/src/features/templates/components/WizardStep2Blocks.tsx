@@ -192,7 +192,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formContent, setFormContent] = useState('');
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [nameError, setNameError] = useState('');
-  const [contentError, setContentError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
@@ -200,9 +199,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   // Ref to always have latest activeSingleId in the autosave closure
   const activeSingleIdRef = useRef<string | null>(null);
   activeSingleIdRef.current = activeSingleId;
-  // Set to true only when the content editor onChange fires — guards against false positives
-  // caused by autosave firing after a tab switch (race with 1500ms debounce).
-  const contentDirtyRef = useRef(false);
 
   const { profile } = useUserProfile();
 
@@ -222,8 +218,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
     setNameError('');
-    setContentError('');
-    contentDirtyRef.current = false;
     setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
     setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
     setFormUiState(blockToUiState(block));
@@ -251,25 +245,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     let parsedDesc: unknown = null;
     try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
     try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
-    // Only validate content when the user has actually edited it (contentDirtyRef).
-    // Using a ref instead of the active tab avoids a race condition: if the user changes
-    // block state on the Properties tab and switches to Content tab within the 1500ms
-    // debounce window, activeTab would be 'content' but the content was never touched,
-    // incorrectly blocking the state-change save.
-    if (contentDirtyRef.current) {
-      const isBlank =
-        !Array.isArray(parsedContent) ||
-        parsedContent.length === 0 ||
-        (parsedContent as any[]).every((b: any) =>
-          !Array.isArray(b.content) ||
-          b.content.length === 0 ||
-          b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
-        );
-      if (isBlank) {
-        setContentError('El bloque no puede estar vacío');
-        return;
-      }
-      setContentError('');
+    // Normalize whitespace-only BlockNote content to null so it is stored as empty
+    // and the UI shows "Este bloque no tiene contenido." instead of blank text nodes.
+    if (Array.isArray(parsedContent) && parsedContent.length > 0) {
+      const isBlank = (parsedContent as any[]).every((b: any) =>
+        !Array.isArray(b.content) ||
+        b.content.length === 0 ||
+        b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
+      );
+      if (isBlank) parsedContent = null;
     }
     await updateBlock(blockId, {
       title: formName.trim(),
@@ -543,10 +527,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       onClick={() => {
                       if (!isTabDisabled) {
                         setActiveTab(tab);
-                        if (tab !== 'content') {
-                          setContentError('');
-                          contentDirtyRef.current = false;
-                        }
                       }
                     }}
                       disabled={isTabDisabled}
@@ -600,7 +580,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               )}
               {activeTab === 'content' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
-                  <div className="flex-1 min-h-0 p-6 flex flex-col gap-2">
+                  <div className="flex-1 min-h-0 p-6 flex flex-col">
                     {!formName.trim() ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
                         <div className="text-4xl mb-4">📝</div>
@@ -615,10 +595,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             key={`content-${activeSingleId ?? 'none'}`}
                             initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
                             onChange={json => {
-                              contentDirtyRef.current = true;
                               setFormContent(JSON.stringify(json));
                               setTabIsDirty(true);
-                              if (contentError) setContentError('');
                             }}
                             editable={true}
                             isDark={effectiveIsDark}
@@ -626,9 +604,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           />
                         </Suspense>
                       </div>
-                    )}
-                    {contentError && (
-                      <p className="text-xs text-danger-dark dark:text-danger shrink-0">{contentError}</p>
                     )}
                   </div>
                 </ErrorBoundary>
