@@ -108,6 +108,10 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
     return <div className="h-6 bg-ui-body animate-pulse rounded" />;
   }
 
+  if (!html) {
+    return null;
+  }
+
   return (
     <div
       className="bn-doc-content"

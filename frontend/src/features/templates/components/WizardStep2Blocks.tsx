@@ -192,6 +192,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formContent, setFormContent] = useState('');
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [nameError, setNameError] = useState('');
+  const [contentError, setContentError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
@@ -199,6 +200,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   // Ref to always have latest activeSingleId in the autosave closure
   const activeSingleIdRef = useRef<string | null>(null);
   activeSingleIdRef.current = activeSingleId;
+  // Ref for active tab — used in doSave to scope content validation
+  const activeTabRef = useRef<TabId>(activeTab);
+  activeTabRef.current = activeTab;
 
   const { profile } = useUserProfile();
 
@@ -238,6 +242,22 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     let parsedDesc: unknown = null;
     try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
     try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
+    // Validate content when the user is on the content tab
+    if (activeTabRef.current === 'content') {
+      const isBlank =
+        !Array.isArray(parsedContent) ||
+        parsedContent.length === 0 ||
+        (parsedContent as any[]).every((b: any) =>
+          !Array.isArray(b.content) ||
+          b.content.length === 0 ||
+          b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
+        );
+      if (isBlank) {
+        setContentError('El bloque no puede estar vacío');
+        return;
+      }
+      setContentError('');
+    }
     await updateBlock(blockId, {
       title: formName.trim(),
       description: parsedDesc,
@@ -489,7 +509,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   return (
                     <button
                       key={tab}
-                      onClick={() => !isTabDisabled && setActiveTab(tab)}
+                      onClick={() => {
+                      if (!isTabDisabled) {
+                        setActiveTab(tab);
+                        if (tab !== 'content') setContentError('');
+                      }
+                    }}
                       disabled={isTabDisabled}
                       title={isTabDisabled ? 'Asigna un nombre al bloque para habilitar esta pestaña' : ''}
                       className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
@@ -541,7 +566,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               )}
               {activeTab === 'content' && (
                 <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
-                  <div className="flex-1 min-h-0 p-6 flex flex-col">
+                  <div className="flex-1 min-h-0 p-6 flex flex-col gap-2">
                     {!formName.trim() ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
                         <div className="text-4xl mb-4">📝</div>
@@ -555,13 +580,20 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           <BlockNoteEditorPanel
                             key={`content-${activeSingleId ?? 'none'}`}
                             initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                            onChange={json => { setFormContent(JSON.stringify(json)); setTabIsDirty(true); }}
+                            onChange={json => {
+                              setFormContent(JSON.stringify(json));
+                              setTabIsDirty(true);
+                              if (contentError) setContentError('');
+                            }}
                             editable={true}
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}
                           />
                         </Suspense>
                       </div>
+                    )}
+                    {contentError && (
+                      <p className="text-xs text-danger-dark dark:text-danger shrink-0">{contentError}</p>
                     )}
                   </div>
                 </ErrorBoundary>
