@@ -96,7 +96,6 @@ class AuditLogApiTest extends TestCase
             'team_id' => null,
             'created_by' => $ownerId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -112,7 +111,6 @@ class AuditLogApiTest extends TestCase
             'created_by' => $ownerId,
             'owner_id' => $ownerId,
             'status' => 'draft',
-            'current_version' => 1,
         ]);
 
         Comment::query()->forceCreate([

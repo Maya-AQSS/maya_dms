@@ -8,7 +8,7 @@ import {
   updateTemplate as updateTemplateRequest,
 } from '../../../api/templates';
 import type { CreateTemplatePayload, UpdateTemplatePayload } from '../../../api/templates';
-import type { Template, TemplateListFilters, TemplatesListMeta } from '../../../types/templates';
+import type { Template, TemplateListFilters } from '../../../types/templates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
 
 function formatActionError(err: unknown): string {

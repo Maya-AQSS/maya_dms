@@ -162,6 +162,11 @@ export async function cloneTemplate(id: string): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>(`templates/${id}/clone`, { method: 'POST', body: {} });
 }
 
+/** POST /api/v1/templates/{id}/new-version — publicada → borrador (misma plantilla). */
+export async function startTemplateNewVersion(id: string): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/new-version`, { method: 'POST', body: {} });
+}
+
 /** POST /api/v1/templates/{id}/publish */
 export async function publishTemplate(id: string): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, { method: 'POST', body: {} });

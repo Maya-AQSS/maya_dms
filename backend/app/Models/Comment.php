@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\DocumentHeadSnapshot;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
@@ -33,11 +34,12 @@ class Comment extends Model
                       ->orWhereExists(function ($subQuery) use ($userId) {
                           $subQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                    ->from('documents')
+                                   ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
                                    ->whereColumn('documents.id', 'comments.commentable_id')
                                    ->where('comments.commentable_type', Document::class)
                                    ->where(function ($docQuery) use ($userId) {
-                                       $docQuery->where('documents.created_by', $userId)
-                                                ->orWhere('documents.owner_id', $userId)
+                                       $docQuery->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'created_by').' = ?', [$userId])
+                                                ->orWhereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' = ?', [$userId])
                                                 ->orWhereExists(function ($docShareQuery) use ($userId) {
                                                     $docShareQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                                                   ->from('document_shares')
@@ -59,7 +61,15 @@ class Comment extends Model
                                    ->whereColumn('templates.id', 'comments.commentable_id')
                                    ->where('comments.commentable_type', Template::class)
                                    ->where(function ($templateQuery) use ($userId) {
-                                       $templateQuery->where('templates.created_by', $userId)
+                                       $templateQuery->whereExists(function ($evQuery) use ($userId) {
+                                           $evQuery->select(\Illuminate\Support\Facades\DB::raw(1))
+                                               ->from('entity_versions')
+                                               ->whereColumn('entity_versions.id', 'templates.head_entity_version_id')
+                                               ->whereRaw(
+                                                   \App\Support\TemplateHeadSnapshot::jsonTemplateFieldExpression('entity_versions', 'created_by').' = ?',
+                                                   [$userId]
+                                               );
+                                       })
                                                     ->orWhereExists(function ($revQuery) use ($userId) {
                                                         $revQuery->select(\Illuminate\Support\Facades\DB::raw(1))
                                                                  ->from('template_reviewers')

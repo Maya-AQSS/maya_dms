@@ -25,6 +25,12 @@ interface TemplateRepositoryInterface
     public function findOrFailWithoutCatalogScope(string $id): Template;
 
     /**
+     * Plantilla sin scope de catálogo con bloques cargados y ordenados por sort_order.
+     * Para definición de bloques de documento cuando no hay snapshot de versión usable.
+     */
+    public function findOrFailWithBlocksOrderedWithoutCatalogScope(string $id): Template;
+
+    /**
      * Listado con filtros (sin cargar bloques); sin paginación en servidor.
      *
      * @return Collection<int, Template>
@@ -57,6 +63,13 @@ interface TemplateRepositoryInterface
     public function replicateBlocks(Template $source, Template $target): void;
 
     /**
+     * Inserta bloques en una plantilla desde el JSON de un snapshot publicado (ids de origen ignorados).
+     *
+     * @param  array<int, array<string, mixed>>  $blocksSnapshot
+     */
+    public function insertBlocksFromPublishedSnapshot(string $templateId, array $blocksSnapshot): void;
+
+    /**
      * Carga múltiples plantillas por sus IDs (con el global scope activo).
      * El resultado está indexado por ID (keyBy).
      *
@@ -71,6 +84,12 @@ interface TemplateRepositoryInterface
      * @return \Illuminate\Support\Collection<int, Template>
      */
     public function listPublishedByModule(string $moduleId): \Illuminate\Support\Collection;
+
+    /**
+     * Recupera plantilla para resolver candidatos de revisión documental sin scope de catálogo.
+     * Debe incluir relaciones de reviewers y documentReviewers ordenadas.
+     */
+    public function findForDocumentReviewCandidatesWithoutCatalogScope(string $templateId): ?Template;
 
     /**
      * Bandeja de revisión de plantillas pendientes para un revisor.

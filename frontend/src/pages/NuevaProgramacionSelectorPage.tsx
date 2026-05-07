@@ -7,7 +7,7 @@ import {
   sliceTemplatesPage,
 } from '../features/templates/clientTemplatePagination';
 import { VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
-import type { Template, TemplateListFilters, TemplateVisibilityLevel } from '../types/templates';
+import type { Template, TemplateListFilters } from '../types/templates';
 import type { Process } from '../types/processes';
 import {
   DataTable,

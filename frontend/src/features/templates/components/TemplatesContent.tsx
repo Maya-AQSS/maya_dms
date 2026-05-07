@@ -20,7 +20,7 @@ import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constant
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
 import { useUserProfile } from '../../../features/user-profile';
-import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
+import type { Template, TemplateStatus } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 

@@ -228,9 +228,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
   /** IDs de `template_document_reviewers` (vacío si la plantilla no define pool de documento). */
-  const [documentReviewerPoolIds, setDocumentReviewerPoolIds] = useState<string[]>([]);
+  const [, setDocumentReviewerPoolIds] = useState<string[]>([]);
   /** IDs de `template_reviewers` (revisores normativos; el backend los usa si no hay pool de documento). */
-  const [templateReviewerPoolIds, setTemplateReviewerPoolIds] = useState<string[]>([]);
+  const [, setTemplateReviewerPoolIds] = useState<string[]>([]);
   const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);

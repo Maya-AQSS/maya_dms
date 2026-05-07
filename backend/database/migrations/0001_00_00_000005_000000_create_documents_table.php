@@ -7,14 +7,18 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Ciclo de vida del documento:
-     *   draft → in_review → published
-     *   in_review → draft  (si se rechaza)
+     * Ancla de documento: vínculo a proceso, plantilla y publicación de plantilla usada al crear ({@code template_version_id}
+     * → {@see \App\Models\EntityVersion}); FK en create_entity_versions_table.
      *
-     * template_version_id: ancla a la versión publicada de plantilla usada al crear el documento (nullable
-     * si el documento se creó antes de fijar versión o en flujos legacy).
-     * study_type_id / study_id / module_id: referencias lógicas al catálogo académico (FDW); sin FK en BD.
-     * softDeletes: borrado lógico; el Global Scope de acceso sigue aplicando a filas no eliminadas.
+     * Dominio (modelo objetivo): título, ámbito académico, plazos, titularidad/creador del trabajo en curso, estado
+     * del ciclo (draft → in_review → published; in_review → draft si se rechaza) son atributos de una **versión de
+     * documento** ({@see \App\Models\EntityVersion}), no de la entidad documento como mero id.
+     *
+     * Implementación actual: el borrador y el estado hasta publicar se persisten aquí; cada publicación documental
+     * canónica vive en {@code entity_versions} (y revisiones en {@code document_reviews}). Igual que en plantillas,
+     * mover el borrador completo a {@code entity_versions} implica refactor transversal.
+     *
+     * study_type_id / study_id / module_id: catálogo académico (FDW); sin FK física. softDeletes + scopes de acceso.
      */
     public function up(): void
     {
@@ -22,11 +26,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('process_id')->constrained('processes')->restrictOnDelete();
             $table->foreignUuid('template_id')->constrained('templates')->restrictOnDelete();
-            $table->foreignUuid('template_version_id')
-                ->nullable()
-                ->after('template_id')
-                ->constrained('template_versions')
-                ->restrictOnDelete();
+            $table->uuid('template_version_id')->nullable()->after('template_id');
             $table->string('title');
             $table->string('study_type_id')->nullable();
             $table->string('study_id')->nullable();
@@ -35,9 +35,6 @@ return new class extends Migration
             $table->string('created_by');        // FK lógica → users (FDW)
             $table->string('owner_id');          // puede diferir de created_by tras delegación
             $table->string('status')->default('draft'); // draft | in_review | published
-            $table->integer('current_version')->default(1);
-            $table->timestamp('submitted_at')->nullable();
-            $table->timestamp('published_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
 

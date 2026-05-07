@@ -4,15 +4,19 @@ namespace App\Services;
 
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Support\TemplateHeadSnapshot;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use Illuminate\Validation\ValidationException;
 
 class TemplatePublishingService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
-        private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
+        private readonly TemplateVersionBlockLayerWriter $templateVersionBlockLayerWriter,
     ) {}
 
     /**
@@ -70,7 +74,11 @@ class TemplatePublishingService
                 }
             }
 
-            $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+            $template->load([
+                'blocks' => fn ($q) => $q->orderBy('sort_order'),
+                'reviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
+                'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+            ]);
 
             if ($template->blocks->isEmpty()) {
                 throw ValidationException::withMessages([
@@ -86,32 +94,68 @@ class TemplatePublishingService
                 'block_state' => $b->block_state,
                 'sort_order' => $b->sort_order,
             ])->values()->all();
+            $templateReviewersSnapshot = $template->reviewers
+                ->map(fn ($r): array => [
+                    'user_id' => (string) $r->user_id,
+                    'stage' => (int) $r->stage,
+                    'status' => (string) ($r->status ?? 'pending'),
+                ])
+                ->values()
+                ->all();
+            $documentReviewersSnapshot = $template->documentReviewers
+                ->map(fn ($r): array => [
+                    'user_id' => (string) $r->user_id,
+                ])
+                ->values()
+                ->all();
 
-            $next = $this->templateVersionRepository->nextVersionNumber($templateId);
+            $next = $this->entityVersionRepository->nextVersionNumber(Template::class, $templateId);
             $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
 
-            // changelog === null indica publicación automática (sin revisores o aprobación unánime).
-            // En ese caso se usa un texto por defecto según si es la primera versión o una sucesiva.
-            // Solo el flujo explícito (POST /publish) exige changelog, y esa validación la aplica
-            // PublishTemplateRequest antes de llegar aquí.
+            // Sin changelog explícito (tras trim): texto por defecto en la fila publicada en entity_versions.
+            // El número de versión ($next) solo vive en entity_versions y en este snapshot, no en la tabla templates.
+            // El flujo POST /publish puede exigir changelog en republicaciones vía PublishTemplateRequest.
             if ($trimmedChangelog === '') {
-                $resolvedChangelog = $next === 1 ? 'Versión inicial' : 'Publicación automática';
+                $resolvedChangelog = 'Publicación automática';
             } else {
                 $resolvedChangelog = $trimmedChangelog;
             }
 
-            $this->templateVersionRepository->createSnapshot(
-                $templateId,
+            $snapshotPayload = [
+                'template' => [
+                    'id' => $template->id,
+                    'process_id' => $template->process_id,
+                    'name' => $template->name,
+                    'description' => $template->description,
+                    'visibility_level' => TemplateHeadSnapshot::normalizeVisibilityForSnapshot($template->visibility_level),
+                    'study_type_id' => $template->study_type_id,
+                    'study_id' => $template->study_id,
+                    'module_id' => $template->module_id,
+                    'team_id' => $template->team_id,
+                    'status' => 'published',
+                    'version' => $next,
+                ],
+                'blocks' => $blocksSnapshot,
+                'reviewers' => [
+                    'template_reviewers' => $templateReviewersSnapshot,
+                    'document_reviewers' => $documentReviewersSnapshot,
+                ],
+            ];
+
+            $entityVersion = $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
+                Template::class,
+                (string) $template->id,
                 $next,
-                $blocksSnapshot,
-                $resolvedChangelog,
+                $snapshotPayload,
                 $actorId,
+                $resolvedChangelog,
             );
+
+            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($entityVersion, $template);
 
             $oldStatus = $template->status;
             $updated = $this->templateRepository->update($template, [
                 'status' => 'published',
-                'version' => $next,
             ]);
 
             event(new TemplateStateChanged(
