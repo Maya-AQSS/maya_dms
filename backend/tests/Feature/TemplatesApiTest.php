@@ -1443,6 +1443,52 @@ class TemplatesApiTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_template_versions_endpoint_keeps_latest_published_when_current_is_draft(): void
+    {
+        $userId = (string) Str::uuid();
+        $headers = $this->authHeaders($userId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Historial con borrador activo',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
+            'published_by' => $userId,
+            'published_at' => now(),
+            'changelog' => 'ultima publicada visible',
+            'snapshot_data' => json_encode(['template' => ['id' => $tid]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/templates/{$tid}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.version_number', 1);
+    }
+
     public function test_template_versions_endpoint_separates_template_history_from_document_history(): void
     {
         $userId = (string) Str::uuid();

@@ -2277,6 +2277,71 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
+    public function test_document_versions_endpoint_keeps_latest_published_when_current_is_draft(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId);
+
+        $templateId = (string) Str::uuid();
+        $documentId = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Template historial documento draft',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $userId,
+            'status' => 'published',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        Document::query()->forceCreate([
+            'id' => $documentId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'template_version_id' => null,
+            'title' => 'Doc con nueva version draft',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $userId,
+            'owner_id' => $userId,
+            'status' => 'draft',
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Document::class,
+            'versionable_id' => $documentId,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $userId,
+            'published_by' => $userId,
+            'published_at' => now(),
+            'changelog' => 'ultima publicada visible',
+            'snapshot_data' => json_encode(['document' => ['id' => $documentId]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->getJson("/api/v1/documents/{$documentId}/versions", $headers)
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.version_number', 1);
+    }
+
     public function test_document_version_detail_endpoint_accepts_entity_version_id_for_document(): void
     {
         $userId = (string) Str::uuid();

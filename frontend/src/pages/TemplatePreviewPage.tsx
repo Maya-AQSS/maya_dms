@@ -537,7 +537,7 @@ export function TemplatePreviewPage() {
           {!loading && !error && template && (
             <>
               <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
-                {template.name}
+                {displayTitle ?? template.name}
               </h1>
               {blocks.length === 0 ? (
                 <p className="text-sm text-text-muted dark:text-text-dark-muted italic">

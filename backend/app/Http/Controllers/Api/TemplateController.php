@@ -242,12 +242,16 @@ class TemplateController extends Controller
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
+        $excludeCurrentPublishedVersion = (string) $model->status === 'published';
         $currentVersion = (int) $model->version;
 
         return TemplateVersionSummaryResource::collection(
             $this->templateService
                 ->listPublishedVersions($model->id)
-                ->reject(static fn ($row): bool => (int) $row->version_number === $currentVersion)
+                ->reject(
+                    static fn ($row): bool =>
+                        $excludeCurrentPublishedVersion && (int) $row->version_number === $currentVersion,
+                )
                 ->values(),
         );
     }

@@ -668,7 +668,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             >
               {!loading && !error && detail ? (
                 <PaperBlocksArticle
-                  title={detail.title}
+                  title={previewTitle}
                   blocks={articleBlocks}
                   emptyMessage="Este documento no tiene bloques."
                 />
