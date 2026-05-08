@@ -243,7 +243,7 @@ describe('DocumentsContent creation flow', () => {
 
     await waitFor(() =>
       expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo/tpl-1/wizard', {
-        state: { moduleId: 'm1' },
+        state: { moduleId: 'm1', templateVersionId: 'ver-1' },
       }),
     );
   });

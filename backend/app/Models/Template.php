@@ -52,7 +52,17 @@ class Template extends Model
             }
 
             $builder->where(function (Builder $outer) use ($userId) {
-                $outer->where('template_head_ev.snapshot_data->template->created_by', $userId)
+                $headCreatorExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'created_by');
+                $outer->whereRaw($headCreatorExpr.' = ?', [$userId])
+                    ->orWhere(function (Builder $legacyOwner) use ($userId, $headCreatorExpr) {
+                        $legacyOwner
+                            ->where(function (Builder $emptyHeadCreator) use ($headCreatorExpr) {
+                                $emptyHeadCreator
+                                    ->whereRaw($headCreatorExpr.' IS NULL')
+                                    ->orWhereRaw($headCreatorExpr." = ''");
+                            })
+                            ->where('template_head_ev.created_by', $userId);
+                    })
                     ->orWhere(function (Builder $reviewScope) use ($userId) {
                         $reviewScope->where('template_head_ev.snapshot_data->template->status', 'in_review')
                             ->whereExists(function ($subQuery) use ($userId) {
@@ -284,6 +294,12 @@ class Template extends Model
         if (in_array($key, TemplateHeadSnapshot::DELEGATED_ATTRIBUTES, true)) {
             $this->loadMissing('headVersion');
             $raw = data_get($this->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.'.$key);
+            if ($key === 'created_by' && ($raw === null || $raw === '')) {
+                $raw = $this->headVersion?->created_by;
+                if ($raw === null || $raw === '') {
+                    $raw = parent::getAttribute($key);
+                }
+            }
 
             return $this->castHeadDelegatedAttribute((string) $key, $raw);
         }

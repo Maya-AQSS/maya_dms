@@ -17,11 +17,11 @@ class UpdateDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
-            'study_type_id' => ['nullable', 'string'],
-            'study_id' => ['nullable', 'string'],
-            'module_id' => ['nullable', 'string'],
+            'title' => ['sometimes', 'filled', 'string', 'max:255'],
+            'delivery_deadline' => ['sometimes', 'date', 'after_or_equal:today'],
+            'study_type_id' => ['sometimes', 'nullable', 'string'],
+            'study_id' => ['sometimes', 'nullable', 'string'],
+            'module_id' => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

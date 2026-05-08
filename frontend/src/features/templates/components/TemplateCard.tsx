@@ -56,9 +56,11 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
     }
   };
 
-  const isCreator = profile?.id === t.created_by;
-  // reviewers is not loaded in list responses — use status + not-creator as proxy
-  const canValidate = t.status === 'in_review' && !isCreator;
+  const isAssignedReviewer =
+    t.status === 'in_review' &&
+    !!profile?.id &&
+    (t.reviewers?.some((r) => r.user_id === profile.id) ?? false);
+  const canValidate = isAssignedReviewer;
   const isRejected = t.status === 'draft' && t.has_review_comments;
 
   return (

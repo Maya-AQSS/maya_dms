@@ -55,7 +55,7 @@ class UserProfileService implements UserProfileServiceInterface
                 'id'             => $fdwUser['id'],
                 'email'          => $fdwUser['email'] ?? null,
                 'name'           => $fdwUser['name'] ?? null,
-                'department'     => $fdwUser['department'] ?? null,
+                'department'     => $fdwUser['department'] ?? $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
                 'study_type_ids' => $this->repository->findStudyTypeIdsByUserId($userId),
                 'study_ids'      => $this->repository->findStudyIdsByUserId($userId),
                 'module_ids'     => $this->repository->findModuleIdsByUserId($userId),

@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -47,6 +48,7 @@ class TemplateController extends Controller
     {
         $templates = $this->templateService->listFiltered($request->toFilterDto());
         $this->attachLatestPublishedVersionMeta($templates);
+        $this->attachCanCloneMeta($templates, $request);
 
         $this->apiTeamEmbedService->embedOnTemplates(
             $templates,
@@ -54,6 +56,32 @@ class TemplateController extends Controller
         );
 
         return TemplateResource::collection($templates);
+    }
+
+    /**
+     * Adjunta `can_clone` desde policy para evitar Gate por recurso en listados.
+     *
+     * @param  Template|Collection<int, Template>  $templates
+     */
+    private function attachCanCloneMeta(Template|Collection $templates, Request $request): void
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return;
+        }
+
+        $attach = function (Template $template) use ($user): void {
+            $template->setAttribute('can_clone', Gate::forUser($user)->allows('clone', $template));
+        };
+
+        if ($templates instanceof Template) {
+            $attach($templates);
+            return;
+        }
+
+        foreach ($templates as $template) {
+            $attach($template);
+        }
     }
 
     /**
@@ -78,7 +106,7 @@ class TemplateController extends Controller
             ->where('status', 'published')
             ->where('version_number', '>', 0)
             ->orderByDesc('version_number')
-            ->get(['versionable_id', 'id', 'version_number']);
+            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
 
         /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByTemplate */
         $latestByTemplate = [];
@@ -89,6 +117,7 @@ class TemplateController extends Controller
                     'versionable_id' => $templateId,
                     'id' => (string) $row->id,
                     'version_number' => (int) $row->version_number,
+                    'name' => $this->extractPublishedTemplateNameFromSnapshotRow($row->snapshot_data),
                 ];
             }
         }
@@ -97,7 +126,29 @@ class TemplateController extends Controller
             $meta = $latestByTemplate[(string) $template->id] ?? null;
             $template->setAttribute('latest_published_version_id', $meta?->id);
             $template->setAttribute('latest_published_version_number', $meta?->version_number);
+            $template->setAttribute('latest_published_name', $meta?->name);
         }
+    }
+
+    private function extractPublishedTemplateNameFromSnapshotRow(mixed $snapshot): ?string
+    {
+        if (is_string($snapshot) && $snapshot !== '') {
+            $decoded = json_decode($snapshot, true);
+            if (is_array($decoded)) {
+                $snapshot = $decoded;
+            }
+        }
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $name = data_get($snapshot, 'template.name');
+        if (! is_string($name) || trim($name) === '') {
+            return null;
+        }
+
+        return $name;
     }
 
     /**
@@ -106,6 +157,7 @@ class TemplateController extends Controller
     public function store(StoreTemplateRequest $request): JsonResponse
     {
         $template = $this->templateService->create($request->toCreateDto());
+        $this->attachCanCloneMeta($template, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $template,
@@ -126,6 +178,7 @@ class TemplateController extends Controller
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
         $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator']);
+        $this->attachCanCloneMeta($model, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
@@ -148,6 +201,7 @@ class TemplateController extends Controller
         $dto = $request->toUpdateDto();
 
         $updated = $this->templateService->update($model, $dto);
+        $this->attachCanCloneMeta($updated, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $updated,
@@ -185,6 +239,7 @@ class TemplateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $copy = $this->templateService->clone($template, (string) Auth::id());
+        $this->attachCanCloneMeta($copy, $_request);
 
         return (new TemplateResource($copy))->response()->setStatusCode(201);
     }
@@ -199,6 +254,7 @@ class TemplateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->submitForReview($model->id, (string) Auth::id());
+        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
 
         return new TemplateResource($updated);
     }
@@ -213,6 +269,7 @@ class TemplateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->rejectReview($model->id, (string) Auth::id());
+        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
 
         return new TemplateResource($updated);
     }
@@ -230,6 +287,7 @@ class TemplateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
+        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
 
         return new TemplateResource($updated);
     }
@@ -252,6 +310,7 @@ class TemplateController extends Controller
             $request->validated('changelog'),
             (string) Auth::id(),
         );
+        $this->attachCanCloneMeta($updated, $request);
 
         return new TemplateResource($updated);
     }
@@ -268,6 +327,7 @@ class TemplateController extends Controller
             $model->id,
             (string) $request->user()->getAuthIdentifier(),
         );
+        $this->attachCanCloneMeta($updated, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $updated,
@@ -291,6 +351,7 @@ class TemplateController extends Controller
             $version,
             (string) $request->user()->getAuthIdentifier(),
         );
+        $this->attachCanCloneMeta($updated, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $updated,

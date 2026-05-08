@@ -1,7 +1,13 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { TemplateWizard } from '../TemplateWizard';
-import { createTemplate, updateTemplate, syncTemplateValidators, publishTemplate } from '../../../../api/templates';
+import {
+  createTemplate,
+  updateTemplate,
+  syncTemplateValidators,
+  publishTemplate,
+  fetchTemplateVersionSummaries,
+} from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { fetchMe } from '../../../../api/users';
 import { MemoryRouter } from 'react-router-dom';
@@ -92,6 +98,11 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useBlocker: () => ({
+      state: 'unblocked',
+      proceed: vi.fn(),
+      reset: vi.fn(),
+    }),
   };
 });
 
@@ -125,6 +136,7 @@ describe('TemplateWizard Integration', () => {
     }));
     (syncTemplateValidators as any).mockResolvedValue({ data: [] });
     (publishTemplate as any).mockResolvedValue({ data: { success: true } });
+    (fetchTemplateVersionSummaries as any).mockResolvedValue([]);
   });
 
   const renderWizard = async (props = {}) => {

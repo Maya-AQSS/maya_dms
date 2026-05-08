@@ -133,7 +133,9 @@ class DocumentPolicy
      */
     public function clone(JwtUser $user, Document $document): bool
     {
-        return $user->hasPermission('documents.create') && $this->update($user, $document);
+        return $document->status === 'published'
+            && $user->hasPermission('documents.create')
+            && $this->update($user, $document);
     }
 
     /**

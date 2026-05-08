@@ -8,6 +8,7 @@ import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
   publishTemplate as apiPublishTemplate,
+  fetchTemplateVersionSummaries,
   submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
@@ -79,6 +80,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const blocksRef = useRef<WizardStep2BlocksHandle>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishChangelog, setPublishChangelog] = useState('');
+  const [publishModalError, setPublishModalError] = useState<string | null>(null);
+  const [publishedVersionCount, setPublishedVersionCount] = useState(0);
   const [comments, setComments] = useState<any[]>([]);
   const [blocksCount, setBlocksCount] = useState(0);
   const [blocksLoading, setBlocksLoading] = useState(true);
@@ -91,6 +96,24 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         .catch(console.error);
     }
   }, [initial?.id, initial?.has_review_comments]);
+
+  useEffect(() => {
+    if (!template?.id) {
+      setPublishedVersionCount(0);
+      return;
+    }
+    let cancelled = false;
+    void fetchTemplateVersionSummaries(template.id)
+      .then((rows) => {
+        if (!cancelled) setPublishedVersionCount(rows.length);
+      })
+      .catch(() => {
+        if (!cancelled) setPublishedVersionCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [template?.id]);
 
   useEffect(() => {
     if (step !== 'blocks') return;
@@ -259,17 +282,44 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setSaving(false);
     }
   };
-  const handlePublish = async () => {
+  const handlePublish = async (changelog?: string | null) => {
     if (!template?.id) return;
     setSaving(true);
     try {
-      await apiPublishTemplate(template.id);
+      await apiPublishTemplate(template.id, changelog);
+      setShowPublishModal(false);
+      setPublishModalError(null);
+      setPublishChangelog('');
       navigate(processBackTo);
     } catch (e) {
-      setErrors({ api: e instanceof Error ? e.message : 'Error al publicar la plantilla' });
+      const message = e instanceof Error ? e.message : 'Error al publicar la plantilla';
+      if (showPublishModal) {
+        setPublishModalError(message);
+      } else {
+        setErrors({ api: message });
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  const requiresPublishChangelog = publishedVersionCount > 0;
+
+  const handlePublishClick = () => {
+    if (requiresPublishChangelog) {
+      setPublishModalError(null);
+      setShowPublishModal(true);
+      return;
+    }
+    void handlePublish(null);
+  };
+
+  const handleConfirmPublish = () => {
+    if (requiresPublishChangelog && publishChangelog.trim() === '') {
+      setPublishModalError('El changelog es obligatorio a partir de la segunda versión.');
+      return;
+    }
+    void handlePublish(publishChangelog.trim());
   };
 
   const handleSubmitForReview = async () => {
@@ -314,7 +364,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setStep('summary');
     } catch (e) {
       console.error('[saveUsers]', e);
-      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar los validadores' });
+      const detail =
+        e instanceof ApiHttpError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : 'Error al guardar los validadores';
+      setErrors({ api: detail || 'Error al guardar los validadores' });
     } finally {
       setSaving(false);
     }
@@ -441,7 +497,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           size="sm"
           loading={saving}
           disabled={blocksGateActive}
-          onClick={() => void handlePublish()}
+          onClick={handlePublishClick}
           className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
         >
           Publicar plantilla
@@ -678,6 +734,34 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         loading={saving}
         onCancel={() => setShowValidationModal(false)}
         onConfirm={handleSubmitForReview}
+      />
+      <ConfirmDialog
+        open={showPublishModal}
+        title="Publicar plantilla"
+        description={
+          <div className="space-y-2">
+            <p className="text-xs text-text-muted">
+              Añade un changelog para esta publicación.
+            </p>
+            <textarea
+              value={publishChangelog}
+              onChange={(e) => {
+                setPublishChangelog(e.target.value);
+                if (publishModalError) setPublishModalError(null);
+              }}
+              placeholder="Describe los cambios de esta versión..."
+              className="w-full min-h-24 rounded-md border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
+            />
+          </div>
+        }
+        confirmLabel={saving ? 'Publicando…' : 'Publicar'}
+        loading={saving}
+        error={publishModalError}
+        onCancel={() => {
+          setShowPublishModal(false);
+          setPublishModalError(null);
+        }}
+        onConfirm={handleConfirmPublish}
       />
     </>
   );

@@ -253,6 +253,37 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->startRevision($user, $template));
     }
 
+    public function test_publish_allows_creator_without_reviewers_even_if_non_personal(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(
+            createdBy: $creatorId,
+            status: 'draft',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
+
+        $this->assertTrue($this->policy->publish($user, $template));
+    }
+
+    public function test_publish_denied_for_creator_when_template_has_reviewers(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $reviewerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $user = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(
+            createdBy: $creatorId,
+            status: 'in_review',
+        );
+        $template->reviewers()->create([
+            'user_id' => $reviewerId,
+            'stage' => 1,
+            'status' => 'pending',
+        ]);
+
+        $this->assertFalse($this->policy->publish($user, $template));
+    }
+
     /**
      * @param  list<string>  $permissions
      */

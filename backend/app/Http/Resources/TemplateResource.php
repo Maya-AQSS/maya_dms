@@ -5,7 +5,6 @@ namespace App\Http\Resources;
 use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Facades\Gate;
 
 class TemplateResource extends JsonResource
 {
@@ -61,8 +60,9 @@ class TemplateResource extends JsonResource
             'has_review_comments' => (bool) ($this->resource->has_review_comments ?? false),
             'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),
             'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
-            'can_clone' => $request->user() !== null
-                && Gate::forUser($request->user())->allows('clone', $this->resource),
+            'can_clone' => (bool) ($this->resource->getAttribute('can_clone') ?? false),
+            'working_version_id' => $this->head_entity_version_id,
+            'latest_published_name' => $this->resource->getAttribute('latest_published_name'),
         ];
     }
 }

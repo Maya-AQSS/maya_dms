@@ -46,11 +46,20 @@ class DocumentResource extends JsonResource
             'working_version_id' => $this->head_entity_version_id,
             'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),
             'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
+            'latest_published_title' => $this->resource->getAttribute('latest_published_title'),
         ];
     }
 
+    /**
+     * Resuelve el número de versión de la plantilla anclada (p. ej. 1).
+     */
     private function resolveTemplateVersionNumber(): ?int
     {
+        $preloaded = $this->resource->getAttribute('template_version_number');
+        if (is_numeric($preloaded)) {
+            return (int) $preloaded;
+        }
+
         if ($this->template_version_id === null) {
             return null;
         }

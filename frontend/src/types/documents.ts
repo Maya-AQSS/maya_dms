@@ -35,6 +35,7 @@ export type Document = {
   working_version_id?: string | null;
   latest_published_version_id?: string | null;
   latest_published_version_number?: number | null;
+  latest_published_title?: string | null;
   list_variant?: 'live' | 'published_fallback';
   list_row_id?: string;
 };

@@ -6,13 +6,16 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\DocumentShare;
+use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
+use App\Support\TemplateHeadSnapshot;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Maya\Messaging\Publishers\AuditPublisher;
 use Database\Seeders\PermissionsSeeder;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
@@ -119,6 +122,12 @@ class DocumentReviewModeFlowTest extends TestCase
                 'type' => '',
                 'mandatory' => false,
             ]],
+            [
+                'template' => [
+                    'id' => $templateId,
+                    'review_mode' => $reviewMode,
+                ],
+            ],
         );
 
         foreach ([[$rev1, 1], [$rev2, 2]] as [$uid, $stage]) {
@@ -347,6 +356,45 @@ class DocumentReviewModeFlowTest extends TestCase
             ->assertJsonValidationErrors(['review']);
     }
 
+    public function test_sequential_uses_anchored_template_review_mode_even_if_live_template_changes_to_parallel(): void
+    {
+        $ctx = $this->seedDocumentInReview('sequential');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $templateHead = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $ctx['templateId'])
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $templateHead->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            is_array($templateHead->snapshot_data) ? $templateHead->snapshot_data : [],
+            ['review_mode' => 'parallel'],
+        );
+        $templateHead->save();
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
+            ->assertOk()
+            ->json('data');
+        $ids = $this->reviewIdsByStage($list);
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review2Id']}/approve",
+            [],
+            $hR2,
+        )->assertUnprocessable()
+            ->assertJsonValidationErrors(['review']);
+    }
+
     public function test_reject_document_review_requires_rejection_reason(): void
     {
         $ctx = $this->seedDocumentInReview('parallel');
@@ -435,6 +483,122 @@ class DocumentReviewModeFlowTest extends TestCase
         $this->postJson(
             "/api/v1/documents/{$ctx['documentId']}/reviews/{$review1Id}/reject",
             ['rejection_reason' => 'No procede'],
+            $hR1,
+        )->assertOk()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->assertSame(
+            0,
+            DocumentReview::query()
+                ->where('document_id', $ctx['documentId'])
+                ->where('status', 'pending')
+                ->count(),
+        );
+    }
+
+    public function test_approve_review_publishes_explicit_review_audit_event(): void
+    {
+        $ctx = $this->seedDocumentInReview('parallel');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $review2Id = (string) DocumentReview::query()
+            ->where('document_id', $ctx['documentId'])
+            ->where('reviewer_id', $ctx['rev2'])
+            ->value('id');
+        $this->assertNotSame('', $review2Id);
+
+        $auditPublisher = $this->mock(AuditPublisher::class);
+        $auditPublisher->shouldIgnoreMissing();
+        $auditPublisher->shouldReceive('publish')
+            ->once()
+            ->withArgs(function (
+                string $applicationSlug,
+                string $entityType,
+                string $entityId,
+                string $action,
+                string $userId,
+                ?string $blockId,
+                ?array $previousValue,
+                ?array $newValue,
+            ) use ($ctx, $review2Id): bool {
+                return $applicationSlug === 'maya-dms'
+                    && $entityType === 'document'
+                    && $entityId === $ctx['documentId']
+                    && $action === 'review_approved'
+                    && $userId === $ctx['rev2']
+                    && ($previousValue['review_id'] ?? null) === $review2Id
+                    && ($previousValue['status'] ?? null) === 'pending'
+                    && ($newValue['review_id'] ?? null) === $review2Id
+                    && ($newValue['status'] ?? null) === 'approved';
+            });
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$review2Id}/approve",
+            [],
+            $hR2,
+        )->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+    }
+
+    public function test_reject_review_publishes_explicit_review_audit_event(): void
+    {
+        $ctx = $this->seedDocumentInReview('parallel');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $review1Id = (string) DocumentReview::query()
+            ->where('document_id', $ctx['documentId'])
+            ->where('reviewer_id', $ctx['rev1'])
+            ->value('id');
+        $this->assertNotSame('', $review1Id);
+
+        $reason = 'No procede';
+        $auditPublisher = $this->mock(AuditPublisher::class);
+        $auditPublisher->shouldIgnoreMissing();
+        $auditPublisher->shouldReceive('publish')
+            ->once()
+            ->withArgs(function (
+                string $applicationSlug,
+                string $entityType,
+                string $entityId,
+                string $action,
+                string $userId,
+                ?string $blockId,
+                ?array $previousValue,
+                ?array $newValue,
+            ) use ($ctx, $review1Id, $reason): bool {
+                return $applicationSlug === 'maya-dms'
+                    && $entityType === 'document'
+                    && $entityId === $ctx['documentId']
+                    && $action === 'review_rejected'
+                    && $userId === $ctx['rev1']
+                    && ($previousValue['review_id'] ?? null) === $review1Id
+                    && ($previousValue['status'] ?? null) === 'pending'
+                    && ($newValue['review_id'] ?? null) === $review1Id
+                    && ($newValue['status'] ?? null) === 'rejected'
+                    && ($newValue['rejection_reason'] ?? null) === $reason;
+            });
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$review1Id}/reject",
+            ['rejection_reason' => $reason],
             $hR1,
         )->assertOk()
             ->assertJsonPath('data.status', 'draft');

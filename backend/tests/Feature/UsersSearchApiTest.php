@@ -86,7 +86,6 @@ class UsersSearchApiTest extends TestCase
             'id' => 'usr_search_target',
             'name' => 'Abigail Search',
             'email' => 'abigail.search@maya.test',
-            'department' => 'Profesorado',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -120,7 +119,6 @@ class UsersSearchApiTest extends TestCase
             'id' => $reviewerId,
             'name' => 'Doc Reviewer Candidate',
             'email' => 'doc.reviewer.candidate@maya.test',
-            'department' => 'Secretaría',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -157,7 +155,6 @@ class UsersSearchApiTest extends TestCase
                 'id' => $rid,
                 'name' => 'Reviewer '.$rid,
                 'email' => 'r-'.$rid.'@maya.test',
-                'department' => 'QA',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -190,7 +187,6 @@ class UsersSearchApiTest extends TestCase
                 'id' => $rid,
                 'name' => 'Tpl Reviewer '.$rid,
                 'email' => 't-'.$rid.'@maya.test',
-                'department' => 'QA',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

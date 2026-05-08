@@ -43,6 +43,7 @@ class DocumentController extends Controller
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
         $this->attachLatestPublishedVersionMeta($documents);
+        $this->attachTemplateVersionNumbers($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
@@ -50,6 +51,46 @@ class DocumentController extends Controller
         );
 
         return DocumentResource::collection($documents);
+    }
+
+    /**
+     * Adjunta `template_version_number` en lote para evitar resolución por documento en el Resource.
+     *
+     * @param  Collection<int, Document>  $documents
+     */
+    private function attachTemplateVersionNumbers(Collection $documents): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $versionIds = $documents
+            ->pluck('template_version_id')
+            ->filter(fn ($id) => is_string($id) && $id !== '')
+            ->unique()
+            ->values()
+            ->all();
+        if ($versionIds === []) {
+            return;
+        }
+
+        /** @var array<string,int> $versionNumberById */
+        $versionNumberById = DB::table('entity_versions')
+            ->whereIn('id', $versionIds)
+            ->pluck('version_number', 'id')
+            ->map(fn ($value) => (int) $value)
+            ->all();
+
+        foreach ($documents as $document) {
+            $templateVersionId = $document->template_version_id;
+            if (! is_string($templateVersionId) || $templateVersionId === '') {
+                continue;
+            }
+
+            if (array_key_exists($templateVersionId, $versionNumberById)) {
+                $document->setAttribute('template_version_number', $versionNumberById[$templateVersionId]);
+            }
+        }
     }
 
     /**
@@ -74,7 +115,7 @@ class DocumentController extends Controller
             ->where('status', 'published')
             ->where('version_number', '>', 0)
             ->orderByDesc('version_number')
-            ->get(['versionable_id', 'id', 'version_number']);
+            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
 
         /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByDocument */
         $latestByDocument = [];
@@ -85,6 +126,7 @@ class DocumentController extends Controller
                     'versionable_id' => $documentId,
                     'id' => (string) $row->id,
                     'version_number' => (int) $row->version_number,
+                    'title' => $this->extractPublishedDocumentTitleFromSnapshotRow($row->snapshot_data),
                 ];
             }
         }
@@ -93,7 +135,29 @@ class DocumentController extends Controller
             $meta = $latestByDocument[(string) $document->id] ?? null;
             $document->setAttribute('latest_published_version_id', $meta?->id);
             $document->setAttribute('latest_published_version_number', $meta?->version_number);
+            $document->setAttribute('latest_published_title', $meta?->title);
         }
+    }
+
+    private function extractPublishedDocumentTitleFromSnapshotRow(mixed $snapshot): ?string
+    {
+        if (is_string($snapshot) && $snapshot !== '') {
+            $decoded = json_decode($snapshot, true);
+            if (is_array($decoded)) {
+                $snapshot = $decoded;
+            }
+        }
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $title = data_get($snapshot, 'document.title');
+        if (! is_string($title) || trim($title) === '') {
+            return null;
+        }
+
+        return $title;
     }
 
     /**

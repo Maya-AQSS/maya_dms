@@ -321,7 +321,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'A',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -337,7 +337,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'B',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -373,7 +373,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Con publicada y head draft',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -389,7 +389,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Sin versiones publicadas',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -405,7 +405,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Archivada',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -473,7 +473,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Con comentarios',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -489,7 +489,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Sin comentarios',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -551,7 +551,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'M?a',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -579,7 +579,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Original',
             'description' => 'D',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -589,6 +589,16 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 1,
             'review_mode' => 'parallel',
         ]);
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $head->snapshot_data ?? [],
+            ['delivery_deadline' => now()->addDay()->toDateString()],
+        );
+        $head->save();
 
         $b1 = (string) Str::uuid();
         $b2 = (string) Str::uuid();
@@ -632,6 +642,8 @@ class TemplatesApiTest extends TestCase
 
         $tid = (string) Str::uuid();
         $bid = (string) Str::uuid();
+        $publishedDeadline = now()->addDay()->toDateString();
+        $liveOnlyDeadline = now()->addDays(10)->toDateString();
         Template::query()->forceCreate([
             'id' => $tid,
             'process_id' => '00000000-0000-0000-0000-000000000001',
@@ -648,6 +660,16 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $head->snapshot_data ?? [],
+            ['delivery_deadline' => $publishedDeadline],
+        );
+        $head->save();
 
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
@@ -665,7 +687,12 @@ class TemplatesApiTest extends TestCase
             ->where('versionable_id', $tid)
             ->where('version_number', 0)
             ->firstOrFail();
-        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($headEv->snapshot_data ?? [], ['name' => 'Nombre solo en vivo']);
+        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($headEv->snapshot_data ?? [], [
+            'name' => 'Nombre solo en vivo',
+            'delivery_deadline' => $liveOnlyDeadline,
+            'review_stages' => 4,
+            'review_mode' => 'parallel',
+        ]);
         $headEv->update(['snapshot_data' => $snapshotData]);
 
         DB::table('template_blocks')->where('id', $bid)->update(['title' => 'Titulo solo en vivo']);
@@ -674,7 +701,13 @@ class TemplatesApiTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('data.name', 'Nombre al publicar (copia)')
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.review_stages', 0)
+            ->assertJsonPath('data.review_mode', 'sequential');
+        $this->assertStringStartsWith(
+            $publishedDeadline,
+            (string) $response->json('data.delivery_deadline'),
+        );
 
         $copyId = (string) $response->json('data.id');
         $this->assertNotSame($tid, $copyId);
@@ -709,6 +742,26 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+        $headVersionInit = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $headVersionInit->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $headVersionInit->snapshot_data ?? [],
+            ['delivery_deadline' => now()->addDay()->toDateString()],
+        );
+        $headVersionInit->save();
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $head->snapshot_data ?? [],
+            ['delivery_deadline' => now()->addDay()->toDateString()],
+        );
+        $head->save();
 
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
@@ -732,7 +785,7 @@ class TemplatesApiTest extends TestCase
             ->value('status'));
     }
 
-    public function test_post_template_new_version_reassigns_creator_to_actor(): void
+    public function test_post_template_new_version_assigns_current_actor_as_working_creator(): void
     {
         $originalCreatorId = (string) Str::uuid();
         $actorId = (string) Str::uuid();
@@ -776,7 +829,10 @@ class TemplatesApiTest extends TestCase
         $head->status = 'published';
         $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
             $head->snapshot_data ?? [],
-            ['status' => 'published'],
+            [
+                'status' => 'published',
+                'delivery_deadline' => now()->addDay()->toDateString(),
+            ],
         );
         $head->save();
         TemplateReviewer::query()->forceCreate([
@@ -811,6 +867,8 @@ class TemplatesApiTest extends TestCase
         $reviewerDocumentPublished = (string) Str::uuid();
         $reviewerTemplateLive = (string) Str::uuid();
         $reviewerDocumentLive = (string) Str::uuid();
+        $publishedBlockId = (string) Str::uuid();
+        $liveOnlyBlockId = (string) Str::uuid();
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -839,6 +897,15 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $reviewerDocumentLive,
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $liveOnlyBlockId,
+            'template_id' => $tid,
+            'title' => 'Bloque solo live',
+            'description' => null,
+            'default_content' => ['delta' => true],
+            'block_state' => 'editable',
+            'sort_order' => 99,
         ]);
 
         DB::table('entity_versions')->insert([
@@ -869,7 +936,17 @@ class TemplatesApiTest extends TestCase
                     'version' => 1,
                     'created_by' => $creatorId,
                 ],
-                'blocks' => [],
+                'blocks' => [
+                    [
+                        'id' => $publishedBlockId,
+                        'template_id' => $tid,
+                        'title' => 'Bloque publicado',
+                        'description' => ['ops' => []],
+                        'default_content' => ['ops' => [['insert' => 'v1']]],
+                        'block_state' => 'locked',
+                        'sort_order' => 1,
+                    ],
+                ],
                 'reviewers' => [
                     'template_reviewers' => [
                         ['user_id' => $reviewerTemplatePublished, 'stage' => 1, 'status' => 'approved'],
@@ -892,6 +969,18 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'published')
             ->assertJsonPath('data.name', 'Plantilla publicada v1');
 
+        $this->assertDatabaseHas('template_blocks', [
+            'id' => $publishedBlockId,
+            'template_id' => $tid,
+            'title' => 'Bloque publicado',
+            'block_state' => 'locked',
+            'sort_order' => 1,
+        ]);
+        $this->assertDatabaseMissing('template_blocks', [
+            'id' => $liveOnlyBlockId,
+            'template_id' => $tid,
+        ]);
+
         $this->assertDatabaseHas('template_reviewers', [
             'template_id' => $tid,
             'user_id' => $reviewerTemplatePublished,
@@ -911,6 +1000,89 @@ class TemplatesApiTest extends TestCase
         ]);
     }
 
+    public function test_delete_template_version_preserves_existing_reviewers_when_published_snapshot_has_no_reviewers_section(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId, []);
+        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+
+        $reviewerTemplateLive = (string) Str::uuid();
+        $reviewerDocumentLive = (string) Str::uuid();
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla reviewers legacy',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerTemplateLive,
+            'stage' => 1,
+            'status' => 'pending',
+        ]);
+        TemplateDocumentReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerDocumentLive,
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $creatorId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => json_encode([
+                'template' => [
+                    'id' => $tid,
+                    'process_id' => '00000000-0000-0000-0000-000000000001',
+                    'name' => 'Plantilla publicada v1',
+                    'visibility_level' => TemplateVisibilityLevel::Personal->value,
+                    'status' => 'published',
+                    'version' => 1,
+                    'created_by' => $creatorId,
+                ],
+                'blocks' => [],
+            ], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $headId = (string) DB::table('templates')->where('id', $tid)->value('head_entity_version_id');
+        $this->assertNotEmpty($headId);
+
+        $this->deleteJson("/api/v1/templates/{$tid}/versions/{$headId}", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->assertDatabaseHas('template_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerTemplateLive,
+            'stage' => 1,
+        ]);
+        $this->assertDatabaseHas('template_document_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerDocumentLive,
+        ]);
+    }
+
     public function test_template_version_block_layers_resolve_equal_blocks_snapshot_after_second_publish(): void
     {
         $creatorId = (string) Str::uuid();
@@ -925,7 +1097,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'T',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -1129,6 +1301,109 @@ class TemplatesApiTest extends TestCase
         $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
+    }
+
+    public function test_creator_can_view_own_template_without_templates_read_permission(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId, []);
+        DB::table('user_permissions')
+            ->where('user_id', $creatorId)
+            ->whereIn('permission_code', ['templates.read', 'documents.create'])
+            ->delete();
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Borrador propio sin read',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->getJson("/api/v1/templates/{$tid}", $headers)
+            ->assertOk()
+            ->assertJsonPath('data.id', $tid)
+            ->assertJsonPath('data.created_by', $creatorId);
+    }
+
+    public function test_index_keeps_creator_id_when_head_snapshot_missing_created_by(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Borrador con snapshot legacy',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        /** @var array<string, mixed> $snapshotData */
+        $snapshotData = is_array($head->snapshot_data) ? $head->snapshot_data : [];
+        $templateData = isset($snapshotData['template']) && is_array($snapshotData['template'])
+            ? $snapshotData['template']
+            : [];
+        unset($templateData['created_by']);
+        $snapshotData['template'] = $templateData;
+        $head->update(['snapshot_data' => $snapshotData]);
+
+        EntityVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $creatorId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => [
+                'template' => [
+                    'id' => $tid,
+                    'process_id' => '00000000-0000-0000-0000-000000000001',
+                    'name' => 'Publicado',
+                    'created_by' => $creatorId,
+                    'status' => 'published',
+                    'version' => 1,
+                ],
+                'blocks' => [],
+            ],
+            'is_snapshot_immutable' => true,
+        ]);
+
+        $this->getJson('/api/v1/templates', $headers)
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $tid,
+                'status' => 'draft',
+                'created_by' => $creatorId,
+            ]);
     }
 
     public function test_teacher_sees_study_scoped_template_when_user_has_study_in_bd(): void
@@ -1384,6 +1659,43 @@ class TemplatesApiTest extends TestCase
             ->first();
         $this->assertNotNull($versionRow);
         $this->assertSame("Publicaci\u{00f3}n autom\u{00e1}tica", (string) $versionRow->changelog);
+    }
+
+    public function test_template_creator_can_publish_draft_without_reviewers_even_if_not_personal(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headersCreator = $this->authHeaders($creatorId, []);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft directo global',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.version', 1);
     }
 
     public function test_template_publish_fails_without_blocks(): void

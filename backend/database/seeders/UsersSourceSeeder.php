@@ -33,7 +33,6 @@ class UsersSourceSeeder extends Seeder
                     'id' => $user['id'],
                     'name' => $user['nombre'],
                     'email' => $user['email'],
-                    'department' => $user['departamento'],
                     'created_at' => $now,
                     'updated_at' => $now,
                 ],

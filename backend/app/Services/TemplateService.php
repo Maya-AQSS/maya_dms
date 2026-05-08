@@ -9,12 +9,15 @@ use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -145,6 +148,11 @@ class TemplateService implements TemplateServiceInterface
         if ($userId === null) {
             throw new RuntimeException('Cannot create template without authenticated user.');
         }
+        $this->assertTemplateMetadataInvariants(
+            $dto->name,
+            $dto->deliveryDeadline,
+            $dto->visibilityLevel,
+        );
 
         return $this->templateRepository->create([
             'process_id' => $dto->processId,
@@ -201,6 +209,11 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setReviewMode) {
             $attributes['review_mode'] = $dto->reviewMode;
         }
+        $this->assertTemplateMetadataInvariants(
+            (string) ($attributes['name'] ?? $template->name),
+            $attributes['delivery_deadline'] ?? $template->delivery_deadline,
+            $attributes['visibility_level'] ?? $template->visibility_level,
+        );
 
         return $this->templateRepository->update($template, $attributes);
     }
@@ -240,6 +253,11 @@ class TemplateService implements TemplateServiceInterface
     public function clone(string $sourceTemplateId, string $actorId): Template
     {
         $source = $this->templateRepository->findOrFail($sourceTemplateId);
+        $this->assertTemplateMetadataInvariants(
+            (string) $source->name,
+            $source->delivery_deadline,
+            $source->visibility_level,
+        );
 
         $published = $this->resolveLatestPublishedTemplateSnapshotForClone((string) $source->id);
         if ($published !== null) {
@@ -261,6 +279,11 @@ class TemplateService implements TemplateServiceInterface
                 'status' => ['Solo una plantilla publicada puede pasar a borrador para una nueva versión.'],
             ]);
         }
+        $this->assertTemplateMetadataInvariants(
+            (string) $template->name,
+            $template->delivery_deadline,
+            $template->visibility_level,
+        );
 
         return $this->templatePublishingService->transitionStatus(
             $template,
@@ -275,7 +298,7 @@ class TemplateService implements TemplateServiceInterface
      */
     public function destroyVersion(string $templateId, string $versionId, string $actorId): Template
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $versionId, $actorId) {
+        return $this->templateRepository->transaction(function () use ($templateId, $versionId) {
             $template = $this->templateRepository->findOrFail($templateId);
             $template->loadMissing('headVersion');
             $head = $template->headVersion;
@@ -309,49 +332,129 @@ class TemplateService implements TemplateServiceInterface
             $head->updated_at = now();
             $head->save();
 
-            // Asegura coherencia de revisores desde el snapshot publicado.
-            $reviewersSection = isset($publishedSnapshot['reviewers']) && is_array($publishedSnapshot['reviewers'])
-                ? $publishedSnapshot['reviewers']
-                : [];
-            $templateReviewers = isset($reviewersSection['template_reviewers']) && is_array($reviewersSection['template_reviewers'])
-                ? $reviewersSection['template_reviewers']
-                : [];
-            $documentReviewers = isset($reviewersSection['document_reviewers']) && is_array($reviewersSection['document_reviewers'])
-                ? $reviewersSection['document_reviewers']
-                : [];
-
-            $template->reviewers()->withTrashed()->forceDelete();
-            foreach ($templateReviewers as $row) {
-                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
-                    continue;
-                }
-                $template->reviewers()->create([
-                    'user_id' => $row['user_id'],
-                    'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
-                    'status' => 'pending',
-                ]);
-            }
-
-            $template->documentReviewers()->delete();
-            foreach ($documentReviewers as $row) {
-                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
-                    continue;
-                }
-                $template->documentReviewers()->create([
-                    'user_id' => $row['user_id'],
-                ]);
-            }
+            $this->restoreTemplateBlocksFromPublishedSnapshot($template, $publishedSnapshot);
+            $this->restoreReviewersFromPublishedSnapshotIfPresent($template, $publishedSnapshot);
 
             // Refresca campos delegados críticos para consistencia con el snapshot restaurado.
+            $currentCreatorId = (string) $template->created_by;
             $template = $this->templateRepository->update($template, [
                 'status' => 'published',
                 'created_by' => isset($publishedTemplate['created_by']) && is_string($publishedTemplate['created_by'])
                     ? $publishedTemplate['created_by']
-                    : $actorId,
+                    : $currentCreatorId,
             ]);
 
             return $template->loadMissing(['reviewers', 'documentReviewers']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $publishedSnapshot
+     */
+    private function restoreTemplateBlocksFromPublishedSnapshot(Template $template, array $publishedSnapshot): void
+    {
+        $blocks = isset($publishedSnapshot['blocks']) && is_array($publishedSnapshot['blocks'])
+            ? $publishedSnapshot['blocks']
+            : [];
+        $templateId = (string) $template->getKey();
+        $publishedBlockIds = [];
+
+        foreach ($blocks as $index => $block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $snapshotId = isset($block['id']) && is_string($block['id']) && $block['id'] !== ''
+                ? $block['id']
+                : null;
+            $blockId = $snapshotId ?? (string) Str::uuid();
+            $publishedBlockIds[] = $blockId;
+
+            $rawTitle = $block['title'] ?? null;
+            $title = match (true) {
+                $rawTitle === null => null,
+                is_string($rawTitle) => $rawTitle,
+                is_scalar($rawTitle) => (string) $rawTitle,
+                default => null,
+            };
+
+            $values = [
+                'template_id' => $templateId,
+                'title' => $title,
+                'description' => array_key_exists('description', $block) ? $block['description'] : null,
+                'default_content' => array_key_exists('default_content', $block) ? $block['default_content'] : null,
+                'block_state' => isset($block['block_state']) && is_string($block['block_state'])
+                    ? $block['block_state']
+                    : 'editable',
+                'sort_order' => isset($block['sort_order']) ? (int) $block['sort_order'] : (int) $index,
+            ];
+
+            $updated = TemplateBlock::query()->whereKey($blockId)->update($values);
+            if ($updated === 0) {
+                TemplateBlock::query()->forceCreate([
+                    'id' => $blockId,
+                    ...$values,
+                ]);
+            }
+        }
+
+        $blockIdsInUseByDocuments = DB::table('document_blocks')
+            ->whereIn('template_block_id', function ($query) use ($templateId) {
+                $query->select('id')
+                    ->from('template_blocks')
+                    ->where('template_id', $templateId);
+            })
+            ->pluck('template_block_id')
+            ->map(static fn ($id) => (string) $id)
+            ->all();
+
+        $protectedIds = array_values(array_unique(array_merge($publishedBlockIds, $blockIdsInUseByDocuments)));
+
+        $deleteQuery = TemplateBlock::query()->where('template_id', $templateId);
+        if ($protectedIds !== []) {
+            $deleteQuery->whereNotIn('id', $protectedIds);
+        }
+        $deleteQuery->delete();
+    }
+
+    /**
+     * @param  array<string, mixed>  $publishedSnapshot
+     */
+    private function restoreReviewersFromPublishedSnapshotIfPresent(Template $template, array $publishedSnapshot): void
+    {
+        if (! array_key_exists('reviewers', $publishedSnapshot) || ! is_array($publishedSnapshot['reviewers'])) {
+            return;
+        }
+
+        $reviewersSection = $publishedSnapshot['reviewers'];
+        $templateReviewers = isset($reviewersSection['template_reviewers']) && is_array($reviewersSection['template_reviewers'])
+            ? $reviewersSection['template_reviewers']
+            : [];
+        $documentReviewers = isset($reviewersSection['document_reviewers']) && is_array($reviewersSection['document_reviewers'])
+            ? $reviewersSection['document_reviewers']
+            : [];
+
+        $template->reviewers()->withTrashed()->forceDelete();
+        foreach ($templateReviewers as $row) {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                continue;
+            }
+            $template->reviewers()->create([
+                'user_id' => $row['user_id'],
+                'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
+                'status' => 'pending',
+            ]);
+        }
+
+        $template->documentReviewers()->delete();
+        foreach ($documentReviewers as $row) {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                continue;
+            }
+            $template->documentReviewers()->create([
+                'user_id' => $row['user_id'],
+            ]);
+        }
     }
 
     /**
@@ -371,21 +474,29 @@ class TemplateService implements TemplateServiceInterface
             $templateMeta = $published['template_meta'];
 
             $nameBase = $this->cloneTemplateNameBase($kind, $templateMeta, $source);
+            $cloneVisibility = $this->normalizeTemplateVisibilityLevelForClone($kind, $templateMeta, $source);
+            $cloneDeliveryDeadline = $this->cloneTemplateDeliveryDeadline($kind, $templateMeta, $source);
+            $cloneName = $nameBase.' (copia)';
+            $this->assertTemplateMetadataInvariants(
+                $cloneName,
+                $cloneDeliveryDeadline,
+                $cloneVisibility,
+            );
 
             $target = $this->templateRepository->create([
                 'process_id' => $source->process_id,
-                'name' => $nameBase.' (copia)',
+                'name' => $cloneName,
                 'description' => $this->cloneTemplateDescription($kind, $templateMeta, $source),
-                'visibility_level' => $this->normalizeTemplateVisibilityLevelForClone($kind, $templateMeta, $source),
-                'delivery_deadline' => $source->delivery_deadline,
+                'visibility_level' => $cloneVisibility,
+                'delivery_deadline' => $cloneDeliveryDeadline,
                 'study_type_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_type_id'),
                 'study_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_id'),
                 'module_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'module_id'),
                 'team_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'team_id'),
                 'created_by' => $actorId,
                 'status' => 'draft',
-                'review_stages' => $source->review_stages,
-                'review_mode' => $source->review_mode,
+                'review_stages' => $this->cloneTemplateReviewStages($kind, $templateMeta, $source),
+                'review_mode' => $this->cloneTemplateReviewMode($kind, $templateMeta, $source),
             ]);
 
             $this->templateRepository->insertBlocksFromPublishedSnapshot((string) $target->getKey(), $published['blocks']);
@@ -433,14 +544,21 @@ class TemplateService implements TemplateServiceInterface
     {
         return $this->templateRepository->transaction(function () use ($source, $actorId) {
             $source->loadMissing(['blocks', 'reviewers', 'documentReviewers']);
+            $cloneVisibility = $source->visibility_level instanceof TemplateVisibilityLevel
+                ? $source->visibility_level->value
+                : $source->visibility_level;
+            $cloneName = $source->name.' (copia)';
+            $this->assertTemplateMetadataInvariants(
+                $cloneName,
+                $source->delivery_deadline,
+                $cloneVisibility,
+            );
 
             $target = $this->templateRepository->create([
                 'process_id' => $source->process_id,
-                'name' => $source->name.' (copia)',
+                'name' => $cloneName,
                 'description' => $source->description,
-                'visibility_level' => $source->visibility_level instanceof TemplateVisibilityLevel
-                    ? $source->visibility_level->value
-                    : $source->visibility_level,
+                'visibility_level' => $cloneVisibility,
                 'delivery_deadline' => $source->delivery_deadline,
                 'study_type_id' => $source->study_type_id,
                 'study_id' => $source->study_id,
@@ -472,6 +590,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Resuelve la última versión publicada con metadatos si el ganador por meta no produce snapshot usable.
+     * 
+     * @param  string  $templateId
      * @return ?array{
      *     kind: 'entity'|'legacy',
      *     template_meta: array<string, mixed>,
@@ -534,6 +655,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Construye el payload de clonación de la plantilla.
+     * 
+     * @param  array<string, mixed>  $data
      * @return ?array{
      *     kind: 'entity',
      *     template_meta: array<string, mixed>,
@@ -568,6 +692,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Clona el nombre base de la plantilla.
+     * 
+     * @param  string  $kind
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateNameBase(string $kind, array $templateMeta, Template $source): string
@@ -580,6 +707,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Clona el nombre base de la plantilla.
+     * 
+     * @param  string  $kind
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateDescription(string $kind, array $templateMeta, Template $source): ?string
@@ -594,6 +724,22 @@ class TemplateService implements TemplateServiceInterface
     /**
      * @param  array<string, mixed>  $templateMeta
      */
+    private function cloneTemplateDeliveryDeadline(string $kind, array $templateMeta, Template $source): mixed
+    {
+        if ($kind === 'entity' && array_key_exists('delivery_deadline', $templateMeta)) {
+            return $templateMeta['delivery_deadline'];
+        }
+
+        return $source->delivery_deadline;
+    }
+
+    /**
+     * Clona el valor de un FK de la plantilla.
+     * 
+     * @param  string  $key
+     * @return mixed
+     * @param  array<string, mixed>  $templateMeta
+     */
     private function cloneTemplateNullableFk(string $kind, array $templateMeta, Template $source, string $key): mixed
     {
         if ($kind === 'entity' && array_key_exists($key, $templateMeta)) {
@@ -604,7 +750,10 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * @param  array<string, mixed>  $templateMeta
+     * Normaliza el nivel de visibilidad de la plantilla.
+     * 
+     * @param  TemplateVisibilityLevel|string  $level
+     * @return string
      */
     private function normalizeTemplateVisibilityLevelForClone(string $kind, array $templateMeta, Template $source): string
     {
@@ -613,6 +762,35 @@ class TemplateService implements TemplateServiceInterface
         }
 
         return $this->normalizeTemplateVisibilityLevelValue($source->visibility_level);
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateReviewStages(string $kind, array $templateMeta, Template $source): int
+    {
+        if ($kind === 'entity' && array_key_exists('review_stages', $templateMeta)) {
+            return (int) $templateMeta['review_stages'];
+        }
+
+        return (int) $source->review_stages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateReviewMode(string $kind, array $templateMeta, Template $source): string
+    {
+        if (
+            $kind === 'entity'
+            && isset($templateMeta['review_mode'])
+            && is_string($templateMeta['review_mode'])
+            && in_array($templateMeta['review_mode'], ['sequential', 'parallel'], true)
+        ) {
+            return $templateMeta['review_mode'];
+        }
+
+        return (string) $source->review_mode;
     }
 
     private function normalizeTemplateVisibilityLevelValue(mixed $level): string
@@ -625,6 +803,166 @@ class TemplateService implements TemplateServiceInterface
         }
 
         return TemplateVisibilityLevel::Personal->value;
+    }
+
+    /**
+     * Aserta las invariantes de los metadatos de la plantilla.
+     * Lanza excepción si alguna invariante no se cumple.
+     * 
+     * @param  string  $name
+     * @param  Carbon|string|null  $deliveryDeadline
+     * @param  TemplateVisibilityLevel|string  $visibilityLevel
+     */
+    private function assertTemplateMetadataInvariants(string $name, mixed $deliveryDeadline, mixed $visibilityLevel): void
+    {
+        if (trim($name) === '') {
+            throw ValidationException::withMessages([
+                'name' => ['El nombre de la plantilla es obligatorio.'],
+            ]);
+        }
+
+        if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
+            throw ValidationException::withMessages([
+                'delivery_deadline' => ['La fecha de entrega de la plantilla es obligatoria.'],
+            ]);
+        }
+
+        $normalizedVisibility = $visibilityLevel instanceof TemplateVisibilityLevel
+            ? $visibilityLevel->value
+            : (is_string($visibilityLevel) ? trim($visibilityLevel) : '');
+        if ($normalizedVisibility === '') {
+            throw ValidationException::withMessages([
+                'visibility_level' => ['La visibilidad de la plantilla es obligatoria.'],
+            ]);
+        }
+    }
+
+    /**
+     * Normaliza los atributos de actualización contra el scope de la plantilla.
+     * 
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeUpdateAttributesAgainstTemplateScope(Template $template, array $attributes): array
+    {
+        $normalized = $attributes;
+        $visibility = $this->normalizeTemplateVisibilityLevelValue($template->visibility_level);
+
+        $templateStudyTypeId = is_string($template->study_type_id) && $template->study_type_id !== '' ? $template->study_type_id : null;
+        $templateStudyId = is_string($template->study_id) && $template->study_id !== '' ? $template->study_id : null;
+        $templateModuleId = is_string($template->module_id) && $template->module_id !== '' ? $template->module_id : null;
+
+        $studyTypeId = array_key_exists('study_type_id', $attributes) ? $attributes['study_type_id'] : $template->study_type_id;
+        $studyId = array_key_exists('study_id', $attributes) ? $attributes['study_id'] : $template->study_id;
+        $moduleId = array_key_exists('module_id', $attributes) ? $attributes['module_id'] : $template->module_id;
+
+        if ($visibility === TemplateVisibilityLevel::Personal->value || $visibility === TemplateVisibilityLevel::Team->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['module_id'] = $templateModuleId;
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Module->value) {
+            if ($templateModuleId !== null && $moduleId !== null && $moduleId !== $templateModuleId) {
+                throw ValidationException::withMessages([
+                    'module_id' => ['La plantilla debe mantenerse en el mismo módulo.'],
+                ]);
+            }
+
+            $normalized['module_id'] = $templateModuleId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Study->value) {
+            if ($templateStudyId !== null && $studyId !== null && $studyId !== $templateStudyId) {
+                throw ValidationException::withMessages([
+                    'study_id' => ['La plantilla debe mantenerse en el mismo estudio.'],
+                ]);
+            }
+
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $moduleStudyId = DB::table('course_modules')
+                    ->where('id', $moduleId)
+                    ->value('study_id');
+                if (! is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
+                    ]);
+                }
+                $normalized['module_id'] = $moduleId;
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::StudyType->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $module = DB::table('course_modules')
+                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
+                    ->where('course_modules.id', $moduleId)
+                    ->select('course_modules.study_id', 'studies.study_type_id')
+                    ->first();
+
+                if (! $module || (string) $module->study_type_id !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
+                    ]);
+                }
+
+                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
+
+                $normalized['module_id'] = $moduleId;
+                $normalized['study_id'] = (string) $module->study_id;
+
+                return $normalized;
+            }
+
+            if (is_string($studyId) && $studyId !== '') {
+                $studyTypeFromStudy = DB::table('studies')
+                    ->where('id', $studyId)
+                    ->value('study_type_id');
+                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
+                    ]);
+                }
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Global->value && is_string($moduleId) && $moduleId !== '') {
+            $module = DB::table('course_modules')
+                ->where('id', $moduleId)
+                ->select('study_id')
+                ->first();
+            if (! $module || ! is_string($module->study_id)) {
+                throw ValidationException::withMessages([
+                    'module_id' => ['El módulo seleccionado no existe.'],
+                ]);
+            }
+            if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                throw ValidationException::withMessages([
+                    'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                ]);
+            }
+        }
+
+        return $normalized;
     }
 
     /**

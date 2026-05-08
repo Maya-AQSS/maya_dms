@@ -8,6 +8,8 @@ use App\Models\Template;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Maya\Messaging\Publishers\AuditPublisher;
+use Mockery;
 
 abstract class TestCase extends BaseTestCase
 {
@@ -16,6 +18,11 @@ abstract class TestCase extends BaseTestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        // Evita dependencias de RabbitMQ en tests HTTP/Feature cuando se disparan listeners de auditoría.
+        $auditPublisher = Mockery::mock(AuditPublisher::class);
+        $auditPublisher->shouldIgnoreMissing();
+        $this->app->instance(AuditPublisher::class, $auditPublisher);
 
         // En tests legacy hay forceCreate() de Template sin process_id.
         // Mientras se migra el suite, inyectamos un proceso por defecto.

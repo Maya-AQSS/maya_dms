@@ -5,11 +5,22 @@ namespace App\Repositories\Eloquent;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
+/**
+ * Directorio de usuarios sobre la vista/tabla `users` y `user_permissions`.
+ *
+ * Los candidatos a validador de plantilla o de documento son siempre usuarios que tienen
+ * el permiso correspondiente en `user_permissions`: {@see self::PERMISSION_TEMPLATE_REVIEW}
+ * o {@see self::PERMISSION_DOCUMENT_REVIEW} (no se infiere el rol por otro criterio).
+ */
 class UserDirectoryRepository implements UserDirectoryRepositoryInterface
 {
+    private const PERMISSION_TEMPLATE_REVIEW = 'templates.review';
+
+    private const PERMISSION_DOCUMENT_REVIEW = 'documents.review';
+
     /**
-     * Busca usuarios por nombre, email o departamento.
-     * 
+     * Busca usuarios por nombre o email.
+     *
      * @param string $search
      * @param int $limit
      * @return array
@@ -43,37 +54,27 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
     }
 
     /**
-     * Busca candidatos a revisor con permiso templates.review.
-     * 
-     * @param string $search
-     * @param int $limit
-     * @return array
+     * Usuarios que pueden validar plantillas: tienen {@see self::PERMISSION_TEMPLATE_REVIEW} en `user_permissions`.
      */
     public function searchTemplateReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        return $this->searchReviewerCandidatesByPermission('templates.review', $search, $limit, $excludeUserId);
+        return $this->searchReviewerCandidatesByPermission(self::PERMISSION_TEMPLATE_REVIEW, $search, $limit, $excludeUserId);
     }
 
     /**
-     * Busca candidatos a revisor con permiso documents.review.
-     * 
-     * @param string $search
-     * @param int $limit
-     * @return array
+     * Usuarios que pueden validar documentos: tienen {@see self::PERMISSION_DOCUMENT_REVIEW} en `user_permissions`.
      */
     public function searchDocumentReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        return $this->searchReviewerCandidatesByPermission('documents.review', $search, $limit, $excludeUserId);
+        return $this->searchReviewerCandidatesByPermission(self::PERMISSION_DOCUMENT_REVIEW, $search, $limit, $excludeUserId);
     }
 
     /**
-     * Busca candidatos a revisor con permiso templates.review o documents.review.
-     * 
-     * @param string $permissionCode
-     * @param string $search
-     * @param int $limit
-     * @return array
-     * @return list<array{id: string, name: ?string, email: ?string, role: ?string}>
+     * Candidatos a validador filtrados por un único código de permiso de revisión ya presente en `user_permissions`.
+     *
+     * @param string $permissionCode p. ej. {@see self::PERMISSION_TEMPLATE_REVIEW} o {@see self::PERMISSION_DOCUMENT_REVIEW}
+     *
+     * @return list<array{id: string, name: ?string, email: ?string, role: ?string}> `role` reservado para la API (sin datos en `users` FDW)
      */
     private function searchReviewerCandidatesByPermission(
         string $permissionCode,

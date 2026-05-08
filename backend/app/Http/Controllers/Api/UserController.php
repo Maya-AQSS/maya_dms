@@ -17,8 +17,8 @@ class UserController extends Controller
     /**
      * GET /api/v1/users?search={term}&per_page={n}&exclude_user_id={uuid?}
      *
-     * Búsqueda case-insensitive por nombre, email y departamento.
-     * Devuelve { data: [...] } con el campo `role` mapeado desde `department`.
+     * Búsqueda case-insensitive por nombre y email.
+     * Devuelve { data: [...] }; el campo `role` queda reservado (null) en este directorio.
      *
      * Devuelve array vacío si el término tiene menos de 2 caracteres.
      *

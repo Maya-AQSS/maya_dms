@@ -263,10 +263,11 @@ class DocumentService implements DocumentServiceInterface
                 $moduleId = null;
             } elseif ($dto->moduleId !== null) {
                 $module = DB::table('course_modules')
-                    ->where('id', $dto->moduleId)
-                    ->select('study_id')
+                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
+                    ->where('course_modules.id', $dto->moduleId)
+                    ->select('course_modules.study_id', 'studies.study_type_id')
                     ->first();
-                if (! $module || ! is_string($module->study_id)) {
+                if (! $module || ! is_string($module->study_id) || ! is_string($module->study_type_id)) {
                     throw ValidationException::withMessages([
                         'module_id' => ['El módulo seleccionado no existe.'],
                     ]);
@@ -276,14 +277,32 @@ class DocumentService implements DocumentServiceInterface
                         'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                     ]);
                 }
+                if ($dto->studyTypeId !== null && $dto->studyTypeId !== (string) $module->study_type_id) {
+                    throw ValidationException::withMessages([
+                        'study_type_id' => ['El tipo de estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
                 $moduleId = $dto->moduleId;
                 $studyId = (string) $module->study_id;
-                $studyTypeId = DB::table('studies')->where('id', $studyId)->value('study_type_id');
+                $studyTypeId = (string) $module->study_type_id;
                 $teamId = null;
             } elseif ($dto->studyId !== null) {
+                $studyTypeFromStudy = DB::table('studies')
+                    ->where('id', $dto->studyId)
+                    ->value('study_type_id');
+                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy === '') {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio seleccionado no existe.'],
+                    ]);
+                }
+                if ($dto->studyTypeId !== null && $dto->studyTypeId !== $studyTypeFromStudy) {
+                    throw ValidationException::withMessages([
+                        'study_type_id' => ['El tipo de estudio indicado no corresponde con el estudio seleccionado.'],
+                    ]);
+                }
                 $studyId = $dto->studyId;
                 $moduleId = null;
-                $studyTypeId = DB::table('studies')->where('id', $studyId)->value('study_type_id');
+                $studyTypeId = $studyTypeFromStudy;
                 $teamId = null;
             } elseif ($dto->studyTypeId !== null) {
                 $studyTypeId = $dto->studyTypeId;
@@ -335,8 +354,9 @@ class DocumentService implements DocumentServiceInterface
                 $blockRows = $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId);
 
                 if ($blockRows !== []) {
+                    $attributes = $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId);
                     return $this->documentRepository->createDocumentWithBlocks(
-                        $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId),
+                        $attributes,
                         $blockRows,
                     );
                 }
@@ -359,10 +379,20 @@ class DocumentService implements DocumentServiceInterface
                 return $row;
             })->all();
 
+            $templateId = (string) $source->template_id;
+            $publishedTemplateVersionId = $this->resolvePublishedTemplateVersionIdForClone(
+                $templateId,
+                is_string($source->template_version_id) ? $source->template_version_id : null,
+            );
+            $this->assertDocumentMetadataInvariantsForMutation(
+                (string) $source->title,
+                $source->delivery_deadline,
+            );
+
             return $this->documentRepository->createDocumentWithBlocks([
                 'process_id' => $source->process_id,
-                'template_id' => $source->template_id,
-                'template_version_id' => $source->template_version_id,
+                'template_id' => $templateId,
+                'template_version_id' => $publishedTemplateVersionId,
                 'title' => $source->title.' (copia)',
                 'study_type_id' => $source->study_type_id,
                 'study_id' => $source->study_id,
@@ -419,6 +449,9 @@ class DocumentService implements DocumentServiceInterface
      */
     private function cloneDocumentAttributesFromPublishedSnapshot(Document $source, array $docSnap, string $actorId): array
     {
+        $processId = isset($docSnap['process_id']) && is_string($docSnap['process_id']) && $docSnap['process_id'] !== ''
+            ? $docSnap['process_id']
+            : $source->process_id;
         $templateId = isset($docSnap['template_id']) && is_string($docSnap['template_id']) && $docSnap['template_id'] !== ''
             ? $docSnap['template_id']
             : (string) $source->template_id;
@@ -427,13 +460,21 @@ class DocumentService implements DocumentServiceInterface
         if ($templateVersionId !== null && ! is_string($templateVersionId)) {
             $templateVersionId = $source->template_version_id;
         }
+        $templateVersionId = $this->resolvePublishedTemplateVersionIdForClone(
+            $templateId,
+            is_string($templateVersionId) ? $templateVersionId : null,
+        );
 
         $titleBase = isset($docSnap['title']) && is_string($docSnap['title'])
             ? $docSnap['title']
             : (string) $source->title;
+        $deliveryDeadline = array_key_exists('delivery_deadline', $docSnap)
+            ? $docSnap['delivery_deadline']
+            : $source->delivery_deadline;
+        $this->assertDocumentMetadataInvariantsForMutation($titleBase, $deliveryDeadline);
 
         return [
-            'process_id' => $source->process_id,
+            'process_id' => $processId,
             'template_id' => $templateId,
             'template_version_id' => $templateVersionId,
             'title' => $titleBase.' (copia)',
@@ -441,11 +482,32 @@ class DocumentService implements DocumentServiceInterface
             'study_id' => array_key_exists('study_id', $docSnap) ? $docSnap['study_id'] : $source->study_id,
             'module_id' => array_key_exists('module_id', $docSnap) ? $docSnap['module_id'] : $source->module_id,
             'team_id' => array_key_exists('team_id', $docSnap) ? $docSnap['team_id'] : $source->team_id,
-            'delivery_deadline' => $source->delivery_deadline,
+            'delivery_deadline' => $deliveryDeadline,
             'created_by' => $actorId,
             'owner_id' => $actorId,
             'status' => 'draft',
         ];
+    }
+
+    private function resolvePublishedTemplateVersionIdForClone(string $templateId, ?string $candidateVersionId): ?string
+    {
+        if (is_string($candidateVersionId) && $candidateVersionId !== '') {
+            $candidate = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $candidateVersionId,
+                Template::class,
+                $templateId,
+            );
+            if ($candidate !== null && (int) $candidate->version_number > 0) {
+                return (string) $candidate->id;
+            }
+        }
+
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        if ($latestPublished === null || (int) $latestPublished->version_number <= 0) {
+            return null;
+        }
+
+        return (string) $latestPublished->id;
     }
 
     /**
@@ -457,7 +519,19 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        return $this->documentRepository->updateDocumentMetadata($document, $attributes);
+        if ($document->status !== 'draft') {
+            throw ValidationException::withMessages([
+                'status' => ['Solo se pueden editar metadatos de documentos en borrador.'],
+            ]);
+        }
+
+        $merged = $this->normalizeUpdateAttributesAgainstDocumentAndTemplate($document, $attributes);
+        $this->assertDocumentMetadataInvariantsForMutation(
+            is_string($merged['title'] ?? null) ? $merged['title'] : (string) $document->title,
+            $merged['delivery_deadline'] ?? $document->delivery_deadline,
+        );
+
+        return $this->documentRepository->updateDocumentMetadata($document, $merged);
     }
 
     /**
@@ -759,8 +833,201 @@ class DocumentService implements DocumentServiceInterface
                 'status' => ['Solo un documento publicado puede pasar a borrador para una nueva versión.'],
             ]);
         }
+        $this->assertDocumentMetadataInvariantsForMutation(
+            (string) $document->title,
+            $document->delivery_deadline,
+        );
 
         return $this->documentStateService->transition($documentId, 'draft', $actorId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeUpdateAttributesAgainstDocumentAndTemplate(Document $document, array $attributes): array
+    {
+        $normalized = $attributes;
+        $templateMeta = $this->resolveTemplateMetaForDocument($document);
+        if ($templateMeta === null) {
+            return $normalized;
+        }
+
+        $visibility = $templateMeta['visibility_level'] ?? null;
+        if (! is_string($visibility) || $visibility === '') {
+            return $normalized;
+        }
+
+        $studyTypeId = array_key_exists('study_type_id', $attributes) ? $attributes['study_type_id'] : $document->study_type_id;
+        $studyId = array_key_exists('study_id', $attributes) ? $attributes['study_id'] : $document->study_id;
+        $moduleId = array_key_exists('module_id', $attributes) ? $attributes['module_id'] : $document->module_id;
+
+        $templateStudyTypeId = isset($templateMeta['study_type_id']) && is_string($templateMeta['study_type_id']) && $templateMeta['study_type_id'] !== ''
+            ? $templateMeta['study_type_id']
+            : null;
+        $templateStudyId = isset($templateMeta['study_id']) && is_string($templateMeta['study_id']) && $templateMeta['study_id'] !== ''
+            ? $templateMeta['study_id']
+            : null;
+        $templateModuleId = isset($templateMeta['module_id']) && is_string($templateMeta['module_id']) && $templateMeta['module_id'] !== ''
+            ? $templateMeta['module_id']
+            : null;
+
+        if ($visibility === TemplateVisibilityLevel::Personal->value || $visibility === TemplateVisibilityLevel::Team->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['module_id'] = $templateModuleId;
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Module->value) {
+            if ($templateModuleId !== null) {
+                if ($moduleId !== null && $moduleId !== $templateModuleId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El documento debe mantenerse en el mismo módulo de la plantilla.'],
+                    ]);
+                }
+                $normalized['module_id'] = $templateModuleId;
+            }
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Study->value) {
+            if ($templateStudyId !== null) {
+                if ($studyId !== null && $studyId !== $templateStudyId) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El documento debe mantenerse en el mismo estudio de la plantilla.'],
+                    ]);
+                }
+                $normalized['study_id'] = $templateStudyId;
+            }
+            if (is_string($moduleId) && $moduleId !== '') {
+                $moduleStudyId = DB::table('course_modules')
+                    ->where('id', $moduleId)
+                    ->value('study_id');
+                if (! is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
+                    ]);
+                }
+                $normalized['module_id'] = $moduleId;
+            }
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::StudyType->value) {
+            if ($templateStudyTypeId !== null) {
+                $normalized['study_type_id'] = $templateStudyTypeId;
+            }
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $module = DB::table('course_modules')
+                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
+                    ->where('course_modules.id', $moduleId)
+                    ->select('course_modules.study_id', 'studies.study_type_id')
+                    ->first();
+                if (! $module || (string) $module->study_type_id !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
+                    ]);
+                }
+                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
+                $normalized['module_id'] = $moduleId;
+                $normalized['study_id'] = (string) $module->study_id;
+
+                return $normalized;
+            }
+
+            if (is_string($studyId) && $studyId !== '') {
+                $studyTypeFromStudy = DB::table('studies')
+                    ->where('id', $studyId)
+                    ->value('study_type_id');
+                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
+                    ]);
+                }
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Global->value) {
+            if (is_string($moduleId) && $moduleId !== '') {
+                $module = DB::table('course_modules')
+                    ->where('id', $moduleId)
+                    ->select('study_id')
+                    ->first();
+                if (! $module || ! is_string($module->study_id)) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo seleccionado no existe.'],
+                    ]);
+                }
+                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function resolveTemplateMetaForDocument(Document $document): ?array
+    {
+        $templateId = (string) $document->template_id;
+        if ($templateId === '') {
+            return null;
+        }
+
+        $templateVersionId = $document->template_version_id;
+        if (is_string($templateVersionId) && $templateVersionId !== '') {
+            $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $templateVersionId,
+                Template::class,
+                $templateId,
+            );
+            if ($entityVersion !== null && is_array($entityVersion->snapshot_data)) {
+                $templateMeta = $entityVersion->snapshot_data['template'] ?? null;
+                if (is_array($templateMeta)) {
+                    return $templateMeta;
+                }
+            }
+        }
+
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
+            return null;
+        }
+
+        $templateMeta = $latestPublished->snapshot_data['template'] ?? null;
+
+        return is_array($templateMeta) ? $templateMeta : null;
+    }
+
+    private function assertDocumentMetadataInvariantsForMutation(string $title, mixed $deliveryDeadline): void
+    {
+        if (trim($title) === '') {
+            throw ValidationException::withMessages([
+                'title' => ['El título del documento es obligatorio.'],
+            ]);
+        }
+
+        if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
+            throw ValidationException::withMessages([
+                'delivery_deadline' => ['La fecha de entrega del documento es obligatoria.'],
+            ]);
+        }
     }
 
     /**
@@ -1025,29 +1292,41 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Publica el documento.
      */
-    public function publishDocument(string $documentId, string $actorId, string $changelog): Document
+    public function publishDocument(string $documentId, string $actorId, ?string $changelog): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->status !== 'in_review') {
+        if (! in_array($document->status, ['draft', 'in_review'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo se puede publicar un documento en revisión.'],
+                'status' => ['Solo se puede publicar un documento en borrador o en revisión.'],
             ]);
         }
 
-        if ($this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {
+        if ($document->status === 'draft') {
+            $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
+            if ($candidates !== []) {
+                throw ValidationException::withMessages([
+                    'reviews' => ['El documento tiene validadores asignados. Debe completar la revisión para publicarse.'],
+                ]);
+            }
+        }
+
+        if ($document->status === 'in_review' && $this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {
             throw ValidationException::withMessages([
                 'reviews' => ['Quedan revisiones pendientes.'],
             ]);
         }
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
+            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
+            $resolvedChangelog = $trimmedChangelog !== '' ? $trimmedChangelog : 'Publicación automática';
+
             $this->documentStateService->transition($documentId, 'published', $actorId);
             $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                 documentId: $documentId,
                 triggerEvent: 'published',
                 triggeredBy: $actorId,
-                notes: $changelog,
+                notes: $resolvedChangelog,
             ));
 
             return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);

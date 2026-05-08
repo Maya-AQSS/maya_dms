@@ -151,11 +151,29 @@ export function NuevaProgramacionSelectorPage() {
   const listPerPage = filters.per_page ?? pageSize;
 
   const sortedTemplates = useMemo(() => {
-    if (!sortBy) return allTemplates;
+    const displayTemplates = allTemplates.map((t) => {
+      if (t.status !== 'published' && t.latest_published_version_id) {
+        return {
+          ...t,
+          name: t.latest_published_name ?? t.name,
+          status: 'published' as const,
+          version: t.latest_published_version_number ?? t.version,
+          list_variant: 'published_fallback' as const,
+          list_row_id: `${t.id}:published`,
+        };
+      }
+      return {
+        ...t,
+        list_variant: 'live' as const,
+        list_row_id: `${t.id}:live`,
+      };
+    });
+
+    if (!sortBy) return displayTemplates;
     const { columnId, direction } = sortBy;
     const dir = direction === 'asc' ? 1 : -1;
 
-    return [...allTemplates].sort((a, b) => {
+    return [...displayTemplates].sort((a, b) => {
       let valA: string | number = '';
       let valB: string | number = '';
 
@@ -267,16 +285,24 @@ export function NuevaProgramacionSelectorPage() {
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:nueva-programacion-selector"
-        onRowClick={(t) =>
-          navigate(`/templates/${t.id}`, {
+        onRowClick={(t) => {
+          const selectedTemplateVersionId =
+            t.list_variant === 'published_fallback'
+              ? (t.latest_published_version_id ?? null)
+              : null;
+          const path = selectedTemplateVersionId
+            ? `/templates/${t.id}?templateVersionId=${encodeURIComponent(selectedTemplateVersionId)}`
+            : `/templates/${t.id}`;
+          navigate(path, {
             state: {
               selectionMode: true,
               backTo: '/documentos/nuevo',
               moduleId: selectedModuleId,
               processId: selectedProcessId,
+              templateVersionId: selectedTemplateVersionId,
             },
-          })
-        }
+          });
+        }}
         filtersPanel={
           <>
             <FilterField label="Visibilidad">

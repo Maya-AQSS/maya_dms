@@ -224,9 +224,18 @@ class DocumentPolicyTest extends TestCase
     {
         $userId = '11111111-1111-1111-1111-111111111111';
         $user = $this->makeJwtUser($userId, ['documents.create']);
-        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'published');
 
         $this->assertTrue($this->policy->clone($user, $doc));
+    }
+
+    public function test_clone_denied_for_non_published_document(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($userId, ['documents.create']);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'draft');
+
+        $this->assertFalse($this->policy->clone($user, $doc));
     }
 
     /**

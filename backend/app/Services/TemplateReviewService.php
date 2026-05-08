@@ -40,7 +40,7 @@ class TemplateReviewService
                 ]);
             }
 
-            return $this->templatePublishingService->publishWithSnapshot($templateId, null, $actorId);
+            return $this->templatePublishingService->publishWithSnapshot($templateId, 'Publicación automática', $actorId);
         }
 
         $template->reviewers()->update(['status' => 'pending']);
