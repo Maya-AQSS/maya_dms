@@ -178,7 +178,7 @@ export function TemplatePreviewPage() {
             if (t.has_review_comments) {
               void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
                 .then((res) => { if (!cancelled) setReviewComments(res.data); })
-                .catch(() => { /* non-critical */ });
+                .catch((err) => { console.error('Error loading review comments', err); });
             }
           }
         }
@@ -192,7 +192,10 @@ export function TemplatePreviewPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [id, profile?.id, templateVersionId]);
+  // profile?.id was previously used in the loading condition but is no longer needed here;
+  // the backend handles authorization. Keeping it out of deps avoids a double-load flash.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, templateVersionId]);
 
 
   // Unresolved root-level comments for a block (drives badge + card visibility).
