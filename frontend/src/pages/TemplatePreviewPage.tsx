@@ -292,8 +292,7 @@ export function TemplatePreviewPage() {
   const canDelete =
     !viewingPublishedSnapshot &&
     template != null &&
-    !template.latest_published_version_id &&
-    ((isDraft && isOwner) || (isPublished && (isOwner || hasPermission('templates.delete'))));
+    (isOwner || hasPermission('templates.delete'));
   /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
   const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
   const canSubmit =
