@@ -176,6 +176,7 @@ class CommentController extends Controller
     {
         $commentModel = $this->commentService->findOrFail($comment);
         $this->authorizeViewForCommentable($commentModel);
+        $this->authorize('resolve', $commentModel);
 
         $resolved = $this->commentService->resolve($comment, (string) Auth::id());
         return response()->json(['data' => $resolved]);
