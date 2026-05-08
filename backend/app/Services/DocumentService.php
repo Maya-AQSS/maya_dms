@@ -1060,7 +1060,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Publica el documento.
      */
-    public function publishDocument(string $documentId, string $actorId, string $changelog): Document
+    public function publishDocument(string $documentId, string $actorId, ?string $changelog): Document
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
@@ -1086,12 +1086,15 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
+            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
+            $resolvedChangelog = $trimmedChangelog !== '' ? $trimmedChangelog : 'Publicación automática';
+
             $this->documentStateService->transition($documentId, 'published', $actorId);
             $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                 documentId: $documentId,
                 triggerEvent: 'published',
                 triggeredBy: $actorId,
-                notes: $changelog,
+                notes: $resolvedChangelog,
             ));
 
             return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);

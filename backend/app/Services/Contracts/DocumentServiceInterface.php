@@ -72,7 +72,7 @@ interface DocumentServiceInterface
     /**
      * Publica el documento.
      */
-    public function publishDocument(string $documentId, string $actorId, string $changelog): Document;
+    public function publishDocument(string $documentId, string $actorId, ?string $changelog): Document;
 
     /**
      * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión antes de volver a publicar.

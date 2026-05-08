@@ -2784,7 +2784,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonCount(0, 'data');
     }
 
-    public function test_publish_document_requires_changelog(): void
+    public function test_publish_document_first_publish_autofills_changelog_when_missing(): void
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId);
@@ -2846,19 +2846,82 @@ class DocumentsTemplateVersionApiTest extends TestCase
         DB::table('document_reviews')->where('document_id', $docId)->delete();
 
         $this->postJson("/api/v1/documents/{$docId}/publish", [], $hCreator)
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['changelog']);
-
-        $this->postJson("/api/v1/documents/{$docId}/publish", [
-            'changelog' => 'Publicación directa con notas',
-        ], $hCreator)
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
         $this->assertSame(
-            'Publicación directa con notas',
+            'Publicación automática',
             (string) DB::table('document_versions')->where('document_id', $docId)->value('notes'),
         );
+    }
+
+    public function test_publish_document_requires_changelog_from_second_version_onward(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla publish v2 changelog',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $hCreator)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc publish v2',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        // Primera publicación: changelog opcional.
+        $this->postJson("/api/v1/documents/{$docId}/publish", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        // Nueva versión -> segunda publicación.
+        $this->postJson("/api/v1/documents/{$docId}/new-version", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => '   ',
+        ], $hCreator)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['changelog']);
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => 'Segunda publicación con cambios',
+        ], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
     }
 
     public function test_publish_document_allows_direct_publish_in_draft_without_validators(): void
