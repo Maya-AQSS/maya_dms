@@ -811,6 +811,8 @@ class TemplatesApiTest extends TestCase
         $reviewerDocumentPublished = (string) Str::uuid();
         $reviewerTemplateLive = (string) Str::uuid();
         $reviewerDocumentLive = (string) Str::uuid();
+        $publishedBlockId = (string) Str::uuid();
+        $liveOnlyBlockId = (string) Str::uuid();
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -839,6 +841,15 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $reviewerDocumentLive,
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $liveOnlyBlockId,
+            'template_id' => $tid,
+            'title' => 'Bloque solo live',
+            'description' => null,
+            'default_content' => ['delta' => true],
+            'block_state' => 'editable',
+            'sort_order' => 99,
         ]);
 
         DB::table('entity_versions')->insert([
@@ -869,7 +880,17 @@ class TemplatesApiTest extends TestCase
                     'version' => 1,
                     'created_by' => $creatorId,
                 ],
-                'blocks' => [],
+                'blocks' => [
+                    [
+                        'id' => $publishedBlockId,
+                        'template_id' => $tid,
+                        'title' => 'Bloque publicado',
+                        'description' => ['ops' => []],
+                        'default_content' => ['ops' => [['insert' => 'v1']]],
+                        'block_state' => 'locked',
+                        'sort_order' => 1,
+                    ],
+                ],
                 'reviewers' => [
                     'template_reviewers' => [
                         ['user_id' => $reviewerTemplatePublished, 'stage' => 1, 'status' => 'approved'],
@@ -892,6 +913,18 @@ class TemplatesApiTest extends TestCase
             ->assertJsonPath('data.status', 'published')
             ->assertJsonPath('data.name', 'Plantilla publicada v1');
 
+        $this->assertDatabaseHas('template_blocks', [
+            'id' => $publishedBlockId,
+            'template_id' => $tid,
+            'title' => 'Bloque publicado',
+            'block_state' => 'locked',
+            'sort_order' => 1,
+        ]);
+        $this->assertDatabaseMissing('template_blocks', [
+            'id' => $liveOnlyBlockId,
+            'template_id' => $tid,
+        ]);
+
         $this->assertDatabaseHas('template_reviewers', [
             'template_id' => $tid,
             'user_id' => $reviewerTemplatePublished,
@@ -906,6 +939,89 @@ class TemplatesApiTest extends TestCase
             'user_id' => $reviewerDocumentPublished,
         ]);
         $this->assertDatabaseMissing('template_document_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerDocumentLive,
+        ]);
+    }
+
+    public function test_delete_template_version_preserves_existing_reviewers_when_published_snapshot_has_no_reviewers_section(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId, []);
+        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+
+        $reviewerTemplateLive = (string) Str::uuid();
+        $reviewerDocumentLive = (string) Str::uuid();
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla reviewers legacy',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerTemplateLive,
+            'stage' => 1,
+            'status' => 'pending',
+        ]);
+        TemplateDocumentReviewer::query()->forceCreate([
+            'template_id' => $tid,
+            'user_id' => $reviewerDocumentLive,
+        ]);
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $creatorId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => json_encode([
+                'template' => [
+                    'id' => $tid,
+                    'process_id' => '00000000-0000-0000-0000-000000000001',
+                    'name' => 'Plantilla publicada v1',
+                    'visibility_level' => TemplateVisibilityLevel::Personal->value,
+                    'status' => 'published',
+                    'version' => 1,
+                    'created_by' => $creatorId,
+                ],
+                'blocks' => [],
+            ], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $headId = (string) DB::table('templates')->where('id', $tid)->value('head_entity_version_id');
+        $this->assertNotEmpty($headId);
+
+        $this->deleteJson("/api/v1/templates/{$tid}/versions/{$headId}", [], $headers)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->assertDatabaseHas('template_reviewers', [
+            'template_id' => $tid,
+            'user_id' => $reviewerTemplateLive,
+            'stage' => 1,
+        ]);
+        $this->assertDatabaseHas('template_document_reviewers', [
             'template_id' => $tid,
             'user_id' => $reviewerDocumentLive,
         ]);

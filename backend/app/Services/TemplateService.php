@@ -9,12 +9,15 @@ use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -275,7 +278,7 @@ class TemplateService implements TemplateServiceInterface
      */
     public function destroyVersion(string $templateId, string $versionId, string $actorId): Template
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $versionId, $actorId) {
+        return $this->templateRepository->transaction(function () use ($templateId, $versionId) {
             $template = $this->templateRepository->findOrFail($templateId);
             $template->loadMissing('headVersion');
             $head = $template->headVersion;
@@ -309,49 +312,129 @@ class TemplateService implements TemplateServiceInterface
             $head->updated_at = now();
             $head->save();
 
-            // Asegura coherencia de revisores desde el snapshot publicado.
-            $reviewersSection = isset($publishedSnapshot['reviewers']) && is_array($publishedSnapshot['reviewers'])
-                ? $publishedSnapshot['reviewers']
-                : [];
-            $templateReviewers = isset($reviewersSection['template_reviewers']) && is_array($reviewersSection['template_reviewers'])
-                ? $reviewersSection['template_reviewers']
-                : [];
-            $documentReviewers = isset($reviewersSection['document_reviewers']) && is_array($reviewersSection['document_reviewers'])
-                ? $reviewersSection['document_reviewers']
-                : [];
-
-            $template->reviewers()->withTrashed()->forceDelete();
-            foreach ($templateReviewers as $row) {
-                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
-                    continue;
-                }
-                $template->reviewers()->create([
-                    'user_id' => $row['user_id'],
-                    'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
-                    'status' => 'pending',
-                ]);
-            }
-
-            $template->documentReviewers()->delete();
-            foreach ($documentReviewers as $row) {
-                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
-                    continue;
-                }
-                $template->documentReviewers()->create([
-                    'user_id' => $row['user_id'],
-                ]);
-            }
+            $this->restoreTemplateBlocksFromPublishedSnapshot($template, $publishedSnapshot);
+            $this->restoreReviewersFromPublishedSnapshotIfPresent($template, $publishedSnapshot);
 
             // Refresca campos delegados críticos para consistencia con el snapshot restaurado.
+            $currentCreatorId = (string) $template->created_by;
             $template = $this->templateRepository->update($template, [
                 'status' => 'published',
                 'created_by' => isset($publishedTemplate['created_by']) && is_string($publishedTemplate['created_by'])
                     ? $publishedTemplate['created_by']
-                    : $actorId,
+                    : $currentCreatorId,
             ]);
 
             return $template->loadMissing(['reviewers', 'documentReviewers']);
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $publishedSnapshot
+     */
+    private function restoreTemplateBlocksFromPublishedSnapshot(Template $template, array $publishedSnapshot): void
+    {
+        $blocks = isset($publishedSnapshot['blocks']) && is_array($publishedSnapshot['blocks'])
+            ? $publishedSnapshot['blocks']
+            : [];
+        $templateId = (string) $template->getKey();
+        $publishedBlockIds = [];
+
+        foreach ($blocks as $index => $block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $snapshotId = isset($block['id']) && is_string($block['id']) && $block['id'] !== ''
+                ? $block['id']
+                : null;
+            $blockId = $snapshotId ?? (string) Str::uuid();
+            $publishedBlockIds[] = $blockId;
+
+            $rawTitle = $block['title'] ?? null;
+            $title = match (true) {
+                $rawTitle === null => null,
+                is_string($rawTitle) => $rawTitle,
+                is_scalar($rawTitle) => (string) $rawTitle,
+                default => null,
+            };
+
+            $values = [
+                'template_id' => $templateId,
+                'title' => $title,
+                'description' => array_key_exists('description', $block) ? $block['description'] : null,
+                'default_content' => array_key_exists('default_content', $block) ? $block['default_content'] : null,
+                'block_state' => isset($block['block_state']) && is_string($block['block_state'])
+                    ? $block['block_state']
+                    : 'editable',
+                'sort_order' => isset($block['sort_order']) ? (int) $block['sort_order'] : (int) $index,
+            ];
+
+            $updated = TemplateBlock::query()->whereKey($blockId)->update($values);
+            if ($updated === 0) {
+                TemplateBlock::query()->forceCreate([
+                    'id' => $blockId,
+                    ...$values,
+                ]);
+            }
+        }
+
+        $blockIdsInUseByDocuments = DB::table('document_blocks')
+            ->whereIn('template_block_id', function ($query) use ($templateId) {
+                $query->select('id')
+                    ->from('template_blocks')
+                    ->where('template_id', $templateId);
+            })
+            ->pluck('template_block_id')
+            ->map(static fn ($id) => (string) $id)
+            ->all();
+
+        $protectedIds = array_values(array_unique(array_merge($publishedBlockIds, $blockIdsInUseByDocuments)));
+
+        $deleteQuery = TemplateBlock::query()->where('template_id', $templateId);
+        if ($protectedIds !== []) {
+            $deleteQuery->whereNotIn('id', $protectedIds);
+        }
+        $deleteQuery->delete();
+    }
+
+    /**
+     * @param  array<string, mixed>  $publishedSnapshot
+     */
+    private function restoreReviewersFromPublishedSnapshotIfPresent(Template $template, array $publishedSnapshot): void
+    {
+        if (! array_key_exists('reviewers', $publishedSnapshot) || ! is_array($publishedSnapshot['reviewers'])) {
+            return;
+        }
+
+        $reviewersSection = $publishedSnapshot['reviewers'];
+        $templateReviewers = isset($reviewersSection['template_reviewers']) && is_array($reviewersSection['template_reviewers'])
+            ? $reviewersSection['template_reviewers']
+            : [];
+        $documentReviewers = isset($reviewersSection['document_reviewers']) && is_array($reviewersSection['document_reviewers'])
+            ? $reviewersSection['document_reviewers']
+            : [];
+
+        $template->reviewers()->withTrashed()->forceDelete();
+        foreach ($templateReviewers as $row) {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                continue;
+            }
+            $template->reviewers()->create([
+                'user_id' => $row['user_id'],
+                'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
+                'status' => 'pending',
+            ]);
+        }
+
+        $template->documentReviewers()->delete();
+        foreach ($documentReviewers as $row) {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                continue;
+            }
+            $template->documentReviewers()->create([
+                'user_id' => $row['user_id'],
+            ]);
+        }
     }
 
     /**
