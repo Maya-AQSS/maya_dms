@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -154,5 +155,70 @@ class EntityVersionsModelTest extends TestCase
             'status' => 'draft',
             'created_by' => (string) Str::uuid(),
         ]);
+    }
+
+    public function test_next_version_number_is_scoped_by_versionable_type_and_id(): void
+    {
+        $repo = $this->app->make(EntityVersionRepositoryInterface::class);
+
+        $processId = (string) Str::uuid();
+        DB::table('processes')->insert([
+            'id' => $processId,
+            'code' => 'P-TEST-3',
+            'name' => 'Proceso test 3',
+            'alias' => 'PR-TEST-3',
+            'description' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $templateA = (string) Str::uuid();
+        $templateB = (string) Str::uuid();
+        foreach ([$templateA, $templateB] as $templateId) {
+            Template::query()->forceCreate([
+                'id' => $templateId,
+                'process_id' => $processId,
+                'name' => 'Template '.$templateId,
+                'description' => null,
+                'visibility_level' => TemplateVisibilityLevel::Personal->value,
+                'delivery_deadline' => null,
+                'study_type_id' => null,
+                'study_id' => null,
+                'module_id' => null,
+                'team_id' => null,
+                'created_by' => (string) Str::uuid(),
+                'status' => 'draft',
+                'review_stages' => 0,
+                'review_mode' => 'parallel',
+            ]);
+        }
+
+        EntityVersion::query()->create([
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateA,
+            'version_number' => 1,
+            'change_set' => ['name' => 'v1'],
+            'status' => 'published',
+            'created_by' => (string) Str::uuid(),
+        ]);
+        EntityVersion::query()->create([
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateA,
+            'version_number' => 2,
+            'change_set' => ['name' => 'v2'],
+            'status' => 'published',
+            'created_by' => (string) Str::uuid(),
+        ]);
+        EntityVersion::query()->create([
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateB,
+            'version_number' => 1,
+            'change_set' => ['name' => 'v1'],
+            'status' => 'published',
+            'created_by' => (string) Str::uuid(),
+        ]);
+
+        $this->assertSame(3, $repo->nextVersionNumber(Template::class, $templateA));
+        $this->assertSame(2, $repo->nextVersionNumber(Template::class, $templateB));
     }
 }

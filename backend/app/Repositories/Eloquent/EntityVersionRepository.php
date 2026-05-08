@@ -42,12 +42,20 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
      */
     public function nextVersionNumber(string $versionableType, string $versionableId): int
     {
-        $max = EntityVersion::query()
+        // Se ejecuta dentro de transacciones de publicación: bloqueamos la fila más alta
+        // de la entidad para serializar el cálculo "max + 1" por (type,id).
+        $latest = EntityVersion::query()
             ->where('versionable_type', $versionableType)
             ->where('versionable_id', $versionableId)
-            ->max('version_number');
+            ->orderByDesc('version_number')
+            ->lockForUpdate()
+            ->first();
 
-        return (int) $max + 1;
+        if ($latest === null) {
+            return 1;
+        }
+
+        return (int) $latest->version_number + 1;
     }
 
     /**
