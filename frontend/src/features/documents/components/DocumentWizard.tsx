@@ -198,6 +198,13 @@ type Props = {
   mode?: 'edit' | 'validate';
 };
 
+function isUuidLike(value: string | null | undefined): value is string {
+  if (!value) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value.trim(),
+  );
+}
+
 /**
  * Asistente de edición de documento (3 pasos, sin usuarios/validadores).
  * Reutiliza estética y piezas de plantillas (BlockNote, preview HTML) sin acoplar al flujo de TemplateWizard.
@@ -282,6 +289,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const locationModuleId = locationState?.moduleId;
   const fromTemplateSelection = locationState?.fromTemplateSelection === true;
   const selectedTemplateVersionId = locationState?.templateVersionId ?? null;
+  const selectedTemplateVersionUuid = isUuidLike(selectedTemplateVersionId)
+    ? selectedTemplateVersionId
+    : null;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
@@ -862,7 +872,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           const created = await createDocument({
             template_id: templateId,
             process_id: template.process_id,
-            template_version_id: selectedTemplateVersionId,
+            ...(selectedTemplateVersionUuid ? { template_version_id: selectedTemplateVersionUuid } : {}),
             title: title.trim(),
             study_type_id: studyTypeId || undefined,
             study_id: studyId || undefined,
