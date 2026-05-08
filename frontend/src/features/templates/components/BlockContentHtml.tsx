@@ -94,8 +94,9 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
     try {
       const raw = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
       return DOMPurify.sanitize(raw, {
-        // Allow safe URL schemes only; block javascript: data: vbscript: etc.
-        ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i,
+        // Allow safe URL schemes. data:image/* is required for base64-pasted images
+        // when no server upload handler is configured in BlockNote.
+        ALLOWED_URI_REGEXP: /^(https?|mailto|tel):|^data:image\//i,
       });
     } catch {
       return '<p><em>Error al renderizar el contenido.</em></p>';
