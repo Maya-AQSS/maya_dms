@@ -21,8 +21,7 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
         $query = DB::table('users')
             ->where(function ($query) use ($term) {
                 $query->whereRaw('LOWER(name) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(email) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(department) LIKE ?', [$term]);
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$term]);
             });
 
         if ($excludeUserId !== null && $excludeUserId !== '') {
@@ -30,14 +29,14 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
         }
 
         return $query
-            ->select('id', 'name', 'email', 'department')
+            ->select('id', 'name', 'email', 'employee_type')
             ->limit($limit)
             ->get()
             ->map(static fn (object $u): array => [
                 'id' => (string) $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'role' => $u->department,
+                'role' => $u->employee_type,
             ])
             ->values()
             ->all();
@@ -94,20 +93,19 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
             $term = '%' . mb_strtolower($search) . '%';
             $query->where(function ($q) use ($term) {
                 $q->whereRaw('LOWER(users.name) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(users.email) LIKE ?', [$term])
-                    ->orWhereRaw('LOWER(users.department) LIKE ?', [$term]);
+                    ->orWhereRaw('LOWER(users.email) LIKE ?', [$term]);
             });
         }
 
         return $query
-            ->select('users.id', 'users.name', 'users.email', 'users.department')
+            ->select('users.id', 'users.name', 'users.email', 'users.employee_type')
             ->limit($limit)
             ->get()
             ->map(static fn (object $u): array => [
                 'id' => (string) $u->id,
                 'name' => $u->name,
                 'email' => $u->email,
-                'role' => $u->department,
+                'role' => $u->employee_type,
             ])
             ->values()
             ->all();
