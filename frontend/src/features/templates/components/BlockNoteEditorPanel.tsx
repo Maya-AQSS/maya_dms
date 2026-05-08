@@ -103,6 +103,29 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         if (file) {
           e.preventDefault();
           e.stopPropagation();
+
+          // Capture cursor state synchronously — by the time FileReader finishes
+          // (async) the cursor may have moved to a non-text node and
+          // getTextCursorPosition() would throw "TextSelection endpoint not
+          // pointing into a node with inline content".
+          let anchorBlockId: string | undefined;
+          let anchorBlockIsEmpty = false;
+          try {
+            const currentBlocks = editor.document;
+            const selection = editor.getTextCursorPosition();
+            anchorBlockId = selection?.block?.id as string | undefined;
+            if (anchorBlockId) {
+              const anchorBlock = currentBlocks.find((b: any) => b.id === anchorBlockId);
+              anchorBlockIsEmpty =
+                !anchorBlock?.content?.length ||
+                (anchorBlock.content.length === 1 &&
+                  anchorBlock.content[0].type === 'text' &&
+                  !anchorBlock.content[0].text);
+            }
+          } catch {
+            // Cursor is not in a text position — insert after last block.
+          }
+
           const reader = new FileReader();
           reader.onload = (ev) => {
             const dataUrl = ev.target?.result as string | undefined;
@@ -110,17 +133,9 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
             const imageBlock = { type: 'image', props: { url: dataUrl } };
             try {
               const currentBlocks = editor.document;
-              const selection = editor.getTextCursorPosition();
-              const blockId = selection?.block?.id as string | undefined;
-              if (blockId) {
-                editor.insertBlocks([imageBlock as any], blockId, 'after');
-                const currentBlock = currentBlocks.find((b: any) => b.id === blockId);
-                const isEmpty =
-                  !currentBlock?.content?.length ||
-                  (currentBlock.content.length === 1 &&
-                    currentBlock.content[0].type === 'text' &&
-                    !currentBlock.content[0].text);
-                if (isEmpty) editor.removeBlocks([blockId]);
+              if (anchorBlockId && currentBlocks.some((b: any) => b.id === anchorBlockId)) {
+                editor.insertBlocks([imageBlock as any], anchorBlockId, 'after');
+                if (anchorBlockIsEmpty) editor.removeBlocks([anchorBlockId]);
               } else {
                 editor.insertBlocks([imageBlock as any], currentBlocks[currentBlocks.length - 1].id, 'after');
               }
