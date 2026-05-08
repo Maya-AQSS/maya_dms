@@ -21,9 +21,10 @@ export function TemplateReviewPage() {
         const res = await fetchTemplate(id!);
         const t = res.data;
 
-        // Check if user is an assigned reviewer
+        // Allow assigned reviewers AND the template creator (read-only view)
         const isReviewer = t.reviewers?.some((r) => r.user_id === profile?.id);
-        if (!isReviewer) {
+        const isCreator = t.created_by === profile?.id;
+        if (!isReviewer && !isCreator) {
           setError('No tienes permisos de validación sobre esta plantilla.');
           return;
         }

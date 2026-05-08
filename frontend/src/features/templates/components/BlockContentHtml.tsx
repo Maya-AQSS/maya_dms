@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import { BlockNoteEditor } from '@blocknote/core';
 import type { PartialBlock } from '@blocknote/core';
 import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
@@ -78,12 +79,9 @@ function ensureStyles() {
  * Uses a headless BlockNoteEditor (no React component mounted).
  */
 export function BlockContentHtml({ content }: { content: unknown[] }) {
-  const [html, setHtml] = useState<string | null>(null);
-
-  useEffect(() => {
+  const html = useMemo(() => {
     ensureStyles();
     const repaired = repairBlockNoteBlocks(Array.isArray(content) ? content : []);
-    // Empty content (no blocks, or all-whitespace text) → render nothing, not an error.
     const isEmpty =
       repaired.length === 0 ||
       repaired.every(
@@ -92,21 +90,17 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
           b.content.length === 0 ||
           b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
       );
-    if (isEmpty) {
-      setHtml('');
-      return;
-    }
+    if (isEmpty) return '';
     try {
-      const result = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
-      setHtml(result);
+      const raw = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
+      return DOMPurify.sanitize(raw, {
+        // Allow safe URL schemes only; block javascript: data: vbscript: etc.
+        ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i,
+      });
     } catch {
-      setHtml('<p><em>Error al renderizar el contenido.</em></p>');
+      return '<p><em>Error al renderizar el contenido.</em></p>';
     }
   }, [content]);
-
-  if (html === null) {
-    return <div className="h-6 bg-ui-body animate-pulse rounded" />;
-  }
 
   if (!html) {
     return null;

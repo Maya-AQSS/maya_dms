@@ -1053,6 +1053,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     return (
       <div className="p-6 space-y-3">
         <p className="text-sm text-warning-dark dark:text-warning-light">{validationSetupError}</p>
+        {detail?.status === 'in_review' && (
+          <Button type="button" variant="outline" size="sm" onClick={() => void reload()}>
+            Actualizar estado
+          </Button>
+        )}
         <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>
           Volver al panel
         </Button>

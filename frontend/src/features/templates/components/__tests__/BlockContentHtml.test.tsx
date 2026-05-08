@@ -41,7 +41,7 @@ describe('BlockContentHtml', () => {
     expect(screen.queryByText(/Error al renderizar/)).toBeNull();
   });
 
-  it('calls blocksToHTMLLossy for non-empty content', async () => {
+  it('calls blocksToHTMLLossy for non-empty content', () => {
     blocksToHTMLLossyMock.mockReturnValue('<p>hello</p>');
     const block = {
       id: 'x',
@@ -51,7 +51,7 @@ describe('BlockContentHtml', () => {
       children: [],
     };
     render(<BlockContentHtml content={[block]} />);
-    await waitFor(() => expect(blocksToHTMLLossyMock).toHaveBeenCalled());
+    expect(blocksToHTMLLossyMock).toHaveBeenCalled();
     expect(screen.queryByText(/Error al renderizar/)).toBeNull();
   });
 });

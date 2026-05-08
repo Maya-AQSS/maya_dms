@@ -143,6 +143,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
+  const [autoPublishBanner, setAutoPublishBanner] = useState(false);
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
   const [actionableReviewId, setActionableReviewId] = useState<string | null>(null);
@@ -419,6 +420,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setActionError(null);
     try {
       const res = await submitDocumentForReview(documentId);
+      if (res.status === 'published') setAutoPublishBanner(true);
       setDetail((prev) => prev ? ({ ...prev, status: res.status, submitted_at: res.submitted_at } as typeof prev) : prev);
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo enviar a validar.');
@@ -823,6 +825,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         )}
         {actionError && (
           <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{actionError}</p>
+        )}
+        {autoPublishBanner && (
+          <p className="text-sm text-success-dark dark:text-success mb-4 font-bold">
+            Documento publicado directamente (sin validadores asignados).
+          </p>
         )}
         {isValidateMode && validationSetupError && !validationReviewLoading && (
           <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{validationSetupError}</p>

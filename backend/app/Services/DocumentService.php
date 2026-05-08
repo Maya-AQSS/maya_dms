@@ -899,10 +899,13 @@ class DocumentService implements DocumentServiceInterface
             $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
 
             if ($candidates === []) {
+                // No resolvable reviewer pool for this document → auto-publish regardless of
+                // visibility level. The template may simply have no validators configured, which
+                // is a valid state (e.g. personal use, or a coordinator who skipped step 3).
                 $this->documentStateService->transition($documentId, 'published', $actorId);
 
                 // Misma convención que {@see TemplatePublishingService} (plantilla ya numerada en creación).
-                $autoChangelog = 'Publicación automática';
+                $autoChangelog = 'Publicación automática (sin revisores configurados)';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',

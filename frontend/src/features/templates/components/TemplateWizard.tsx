@@ -37,8 +37,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
   }, [initialTemplate?.process_id, processId, templateProp?.process_id]);
 
-  // Step state
-  const [step, setStep] = useState<Step>('properties');
+  // Rejected templates start on the blocks step so the creator sees comment badges immediately.
+  const [step, setStep] = useState<Step>(
+    initial?.id && initial?.has_review_comments ? 'blocks' : 'properties',
+  );
   const [completedSteps, setCompletedSteps] = useState<Step[]>(
     initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
   );
@@ -64,15 +66,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [validators, setValidators] = useState<ValidatorEntry[]>(
     initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
-  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>(
-    initial?.document_reviewer_users?.length
-      ? initial.document_reviewer_users.map((reviewer) => ({
-          userId: reviewer.user_id,
-          name: reviewer.user_name?.trim() || reviewer.user_id,
-        }))
-      : initial?.document_reviewers?.map((userId) => ({ userId, name: userId })) ?? [],
+  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
+  const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
+    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
   );
-  const [validationType, setValidationType] = useState<'libre' | 'ordenada'>('libre');
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
   // Dirty flag: only sync reviewers to API if the user actually changed them in Step 3
   const [usersDirty, setUsersDirty] = useState(false);
@@ -144,6 +141,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     } catch (e) {
       console.error('Error resolving comment:', e);
     }
+  };
+
+  const handleCommentAdded = (comment: any) => {
+    setComments(prev => [...prev, comment]);
   };
 
   // Dirty check
@@ -298,7 +299,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     try {
       if (usersDirty) {
         const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
-        await apiUpdateTemplate(template.id, { review_mode: reviewMode });
+        // In sequential mode each reviewer occupies exactly one stage, so review_stages
+        // must equal the reviewer count before syncing — otherwise the backend rejects
+        // the sync with a 422 when the count exceeds the previous review_stages value.
+        await apiUpdateTemplate(template.id, {
+          review_mode: reviewMode,
+          ...(reviewMode === 'sequential' ? { review_stages: validators.length } : {}),
+        });
         await syncTemplateValidators(template.id, validators.map((v) => v.userId));
         await syncDocumentReviewers(template.id, documentValidators.map((v) => v.userId));
       }
@@ -307,7 +314,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setStep('summary');
     } catch (e) {
       console.error('[saveUsers]', e);
-      setErrors({ api: 'Error al guardar los validadores' });
+      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar los validadores' });
     } finally {
       setSaving(false);
     }
@@ -550,6 +557,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             onBlocksLoadingChange={setBlocksLoading}
             onContinue={() => void handleContinue()}
             onInvalidBlocksChange={setHasInvalidBlocks}
+            onCommentAdded={handleCommentAdded}
           />
         )}
         {step === 'users' && (
@@ -557,7 +565,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             validators={validators}
             onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
             validationType={validationType}
-            onValidationTypeChange={(t) => { setValidationType(t); setUsersDirty(true); }}
+            onValidationTypeChange={(t) => {
+              setValidationType(t);
+              setUsersDirty(true);
+              if (template?.id) {
+                const reviewMode: ReviewMode = t === 'ordenada' ? 'sequential' : 'parallel';
+                void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch(() => {/* non-blocking */});
+              }
+            }}
             documentValidators={documentValidators}
             onDocumentValidatorsChange={(v) => { setDocumentValidators(v); setUsersDirty(true); }}
             documentValidationType={documentValidationType}
