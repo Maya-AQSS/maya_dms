@@ -457,6 +457,12 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
+        if ($document->status !== 'draft') {
+            throw ValidationException::withMessages([
+                'status' => ['Solo se pueden editar metadatos de documentos en borrador.'],
+            ]);
+        }
+
         return $this->documentRepository->updateDocumentMetadata($document, $attributes);
     }
 

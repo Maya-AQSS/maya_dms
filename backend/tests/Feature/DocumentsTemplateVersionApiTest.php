@@ -1685,6 +1685,150 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonPath('data.title', 'Título actualizado');
     }
 
+    public function test_update_document_metadata_is_rejected_when_in_review(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla update in review',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Documento en revisión',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [['type' => 'paragraph', 'content' => 'Completo para revisión']],
+        ], $hCreator)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+
+        $this->putJson("/api/v1/documents/{$docId}", [
+            'title' => 'No debería permitir update en review',
+            'delivery_deadline' => now()->addDays(2)->toDateString(),
+        ], $hCreator)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['status']);
+    }
+
+    public function test_update_document_metadata_is_rejected_when_published(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla update published',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $hCreator)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Documento publicado',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $hCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [['type' => 'paragraph', 'content' => 'Completo para publicar']],
+        ], $hCreator)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)->assertOk();
+        DB::table('document_reviews')->where('document_id', $docId)->delete();
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => 'Publicación para prueba de update',
+        ], $hCreator)->assertOk()->assertJsonPath('data.status', 'published');
+
+        $this->putJson("/api/v1/documents/{$docId}", [
+            'title' => 'No debería permitir update en published',
+            'delivery_deadline' => now()->addDays(2)->toDateString(),
+        ], $hCreator)
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['status']);
+    }
+
     public function test_destroy_document_soft_deletes_record(): void
     {
         $creatorId = (string) Str::uuid();
