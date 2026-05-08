@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -29,32 +29,20 @@ type TemplateComment = {
 function InfoBlockDescription({ description }: { description: unknown }) {
   if (!description) return null;
 
-  let parsed: unknown[] | null = null;
-  if (Array.isArray(description)) {
-    parsed = description;
-  } else if (typeof description === 'string') {
-    try {
-      const p: unknown = JSON.parse(description);
-      if (Array.isArray(p)) parsed = p;
-      else if (p && typeof p === 'object') parsed = [p];
-    } catch { /* plain text fallback */ }
-  } else if (typeof description === 'object') {
-    parsed = [description];
+  const nodes = normalizeBlockContentForEditor(description);
+  if (nodes.length > 0) {
+    return <BlockContentHtml content={nodes} />;
   }
 
-  if (parsed) {
+  if (typeof description === 'string' && description.trim()) {
     return (
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        <BlockContentHtml content={parsed as unknown[]} />
-      </div>
+      <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
+        {description}
+      </p>
     );
   }
 
-  return (
-    <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
-      {String(description)}
-    </p>
-  );
+  return null;
 }
 
 export function TemplateReviewView({ template }: Props) {
@@ -65,27 +53,28 @@ export function TemplateReviewView({ template }: Props) {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // Comentarios
+
   const [comments, setComments] = useState<TemplateComment[]>([]);
   const [newCommentBody, setNewCommentBody] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
-  
-  // Modales
+
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showNoCommentsWarning, setShowNoCommentsWarning] = useState(false);
   const [processLabel, setProcessLabel] = useState<string | null>(null);
 
-  // Estado de la barra lateral: 'comments' | 'info' | null
   const [sidebarMode, setSidebarMode] = useState<'comments' | 'info' | null>(null);
+  const [panelTop, setPanelTop] = useState(80);
+
+  const headerRef = useRef<HTMLDivElement>(null);
+  const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const currentUserId = user?.sub || (user as any)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
   const isAlreadyValidated = myReview && myReview.status !== 'pending';
-  // Creator (template owner) can view but cannot approve/reject/comment
   const isReviewer = !!myReview;
   const isReadOnly = !isReviewer;
-  
+
   const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
 
@@ -98,7 +87,6 @@ export function TemplateReviewView({ template }: Props) {
   };
 
   useEffect(() => {
-    // Cargar comentarios iniciales
     void loadComments();
   }, [template.id]);
 
@@ -112,11 +100,7 @@ export function TemplateReviewView({ template }: Props) {
       .then((res) => {
         if (cancelled) return;
         const process = res.data.find((p: Process) => p.id === template.process_id) ?? null;
-        if (!process) {
-          setProcessLabel(null);
-          return;
-        }
-        setProcessLabel(`Proceso: ${process.code} — ${process.name}`);
+        setProcessLabel(process ? `Proceso: ${process.code} — ${process.name}` : null);
       })
       .catch(() => {
         if (!cancelled) setProcessLabel(null);
@@ -125,6 +109,29 @@ export function TemplateReviewView({ template }: Props) {
       cancelled = true;
     };
   }, [template.process_id]);
+
+  // Recalculate panel vertical position whenever the selected block changes.
+  // Uses position:fixed so scroll tracking is not needed — the panel stays in
+  // the viewport automatically. We only need to align the top once per selection.
+  useEffect(() => {
+    if (!sidebarMode || !selectedBlockId) return;
+    const raf = requestAnimationFrame(() => {
+      const blockEl = blockRefs.current.get(selectedBlockId);
+      if (!blockEl) return;
+      const blockRect = blockEl.getBoundingClientRect();
+      const panelHeight = panelRef.current?.offsetHeight ?? 420;
+      const headerHeight = headerRef.current?.offsetHeight ?? 60;
+      const vh = window.innerHeight;
+      const MARGIN = 12;
+      let top = blockRect.top;
+      top = Math.max(headerHeight + MARGIN, top);
+      if (top + panelHeight > vh - MARGIN) {
+        top = Math.max(headerHeight + MARGIN, vh - panelHeight - MARGIN);
+      }
+      setPanelTop(top);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [selectedBlockId, sidebarMode]);
 
   const loadComments = async () => {
     try {
@@ -144,7 +151,7 @@ export function TemplateReviewView({ template }: Props) {
         body: {
           body: newCommentBody,
           blockable_id: selectedBlockId,
-        }
+        },
       });
       setComments([...comments, res.data]);
       setNewCommentBody('');
@@ -190,13 +197,21 @@ export function TemplateReviewView({ template }: Props) {
     }
   };
 
+  const closePanel = () => {
+    setSidebarMode(null);
+    setSelectedBlockId(null);
+  };
+
   const selectedBlock = blocks.find(b => b.id === selectedBlockId);
   const blockComments = comments.filter(c => c.blockable_id === selectedBlockId);
 
   return (
     <div className="flex flex-col h-full bg-ui-preview-bg dark:bg-ui-dark-bg/50">
       {/* Header con acciones */}
-      <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20">
+      <div
+        ref={headerRef}
+        className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20"
+      >
         <div className="flex items-center gap-3">
           <button
             onClick={goBack}
@@ -211,11 +226,11 @@ export function TemplateReviewView({ template }: Props) {
             <p className="text-xs text-text-muted uppercase tracking-widest font-black truncate max-w-[200px]">
               {template.name}
             </p>
-                            {processLabel && (
-                              <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[420px]">
-                                {processLabel}
-                              </p>
-                            )}
+            {processLabel && (
+              <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[420px]">
+                {processLabel}
+              </p>
+            )}
           </div>
         </div>
 
@@ -266,7 +281,8 @@ export function TemplateReviewView({ template }: Props) {
             <div>
               <p className="text-xs font-black uppercase tracking-widest text-odoo-purple">Pendiente de otros validadores</p>
               <p className="text-xs text-text-secondary dark:text-text-dark-secondary">
-                Faltan {remainingReviewers.length} {remainingReviewers.length === 1 ? 'persona' : 'personas'} por validar: 
+                Faltan {remainingReviewers.length}{' '}
+                {remainingReviewers.length === 1 ? 'persona' : 'personas'} por validar:{' '}
                 <span className="font-bold ml-1">
                   {remainingReviewers.map(r => r.user_name || 'Usuario').join(', ')}
                 </span>
@@ -282,13 +298,13 @@ export function TemplateReviewView({ template }: Props) {
         </div>
       )}
 
-      {/* Área de trabajo con Paper + Sidebar Unificada */}
+      {/* Área de trabajo */}
       <div className="flex-1 overflow-hidden flex relative">
-        
-        {/* Document Render (Paper) */}
+
+        {/* Document scroll area — folio centrado a max-width 850px */}
         <div className="flex-1 overflow-y-auto p-8 scroll-smooth custom-scrollbar">
           <article
-            className="mx-auto bg-white dark:bg-ui-card shadow-2xl rounded-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+            className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content rounded-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
             style={{ maxWidth: '850px', minHeight: '100%', padding: '60px 70px' }}
           >
             {/* Header del documento */}
@@ -318,6 +334,10 @@ export function TemplateReviewView({ template }: Props) {
                   return (
                     <section
                       key={block.id}
+                      ref={(el) => {
+                        if (el) blockRefs.current.set(block.id, el);
+                        else blockRefs.current.delete(block.id);
+                      }}
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedBlockId(block.id);
@@ -325,39 +345,39 @@ export function TemplateReviewView({ template }: Props) {
                       }}
                       className={[
                         'relative group rounded-lg transition-all duration-200 cursor-pointer',
-                        isSelected 
-                          ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm' 
-                          : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card'
+                        isSelected
+                          ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
+                          : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
                       ].join(' ')}
                     >
                       {/* Badge del bloque */}
                       <div className={[
                         'absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200',
-                        isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted'
+                        isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted',
                       ].join(' ')}>
-                         #{(block.sort_order ?? '?') as any}
+                        #{(block.sort_order ?? '?') as any}
                       </div>
 
-                      {/* Cabecera del bloque: Título y botones de acción */}
+                      {/* Cabecera del bloque */}
                       <div className="flex items-center gap-3 mb-4">
                         <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
                           {(block.title ? String(block.title) : 'Bloque sin título') as any}
                         </h3>
-                        
+
                         <div className="flex items-center gap-2">
-                          {/* Botón de Descripción (Pill) */}
+                          {/* Botón Descripción */}
                           <button
                             type="button"
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedBlockId(block.id);
-                              setSidebarMode('info'); 
+                              setSidebarMode('info');
                             }}
                             className={[
-                              "shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider",
+                              'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                               sidebarMode === 'info' && isSelected
-                                ? "border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm"
-                                : "border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5"
+                                ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                                : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                             ].join(' ')}
                             title="Ver descripción del bloque"
                           >
@@ -367,19 +387,19 @@ export function TemplateReviewView({ template }: Props) {
                             <span>Info</span>
                           </button>
 
-                          {/* Botón de Mensaje (Pill) */}
+                          {/* Botón Mensajes */}
                           <button
                             type="button"
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedBlockId(block.id);
-                              setSidebarMode('comments'); 
+                              setSidebarMode('comments');
                             }}
                             className={[
-                              "shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider",
+                              'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                               sidebarMode === 'comments' && isSelected
-                                ? "border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm"
-                                : "border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5"
+                                ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                                : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                             ].join(' ')}
                             title="Ver comentarios del bloque"
                           >
@@ -396,7 +416,7 @@ export function TemplateReviewView({ template }: Props) {
                         </div>
                       </div>
 
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <div>
                         {nodes.length > 0 ? (
                           <BlockContentHtml content={nodes} />
                         ) : (
@@ -411,174 +431,165 @@ export function TemplateReviewView({ template }: Props) {
           </article>
         </div>
 
-        {/* Panel derecho Unificado (Comentarios o Info) */}
-        <aside 
-          className={[
-            'transition-all duration-400 ease-out z-30 flex flex-col overflow-hidden',
-            sidebarMode ? 'w-[45%] max-w-[850px] min-w-[500px]' : 'w-0'
-          ].join(' ')}
-        >
-          <div className="flex-1 overflow-y-auto p-8 scroll-smooth custom-scrollbar w-full relative">
-            <article
-              className="mx-auto bg-white dark:bg-ui-dark-card shadow-xl rounded-sm transition-all duration-300 flex flex-col h-full"
-              style={{ padding: '60px 70px' }}
-            >
-              {selectedBlock ? (
-                <>
-                  {/* Header de la Sidebar */}
-                  <div className="shrink-0 mb-8">
-                    <div className="flex items-center justify-between mb-8">
-                      <div className="min-w-0">
-                        <h3 className="text-2xl font-black text-text-primary dark:text-text-dark-primary leading-tight">
-                          {sidebarMode === 'info' ? 'Información del Bloque' : 'Comentarios de Revisión'}
-                        </h3>
-                        <p className="text-xs uppercase tracking-widest text-text-muted mt-2 font-bold">
-                          Bloque #{(selectedBlock.sort_order ?? '?') as any}
+        {/* Spacer — pushes the folio left to make room for the fixed panel */}
+        {sidebarMode !== null && (
+          <div className="w-[420px] shrink-0 transition-all duration-400" aria-hidden="true" />
+        )}
+
+        {/* Floating review card — position:fixed, aligned with selected block */}
+        {sidebarMode !== null && selectedBlock && (
+          <div
+            ref={panelRef}
+            className="fixed z-40 w-[396px] animate-in fade-in slide-in-from-right-4 duration-300"
+            style={{ top: panelTop, right: 20 }}
+          >
+            <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-2xl border border-ui-border/60 dark:border-ui-dark-border flex flex-col overflow-hidden">
+
+              {/* Card header: Bloque #N ─── Comentarios de Revisión ✕ */}
+              <div className="flex items-center gap-3 px-4 py-3 border-b border-ui-border dark:border-ui-dark-border shrink-0">
+                <span className="text-[11px] font-black uppercase tracking-widest text-text-muted shrink-0">
+                  Bloque #{(selectedBlock.sort_order ?? '?') as any}
+                </span>
+                <div className="flex-1 h-px bg-ui-border dark:bg-ui-dark-border" />
+                <span className="text-[11px] font-black uppercase tracking-widest text-text-primary dark:text-text-dark-primary shrink-0">
+                  Comentarios de Revisión
+                </span>
+                <button
+                  aria-label="Cerrar panel de revisión"
+                  onClick={closePanel}
+                  className="group ml-1 w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
+                >
+                  <span className="block text-sm leading-none group-hover:rotate-90 transition-transform duration-200">✕</span>
+                </button>
+              </div>
+
+              {/* Tabs */}
+              <div className="flex gap-6 px-4 border-b border-ui-border dark:border-ui-dark-border">
+                <button
+                  onClick={() => setSidebarMode('comments')}
+                  className={[
+                    'py-3 text-xs font-bold uppercase tracking-widest transition-all relative',
+                    sidebarMode === 'comments'
+                      ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple'
+                      : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary',
+                  ].join(' ')}
+                >
+                  Mensajes
+                </button>
+                <button
+                  onClick={() => setSidebarMode('info')}
+                  className={[
+                    'py-3 text-xs font-bold uppercase tracking-widest transition-all relative',
+                    sidebarMode === 'info'
+                      ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple'
+                      : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary',
+                  ].join(' ')}
+                >
+                  Descripción
+                </button>
+              </div>
+
+              {/* Tab content */}
+              {sidebarMode === 'info' ? (
+                <div className="px-4 py-4 max-h-[55vh] overflow-y-auto custom-scrollbar">
+                  <InfoBlockDescription description={selectedBlock.description} />
+                </div>
+              ) : (
+                <div className="flex flex-col min-h-0">
+                  {/* Messages list */}
+                  <div className="max-h-[42vh] overflow-y-auto custom-scrollbar px-4 pt-4 pb-2 space-y-6">
+                    {blockComments.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
+                        <svg className="w-10 h-10 mb-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        <p className="text-sm font-medium text-text-muted leading-relaxed">
+                          No hay mensajes en este bloque.
                         </p>
                       </div>
-                      <button 
-                        onClick={() => { setSidebarMode(null); }}
-                        className="group w-10 h-10 -mr-4 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
-                        title="Cerrar panel"
-                      >
-                        <span className="block text-xl group-hover:rotate-90 transition-transform">✕</span>
-                      </button>
-                    </div>
+                    ) : (
+                      <div className="space-y-6">
+                        {blockComments.filter(c => !c.parent_id).map((comment) => {
+                          const replies = comments.filter(r => r.parent_id === comment.id);
+                          return (
+                            <div key={comment.id} className="space-y-3">
+                              <div className="group relative pl-5 animate-in fade-in slide-in-from-right-2">
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
+                                    {comment.author?.name || 'Usuario'}
+                                  </span>
+                                  <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
+                                    {new Date(comment.created_at).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <div className="text-sm text-text-primary dark:text-text-dark-primary leading-relaxed bg-ui-body/30 dark:bg-ui-dark-bg p-4 rounded-xl border border-ui-border/50 dark:border-ui-dark-border/50 shadow-sm">
+                                  {comment.body}
+                                </div>
+                              </div>
 
-                    {/* Tabs Minimalistas (Underline style) */}
-                    <div className="flex gap-8 border-b border-ui-border dark:border-ui-dark-border pb-px">
-                      <button
-                        onClick={() => setSidebarMode('comments')}
-                        className={[
-                          'pb-4 text-xs font-bold uppercase tracking-widest transition-all relative',
-                          sidebarMode === 'comments' 
-                            ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple' 
-                            : 'text-text-muted hover:text-text-primary'
-                        ].join(' ')}
-                      >
-                        Mensajes
-                      </button>
-                      <button
-                        onClick={() => setSidebarMode('info')}
-                        className={[
-                          'pb-4 text-xs font-bold uppercase tracking-widest transition-all relative',
-                          sidebarMode === 'info' 
-                            ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[3px] after:bg-odoo-purple' 
-                            : 'text-text-muted hover:text-text-primary'
-                        ].join(' ')}
-                      >
-                        Descripción
-                      </button>
-                    </div>
+                              {replies.length > 0 && (
+                                <div className="ml-8 space-y-3">
+                                  {replies.map(r => (
+                                    <div key={r.id} className="relative pl-3 border-l-2 border-ui-border/30 dark:border-ui-dark-border/30">
+                                      <div className="flex items-center justify-between mb-1">
+                                        <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
+                                          {r.author?.name || 'Usuario'}
+                                        </span>
+                                        <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
+                                          {new Date(r.created_at).toLocaleDateString()}
+                                        </span>
+                                      </div>
+                                      <div className="text-xs text-text-primary dark:text-text-dark-primary bg-ui-body/10 dark:bg-ui-dark-bg p-3 rounded-lg border border-ui-border/20 dark:border-ui-dark-border/20 italic">
+                                        {r.body}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
-                  {/* Contenido de la Sidebar */}
-                  {sidebarMode === 'info' ? (
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-                      <InfoBlockDescription description={selectedBlock.description} />
+                  {/* Input — always at the bottom */}
+                  {!isAlreadyValidated && !isReadOnly ? (
+                    <div className="px-4 pt-3 pb-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                      <textarea
+                        value={newCommentBody}
+                        onChange={(e) => setNewCommentBody(e.target.value)}
+                        placeholder="Escribe un mensaje de revisión..."
+                        className="w-full h-24 p-3 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
+                      />
+                      <div className="mt-3 flex justify-end">
+                        <Button
+                          variant="primary"
+                          size="md"
+                          className="text-xs font-black uppercase tracking-widest px-6 py-2"
+                          onClick={handleAddComment}
+                          loading={commentLoading}
+                          disabled={!newCommentBody.trim() || commentLoading}
+                        >
+                          Enviar mensaje
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col flex-1 min-h-0">
-                      <div className="flex-1 overflow-y-auto pr-4 space-y-6 custom-scrollbar pb-6">
-                        {blockComments.length === 0 ? (
-                          <div className="flex flex-col items-center justify-center h-40 text-center opacity-40 mt-10">
-                            <svg className="w-12 h-12 mb-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                            </svg>
-                            <p className="text-sm font-medium text-text-muted leading-relaxed">
-                              No hay mensajes en este bloque.
-                            </p>
-                          </div>
-                        ) : (
-                          <div className="space-y-8 mt-2">
-                            {blockComments.filter(c => !c.parent_id).map((comment) => {
-                              const replies = comments.filter(r => r.parent_id === comment.id);
-                              return (
-                                <div key={comment.id} className="space-y-4">
-                                  <div className="group relative pl-6 animate-in fade-in slide-in-from-right-2">
-                                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40 transition-colors rounded-full" />
-                                    <div className="flex items-center justify-between mb-2">
-                                      <span className="text-sm font-black text-text-primary dark:text-text-dark-primary">
-                                        {comment.author?.name || 'Usuario'}
-                                      </span>
-                                      <span className="text-xs text-text-muted font-bold uppercase tracking-wider opacity-70">
-                                        {new Date(comment.created_at).toLocaleDateString()}
-                                      </span>
-                                    </div>
-                                    <div className="text-sm text-text-primary dark:text-text-dark-primary leading-relaxed bg-ui-body/30 dark:bg-ui-dark-bg p-5 rounded-xl border border-ui-border/50 dark:border-ui-dark-border/50 shadow-sm">
-                                      {comment.body}
-                                    </div>
-                                  </div>
-
-                                  {/* Replies */}
-                                  {replies.length > 0 && (
-                                    <div className="ml-12 space-y-4">
-                                      {replies.map(r => (
-                                        <div key={r.id} className="relative pl-4 border-l-2 border-ui-border/30">
-                                          <div className="flex items-center justify-between mb-1">
-                                            <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
-                                              {r.author?.name || 'Usuario'}
-                                            </span>
-                                            <span className="text-xs text-text-muted font-bold uppercase tracking-widest">
-                                              {new Date(r.created_at).toLocaleDateString()}
-                                            </span>
-                                          </div>
-                                          <div className="text-xs text-text-primary dark:text-text-dark-primary bg-ui-body/10 dark:bg-ui-dark-bg p-3 rounded-lg border border-ui-border/20 dark:border-ui-dark-border/20 italic">
-                                            {r.body}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
+                    <div className="px-4 pb-4 pt-3 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                      <div className="p-4 rounded-xl bg-ui-body/5 dark:bg-ui-dark-border/20 border border-ui-border dark:border-ui-dark-border text-center">
+                        <p className="text-xs text-text-muted dark:text-text-dark-muted italic font-medium">
+                          No puedes añadir más mensajes porque ya has finalizado tu validación.
+                        </p>
                       </div>
-
-                      {!isAlreadyValidated && !isReadOnly ? (
-                        <div className="sticky bottom-0 mt-4 pt-4 border-t border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
-                          <textarea
-                            value={newCommentBody}
-                            onChange={(e) => setNewCommentBody(e.target.value)}
-                            placeholder="Escribe un mensaje de revisión..."
-                            className="w-full h-32 p-4 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
-                          />
-                          <div className="mt-4 flex justify-end">
-                            <Button 
-                              variant="primary" 
-                              size="md" 
-                              className="text-xs font-black uppercase tracking-widest px-8 py-2.5"
-                              onClick={handleAddComment}
-                              loading={commentLoading}
-                              disabled={!newCommentBody.trim() || commentLoading}
-                            >
-                              Enviar mensaje
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-4 p-6 border border-ui-border dark:border-ui-dark-border rounded-xl bg-ui-body/5 dark:bg-ui-dark-border/20 text-center shrink-0">
-                          <p className="text-sm text-text-muted dark:text-text-dark-muted italic font-medium">
-                            No puedes añadir más mensajes porque ya has finalizado tu validación.
-                          </p>
-                        </div>
-                      )}
                     </div>
                   )}
-                </>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-6 opacity-30">
-                  <span className="text-6xl grayscale">📄</span>
-                  <p className="text-base font-medium text-text-muted max-w-sm leading-relaxed">
-                    Selecciona un bloque en el documento de la izquierda para ver su descripción o sus mensajes.
-                  </p>
                 </div>
               )}
-            </article>
+            </div>
           </div>
-        </aside>
+        )}
       </div>
 
       {/* Diálogos */}
