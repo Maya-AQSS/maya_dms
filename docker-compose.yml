@@ -57,7 +57,6 @@ services:
     volumes:
       - ./backend:/var/www/html
       - ../maya_infra/packages:/var/maya_infra/packages
-      - /var/www/html/vendor
     ports:
       - "${BACKEND_PORT:-8001}:8000"
       - "${REVERB_PORT:-8082}:8082"
