@@ -6,8 +6,10 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\DocumentShare;
+use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
+use App\Support\TemplateHeadSnapshot;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -120,6 +122,12 @@ class DocumentReviewModeFlowTest extends TestCase
                 'type' => '',
                 'mandatory' => false,
             ]],
+            [
+                'template' => [
+                    'id' => $templateId,
+                    'review_mode' => $reviewMode,
+                ],
+            ],
         );
 
         foreach ([[$rev1, 1], [$rev2, 2]] as [$uid, $stage]) {
@@ -343,6 +351,45 @@ class DocumentReviewModeFlowTest extends TestCase
         $this->postJson(
             "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review2Id']}/reject",
             ['rejection_reason' => 'Intento de rechazar fuera de orden'],
+            $hR2,
+        )->assertUnprocessable()
+            ->assertJsonValidationErrors(['review']);
+    }
+
+    public function test_sequential_uses_anchored_template_review_mode_even_if_live_template_changes_to_parallel(): void
+    {
+        $ctx = $this->seedDocumentInReview('sequential');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $templateHead = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $ctx['templateId'])
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $templateHead->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            is_array($templateHead->snapshot_data) ? $templateHead->snapshot_data : [],
+            ['review_mode' => 'parallel'],
+        );
+        $templateHead->save();
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $list = $this->getJson("/api/v1/documents/{$ctx['documentId']}/reviews", $hR1)
+            ->assertOk()
+            ->json('data');
+        $ids = $this->reviewIdsByStage($list);
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$ids['review2Id']}/approve",
+            [],
             $hR2,
         )->assertUnprocessable()
             ->assertJsonValidationErrors(['review']);

@@ -5,7 +5,9 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Models\Document;
 use App\Models\DocumentReview;
+use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -18,6 +20,7 @@ class DocumentReviewService
 {
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly SnapshotServiceInterface $snapshotService,
         private readonly DocumentStateService $stateService,
         private readonly AuditPublisher $auditPublisher,
@@ -172,8 +175,7 @@ class DocumentReviewService
      */
     private function assertSequentialReviewAllowsActing(Document $document, DocumentReview $review): void
     {
-        $document->loadMissing('template');
-        $mode = $document->template?->review_mode ?? 'parallel';
+        $mode = $this->resolveReviewModeForDocument($document);
         if ($mode !== 'sequential') {
             return;
         }
@@ -188,5 +190,31 @@ class DocumentReviewService
                 'review' => ['En revisión secuencial, solo puede actuar la etapa pendiente más baja.'],
             ]);
         }
+    }
+
+    /**
+     * Resuelve el modo de revisión del documento.
+     */
+    private function resolveReviewModeForDocument(Document $document): string
+    {
+        $templateVersionId = is_string($document->template_version_id) ? trim($document->template_version_id) : '';
+        $templateId = is_string($document->template_id) ? trim($document->template_id) : '';
+
+        if ($templateVersionId !== '' && $templateId !== '') {
+            $anchor = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $templateVersionId,
+                Template::class,
+                $templateId,
+            );
+            $anchoredMode = is_array($anchor?->snapshot_data)
+                ? data_get($anchor->snapshot_data, 'template.review_mode')
+                : null;
+            if (is_string($anchoredMode) && in_array($anchoredMode, ['sequential', 'parallel'], true)) {
+                return $anchoredMode;
+            }
+        }
+
+        $document->loadMissing('template');
+        return (string) ($document->template?->review_mode ?? 'parallel');
     }
 }
