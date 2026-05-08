@@ -335,8 +335,9 @@ class DocumentService implements DocumentServiceInterface
                 $blockRows = $this->cloneBlockRowsFromSnapshotBlocks($blockSnapshots, $actorId);
 
                 if ($blockRows !== []) {
+                    $attributes = $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId);
                     return $this->documentRepository->createDocumentWithBlocks(
-                        $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId),
+                        $attributes,
                         $blockRows,
                     );
                 }
@@ -359,10 +360,16 @@ class DocumentService implements DocumentServiceInterface
                 return $row;
             })->all();
 
+            $templateId = (string) $source->template_id;
+            $publishedTemplateVersionId = $this->resolvePublishedTemplateVersionIdForClone(
+                $templateId,
+                is_string($source->template_version_id) ? $source->template_version_id : null,
+            );
+
             return $this->documentRepository->createDocumentWithBlocks([
                 'process_id' => $source->process_id,
-                'template_id' => $source->template_id,
-                'template_version_id' => $source->template_version_id,
+                'template_id' => $templateId,
+                'template_version_id' => $publishedTemplateVersionId,
                 'title' => $source->title.' (copia)',
                 'study_type_id' => $source->study_type_id,
                 'study_id' => $source->study_id,
@@ -427,6 +434,10 @@ class DocumentService implements DocumentServiceInterface
         if ($templateVersionId !== null && ! is_string($templateVersionId)) {
             $templateVersionId = $source->template_version_id;
         }
+        $templateVersionId = $this->resolvePublishedTemplateVersionIdForClone(
+            $templateId,
+            is_string($templateVersionId) ? $templateVersionId : null,
+        );
 
         $titleBase = isset($docSnap['title']) && is_string($docSnap['title'])
             ? $docSnap['title']
@@ -446,6 +457,27 @@ class DocumentService implements DocumentServiceInterface
             'owner_id' => $actorId,
             'status' => 'draft',
         ];
+    }
+
+    private function resolvePublishedTemplateVersionIdForClone(string $templateId, ?string $candidateVersionId): ?string
+    {
+        if (is_string($candidateVersionId) && $candidateVersionId !== '') {
+            $candidate = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $candidateVersionId,
+                Template::class,
+                $templateId,
+            );
+            if ($candidate !== null && (int) $candidate->version_number > 0) {
+                return (string) $candidate->id;
+            }
+        }
+
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        if ($latestPublished === null || (int) $latestPublished->version_number <= 0) {
+            return null;
+        }
+
+        return (string) $latestPublished->id;
     }
 
     /**

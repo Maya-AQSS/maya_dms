@@ -637,6 +637,21 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/documents/{$docId}/publish", [
             'changelog' => 'Pub',
         ], $hCreator)->assertOk();
+        $publishedTemplateVersionId = (string) DB::table('documents')
+            ->where('id', $docId)
+            ->value('template_version_id');
+        $this->assertNotSame('', $publishedTemplateVersionId);
+
+        $draftTemplateHeadId = (string) DB::table('templates')
+            ->where('id', $tid)
+            ->value('head_entity_version_id');
+        $this->assertNotSame('', $draftTemplateHeadId);
+        DB::table('entity_versions')
+            ->where('id', $draftTemplateHeadId)
+            ->update(['status' => 'draft']);
+        DB::table('documents')
+            ->where('id', $docId)
+            ->update(['template_version_id' => $draftTemplateHeadId]);
 
         $snapshotRow = DB::table('document_versions')->where('document_id', $docId)->orderByDesc('version_number')->first();
         $this->assertNotNull($snapshotRow);
@@ -663,6 +678,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator)->assertCreated();
         $copyId = (string) $clone->json('data.id');
+        $clone->assertJsonPath('data.template_version_id', $publishedTemplateVersionId);
 
         $showCopy = $this->getJson("/api/v1/documents/{$copyId}", $hCreator)->assertOk();
         $this->assertSame(
