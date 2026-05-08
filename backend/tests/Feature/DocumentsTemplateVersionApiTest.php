@@ -437,6 +437,19 @@ class DocumentsTemplateVersionApiTest extends TestCase
 
         $docId = (string) $createDoc->json('data.id');
         $versionId = (string) $createDoc->json('data.template_version_id');
+        $documentBlockId = (string) $createDoc->json('data.blocks.0.document_block_id');
+
+        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
+            'content' => [
+                ['type' => 'paragraph', 'content' => 'Contenido para publicar antes de clonar'],
+            ],
+        ], $hCreator)->assertOk();
+
+        $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)->assertOk();
+        DB::table('document_reviews')->where('document_id', $docId)->delete();
+        $this->postJson("/api/v1/documents/{$docId}/publish", [
+            'changelog' => 'Publicación para clonado',
+        ], $hCreator)->assertOk();
 
         $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator);
         $clone->assertCreated()
@@ -525,21 +538,16 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'changelog' => 'Primera publicación',
         ], $hCreator)->assertOk();
 
-        // Sin flujo productivo publicado→borrador en esta suite: se simula una nueva edición para divergir del snapshot.
-        $this->setDocumentHeadWorkingStatus($docId, 'draft');
-
-        $this->putJson("/api/v1/documents/{$docId}", [
-            'title' => 'Título solo en borrador vivo',
-            'delivery_deadline' => now()->addDay()->toDateString(),
-            'process_id' => '00000000-0000-0000-0000-000000000001',
-        ], $hCreator)->assertOk();
-
         $liveParagraph = 'Texto solo en borrador actual';
-        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
-            'content' => [
-                ['type' => 'paragraph', 'content' => $liveParagraph],
-            ],
-        ], $hCreator)->assertOk();
+        DB::table('document_blocks')
+            ->where('id', $documentBlockId)
+            ->update([
+                'content' => json_encode([
+                    ['type' => 'paragraph', 'content' => $liveParagraph],
+                ], JSON_THROW_ON_ERROR),
+                'is_filled' => true,
+                'updated_at' => now(),
+            ]);
 
         $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator);
         $clone->assertCreated()
@@ -630,8 +638,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'changelog' => 'Pub',
         ], $hCreator)->assertOk();
 
-        $this->setDocumentHeadWorkingStatus($docId, 'draft');
-
         $snapshotRow = DB::table('document_versions')->where('document_id', $docId)->orderByDesc('version_number')->first();
         $this->assertNotNull($snapshotRow);
         $this->assertNotNull($snapshotRow->entity_version_id);
@@ -645,11 +651,15 @@ class DocumentsTemplateVersionApiTest extends TestCase
         ]);
 
         $fallbackText = 'Contenido solo en borrador vivo';
-        $this->putJson("/api/v1/documents/{$docId}/blocks/{$documentBlockId}", [
-            'content' => [
-                ['type' => 'paragraph', 'content' => $fallbackText],
-            ],
-        ], $hCreator)->assertOk();
+        DB::table('document_blocks')
+            ->where('id', $documentBlockId)
+            ->update([
+                'content' => json_encode([
+                    ['type' => 'paragraph', 'content' => $fallbackText],
+                ], JSON_THROW_ON_ERROR),
+                'is_filled' => true,
+                'updated_at' => now(),
+            ]);
 
         $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator)->assertCreated();
         $copyId = (string) $clone->json('data.id');

@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * FDW directo a Odoo.v_app_users para maya_dms_db.
@@ -18,6 +20,26 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            Schema::dropIfExists(self::VIEW);
+            Schema::create(self::VIEW, function (Blueprint $table): void {
+                $table->string('id')->primary();
+                $table->string('name')->nullable();
+                $table->string('email')->nullable();
+                $table->string('department')->nullable();
+                $table->string('first_name')->nullable();
+                $table->string('last_name')->nullable();
+                $table->string('username')->nullable();
+                $table->string('employee_id')->nullable();
+                $table->string('dni')->nullable();
+                $table->string('employee_type')->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+
+            return;
+        }
+
         $dbUser = config('database.connections.pgsql.username', 'maya_dms_user');
 
         // Idempotente: drop primero para que migrate:fresh no falle
@@ -62,6 +84,12 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() !== 'pgsql') {
+            Schema::dropIfExists(self::VIEW);
+
+            return;
+        }
+
         DB::statement('DROP VIEW IF EXISTS ' . self::VIEW . ' CASCADE');
         DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TBL . ' CASCADE');
     }
