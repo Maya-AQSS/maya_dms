@@ -299,7 +299,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     try {
       if (usersDirty) {
         const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
-        await apiUpdateTemplate(template.id, { review_mode: reviewMode });
+        // In sequential mode each reviewer occupies exactly one stage, so review_stages
+        // must equal the reviewer count before syncing — otherwise the backend rejects
+        // the sync with a 422 when the count exceeds the previous review_stages value.
+        await apiUpdateTemplate(template.id, {
+          review_mode: reviewMode,
+          ...(reviewMode === 'sequential' ? { review_stages: validators.length } : {}),
+        });
         await syncTemplateValidators(template.id, validators.map((v) => v.userId));
         await syncDocumentReviewers(template.id, documentValidators.map((v) => v.userId));
       }
@@ -308,7 +314,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setStep('summary');
     } catch (e) {
       console.error('[saveUsers]', e);
-      setErrors({ api: 'Error al guardar los validadores' });
+      setErrors({ api: e instanceof Error ? e.message : 'Error al guardar los validadores' });
     } finally {
       setSaving(false);
     }
