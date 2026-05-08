@@ -26,6 +26,7 @@ import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blo
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useUserProfile } from '../../../features/user-profile';
 import { apiFetchJson } from '../../../api/http';
+import { BlockCommentsCard } from './BlockCommentsCard';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
 
@@ -214,11 +215,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [tabIsDirty, setTabIsDirty] = useState(false);
-  const [commentInput, setCommentInput] = useState('');
-  const [commentLoading, setCommentLoading] = useState(false);
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
-  const [replyBody, setReplyBody] = useState('');
-  const [replyLoading, setReplyLoading] = useState(false);
+  // Reply state is managed inside BlockCommentsCard; we only keep the API handler here.
   // Ref to always have latest activeSingleId in the autosave closure
   const activeSingleIdRef = useRef<string | null>(null);
   activeSingleIdRef.current = activeSingleId;
@@ -228,7 +225,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
 
   const isOwner = !!profile && template.created_by === profile.id;
-  const isRejected = template.status === 'draft' && !!template.has_review_comments;
   const blockComments: any[] = activeSingleId
     ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
     : [];
@@ -449,40 +445,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     // setMultiIndex(0);
   };
 
-  const handlePostComment = useCallback(async () => {
-    if (!activeSingleId || !commentInput.trim()) return;
-    setCommentLoading(true);
-    try {
-      const res = await apiFetchJson<{ data: any }>(`templates/${template.id}/comments`, {
-        method: 'POST',
-        body: { body: commentInput.trim(), blockable_id: activeSingleId },
-      });
-      onCommentAdded?.(res.data);
-      setCommentInput('');
-    } catch (e) {
-      console.error('Error posting comment', e);
-    } finally {
-      setCommentLoading(false);
-    }
-  }, [activeSingleId, commentInput, template.id, onCommentAdded]);
-
-  const handlePostReply = useCallback(async (parentId: string) => {
-    if (!activeSingleId || !replyBody.trim()) return;
-    setReplyLoading(true);
-    try {
-      const res = await apiFetchJson<{ data: any }>(`templates/${template.id}/comments`, {
-        method: 'POST',
-        body: { body: replyBody.trim(), parent_id: parentId, blockable_id: activeSingleId },
-      });
-      onCommentAdded?.(res.data);
-      setReplyBody('');
-      setReplyingTo(null);
-    } catch (e) {
-      console.error('Error posting reply', e);
-    } finally {
-      setReplyLoading(false);
-    }
-  }, [activeSingleId, replyBody, template.id, onCommentAdded]);
+  const handleReply = useCallback(async (parentId: string, body: string) => {
+    if (!activeSingleId) return;
+    const res = await apiFetchJson<{ data: any }>(`templates/${template.id}/comments`, {
+      method: 'POST',
+      body: { body, parent_id: parentId, blockable_id: activeSingleId },
+    });
+    onCommentAdded?.(res.data);
+  }, [activeSingleId, template.id, onCommentAdded]);
 
   const renderSaveStatus = () => {
     if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
@@ -698,118 +668,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         )}
       </div>
 
-      {/* Right: persistent comment panel — visible when active block has unresolved comments */}
+      {/* Right: comment panel — creator-edit mode, only when block has unresolved comments */}
       {activeBlockHasComments && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
-        <div className="hidden md:flex md:flex-col md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
-          {/* Panel header */}
-          <div className="shrink-0 px-4 py-3 border-b border-ui-border dark:border-ui-dark-border bg-danger/5 dark:bg-danger/10">
-            <p className="text-xs font-black uppercase tracking-widest text-danger-dark dark:text-danger">Comentarios de revisión</p>
-            <p className="text-xs text-text-muted dark:text-text-dark-muted mt-0.5 truncate">
-              {selectedBlock.title} · {blockComments.length} {blockComments.length === 1 ? 'mensaje' : 'mensajes'}
-            </p>
-          </div>
-
-          {/* Comment list — scrollable */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
-            {blockComments.filter(c => !c.parent_id).map(c => {
-              const replies = blockComments.filter(r => r.parent_id === c.id);
-              const isResolved = c.resolved;
-              return (
-                <div key={c.id} className="space-y-2">
-                  <div className={`relative pl-4 ${isResolved ? 'opacity-50' : ''}`}>
-                    <div className={`absolute left-0 top-0 bottom-0 w-0.5 rounded-full ${isResolved ? 'bg-success/30' : 'bg-danger/30'}`} />
-                    <div className="flex items-center justify-between mb-1 gap-2">
-                      <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">
-                        {c.author?.name || 'Usuario'}
-                        {isResolved && <span className="ml-1 text-success-dark font-bold"> ✓</span>}
-                      </span>
-                      <time className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
-                        {new Date(c.created_at).toLocaleDateString()}
-                      </time>
-                    </div>
-                    <p className="text-xs text-text-primary dark:text-text-dark-primary bg-ui-body/40 dark:bg-ui-dark-bg px-3 py-2 rounded-lg border border-ui-border/60 dark:border-ui-dark-border/60 whitespace-pre-wrap">
-                      {c.body}
-                    </p>
-                    <div className="mt-1.5 flex gap-3">
-                      {isOwner && !isResolved && onResolveComment && (
-                        <button
-                          type="button"
-                          onClick={() => void onResolveComment(c.id)}
-                          className="text-xs font-bold text-success hover:underline"
-                        >
-                          ✓ Resolver
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => setReplyingTo(replyingTo === c.id ? null : c.id)}
-                        className="text-xs font-bold text-odoo-purple hover:underline"
-                      >
-                        {replyingTo === c.id ? 'Cancelar' : 'Responder'}
-                      </button>
-                    </div>
-                  </div>
-
-                  {replies.length > 0 && (
-                    <div className="ml-6 space-y-2">
-                      {replies.map(r => (
-                        <div key={r.id} className="relative pl-3 border-l-2 border-ui-border/40 dark:border-ui-dark-border/40">
-                          <div className="flex items-center justify-between mb-0.5 gap-2">
-                            <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">{r.author?.name || 'Usuario'}</span>
-                            <time className="text-xs text-text-muted dark:text-text-dark-muted">{new Date(r.created_at).toLocaleDateString()}</time>
-                          </div>
-                          <p className="text-xs text-text-primary dark:text-text-dark-primary bg-ui-body/20 dark:bg-ui-dark-bg px-2 py-1.5 rounded border border-ui-border/30 dark:border-ui-dark-border/30 italic">{r.body}</p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {replyingTo === c.id && (
-                    <div className="ml-6 space-y-1.5 animate-in slide-in-from-top-1">
-                      <textarea
-                        value={replyBody}
-                        onChange={e => setReplyBody(e.target.value)}
-                        placeholder="Escribe una respuesta..."
-                        className="w-full text-xs p-2.5 rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 outline-none resize-none h-16 shadow-inner"
-                      />
-                      <div className="flex justify-end">
-                        <Button
-                          size="xs"
-                          variant="primary"
-                          loading={replyLoading}
-                          disabled={!replyBody.trim() || replyLoading}
-                          onClick={() => void handlePostReply(c.id)}
-                        >
-                          Enviar
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Sticky input for new top-level comment */}
-          <div className="shrink-0 px-4 py-3 border-t border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
-            <textarea
-              value={commentInput}
-              onChange={e => setCommentInput(e.target.value)}
-              placeholder="Añadir comentario..."
-              className="w-full text-xs p-2.5 rounded-lg border border-ui-border dark:border-ui-dark-border bg-ui-body/30 dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 outline-none resize-none h-16 shadow-inner"
-            />
-            <div className="mt-2 flex justify-end">
-              <Button
-                size="xs"
-                variant="primary"
-                loading={commentLoading}
-                disabled={!commentInput.trim() || commentLoading}
-                onClick={() => void handlePostComment()}
-              >
-                Enviar comentario
-              </Button>
-            </div>
-          </div>
+        <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
+          <BlockCommentsCard
+            mode="creator-edit"
+            blockSortOrder={selectedBlock.sort_order ?? '?'}
+            blockComments={blockComments}
+            allComments={reviewComments}
+            onReply={handleReply}
+            onResolve={isOwner && onResolveComment ? onResolveComment : undefined}
+            onClose={() => {}}
+          />
         </div>
       )}
 
