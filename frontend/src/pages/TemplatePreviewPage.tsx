@@ -95,6 +95,7 @@ export function TemplatePreviewPage() {
     backTo?: string;
     moduleId?: string;
     processId?: string;
+    templateVersionId?: string | null;
   } | null;
   const selectionMode = locationState?.selectionMode === true;
   const backTo = locationState?.backTo ?? '/documentos/nuevo';
@@ -446,7 +447,11 @@ export function TemplatePreviewPage() {
             variant="primary"
             size="sm"
             onClick={() => navigate(`/documentos/nuevo/${id}/wizard`, {
-              state: { moduleId: locationState?.moduleId, processId: locationState?.processId },
+              state: {
+                moduleId: locationState?.moduleId,
+                processId: locationState?.processId,
+                templateVersionId: templateVersionId ?? locationState?.templateVersionId ?? null,
+              },
             })}
           >
             Usar plantilla

@@ -393,8 +393,12 @@ export function DocumentsContent() {
     if (creationMode === 'none') return;
     if (creationMode === 'auto') {
       const templateId = creationOptions[0]?.template_id;
+      const templateVersionId = creationOptions[0]?.template_version_id;
       navigate(`/documentos/nuevo/${templateId}/wizard`, {
-        state: { moduleId: selectedModuleId }
+        state: {
+          moduleId: selectedModuleId,
+          templateVersionId: templateVersionId ?? null,
+        }
       });
       return;
     }

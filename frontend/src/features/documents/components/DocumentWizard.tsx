@@ -274,12 +274,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     processId?: string;
     moduleId?: string;
     fromTemplateSelection?: boolean;
+    templateVersionId?: string | null;
   } | null;
   const returnToSummary = locationState?.step === 'summary';
   const forcePropertiesStep = locationState?.step === 'properties';
   const locationProcessId = locationState?.processId;
   const locationModuleId = locationState?.moduleId;
   const fromTemplateSelection = locationState?.fromTemplateSelection === true;
+  const selectedTemplateVersionId = locationState?.templateVersionId ?? null;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = locationProcessId ?? template?.process_id ?? null;
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
@@ -860,6 +862,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           const created = await createDocument({
             template_id: templateId,
             process_id: template.process_id,
+            template_version_id: selectedTemplateVersionId,
             title: title.trim(),
             study_type_id: studyTypeId || undefined,
             study_id: studyId || undefined,
@@ -1166,12 +1169,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     // step === 'properties'
     const tId = detail?.template_id || templateId;
     if (tId) {
-      navigate(`/templates/${tId}`, {
+      const templatePath = selectedTemplateVersionId
+        ? `/templates/${tId}?templateVersionId=${encodeURIComponent(selectedTemplateVersionId)}`
+        : `/templates/${tId}`;
+      navigate(templatePath, {
         state: {
           selectionMode: !documentId,
           backTo: '/documentos/nuevo',
           moduleId: locationModuleId,
           processId: locationProcessId,
+          templateVersionId: selectedTemplateVersionId,
         },
       });
     } else if (documentId) {
