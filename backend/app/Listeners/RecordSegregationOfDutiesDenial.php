@@ -62,25 +62,19 @@ class RecordSegregationOfDutiesDenial
             'user_id'     => $userId,
         ]);
 
-        try {
-            $this->auditPublisher->publish(
-                applicationSlug: 'maya-dms',
-                entityType:      $entityType,
-                entityId:        (string) $subject->getKey(),
-                action:          'sod_violation',
-                userId:          (string) $userId,
-                newValue:        [
-                    'ability' => $event->ability,
-                    'level'   => 'WARNING',
-                    'reason'  => 'segregation_of_duties',
-                ],
-                ipAddress:       $request?->ip(),
-                userAgent:       $request?->userAgent(),
-            );
-        } catch (\Throwable $e) {
-            Log::error('Failed to publish SoD audit event', [
-                'exception' => $e->getMessage(),
-            ]);
-        }
+        $this->auditPublisher->publish(
+            applicationSlug: 'maya-dms',
+            entityType:      $entityType,
+            entityId:        (string) $subject->getKey(),
+            action:          'sod_violation',
+            userId:          (string) $userId,
+            newValue:        [
+                'ability' => $event->ability,
+                'level'   => 'WARNING',
+                'reason'  => 'segregation_of_duties',
+            ],
+            ipAddress:       $request?->ip(),
+            userAgent:       $request?->userAgent(),
+        );
     }
 }

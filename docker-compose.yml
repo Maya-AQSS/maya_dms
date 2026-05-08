@@ -98,25 +98,15 @@ services:
       MAYA_MESSAGING_APP: maya_dms
       LOG_STACK: "daily"
       LOG_LEVEL: info
-    entrypoint:
-      - /bin/sh
-      - -c
-      - |
-        cd /var/www/html
-        if [ ! -f vendor/autoload.php ]; then
-          echo "[queue-worker] waiting for vendor..."
-          while [ ! -f vendor/autoload.php ]; do sleep 3; done
-        fi
-        until php artisan migrate:status --no-interaction 2>/dev/null | grep -q "Running\|Ran"; do
-          echo "[queue-worker] waiting for migrations..."
-          sleep 3
-        done
-        echo "[queue-worker] ready — processing database queue"
-        exec php artisan queue:work --connection=database --tries=5 --backoff=30 --queue=default
+      WORKER_LABEL: "[queue-worker]"
+      WORKER_WAIT_MIGRATION: "Running|Ran"
+      WORKER_PATCH_CONSUMER: "0"
+    entrypoint: ["/maya_infra/scripts/worker-entrypoint.sh"]
     command: []
     volumes:
       - ./backend:/var/www/html
       - ../maya_infra/packages:/var/maya_infra/packages
+      - ../maya_infra/scripts:/maya_infra/scripts:ro
     networks:
       - maya_network
 
