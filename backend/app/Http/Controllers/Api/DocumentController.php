@@ -43,6 +43,7 @@ class DocumentController extends Controller
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
         $this->attachLatestPublishedVersionMeta($documents);
+        $this->attachTemplateVersionNumbers($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
@@ -50,6 +51,46 @@ class DocumentController extends Controller
         );
 
         return DocumentResource::collection($documents);
+    }
+
+    /**
+     * Adjunta `template_version_number` en lote para evitar resolución por documento en el Resource.
+     *
+     * @param  Collection<int, Document>  $documents
+     */
+    private function attachTemplateVersionNumbers(Collection $documents): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $versionIds = $documents
+            ->pluck('template_version_id')
+            ->filter(fn ($id) => is_string($id) && $id !== '')
+            ->unique()
+            ->values()
+            ->all();
+        if ($versionIds === []) {
+            return;
+        }
+
+        /** @var array<string,int> $versionNumberById */
+        $versionNumberById = DB::table('entity_versions')
+            ->whereIn('id', $versionIds)
+            ->pluck('version_number', 'id')
+            ->map(fn ($value) => (int) $value)
+            ->all();
+
+        foreach ($documents as $document) {
+            $templateVersionId = $document->template_version_id;
+            if (! is_string($templateVersionId) || $templateVersionId === '') {
+                continue;
+            }
+
+            if (array_key_exists($templateVersionId, $versionNumberById)) {
+                $document->setAttribute('template_version_number', $versionNumberById[$templateVersionId]);
+            }
+        }
     }
 
     /**

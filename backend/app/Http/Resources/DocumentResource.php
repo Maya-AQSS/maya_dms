@@ -50,8 +50,16 @@ class DocumentResource extends JsonResource
         ];
     }
 
+    /**
+     * Resuelve el número de versión de la plantilla anclada (p. ej. 1).
+     */
     private function resolveTemplateVersionNumber(): ?int
     {
+        $preloaded = $this->resource->getAttribute('template_version_number');
+        if (is_numeric($preloaded)) {
+            return (int) $preloaded;
+        }
+
         if ($this->template_version_id === null) {
             return null;
         }
