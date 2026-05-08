@@ -89,6 +89,15 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     if (!dom) return;
 
     const handlePaste = (e: ClipboardEvent) => {
+      // If the clipboard contains binary image data (image/png, image/jpeg…),
+      // skip entirely and let BlockNote's native paste handler deal with it.
+      // Our handler would create image blocks from temporary blob: URLs (which
+      // the browser generates for the html representation of the image), and
+      // those URLs expire when the tab closes — the image would appear to save
+      // but be gone on reload.
+      const types = e.clipboardData?.types ?? [];
+      if (Array.from(types).some((t) => t.startsWith('image/'))) return;
+
       const plain = e.clipboardData?.getData('text/plain') ?? '';
       const html = e.clipboardData?.getData('text/html') ?? '';
 
