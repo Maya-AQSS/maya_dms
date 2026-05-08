@@ -642,6 +642,8 @@ class TemplatesApiTest extends TestCase
 
         $tid = (string) Str::uuid();
         $bid = (string) Str::uuid();
+        $publishedDeadline = now()->addDay()->toDateString();
+        $liveOnlyDeadline = now()->addDays(10)->toDateString();
         Template::query()->forceCreate([
             'id' => $tid,
             'process_id' => '00000000-0000-0000-0000-000000000001',
@@ -665,7 +667,7 @@ class TemplatesApiTest extends TestCase
             ->firstOrFail();
         $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
             $head->snapshot_data ?? [],
-            ['delivery_deadline' => now()->addDay()->toDateString()],
+            ['delivery_deadline' => $publishedDeadline],
         );
         $head->save();
 
@@ -685,7 +687,12 @@ class TemplatesApiTest extends TestCase
             ->where('versionable_id', $tid)
             ->where('version_number', 0)
             ->firstOrFail();
-        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($headEv->snapshot_data ?? [], ['name' => 'Nombre solo en vivo']);
+        $snapshotData = TemplateHeadSnapshot::mergeTemplateKey($headEv->snapshot_data ?? [], [
+            'name' => 'Nombre solo en vivo',
+            'delivery_deadline' => $liveOnlyDeadline,
+            'review_stages' => 4,
+            'review_mode' => 'parallel',
+        ]);
         $headEv->update(['snapshot_data' => $snapshotData]);
 
         DB::table('template_blocks')->where('id', $bid)->update(['title' => 'Titulo solo en vivo']);
@@ -694,7 +701,13 @@ class TemplatesApiTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('data.name', 'Nombre al publicar (copia)')
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'draft')
+            ->assertJsonPath('data.review_stages', 0)
+            ->assertJsonPath('data.review_mode', 'sequential');
+        $this->assertStringStartsWith(
+            $publishedDeadline,
+            (string) $response->json('data.delivery_deadline'),
+        );
 
         $copyId = (string) $response->json('data.id');
         $this->assertNotSame($tid, $copyId);

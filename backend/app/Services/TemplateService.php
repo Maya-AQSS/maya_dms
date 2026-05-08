@@ -475,10 +475,11 @@ class TemplateService implements TemplateServiceInterface
 
             $nameBase = $this->cloneTemplateNameBase($kind, $templateMeta, $source);
             $cloneVisibility = $this->normalizeTemplateVisibilityLevelForClone($kind, $templateMeta, $source);
+            $cloneDeliveryDeadline = $this->cloneTemplateDeliveryDeadline($kind, $templateMeta, $source);
             $cloneName = $nameBase.' (copia)';
             $this->assertTemplateMetadataInvariants(
                 $cloneName,
-                $source->delivery_deadline,
+                $cloneDeliveryDeadline,
                 $cloneVisibility,
             );
 
@@ -487,15 +488,15 @@ class TemplateService implements TemplateServiceInterface
                 'name' => $cloneName,
                 'description' => $this->cloneTemplateDescription($kind, $templateMeta, $source),
                 'visibility_level' => $cloneVisibility,
-                'delivery_deadline' => $source->delivery_deadline,
+                'delivery_deadline' => $cloneDeliveryDeadline,
                 'study_type_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_type_id'),
                 'study_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_id'),
                 'module_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'module_id'),
                 'team_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'team_id'),
                 'created_by' => $actorId,
                 'status' => 'draft',
-                'review_stages' => $source->review_stages,
-                'review_mode' => $source->review_mode,
+                'review_stages' => $this->cloneTemplateReviewStages($kind, $templateMeta, $source),
+                'review_mode' => $this->cloneTemplateReviewMode($kind, $templateMeta, $source),
             ]);
 
             $this->templateRepository->insertBlocksFromPublishedSnapshot((string) $target->getKey(), $published['blocks']);
@@ -721,6 +722,18 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateDeliveryDeadline(string $kind, array $templateMeta, Template $source): mixed
+    {
+        if ($kind === 'entity' && array_key_exists('delivery_deadline', $templateMeta)) {
+            return $templateMeta['delivery_deadline'];
+        }
+
+        return $source->delivery_deadline;
+    }
+
+    /**
      * Clona el valor de un FK de la plantilla.
      * 
      * @param  string  $key
@@ -749,6 +762,35 @@ class TemplateService implements TemplateServiceInterface
         }
 
         return $this->normalizeTemplateVisibilityLevelValue($source->visibility_level);
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateReviewStages(string $kind, array $templateMeta, Template $source): int
+    {
+        if ($kind === 'entity' && array_key_exists('review_stages', $templateMeta)) {
+            return (int) $templateMeta['review_stages'];
+        }
+
+        return (int) $source->review_stages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateReviewMode(string $kind, array $templateMeta, Template $source): string
+    {
+        if (
+            $kind === 'entity'
+            && isset($templateMeta['review_mode'])
+            && is_string($templateMeta['review_mode'])
+            && in_array($templateMeta['review_mode'], ['sequential', 'parallel'], true)
+        ) {
+            return $templateMeta['review_mode'];
+        }
+
+        return (string) $source->review_mode;
     }
 
     private function normalizeTemplateVisibilityLevelValue(mixed $level): string

@@ -81,9 +81,11 @@ class SnapshotService implements SnapshotServiceInterface
             'snapshot_version_number' => $snapshotVersionNumber,
             'document' => [
                 'id' => $document->id,
+                'process_id' => $document->process_id,
                 'template_id' => $document->template_id,
                 'template_version_id' => $document->template_version_id,
                 'title' => $document->title,
+                'delivery_deadline' => $document->delivery_deadline?->toDateString(),
                 'study_type_id' => $document->study_type_id,
                 'study_id' => $document->study_id,
                 'module_id' => $document->module_id,

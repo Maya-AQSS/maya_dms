@@ -537,8 +537,23 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $this->postJson("/api/v1/documents/{$docId}/publish", [
             'changelog' => 'Primera publicación',
         ], $hCreator)->assertOk();
+        $publishedDeadline = now()->addDay()->toDateString();
 
         $liveParagraph = 'Texto solo en borrador actual';
+        $liveOnlyDeadline = now()->addDays(7)->toDateString();
+        $headDocumentEv = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $docId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        /** @var array<string, mixed> $headSnapshotData */
+        $headSnapshotData = is_array($headDocumentEv->snapshot_data) ? $headDocumentEv->snapshot_data : [];
+        $documentMeta = isset($headSnapshotData['document']) && is_array($headSnapshotData['document'])
+            ? $headSnapshotData['document']
+            : [];
+        $documentMeta['delivery_deadline'] = $liveOnlyDeadline;
+        $headSnapshotData['document'] = $documentMeta;
+        $headDocumentEv->update(['snapshot_data' => $headSnapshotData]);
         DB::table('document_blocks')
             ->where('id', $documentBlockId)
             ->update([
@@ -552,6 +567,10 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $clone = $this->postJson("/api/v1/documents/{$docId}/clone", [], $hCreator);
         $clone->assertCreated()
             ->assertJsonPath('data.title', 'Título al publicar (copia)');
+        $this->assertStringStartsWith(
+            $publishedDeadline,
+            (string) $clone->json('data.delivery_deadline'),
+        );
 
         $copyId = (string) $clone->json('data.id');
         $this->assertNotSame($docId, $copyId);

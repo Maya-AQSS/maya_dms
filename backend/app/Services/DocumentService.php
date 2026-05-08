@@ -430,6 +430,9 @@ class DocumentService implements DocumentServiceInterface
      */
     private function cloneDocumentAttributesFromPublishedSnapshot(Document $source, array $docSnap, string $actorId): array
     {
+        $processId = isset($docSnap['process_id']) && is_string($docSnap['process_id']) && $docSnap['process_id'] !== ''
+            ? $docSnap['process_id']
+            : $source->process_id;
         $templateId = isset($docSnap['template_id']) && is_string($docSnap['template_id']) && $docSnap['template_id'] !== ''
             ? $docSnap['template_id']
             : (string) $source->template_id;
@@ -446,10 +449,13 @@ class DocumentService implements DocumentServiceInterface
         $titleBase = isset($docSnap['title']) && is_string($docSnap['title'])
             ? $docSnap['title']
             : (string) $source->title;
-        $this->assertDocumentMetadataInvariantsForMutation($titleBase, $source->delivery_deadline);
+        $deliveryDeadline = array_key_exists('delivery_deadline', $docSnap)
+            ? $docSnap['delivery_deadline']
+            : $source->delivery_deadline;
+        $this->assertDocumentMetadataInvariantsForMutation($titleBase, $deliveryDeadline);
 
         return [
-            'process_id' => $source->process_id,
+            'process_id' => $processId,
             'template_id' => $templateId,
             'template_version_id' => $templateVersionId,
             'title' => $titleBase.' (copia)',
@@ -457,7 +463,7 @@ class DocumentService implements DocumentServiceInterface
             'study_id' => array_key_exists('study_id', $docSnap) ? $docSnap['study_id'] : $source->study_id,
             'module_id' => array_key_exists('module_id', $docSnap) ? $docSnap['module_id'] : $source->module_id,
             'team_id' => array_key_exists('team_id', $docSnap) ? $docSnap['team_id'] : $source->team_id,
-            'delivery_deadline' => $source->delivery_deadline,
+            'delivery_deadline' => $deliveryDeadline,
             'created_by' => $actorId,
             'owner_id' => $actorId,
             'status' => 'draft',
