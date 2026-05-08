@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Publishers\AuditPublisher;
 
 class DocumentReviewService
 {
@@ -19,6 +20,7 @@ class DocumentReviewService
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly SnapshotServiceInterface $snapshotService,
         private readonly DocumentStateService $stateService,
+        private readonly AuditPublisher $auditPublisher,
     ) {}
 
     /**
@@ -65,6 +67,23 @@ class DocumentReviewService
             $review->status = 'approved';
             $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
+            $this->auditPublisher->publish(
+                applicationSlug: 'maya-dms',
+                entityType: 'document',
+                entityId: $documentId,
+                action: 'review_approved',
+                userId: $actorId,
+                previousValue: [
+                    'review_id' => (string) $review->id,
+                    'stage' => (int) $review->stage,
+                    'status' => 'pending',
+                ],
+                newValue: [
+                    'review_id' => (string) $review->id,
+                    'stage' => (int) $review->stage,
+                    'status' => 'approved',
+                ],
+            );
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
                 $this->stateService->transition($documentId, 'published', $actorId);
@@ -121,6 +140,24 @@ class DocumentReviewService
             $review->rejection_reason = $reason;
             $review->reviewed_at = now();
             $this->documentRepository->saveReview($review);
+            $this->auditPublisher->publish(
+                applicationSlug: 'maya-dms',
+                entityType: 'document',
+                entityId: $documentId,
+                action: 'review_rejected',
+                userId: $actorId,
+                previousValue: [
+                    'review_id' => (string) $review->id,
+                    'stage' => (int) $review->stage,
+                    'status' => 'pending',
+                ],
+                newValue: [
+                    'review_id' => (string) $review->id,
+                    'stage' => (int) $review->stage,
+                    'status' => 'rejected',
+                    'rejection_reason' => $reason,
+                ],
+            );
 
             $updated = $this->stateService->transition($documentId, 'draft', $actorId);
 

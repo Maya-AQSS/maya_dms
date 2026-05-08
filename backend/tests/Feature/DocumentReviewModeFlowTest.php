@@ -13,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Lcobucci\JWT\Signer\Key\InMemory;
+use Maya\Messaging\Publishers\AuditPublisher;
 use Database\Seeders\PermissionsSeeder;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
@@ -435,6 +436,114 @@ class DocumentReviewModeFlowTest extends TestCase
         $this->postJson(
             "/api/v1/documents/{$ctx['documentId']}/reviews/{$review1Id}/reject",
             ['rejection_reason' => 'No procede'],
+            $hR1,
+        )->assertOk()
+            ->assertJsonPath('data.status', 'draft');
+    }
+
+    public function test_approve_review_publishes_explicit_review_audit_event(): void
+    {
+        $ctx = $this->seedDocumentInReview('parallel');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $review2Id = (string) DocumentReview::query()
+            ->where('document_id', $ctx['documentId'])
+            ->where('reviewer_id', $ctx['rev2'])
+            ->value('id');
+        $this->assertNotSame('', $review2Id);
+
+        $auditPublisher = $this->mock(AuditPublisher::class);
+        $auditPublisher->shouldIgnoreMissing();
+        $auditPublisher->shouldReceive('publish')
+            ->once()
+            ->withArgs(function (
+                string $applicationSlug,
+                string $entityType,
+                string $entityId,
+                string $action,
+                string $userId,
+                ?string $blockId,
+                ?array $previousValue,
+                ?array $newValue,
+            ) use ($ctx, $review2Id): bool {
+                return $applicationSlug === 'maya-dms'
+                    && $entityType === 'document'
+                    && $entityId === $ctx['documentId']
+                    && $action === 'review_approved'
+                    && $userId === $ctx['rev2']
+                    && ($previousValue['review_id'] ?? null) === $review2Id
+                    && ($previousValue['status'] ?? null) === 'pending'
+                    && ($newValue['review_id'] ?? null) === $review2Id
+                    && ($newValue['status'] ?? null) === 'approved';
+            });
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$review2Id}/approve",
+            [],
+            $hR2,
+        )->assertOk()
+            ->assertJsonPath('data.status', 'in_review');
+    }
+
+    public function test_reject_review_publishes_explicit_review_audit_event(): void
+    {
+        $ctx = $this->seedDocumentInReview('parallel');
+        [$priv, $pub] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn(InMemory::plainText($pub));
+
+        $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
+        $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
+
+        $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hOwner)->assertOk();
+
+        $review1Id = (string) DocumentReview::query()
+            ->where('document_id', $ctx['documentId'])
+            ->where('reviewer_id', $ctx['rev1'])
+            ->value('id');
+        $this->assertNotSame('', $review1Id);
+
+        $reason = 'No procede';
+        $auditPublisher = $this->mock(AuditPublisher::class);
+        $auditPublisher->shouldIgnoreMissing();
+        $auditPublisher->shouldReceive('publish')
+            ->once()
+            ->withArgs(function (
+                string $applicationSlug,
+                string $entityType,
+                string $entityId,
+                string $action,
+                string $userId,
+                ?string $blockId,
+                ?array $previousValue,
+                ?array $newValue,
+            ) use ($ctx, $review1Id, $reason): bool {
+                return $applicationSlug === 'maya-dms'
+                    && $entityType === 'document'
+                    && $entityId === $ctx['documentId']
+                    && $action === 'review_rejected'
+                    && $userId === $ctx['rev1']
+                    && ($previousValue['review_id'] ?? null) === $review1Id
+                    && ($previousValue['status'] ?? null) === 'pending'
+                    && ($newValue['review_id'] ?? null) === $review1Id
+                    && ($newValue['status'] ?? null) === 'rejected'
+                    && ($newValue['rejection_reason'] ?? null) === $reason;
+            });
+
+        $this->postJson(
+            "/api/v1/documents/{$ctx['documentId']}/reviews/{$review1Id}/reject",
+            ['rejection_reason' => $reason],
             $hR1,
         )->assertOk()
             ->assertJsonPath('data.status', 'draft');
