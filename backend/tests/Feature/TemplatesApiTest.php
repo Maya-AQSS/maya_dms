@@ -321,7 +321,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'A',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -337,7 +337,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'B',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -373,7 +373,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Con publicada y head draft',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -389,7 +389,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Sin versiones publicadas',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -405,7 +405,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Archivada',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -473,7 +473,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Con comentarios',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -489,7 +489,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Sin comentarios',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -551,7 +551,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'M?a',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -579,7 +579,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'Original',
             'description' => 'D',
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,
@@ -589,6 +589,16 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 1,
             'review_mode' => 'parallel',
         ]);
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $head->snapshot_data ?? [],
+            ['delivery_deadline' => now()->addDay()->toDateString()],
+        );
+        $head->save();
 
         $b1 = (string) Str::uuid();
         $b2 = (string) Str::uuid();
@@ -648,6 +658,16 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $head->snapshot_data ?? [],
+            ['delivery_deadline' => now()->addDay()->toDateString()],
+        );
+        $head->save();
 
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
@@ -709,6 +729,26 @@ class TemplatesApiTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+        $headVersionInit = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $headVersionInit->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $headVersionInit->snapshot_data ?? [],
+            ['delivery_deadline' => now()->addDay()->toDateString()],
+        );
+        $headVersionInit->save();
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
+            $head->snapshot_data ?? [],
+            ['delivery_deadline' => now()->addDay()->toDateString()],
+        );
+        $head->save();
 
         TemplateBlock::query()->forceCreate([
             'id' => $bid,
@@ -776,7 +816,10 @@ class TemplatesApiTest extends TestCase
         $head->status = 'published';
         $head->snapshot_data = TemplateHeadSnapshot::mergeTemplateKey(
             $head->snapshot_data ?? [],
-            ['status' => 'published'],
+            [
+                'status' => 'published',
+                'delivery_deadline' => now()->addDay()->toDateString(),
+            ],
         );
         $head->save();
         TemplateReviewer::query()->forceCreate([
@@ -1041,7 +1084,7 @@ class TemplatesApiTest extends TestCase
             'name' => 'T',
             'description' => null,
             'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
+            'delivery_deadline' => now()->addDay()->toDateString(),
             'study_type_id' => null,
             'study_id' => null,
             'module_id' => null,

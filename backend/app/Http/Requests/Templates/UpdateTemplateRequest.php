@@ -33,7 +33,7 @@ class UpdateTemplateRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['sometimes', 'string', 'max:255'],
+            'name' => ['sometimes', 'filled', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string'],
             'visibility_level' => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
             'delivery_deadline' => ['sometimes', 'required', 'date', 'after_or_equal:today'],

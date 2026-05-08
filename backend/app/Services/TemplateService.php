@@ -148,6 +148,11 @@ class TemplateService implements TemplateServiceInterface
         if ($userId === null) {
             throw new RuntimeException('Cannot create template without authenticated user.');
         }
+        $this->assertTemplateMetadataInvariants(
+            $dto->name,
+            $dto->deliveryDeadline,
+            $dto->visibilityLevel,
+        );
 
         return $this->templateRepository->create([
             'process_id' => $dto->processId,
@@ -204,6 +209,11 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setReviewMode) {
             $attributes['review_mode'] = $dto->reviewMode;
         }
+        $this->assertTemplateMetadataInvariants(
+            (string) ($attributes['name'] ?? $template->name),
+            $attributes['delivery_deadline'] ?? $template->delivery_deadline,
+            $attributes['visibility_level'] ?? $template->visibility_level,
+        );
 
         return $this->templateRepository->update($template, $attributes);
     }
@@ -243,6 +253,11 @@ class TemplateService implements TemplateServiceInterface
     public function clone(string $sourceTemplateId, string $actorId): Template
     {
         $source = $this->templateRepository->findOrFail($sourceTemplateId);
+        $this->assertTemplateMetadataInvariants(
+            (string) $source->name,
+            $source->delivery_deadline,
+            $source->visibility_level,
+        );
 
         $published = $this->resolveLatestPublishedTemplateSnapshotForClone((string) $source->id);
         if ($published !== null) {
@@ -264,6 +279,11 @@ class TemplateService implements TemplateServiceInterface
                 'status' => ['Solo una plantilla publicada puede pasar a borrador para una nueva versión.'],
             ]);
         }
+        $this->assertTemplateMetadataInvariants(
+            (string) $template->name,
+            $template->delivery_deadline,
+            $template->visibility_level,
+        );
 
         return $this->templatePublishingService->transitionStatus(
             $template,
@@ -454,12 +474,19 @@ class TemplateService implements TemplateServiceInterface
             $templateMeta = $published['template_meta'];
 
             $nameBase = $this->cloneTemplateNameBase($kind, $templateMeta, $source);
+            $cloneVisibility = $this->normalizeTemplateVisibilityLevelForClone($kind, $templateMeta, $source);
+            $cloneName = $nameBase.' (copia)';
+            $this->assertTemplateMetadataInvariants(
+                $cloneName,
+                $source->delivery_deadline,
+                $cloneVisibility,
+            );
 
             $target = $this->templateRepository->create([
                 'process_id' => $source->process_id,
-                'name' => $nameBase.' (copia)',
+                'name' => $cloneName,
                 'description' => $this->cloneTemplateDescription($kind, $templateMeta, $source),
-                'visibility_level' => $this->normalizeTemplateVisibilityLevelForClone($kind, $templateMeta, $source),
+                'visibility_level' => $cloneVisibility,
                 'delivery_deadline' => $source->delivery_deadline,
                 'study_type_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_type_id'),
                 'study_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_id'),
@@ -516,14 +543,21 @@ class TemplateService implements TemplateServiceInterface
     {
         return $this->templateRepository->transaction(function () use ($source, $actorId) {
             $source->loadMissing(['blocks', 'reviewers', 'documentReviewers']);
+            $cloneVisibility = $source->visibility_level instanceof TemplateVisibilityLevel
+                ? $source->visibility_level->value
+                : $source->visibility_level;
+            $cloneName = $source->name.' (copia)';
+            $this->assertTemplateMetadataInvariants(
+                $cloneName,
+                $source->delivery_deadline,
+                $cloneVisibility,
+            );
 
             $target = $this->templateRepository->create([
                 'process_id' => $source->process_id,
-                'name' => $source->name.' (copia)',
+                'name' => $cloneName,
                 'description' => $source->description,
-                'visibility_level' => $source->visibility_level instanceof TemplateVisibilityLevel
-                    ? $source->visibility_level->value
-                    : $source->visibility_level,
+                'visibility_level' => $cloneVisibility,
                 'delivery_deadline' => $source->delivery_deadline,
                 'study_type_id' => $source->study_type_id,
                 'study_id' => $source->study_id,
@@ -555,6 +589,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Resuelve la última versión publicada con metadatos si el ganador por meta no produce snapshot usable.
+     * 
+     * @param  string  $templateId
      * @return ?array{
      *     kind: 'entity'|'legacy',
      *     template_meta: array<string, mixed>,
@@ -617,6 +654,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Construye el payload de clonación de la plantilla.
+     * 
+     * @param  array<string, mixed>  $data
      * @return ?array{
      *     kind: 'entity',
      *     template_meta: array<string, mixed>,
@@ -651,6 +691,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Clona el nombre base de la plantilla.
+     * 
+     * @param  string  $kind
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateNameBase(string $kind, array $templateMeta, Template $source): string
@@ -663,6 +706,9 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Clona el nombre base de la plantilla.
+     * 
+     * @param  string  $kind
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateDescription(string $kind, array $templateMeta, Template $source): ?string
@@ -675,6 +721,10 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Clona el valor de un FK de la plantilla.
+     * 
+     * @param  string  $key
+     * @return mixed
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateNullableFk(string $kind, array $templateMeta, Template $source, string $key): mixed
@@ -687,7 +737,10 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
-     * @param  array<string, mixed>  $templateMeta
+     * Normaliza el nivel de visibilidad de la plantilla.
+     * 
+     * @param  TemplateVisibilityLevel|string  $level
+     * @return string
      */
     private function normalizeTemplateVisibilityLevelForClone(string $kind, array $templateMeta, Template $source): string
     {
@@ -708,6 +761,166 @@ class TemplateService implements TemplateServiceInterface
         }
 
         return TemplateVisibilityLevel::Personal->value;
+    }
+
+    /**
+     * Aserta las invariantes de los metadatos de la plantilla.
+     * Lanza excepción si alguna invariante no se cumple.
+     * 
+     * @param  string  $name
+     * @param  Carbon|string|null  $deliveryDeadline
+     * @param  TemplateVisibilityLevel|string  $visibilityLevel
+     */
+    private function assertTemplateMetadataInvariants(string $name, mixed $deliveryDeadline, mixed $visibilityLevel): void
+    {
+        if (trim($name) === '') {
+            throw ValidationException::withMessages([
+                'name' => ['El nombre de la plantilla es obligatorio.'],
+            ]);
+        }
+
+        if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
+            throw ValidationException::withMessages([
+                'delivery_deadline' => ['La fecha de entrega de la plantilla es obligatoria.'],
+            ]);
+        }
+
+        $normalizedVisibility = $visibilityLevel instanceof TemplateVisibilityLevel
+            ? $visibilityLevel->value
+            : (is_string($visibilityLevel) ? trim($visibilityLevel) : '');
+        if ($normalizedVisibility === '') {
+            throw ValidationException::withMessages([
+                'visibility_level' => ['La visibilidad de la plantilla es obligatoria.'],
+            ]);
+        }
+    }
+
+    /**
+     * Normaliza los atributos de actualización contra el scope de la plantilla.
+     * 
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeUpdateAttributesAgainstTemplateScope(Template $template, array $attributes): array
+    {
+        $normalized = $attributes;
+        $visibility = $this->normalizeTemplateVisibilityLevelValue($template->visibility_level);
+
+        $templateStudyTypeId = is_string($template->study_type_id) && $template->study_type_id !== '' ? $template->study_type_id : null;
+        $templateStudyId = is_string($template->study_id) && $template->study_id !== '' ? $template->study_id : null;
+        $templateModuleId = is_string($template->module_id) && $template->module_id !== '' ? $template->module_id : null;
+
+        $studyTypeId = array_key_exists('study_type_id', $attributes) ? $attributes['study_type_id'] : $template->study_type_id;
+        $studyId = array_key_exists('study_id', $attributes) ? $attributes['study_id'] : $template->study_id;
+        $moduleId = array_key_exists('module_id', $attributes) ? $attributes['module_id'] : $template->module_id;
+
+        if ($visibility === TemplateVisibilityLevel::Personal->value || $visibility === TemplateVisibilityLevel::Team->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['module_id'] = $templateModuleId;
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Module->value) {
+            if ($templateModuleId !== null && $moduleId !== null && $moduleId !== $templateModuleId) {
+                throw ValidationException::withMessages([
+                    'module_id' => ['La plantilla debe mantenerse en el mismo módulo.'],
+                ]);
+            }
+
+            $normalized['module_id'] = $templateModuleId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Study->value) {
+            if ($templateStudyId !== null && $studyId !== null && $studyId !== $templateStudyId) {
+                throw ValidationException::withMessages([
+                    'study_id' => ['La plantilla debe mantenerse en el mismo estudio.'],
+                ]);
+            }
+
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $moduleStudyId = DB::table('course_modules')
+                    ->where('id', $moduleId)
+                    ->value('study_id');
+                if (! is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
+                    ]);
+                }
+                $normalized['module_id'] = $moduleId;
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::StudyType->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $module = DB::table('course_modules')
+                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
+                    ->where('course_modules.id', $moduleId)
+                    ->select('course_modules.study_id', 'studies.study_type_id')
+                    ->first();
+
+                if (! $module || (string) $module->study_type_id !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
+                    ]);
+                }
+
+                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
+
+                $normalized['module_id'] = $moduleId;
+                $normalized['study_id'] = (string) $module->study_id;
+
+                return $normalized;
+            }
+
+            if (is_string($studyId) && $studyId !== '') {
+                $studyTypeFromStudy = DB::table('studies')
+                    ->where('id', $studyId)
+                    ->value('study_type_id');
+                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
+                    ]);
+                }
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Global->value && is_string($moduleId) && $moduleId !== '') {
+            $module = DB::table('course_modules')
+                ->where('id', $moduleId)
+                ->select('study_id')
+                ->first();
+            if (! $module || ! is_string($module->study_id)) {
+                throw ValidationException::withMessages([
+                    'module_id' => ['El módulo seleccionado no existe.'],
+                ]);
+            }
+            if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                throw ValidationException::withMessages([
+                    'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                ]);
+            }
+        }
+
+        return $normalized;
     }
 
     /**
