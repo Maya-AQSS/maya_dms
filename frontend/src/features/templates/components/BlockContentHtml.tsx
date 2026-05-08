@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import DOMPurify from 'dompurify';
 import { BlockNoteEditor } from '@blocknote/core';
 import type { PartialBlock } from '@blocknote/core';
 import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
@@ -91,7 +92,11 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
       );
     if (isEmpty) return '';
     try {
-      return getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
+      const raw = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
+      return DOMPurify.sanitize(raw, {
+        // Allow safe URL schemes only; block javascript: data: vbscript: etc.
+        ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i,
+      });
     } catch {
       return '<p><em>Error al renderizar el contenido.</em></p>';
     }
