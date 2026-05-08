@@ -159,11 +159,11 @@ class DocumentReviewService
                 ],
             );
 
-            $updated = $this->stateService->transition($documentId, 'draft', $actorId);
+            $this->stateService->transition($documentId, 'draft', $actorId);
 
             $this->documentRepository->deletePendingReviewsForDocument($documentId);
 
-            return $updated;
+            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
         });
     }
 

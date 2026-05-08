@@ -439,6 +439,14 @@ class DocumentReviewModeFlowTest extends TestCase
             $hR1,
         )->assertOk()
             ->assertJsonPath('data.status', 'draft');
+
+        $this->assertSame(
+            0,
+            DocumentReview::query()
+                ->where('document_id', $ctx['documentId'])
+                ->where('status', 'pending')
+                ->count(),
+        );
     }
 
     public function test_approve_review_publishes_explicit_review_audit_event(): void
