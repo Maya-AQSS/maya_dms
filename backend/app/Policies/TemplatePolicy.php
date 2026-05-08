@@ -294,9 +294,8 @@ class TemplatePolicy
     public function publish(JwtUser $user, Template $template): bool
     {
         if ($user->getAuthIdentifier() === $template->created_by) {
-            $isPersonal = $template->visibility_level === TemplateVisibilityLevel::Personal;
-
-            return $isPersonal && $template->reviewers()->doesntExist();
+            return in_array($template->status, ['draft', 'in_review'], true)
+                && $template->reviewers()->doesntExist();
         }
 
         return $template->status === 'in_review' && $this->review($user, $template);

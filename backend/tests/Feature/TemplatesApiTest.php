@@ -1386,6 +1386,43 @@ class TemplatesApiTest extends TestCase
         $this->assertSame("Publicaci\u{00f3}n autom\u{00e1}tica", (string) $versionRow->changelog);
     }
 
+    public function test_template_creator_can_publish_draft_without_reviewers_even_if_not_personal(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headersCreator = $this->authHeaders($creatorId, []);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Draft directo global',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'B',
+            'default_content' => ['k' => 'v'],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published')
+            ->assertJsonPath('data.version', 1);
+    }
+
     public function test_template_publish_fails_without_blocks(): void
     {
         $creatorId = (string) Str::uuid();

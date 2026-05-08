@@ -1026,13 +1026,22 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->status !== 'in_review') {
+        if (! in_array($document->status, ['draft', 'in_review'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo se puede publicar un documento en revisión.'],
+                'status' => ['Solo se puede publicar un documento en borrador o en revisión.'],
             ]);
         }
 
-        if ($this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {
+        if ($document->status === 'draft') {
+            $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
+            if ($candidates !== []) {
+                throw ValidationException::withMessages([
+                    'reviews' => ['El documento tiene validadores asignados. Debe completar la revisión para publicarse.'],
+                ]);
+            }
+        }
+
+        if ($document->status === 'in_review' && $this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {
             throw ValidationException::withMessages([
                 'reviews' => ['Quedan revisiones pendientes.'],
             ]);
