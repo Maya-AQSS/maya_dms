@@ -84,7 +84,7 @@ type Props = {
 
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
@@ -169,7 +169,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         !!d.latest_published_version_id;
       const isAssignedReviewer =
         d.status === 'in_review' &&
-        !!profile?.id;
+        hasPermission('documents.review');
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
         d.share_permission === 'edit' ||
@@ -195,7 +195,7 @@ export function DocumentsTable({ processId }: Props = {}) {
       out.push(publishedFallback);
     }
     return out;
-  }, [documents, profile?.id]);
+  }, [documents, hasPermission, profile?.id]);
 
   const filtered = useMemo(() => applyClientFilters(displayDocuments, filters), [displayDocuments, filters]);
 
