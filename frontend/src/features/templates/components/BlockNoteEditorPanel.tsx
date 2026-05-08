@@ -89,14 +89,50 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     if (!dom) return;
 
     const handlePaste = (e: ClipboardEvent) => {
-      // If the clipboard contains binary image data (image/png, image/jpeg…),
-      // skip entirely and let BlockNote's native paste handler deal with it.
-      // Our handler would create image blocks from temporary blob: URLs (which
-      // the browser generates for the html representation of the image), and
-      // those URLs expire when the tab closes — the image would appear to save
-      // but be gone on reload.
-      const types = e.clipboardData?.types ?? [];
-      if (Array.from(types).some((t) => t.startsWith('image/'))) return;
+      // If the clipboard contains a binary image file (screenshot, image from
+      // file manager/app), convert it to a base64 data URL and insert it as an
+      // image block. We must NOT let BlockNote's native handler deal with this
+      // because without an uploadFile handler it creates a blob: URL — those
+      // are ephemeral and expire when the tab closes, so the image disappears
+      // on the next page load.
+      const imageFileItem = Array.from(e.clipboardData?.items ?? []).find(
+        (item) => item.kind === 'file' && item.type.startsWith('image/'),
+      );
+      if (imageFileItem) {
+        const file = imageFileItem.getAsFile();
+        if (file) {
+          e.preventDefault();
+          e.stopPropagation();
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const dataUrl = ev.target?.result as string | undefined;
+            if (!dataUrl) return;
+            const imageBlock = { type: 'image', props: { url: dataUrl } };
+            try {
+              const currentBlocks = editor.document;
+              const selection = editor.getTextCursorPosition();
+              const blockId = selection?.block?.id as string | undefined;
+              if (blockId) {
+                editor.insertBlocks([imageBlock as any], blockId, 'after');
+                const currentBlock = currentBlocks.find((b: any) => b.id === blockId);
+                const isEmpty =
+                  !currentBlock?.content?.length ||
+                  (currentBlock.content.length === 1 &&
+                    currentBlock.content[0].type === 'text' &&
+                    !currentBlock.content[0].text);
+                if (isEmpty) editor.removeBlocks([blockId]);
+              } else {
+                editor.insertBlocks([imageBlock as any], currentBlocks[currentBlocks.length - 1].id, 'after');
+              }
+              onChange?.(editor.document);
+            } catch (err) {
+              console.warn('Failed to insert image block from paste:', err);
+            }
+          };
+          reader.readAsDataURL(file);
+          return;
+        }
+      }
 
       const plain = e.clipboardData?.getData('text/plain') ?? '';
       const html = e.clipboardData?.getData('text/html') ?? '';
