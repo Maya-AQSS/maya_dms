@@ -49,3 +49,14 @@
 .maya-bn-panel--fullscreen {
   /* intentionally no position override */
 }
+
+/* Image / file block resize cap.
+   BlockNote calculates the resize maximum from editor.domElement.firstElementChild
+   .clientWidth, which includes the padding-inline we add to .bn-editor (42px × 2 = 84px).
+   This means images can be dragged up to 84px wider than the visible content area and
+   get clipped by the panel's overflow:hidden.
+   Enforcing max-width:100% on the wrapper element guarantees images never overflow their
+   containing block regardless of the stored previewWidth value in the block data. */
+.maya-bn-panel [data-file-block] .bn-file-block-content-wrapper {
+  max-width: 100%;
+}
