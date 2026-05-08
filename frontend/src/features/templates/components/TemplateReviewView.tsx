@@ -26,6 +26,10 @@ type TemplateComment = {
   parent_id?: string | null;
 };
 
+// Panel geometry constants (px). Keep in sync with the fixed panel JSX.
+const PANEL_RIGHT = 24;
+const PANEL_WIDTH = 384;
+
 function InfoBlockDescription({ description }: { description: unknown }) {
   if (!description) return null;
 
@@ -64,10 +68,14 @@ export function TemplateReviewView({ template }: Props) {
 
   const [sidebarMode, setSidebarMode] = useState<'comments' | 'info' | null>(null);
   const [panelTop, setPanelTop] = useState(80);
+  const [connectorGeom, setConnectorGeom] = useState<{ top: number; left: number; width: number } | null>(null);
+  const [connectorVisible, setConnectorVisible] = useState(false);
 
   const headerRef = useRef<HTMLDivElement>(null);
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const panelRef = useRef<HTMLDivElement>(null);
+  const cardHeaderRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const currentUserId = user?.sub || (user as any)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
@@ -110,27 +118,61 @@ export function TemplateReviewView({ template }: Props) {
     };
   }, [template.process_id]);
 
-  // Recalculate panel vertical position whenever the selected block changes.
-  // Uses position:fixed so scroll tracking is not needed — the panel stays in
-  // the viewport automatically. We only need to align the top once per selection.
+  // Recalculate panel position and connector geometry whenever the selected block changes.
+  // position:fixed keeps the panel sticky in the viewport during scroll — no scroll
+  // listener needed for the panel itself. Connector visibility is handled separately.
   useEffect(() => {
-    if (!sidebarMode || !selectedBlockId) return;
+    if (!sidebarMode || !selectedBlockId) {
+      setConnectorGeom(null);
+      return;
+    }
     const raf = requestAnimationFrame(() => {
       const blockEl = blockRefs.current.get(selectedBlockId);
       if (!blockEl) return;
       const blockRect = blockEl.getBoundingClientRect();
       const panelHeight = panelRef.current?.offsetHeight ?? 420;
+      const cardHeaderHeight = cardHeaderRef.current?.offsetHeight ?? 44;
       const headerHeight = headerRef.current?.offsetHeight ?? 60;
       const vh = window.innerHeight;
       const MARGIN = 12;
+
       let top = blockRect.top;
       top = Math.max(headerHeight + MARGIN, top);
       if (top + panelHeight > vh - MARGIN) {
         top = Math.max(headerHeight + MARGIN, vh - panelHeight - MARGIN);
       }
       setPanelTop(top);
+
+      // Connector line: from right edge of selected block to left edge of panel card.
+      const panelLeft = window.innerWidth - PANEL_RIGHT - PANEL_WIDTH;
+      const lineLeft = blockRect.right + 10;  // 10px gap past the ring
+      const lineWidth = Math.max(0, panelLeft - 8 - lineLeft);
+      const lineTop = top + cardHeaderHeight / 2;
+      setConnectorGeom({ top: lineTop, left: lineLeft, width: lineWidth });
+      setConnectorVisible(true);
     });
     return () => cancelAnimationFrame(raf);
+  }, [selectedBlockId, sidebarMode]);
+
+  // Hide/show the connector as the selected block scrolls in/out of the viewport.
+  useEffect(() => {
+    if (!sidebarMode || !selectedBlockId) {
+      setConnectorVisible(false);
+      return;
+    }
+    const scrollEl = scrollContainerRef.current;
+    if (!scrollEl) return;
+    const headerHeight = headerRef.current?.offsetHeight ?? 60;
+
+    const check = () => {
+      const blockEl = blockRefs.current.get(selectedBlockId);
+      if (!blockEl) { setConnectorVisible(false); return; }
+      const r = blockEl.getBoundingClientRect();
+      setConnectorVisible(r.bottom > headerHeight && r.top < window.innerHeight);
+    };
+
+    scrollEl.addEventListener('scroll', check, { passive: true });
+    return () => scrollEl.removeEventListener('scroll', check);
   }, [selectedBlockId, sidebarMode]);
 
   const loadComments = async () => {
@@ -302,7 +344,7 @@ export function TemplateReviewView({ template }: Props) {
       <div className="flex-1 overflow-hidden flex relative">
 
         {/* Document scroll area — folio centrado a max-width 850px */}
-        <div className="flex-1 overflow-y-auto p-8 scroll-smooth custom-scrollbar">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-8 scroll-smooth custom-scrollbar">
           <article
             className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content rounded-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
             style={{ maxWidth: '850px', minHeight: '100%', padding: '60px 70px' }}
@@ -431,36 +473,68 @@ export function TemplateReviewView({ template }: Props) {
           </article>
         </div>
 
-        {/* Spacer — pushes the folio left to make room for the fixed panel */}
+        {/* Spacer — reserves width so the folio doesn't sit under the fixed panel.
+             Must match PANEL_RIGHT + PANEL_WIDTH + a small left gap. */}
         {sidebarMode !== null && (
-          <div className="w-[420px] shrink-0 transition-all duration-400" aria-hidden="true" />
+          <div className="w-[420px] shrink-0" aria-hidden="true" />
         )}
 
-        {/* Floating review card — position:fixed, aligned with selected block */}
+        {/* Connector line — links the selected block header to the card header */}
+        {sidebarMode !== null && connectorGeom && (
+          <div
+            className="bg-odoo-purple pointer-events-none"
+            style={{
+              position: 'fixed',
+              top: connectorGeom.top,
+              left: connectorGeom.left,
+              width: connectorGeom.width,
+              height: 1.5,
+              zIndex: 38,
+              opacity: connectorVisible ? 0.55 : 0,
+              transform: 'translateY(-50%)',
+              transition: 'opacity 200ms ease',
+            }}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Floating review card — position:fixed, top aligned to selected block */}
         {sidebarMode !== null && selectedBlock && (
           <div
             ref={panelRef}
-            className="fixed z-40 w-[396px] animate-in fade-in slide-in-from-right-4 duration-300"
-            style={{ top: panelTop, right: 20 }}
+            className="fixed z-40 animate-in fade-in slide-in-from-right-4 duration-300"
+            style={{ top: panelTop, right: PANEL_RIGHT, width: PANEL_WIDTH }}
           >
             <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-2xl border border-ui-border/60 dark:border-ui-dark-border flex flex-col overflow-hidden">
 
-              {/* Card header: Bloque #N ─── Comentarios de Revisión ✕ */}
-              <div className="flex items-center gap-3 px-4 py-3 border-b border-ui-border dark:border-ui-dark-border shrink-0">
-                <span className="text-[11px] font-black uppercase tracking-widest text-text-muted shrink-0">
-                  Bloque #{(selectedBlock.sort_order ?? '?') as any}
-                </span>
-                <div className="flex-1 h-px bg-ui-border dark:bg-ui-dark-border" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-text-primary dark:text-text-dark-primary shrink-0">
-                  Comentarios de Revisión
-                </span>
-                <button
-                  aria-label="Cerrar panel de revisión"
-                  onClick={closePanel}
-                  className="group ml-1 w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
-                >
-                  <span className="block text-sm leading-none group-hover:rotate-90 transition-transform duration-200">✕</span>
-                </button>
+              {/* Card header — git-diff style: BLOQUE #N | COMENTARIOS DE REVISIÓN ✕ */}
+              <div
+                ref={cardHeaderRef}
+                className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0"
+              >
+                {/* Left zone: block identifier */}
+                <div className="px-4 py-3 flex items-center shrink-0">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-odoo-purple">
+                    Bloque #{(selectedBlock.sort_order ?? '?') as any}
+                  </span>
+                </div>
+
+                {/* Vertical divider */}
+                <div className="w-px bg-ui-border dark:bg-ui-dark-border self-stretch" />
+
+                {/* Right zone: panel title + close */}
+                <div className="flex-1 px-4 py-3 flex items-center justify-between min-w-0">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-text-primary dark:text-text-dark-primary truncate">
+                    Comentarios de Revisión
+                  </span>
+                  <button
+                    aria-label="Cerrar panel de revisión"
+                    onClick={closePanel}
+                    className="group ml-3 w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
+                  >
+                    <span className="block text-sm leading-none group-hover:rotate-90 transition-transform duration-200">✕</span>
+                  </button>
+                </div>
               </div>
 
               {/* Tabs */}
