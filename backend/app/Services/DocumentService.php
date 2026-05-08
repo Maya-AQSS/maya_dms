@@ -365,6 +365,10 @@ class DocumentService implements DocumentServiceInterface
                 $templateId,
                 is_string($source->template_version_id) ? $source->template_version_id : null,
             );
+            $this->assertDocumentMetadataInvariantsForMutation(
+                (string) $source->title,
+                $source->delivery_deadline,
+            );
 
             return $this->documentRepository->createDocumentWithBlocks([
                 'process_id' => $source->process_id,
@@ -442,6 +446,7 @@ class DocumentService implements DocumentServiceInterface
         $titleBase = isset($docSnap['title']) && is_string($docSnap['title'])
             ? $docSnap['title']
             : (string) $source->title;
+        $this->assertDocumentMetadataInvariantsForMutation($titleBase, $source->delivery_deadline);
 
         return [
             'process_id' => $source->process_id,
@@ -495,7 +500,13 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->documentRepository->updateDocumentMetadata($document, $attributes);
+        $merged = $this->normalizeUpdateAttributesAgainstDocumentAndTemplate($document, $attributes);
+        $this->assertDocumentMetadataInvariantsForMutation(
+            is_string($merged['title'] ?? null) ? $merged['title'] : (string) $document->title,
+            $merged['delivery_deadline'] ?? $document->delivery_deadline,
+        );
+
+        return $this->documentRepository->updateDocumentMetadata($document, $merged);
     }
 
     /**
@@ -797,8 +808,201 @@ class DocumentService implements DocumentServiceInterface
                 'status' => ['Solo un documento publicado puede pasar a borrador para una nueva versión.'],
             ]);
         }
+        $this->assertDocumentMetadataInvariantsForMutation(
+            (string) $document->title,
+            $document->delivery_deadline,
+        );
 
         return $this->documentStateService->transition($documentId, 'draft', $actorId);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeUpdateAttributesAgainstDocumentAndTemplate(Document $document, array $attributes): array
+    {
+        $normalized = $attributes;
+        $templateMeta = $this->resolveTemplateMetaForDocument($document);
+        if ($templateMeta === null) {
+            return $normalized;
+        }
+
+        $visibility = $templateMeta['visibility_level'] ?? null;
+        if (! is_string($visibility) || $visibility === '') {
+            return $normalized;
+        }
+
+        $studyTypeId = array_key_exists('study_type_id', $attributes) ? $attributes['study_type_id'] : $document->study_type_id;
+        $studyId = array_key_exists('study_id', $attributes) ? $attributes['study_id'] : $document->study_id;
+        $moduleId = array_key_exists('module_id', $attributes) ? $attributes['module_id'] : $document->module_id;
+
+        $templateStudyTypeId = isset($templateMeta['study_type_id']) && is_string($templateMeta['study_type_id']) && $templateMeta['study_type_id'] !== ''
+            ? $templateMeta['study_type_id']
+            : null;
+        $templateStudyId = isset($templateMeta['study_id']) && is_string($templateMeta['study_id']) && $templateMeta['study_id'] !== ''
+            ? $templateMeta['study_id']
+            : null;
+        $templateModuleId = isset($templateMeta['module_id']) && is_string($templateMeta['module_id']) && $templateMeta['module_id'] !== ''
+            ? $templateMeta['module_id']
+            : null;
+
+        if ($visibility === TemplateVisibilityLevel::Personal->value || $visibility === TemplateVisibilityLevel::Team->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['module_id'] = $templateModuleId;
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Module->value) {
+            if ($templateModuleId !== null) {
+                if ($moduleId !== null && $moduleId !== $templateModuleId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El documento debe mantenerse en el mismo módulo de la plantilla.'],
+                    ]);
+                }
+                $normalized['module_id'] = $templateModuleId;
+            }
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Study->value) {
+            if ($templateStudyId !== null) {
+                if ($studyId !== null && $studyId !== $templateStudyId) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El documento debe mantenerse en el mismo estudio de la plantilla.'],
+                    ]);
+                }
+                $normalized['study_id'] = $templateStudyId;
+            }
+            if (is_string($moduleId) && $moduleId !== '') {
+                $moduleStudyId = DB::table('course_modules')
+                    ->where('id', $moduleId)
+                    ->value('study_id');
+                if (! is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
+                    ]);
+                }
+                $normalized['module_id'] = $moduleId;
+            }
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::StudyType->value) {
+            if ($templateStudyTypeId !== null) {
+                $normalized['study_type_id'] = $templateStudyTypeId;
+            }
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $module = DB::table('course_modules')
+                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
+                    ->where('course_modules.id', $moduleId)
+                    ->select('course_modules.study_id', 'studies.study_type_id')
+                    ->first();
+                if (! $module || (string) $module->study_type_id !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
+                    ]);
+                }
+                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
+                $normalized['module_id'] = $moduleId;
+                $normalized['study_id'] = (string) $module->study_id;
+
+                return $normalized;
+            }
+
+            if (is_string($studyId) && $studyId !== '') {
+                $studyTypeFromStudy = DB::table('studies')
+                    ->where('id', $studyId)
+                    ->value('study_type_id');
+                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
+                    ]);
+                }
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Global->value) {
+            if (is_string($moduleId) && $moduleId !== '') {
+                $module = DB::table('course_modules')
+                    ->where('id', $moduleId)
+                    ->select('study_id')
+                    ->first();
+                if (! $module || ! is_string($module->study_id)) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo seleccionado no existe.'],
+                    ]);
+                }
+                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
+            }
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function resolveTemplateMetaForDocument(Document $document): ?array
+    {
+        $templateId = (string) $document->template_id;
+        if ($templateId === '') {
+            return null;
+        }
+
+        $templateVersionId = $document->template_version_id;
+        if (is_string($templateVersionId) && $templateVersionId !== '') {
+            $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $templateVersionId,
+                Template::class,
+                $templateId,
+            );
+            if ($entityVersion !== null && is_array($entityVersion->snapshot_data)) {
+                $templateMeta = $entityVersion->snapshot_data['template'] ?? null;
+                if (is_array($templateMeta)) {
+                    return $templateMeta;
+                }
+            }
+        }
+
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
+            return null;
+        }
+
+        $templateMeta = $latestPublished->snapshot_data['template'] ?? null;
+
+        return is_array($templateMeta) ? $templateMeta : null;
+    }
+
+    private function assertDocumentMetadataInvariantsForMutation(string $title, mixed $deliveryDeadline): void
+    {
+        if (trim($title) === '') {
+            throw ValidationException::withMessages([
+                'title' => ['El título del documento es obligatorio.'],
+            ]);
+        }
+
+        if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
+            throw ValidationException::withMessages([
+                'delivery_deadline' => ['La fecha de entrega del documento es obligatoria.'],
+            ]);
+        }
     }
 
     /**

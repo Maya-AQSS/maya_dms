@@ -56,9 +56,13 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function updateDocumentMetadata(Document $document, array $attributes): Document
     {
+        $deliveryDeadline = array_key_exists('delivery_deadline', $attributes)
+            ? $attributes['delivery_deadline']
+            : $document->delivery_deadline;
+
         return $this->mergeHeadWorkingCopy($document, [
-            'title' => $attributes['title'],
-            'delivery_deadline' => $attributes['delivery_deadline'] ?? null,
+            'title' => $attributes['title'] ?? $document->title,
+            'delivery_deadline' => $deliveryDeadline,
             'study_type_id' => $attributes['study_type_id'] ?? $document->study_type_id,
             'study_id' => $attributes['study_id'] ?? $document->study_id,
             'module_id' => $attributes['module_id'] ?? $document->module_id,
