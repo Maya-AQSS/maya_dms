@@ -193,8 +193,14 @@ export async function discardTemplateWorkingVersion(
 }
 
 /** POST /api/v1/templates/{id}/publish */
-export async function publishTemplate(id: string): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, { method: 'POST', body: {} });
+export async function publishTemplate(
+  id: string,
+  changelog?: string | null,
+): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, {
+    method: 'POST',
+    body: { changelog: changelog ?? null },
+  });
 }
 
 /** POST /api/v1/templates/{id}/submit-review */
