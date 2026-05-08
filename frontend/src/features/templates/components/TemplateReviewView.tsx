@@ -26,12 +26,10 @@ type TemplateComment = {
 
 type ActiveView = { blockId: string; mode: 'comments' | 'info' };
 
-// Column widths (px). COMMENTS fits alongside the folio on standard desktop.
-// INFO matches folio width — causes horizontal overflow (accepted per spec).
-const COMMENTS_COL_WIDTH = 408;   // card fills 408 − 24px right gap = 384px
-const INFO_COL_WIDTH = 882;        // page fills 882 − 32px right gap = 850px
-// Min-width for the document column in info mode so the folio isn't squished.
-const DOC_COL_MIN_WIDTH_INFO = 914; // 850 folio + 2×32 padding
+// Comments card column width (px). The card fills 408 − 24px right gap = 384px.
+// In comments mode the document column stays flex-1 (normal folio width).
+// In info mode both columns are flex-1 (strict 50/50, no fixed widths).
+const COMMENTS_COL_WIDTH = 408;
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -517,11 +515,8 @@ export function TemplateReviewView({ template }: Props) {
 
         <div className="flex min-h-full">
 
-          {/* ── Document (folio) column ──────────────────────────────────────── */}
-          <div
-            className={activeView?.mode === 'info' ? 'shrink-0 p-8' : 'flex-1 p-8'}
-            style={activeView?.mode === 'info' ? { minWidth: DOC_COL_MIN_WIDTH_INFO } : undefined}
-          >
+          {/* ── Document (folio) column — always flex-1, fills available width ── */}
+          <div className="flex-1 p-8">
             <article
               ref={articleRef as RefObject<HTMLElement>}
               className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content rounded-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
@@ -662,12 +657,14 @@ export function TemplateReviewView({ template }: Props) {
           </div>
 
           {/* ── View column — scrolls with document, top aligned to block ─── */}
+          {/* COMMENTS: fixed width, folio stays normal.                        */}
+          {/* INFO: flex-1, both columns share space equally (50/50).           */}
           {activeView && selectedBlock && (
             <div
               ref={viewColRef}
-              className="shrink-0 pr-6"
+              className={activeView.mode === 'comments' ? 'shrink-0 pr-6' : 'flex-1 pr-6'}
               style={{
-                width: activeView.mode === 'comments' ? COMMENTS_COL_WIDTH : INFO_COL_WIDTH,
+                ...(activeView.mode === 'comments' ? { width: COMMENTS_COL_WIDTH } : {}),
                 paddingTop: viewPaddingTop,
               }}
             >
