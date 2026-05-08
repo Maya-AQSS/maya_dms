@@ -73,12 +73,14 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
         dialog === null && (canEdit || canValidate || isRejected) ? 'cursor-pointer hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors' : '',
       ].join(' ')}
       onClick={
-        dialog === null 
-          ? canValidate 
-            ? () => navigate(`/templates/${t.id}/review`) 
-            : canEdit || isRejected
-              ? () => navigate(`/templates/${t.id}/edit`) 
-              : undefined
+        dialog === null
+          ? canValidate
+            ? () => navigate(`/templates/${t.id}/review`)
+            : isRejected
+              ? () => navigate(`/templates/${t.id}`)  // rejected → preview with readonly comments first
+              : canEdit
+                ? () => navigate(`/templates/${t.id}/edit`)
+                : undefined
           : undefined
       }
     >

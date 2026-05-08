@@ -175,7 +175,7 @@ export function TemplatePreviewPage() {
             const t = tRes.data;
             setTemplate(t);
             setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
-            if (t.created_by === profile?.id && t.has_review_comments) {
+            if (t.has_review_comments) {
               void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
                 .then((res) => { if (!cancelled) setReviewComments(res.data); })
                 .catch(() => { /* non-critical */ });

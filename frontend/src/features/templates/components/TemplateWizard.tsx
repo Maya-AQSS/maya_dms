@@ -37,8 +37,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
   }, [initialTemplate?.process_id, processId, templateProp?.process_id]);
 
-  // Step state
-  const [step, setStep] = useState<Step>('properties');
+  // Rejected templates start on the blocks step so the creator sees comment badges immediately.
+  const [step, setStep] = useState<Step>(
+    initial?.id && initial?.has_review_comments ? 'blocks' : 'properties',
+  );
   const [completedSteps, setCompletedSteps] = useState<Step[]>(
     initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
   );
