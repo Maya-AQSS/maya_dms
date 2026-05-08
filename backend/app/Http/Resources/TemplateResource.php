@@ -63,6 +63,8 @@ class TemplateResource extends JsonResource
             'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
             'can_clone' => $request->user() !== null
                 && Gate::forUser($request->user())->allows('clone', $this->resource),
+            'working_version_id' => $this->head_entity_version_id,
+            'latest_published_name' => $this->resource->getAttribute('latest_published_name'),
         ];
     }
 }

@@ -56,8 +56,10 @@ export type Template = {
   list_row_id?: string;
   /** Alineado con `TemplatePolicy::clone` en el servidor. */
   can_clone?: boolean;
+  working_version_id?: string | null;
   created_at?: string;
   updated_at?: string;
+  latest_published_name?: string | null;
 };
 
 export type TemplatesListMeta = {

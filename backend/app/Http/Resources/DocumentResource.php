@@ -46,6 +46,7 @@ class DocumentResource extends JsonResource
             'working_version_id' => $this->head_entity_version_id,
             'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),
             'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
+            'latest_published_title' => $this->resource->getAttribute('latest_published_title'),
         ];
     }
 

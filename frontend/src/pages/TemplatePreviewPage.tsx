@@ -8,6 +8,7 @@ import {
   deleteTemplate,
   cloneTemplate,
   startTemplateNewVersion,
+  discardTemplateWorkingVersion,
   fetchTemplateVersion,
 } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
@@ -128,6 +129,9 @@ export function TemplatePreviewPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
+  const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
+  const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
   const [processLabel, setProcessLabel] = useState<string | null>(null);
   const { hierarchy } = useHierarchy();
   const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
@@ -287,10 +291,8 @@ export function TemplatePreviewPage() {
   const canDelete =
     !viewingPublishedSnapshot &&
     template != null &&
-    (
-      (isDraft && isOwner) ||
-      (isPublished && (isOwner || hasPermission('templates.delete')))
-    );
+    !template.latest_published_version_id &&
+    ((isDraft && isOwner) || (isPublished && (isOwner || hasPermission('templates.delete'))));
   /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
   const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
   const canSubmit =
@@ -300,6 +302,13 @@ export function TemplatePreviewPage() {
     !viewingPublishedSnapshot &&
     isPublished &&
     !selectionMode &&
+    (isOwner || hasPermission('templates.update'));
+  const canDiscardWorkingVersion =
+    !viewingPublishedSnapshot &&
+    template != null &&
+    (template.status === 'draft' || template.status === 'in_review') &&
+    !!template.latest_published_version_id &&
+    !!template.working_version_id &&
     (isOwner || hasPermission('templates.update'));
 
   useEffect(() => {
@@ -383,6 +392,22 @@ export function TemplatePreviewPage() {
     }
   };
 
+  const handleDiscardWorkingVersion = async () => {
+    if (!id || !template?.working_version_id) return;
+    setDiscardVersionLoading(true);
+    setDiscardVersionError(null);
+    try {
+      const restored = await discardTemplateWorkingVersion(id, template.working_version_id);
+      setTemplate(restored.data);
+      setShowDiscardVersionModal(false);
+      setActionError(null);
+    } catch (e) {
+      setDiscardVersionError(e instanceof Error ? e.message : 'No se pudo descartar la versión en curso.');
+    } finally {
+      setDiscardVersionLoading(false);
+    }
+  };
+
   const headerToolbar = template ? (
     <div className="flex items-center justify-center gap-2 flex-wrap">
       {viewingPublishedSnapshot ? (
@@ -459,6 +484,17 @@ export function TemplatePreviewPage() {
           {canStartNewVersion && (
             <Button type="button" variant="outline" size="sm" loading={actionLoading} onClick={() => void handleStartNewVersion()}>
               Nueva versión
+            </Button>
+          )}
+          {canDiscardWorkingVersion && (
+            <Button
+              type="button"
+              variant="outlineWarning"
+              size="sm"
+              loading={discardVersionLoading}
+              onClick={() => setShowDiscardVersionModal(true)}
+            >
+              Descartar nueva versión
             </Button>
           )}
           {canSubmit && (
@@ -748,6 +784,21 @@ export function TemplatePreviewPage() {
         error={deleteError}
         onConfirm={() => void handleDelete()}
         onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+      />
+      <ConfirmDialog
+        open={showDiscardVersionModal}
+        variant="danger"
+        title="¿Descartar nueva versión?"
+        description="Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada de la plantilla."
+        confirmLabel="Descartar versión"
+        cancelLabel="Cancelar"
+        loading={discardVersionLoading}
+        error={discardVersionError}
+        onConfirm={() => void handleDiscardWorkingVersion()}
+        onCancel={() => {
+          setShowDiscardVersionModal(false);
+          setDiscardVersionError(null);
+        }}
       />
     </div>
   );

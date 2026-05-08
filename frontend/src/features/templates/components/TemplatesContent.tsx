@@ -140,6 +140,7 @@ export function TemplatesContent() {
 
       const publishedFallback: Template = {
         ...t,
+        name: t.latest_published_name ?? t.name,
         status: 'published',
         version: t.latest_published_version_number ?? t.version,
         list_variant: 'published_fallback',

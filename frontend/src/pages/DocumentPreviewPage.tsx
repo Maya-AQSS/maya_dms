@@ -536,7 +536,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           Historial
         </Button>
       ) : null}
-      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
+      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && !detail.latest_published_version_id && (
         <Button
           type="button"
           variant="outline"

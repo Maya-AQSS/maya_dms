@@ -74,7 +74,7 @@ class DocumentController extends Controller
             ->where('status', 'published')
             ->where('version_number', '>', 0)
             ->orderByDesc('version_number')
-            ->get(['versionable_id', 'id', 'version_number']);
+            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
 
         /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByDocument */
         $latestByDocument = [];
@@ -85,6 +85,7 @@ class DocumentController extends Controller
                     'versionable_id' => $documentId,
                     'id' => (string) $row->id,
                     'version_number' => (int) $row->version_number,
+                    'title' => $this->extractPublishedDocumentTitleFromSnapshotRow($row->snapshot_data),
                 ];
             }
         }
@@ -93,7 +94,29 @@ class DocumentController extends Controller
             $meta = $latestByDocument[(string) $document->id] ?? null;
             $document->setAttribute('latest_published_version_id', $meta?->id);
             $document->setAttribute('latest_published_version_number', $meta?->version_number);
+            $document->setAttribute('latest_published_title', $meta?->title);
         }
+    }
+
+    private function extractPublishedDocumentTitleFromSnapshotRow(mixed $snapshot): ?string
+    {
+        if (is_string($snapshot) && $snapshot !== '') {
+            $decoded = json_decode($snapshot, true);
+            if (is_array($decoded)) {
+                $snapshot = $decoded;
+            }
+        }
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $title = data_get($snapshot, 'document.title');
+        if (! is_string($title) || trim($title) === '') {
+            return null;
+        }
+
+        return $title;
     }
 
     /**

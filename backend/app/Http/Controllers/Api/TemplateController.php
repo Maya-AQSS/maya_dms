@@ -78,7 +78,7 @@ class TemplateController extends Controller
             ->where('status', 'published')
             ->where('version_number', '>', 0)
             ->orderByDesc('version_number')
-            ->get(['versionable_id', 'id', 'version_number']);
+            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
 
         /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByTemplate */
         $latestByTemplate = [];
@@ -89,6 +89,7 @@ class TemplateController extends Controller
                     'versionable_id' => $templateId,
                     'id' => (string) $row->id,
                     'version_number' => (int) $row->version_number,
+                    'name' => $this->extractPublishedTemplateNameFromSnapshotRow($row->snapshot_data),
                 ];
             }
         }
@@ -97,7 +98,29 @@ class TemplateController extends Controller
             $meta = $latestByTemplate[(string) $template->id] ?? null;
             $template->setAttribute('latest_published_version_id', $meta?->id);
             $template->setAttribute('latest_published_version_number', $meta?->version_number);
+            $template->setAttribute('latest_published_name', $meta?->name);
         }
+    }
+
+    private function extractPublishedTemplateNameFromSnapshotRow(mixed $snapshot): ?string
+    {
+        if (is_string($snapshot) && $snapshot !== '') {
+            $decoded = json_decode($snapshot, true);
+            if (is_array($decoded)) {
+                $snapshot = $decoded;
+            }
+        }
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $name = data_get($snapshot, 'template.name');
+        if (! is_string($name) || trim($name) === '') {
+            return null;
+        }
+
+        return $name;
     }
 
     /**

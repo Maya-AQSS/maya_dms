@@ -112,6 +112,7 @@ export function DocumentsContent() {
 
       const publishedFallback: Document = {
         ...d,
+        title: d.latest_published_title ?? d.title,
         status: 'published',
         current_version: d.latest_published_version_number ?? d.current_version,
         list_variant: 'published_fallback',

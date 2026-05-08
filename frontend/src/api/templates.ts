@@ -181,6 +181,17 @@ export async function startTemplateNewVersion(id: string): Promise<{ data: Templ
   return apiFetchJson<{ data: Template }>(`templates/${id}/new-version`, { method: 'POST', body: {} });
 }
 
+/** DELETE /api/v1/templates/{id}/versions/{versionId} — descarta borrador/en revisión y restaura última publicada. */
+export async function discardTemplateWorkingVersion(
+  templateId: string,
+  versionId: string,
+): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(
+    `templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}`,
+    { method: 'DELETE' },
+  );
+}
+
 /** POST /api/v1/templates/{id}/publish */
 export async function publishTemplate(id: string): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, { method: 'POST', body: {} });
