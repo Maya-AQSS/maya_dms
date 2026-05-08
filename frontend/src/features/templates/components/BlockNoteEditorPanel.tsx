@@ -130,14 +130,21 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
           reader.onload = (ev) => {
             const dataUrl = ev.target?.result as string | undefined;
             if (!dataUrl) return;
-            const imageBlock = { type: 'image', props: { url: dataUrl } };
+            // Always include a trailing paragraph so ProseMirror has a valid
+            // inline-content node to place the cursor after the image block.
+            // Without it, insertBlocks throws "TextSelection endpoint not
+            // pointing into a node with inline content (blockContainer)".
+            const blocksToInsert: any[] = [
+              { type: 'image', props: { url: dataUrl } },
+              { type: 'paragraph', content: [] },
+            ];
             try {
               const currentBlocks = editor.document;
               if (anchorBlockId && currentBlocks.some((b: any) => b.id === anchorBlockId)) {
-                editor.insertBlocks([imageBlock as any], anchorBlockId, 'after');
+                editor.insertBlocks(blocksToInsert, anchorBlockId, 'after');
                 if (anchorBlockIsEmpty) editor.removeBlocks([anchorBlockId]);
               } else {
-                editor.insertBlocks([imageBlock as any], currentBlocks[currentBlocks.length - 1].id, 'after');
+                editor.insertBlocks(blocksToInsert, currentBlocks[currentBlocks.length - 1].id, 'after');
               }
               onChange?.(editor.document);
             } catch (err) {
