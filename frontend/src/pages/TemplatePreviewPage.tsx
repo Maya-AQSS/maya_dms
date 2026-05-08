@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchTemplate,
@@ -116,8 +116,28 @@ export function TemplatePreviewPage() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [publishedVersionCount, setPublishedVersionCount] = useState<number | null>(null);
 
-  // Ref for the comment card header — used to measure height for the fixed panel positioning.
+  // Ref for the comment card header.
   const commentCardHeaderRef = useRef<HTMLDivElement>(null);
+
+  // Dynamic top position for the fixed comment panel — stays below the page header.
+  const pageHeaderRef = useRef<HTMLDivElement>(null);
+  const [commentPanelTop, setCommentPanelTop] = useState(80);
+
+  useLayoutEffect(() => {
+    const updateTop = () => {
+      if (!pageHeaderRef.current) return;
+      const bottom = pageHeaderRef.current.getBoundingClientRect().bottom;
+      setCommentPanelTop(Math.max(8, bottom + 8));
+    };
+    updateTop();
+    const ro = new ResizeObserver(updateTop);
+    if (pageHeaderRef.current) ro.observe(pageHeaderRef.current);
+    window.addEventListener('scroll', updateTop, { passive: true, capture: true });
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('scroll', updateTop, { capture: true });
+    };
+  }, []);
 
   useEffect(() => {
     if (!id) {
@@ -427,18 +447,20 @@ export function TemplatePreviewPage() {
 
   return (
     <div className="min-h-full overflow-y-auto">
-      <PageTitle
-        title={template?.name ?? 'Plantilla'}
-        subtitle="Previsualización"
-        onBack={handleBack}
-        backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
-        meta={
-          <div className="space-y-3">
-            {headerMeta}
-            {headerToolbar}
-          </div>
-        }
-      />
+      <div ref={pageHeaderRef}>
+        <PageTitle
+          title={template?.name ?? 'Plantilla'}
+          subtitle="Previsualización"
+          onBack={handleBack}
+          backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
+          meta={
+            <div className="space-y-3">
+              {headerMeta}
+              {headerToolbar}
+            </div>
+          }
+        />
+      </div>
 
       {actionError && (
         <div className="max-w-[960px] mx-auto px-6 py-2">
@@ -538,7 +560,7 @@ export function TemplatePreviewPage() {
         {selectedBlockId && (() => {
           const block = blocks.find((b) => b.id === selectedBlockId);
           return (
-            <div className="fixed right-6 top-[70px] w-[384px] z-30">
+            <div className="fixed right-6 w-[384px] z-30" style={{ top: commentPanelTop }}>
               <BlockCommentsCard
                 mode="creator-readonly"
                 blockSortOrder={block?.sort_order ?? '?'}
