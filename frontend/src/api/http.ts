@@ -56,7 +56,17 @@ function createApiClient(keycloak: Keycloak, baseUrl: string): ApiClient {
     const ct = response.headers.get('content-type') ?? ''
     if (ct.includes('application/json')) {
       try {
-        const body = (await response.json()) as { message?: string; error?: string }
+        const body = (await response.json()) as {
+          message?: string
+          error?: string
+          errors?: Record<string, string[]>
+        }
+        if (body.errors && typeof body.errors === 'object') {
+          const first = Object.values(body.errors)
+            .flat()
+            .find((m) => typeof m === 'string' && m.trim() !== '')
+          if (first) return first
+        }
         return body.message ?? body.error ?? response.statusText
       } catch {
         return response.statusText

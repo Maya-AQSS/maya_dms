@@ -357,7 +357,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setStep('summary');
     } catch (e) {
       console.error('[saveUsers]', e);
-      setErrors({ api: 'Error al guardar los validadores' });
+      const detail =
+        e instanceof ApiHttpError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : 'Error al guardar los validadores';
+      setErrors({ api: detail || 'Error al guardar los validadores' });
     } finally {
       setSaving(false);
     }

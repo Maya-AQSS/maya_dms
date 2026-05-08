@@ -37,10 +37,9 @@ class UserProfileRepository implements UserProfileRepositoryInterface
             }
 
             return [
-                'id'         => $user->id,
-                'email'      => $user->email,
-                'name'       => $user->name,
-                'department' => $user->department,
+                'id'    => $user->id,
+                'email' => $user->email,
+                'name'  => $user->name,
             ];
         });
     }

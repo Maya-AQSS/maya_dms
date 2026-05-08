@@ -2,7 +2,7 @@
 
 /**
  * Catálogo reducido de usuarios mock (local / pruebas con Keycloak).
- * Campos: id, nombre, email, departamento → vista `users`: id, name, email, department.
+ * Campos: id, nombre, email, departamento (metadato mock; la vista FDW `users` no expone departamento).
  *
  * **Ids `usr_*`:** en Keycloak copia el UUID del usuario y sustituye aquí y en
  * `user_permissions_mock.php`, `templates_mock.php` (created_by / revisores),
