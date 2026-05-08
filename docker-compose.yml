@@ -68,6 +68,58 @@ services:
     networks:
       - maya_network
 
+  # ─── Queue worker: reintentos de notificaciones fallidas (DB queue) ──
+  queue-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: maya_dms_queue_worker
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_KEY: ${APP_KEY:-}
+      DB_CONNECTION: pgsql
+      DB_HOST: maya_infra_postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-maya_dms_db}
+      DB_USERNAME: ${DB_USERNAME:-maya_dms_user}
+      DB_PASSWORD: ${DB_PASSWORD:-secret}
+      CACHE_STORE: redis
+      REDIS_HOST: maya_redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-secret}
+      REDIS_PORT: 6379
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-maya_rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USER: ${RABBITMQ_USER:-admin}
+      RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
+      RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
+      MAYA_MESSAGING_APP: maya_dms
+      LOG_STACK: "daily"
+      LOG_LEVEL: info
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        cd /var/www/html
+        if [ ! -f vendor/autoload.php ]; then
+          echo "[queue-worker] waiting for vendor..."
+          while [ ! -f vendor/autoload.php ]; do sleep 3; done
+        fi
+        until php artisan migrate:status --no-interaction 2>/dev/null | grep -q "Running\|Ran"; do
+          echo "[queue-worker] waiting for migrations..."
+          sleep 3
+        done
+        echo "[queue-worker] ready — processing database queue"
+        exec php artisan queue:work --connection=database --tries=5 --backoff=30 --queue=default
+    command: []
+    volumes:
+      - ./backend:/var/www/html
+      - ../maya_infra/packages:/var/maya_infra/packages
+    networks:
+      - maya_network
+
   # ─── Frontend (React 19 + Vite) ──────────────────────────────
   frontend:
     build:
