@@ -269,7 +269,7 @@ class TemplateService implements TemplateServiceInterface
             $template,
             'draft',
             $actorId,
-            ['created_by' => $actorId],
+            [],
         );
     }
 

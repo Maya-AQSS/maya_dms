@@ -732,7 +732,7 @@ class TemplatesApiTest extends TestCase
             ->value('status'));
     }
 
-    public function test_post_template_new_version_reassigns_creator_to_actor(): void
+    public function test_post_template_new_version_preserves_original_creator(): void
     {
         $originalCreatorId = (string) Str::uuid();
         $actorId = (string) Str::uuid();
@@ -796,9 +796,9 @@ class TemplatesApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/new-version", [], $actorHeaders)
             ->assertOk()
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.created_by', $actorId);
+            ->assertJsonPath('data.created_by', $originalCreatorId);
 
-        $this->assertSame($actorId, (string) Template::query()->findOrFail($tid)->created_by);
+        $this->assertSame($originalCreatorId, (string) Template::query()->findOrFail($tid)->created_by);
     }
 
     public function test_delete_template_version_discards_live_draft_and_restores_last_published_snapshot(): void
