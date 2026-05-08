@@ -63,6 +63,12 @@ if [[ ! -f .env ]]; then
 fi
 set -a; source .env; set +a
 
+# backend/.env para artisan local e IDE (symlink al .env raíz)
+if [[ ! -e backend/.env ]]; then
+    ln -sf ../.env backend/.env
+    info "backend/.env → .env (symlink para desarrollo local)"
+fi
+
 # ─── Detectar APP_KEY vacío en root .env (re-runs con .env pre-existente) ────
 NEED_KEY_GENERATE=false
 if [[ -z "${APP_KEY:-}" ]]; then
@@ -191,6 +197,9 @@ for i in $(seq 1 30); do
   fi
   sleep 3
 done
+
+# Fix vendor ownership para IDE / artisan local (el entrypoint corre como root)
+docker exec "$BACKEND_CONTAINER" chown -R "${LOCAL_UID}:${LOCAL_GID}" /var/www/html/vendor 2>/dev/null || true
 
 # 2) Esperar conexión con la BD (PDO directo — sin bootstrap de Laravel)
 info "Esperando conexión con la base de datos..."
