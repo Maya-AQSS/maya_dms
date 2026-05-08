@@ -227,10 +227,10 @@ if [[ "$DB_READY" == true ]]; then
         \$u = getenv('DB_USERNAME');
         \$w = getenv('DB_PASSWORD');
         \$pdo = new PDO(\"pgsql:host=\$h;port=\$p;dbname=\$d\", \$u, \$w, [PDO::ATTR_TIMEOUT => 3]);
-        \$skip = ['migrations','failed_jobs','jobs','job_batches','cache','cache_locks','password_reset_tokens','sessions','study_types_source','studies_source','course_modules_source'];
+        \$skip = ['migrations','failed_jobs','jobs','job_batches','cache','cache_locks','password_reset_tokens','sessions'];
         \$tables = \$pdo->query(\"SELECT tablename FROM pg_tables WHERE schemaname = 'public'\")->fetchAll(PDO::FETCH_COLUMN);
         foreach (\$tables as \$table) {
-          if (in_array(\$table, \$skip) || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', \$table)) continue;
+          if (in_array(\$table, \$skip) || str_ends_with(\$table, '_source') || !preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', \$table)) continue;
           \$stmt = \$pdo->query(\"SELECT 1 FROM \\\"\$table\\\" LIMIT 1\");
           if (\$stmt && \$stmt->fetchColumn() !== false) { echo '1'; exit(0); }
         }
