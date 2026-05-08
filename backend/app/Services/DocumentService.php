@@ -263,10 +263,11 @@ class DocumentService implements DocumentServiceInterface
                 $moduleId = null;
             } elseif ($dto->moduleId !== null) {
                 $module = DB::table('course_modules')
-                    ->where('id', $dto->moduleId)
-                    ->select('study_id')
+                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
+                    ->where('course_modules.id', $dto->moduleId)
+                    ->select('course_modules.study_id', 'studies.study_type_id')
                     ->first();
-                if (! $module || ! is_string($module->study_id)) {
+                if (! $module || ! is_string($module->study_id) || ! is_string($module->study_type_id)) {
                     throw ValidationException::withMessages([
                         'module_id' => ['El módulo seleccionado no existe.'],
                     ]);
@@ -276,14 +277,32 @@ class DocumentService implements DocumentServiceInterface
                         'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                     ]);
                 }
+                if ($dto->studyTypeId !== null && $dto->studyTypeId !== (string) $module->study_type_id) {
+                    throw ValidationException::withMessages([
+                        'study_type_id' => ['El tipo de estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
                 $moduleId = $dto->moduleId;
                 $studyId = (string) $module->study_id;
-                $studyTypeId = DB::table('studies')->where('id', $studyId)->value('study_type_id');
+                $studyTypeId = (string) $module->study_type_id;
                 $teamId = null;
             } elseif ($dto->studyId !== null) {
+                $studyTypeFromStudy = DB::table('studies')
+                    ->where('id', $dto->studyId)
+                    ->value('study_type_id');
+                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy === '') {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio seleccionado no existe.'],
+                    ]);
+                }
+                if ($dto->studyTypeId !== null && $dto->studyTypeId !== $studyTypeFromStudy) {
+                    throw ValidationException::withMessages([
+                        'study_type_id' => ['El tipo de estudio indicado no corresponde con el estudio seleccionado.'],
+                    ]);
+                }
                 $studyId = $dto->studyId;
                 $moduleId = null;
-                $studyTypeId = DB::table('studies')->where('id', $studyId)->value('study_type_id');
+                $studyTypeId = $studyTypeFromStudy;
                 $teamId = null;
             } elseif ($dto->studyTypeId !== null) {
                 $studyTypeId = $dto->studyTypeId;

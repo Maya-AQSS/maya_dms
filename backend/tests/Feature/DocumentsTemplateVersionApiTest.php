@@ -1528,6 +1528,77 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertJsonValidationErrors(['team_id']);
     }
 
+    public function test_store_document_from_global_template_rejects_inconsistent_study_type_with_study(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
+        [$headers, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
+
+        $studyId = $this->anyStudyId();
+        $studyTypeOfStudy = (string) DB::table('studies')->where('id', $studyId)->value('study_type_id');
+        $otherStudyTypeId = (string) Str::uuid();
+        DB::table('study_types')->insertOrIgnore([
+            'id' => $otherStudyTypeId,
+            'name' => 'Tipo alternativo',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        if ($otherStudyTypeId === $studyTypeOfStudy) {
+            $otherStudyTypeId = (string) Str::uuid();
+            DB::table('study_types')->insertOrIgnore([
+                'id' => $otherStudyTypeId,
+                'name' => 'Tipo alternativo 2',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Plantilla global tipo inconsistente',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 1,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => null,
+            'block_state' => 'optional',
+            'sort_order' => 0,
+        ]);
+        TemplateReviewer::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+        ]);
+        $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headers)->assertOk();
+        $this->postJson("/api/v1/templates/{$tid}/publish", ['changelog' => 'v1'], $hReviewer)->assertOk();
+
+        $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'Doc global inconsistente',
+            'study_id' => $studyId,
+            'study_type_id' => $otherStudyTypeId,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headers)->assertStatus(422)
+            ->assertJsonValidationErrors(['study_type_id']);
+    }
+
     public function test_update_document_block_persists_content_in_draft(): void
     {
         $creatorId = (string) Str::uuid();
