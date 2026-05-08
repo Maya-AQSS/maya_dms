@@ -6,7 +6,6 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Support\DocumentHeadSnapshot;
-use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -57,9 +56,15 @@ class TemplatePolicy
      */
     public function view(JwtUser $user, Template $template): bool
     {
+        $userId = (string) $user->getAuthIdentifier();
+
         // Gestión global / auditoría: mismo espíritu que {@see AcademicHierarchyController} (`admin`)
         // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `templates.delete`).
         if ($user->hasPermission('admin') || $user->hasPermission('templates.delete')) {
+            return true;
+        }
+
+        if ((string) $template->created_by === $userId) {
             return true;
         }
 
@@ -72,17 +77,6 @@ class TemplatePolicy
         // datos que proteger, por lo que se permite la vista si el permiso está presente.
         // En producción los controladores siempre pasan un modelo recuperado de BD.
         if ($templateId === null || $templateId === '') {
-            return true;
-        }
-
-        $userId = (string) $user->getAuthIdentifier();
-
-        $template->loadMissing('headVersion');
-        $snapshot = $template->headVersion?->snapshot_data;
-        $createdBy = is_array($snapshot)
-            ? data_get($snapshot, TemplateHeadSnapshot::JSON_TEMPLATE_KEY.'.created_by')
-            : null;
-        if ($createdBy !== null && $createdBy !== '' && (string) $createdBy === $userId) {
             return true;
         }
 

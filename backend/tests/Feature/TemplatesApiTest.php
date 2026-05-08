@@ -785,7 +785,7 @@ class TemplatesApiTest extends TestCase
             ->value('status'));
     }
 
-    public function test_post_template_new_version_preserves_original_creator(): void
+    public function test_post_template_new_version_assigns_current_actor_as_working_creator(): void
     {
         $originalCreatorId = (string) Str::uuid();
         $actorId = (string) Str::uuid();
@@ -852,9 +852,9 @@ class TemplatesApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/new-version", [], $actorHeaders)
             ->assertOk()
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonPath('data.created_by', $originalCreatorId);
+            ->assertJsonPath('data.created_by', $actorId);
 
-        $this->assertSame($originalCreatorId, (string) Template::query()->findOrFail($tid)->created_by);
+        $this->assertSame($actorId, (string) Template::query()->findOrFail($tid)->created_by);
     }
 
     public function test_delete_template_version_discards_live_draft_and_restores_last_published_snapshot(): void
@@ -1301,6 +1301,109 @@ class TemplatesApiTest extends TestCase
         $headersB = $this->authHeaders($userB, ['teacher']);
 
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
+    }
+
+    public function test_creator_can_view_own_template_without_templates_read_permission(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId, []);
+        DB::table('user_permissions')
+            ->where('user_id', $creatorId)
+            ->whereIn('permission_code', ['templates.read', 'documents.create'])
+            ->delete();
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Borrador propio sin read',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $this->getJson("/api/v1/templates/{$tid}", $headers)
+            ->assertOk()
+            ->assertJsonPath('data.id', $tid)
+            ->assertJsonPath('data.created_by', $creatorId);
+    }
+
+    public function test_index_keeps_creator_id_when_head_snapshot_missing_created_by(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $headers = $this->authHeaders($creatorId);
+
+        $tid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'name' => 'Borrador con snapshot legacy',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        $head = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $tid)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        /** @var array<string, mixed> $snapshotData */
+        $snapshotData = is_array($head->snapshot_data) ? $head->snapshot_data : [];
+        $templateData = isset($snapshotData['template']) && is_array($snapshotData['template'])
+            ? $snapshotData['template']
+            : [];
+        unset($templateData['created_by']);
+        $snapshotData['template'] = $templateData;
+        $head->update(['snapshot_data' => $snapshotData]);
+
+        EntityVersion::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $tid,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $creatorId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => [
+                'template' => [
+                    'id' => $tid,
+                    'process_id' => '00000000-0000-0000-0000-000000000001',
+                    'name' => 'Publicado',
+                    'created_by' => $creatorId,
+                    'status' => 'published',
+                    'version' => 1,
+                ],
+                'blocks' => [],
+            ],
+            'is_snapshot_immutable' => true,
+        ]);
+
+        $this->getJson('/api/v1/templates', $headers)
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $tid,
+                'status' => 'draft',
+                'created_by' => $creatorId,
+            ]);
     }
 
     public function test_teacher_sees_study_scoped_template_when_user_has_study_in_bd(): void
