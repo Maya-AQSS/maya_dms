@@ -3,6 +3,7 @@
 namespace App\Services\Contracts;
 
 use App\Models\Comment;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface CommentServiceInterface
 {
@@ -12,13 +13,14 @@ interface CommentServiceInterface
     public function findOrFail(string $id): Comment;
 
     /**
-     * Lista los comentarios para un recurso.
+     * Lista los comentarios paginados para un recurso.
      */
     public function listForResource(
         string $commentableType,
         string $commentableId,
         int $commentableVersion,
-    ): \Illuminate\Support\Collection;
+        int $perPage,
+    ): LengthAwarePaginator;
 
     /**
      * Crea un comentario para un recurso.
@@ -37,10 +39,10 @@ interface CommentServiceInterface
     /**
      * Elimina un comentario.
      */
-    public function delete(string $id): void;
+    public function delete(Comment $comment): void;
 
     /**
      * Marca un comentario como resuelto.
      */
-    public function resolve(string $id, string $userId): Comment;
+    public function resolve(Comment $comment, string $userId): Comment;
 }

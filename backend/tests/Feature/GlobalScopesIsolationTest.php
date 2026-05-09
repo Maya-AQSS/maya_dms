@@ -499,7 +499,7 @@ class GlobalScopesIsolationTest extends TestCase
             "/api/v1/templates/{$templateId}/comments",
             ['body' => 'No debe guardarse'],
             ['Authorization' => 'Bearer '.$tokenA],
-        )->assertNotFound();
+        )->assertStatus(422);
     }
 
     public function test_document_comments_remain_visible_after_first_publish(): void
@@ -619,7 +619,7 @@ class GlobalScopesIsolationTest extends TestCase
             "/api/v1/documents/{$documentId}/comments",
             ['body' => 'No debe guardarse'],
             ['Authorization' => 'Bearer '.$tokenA],
-        )->assertNotFound();
+        )->assertStatus(422);
     }
 
     public function test_comment_store_rejects_multiple_block_identifiers(): void
@@ -681,5 +681,131 @@ class GlobalScopesIsolationTest extends TestCase
         // Como no hay sesión auth, el scope debe inyectar 1=0
         $this->assertEquals(0, Document::count());
         $this->assertEquals(0, Template::count());
+    }
+
+    public function test_owner_can_create_document_comment(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+
+        $this->postJson(
+            "/api/v1/documents/{$documentId}/comments",
+            ['body' => 'Comentario en documento'],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )
+            ->assertCreated()
+            ->assertJsonPath('data.commentable_type', Document::class)
+            ->assertJsonPath('data.commentable_id', $documentId)
+            ->assertJsonPath('data.body', 'Comentario en documento');
+    }
+
+    public function test_author_can_delete_own_comment(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+
+        $created = $this->postJson(
+            "/api/v1/templates/{$templateId}/comments",
+            ['body' => 'Comentario a eliminar'],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertCreated();
+
+        $commentId = (string) $created->json('data.id');
+
+        $this->deleteJson(
+            "/api/v1/comments/{$commentId}",
+            [],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNoContent();
+
+        auth()->forgetUser();
+
+        $this->getJson(
+            "/api/v1/comments/{$commentId}",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertNotFound();
+    }
+
+    public function test_non_author_cannot_delete_comment(): void
+    {
+        $userA = 'user-a-uuid-123';
+        $userB = 'user-b-uuid-999';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+
+        $commentId = (string) \Illuminate\Support\Str::uuid();
+        Comment::query()->forceCreate([
+            'id'               => $commentId,
+            'commentable_type' => Template::class,
+            'commentable_id'   => $templateId,
+            'commentable_version' => 1,
+            'author_id'        => $userA,
+            'body'             => 'Comentario de A',
+            'resolved'         => false,
+        ]);
+
+        // userB is added as reviewer so they can see the template comments
+        \Illuminate\Support\Facades\DB::table('template_reviewers')->insert([
+            'id'          => (string) \Illuminate\Support\Str::uuid(),
+            'template_id' => $templateId,
+            'user_id'     => $userB,
+            'stage'       => 1,
+            'created_at'  => now(),
+            'updated_at'  => now(),
+        ]);
+
+        $tokenB = $this->buildAuthTokensForUser($userB);
+
+        $this->deleteJson(
+            "/api/v1/comments/{$commentId}",
+            [],
+            ['Authorization' => 'Bearer '.$tokenB],
+        )->assertForbidden();
+    }
+
+    public function test_empty_body_is_rejected(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [$templateId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+
+        $this->postJson(
+            "/api/v1/templates/{$templateId}/comments",
+            ['body' => ''],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertStatus(422)->assertJsonValidationErrors(['body']);
+
+        $this->postJson(
+            "/api/v1/templates/{$templateId}/comments",
+            [],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertStatus(422)->assertJsonValidationErrors(['body']);
+    }
+
+    public function test_published_document_blocks_comment_creation_via_is_commenting_open(): void
+    {
+        $userA = 'user-a-uuid-123';
+        [, $documentId] = $this->seedTemplateAndDocument($userA);
+        $tokenA = $this->buildAuthTokensForUser($userA);
+
+        $headDoc = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $mergedDoc = DocumentHeadSnapshot::mergeDocumentKey($headDoc->snapshot_data ?? [], ['status' => 'published']);
+        $headDoc->update(['status' => 'published', 'snapshot_data' => $mergedDoc]);
+
+        $this->postJson(
+            "/api/v1/documents/{$documentId}/comments",
+            ['body' => 'Bloqueado por publicado'],
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertStatus(422);
+
+        $this->getJson(
+            "/api/v1/documents/{$documentId}/comments",
+            ['Authorization' => 'Bearer '.$tokenA],
+        )->assertOk()->assertJsonPath('data', []);
     }
 }

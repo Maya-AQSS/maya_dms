@@ -8,6 +8,7 @@ use App\Models\Template;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 
 class CommentRepository implements CommentRepositoryInterface
@@ -21,21 +22,23 @@ class CommentRepository implements CommentRepositoryInterface
     }
 
     /**
-     * Lista comentarios por recurso comentable.
+     * Lista comentarios paginados por recurso comentable.
      */
     public function listForResource(
         string $commentableType,
         string $commentableId,
         int $commentableVersion,
-    ): \Illuminate\Support\Collection
+        int $perPage,
+    ): LengthAwarePaginator
     {
         return Comment::query()
+            ->select('comments.*')
             ->where('commentable_type', $commentableType)
             ->where('commentable_id', $commentableId)
             ->where('commentable_version', $commentableVersion)
             ->with('author:id,name')
             ->orderBy('created_at', 'asc')
-            ->get();
+            ->paginate($perPage);
     }
 
     /**

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Concerns\HasCommentingStatus;
 use App\Support\TemplateHeadSnapshot;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -21,7 +22,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  */
 class Template extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasUuids, SoftDeletes, HasCommentingStatus;
 
     /**
      * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see \App\Policies\TemplatePolicy}):
@@ -321,6 +322,11 @@ class Template extends Model
         };
     }
 
+    public function currentVersion(): int
+    {
+        return $this->version;
+    }
+
     /**
      * Número de la última publicación en {@see EntityVersion} (changelog y autores de esa fila en la misma tabla).
      *
@@ -403,4 +409,5 @@ class Template extends Model
     {
         return $this->morphMany(Comment::class, 'commentable');
     }
+
 }

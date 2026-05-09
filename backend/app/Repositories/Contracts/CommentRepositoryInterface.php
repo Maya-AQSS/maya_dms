@@ -3,6 +3,7 @@
 namespace App\Repositories\Contracts;
 
 use App\Models\Comment;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface CommentRepositoryInterface
 {
@@ -12,13 +13,14 @@ interface CommentRepositoryInterface
     public function findOrFail(string $id): Comment;
 
     /**
-     * Lista comentarios por recurso comentable.
+     * Lista comentarios paginados por recurso comentable.
      */
     public function listForResource(
         string $commentableType,
         string $commentableId,
         int $commentableVersion,
-    ): \Illuminate\Support\Collection;
+        int $perPage,
+    ): LengthAwarePaginator;
 
     /**
      * Crea un comentario.

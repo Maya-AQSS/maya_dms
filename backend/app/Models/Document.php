@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCommentingStatus;
 use App\Support\DocumentHeadSnapshot;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -20,7 +21,7 @@ use Illuminate\Support\Str;
  */
 class Document extends Model
 {
-    use HasUuids, SoftDeletes;
+    use HasUuids, SoftDeletes, HasCommentingStatus;
 
     /**
      * Visibilidad efectiva (SQL):
@@ -273,6 +274,11 @@ class Document extends Model
         };
     }
 
+    public function currentVersion(): int
+    {
+        return $this->current_version;
+    }
+
     /**
      * Número de versión publicada canónica ({@see EntityVersion}), con convención «1» antes de la primera publicación.
      *
@@ -417,4 +423,5 @@ class Document extends Model
     {
         return $this->morphMany(Comment::class, 'commentable');
     }
+
 }

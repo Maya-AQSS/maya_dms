@@ -9,7 +9,7 @@ use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Services\Contracts\CommentServiceInterface;
-use Illuminate\Support\Collection;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
 class CommentService implements CommentServiceInterface
@@ -30,9 +30,10 @@ class CommentService implements CommentServiceInterface
         string $commentableType,
         string $commentableId,
         int $commentableVersion,
-    ): Collection
+        int $perPage,
+    ): LengthAwarePaginator
     {
-        return $this->commentRepository->listForResource($commentableType, $commentableId, $commentableVersion);
+        return $this->commentRepository->listForResource($commentableType, $commentableId, $commentableVersion, $perPage);
     }
 
     public function createForResource(
@@ -81,14 +82,13 @@ class CommentService implements CommentServiceInterface
         ]);
     }
 
-    public function delete(string $id): void
+    public function delete(Comment $comment): void
     {
-        $this->findOrFail($id)->delete();
+        $comment->delete();
     }
 
-    public function resolve(string $id, string $userId): Comment
+    public function resolve(Comment $comment, string $userId): Comment
     {
-        $comment = $this->findOrFail($id);
         $comment->update([
             'resolved' => true,
             'resolved_by' => $userId,
