@@ -2359,14 +2359,21 @@
             "dist": {
                 "type": "path",
                 "url": "../../maya_infra/packages/maya-shared-auth-laravel",
-                "reference": "54dac3aa6539be40a641d7a0a7ea568f05b1b004"
+                "reference": "c4be42e1cc0e043ca14d2d96646b1860e0264766"
             },
             "require": {
                 "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/http": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "lcobucci/jwt": "^5.0",
-                "php": "^8.4"
+                "php": "^8.4",
+                "phpseclib/phpseclib": "^3.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
             },
             "type": "library",
             "extra": {
@@ -2380,6 +2387,19 @@
                 "psr-4": {
                     "Maya\\Auth\\": "src/"
                 }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
             },
             "license": [
                 "MIT"
@@ -2424,7 +2444,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../maya_infra/packages/maya-shared-messaging-laravel",
-                "reference": "3d23ee07f7f5c8cd1d5f2d59dcad1c7d1c9c040b"
+                "reference": "9fb825014abe2eca88a7694d1376e3637b60aed7"
             },
             "require": {
                 "illuminate/log": "^11.0 || ^12.0 || ^13.0",
@@ -2434,6 +2454,12 @@
                 "php": "^8.4",
                 "php-amqplib/php-amqplib": "^3.5",
                 "ramsey/uuid": "^4.7"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
             },
             "type": "library",
             "extra": {
@@ -2447,6 +2473,19 @@
                 "psr-4": {
                     "Maya\\Messaging\\": "src/"
                 }
+            },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
             },
             "license": [
                 "MIT"
