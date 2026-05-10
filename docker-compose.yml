@@ -64,7 +64,7 @@ services:
       interval: 15s
       timeout: 5s
       retries: 5
-      start_period: 30s
+      start_period: 150s
     ports:
       - "${BACKEND_PORT:-8001}:8000"
       - "${REVERB_PORT:-8082}:8082"
