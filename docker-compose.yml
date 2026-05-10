@@ -58,8 +58,13 @@ services:
       - ./backend:/var/www/html
       # Laravel resuelve .env en basePath (/var/www/html); el symlink ../.env no siempre existe o se rompe en bind mount.
       - ./.env:/var/www/html/.env
-      - ./.env:/var/www/.env
       - ../maya_infra/packages:/var/maya_infra/packages
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     ports:
       - "${BACKEND_PORT:-8001}:8000"
       - "${REVERB_PORT:-8082}:8082"
@@ -79,7 +84,8 @@ services:
     container_name: maya_dms_queue_worker
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_KEY: ${APP_KEY:-}
@@ -133,12 +139,12 @@ services:
       - ./frontend:/app
       - ../maya_infra/packages:/maya_infra/packages
       - ../maya_infra/configs:/maya_infra/configs:ro
-      - ./.env:/app/.env
       - /app/node_modules
     ports:
       - "${FRONTEND_PORT:-5174}:5173"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.maya-dms-front.rule=Host(`maya_dms.localhost`)"

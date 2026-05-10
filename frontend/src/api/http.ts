@@ -87,7 +87,7 @@ function createApiClient(keycloak: Keycloak, baseUrl: string): ApiClient {
     })
 
     if (!response.ok) {
-      if (response.status === 401) keycloak.login()
+      if (response.status === 401 && !keycloak.authenticated) keycloak.login()
       const msg = await parseErrorMessage(response)
       throw new ApiHttpError(msg || `HTTP ${response.status}`, response.status)
     }
