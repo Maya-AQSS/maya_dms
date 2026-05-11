@@ -1215,24 +1215,31 @@ class DocumentService implements DocumentServiceInterface
             return;
         }
 
-        $rows = DB::table('entity_versions')
+        $maxVersions = DB::table('entity_versions')
             ->where('versionable_type', Document::class)
             ->whereIn('versionable_id', $ids)
             ->where('status', 'published')
             ->where('version_number', '>', 0)
-            ->orderByDesc('version_number')
-            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
+            ->groupBy('versionable_id')
+            ->select('versionable_id', DB::raw('MAX(version_number) as max_version'));
+
+        $rows = DB::table('entity_versions as ev')
+            ->joinSub($maxVersions, 'mv', function ($join) {
+                $join->on('ev.versionable_id', '=', 'mv.versionable_id')
+                     ->on('ev.version_number', '=', 'mv.max_version');
+            })
+            ->where('ev.versionable_type', Document::class)
+            ->where('ev.status', 'published')
+            ->get(['ev.versionable_id', 'ev.id', 'ev.version_number', 'ev.snapshot_data']);
 
         $latestByDocument = [];
         foreach ($rows as $row) {
             $documentId = (string) $row->versionable_id;
-            if (! isset($latestByDocument[$documentId])) {
-                $latestByDocument[$documentId] = (object) [
-                    'id' => (string) $row->id,
-                    'version_number' => (int) $row->version_number,
-                    'title' => $this->extractPublishedTitleFromSnapshot($row->snapshot_data),
-                ];
-            }
+            $latestByDocument[$documentId] = (object) [
+                'id' => (string) $row->id,
+                'version_number' => (int) $row->version_number,
+                'title' => $this->extractPublishedTitleFromSnapshot($row->snapshot_data),
+            ];
         }
 
         foreach ($documents as $document) {
