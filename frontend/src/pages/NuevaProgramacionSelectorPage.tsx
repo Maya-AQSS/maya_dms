@@ -338,11 +338,6 @@ export function NuevaProgramacionSelectorPage() {
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Estado">
-              <Select fieldSize="sm" value="published" disabled>
-                <option value="published">Publicada</option>
-              </Select>
-            </FilterField>
             <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
