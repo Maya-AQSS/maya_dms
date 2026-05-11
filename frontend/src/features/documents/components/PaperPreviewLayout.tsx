@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, type CSSProperties } from 'react'
+import { useEffect, useState, type ReactNode, type CSSProperties, type RefObject } from 'react'
 import { Button, PageTitle } from '@maya/shared-ui-react'
 
 interface Props {
@@ -20,6 +20,8 @@ interface Props {
   actions?: ReactNode
   /** Si true, el wrapper es un overlay fixed (para modales). Default: false (modo página). */
   asOverlay?: boolean
+  /** Ref opcional sobre el área del header (PageTitle) para calcular offsets de paneles fijos. */
+  headerRef?: RefObject<HTMLDivElement | null>
   children: ReactNode
 }
 
@@ -68,6 +70,7 @@ export function PaperPreviewLayout({
   metaInfo,
   actions,
   asOverlay = false,
+  headerRef,
   children,
 }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -130,6 +133,7 @@ export function PaperPreviewLayout({
 
   return (
     <div className={wrapperClass}>
+      <div ref={headerRef}>
       <PageTitle
         title={title}
         subtitle={subtitle}
@@ -145,6 +149,7 @@ export function PaperPreviewLayout({
           </div>
         }
       />
+      </div>
 
       <article
         className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"

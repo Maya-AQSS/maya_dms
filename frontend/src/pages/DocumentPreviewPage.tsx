@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchDocument,
@@ -27,8 +27,8 @@ import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
-import { BlockCommentsCard } from '../features/templates/components/BlockCommentsCard';
-import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
+import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
+import type { BlockComment, CommentMode } from '../features/templates/components/BlockCommentsCard';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
@@ -158,9 +158,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [processLabel, setProcessLabel] = useState<string | null>(null);
   const [publishedDocumentVersionCount, setPublishedDocumentVersionCount] = useState<number | null>(null);
 
-  // Validate-mode comment state (mirrors TemplateReviewView)
+  // Validate-mode comment + info state (mirrors TemplateReviewView)
+  type ValidateActiveView = { blockId: string; mode: 'comments' | 'info' } | null;
   const [validateComments, setValidateComments] = useState<BlockComment[]>([]);
-  const [validateActiveBlockId, setValidateActiveBlockId] = useState<string | null>(null);
+  const [validateActiveView, setValidateActiveView] = useState<ValidateActiveView>(null);
+  const validateActiveBlockId = validateActiveView?.blockId ?? null;
   const [validateNewCommentBody, setValidateNewCommentBody] = useState('');
   const [validateCommentLoading, setValidateCommentLoading] = useState(false);
   const [validateCommentError, setValidateCommentError] = useState<string | null>(null);
@@ -171,6 +173,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const validateBlockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const validateViewColRef = useRef<HTMLDivElement>(null);
   const validateViewHeaderRef = useRef<HTMLDivElement>(null);
+
+  // Creator preview-mode comment state (mirrors TemplatePreviewPage)
+  const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
+  const [selectedReviewBlockId, setSelectedReviewBlockId] = useState<string | null>(null);
+  const [commentPanelTop, setCommentPanelTop] = useState(80);
+  const pageHeaderRef = useRef<HTMLDivElement>(null);
+  const commentCardHeaderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!documentId) {
@@ -414,15 +423,15 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     return () => { cancelled = true; };
   }, [isValidateMode, documentId, detail?.id]);
 
-  // Recalculate panel position when active block changes (validate mode)
+  // Recalculate panel position when active view changes (validate mode)
   useEffect(() => {
-    if (!validateActiveBlockId) {
+    if (!validateActiveView) {
       setValidateConnectorGeom(null);
       setValidateViewPaddingTop(0);
       return;
     }
     const raf = requestAnimationFrame(() => {
-      const blockEl = validateBlockRefs.current.get(validateActiveBlockId);
+      const blockEl = validateBlockRefs.current.get(validateActiveView.blockId);
       const scrollEl = validateScrollRef.current;
       const artEl = validateArticleRef.current;
       if (!blockEl || !scrollEl || !artEl) return;
@@ -445,11 +454,53 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       }
     });
     return () => cancelAnimationFrame(raf);
-  }, [validateActiveBlockId]);
+  }, [validateActiveView]);
 
-  const selectValidateBlock = (blockId: string) => {
-    setValidateActiveBlockId(prev => (prev === blockId ? null : blockId));
-    setValidateNewCommentBody('');
+  const openValidateView = (blockId: string, mode: 'comments' | 'info') => {
+    setValidateActiveView(prev =>
+      prev?.blockId === blockId && prev?.mode === mode ? null : { blockId, mode },
+    );
+    if (mode === 'comments') setValidateNewCommentBody('');
+  };
+
+  // Dynamic top for fixed creator-preview comment panel (below page header)
+  useLayoutEffect(() => {
+    if (isValidateMode) return;
+    const updateTop = () => {
+      if (!pageHeaderRef.current) return;
+      const bottom = pageHeaderRef.current.getBoundingClientRect().bottom;
+      setCommentPanelTop(Math.max(8, bottom + 8));
+    };
+    updateTop();
+    const ro = new ResizeObserver(updateTop);
+    if (pageHeaderRef.current) ro.observe(pageHeaderRef.current);
+    window.addEventListener('scroll', updateTop, { passive: true, capture: true });
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('scroll', updateTop, { capture: true });
+    };
+  }, [isValidateMode]);
+
+  // Load creator-preview review comments when document has unresolved comments
+  useEffect(() => {
+    if (isValidateMode || !documentId || !detail?.has_review_comments) return;
+    let cancelled = false;
+    void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
+      .then((res) => { if (!cancelled) setReviewComments(res.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isValidateMode, documentId, detail?.has_review_comments]);
+
+  // Creator-preview comment helpers
+  const blockPendingComments = (docBlockId: string | null) =>
+    docBlockId ? reviewComments.filter(c => c.blockable_id === docBlockId && !c.parent_id && !c.resolved) : [];
+
+  const blockAllComments = (docBlockId: string | null) =>
+    docBlockId ? reviewComments.filter(c => c.blockable_id === docBlockId || reviewComments.some(r => r.id === c.parent_id && r.blockable_id === docBlockId)) : [];
+
+  const handleResolveReviewComment = async (commentId: string) => {
+    const res = await resolveComment(commentId);
+    setReviewComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
   };
 
   const handleValidateAddComment = async () => {
@@ -912,12 +963,16 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                       ) : (
                         <div className="space-y-12">
                           {validateBlocks.map((block) => {
-                            const isSelected = validateActiveBlockId === block.template_block_id;
                             const blockId = block.template_block_id;
-                            const hasComments = validateComments.some(
-                              c => c.blockable_id === block.document_block_id,
-                            );
+                            const isSelected = validateActiveView?.blockId === blockId;
+                            const commentsActive = isSelected && validateActiveView?.mode === 'comments';
+                            const infoActive = isSelected && validateActiveView?.mode === 'info';
+                            const hasComments = validateComments.some(c => c.blockable_id === block.document_block_id);
                             const nodes = normalizeBlockContentForEditor(block.content ?? block.default_content);
+                            const hasDescription = !!block.description;
+                            const btnBase = 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider';
+                            const btnActive = 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm';
+                            const btnIdle = 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5';
 
                             return (
                               <section
@@ -926,60 +981,66 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                   if (el) validateBlockRefs.current.set(blockId, el);
                                   else validateBlockRefs.current.delete(blockId);
                                 }}
-                                onClick={(e) => { e.stopPropagation(); if (block.document_block_id) selectValidateBlock(blockId); }}
+                                onClick={(e) => { e.stopPropagation(); if (block.document_block_id) openValidateView(blockId, 'comments'); }}
                                 className={[
-                                  'relative group rounded-lg transition-all duration-200 cursor-pointer',
+                                  'relative group rounded-lg transition-all duration-200',
+                                  block.document_block_id || hasDescription ? 'cursor-pointer' : '',
                                   isSelected
                                     ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
-                                    : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
+                                    : (block.document_block_id || hasDescription) ? 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card' : '',
                                 ].join(' ')}
                               >
-                                {/* Block order badge */}
-                                <div className={[
-                                  'absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200',
-                                  isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted',
-                                ].join(' ')}>
+                                <div className={['absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200', isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted'].join(' ')}>
                                   #{block.sort_order ?? '?'}
                                 </div>
 
-                                {/* Block header */}
                                 <div className="flex items-center gap-3 mb-4">
                                   <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
                                     {block.title ?? 'Bloque sin título'}
                                   </h3>
-                                  <button
-                                    type="button"
-                                    aria-label={`Ver comentarios del bloque ${block.sort_order}`}
-                                    disabled={!block.document_block_id}
-                                    title={!block.document_block_id ? 'Los bloques bloqueados no admiten comentarios por bloque' : undefined}
-                                    onClick={(e) => { e.stopPropagation(); if (block.document_block_id) selectValidateBlock(blockId); }}
-                                    className={[
-                                      'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all text-xs font-black uppercase tracking-wider',
-                                      !block.document_block_id
-                                        ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30'
-                                        : isSelected
-                                          ? 'cursor-pointer border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                                          : 'cursor-pointer border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
-                                    ].join(' ')}
-                                  >
-                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                                    </svg>
-                                    <span>Mensajes</span>
-                                    {hasComments && (
-                                      <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-xs leading-none">
-                                        {validateComments.filter(c => c.blockable_id === block.document_block_id && !c.parent_id).length}
-                                      </span>
+                                  <div className="flex items-center gap-2">
+                                    {/* Info button */}
+                                    {hasDescription && (
+                                      <button
+                                        type="button"
+                                        aria-label={`Ver descripción del bloque ${block.sort_order}`}
+                                        onClick={(e) => { e.stopPropagation(); openValidateView(blockId, 'info'); }}
+                                        className={`${btnBase} ${infoActive ? btnActive : btnIdle}`}
+                                        title="Ver descripción del bloque"
+                                      >
+                                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Info</span>
+                                      </button>
                                     )}
-                                  </button>
+                                    {/* Messages button */}
+                                    <button
+                                      type="button"
+                                      aria-label={`Ver comentarios del bloque ${block.sort_order}`}
+                                      disabled={!block.document_block_id}
+                                      title={!block.document_block_id ? 'Los bloques bloqueados no admiten comentarios' : undefined}
+                                      onClick={(e) => { e.stopPropagation(); if (block.document_block_id) openValidateView(blockId, 'comments'); }}
+                                      className={[
+                                        `${btnBase}`,
+                                        !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30' : commentsActive ? btnActive : btnIdle,
+                                      ].join(' ')}
+                                    >
+                                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                      </svg>
+                                      <span>Mensajes</span>
+                                      {hasComments && (
+                                        <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-xs leading-none">
+                                          {validateComments.filter(c => c.blockable_id === block.document_block_id && !c.parent_id).length}
+                                        </span>
+                                      )}
+                                    </button>
+                                  </div>
                                 </div>
 
                                 <div>
-                                  {nodes.length > 0 ? (
-                                    <BlockContentHtml content={nodes} />
-                                  ) : (
-                                    <p className="text-xs text-text-muted italic">Sin contenido.</p>
-                                  )}
+                                  {nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">Sin contenido.</p>}
                                 </div>
                               </section>
                             );
@@ -991,28 +1052,49 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 </article>
               </div>
 
-              {/* Comments panel column */}
-              {validateActiveBlockId && validateSelectedBlock && (
+              {/* Side panel: comments or info */}
+              {validateActiveView && validateSelectedBlock && (
                 <div
                   ref={validateViewColRef}
-                  className="shrink-0 pr-6"
-                  style={{ width: 408, paddingTop: validateViewPaddingTop }}
+                  className={validateActiveView.mode === 'comments' ? 'shrink-0 pr-6' : 'flex-1 pr-6'}
+                  style={{
+                    ...(validateActiveView.mode === 'comments' ? { width: 408 } : {}),
+                    paddingTop: validateViewPaddingTop,
+                  }}
                 >
-                  <BlockCommentsCard
-                    mode="validator"
-                    blockSortOrder={validateSelectedBlock.sort_order ?? '?'}
-                    blockComments={validateBlockComments}
-                    allComments={validateComments}
-                    newCommentBody={validateNewCommentBody}
-                    onNewCommentBodyChange={setValidateNewCommentBody}
-                    onAddComment={() => void handleValidateAddComment()}
-                    commentLoading={validateCommentLoading}
-                    canAddComments={!!actionableReviewId}
-                    onReply={handleValidateReply}
-                    onResolve={handleValidateResolve}
-                    headerRef={validateViewHeaderRef}
-                    onClose={() => { setValidateActiveBlockId(null); setValidateNewCommentBody(''); }}
-                  />
+                  {validateActiveView.mode === 'comments' ? (
+                    <BlockCommentsCard
+                      mode="validator"
+                      blockSortOrder={validateSelectedBlock.sort_order ?? '?'}
+                      blockComments={validateBlockComments}
+                      allComments={validateComments}
+                      newCommentBody={validateNewCommentBody}
+                      onNewCommentBodyChange={setValidateNewCommentBody}
+                      onAddComment={() => void handleValidateAddComment()}
+                      commentLoading={validateCommentLoading}
+                      canAddComments={!!actionableReviewId}
+                      onReply={handleValidateReply}
+                      onResolve={handleValidateResolve}
+                      headerRef={validateViewHeaderRef}
+                      onClose={() => { setValidateActiveView(null); setValidateNewCommentBody(''); }}
+                    />
+                  ) : (
+                    <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+                      <ViewCardHeader
+                        blockSortOrder={validateSelectedBlock.sort_order ?? '?'}
+                        title="Descripción del Bloque"
+                        onClose={() => setValidateActiveView(null)}
+                        headerRef={validateViewHeaderRef}
+                      />
+                      <div style={{ padding: '40px 60px' }}>
+                        {validateSelectedBlock.description ? (
+                          <BlockContentHtml content={normalizeBlockContentForEditor(validateSelectedBlock.description)} />
+                        ) : (
+                          <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1066,6 +1148,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         backLabel={backLabel}
         metaInfo={headerMetaInfo}
         actions={headerActions}
+        headerRef={pageHeaderRef}
       >
         {loading && (
           <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
@@ -1093,20 +1176,73 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             Documento publicado directamente (sin validadores asignados).
           </p>
         )}
-        {isValidateMode && validationSetupError && !validationReviewLoading && (
-          <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{validationSetupError}</p>
-        )}
-        {isValidateMode && validationReviewLoading && (
-          <p className="text-sm text-text-muted dark:text-text-dark-muted mb-4">Cargando datos de validación…</p>
-        )}
         {!loading && !error && detail && (
-          <PaperBlocksArticle
-            title={previewTitle}
-            blocks={articleBlocks}
-            emptyMessage="Este documento no tiene bloques."
-          />
+          reviewComments.length > 0 && !isHistoricalSnapshot ? (
+            // Render blocks individually to support per-block comment selection
+            <>
+              <h1 className="text-2xl font-black text-text-primary dark:text-text-dark-primary mb-8 leading-tight">
+                {previewTitle}
+              </h1>
+              <div className="space-y-8">
+                {detail.blocks.map((block) => {
+                  const pendingCount = blockPendingComments(block.document_block_id).length;
+                  const isSelected = selectedReviewBlockId === block.template_block_id;
+                  const clickable = pendingCount > 0;
+                  return (
+                    <section
+                      key={block.template_block_id}
+                      onClick={clickable ? () => setSelectedReviewBlockId(isSelected ? null : block.template_block_id) : undefined}
+                      className={[
+                        'relative rounded-lg transition-all duration-150',
+                        clickable ? 'cursor-pointer' : '',
+                        isSelected ? 'ring-2 ring-danger/40 ring-offset-4' : clickable ? 'hover:ring-1 hover:ring-danger/30 hover:ring-offset-2' : '',
+                      ].join(' ')}
+                    >
+                      <div className="flex flex-wrap items-baseline gap-2 mb-2">
+                        {block.title && <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">{block.title}</h4>}
+                        {pendingCount > 0 && (
+                          <span className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-danger/10 text-danger-dark dark:text-danger border border-danger/20" title="Comentarios de revisión pendientes">
+                            ⚠ {pendingCount} {pendingCount === 1 ? 'comentario' : 'comentarios'}
+                          </span>
+                        )}
+                      </div>
+                      {(() => {
+                        const nodes = blockContentForPreview(block);
+                        return nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-sm text-text-muted italic">Sin contenido.</p>;
+                      })()}
+                    </section>
+                  );
+                })}
+              </div>
+            </>
+          ) : (
+            <PaperBlocksArticle
+              title={previewTitle}
+              blocks={articleBlocks}
+              emptyMessage="Este documento no tiene bloques."
+            />
+          )
         )}
       </PaperPreviewLayout>
+
+      {/* Creator review comments panel (fixed, like TemplatePreviewPage) */}
+      {!isHistoricalSnapshot && selectedReviewBlockId && (() => {
+        const block = detail?.blocks.find(b => b.template_block_id === selectedReviewBlockId);
+        const mode: CommentMode = (isDraft && isOwner) ? 'creator-edit' : 'creator-readonly';
+        return (
+          <div className="fixed right-6 w-[384px] z-30" style={{ top: commentPanelTop }}>
+            <BlockCommentsCard
+              mode={mode}
+              blockSortOrder={block?.sort_order ?? '?'}
+              blockComments={blockAllComments(block?.document_block_id ?? null)}
+              allComments={reviewComments}
+              headerRef={commentCardHeaderRef}
+              onResolve={mode === 'creator-edit' ? handleResolveReviewComment : undefined}
+              onClose={() => setSelectedReviewBlockId(null)}
+            />
+          </div>
+        );
+      })()}
 
       {documentId && (
         <VersionHistoryPanel

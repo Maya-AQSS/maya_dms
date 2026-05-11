@@ -22,9 +22,12 @@ import {
   updateDocumentBlock,
   type DocumentReview,
 } from '../../../api/documents';
-import { ApiHttpError } from '../../../api/http';
+import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { fetchProcesses } from '../../../api/processes';
-import { fetchTemplate } from '../../../api/templates';
+import { fetchTemplate, resolveComment } from '../../../api/templates';
+import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
+import type { BlockComment } from '../../templates/components/BlockCommentsCard';
+import { useUserProfile } from '../../user-profile';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers, type UserTeam } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
@@ -265,6 +268,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
 
+  // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks)
+  const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
+  const { profile } = useUserProfile();
+  const isDocumentOwner = !!profile?.id && (detail?.created_by === profile.id || detail?.owner_id === profile.id);
+
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
     setIsEditorFullscreen(v);
     document.documentElement.classList.toggle('editor-fullscreen', v);
@@ -323,6 +331,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setLoading(false);
     }
   }, [documentId]);
+
+  // Load review comments when document has unresolved ones
+  useEffect(() => {
+    if (!documentId || !detail?.has_review_comments) return;
+    let cancelled = false;
+    void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
+      .then((res) => { if (!cancelled) setReviewComments(res.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [documentId, detail?.has_review_comments]);
+
+  const handleReviewReply = useCallback(async (parentCommentId: string, body: string) => {
+    if (!documentId) return;
+    const parent = reviewComments.find(c => c.id === parentCommentId);
+    const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
+      method: 'POST',
+      body: { body, parent_id: parentCommentId, blockable_id: parent?.blockable_id ?? null },
+    });
+    setReviewComments(prev => [...prev, res.data]);
+  }, [documentId, reviewComments]);
+
+  const handleReviewResolve = useCallback(async (commentId: string) => {
+    const res = await resolveComment(commentId);
+    setReviewComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
+  }, []);
 
   const refreshDetail = useCallback(async () => {
     if (!documentId) return;
@@ -1470,6 +1503,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       variant={selected ? 'selected' : 'default'}
                       locked={ui === 'locked'}
                       stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
+                      hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id && !c.resolved)}
                       onClick={() => setActiveBlockKey(key)}
                     />
                   );
@@ -1585,6 +1619,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </div>
             )}
           </div>
+
+          {/* Right: creator-edit comment panel for active block */}
+          {activeBlock && activeBlock.document_block_id && !isEditorFullscreen && (() => {
+            const blockComments = reviewComments.filter(c => c.blockable_id === activeBlock.document_block_id && !c.parent_id);
+            const hasUnresolved = blockComments.some(c => !c.resolved);
+            const allBlockComments = reviewComments.filter(c => {
+              if (c.blockable_id === activeBlock.document_block_id && !c.parent_id) return true;
+              const rootIds = blockComments.map(r => r.id);
+              return c.parent_id !== null && rootIds.includes(c.parent_id);
+            });
+            if (!hasUnresolved) return null;
+            return (
+              <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
+                <BlockCommentsCard
+                  mode="creator-edit"
+                  blockSortOrder={activeBlock.sort_order ?? '?'}
+                  blockComments={allBlockComments}
+                  allComments={reviewComments}
+                  onReply={handleReviewReply}
+                  onResolve={isDocumentOwner ? handleReviewResolve : undefined}
+                  onClose={() => setActiveBlockKey(null)}
+                />
+              </div>
+            );
+          })()}
         </div>
       )}
 
