@@ -721,15 +721,16 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         <>
           <Button
             type="button"
-            variant="secondary"
+            variant="outlineWarning"
             size="sm"
             disabled={!actionableReviewId || validationReviewLoading}
             onClick={() => {
               setValidationModalError(null);
               setValidateConfirm('reject');
             }}
+            className="text-xs font-black uppercase tracking-wider"
           >
-            Rechazar
+            Rechazar validación
           </Button>
           <Button
             type="button"
