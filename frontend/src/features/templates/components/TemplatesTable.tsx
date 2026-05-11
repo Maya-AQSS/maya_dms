@@ -44,7 +44,7 @@ export function TemplatesTable({ processId }: Props = {}) {
   const { profile } = useUserProfile();
   const { hierarchy } = useHierarchy();
 
-  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:templates-table',
   });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
@@ -57,7 +57,7 @@ export function TemplatesTable({ processId }: Props = {}) {
     clearActionError,
     applyFilters,
     goToPage,
-  } = useTemplates(processId);
+  } = useTemplates(processId, sortBy);
 
   const [nameInput, setNameInput] = useState('');
   const [nameFilter, setNameFilter] = useState('');
@@ -242,6 +242,7 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'name',
         header: 'Nombre',
+        sortable: true,
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
@@ -305,6 +306,7 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'delivery_deadline',
         header: 'Fecha de validación',
+        sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
             {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
@@ -338,6 +340,8 @@ export function TemplatesTable({ processId }: Props = {}) {
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
         pageSize={pageSize}
         onPageSizeChange={(size) => {
           setPageSize(size);
@@ -358,11 +362,11 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Contexto académico">
+            <FilterField label="Visibilidad">
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />

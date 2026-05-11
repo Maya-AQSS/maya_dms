@@ -14,6 +14,7 @@ import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { useHierarchy } from '../features/hierarchy';
 import { formatListRowVisibilityCaption, listRowSearchMatches } from '../utils/academicContextSearch';
+import { normalizeForSearch } from '../utils/normalizeForSearch';
 import {
   DataTable,
   DatePicker,
@@ -27,6 +28,9 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 
+/** Orden local solo en columnas con `sortable: true` (nombre y fecha de publicación). */
+const SORTABLE_SELECTOR_COLUMN_IDS = new Set(['name', 'latest_published_at']);
+
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,7 +40,7 @@ export function NuevaProgramacionSelectorPage() {
   const selectedProcessId = locationState?.processId;
   const [process, setProcess] = useState<Process | null>(null);
 
-  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:nueva-programacion-selector',
   });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
@@ -49,6 +53,9 @@ export function NuevaProgramacionSelectorPage() {
   const [allTemplates, setAllTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [authorInput, setAuthorInput] = useState('');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [academicContextInput, setAcademicContextInput] = useState('');
@@ -130,9 +137,19 @@ export function NuevaProgramacionSelectorPage() {
     return mappedTemplates.filter((t) => favoriteTemplateIds.has(t.id));
   }, [mappedTemplates, favoritesFilter, favoriteTemplateIds]);
 
+  const afterName = useMemo(() => {
+    if (!nameFilter.trim()) {
+      return afterFavorites;
+    }
+    const needle = normalizeForSearch(nameFilter.trim());
+    return afterFavorites.filter((t) => normalizeForSearch(t.name ?? '').includes(needle));
+  }, [afterFavorites, nameFilter]);
+
   const afterAcademicContext = useMemo(() => {
-    if (!academicContextFilter.trim()) return afterFavorites;
-    return afterFavorites.filter((t) =>
+    if (!academicContextFilter.trim()) {
+      return afterName;
+    }
+    return afterName.filter((t) =>
       listRowSearchMatches(
         hierarchy,
         {
@@ -146,23 +163,51 @@ export function NuevaProgramacionSelectorPage() {
         academicContextFilter,
       ),
     );
-  }, [afterFavorites, academicContextFilter, hierarchy]);
+  }, [afterName, academicContextFilter, hierarchy]);
+
+  const sortedList = useMemo(() => {
+    if (!sortBy || !SORTABLE_SELECTOR_COLUMN_IDS.has(sortBy.columnId)) {
+      return afterAcademicContext;
+    }
+    const { columnId, direction } = sortBy;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    return [...afterAcademicContext].sort((a, b) => {
+      if (columnId === 'name') {
+        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
+      }
+      if (columnId === 'latest_published_at') {
+        const valA = a.latest_published_at ?? '';
+        const valB = b.latest_published_at ?? '';
+        if (valA < valB) {
+          return -1 * dir;
+        }
+        if (valA > valB) {
+          return 1 * dir;
+        }
+
+        return 0;
+      }
+
+      return 0;
+    });
+  }, [afterAcademicContext, sortBy]);
 
   useEffect(() => {
-    const last = Math.max(1, Math.ceil(afterAcademicContext.length / Math.max(1, listPerPage)));
+    const last = Math.max(1, Math.ceil(sortedList.length / Math.max(1, listPerPage)));
     if (listPage > last) {
       setFilters((f) => ({ ...f, page: last }));
     }
-  }, [afterAcademicContext.length, listPage, listPerPage]);
+  }, [sortedList.length, listPage, listPerPage]);
 
   const templates = useMemo(
-    () => sliceTemplatesPage(afterAcademicContext, listPage, listPerPage),
-    [afterAcademicContext, listPage, listPerPage],
+    () => sliceTemplatesPage(sortedList, listPage, listPerPage),
+    [sortedList, listPage, listPerPage],
   );
 
   const meta = useMemo(
-    () => buildTemplatesListMeta(afterAcademicContext.length, listPage, listPerPage),
-    [afterAcademicContext.length, listPage, listPerPage],
+    () => buildTemplatesListMeta(sortedList.length, listPage, listPerPage),
+    [sortedList.length, listPage, listPerPage],
   );
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -170,6 +215,7 @@ export function NuevaProgramacionSelectorPage() {
       {
         id: 'name',
         header: 'Nombre',
+        sortable: true,
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
@@ -212,6 +258,7 @@ export function NuevaProgramacionSelectorPage() {
       {
         id: 'latest_published_at',
         header: 'Fecha de publicación',
+        sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
             {formatCalendarDateForBrowser(t.latest_published_at)}
@@ -244,6 +291,18 @@ export function NuevaProgramacionSelectorPage() {
     setFilters((f) => ({ ...f, page: Math.max(1, page) }));
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNameInput(value);
+    if (nameDebounceRef.current) {
+      clearTimeout(nameDebounceRef.current);
+    }
+    nameDebounceRef.current = setTimeout(() => {
+      setNameFilter(value);
+      setFilters((f) => ({ ...f, page: 1 }));
+    }, 400);
+  };
+
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAuthorInput(value);
@@ -264,8 +323,17 @@ export function NuevaProgramacionSelectorPage() {
   };
 
   const clearFilters = () => {
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    if (nameDebounceRef.current) {
+      clearTimeout(nameDebounceRef.current);
+    }
+    if (authorDebounceRef.current) {
+      clearTimeout(authorDebounceRef.current);
+    }
+    if (academicContextDebounceRef.current) {
+      clearTimeout(academicContextDebounceRef.current);
+    }
+    setNameInput('');
+    setNameFilter('');
     setAuthorInput('');
     setAcademicContextInput('');
     setAcademicContextFilter('');
@@ -282,7 +350,9 @@ export function NuevaProgramacionSelectorPage() {
 
   const filtersActiveCount =
     (favoritesFilter ? 1 : 0) +
-    [academicContextFilter, filters.author_name, filters.published_on].filter((v) => v && String(v).trim() !== '').length;
+    [nameFilter, academicContextFilter, filters.author_name, filters.published_on].filter(
+      (v) => v && String(v).trim() !== '',
+    ).length;
 
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
@@ -314,6 +384,8 @@ export function NuevaProgramacionSelectorPage() {
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
         pageSize={pageSize}
         onPageSizeChange={setPageSize}
         emptyMessage="No hay plantillas utilizables para crear documentos con los filtros actuales."
@@ -340,11 +412,19 @@ export function NuevaProgramacionSelectorPage() {
         }}
         filtersPanel={
           <>
-            <FilterField label="Contexto académico">
+            <FilterField label="Nombre">
+              <TextInput
+                fieldSize="sm"
+                placeholder="Buscar por nombre..."
+                value={nameInput}
+                onChange={handleNameChange}
+              />
+            </FilterField>
+            <FilterField label="Visibilidad">
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />
