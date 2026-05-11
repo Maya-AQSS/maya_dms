@@ -337,10 +337,41 @@ class DocumentService implements DocumentServiceInterface
     public function creationOptionsForModule(string $moduleId): array
     {
         $templates = $this->templateRepository->listPublishedByModule($moduleId);
+        if ($templates->isEmpty()) {
+            return [];
+        }
+
+        $templateIds = $templates->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
+
+        // Batch: one query for the latest published version of each template.
+        $maxVersions = DB::table('entity_versions')
+            ->where('versionable_type', Template::class)
+            ->whereIn('versionable_id', $templateIds)
+            ->where('status', 'published')
+            ->where('version_number', '>', 0)
+            ->groupBy('versionable_id')
+            ->select('versionable_id', DB::raw('MAX(version_number) as max_version'));
+
+        $publishedById = DB::table('entity_versions as ev')
+            ->joinSub($maxVersions, 'mv', function ($join) {
+                $join->on('ev.versionable_id', '=', 'mv.versionable_id')
+                     ->on('ev.version_number', '=', 'mv.max_version');
+            })
+            ->where('ev.versionable_type', Template::class)
+            ->where('ev.status', 'published')
+            ->get(['ev.id', 'ev.versionable_id'])
+            ->keyBy('versionable_id');
+
+        // Batch: one query for all distinct team names.
+        $teamIds = $templates->pluck('team_id')->filter()->map(fn ($id) => (string) $id)->unique()->values()->all();
+        $teamNames = $teamIds !== []
+            ? DB::table('teams')->whereIn('id', $teamIds)->pluck('name', 'id')
+            : collect();
 
         $options = [];
         foreach ($templates as $template) {
-            $published = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, (string) $template->id);
+            $templateId = (string) $template->id;
+            $published = $publishedById->get($templateId);
             if ($published === null) {
                 continue;
             }
@@ -356,7 +387,7 @@ class DocumentService implements DocumentServiceInterface
                     : (string) $template->visibility_level,
                 'team_id' => $template->team_id !== null ? (string) $template->team_id : null,
                 'team_name' => $template->team_id !== null
-                    ? (DB::table('teams')->where('id', (string) $template->team_id)->value('name') ?: null)
+                    ? ($teamNames->get((string) $template->team_id) ?: null)
                     : null,
             ];
         }
