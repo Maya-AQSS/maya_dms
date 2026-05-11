@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 class TemplateResource extends JsonResource
 {
@@ -63,6 +64,26 @@ class TemplateResource extends JsonResource
             'can_clone' => (bool) ($this->resource->getAttribute('can_clone') ?? false),
             'working_version_id' => $this->head_entity_version_id,
             'latest_published_name' => $this->resource->getAttribute('latest_published_name'),
+            'latest_published_at' => $this->formatOptionalIso($this->resource->getAttribute('latest_published_at')),
         ];
+    }
+
+    private function formatOptionalIso(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        if ($value instanceof Carbon) {
+            return $value->toIso8601String();
+        }
+        if (is_string($value) && $value !== '') {
+            try {
+                return Carbon::parse($value)->toIso8601String();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

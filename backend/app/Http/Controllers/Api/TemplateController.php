@@ -24,7 +24,6 @@ use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 /**
@@ -47,7 +46,6 @@ class TemplateController extends Controller
     public function index(IndexTemplateRequest $request): AnonymousResourceCollection
     {
         $templates = $this->templateService->listFiltered($request->toFilterDto());
-        $this->attachLatestPublishedVersionMeta($templates);
         $this->attachCanCloneMeta($templates, $request);
 
         $this->apiTeamEmbedService->embedOnTemplates(
@@ -82,73 +80,6 @@ class TemplateController extends Controller
         foreach ($templates as $template) {
             $attach($template);
         }
-    }
-
-    /**
-     * Adjunta metadatos de última versión publicada por plantilla para construir vistas fallback.
-     *
-     * @param  \Illuminate\Support\Collection<int, Template>  $templates
-     */
-    private function attachLatestPublishedVersionMeta(\Illuminate\Support\Collection $templates): void
-    {
-        if ($templates->isEmpty()) {
-            return;
-        }
-
-        $ids = $templates->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
-        if ($ids === []) {
-            return;
-        }
-
-        $rows = DB::table('entity_versions')
-            ->where('versionable_type', Template::class)
-            ->whereIn('versionable_id', $ids)
-            ->where('status', 'published')
-            ->where('version_number', '>', 0)
-            ->orderByDesc('version_number')
-            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
-
-        /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByTemplate */
-        $latestByTemplate = [];
-        foreach ($rows as $row) {
-            $templateId = (string) $row->versionable_id;
-            if (! isset($latestByTemplate[$templateId])) {
-                $latestByTemplate[$templateId] = (object) [
-                    'versionable_id' => $templateId,
-                    'id' => (string) $row->id,
-                    'version_number' => (int) $row->version_number,
-                    'name' => $this->extractPublishedTemplateNameFromSnapshotRow($row->snapshot_data),
-                ];
-            }
-        }
-
-        foreach ($templates as $template) {
-            $meta = $latestByTemplate[(string) $template->id] ?? null;
-            $template->setAttribute('latest_published_version_id', $meta?->id);
-            $template->setAttribute('latest_published_version_number', $meta?->version_number);
-            $template->setAttribute('latest_published_name', $meta?->name);
-        }
-    }
-
-    private function extractPublishedTemplateNameFromSnapshotRow(mixed $snapshot): ?string
-    {
-        if (is_string($snapshot) && $snapshot !== '') {
-            $decoded = json_decode($snapshot, true);
-            if (is_array($decoded)) {
-                $snapshot = $decoded;
-            }
-        }
-
-        if (! is_array($snapshot)) {
-            return null;
-        }
-
-        $name = data_get($snapshot, 'template.name');
-        if (! is_string($name) || trim($name) === '') {
-            return null;
-        }
-
-        return $name;
     }
 
     /**

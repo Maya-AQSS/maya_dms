@@ -6,9 +6,14 @@ import {
   buildTemplatesListMeta,
   sliceTemplatesPage,
 } from '../features/templates/clientTemplatePagination';
-import { VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
+import { FAVORITES_FILTER_OPTIONS } from '../features/templates/constants';
 import type { Template, TemplateListFilters } from '../types/templates';
+import { useFavoritesIds } from '../hooks/useFavoritesIds';
+import { FavoriteInlineMark } from '../components/FavoriteInlineMark';
 import type { Process } from '../types/processes';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
+import { useHierarchy } from '../features/hierarchy';
+import { formatListRowVisibilityCaption, listRowSearchMatches } from '../utils/academicContextSearch';
 import {
   DataTable,
   DatePicker,
@@ -22,68 +27,21 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
-}
-
-const COLUMNS: ColumnDef<Template>[] = [
-  {
-    id: 'name',
-    header: 'Nombre',
-    alwaysVisible: true,
-    cell: (t) => <span className="font-medium">{t.name}</span>,
-    sortable: true,
-  },
-  {
-    id: 'visibility_level',
-    header: 'Visibilidad',
-    cell: (t) => (
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}>
-        {visibilityLabel(t.visibility_level)}
-      </span>
-    ),
-  },
-  {
-    id: 'author_name',
-    header: 'Autor',
-    cell: (t) => (
-      <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-        {t.author_name ?? '—'}
-      </span>
-    ),
-  },
-  {
-    id: 'delivery_deadline',
-    header: 'Fecha límite de validación',
-    sortable: true,
-    cell: (t) => (
-      <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-        {formatDate(t.delivery_deadline)}
-      </span>
-    ),
-  },
-  {
-    id: 'version',
-    header: 'Versión',
-    cell: (t) => (
-      <span className="text-xs text-text-secondary dark:text-text-dark-secondary">v{t.version}</span>
-    ),
-  },
-];
-
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { hierarchy } = useHierarchy();
   const locationState = location.state as { moduleId?: string; processId?: string } | null;
   const selectedModuleId = locationState?.moduleId;
   const selectedProcessId = locationState?.processId;
   const [process, setProcess] = useState<Process | null>(null);
 
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
+  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:nueva-programacion-selector',
   });
+  const { templateIds: favoriteTemplateIds } = useFavoritesIds();
 
+  const [favoritesFilter, setFavoritesFilter] = useState('');
   const [filters, setFilters] = useState<TemplateListFilters>({
     usable_for_documents: true,
     per_page: pageSize,
@@ -93,6 +51,9 @@ export function NuevaProgramacionSelectorPage() {
   const [listError, setListError] = useState<string | null>(null);
   const [authorInput, setAuthorInput] = useState('');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [academicContextInput, setAcademicContextInput] = useState('');
+  const [academicContextFilter, setAcademicContextFilter] = useState('');
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!selectedProcessId) {
@@ -121,9 +82,8 @@ export function NuevaProgramacionSelectorPage() {
       try {
         const res = await fetchTemplates({
           usable_for_documents: true,
-          visibility_level: filters.visibility_level,
           author_name: filters.author_name,
-          delivery_deadline: filters.delivery_deadline,
+          published_on: filters.published_on,
           ...(selectedProcessId ? { process_id: selectedProcessId } : {}),
         });
         if (!cancelled) {
@@ -140,18 +100,13 @@ export function NuevaProgramacionSelectorPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [
-    filters.visibility_level,
-    filters.author_name,
-    filters.delivery_deadline,
-    selectedProcessId,
-  ]);
+  }, [filters.author_name, filters.published_on, selectedProcessId]);
 
   const listPage = filters.page ?? 1;
   const listPerPage = filters.per_page ?? pageSize;
 
-  const sortedTemplates = useMemo(() => {
-    const displayTemplates = allTemplates.map((t) => {
+  const mappedTemplates = useMemo(() => {
+    return allTemplates.map((t) => {
       if (t.status !== 'published' && t.latest_published_version_id) {
         return {
           ...t,
@@ -168,39 +123,110 @@ export function NuevaProgramacionSelectorPage() {
         list_row_id: `${t.id}:live`,
       };
     });
+  }, [allTemplates]);
 
-    if (!sortBy) return displayTemplates;
-    const { columnId, direction } = sortBy;
-    const dir = direction === 'asc' ? 1 : -1;
+  const afterFavorites = useMemo(() => {
+    if (favoritesFilter !== 'favorites') return mappedTemplates;
+    return mappedTemplates.filter((t) => favoriteTemplateIds.has(t.id));
+  }, [mappedTemplates, favoritesFilter, favoriteTemplateIds]);
 
-    return [...displayTemplates].sort((a, b) => {
-      let valA: string | number = '';
-      let valB: string | number = '';
+  const afterAcademicContext = useMemo(() => {
+    if (!academicContextFilter.trim()) return afterFavorites;
+    return afterFavorites.filter((t) =>
+      listRowSearchMatches(
+        hierarchy,
+        {
+          visibility_level: t.visibility_level,
+          study_type_id: t.study_type_id,
+          study_id: t.study_id,
+          module_id: t.module_id,
+          team_id: t.team_id,
+          team: t.team,
+        },
+        academicContextFilter,
+      ),
+    );
+  }, [afterFavorites, academicContextFilter, hierarchy]);
 
-      if (columnId === 'name') {
-        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
-      } else if (columnId === 'delivery_deadline') {
-        valA = a.delivery_deadline ?? '';
-        valB = b.delivery_deadline ?? '';
-      } else if (columnId === 'version') {
-        valA = a.version ?? 0;
-        valB = b.version ?? 0;
-      }
-
-      if (valA < valB) return -1 * dir;
-      if (valA > valB) return 1 * dir;
-      return 0;
-    });
-  }, [allTemplates, sortBy]);
+  useEffect(() => {
+    const last = Math.max(1, Math.ceil(afterAcademicContext.length / Math.max(1, listPerPage)));
+    if (listPage > last) {
+      setFilters((f) => ({ ...f, page: last }));
+    }
+  }, [afterAcademicContext.length, listPage, listPerPage]);
 
   const templates = useMemo(
-    () => sliceTemplatesPage(sortedTemplates, listPage, listPerPage),
-    [sortedTemplates, listPage, listPerPage],
+    () => sliceTemplatesPage(afterAcademicContext, listPage, listPerPage),
+    [afterAcademicContext, listPage, listPerPage],
   );
 
   const meta = useMemo(
-    () => buildTemplatesListMeta(allTemplates.length, listPage, listPerPage),
-    [allTemplates.length, listPage, listPerPage],
+    () => buildTemplatesListMeta(afterAcademicContext.length, listPage, listPerPage),
+    [afterAcademicContext.length, listPage, listPerPage],
+  );
+
+  const columns: ColumnDef<Template>[] = useMemo(
+    () => [
+      {
+        id: 'name',
+        header: 'Nombre',
+        alwaysVisible: true,
+        cell: (t) => (
+          <span className="flex items-center gap-2 min-w-0">
+            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
+            <span className="truncate font-medium">{t.name}</span>
+          </span>
+        ),
+      },
+      {
+        id: 'visibility_level',
+        header: 'Visibilidad',
+        cell: (t) => {
+          const caption = formatListRowVisibilityCaption(hierarchy, {
+            visibility_level: t.visibility_level,
+            study_type_id: t.study_type_id,
+            study_id: t.study_id,
+            module_id: t.module_id,
+            team_id: t.team_id,
+            team: t.team,
+          });
+          return (
+            <span
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}
+              title={caption}
+            >
+              <span className="truncate">{caption}</span>
+            </span>
+          );
+        },
+      },
+      {
+        id: 'author_name',
+        header: 'Autor',
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {t.author_name ?? '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'latest_published_at',
+        header: 'Fecha de publicación',
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {formatCalendarDateForBrowser(t.latest_published_at)}
+          </span>
+        ),
+      },
+      {
+        id: 'version',
+        header: 'Versión',
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">v{t.version}</span>
+        ),
+      },
+    ],
+    [favoriteTemplateIds, hierarchy],
   );
 
   useEffect(() => {
@@ -227,25 +253,36 @@ export function NuevaProgramacionSelectorPage() {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      setAcademicContextFilter(value);
+      setFilters((f) => ({ ...f, page: 1 }));
+    }, 400);
+  };
+
   const clearFilters = () => {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     setAuthorInput('');
+    setAcademicContextInput('');
+    setAcademicContextFilter('');
+    setFavoritesFilter('');
     setFilters({ usable_for_documents: true, per_page: pageSize, page: 1 });
   };
 
   const filterUi = useMemo(
     () => ({
-      visibility: filters.visibility_level ?? '',
-      deliveryDeadline: filters.delivery_deadline ?? '',
+      publishedOn: filters.published_on ?? '',
     }),
     [filters],
   );
 
-  const filtersActiveCount = [
-    filters.visibility_level,
-    filters.author_name,
-    filters.delivery_deadline,
-  ].filter(Boolean).length;
+  const filtersActiveCount =
+    (favoritesFilter ? 1 : 0) +
+    [academicContextFilter, filters.author_name, filters.published_on].filter((v) => v && String(v).trim() !== '').length;
 
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
@@ -271,16 +308,14 @@ export function NuevaProgramacionSelectorPage() {
       )}
 
       <DataTable
-        columns={COLUMNS}
+        columns={columns}
         rows={templates}
         loading={loading}
-        rowKey={(t) => t.id}
+        rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         pageSize={pageSize}
         onPageSizeChange={setPageSize}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
         emptyMessage="No hay plantillas utilizables para crear documentos con los filtros actuales."
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
@@ -305,22 +340,14 @@ export function NuevaProgramacionSelectorPage() {
         }}
         filtersPanel={
           <>
-            <FilterField label="Visibilidad">
-              <Select
+            <FilterField label="Contexto académico">
+              <TextInput
                 fieldSize="sm"
-                value={filterUi.visibility}
-                onChange={(e) => applyFilters({ visibility_level: e.target.value || undefined })}
-              >
-                <option value="">Todas</option>
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </Select>
-            </FilterField>
-            <FilterField label="Estado">
-              <Select fieldSize="sm" value="published" disabled>
-                <option value="published">Publicada</option>
-              </Select>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
             </FilterField>
             <FilterField label="Autor">
               <TextInput
@@ -330,11 +357,28 @@ export function NuevaProgramacionSelectorPage() {
                 onChange={handleAuthorChange}
               />
             </FilterField>
-            <FilterField label="Fecha límite de validación">
+            <FilterField label="Favoritos">
+              <Select
+                fieldSize="sm"
+                value={favoritesFilter}
+                onChange={(e) => {
+                  setFavoritesFilter(e.target.value);
+                  setFilters((f) => ({ ...f, page: 1 }));
+                }}
+              >
+                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Publicadas desde">
               <DatePicker
-                value={filterUi.deliveryDeadline || null}
-                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
-                placeholder="Seleccionar fecha…"
+                value={filterUi.publishedOn || null}
+                onChange={(d) => applyFilters({ published_on: d ?? undefined })}
+                placeholder="Elegir día inicial…"
+                ariaLabel="Filtrar plantillas publicadas desde esta fecha (inclusive)"
               />
             </FilterField>
           </>

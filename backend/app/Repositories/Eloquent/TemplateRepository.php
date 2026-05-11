@@ -6,6 +6,7 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Support\SearchAccentFold;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -108,13 +109,30 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filters->teamId !== null) {
             $query->where('template_head_ev.snapshot_data->template->team_id', $filters->teamId);
         }
-        if ($filters->authorName !== null) {
-            $query->where('users.name', 'like', '%'.$filters->authorName.'%');
+        if ($filters->authorName !== null && trim($filters->authorName) !== '') {
+            $needle = SearchAccentFold::fold($filters->authorName);
+            if ($needle !== '') {
+                [$expr, $tr] = SearchAccentFold::sqlFoldedLowerColumn('users.name');
+                $like = '%'.SearchAccentFold::escapeLike($needle).'%';
+                $query->whereRaw("{$expr} LIKE ?", [$tr[0], $tr[1], $like]);
+            }
         }
         if ($filters->deliveryDeadline !== null) {
-            $query->whereDate(
-                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline')),
-                $filters->deliveryDeadline,
+            $deadlineExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline');
+            $statusExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'status');
+            $cap = $filters->deliveryDeadline;
+            // Comparación por prefijo Y-m-d (ISO) para sqlite/mysql/pgsql sin depender de casts de fecha por motor.
+            $query->whereRaw(
+                "nullif(trim({$deadlineExpr}), '') is not null and substr(trim({$deadlineExpr}), 1, 10) <= ?",
+                [$cap],
+            );
+            // No mezclar publicadas: el plazo de validación no se muestra en UI para ese estado.
+            $query->whereRaw("trim({$statusExpr}) <> ?", ['published']);
+        }
+        if ($filters->publishedOn !== null) {
+            $query->whereRaw(
+                '(select max(published_at)::date from entity_versions where versionable_id = templates.id and versionable_type = ? and status = ? and version_number > 0) >= ?::date',
+                [Template::class, 'published', $filters->publishedOn],
             );
         }
         if ($filters->processId !== null) {
@@ -133,6 +151,95 @@ class TemplateRepository implements TemplateRepositoryInterface
             ->get();
 
         return $rows;
+    }
+
+    /**
+     * Rellena en memoria `latest_published_*` desde `entity_versions` (última versión publicada por plantilla).
+     *
+     * @param  Collection<int, Template>  $templates
+     * {@inheritDoc}
+     */
+    public function attachLatestPublishedVersionMeta(Collection $templates): void
+    {
+        if ($templates->isEmpty()) {
+            return;
+        }
+
+        $ids = $templates->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
+        if ($ids === []) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $bindings = array_merge([Template::class], $ids);
+        // ROW_NUMBER + CAST: portable entre PostgreSQL (prod) y SQLite (:memory: en tests).
+        // Evita DISTINCT ON y ::text, solo soportados en PG.
+        $sql = '
+            SELECT
+                CAST(versionable_id AS TEXT) AS versionable_id,
+                CAST(id AS TEXT) AS id,
+                version_number,
+                snapshot_data,
+                published_at
+            FROM (
+                SELECT
+                    versionable_id,
+                    id,
+                    version_number,
+                    snapshot_data,
+                    published_at,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY versionable_id
+                        ORDER BY version_number DESC
+                    ) AS rn
+                FROM entity_versions
+                WHERE versionable_type = ?
+                  AND versionable_id IN ('.$placeholders.')
+                  AND status = \'published\'
+                  AND version_number > 0
+            ) AS ranked
+            WHERE ranked.rn = 1
+        ';
+
+        $rows = DB::select($sql, $bindings);
+
+        /** @var array<string, object> $latestByTemplate */
+        $latestByTemplate = [];
+        foreach ($rows as $row) {
+            $templateId = (string) $row->versionable_id;
+            $latestByTemplate[$templateId] = $row;
+        }
+
+        foreach ($templates as $template) {
+            $meta = $latestByTemplate[(string) $template->id] ?? null;
+            $template->setAttribute('latest_published_version_id', $meta !== null ? (string) $meta->id : null);
+            $template->setAttribute('latest_published_version_number', $meta !== null ? (int) $meta->version_number : null);
+            $template->setAttribute('latest_published_name', $meta !== null
+                ? $this->extractPublishedTemplateNameFromSnapshotRow($meta->snapshot_data)
+                : null);
+            $template->setAttribute('latest_published_at', $meta->published_at ?? null);
+        }
+    }
+
+    private function extractPublishedTemplateNameFromSnapshotRow(mixed $snapshot): ?string
+    {
+        if (is_string($snapshot) && $snapshot !== '') {
+            $decoded = json_decode($snapshot, true);
+            if (is_array($decoded)) {
+                $snapshot = $decoded;
+            }
+        }
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $name = data_get($snapshot, 'template.name');
+        if (! is_string($name) || trim($name) === '') {
+            return null;
+        }
+
+        return $name;
     }
 
     /**

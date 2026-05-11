@@ -6,16 +6,12 @@ import { visibilityLabel } from '../constants';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../../documents/components/PaperBlocksArticle';
+import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 
 interface Props {
   template: Template;
   blocks: TemplateBlock[];
   onClose: () => void;
-}
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
 }
 
 /**
@@ -64,7 +60,9 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
       {visibilityLabel(template.visibility_level)}
       {' · '}
       {blocks.length} {blocks.length === 1 ? 'bloque' : 'bloques'}
-      {template.delivery_deadline ? <>{' · '}Fecha límite: {formatDate(template.delivery_deadline)}</> : null}
+      {template.delivery_deadline ? (
+        <>{' · '}Fecha límite: {formatCalendarDateForBrowser(template.delivery_deadline)}</>
+      ) : null}
     </p>
   );
 

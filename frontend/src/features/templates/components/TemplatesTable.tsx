@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -14,11 +14,16 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
-import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
+import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
+import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS } from '../constants';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
+import { useHierarchy } from '../../../features/hierarchy';
+import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
+import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
+import { normalizeForSearch } from '../../../utils/normalizeForSearch';
 
 const STATUS_LABEL: Record<TemplateStatus, string> = {
   draft: 'Borrador',
@@ -29,11 +34,6 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
 
 // Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
-}
-
 type Props = {
   /** Filtra el listado por proceso. No se expone en el panel de filtros. */
   processId?: string;
@@ -42,13 +42,14 @@ type Props = {
 export function TemplatesTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+  const { hierarchy } = useHierarchy();
 
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
-    useTablePreferences({ storageKey: 'maya:dms:templates-table' });
+  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
+    storageKey: 'maya:dms:templates-table',
+  });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
-    templates,
-    meta,
+    catalogSorted,
     filters,
     loading,
     listError,
@@ -56,18 +57,75 @@ export function TemplatesTable({ processId }: Props = {}) {
     clearActionError,
     applyFilters,
     goToPage,
-  } = useTemplates(processId, sortBy);
+  } = useTemplates(processId);
 
   const [nameInput, setNameInput] = useState('');
   const [nameFilter, setNameFilter] = useState('');
   const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [favoritesFilter, setFavoritesFilter] = useState('');
+
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [academicContextInput, setAcademicContextInput] = useState('');
+  const [academicContextFilter, setAcademicContextFilter] = useState('');
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const listPage = filters.page ?? 1;
+  const listPerPage = filters.per_page ?? pageSize;
+
+  const clientFilteredCatalog = useMemo(() => {
+    let list = catalogSorted;
+    if (favoritesFilter === 'favorites') {
+      list = list.filter((t) => favoriteTemplateIds.has(t.id));
+    }
+    if (nameFilter.trim()) {
+      const needle = normalizeForSearch(nameFilter.trim());
+      list = list.filter((t) => normalizeForSearch(t.name ?? '').includes(needle));
+    }
+    if (academicContextFilter.trim()) {
+      list = list.filter((t) =>
+        listRowSearchMatches(
+          hierarchy,
+          {
+            visibility_level: t.visibility_level,
+            study_type_id: t.study_type_id,
+            study_id: t.study_id,
+            module_id: t.module_id,
+            team_id: t.team_id,
+            team: t.team,
+          },
+          academicContextFilter,
+        ),
+      );
+    }
+    return list;
+  }, [catalogSorted, favoritesFilter, nameFilter, academicContextFilter, favoriteTemplateIds, hierarchy]);
+
+  useEffect(() => {
+    const last = Math.max(1, Math.ceil(clientFilteredCatalog.length / Math.max(1, listPerPage)));
+    if (listPage > last) {
+      applyFilters({ page: last });
+    }
+  }, [clientFilteredCatalog.length, listPage, listPerPage, applyFilters]);
+
+  const pagedCatalog = useMemo(
+    () => sliceTemplatesPage(clientFilteredCatalog, listPage, listPerPage),
+    [clientFilteredCatalog, listPage, listPerPage],
+  );
+
+  const meta = useMemo(
+    () => buildTemplatesListMeta(clientFilteredCatalog.length, listPage, listPerPage),
+    [clientFilteredCatalog.length, listPage, listPerPage],
+  );
+
   const displayTemplates = useMemo(() => {
+    /** Con filtro de estado ≠ publicada, no mostrar la fila sintética de última publicada (siempre `published`). */
+    const includePublishedFallbackRow = !filters.status || filters.status === 'published';
+
     const out: Template[] = [];
-    for (const t of templates) {
+    for (const t of pagedCatalog) {
       const hasPublishedFallback =
         t.status !== 'published' &&
         !!t.latest_published_version_id;
@@ -94,33 +152,28 @@ export function TemplatesTable({ processId }: Props = {}) {
       if (canSeeLive) {
         out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
       }
-      out.push(publishedFallback);
+      if (includePublishedFallbackRow) {
+        out.push(publishedFallback);
+      }
+    }
+    if (filters.delivery_deadline) {
+      return out.filter((row) => row.status !== 'published');
     }
     return out;
-  }, [templates, profile?.id]);
-
-  const filteredTemplates = useMemo(() => {
-    if (!nameFilter) return displayTemplates;
-    const needle = nameFilter.toLowerCase();
-    return displayTemplates.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
-  }, [displayTemplates, nameFilter]);
+  }, [pagedCatalog, profile?.id, filters.delivery_deadline, filters.status]);
 
   const filterUi = useMemo(
     () => ({
-      visibility: filters.visibility_level ?? '',
       status: filters.status ?? '',
       deliveryDeadline: filters.delivery_deadline ?? '',
     }),
     [filters],
   );
 
-  const filtersActiveCount = [
-    nameFilter,
-    filterUi.visibility,
-    filterUi.status,
-    filterUi.deliveryDeadline,
-    authorInput,
-  ].filter((v) => v && v !== '').length;
+  const filtersActiveCount =
+    (favoritesFilter ? 1 : 0) +
+    [nameFilter, academicContextFilter, filterUi.status, filterUi.deliveryDeadline, authorInput].filter((v) => v && v !== '')
+      .length;
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -140,11 +193,24 @@ export function TemplatesTable({ processId }: Props = {}) {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      setAcademicContextFilter(value);
+    }, 400);
+  };
+
   const clearFilters = () => {
     if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setNameInput('');
     setNameFilter('');
+    setAcademicContextInput('');
+    setAcademicContextFilter('');
+    setFavoritesFilter('');
     setAuthorInput('');
     applyFilters({
       visibility_level: undefined,
@@ -176,7 +242,6 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'name',
         header: 'Nombre',
-        sortable: true,
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
@@ -196,11 +261,25 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'visibility_level',
         header: 'Visibilidad',
-        cell: (t) => (
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level as TemplateVisibilityLevel)}`}>
-            {visibilityLabel(t.visibility_level as TemplateVisibilityLevel)}
-          </span>
-        ),
+        cell: (t) => {
+          const level = t.visibility_level as TemplateVisibilityLevel;
+          const caption = formatListRowVisibilityCaption(hierarchy, {
+            visibility_level: level,
+            study_type_id: t.study_type_id,
+            study_id: t.study_id,
+            module_id: t.module_id,
+            team_id: t.team_id,
+            team: t.team,
+          });
+          return (
+            <span
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(level)}`}
+              title={caption}
+            >
+              <span className="truncate">{caption}</span>
+            </span>
+          );
+        },
       },
       {
         id: 'author_name',
@@ -214,7 +293,6 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'status',
         header: 'Estado',
-        sortable: true,
         cell: (t) => {
           const status = t.status as TemplateStatus;
           return (
@@ -226,16 +304,15 @@ export function TemplatesTable({ processId }: Props = {}) {
       },
       {
         id: 'delivery_deadline',
-        header: 'Fecha límite',
-        sortable: true,
+        header: 'Fecha de validación',
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {formatDate(t.delivery_deadline)}
+            {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
           </span>
         ),
       },
     ],
-    [profile, favoriteTemplateIds],
+    [profile, favoriteTemplateIds, hierarchy],
   );
 
   return (
@@ -256,13 +333,11 @@ export function TemplatesTable({ processId }: Props = {}) {
 
       <DataTable<Template>
         columns={columns}
-        rows={filteredTemplates}
-        loading={loading && templates.length === 0}
+        rows={displayTemplates}
+        loading={loading && catalogSorted.length === 0}
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
         pageSize={pageSize}
         onPageSizeChange={(size) => {
           setPageSize(size);
@@ -283,21 +358,14 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Visibilidad">
-              <Select
+            <FilterField label="Contexto académico">
+              <TextInput
                 fieldSize="sm"
-                value={filterUi.visibility}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ visibility_level: (e.target.value as any) || undefined })
-                }
-              >
-                <option value="">Todas</option>
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
             </FilterField>
             <FilterField label="Estado">
               <Select
@@ -322,14 +390,30 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={handleAuthorChange}
               />
             </FilterField>
-            <FilterField label="Fecha límite">
+            <FilterField label="Favoritos">
+              <Select
+                fieldSize="sm"
+                value={favoritesFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setFavoritesFilter(e.target.value);
+                  applyFilters({ page: 1 });
+                }}
+              >
+                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Fecha de validación (hasta)">
               <DatePicker
                 value={filterUi.deliveryDeadline || null}
                 onChange={(d: string | null) =>
-                  applyFilters({ delivery_deadline: d ?? undefined })
+                  applyFilters({ delivery_deadline: d ?? undefined, page: 1 })
                 }
-                placeholder="Cualquier fecha"
-                ariaLabel="Filtrar por fecha límite"
+                placeholder="Cualquier plazo…"
+                ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
               />
             </FilterField>
           </>

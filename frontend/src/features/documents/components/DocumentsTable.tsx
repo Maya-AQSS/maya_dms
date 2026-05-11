@@ -14,11 +14,16 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
-import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
+import { FAVORITES_FILTER_OPTIONS } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { useUserProfile } from '../../../features/user-profile';
+import { useHierarchy } from '../../../features/hierarchy';
+import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
+import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
+import { normalizeForSearch } from '../../../utils/normalizeForSearch';
+import type { AcademicHierarchy } from '../../../types/hierarchy';
 
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
 // (los colores hex viven en `maya_infra/configs/styles/index.css`).
@@ -36,41 +41,69 @@ const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: 'published', label: 'Publicado' },
 ];
 
-const VISIBILITY_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Todas' },
-  ...VISIBILITY_OPTIONS,
-];
-
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
+/** `delivery_deadline` presente y día calendario ≤ cap (Y-m-d), inclusive. */
+function deliveryDeadlineOnOrBefore(iso: string | null | undefined, capYmd: string): boolean {
+  const ymd = (iso ?? '').slice(0, 10);
+  if (!ymd) return false;
+  return ymd <= capYmd;
 }
 
 type Filters = {
   name: string;
-  visibility: string;
+  /** Texto libre sobre contexto académico vinculado (jerarquía + equipo), no la etiqueta de visibilidad. */
+  academicContext: string;
   status: string;
   authorName: string;
   date: string;
+  /** '' = sin filtro; 'favorites' = solo marcados como favoritos */
+  favorites: string;
 };
 
-function applyClientFilters(docs: Document[], filters: Filters): Document[] {
+function applyClientFilters(
+  docs: Document[],
+  filters: Filters,
+  favoriteDocumentIds: ReadonlySet<string>,
+  hierarchy: AcademicHierarchy,
+): Document[] {
   return docs.filter((doc) => {
+    if (filters.favorites === 'favorites' && !favoriteDocumentIds.has(doc.id)) {
+      return false;
+    }
     if (filters.name) {
-      const title = (doc.title ?? '').toLowerCase();
-      if (!title.includes(filters.name.toLowerCase())) return false;
+      const needle = normalizeForSearch(filters.name);
+      if (!normalizeForSearch(doc.title ?? '').includes(needle)) return false;
     }
     if (filters.status && doc.status !== filters.status) return false;
-    if (filters.visibility && doc.visibility_level !== filters.visibility) return false;
-    if (filters.authorName) {
-      const name = (doc.owner_name ?? '').toLowerCase();
-      if (!name.includes(filters.authorName.toLowerCase())) return false;
+    if (filters.academicContext) {
+      if (
+        !listRowSearchMatches(
+          hierarchy,
+          {
+            visibility_level: doc.visibility_level ?? undefined,
+            study_type_id: doc.study_type_id,
+            study_id: doc.study_id,
+            module_id: doc.module_id,
+            team_id: doc.team_id,
+            team: doc.team,
+          },
+          filters.academicContext,
+        )
+      ) {
+        return false;
+      }
     }
-    if (filters.date && doc.delivery_deadline) {
-      if (!doc.delivery_deadline.startsWith(filters.date)) return false;
-    } else if (filters.date && !doc.delivery_deadline) {
-      return false;
+    if (filters.authorName) {
+      const needle = normalizeForSearch(filters.authorName);
+      if (!normalizeForSearch(doc.owner_name ?? '').includes(needle)) return false;
+    }
+    if (filters.date) {
+      // La validación no aplica a publicados (no mostramos plazo en columna); no mezclar con `delivery_deadline` residual del API.
+      if (doc.status === 'published') {
+        return false;
+      }
+      if (!deliveryDeadlineOnOrBefore(doc.delivery_deadline, filters.date)) {
+        return false;
+      }
     }
     return true;
   });
@@ -85,6 +118,7 @@ type Props = {
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { profile, hasPermission } = useUserProfile();
+  const { hierarchy } = useHierarchy();
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
@@ -109,10 +143,25 @@ export function DocumentsTable({ processId }: Props = {}) {
         id: 'visibility_level',
         header: 'Visibilidad',
         cell: (doc) => {
-          const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
+          const visLevel = doc.visibility_level;
+          if (visLevel == null) {
+            return <span className="text-xs text-text-secondary dark:text-text-dark-secondary">—</span>;
+          }
+          const level = visLevel as TemplateVisibilityLevel;
+          const caption = formatListRowVisibilityCaption(hierarchy, {
+            visibility_level: level,
+            study_type_id: doc.study_type_id,
+            study_id: doc.study_id,
+            module_id: doc.module_id,
+            team_id: doc.team_id,
+            team: doc.team,
+          });
           return (
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(visLevel)}`}>
-              {visibilityLabel(visLevel)}
+            <span
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(level)}`}
+              title={caption}
+            >
+              <span className="truncate">{caption}</span>
             </span>
           );
         },
@@ -138,27 +187,32 @@ export function DocumentsTable({ processId }: Props = {}) {
       },
       {
         id: 'delivery_deadline',
-        header: 'Fecha',
+        header: 'Fecha de validación',
         sortable: true,
         cell: (doc) => (
-          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {doc.status === 'published' ? '—' : formatCalendarDateForBrowser(doc.delivery_deadline)}
+          </span>
         ),
       },
     ],
-    [favoriteDocumentIds],
+    [favoriteDocumentIds, hierarchy],
   );
 
   const [filters, setFilters] = useState<Filters>({
     name: '',
-    visibility: '',
+    academicContext: '',
     status: '',
     authorName: '',
     date: '',
+    favorites: '',
   });
   const [nameInput, setNameInput] = useState('');
+  const [academicContextInput, setAcademicContextInput] = useState('');
   const [authorInput, setAuthorInput] = useState('');
   const [page, setPage] = useState(1);
   const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const displayDocuments = useMemo(() => {
@@ -197,7 +251,10 @@ export function DocumentsTable({ processId }: Props = {}) {
     return out;
   }, [documents, hasPermission, profile?.id]);
 
-  const filtered = useMemo(() => applyClientFilters(displayDocuments, filters), [displayDocuments, filters]);
+  const filtered = useMemo(
+    () => applyClientFilters(displayDocuments, filters, favoriteDocumentIds, hierarchy),
+    [displayDocuments, filters, favoriteDocumentIds, hierarchy],
+  );
 
   const sorted = useMemo(() => {
     if (!sortBy) return filtered;
@@ -211,8 +268,8 @@ export function DocumentsTable({ processId }: Props = {}) {
       if (columnId === 'title') {
         return (a.title ?? '').localeCompare(b.title ?? '', 'es') * dir;
       } else if (columnId === 'delivery_deadline') {
-        valA = a.delivery_deadline ?? '';
-        valB = b.delivery_deadline ?? '';
+        valA = a.status === 'published' ? '9999-12-31' : (a.delivery_deadline ?? '').slice(0, 10);
+        valB = b.status === 'published' ? '9999-12-31' : (b.delivery_deadline ?? '').slice(0, 10);
       } else if (columnId === 'status') {
         valA = a.status ?? '';
         valB = b.status ?? '';
@@ -228,7 +285,9 @@ export function DocumentsTable({ processId }: Props = {}) {
   const safePage = Math.min(page, totalPages);
   const pageSlice = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const filtersActiveCount = [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
+  const filtersActiveCount =
+    (filters.favorites ? 1 : 0) +
+    [filters.name, filters.academicContext, filters.status, filters.authorName, filters.date].filter(Boolean).length;
 
   const handleFilterChange = (patch: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -253,12 +312,23 @@ export function DocumentsTable({ processId }: Props = {}) {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      handleFilterChange({ academicContext: value });
+    }, 400);
+  };
+
   const clearFilters = () => {
     if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setNameInput('');
+    setAcademicContextInput('');
     setAuthorInput('');
-    setFilters({ name: '', visibility: '', status: '', authorName: '', date: '' });
+    setFilters({ name: '', academicContext: '', status: '', authorName: '', date: '', favorites: '' });
     setPage(1);
   };
 
@@ -310,16 +380,14 @@ export function DocumentsTable({ processId }: Props = {}) {
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Visibilidad">
-              <Select
+            <FilterField label="Contexto académico">
+              <TextInput
                 fieldSize="sm"
-                value={filters.visibility}
-                onChange={(e) => handleFilterChange({ visibility: e.target.value })}
-              >
-                {VISIBILITY_FILTER_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </Select>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
             </FilterField>
             <FilterField label="Estado">
               <Select
@@ -340,11 +408,25 @@ export function DocumentsTable({ processId }: Props = {}) {
                 onChange={handleAuthorChange}
               />
             </FilterField>
-            <FilterField label="Fecha">
+            <FilterField label="Favoritos">
+              <Select
+                fieldSize="sm"
+                value={filters.favorites}
+                onChange={(e) => handleFilterChange({ favorites: e.target.value })}
+              >
+                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
+            </FilterField>
+            <FilterField label="Fecha de validación (hasta)">
               <DatePicker
                 value={filters.date || null}
                 onChange={(d) => handleFilterChange({ date: d ?? '' })}
-                placeholder="Seleccionar fecha..."
+                placeholder="Cualquier plazo…"
+                ariaLabel="Documentos no publicados cuya fecha límite de validación sea esta fecha o anterior (las filas publicadas no aplican)"
               />
             </FilterField>
           </>

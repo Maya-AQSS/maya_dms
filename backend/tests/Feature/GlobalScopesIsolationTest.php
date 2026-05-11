@@ -16,7 +16,6 @@ use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
@@ -91,7 +90,7 @@ class GlobalScopesIsolationTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         return $token;
     }

@@ -28,6 +28,7 @@ import { useUserProfile } from '../features/user-profile';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 import type { Process } from '../types/processes';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 
 // Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
@@ -41,11 +42,6 @@ function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
   const fromContent = normalizeBlockContentForEditor(block.content);
   if (fromContent.length > 0) return fromContent;
   return normalizeBlockContentForEditor(block.default_content);
-}
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
 }
 
 const DOCUMENT_REJECT_REASON_MIN_LEN = 5;
@@ -644,9 +640,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       {' · '}
       {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
       {' · '}
-      Fecha límite: {formatDate(detail.delivery_deadline)}
+      Fecha límite: {formatCalendarDateForBrowser(detail.delivery_deadline)}
       {' · '}
-      Última edición: {formatDate(versionSnapshot?.createdAt ?? detail.updated_at)}
+      Última edición: {formatCalendarDateForBrowser(versionSnapshot?.createdAt ?? detail.updated_at)}
     </p>
   ) : null;
 

@@ -31,7 +31,7 @@ function formatActionError(err: unknown): string {
   return err instanceof Error ? err.message : 'Error desconocido';
 }
 
-const DEFAULT_PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 10;
 
 /**
  * Listado y mutaciones de plantillas normativas.
@@ -40,9 +40,10 @@ const DEFAULT_PER_PAGE = 20;
  * @param processId Si se aporta, se aplica como filtro `process_id` permanente
  *   (no se expone en el panel de filtros — viene del contexto de la URL).
  */
-export function useTemplates(processId?: string, sortBy?: { columnId: string; direction: 'asc' | 'desc' } | null) {
+export function useTemplates(processId?: string) {
   const [fullList, setFullList] = useState<Template[]>([]);
-  const [filters, setFilters] = useState<TemplateListFilters>({ per_page: DEFAULT_PER_PAGE });
+  /** Sin `per_page` por defecto: las pantallas usan `filters.per_page ?? pageSize` (preferencias de tabla). */
+  const [filters, setFilters] = useState<TemplateListFilters>({});
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -63,6 +64,7 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
     filters.team_id,
     filters.author_name,
     filters.delivery_deadline,
+    filters.published_on,
     filters.process_id,
     processId,
   ]);
@@ -70,37 +72,9 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
   const page = filters.page ?? 1;
   const perPage = filters.per_page ?? DEFAULT_PER_PAGE;
 
-  const sortedList = useMemo(() => {
-    if (!sortBy) return fullList;
-    const { columnId, direction } = sortBy;
-    const dir = direction === 'asc' ? 1 : -1;
-
-    return [...fullList].sort((a, b) => {
-      let valA: string | number = '';
-      let valB: string | number = '';
-
-      if (columnId === 'name') {
-        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
-      } else if (columnId === 'delivery_deadline') {
-        valA = a.delivery_deadline ?? '';
-        valB = b.delivery_deadline ?? '';
-      } else if (columnId === 'status') {
-        valA = a.status ?? '';
-        valB = b.status ?? '';
-      } else if (columnId === 'version') {
-        valA = a.version ?? 0;
-        valB = b.version ?? 0;
-      }
-
-      if (valA < valB) return -1 * dir;
-      if (valA > valB) return 1 * dir;
-      return 0;
-    });
-  }, [fullList, sortBy]);
-
   const templates = useMemo(
-    () => sliceTemplatesPage(sortedList, page, perPage),
-    [sortedList, page, perPage],
+    () => sliceTemplatesPage(fullList, page, perPage),
+    [fullList, page, perPage],
   );
 
   const meta = useMemo(
@@ -127,7 +101,14 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
   }, [load]);
 
   const applyFilters = useCallback((patch: Partial<TemplateListFilters>) => {
-    setFilters((f) => ({ ...f, ...patch, page: 1 }));
+    setFilters((f) => {
+      const next = { ...f, ...patch };
+      // Solo reiniciar a la página 1 cuando el cambio no fija ya `page` (p. ej. corrección al acortar el listado).
+      if (!Object.prototype.hasOwnProperty.call(patch, 'page')) {
+        next.page = 1;
+      }
+      return next;
+    });
   }, []);
 
   const goToPage = useCallback((page: number) => {
@@ -205,6 +186,8 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
 
   return {
     templates,
+    /** Catálogo completo en el orden devuelto por la API; la paginación/filtros extra son en cliente. */
+    catalogSorted: fullList,
     meta,
     filters,
     loading,

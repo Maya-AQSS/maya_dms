@@ -24,6 +24,7 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { useHierarchy } from '../features/hierarchy';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { BlockCommentsCard } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 
@@ -46,11 +47,6 @@ function blockContentNodes(block: TemplateBlock): unknown[] {
     return [];
   }
   return [];
-}
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
 }
 
 function isTemplateVisibilityLevel(
@@ -535,9 +531,9 @@ export function TemplatePreviewPage() {
         <> ({template.team?.name ?? template.team_id})</>
       ) : null}
       {' · '}
-      Fecha límite de validación: {formatDate(displayDeadline)}
+      Fecha límite de validación: {formatCalendarDateForBrowser(displayDeadline)}
       {' · '}
-      Última edición: {formatDate(displayUpdatedAt)}
+      Última edición: {formatCalendarDateForBrowser(displayUpdatedAt)}
     </p>
   ) : null;
 

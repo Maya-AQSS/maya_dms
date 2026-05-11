@@ -133,10 +133,14 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Listado con filtros (sin paginación en servidor; el front pagina en cliente).
+     * Enriquece cada plantilla con metadatos de la última versión publicada para el API.
      */
     public function listFiltered(FilterTemplatesDto $filters): Collection
     {
-        return $this->templateRepository->listFiltered($filters);
+        $templates = $this->templateRepository->listFiltered($filters);
+        $this->templateRepository->attachLatestPublishedVersionMeta($templates);
+
+        return $templates;
     }
 
     /**

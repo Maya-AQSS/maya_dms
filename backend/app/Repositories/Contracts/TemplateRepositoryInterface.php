@@ -38,6 +38,13 @@ interface TemplateRepositoryInterface
     public function listFiltered(FilterTemplatesDto $filters): Collection;
 
     /**
+     * Rellena en memoria `latest_published_*` desde `entity_versions` (última versión publicada por plantilla).
+     *
+     * @param  Collection<int, Template>  $templates
+     */
+    public function attachLatestPublishedVersionMeta(Collection $templates): void;
+
+    /**
      * Crea una plantilla con los atributos dados.
      *
      * @param  array<string, mixed>  $attributes
