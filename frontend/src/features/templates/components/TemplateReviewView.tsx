@@ -6,7 +6,7 @@ import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
-import { approveTemplateReview, rejectTemplateReview, resolveComment } from '../../../api/templates';
+import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { fetchProcesses } from '../../../api/processes';
 import { apiFetchJson } from '../../../api/http';
 import { useAuth } from '@maya/shared-auth-react';
@@ -225,10 +225,10 @@ export function TemplateReviewView({ template }: Props) {
   };
 
   const handleRejectClick = () => {
-    const myUnresolved = comments.filter(
-      c => String(c.author_id) === String(currentUserId) && !c.resolved && !c.parent_id,
+    const myComments = comments.filter(
+      c => String(c.author_id) === String(currentUserId) && !c.parent_id,
     );
-    if (myUnresolved.length === 0) setShowNoCommentsWarning(true);
+    if (myComments.length === 0) setShowNoCommentsWarning(true);
     else setShowRejectModal(true);
   };
 
@@ -260,15 +260,6 @@ export function TemplateReviewView({ template }: Props) {
       setComments(prev => [...prev, res.data]);
     } catch {
       setError('No se pudo enviar la respuesta.');
-    }
-  };
-
-  const handleResolve = async (commentId: string) => {
-    try {
-      const res = await resolveComment(commentId);
-      setComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
-    } catch {
-      setError('No se pudo marcar el comentario como resuelto.');
     }
   };
 
@@ -571,7 +562,6 @@ export function TemplateReviewView({ template }: Props) {
                   commentLoading={commentLoading}
                   canAddComments={commentingOpen && commentMode === 'validator'}
                   onReply={commentingOpen && commentMode === 'creator-edit' ? handleReply : undefined}
-                  onResolve={commentingOpen && commentMode === 'creator-edit' ? handleResolve : undefined}
                   commentingClosed={!commentingOpen}
                   headerRef={viewHeaderRef}
                   onClose={closeView}

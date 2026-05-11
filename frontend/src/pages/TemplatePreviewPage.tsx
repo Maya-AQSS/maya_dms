@@ -240,9 +240,9 @@ export function TemplatePreviewPage() {
   }, [id, templateVersionId]);
 
 
-  // Unresolved root-level comments for a block (drives badge + card visibility).
+  // Root-level comments for a block (drives badge + card visibility).
   const blockPendingComments = (blockId: string) =>
-    reviewComments.filter((c) => c.blockable_id === blockId && !c.parent_id && !c.resolved);
+    reviewComments.filter((c) => c.blockable_id === blockId && !c.parent_id);
 
   // All comments for a block (top-level + replies, for the card to use).
   const blockAllComments = (blockId: string) =>

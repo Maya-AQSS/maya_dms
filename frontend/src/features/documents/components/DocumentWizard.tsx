@@ -24,10 +24,9 @@ import {
 } from '../../../api/documents';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { fetchProcesses } from '../../../api/processes';
-import { fetchTemplate, resolveComment } from '../../../api/templates';
+import { fetchTemplate } from '../../../api/templates';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
-import { useUserProfile } from '../../user-profile';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers, type UserTeam } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
@@ -271,8 +270,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks)
   const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
   const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
-  const { profile } = useUserProfile();
-  const isDocumentOwner = !!profile?.id && (detail?.created_by === profile.id || detail?.owner_id === profile.id);
 
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
     setIsEditorFullscreen(v);
@@ -352,11 +349,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     });
     setReviewComments(prev => [...prev, res.data]);
   }, [documentId, reviewComments]);
-
-  const handleReviewResolve = useCallback(async (commentId: string) => {
-    const res = await resolveComment(commentId);
-    setReviewComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
-  }, []);
 
   const refreshDetail = useCallback(async () => {
     if (!documentId) return;
@@ -1505,7 +1497,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       variant={selected ? 'selected' : 'default'}
                       locked={ui === 'locked'}
                       stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
-                      hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id && !c.resolved)}
+                      hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
                       onClick={() => setActiveBlockKey(key)}
                     />
                   );
@@ -1528,7 +1520,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     {!showDocumentCommentPanel && activeBlock.document_block_id &&
-                      reviewComments.some(c => c.blockable_id === activeBlock.document_block_id && !c.resolved) && (
+                      reviewComments.some(c => c.blockable_id === activeBlock.document_block_id) && (
                       <Button
                         type="button"
                         size="xs"
@@ -1639,13 +1631,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           {/* Right: creator-edit comment panel for active block */}
           {showDocumentCommentPanel && activeBlock && activeBlock.document_block_id && !isEditorFullscreen && (() => {
             const blockComments = reviewComments.filter(c => c.blockable_id === activeBlock.document_block_id && !c.parent_id);
-            const hasUnresolved = blockComments.some(c => !c.resolved);
             const allBlockComments = reviewComments.filter(c => {
               if (c.blockable_id === activeBlock.document_block_id && !c.parent_id) return true;
               const rootIds = blockComments.map(r => r.id);
               return c.parent_id !== null && rootIds.includes(c.parent_id);
             });
-            if (!hasUnresolved) return null;
+            if (blockComments.length === 0) return null;
             return (
               <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
                 <BlockCommentsCard
@@ -1654,7 +1645,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   blockComments={allBlockComments}
                   allComments={reviewComments}
                   onReply={handleReviewReply}
-                  onResolve={isDocumentOwner ? handleReviewResolve : undefined}
                   onClose={() => setShowDocumentCommentPanel(false)}
                 />
               </div>

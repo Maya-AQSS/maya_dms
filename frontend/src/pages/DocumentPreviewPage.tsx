@@ -14,7 +14,7 @@ import {
   discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
-import { fetchTemplate, resolveComment } from '../api/templates';
+import { fetchTemplate } from '../api/templates';
 import { fetchProcesses } from '../api/processes';
 import { fetchMe } from '../api/users';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -493,15 +493,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   // Creator-preview comment helpers
   const blockPendingComments = (docBlockId: string | null) =>
-    docBlockId ? reviewComments.filter(c => c.blockable_id === docBlockId && !c.parent_id && !c.resolved) : [];
+    docBlockId ? reviewComments.filter(c => c.blockable_id === docBlockId && !c.parent_id) : [];
 
   const blockAllComments = (docBlockId: string | null) =>
     docBlockId ? reviewComments.filter(c => c.blockable_id === docBlockId || reviewComments.some(r => r.id === c.parent_id && r.blockable_id === docBlockId)) : [];
-
-  const handleResolveReviewComment = async (commentId: string) => {
-    const res = await resolveComment(commentId);
-    setReviewComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
-  };
 
   const handleValidateAddComment = async () => {
     if (!validateNewCommentBody.trim() || !documentId || !validateActiveBlockId) return;
@@ -530,11 +525,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       body: { body, parent_id: parentCommentId, blockable_id: parent?.blockable_id ?? null },
     });
     setValidateComments(prev => [...prev, res.data]);
-  };
-
-  const handleValidateResolve = async (commentId: string) => {
-    const res = await resolveComment(commentId);
-    setValidateComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
   };
 
   const handleDelete = async () => {
@@ -1074,7 +1064,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                       commentLoading={validateCommentLoading}
                       canAddComments={!!actionableReviewId}
                       onReply={handleValidateReply}
-                      onResolve={handleValidateResolve}
                       headerRef={validateViewHeaderRef}
                       onClose={() => { setValidateActiveView(null); setValidateNewCommentBody(''); }}
                     />
@@ -1237,7 +1226,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               blockComments={blockAllComments(block?.document_block_id ?? null)}
               allComments={reviewComments}
               headerRef={commentCardHeaderRef}
-              onResolve={mode === 'creator-edit' ? handleResolveReviewComment : undefined}
               onClose={() => setSelectedReviewBlockId(null)}
             />
           </div>

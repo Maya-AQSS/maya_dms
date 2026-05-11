@@ -11,7 +11,6 @@ export type BlockComment = {
   author_id: string;
   author?: { id: string; name: string };
   body: string;
-  resolved?: boolean;
   created_at: string;
   parent_id?: string | null;
 };
@@ -77,7 +76,6 @@ type BlockCommentsCardProps = {
 
   // creator-edit mode — per-thread actions
   onReply?: (parentCommentId: string, body: string) => Promise<void>;
-  onResolve?: (commentId: string) => Promise<void>;
 
   // shared
   commentingClosed?: boolean;
@@ -97,21 +95,14 @@ export function BlockCommentsCard({
   commentLoading,
   canAddComments = true,
   onReply,
-  onResolve,
   headerRef,
   onClose,
 }: BlockCommentsCardProps) {
-  const [filter, setFilter] = useState<'pending' | 'all'>('pending');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [replyLoading, setReplyLoading] = useState(false);
 
-  const isCreatorMode = mode !== 'validator';
   const rootComments = blockComments.filter(c => !c.parent_id);
-  const pendingCount = rootComments.filter(c => !c.resolved).length;
-  const filteredRoots = (isCreatorMode && filter === 'pending')
-    ? rootComments.filter(c => !c.resolved)
-    : rootComments;
 
   const handleReply = async (parentId: string) => {
     if (!replyBody.trim() || !onReply) return;
@@ -143,96 +134,43 @@ export function BlockCommentsCard({
         </div>
       )}
 
-      {/* Filter tabs — creator modes only */}
-      {isCreatorMode && (
-        <div className="flex gap-4 px-4 border-b border-ui-border dark:border-ui-dark-border shrink-0">
-          <button
-            onClick={() => setFilter('pending')}
-            className={[
-              'py-2.5 text-xs font-bold uppercase tracking-widest transition-all relative',
-              filter === 'pending'
-                ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-odoo-purple'
-                : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary',
-            ].join(' ')}
-          >
-            Pendientes
-            {pendingCount > 0 && (
-              <span className="ml-1.5 bg-odoo-purple text-white text-[10px] px-1.5 py-0.5 rounded-full leading-none">
-                {pendingCount}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setFilter('all')}
-            className={[
-              'py-2.5 text-xs font-bold uppercase tracking-widest transition-all relative',
-              filter === 'all'
-                ? 'text-odoo-purple after:absolute after:bottom-0 after:left-0 after:w-full after:h-[2px] after:bg-odoo-purple'
-                : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary',
-            ].join(' ')}
-          >
-            Histórico
-          </button>
-        </div>
-      )}
-
       {/* Comment thread list */}
       <div className="max-h-[50vh] overflow-y-auto custom-scrollbar px-4 pt-4 pb-2 space-y-6">
-        {filteredRoots.length === 0 ? (
+        {rootComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
             <svg className="w-10 h-10 mb-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
             <p className="text-sm font-medium text-text-muted leading-relaxed">
-              {isCreatorMode && filter === 'pending'
-                ? 'No hay comentarios pendientes.'
-                : 'No hay mensajes en este bloque.'}
+              No hay mensajes en este bloque.
             </p>
           </div>
         ) : (
           <div className="space-y-6">
-            {filteredRoots.map((comment) => {
+            {rootComments.map((comment) => {
               const replies = allComments.filter(r => r.parent_id === comment.id);
-              const isResolved = comment.resolved === true;
 
               return (
                 <div key={comment.id} className="space-y-3">
                   {/* Root comment */}
-                  <div className={`group relative pl-5 ${isResolved ? 'opacity-60' : ''}`}>
-                    <div className={[
-                      'absolute left-0 top-0 bottom-0 w-1 rounded-full transition-colors',
-                      isResolved
-                        ? 'bg-success/40'
-                        : 'bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40',
-                    ].join(' ')} />
+                  <div className="group relative pl-5">
+                    <div className="absolute left-0 top-0 bottom-0 w-1 rounded-full transition-colors bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40" />
 
                     <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
-                          {comment.author?.name || 'Validador'}
-                        </span>
-                        {isResolved && (
-                          <span className="text-[10px] font-black uppercase tracking-wider text-success-dark px-1.5 py-0.5 bg-success/10 rounded-full">
-                            ✓ Resuelto
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
+                        {comment.author?.name || 'Validador'}
+                      </span>
                       <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
                         {new Date(comment.created_at).toLocaleDateString()}
                       </span>
                     </div>
 
-                    <div className={[
-                      'text-sm leading-relaxed p-4 rounded-xl border shadow-sm',
-                      isResolved
-                        ? 'text-text-muted dark:text-text-dark-muted bg-success/5 border-success/20 dark:border-success/20'
-                        : 'text-text-primary dark:text-text-dark-primary bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 dark:border-ui-dark-border/50',
-                    ].join(' ')}>
+                    <div className="text-sm leading-relaxed p-4 rounded-xl border shadow-sm text-text-primary dark:text-text-dark-primary bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 dark:border-ui-dark-border/50">
                       {comment.body}
                     </div>
 
-                    {/* Actions — creator-edit only, unresolved threads */}
-                    {mode === 'creator-edit' && !isResolved && (
+                    {/* Reply action — creator-edit only */}
+                    {mode === 'creator-edit' && (
                       <div className="mt-2 flex items-center gap-4">
                         <button
                           type="button"
@@ -241,16 +179,6 @@ export function BlockCommentsCard({
                         >
                           {replyingTo === comment.id ? 'Cancelar' : 'Responder'}
                         </button>
-                        {onResolve && (
-                          <button
-                            type="button"
-                            aria-label="Marcar comentario como resuelto"
-                            onClick={() => void onResolve(comment.id)}
-                            className="text-xs font-bold text-success-dark hover:underline flex items-center gap-1"
-                          >
-                            ✓ Marcar como resuelto
-                          </button>
-                        )}
                       </div>
                     )}
                   </div>

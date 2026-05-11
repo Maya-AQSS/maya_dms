@@ -123,7 +123,6 @@ interface WizardStep2BlocksProps {
   template: Template;
   isDark?: boolean;
   reviewComments?: any[];
-  onResolveComment?: (commentId: string) => Promise<void>;
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
   onContinue?: () => void;
@@ -140,7 +139,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   template,
   isDark = false,
   reviewComments = [],
-  onResolveComment,
   onBlocksCountChange,
   onBlocksLoadingChange,
   onContinue,
@@ -225,11 +223,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
 
-  const isOwner = !!profile && template.created_by === profile.id;
   const blockComments: any[] = activeSingleId
     ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
     : [];
-  const activeBlockHasComments = blockComments.some((c) => !c.resolved);
+  const activeBlockHasComments = blockComments.length > 0;
 
   useEffect(() => {
     if (activeTab === 'comments') setActiveTab('properties');
@@ -488,7 +485,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     block={block}
                     itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
                     onClick={() => handleBlockClick(block.id)}
-                    hasReviewComments={reviewComments.some(c => c.blockable_id === block.id && !c.resolved)}
+                    hasReviewComments={reviewComments.some(c => c.blockable_id === block.id)}
                   />
                 ))}
               </SortableContext>
@@ -680,7 +677,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         )}
       </div>
 
-      {/* Right: comment panel — creator-edit mode, only when block has unresolved comments */}
+      {/* Right: comment panel — creator-edit mode, only when block has comments */}
       {showCommentPanel && activeBlockHasComments && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
         <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
           <BlockCommentsCard
@@ -689,7 +686,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             blockComments={blockComments}
             allComments={reviewComments}
             onReply={handleReply}
-            onResolve={isOwner && onResolveComment ? onResolveComment : undefined}
             onClose={() => setShowCommentPanel(false)}
           />
         </div>

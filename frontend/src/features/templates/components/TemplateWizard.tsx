@@ -12,7 +12,6 @@ import {
   submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
-  resolveComment as apiResolveComment,
 } from '../../../api/templates';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
@@ -156,15 +155,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setInvalidBlocksModal({ onProceed: () => blocker.proceed() });
     }
   }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleResolveComment = async (commentId: string) => {
-    try {
-      await apiResolveComment(commentId);
-      setComments(prev => prev.map(c => c.id === commentId ? { ...c, resolved: true } : c));
-    } catch (e) {
-      console.error('Error resolving comment:', e);
-    }
-  };
 
   const handleCommentAdded = (comment: any) => {
     setComments(prev => [...prev, comment]);
@@ -608,7 +598,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             ref={blocksRef}
             template={template}
             reviewComments={comments}
-            onResolveComment={handleResolveComment}
             onBlocksCountChange={setBlocksCount}
             onBlocksLoadingChange={setBlocksLoading}
             onContinue={() => void handleContinue()}
