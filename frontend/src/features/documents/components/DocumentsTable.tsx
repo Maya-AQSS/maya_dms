@@ -22,6 +22,7 @@ import { useUserProfile } from '../../../features/user-profile';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
+import { normalizeForSearch } from '../../../utils/normalizeForSearch';
 import type { AcademicHierarchy } from '../../../types/hierarchy';
 
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
@@ -69,8 +70,8 @@ function applyClientFilters(
       return false;
     }
     if (filters.name) {
-      const title = (doc.title ?? '').toLowerCase();
-      if (!title.includes(filters.name.toLowerCase())) return false;
+      const needle = normalizeForSearch(filters.name);
+      if (!normalizeForSearch(doc.title ?? '').includes(needle)) return false;
     }
     if (filters.status && doc.status !== filters.status) return false;
     if (filters.academicContext) {
@@ -92,8 +93,8 @@ function applyClientFilters(
       }
     }
     if (filters.authorName) {
-      const name = (doc.owner_name ?? '').toLowerCase();
-      if (!name.includes(filters.authorName.toLowerCase())) return false;
+      const needle = normalizeForSearch(filters.authorName);
+      if (!normalizeForSearch(doc.owner_name ?? '').includes(needle)) return false;
     }
     if (filters.date) {
       // La validación no aplica a publicados (no mostramos plazo en columna); no mezclar con `delivery_deadline` residual del API.

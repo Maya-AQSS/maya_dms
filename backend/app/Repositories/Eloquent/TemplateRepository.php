@@ -6,6 +6,7 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Support\SearchAccentFold;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
@@ -108,8 +109,13 @@ class TemplateRepository implements TemplateRepositoryInterface
         if ($filters->teamId !== null) {
             $query->where('template_head_ev.snapshot_data->template->team_id', $filters->teamId);
         }
-        if ($filters->authorName !== null) {
-            $query->where('users.name', 'ilike', '%'.$filters->authorName.'%');
+        if ($filters->authorName !== null && trim($filters->authorName) !== '') {
+            $needle = SearchAccentFold::fold($filters->authorName);
+            if ($needle !== '') {
+                [$expr, $tr] = SearchAccentFold::sqlFoldedLowerColumn('users.name');
+                $like = '%'.SearchAccentFold::escapeLike($needle).'%';
+                $query->whereRaw("{$expr} LIKE ?", [$tr[0], $tr[1], $like]);
+            }
         }
         if ($filters->deliveryDeadline !== null) {
             $deadlineExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline');

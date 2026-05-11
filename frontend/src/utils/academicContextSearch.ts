@@ -1,4 +1,5 @@
 import type { AcademicHierarchy } from '../types/hierarchy';
+import { normalizeForSearch } from './normalizeForSearch';
 import type { TemplateVisibilityLevel } from '../types/templates';
 import { visibilityLabel } from '../features/templates/constants';
 
@@ -145,14 +146,14 @@ export function listRowSearchHaystack(hierarchy: AcademicHierarchy, fields: List
   return [...visParts, academic].join(' ').toLowerCase();
 }
 
-/** Búsqueda insensible a mayúsculas: global/personal/equipo/…, nombre de equipo, jerarquía académica visible. */
+/** Búsqueda insensible a mayúsculas y acentos: global/personal/equipo/…, nombre de equipo, jerarquía académica visible. */
 export function listRowSearchMatches(
   hierarchy: AcademicHierarchy,
   fields: ListRowSearchFields,
   needle: string,
 ): boolean {
-  const n = needle.trim().toLowerCase();
+  const n = normalizeForSearch(needle.trim());
   if (!n) return true;
-  return listRowSearchHaystack(hierarchy, fields).includes(n);
+  return normalizeForSearch(listRowSearchHaystack(hierarchy, fields)).includes(n);
 }
 

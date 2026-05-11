@@ -23,6 +23,7 @@ import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../u
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
+import { normalizeForSearch } from '../../../utils/normalizeForSearch';
 
 const STATUS_LABEL: Record<TemplateStatus, string> = {
   draft: 'Borrador',
@@ -80,8 +81,8 @@ export function TemplatesTable({ processId }: Props = {}) {
       list = list.filter((t) => favoriteTemplateIds.has(t.id));
     }
     if (nameFilter.trim()) {
-      const needle = nameFilter.toLowerCase();
-      list = list.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
+      const needle = normalizeForSearch(nameFilter.trim());
+      list = list.filter((t) => normalizeForSearch(t.name ?? '').includes(needle));
     }
     if (academicContextFilter.trim()) {
       list = list.filter((t) =>
