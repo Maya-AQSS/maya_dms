@@ -17,6 +17,7 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Services\TemplateContextResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -35,6 +36,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentStateService $documentStateService,
         private readonly DocumentReviewService $documentReviewService,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly TemplateContextResolver $contextResolver,
     ) {}
 
     /**
@@ -89,247 +91,22 @@ class DocumentService implements DocumentServiceInterface
             ->values()
             ->all();
 
-        $templateMeta = is_array($ev->snapshot_data ?? null)
-            ? ($ev->snapshot_data['template'] ?? null)
-            : null;
-        $visibility = is_array($templateMeta) ? ($templateMeta['visibility_level'] ?? null) : null;
-        $isTeamScopedTemplate = $visibility === TemplateVisibilityLevel::Team->value;
-
-        $studyTypeId = $dto->studyTypeId;
-        $studyId = $dto->studyId;
-        $moduleId = $dto->moduleId;
-        $teamId = $dto->teamId;
-        $templateStudyTypeId = is_array($templateMeta) && isset($templateMeta['study_type_id']) && is_string($templateMeta['study_type_id']) && $templateMeta['study_type_id'] !== ''
-            ? $templateMeta['study_type_id']
-            : null;
-        $templateStudyId = is_array($templateMeta) && isset($templateMeta['study_id']) && is_string($templateMeta['study_id']) && $templateMeta['study_id'] !== ''
-            ? $templateMeta['study_id']
-            : null;
-        $templateModuleId = is_array($templateMeta) && isset($templateMeta['module_id']) && is_string($templateMeta['module_id']) && $templateMeta['module_id'] !== ''
-            ? $templateMeta['module_id']
-            : null;
-
-        if ($isTeamScopedTemplate) {
-            $templateTeamId = is_array($templateMeta) ? ($templateMeta['team_id'] ?? null) : null;
-            if (! is_string($templateTeamId) || $templateTeamId === '') {
-                throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla de equipo no tiene un equipo válido asociado.'],
-                ]);
-            }
-
-            // Un documento basado en plantilla de equipo no debe quedar asociado a contexto académico.
-            $studyTypeId = null;
-            $studyId = null;
-            $moduleId = null;
-            $teamId = $templateTeamId;
-        } elseif ($visibility === TemplateVisibilityLevel::Personal->value) {
-            if (
-                ($dto->studyTypeId !== null && $dto->studyTypeId !== $templateStudyTypeId) ||
-                ($dto->studyId !== null && $dto->studyId !== $templateStudyId) ||
-                ($dto->moduleId !== null && $dto->moduleId !== $templateModuleId) ||
-                $dto->teamId !== null
-            ) {
-                throw ValidationException::withMessages([
-                    'template_id' => ['Las plantillas personales no permiten cambiar el contexto académico al crear documentos.'],
-                ]);
-            }
-            $studyTypeId = $templateStudyTypeId;
-            $studyId = $templateStudyId;
-            $moduleId = $templateModuleId;
-            $teamId = null;
-        } elseif ($visibility === TemplateVisibilityLevel::Module->value) {
-            if ($dto->teamId !== null) {
-                throw ValidationException::withMessages([
-                    'team_id' => ['Las plantillas de módulo no permiten asignar equipo al documento.'],
-                ]);
-            }
-            if ($templateModuleId === null) {
-                throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla de módulo no tiene un módulo válido asociado.'],
-                ]);
-            }
-            if ($dto->moduleId !== null && $dto->moduleId !== $templateModuleId) {
-                throw ValidationException::withMessages([
-                    'module_id' => ['El documento debe crearse en el mismo módulo de la plantilla.'],
-                ]);
-            }
-            $studyTypeId = $templateStudyTypeId;
-            $studyId = $templateStudyId;
-            $moduleId = $templateModuleId;
-            $teamId = null;
-        } elseif ($visibility === TemplateVisibilityLevel::Study->value) {
-            if ($dto->teamId !== null) {
-                throw ValidationException::withMessages([
-                    'team_id' => ['Las plantillas de estudio no permiten asignar equipo al documento.'],
-                ]);
-            }
-            if ($templateStudyId === null) {
-                throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla de estudio no tiene un estudio válido asociado.'],
-                ]);
-            }
-            if ($dto->studyId !== null && $dto->studyId !== $templateStudyId) {
-                throw ValidationException::withMessages([
-                    'study_id' => ['El documento debe crearse en el mismo estudio o en un módulo de ese estudio.'],
-                ]);
-            }
-            if ($dto->moduleId !== null) {
-                $moduleStudyId = DB::table('course_modules')
-                    ->where('id', $dto->moduleId)
-                    ->value('study_id');
-                if (! is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
-                    ]);
-                }
-                $moduleId = $dto->moduleId;
-                $studyId = $templateStudyId;
-            } else {
-                $moduleId = null;
-                $studyId = $templateStudyId;
-            }
-            $studyTypeId = $templateStudyTypeId;
-            $teamId = null;
-        } elseif ($visibility === TemplateVisibilityLevel::StudyType->value) {
-            if ($dto->teamId !== null) {
-                throw ValidationException::withMessages([
-                    'team_id' => ['Las plantillas por tipo de estudio no permiten asignar equipo al documento.'],
-                ]);
-            }
-            if ($templateStudyTypeId === null) {
-                throw ValidationException::withMessages([
-                    'template_id' => ['La plantilla por tipo de estudio no tiene un study_type válido asociado.'],
-                ]);
-            }
-            if ($dto->studyTypeId !== null && $dto->studyTypeId !== $templateStudyTypeId) {
-                throw ValidationException::withMessages([
-                    'study_type_id' => ['El documento debe crearse en el mismo tipo de estudio o en niveles inferiores.'],
-                ]);
-            }
-            if ($dto->moduleId !== null) {
-                $module = DB::table('course_modules')
-                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
-                    ->where('course_modules.id', $dto->moduleId)
-                    ->select('course_modules.study_id', 'studies.study_type_id')
-                    ->first();
-                if (! $module || (string) $module->study_type_id !== $templateStudyTypeId) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
-                    ]);
-                }
-                if ($dto->studyId !== null && $dto->studyId !== (string) $module->study_id) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
-                    ]);
-                }
-                $moduleId = $dto->moduleId;
-                $studyId = (string) $module->study_id;
-            } elseif ($dto->studyId !== null) {
-                $studyTypeFromStudy = DB::table('studies')
-                    ->where('id', $dto->studyId)
-                    ->value('study_type_id');
-                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
-                    ]);
-                }
-                $studyId = $dto->studyId;
-                $moduleId = null;
-            } else {
-                $studyId = null;
-                $moduleId = null;
-            }
-            $studyTypeId = $templateStudyTypeId;
-            $teamId = null;
-        } elseif ($visibility === TemplateVisibilityLevel::Global->value) {
-            if ($dto->teamId !== null) {
-                if ($dto->studyTypeId !== null || $dto->studyId !== null || $dto->moduleId !== null) {
-                    throw ValidationException::withMessages([
-                        'team_id' => ['En plantillas globales, selecciona equipo o contexto académico, pero no ambos a la vez.'],
-                    ]);
-                }
-                $isTeamMember = DB::table('team_members')
-                    ->where('team_id', $dto->teamId)
-                    ->where('user_id', $dto->createdBy)
-                    ->exists();
-                if (! $isTeamMember) {
-                    throw ValidationException::withMessages([
-                        'team_id' => ['Solo miembros del equipo seleccionado pueden crear este documento en ese equipo.'],
-                    ]);
-                }
-                $teamId = $dto->teamId;
-                $studyTypeId = null;
-                $studyId = null;
-                $moduleId = null;
-            } elseif ($dto->moduleId !== null) {
-                $module = DB::table('course_modules')
-                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
-                    ->where('course_modules.id', $dto->moduleId)
-                    ->select('course_modules.study_id', 'studies.study_type_id')
-                    ->first();
-                if (! $module || ! is_string($module->study_id) || ! is_string($module->study_type_id)) {
-                    throw ValidationException::withMessages([
-                        'module_id' => ['El módulo seleccionado no existe.'],
-                    ]);
-                }
-                if ($dto->studyId !== null && $dto->studyId !== (string) $module->study_id) {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
-                    ]);
-                }
-                if ($dto->studyTypeId !== null && $dto->studyTypeId !== (string) $module->study_type_id) {
-                    throw ValidationException::withMessages([
-                        'study_type_id' => ['El tipo de estudio indicado no corresponde con el módulo seleccionado.'],
-                    ]);
-                }
-                $moduleId = $dto->moduleId;
-                $studyId = (string) $module->study_id;
-                $studyTypeId = (string) $module->study_type_id;
-                $teamId = null;
-            } elseif ($dto->studyId !== null) {
-                $studyTypeFromStudy = DB::table('studies')
-                    ->where('id', $dto->studyId)
-                    ->value('study_type_id');
-                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy === '') {
-                    throw ValidationException::withMessages([
-                        'study_id' => ['El estudio seleccionado no existe.'],
-                    ]);
-                }
-                if ($dto->studyTypeId !== null && $dto->studyTypeId !== $studyTypeFromStudy) {
-                    throw ValidationException::withMessages([
-                        'study_type_id' => ['El tipo de estudio indicado no corresponde con el estudio seleccionado.'],
-                    ]);
-                }
-                $studyId = $dto->studyId;
-                $moduleId = null;
-                $studyTypeId = $studyTypeFromStudy;
-                $teamId = null;
-            } elseif ($dto->studyTypeId !== null) {
-                $studyTypeId = $dto->studyTypeId;
-                $studyId = null;
-                $moduleId = null;
-                $teamId = null;
-            } else {
-                $studyTypeId = null;
-                $studyId = null;
-                $moduleId = null;
-                $teamId = null;
-            }
-        }
+        $templateMeta = is_array($ev->snapshot_data ?? null) ? ($ev->snapshot_data['template'] ?? null) : null;
+        $ctx = $this->contextResolver->resolve($dto, is_array($templateMeta) ? $templateMeta : null);
 
         return $this->documentRepository->createDocumentWithBlocks([
-            'process_id' => $dto->processId,
-            'template_id' => $dto->templateId,
+            'process_id'          => $dto->processId,
+            'template_id'         => $dto->templateId,
             'template_version_id' => (string) $ev->id,
-            'title' => $dto->title,
-            'study_type_id' => $studyTypeId,
-            'study_id' => $studyId,
-            'module_id' => $moduleId,
-            'team_id' => $teamId,
-            'delivery_deadline' => $dto->deliveryDeadline,
-            'created_by' => $dto->createdBy,
-            'owner_id' => $dto->ownerId,
-            'status' => 'draft',
+            'title'               => $dto->title,
+            'study_type_id'       => $ctx['studyTypeId'],
+            'study_id'            => $ctx['studyId'],
+            'module_id'           => $ctx['moduleId'],
+            'team_id'             => $ctx['teamId'],
+            'delivery_deadline'   => $dto->deliveryDeadline,
+            'created_by'          => $dto->createdBy,
+            'owner_id'            => $dto->ownerId,
+            'status'              => 'draft',
         ], $blockRows);
     }
 
