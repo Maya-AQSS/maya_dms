@@ -362,11 +362,11 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Contexto académico">
+            <FilterField label="Visibilidad">
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />

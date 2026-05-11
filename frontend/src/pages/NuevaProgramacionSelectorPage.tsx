@@ -14,6 +14,7 @@ import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { useHierarchy } from '../features/hierarchy';
 import { formatListRowVisibilityCaption, listRowSearchMatches } from '../utils/academicContextSearch';
+import { normalizeForSearch } from '../utils/normalizeForSearch';
 import {
   DataTable,
   DatePicker,
@@ -52,6 +53,9 @@ export function NuevaProgramacionSelectorPage() {
   const [allTemplates, setAllTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
+  const [nameInput, setNameInput] = useState('');
+  const [nameFilter, setNameFilter] = useState('');
+  const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [authorInput, setAuthorInput] = useState('');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [academicContextInput, setAcademicContextInput] = useState('');
@@ -133,9 +137,19 @@ export function NuevaProgramacionSelectorPage() {
     return mappedTemplates.filter((t) => favoriteTemplateIds.has(t.id));
   }, [mappedTemplates, favoritesFilter, favoriteTemplateIds]);
 
+  const afterName = useMemo(() => {
+    if (!nameFilter.trim()) {
+      return afterFavorites;
+    }
+    const needle = normalizeForSearch(nameFilter.trim());
+    return afterFavorites.filter((t) => normalizeForSearch(t.name ?? '').includes(needle));
+  }, [afterFavorites, nameFilter]);
+
   const afterAcademicContext = useMemo(() => {
-    if (!academicContextFilter.trim()) return afterFavorites;
-    return afterFavorites.filter((t) =>
+    if (!academicContextFilter.trim()) {
+      return afterName;
+    }
+    return afterName.filter((t) =>
       listRowSearchMatches(
         hierarchy,
         {
@@ -149,7 +163,7 @@ export function NuevaProgramacionSelectorPage() {
         academicContextFilter,
       ),
     );
-  }, [afterFavorites, academicContextFilter, hierarchy]);
+  }, [afterName, academicContextFilter, hierarchy]);
 
   const sortedList = useMemo(() => {
     if (!sortBy || !SORTABLE_SELECTOR_COLUMN_IDS.has(sortBy.columnId)) {
@@ -277,6 +291,18 @@ export function NuevaProgramacionSelectorPage() {
     setFilters((f) => ({ ...f, page: Math.max(1, page) }));
   };
 
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNameInput(value);
+    if (nameDebounceRef.current) {
+      clearTimeout(nameDebounceRef.current);
+    }
+    nameDebounceRef.current = setTimeout(() => {
+      setNameFilter(value);
+      setFilters((f) => ({ ...f, page: 1 }));
+    }, 400);
+  };
+
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAuthorInput(value);
@@ -297,8 +323,17 @@ export function NuevaProgramacionSelectorPage() {
   };
 
   const clearFilters = () => {
-    if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
-    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    if (nameDebounceRef.current) {
+      clearTimeout(nameDebounceRef.current);
+    }
+    if (authorDebounceRef.current) {
+      clearTimeout(authorDebounceRef.current);
+    }
+    if (academicContextDebounceRef.current) {
+      clearTimeout(academicContextDebounceRef.current);
+    }
+    setNameInput('');
+    setNameFilter('');
     setAuthorInput('');
     setAcademicContextInput('');
     setAcademicContextFilter('');
@@ -315,7 +350,9 @@ export function NuevaProgramacionSelectorPage() {
 
   const filtersActiveCount =
     (favoritesFilter ? 1 : 0) +
-    [academicContextFilter, filters.author_name, filters.published_on].filter((v) => v && String(v).trim() !== '').length;
+    [nameFilter, academicContextFilter, filters.author_name, filters.published_on].filter(
+      (v) => v && String(v).trim() !== '',
+    ).length;
 
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
@@ -375,11 +412,19 @@ export function NuevaProgramacionSelectorPage() {
         }}
         filtersPanel={
           <>
-            <FilterField label="Contexto académico">
+            <FilterField label="Nombre">
+              <TextInput
+                fieldSize="sm"
+                placeholder="Buscar por nombre..."
+                value={nameInput}
+                onChange={handleNameChange}
+              />
+            </FilterField>
+            <FilterField label="Visibilidad">
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />
