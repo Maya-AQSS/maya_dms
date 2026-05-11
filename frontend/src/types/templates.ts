@@ -60,6 +60,8 @@ export type Template = {
   created_at?: string;
   updated_at?: string;
   latest_published_name?: string | null;
+  /** Fecha de publicación de la versión publicada más reciente (solo listado / adjunta en índice). */
+  latest_published_at?: string | null;
 };
 
 export type TemplatesListMeta = {
@@ -85,6 +87,8 @@ export type TemplateListFilters = {
   team_id?: string;
   author_name?: string;
   delivery_deadline?: string;
+  /** Filtro por día de publicación de la última versión publicada (Y-m-d). */
+  published_on?: string;
   process_id?: string;
   page?: number;
   per_page?: number;

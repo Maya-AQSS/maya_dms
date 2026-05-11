@@ -17,6 +17,8 @@ readonly class FilterTemplatesDto
         public ?string $teamId = null,
         public ?string $authorName = null,
         public ?string $deliveryDeadline = null,
+        /** Fecha calendario (Y-m-d): última publicación (`max(published_at)`) en ese día o posterior. */
+        public ?string $publishedOn = null,
         public ?string $processId = null,
     ) {}
 }

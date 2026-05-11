@@ -117,6 +117,12 @@ class TemplateRepository implements TemplateRepositoryInterface
                 $filters->deliveryDeadline,
             );
         }
+        if ($filters->publishedOn !== null) {
+            $query->whereRaw(
+                '(select max(published_at)::date from entity_versions where versionable_id = templates.id and versionable_type = ? and status = ? and version_number > 0) >= ?::date',
+                [Template::class, 'published', $filters->publishedOn],
+            );
+        }
         if ($filters->processId !== null) {
             $query->where('templates.process_id', $filters->processId);
         }
@@ -133,6 +139,81 @@ class TemplateRepository implements TemplateRepositoryInterface
             ->get();
 
         return $rows;
+    }
+
+    /**
+     * Rellena en memoria `latest_published_*` desde `entity_versions` (última versión publicada por plantilla).
+     *
+     * @param  Collection<int, Template>  $templates
+     * {@inheritDoc}
+     */
+    public function attachLatestPublishedVersionMeta(Collection $templates): void
+    {
+        if ($templates->isEmpty()) {
+            return;
+        }
+
+        $ids = $templates->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
+        if ($ids === []) {
+            return;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $bindings = array_merge([Template::class], $ids);
+        $sql = '
+            SELECT DISTINCT ON (versionable_id)
+                versionable_id::text AS versionable_id,
+                id::text AS id,
+                version_number,
+                snapshot_data,
+                published_at
+            FROM entity_versions
+            WHERE versionable_type = ?
+              AND versionable_id IN ('.$placeholders.')
+              AND status = \'published\'
+              AND version_number > 0
+            ORDER BY versionable_id, version_number DESC
+        ';
+
+        $rows = DB::select($sql, $bindings);
+
+        /** @var array<string, object> $latestByTemplate */
+        $latestByTemplate = [];
+        foreach ($rows as $row) {
+            $templateId = (string) $row->versionable_id;
+            $latestByTemplate[$templateId] = $row;
+        }
+
+        foreach ($templates as $template) {
+            $meta = $latestByTemplate[(string) $template->id] ?? null;
+            $template->setAttribute('latest_published_version_id', $meta !== null ? (string) $meta->id : null);
+            $template->setAttribute('latest_published_version_number', $meta !== null ? (int) $meta->version_number : null);
+            $template->setAttribute('latest_published_name', $meta !== null
+                ? $this->extractPublishedTemplateNameFromSnapshotRow($meta->snapshot_data)
+                : null);
+            $template->setAttribute('latest_published_at', $meta->published_at ?? null);
+        }
+    }
+
+    private function extractPublishedTemplateNameFromSnapshotRow(mixed $snapshot): ?string
+    {
+        if (is_string($snapshot) && $snapshot !== '') {
+            $decoded = json_decode($snapshot, true);
+            if (is_array($decoded)) {
+                $snapshot = $decoded;
+            }
+        }
+
+        if (! is_array($snapshot)) {
+            return null;
+        }
+
+        $name = data_get($snapshot, 'template.name');
+        if (! is_string($name) || trim($name) === '') {
+            return null;
+        }
+
+        return $name;
     }
 
     /**

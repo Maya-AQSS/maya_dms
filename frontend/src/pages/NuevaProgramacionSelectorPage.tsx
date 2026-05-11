@@ -24,9 +24,26 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 
-function formatDate(iso: string | null | undefined): string {
+/** Fecha corta según el locale del navegador (d-m-y con guiones). */
+function formatPublicationDateForLocale(iso: string | null | undefined): string {
   if (!iso) return '—';
-  return iso.slice(0, 10);
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'es';
+  try {
+    const parts = new Intl.DateTimeFormat(locale, {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }).formatToParts(d);
+    const day = parts.find((p) => p.type === 'day')?.value ?? '';
+    const month = parts.find((p) => p.type === 'month')?.value ?? '';
+    const year = parts.find((p) => p.type === 'year')?.value ?? '';
+    if (!day || !month || !year) return '—';
+    return `${day}-${month}-${year}`;
+  } catch {
+    return '—';
+  }
 }
 
 export function NuevaProgramacionSelectorPage() {
@@ -82,7 +99,7 @@ export function NuevaProgramacionSelectorPage() {
           usable_for_documents: true,
           visibility_level: filters.visibility_level,
           author_name: filters.author_name,
-          delivery_deadline: filters.delivery_deadline,
+          published_on: filters.published_on,
           ...(selectedProcessId ? { process_id: selectedProcessId } : {}),
         });
         if (!cancelled) {
@@ -102,7 +119,7 @@ export function NuevaProgramacionSelectorPage() {
   }, [
     filters.visibility_level,
     filters.author_name,
-    filters.delivery_deadline,
+    filters.published_on,
     selectedProcessId,
   ]);
 
@@ -145,9 +162,9 @@ export function NuevaProgramacionSelectorPage() {
 
       if (columnId === 'name') {
         return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
-      } else if (columnId === 'delivery_deadline') {
-        valA = a.delivery_deadline ?? '';
-        valB = b.delivery_deadline ?? '';
+      } else if (columnId === 'latest_published_at') {
+        valA = a.latest_published_at ?? '';
+        valB = b.latest_published_at ?? '';
       } else if (columnId === 'version') {
         valA = a.version ?? 0;
         valB = b.version ?? 0;
@@ -209,12 +226,12 @@ export function NuevaProgramacionSelectorPage() {
         ),
       },
       {
-        id: 'delivery_deadline',
-        header: 'Fecha límite de validación',
+        id: 'latest_published_at',
+        header: 'Fecha de publicación',
         sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {formatDate(t.delivery_deadline)}
+            {formatPublicationDateForLocale(t.latest_published_at)}
           </span>
         ),
       },
@@ -263,14 +280,14 @@ export function NuevaProgramacionSelectorPage() {
   const filterUi = useMemo(
     () => ({
       visibility: filters.visibility_level ?? '',
-      deliveryDeadline: filters.delivery_deadline ?? '',
+      publishedOn: filters.published_on ?? '',
     }),
     [filters],
   );
 
   const filtersActiveCount =
     (favoritesFilter ? 1 : 0) +
-    [filters.visibility_level, filters.author_name, filters.delivery_deadline].filter(Boolean).length;
+    [filters.visibility_level, filters.author_name, filters.published_on].filter(Boolean).length;
 
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
@@ -371,11 +388,12 @@ export function NuevaProgramacionSelectorPage() {
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Fecha límite de validación">
+            <FilterField label="Publicadas desde">
               <DatePicker
-                value={filterUi.deliveryDeadline || null}
-                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
-                placeholder="Seleccionar fecha…"
+                value={filterUi.publishedOn || null}
+                onChange={(d) => applyFilters({ published_on: d ?? undefined })}
+                placeholder="Elegir día inicial…"
+                ariaLabel="Filtrar plantillas publicadas desde esta fecha (inclusive)"
               />
             </FilterField>
           </>

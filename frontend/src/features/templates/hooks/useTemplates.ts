@@ -63,6 +63,7 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
     filters.team_id,
     filters.author_name,
     filters.delivery_deadline,
+    filters.published_on,
     filters.process_id,
     processId,
   ]);
