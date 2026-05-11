@@ -3,29 +3,13 @@
 namespace App\Policies;
 
 use App\Models\Comment;
+use App\Models\Document;
 use App\Models\JwtUser;
+use App\Models\Template;
 
 class CommentPolicy
 {
-    /**
-     * Eliminación de comentario.
-     *
-     * Regla actual: solo el autor puede eliminar su comentario.
-     */
     public function delete(JwtUser $user, Comment $comment): bool
-    {
-        return (string) $user->getAuthIdentifier() === (string) $comment->author_id;
-    }
-
-    /**
-     * Resolución de comentario.
-     *
-     * Quién puede marcar un comentario como resuelto:
-     *  - El propio autor del comentario.
-     *  - El propietario del recurso padre (plantilla / documento) —
-     *    es el creador quien debe abordar el feedback del validador.
-     */
-    public function resolve(JwtUser $user, Comment $comment): bool
     {
         $userId = (string) $user->getAuthIdentifier();
 
@@ -34,9 +18,26 @@ class CommentPolicy
         }
 
         $commentable = $comment->commentable;
+        if ($commentable === null) {
+            return false;
+        }
 
-        return $commentable !== null
-            && $userId === (string) ($commentable->created_by ?? '');
+        if ($userId === (string) ($commentable->created_by ?? '')) {
+            return true;
+        }
+
+        if ($commentable instanceof Template) {
+            return $commentable->reviewers()
+                ->where('user_id', $userId)
+                ->exists();
+        }
+
+        if ($commentable instanceof Document) {
+            return $commentable->reviews()
+                ->where('reviewer_id', $userId)
+                ->exists();
+        }
+
+        return false;
     }
 }
-

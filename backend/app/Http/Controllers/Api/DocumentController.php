@@ -282,7 +282,7 @@ class DocumentController extends Controller
 
         $document->setAttribute(
             'has_review_comments',
-            $document->comments()->where('resolved', false)->exists(),
+            $document->comments()->exists(),
         );
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
         $this->attachCanCloneMeta($document, $request);

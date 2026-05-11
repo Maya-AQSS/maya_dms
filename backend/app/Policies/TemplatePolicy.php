@@ -264,7 +264,7 @@ class TemplatePolicy
     /**
      * Ver/gestionar comentarios de plantilla.
      *
-     * Solo el creador o un revisor asignado pueden interactuar con comentarios.
+     * El creador puede comentar en cualquier estado. Los revisores asignados solo en in_review.
      */
     public function comment(JwtUser $user, Template $template): bool
     {
@@ -274,7 +274,7 @@ class TemplatePolicy
             return true;
         }
 
-        return $this->review($user, $template);
+        return $template->status === 'in_review' && $this->review($user, $template);
     }
 
     /**

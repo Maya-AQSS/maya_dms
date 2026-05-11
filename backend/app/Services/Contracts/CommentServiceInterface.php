@@ -40,9 +40,4 @@ interface CommentServiceInterface
      * Elimina un comentario.
      */
     public function delete(Comment $comment): void;
-
-    /**
-     * Marca un comentario como resuelto.
-     */
-    public function resolve(Comment $comment, string $userId): Comment;
 }

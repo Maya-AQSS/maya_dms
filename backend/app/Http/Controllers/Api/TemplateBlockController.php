@@ -109,13 +109,16 @@ class TemplateBlockController extends Controller
 
     /**
      * Elimina un bloque de una plantilla.
-     * 
+     *
      * DELETE /api/v1/blocks/{block}
      */
     public function destroy(string $block): Response
     {
         $blockModel = $this->blockService->findOrFail($block);
-        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail((string) $blockModel->template_id), 'update');
+        $template = $this->findTemplateOrFail((string) $blockModel->template_id);
+        $blockModel->setRelation('template', $template);
+        $this->authorize('delete', $blockModel);
+        $this->assertOptionalProcessContextMatches((string) $template->process_id);
 
         $this->blockService->delete($block, (string) Auth::id());
 

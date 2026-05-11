@@ -105,18 +105,22 @@ class DocumentPolicy
     /**
      * Ver/gestionar comentarios del documento.
      *
-     * Requiere capacidad de edición, revisión global o ser revisor asignado al documento.
+     * El creador/titular puede comentar en cualquier estado. Los revisores asignados solo en in_review.
      */
     public function comment(JwtUser $user, Document $document): bool
     {
-        if ($this->update($user, $document) || $this->review($user, $document)) {
+        if ($this->update($user, $document)) {
             return true;
         }
 
-        // Revisores específicamente asignados pueden comentar durante el ciclo de revisión.
-        return $document->reviews()
-            ->where('reviewer_id', (string) $user->getAuthIdentifier())
-            ->exists();
+        if ($document->status !== 'in_review') {
+            return false;
+        }
+
+        return $this->review($user, $document)
+            || $document->reviews()
+                ->where('reviewer_id', (string) $user->getAuthIdentifier())
+                ->exists();
     }
 
     /**

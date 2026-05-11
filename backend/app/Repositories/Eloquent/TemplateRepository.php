@@ -23,7 +23,7 @@ class TemplateRepository implements TemplateRepositoryInterface
     {
         return Template::query()
             ->with('headVersion')
-            ->withExists(['comments as has_review_comments' => fn ($q) => $q->where('resolved', false)])
+            ->withExists(['comments as has_review_comments' => fn ($q) => $q])
             ->findOrFail($id);
     }
 
@@ -44,7 +44,7 @@ class TemplateRepository implements TemplateRepositoryInterface
         return Template::query()
             ->withoutGlobalScopes(['user_access'])
             ->with('headVersion')
-            ->withExists(['comments as has_review_comments' => fn ($q) => $q->where('resolved', false)])
+            ->withExists(['comments as has_review_comments' => fn ($q) => $q])
             ->findOrFail($id);
     }
 
@@ -125,7 +125,7 @@ class TemplateRepository implements TemplateRepositoryInterface
         $rows = $query
             ->with(['headVersion'])
             ->withExists([
-                'comments as has_review_comments' => fn ($q) => $q->where('resolved', false),
+                'comments as has_review_comments' => fn ($q) => $q,
             ])
             ->with('reviewers')
             ->orderByDesc('templates.updated_at')
