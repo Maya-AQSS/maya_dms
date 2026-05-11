@@ -14,12 +14,15 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
-import { FAVORITES_FILTER_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
+import { FAVORITES_FILTER_OPTIONS, visibilityLabel } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { useUserProfile } from '../../../features/user-profile';
+import { useHierarchy } from '../../../features/hierarchy';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
+import { listRowSearchMatches } from '../../../utils/academicContextSearch';
+import type { AcademicHierarchy } from '../../../types/hierarchy';
 
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
 // (los colores hex viven en `maya_infra/configs/styles/index.css`).
@@ -37,12 +40,6 @@ const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
   { value: 'published', label: 'Publicado' },
 ];
 
-const VISIBILITY_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Todas' },
-  ...VISIBILITY_OPTIONS,
-];
-
-
 /** `delivery_deadline` presente y día calendario ≤ cap (Y-m-d), inclusive. */
 function deliveryDeadlineOnOrBefore(iso: string | null | undefined, capYmd: string): boolean {
   const ymd = (iso ?? '').slice(0, 10);
@@ -52,7 +49,8 @@ function deliveryDeadlineOnOrBefore(iso: string | null | undefined, capYmd: stri
 
 type Filters = {
   name: string;
-  visibility: string;
+  /** Texto libre sobre contexto académico vinculado (jerarquía + equipo), no la etiqueta de visibilidad. */
+  academicContext: string;
   status: string;
   authorName: string;
   date: string;
@@ -64,6 +62,7 @@ function applyClientFilters(
   docs: Document[],
   filters: Filters,
   favoriteDocumentIds: ReadonlySet<string>,
+  hierarchy: AcademicHierarchy,
 ): Document[] {
   return docs.filter((doc) => {
     if (filters.favorites === 'favorites' && !favoriteDocumentIds.has(doc.id)) {
@@ -74,7 +73,24 @@ function applyClientFilters(
       if (!title.includes(filters.name.toLowerCase())) return false;
     }
     if (filters.status && doc.status !== filters.status) return false;
-    if (filters.visibility && doc.visibility_level !== filters.visibility) return false;
+    if (filters.academicContext) {
+      if (
+        !listRowSearchMatches(
+          hierarchy,
+          {
+            visibility_level: doc.visibility_level ?? undefined,
+            study_type_id: doc.study_type_id,
+            study_id: doc.study_id,
+            module_id: doc.module_id,
+            team_id: doc.team_id,
+            team: doc.team,
+          },
+          filters.academicContext,
+        )
+      ) {
+        return false;
+      }
+    }
     if (filters.authorName) {
       const name = (doc.owner_name ?? '').toLowerCase();
       if (!name.includes(filters.authorName.toLowerCase())) return false;
@@ -101,6 +117,7 @@ type Props = {
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { profile, hasPermission } = useUserProfile();
+  const { hierarchy } = useHierarchy();
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:documents-table',
@@ -168,16 +185,18 @@ export function DocumentsTable({ processId }: Props = {}) {
 
   const [filters, setFilters] = useState<Filters>({
     name: '',
-    visibility: '',
+    academicContext: '',
     status: '',
     authorName: '',
     date: '',
     favorites: '',
   });
   const [nameInput, setNameInput] = useState('');
+  const [academicContextInput, setAcademicContextInput] = useState('');
   const [authorInput, setAuthorInput] = useState('');
   const [page, setPage] = useState(1);
   const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const displayDocuments = useMemo(() => {
@@ -217,8 +236,8 @@ export function DocumentsTable({ processId }: Props = {}) {
   }, [documents, hasPermission, profile?.id]);
 
   const filtered = useMemo(
-    () => applyClientFilters(displayDocuments, filters, favoriteDocumentIds),
-    [displayDocuments, filters, favoriteDocumentIds],
+    () => applyClientFilters(displayDocuments, filters, favoriteDocumentIds, hierarchy),
+    [displayDocuments, filters, favoriteDocumentIds, hierarchy],
   );
 
   const sorted = useMemo(() => {
@@ -252,7 +271,7 @@ export function DocumentsTable({ processId }: Props = {}) {
 
   const filtersActiveCount =
     (filters.favorites ? 1 : 0) +
-    [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
+    [filters.name, filters.academicContext, filters.status, filters.authorName, filters.date].filter(Boolean).length;
 
   const handleFilterChange = (patch: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -277,12 +296,23 @@ export function DocumentsTable({ processId }: Props = {}) {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      handleFilterChange({ academicContext: value });
+    }, 400);
+  };
+
   const clearFilters = () => {
     if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setNameInput('');
+    setAcademicContextInput('');
     setAuthorInput('');
-    setFilters({ name: '', visibility: '', status: '', authorName: '', date: '', favorites: '' });
+    setFilters({ name: '', academicContext: '', status: '', authorName: '', date: '', favorites: '' });
     setPage(1);
   };
 
@@ -334,16 +364,14 @@ export function DocumentsTable({ processId }: Props = {}) {
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Visibilidad">
-              <Select
+            <FilterField label="Contexto académico">
+              <TextInput
                 fieldSize="sm"
-                value={filters.visibility}
-                onChange={(e) => handleFilterChange({ visibility: e.target.value })}
-              >
-                {VISIBILITY_FILTER_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </Select>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
             </FilterField>
             <FilterField label="Estado">
               <Select

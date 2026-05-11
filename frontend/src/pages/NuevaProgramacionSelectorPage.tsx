@@ -6,12 +6,14 @@ import {
   buildTemplatesListMeta,
   sliceTemplatesPage,
 } from '../features/templates/clientTemplatePagination';
-import { FAVORITES_FILTER_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
+import { FAVORITES_FILTER_OPTIONS, visibilityLabel } from '../features/templates/constants';
 import type { Template, TemplateListFilters } from '../types/templates';
 import { useFavoritesIds } from '../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../components/FavoriteInlineMark';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
+import { useHierarchy } from '../features/hierarchy';
+import { listRowSearchMatches } from '../utils/academicContextSearch';
 import {
   DataTable,
   DatePicker,
@@ -28,6 +30,7 @@ import {
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { hierarchy } = useHierarchy();
   const locationState = location.state as { moduleId?: string; processId?: string } | null;
   const selectedModuleId = locationState?.moduleId;
   const selectedProcessId = locationState?.processId;
@@ -48,6 +51,9 @@ export function NuevaProgramacionSelectorPage() {
   const [listError, setListError] = useState<string | null>(null);
   const [authorInput, setAuthorInput] = useState('');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [academicContextInput, setAcademicContextInput] = useState('');
+  const [academicContextFilter, setAcademicContextFilter] = useState('');
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!selectedProcessId) {
@@ -76,7 +82,6 @@ export function NuevaProgramacionSelectorPage() {
       try {
         const res = await fetchTemplates({
           usable_for_documents: true,
-          visibility_level: filters.visibility_level,
           author_name: filters.author_name,
           published_on: filters.published_on,
           ...(selectedProcessId ? { process_id: selectedProcessId } : {}),
@@ -95,12 +100,7 @@ export function NuevaProgramacionSelectorPage() {
     };
     void load();
     return () => { cancelled = true; };
-  }, [
-    filters.visibility_level,
-    filters.author_name,
-    filters.published_on,
-    selectedProcessId,
-  ]);
+  }, [filters.author_name, filters.published_on, selectedProcessId]);
 
   const listPage = filters.page ?? 1;
   const listPerPage = filters.per_page ?? pageSize;
@@ -130,12 +130,30 @@ export function NuevaProgramacionSelectorPage() {
     return mappedTemplates.filter((t) => favoriteTemplateIds.has(t.id));
   }, [mappedTemplates, favoritesFilter, favoriteTemplateIds]);
 
+  const afterAcademicContext = useMemo(() => {
+    if (!academicContextFilter.trim()) return afterFavorites;
+    return afterFavorites.filter((t) =>
+      listRowSearchMatches(
+        hierarchy,
+        {
+          visibility_level: t.visibility_level,
+          study_type_id: t.study_type_id,
+          study_id: t.study_id,
+          module_id: t.module_id,
+          team_id: t.team_id,
+          team: t.team,
+        },
+        academicContextFilter,
+      ),
+    );
+  }, [afterFavorites, academicContextFilter, hierarchy]);
+
   const sortedTemplates = useMemo(() => {
-    if (!sortBy) return afterFavorites;
+    if (!sortBy) return afterAcademicContext;
     const { columnId, direction } = sortBy;
     const dir = direction === 'asc' ? 1 : -1;
 
-    return [...afterFavorites].sort((a, b) => {
+    return [...afterAcademicContext].sort((a, b) => {
       let valA: string | number = '';
       let valB: string | number = '';
 
@@ -153,7 +171,7 @@ export function NuevaProgramacionSelectorPage() {
       if (valA > valB) return 1 * dir;
       return 0;
     });
-  }, [afterFavorites, sortBy]);
+  }, [afterAcademicContext, sortBy]);
 
   useEffect(() => {
     const last = Math.max(1, Math.ceil(sortedTemplates.length / Math.max(1, listPerPage)));
@@ -249,16 +267,28 @@ export function NuevaProgramacionSelectorPage() {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      setAcademicContextFilter(value);
+      setFilters((f) => ({ ...f, page: 1 }));
+    }, 400);
+  };
+
   const clearFilters = () => {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     setAuthorInput('');
+    setAcademicContextInput('');
+    setAcademicContextFilter('');
     setFavoritesFilter('');
     setFilters({ usable_for_documents: true, per_page: pageSize, page: 1 });
   };
 
   const filterUi = useMemo(
     () => ({
-      visibility: filters.visibility_level ?? '',
       publishedOn: filters.published_on ?? '',
     }),
     [filters],
@@ -266,7 +296,7 @@ export function NuevaProgramacionSelectorPage() {
 
   const filtersActiveCount =
     (favoritesFilter ? 1 : 0) +
-    [filters.visibility_level, filters.author_name, filters.published_on].filter(Boolean).length;
+    [academicContextFilter, filters.author_name, filters.published_on].filter((v) => v && String(v).trim() !== '').length;
 
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
@@ -326,17 +356,14 @@ export function NuevaProgramacionSelectorPage() {
         }}
         filtersPanel={
           <>
-            <FilterField label="Visibilidad">
-              <Select
+            <FilterField label="Contexto académico">
+              <TextInput
                 fieldSize="sm"
-                value={filterUi.visibility}
-                onChange={(e) => applyFilters({ visibility_level: e.target.value || undefined })}
-              >
-                <option value="">Todas</option>
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>{o.label}</option>
-                ))}
-              </Select>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
             </FilterField>
             <FilterField label="Autor">
               <TextInput

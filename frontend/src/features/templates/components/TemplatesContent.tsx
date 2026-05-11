@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -16,16 +16,17 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
-import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
+import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
+import { STATUS_OPTIONS, visibilityLabel } from '../constants';
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
 import { useUserProfile } from '../../../features/user-profile';
+import { useHierarchy } from '../../../features/hierarchy';
+import { listRowSearchMatches } from '../../../utils/academicContextSearch';
 import type { Template, TemplateStatus } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
-
-const HIERARCHY_VIS = new Set(['study_type', 'study', 'module']);
 
 const STATUS_LABEL: Record<TemplateStatus, string> = {
   draft: 'Borrador',
@@ -42,12 +43,12 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
 export function TemplatesContent() {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+  const { hierarchy } = useHierarchy();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
     useTablePreferences({ storageKey: 'maya:dms:templates-content' });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
-    templates,
-    meta,
+    catalogSorted,
     filters,
     loading,
     listError,
@@ -65,6 +66,48 @@ export function TemplatesContent() {
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [academicContextInput, setAcademicContextInput] = useState('');
+  const [academicContextFilter, setAcademicContextFilter] = useState('');
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const listPage = filters.page ?? 1;
+  const listPerPage = filters.per_page ?? pageSize;
+
+  const clientFilteredCatalog = useMemo(() => {
+    if (!academicContextFilter.trim()) return catalogSorted;
+    return catalogSorted.filter((t) =>
+      listRowSearchMatches(
+        hierarchy,
+        {
+          visibility_level: t.visibility_level,
+          study_type_id: t.study_type_id,
+          study_id: t.study_id,
+          module_id: t.module_id,
+          team_id: t.team_id,
+          team: t.team,
+        },
+        academicContextFilter,
+      ),
+    );
+  }, [catalogSorted, academicContextFilter, hierarchy]);
+
+  useEffect(() => {
+    const last = Math.max(1, Math.ceil(clientFilteredCatalog.length / Math.max(1, listPerPage)));
+    if (listPage > last) {
+      applyFilters({ page: last });
+    }
+  }, [clientFilteredCatalog.length, listPage, listPerPage, applyFilters]);
+
+  const pagedSource = useMemo(
+    () => sliceTemplatesPage(clientFilteredCatalog, listPage, listPerPage),
+    [clientFilteredCatalog, listPage, listPerPage],
+  );
+
+  const listMeta = useMemo(
+    () => buildTemplatesListMeta(clientFilteredCatalog.length, listPage, listPerPage),
+    [clientFilteredCatalog.length, listPage, listPerPage],
+  );
+
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAuthorInput(value);
@@ -74,9 +117,17 @@ export function TemplatesContent() {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      setAcademicContextFilter(value);
+    }, 400);
+  };
+
   const filterUi = useMemo(
     () => ({
-      visibility: filters.visibility_level ?? '',
       status: filters.status ?? '',
       studyTypeId: filters.study_type_id ?? '',
       studyId: filters.study_id ?? '',
@@ -89,7 +140,7 @@ export function TemplatesContent() {
   );
 
   const filtersActiveCount = [
-    filterUi.visibility,
+    academicContextFilter,
     filterUi.status,
     filterUi.studyTypeId,
     filterUi.studyId,
@@ -101,7 +152,10 @@ export function TemplatesContent() {
 
   const clearFilters = () => {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     setAuthorInput('');
+    setAcademicContextInput('');
+    setAcademicContextFilter('');
     applyFilters({
       visibility_level: undefined,
       status: undefined,
@@ -114,12 +168,9 @@ export function TemplatesContent() {
     });
   };
 
-  const showTeamFilter = filterUi.visibility === 'team';
-  const showHierarchyFilter = HIERARCHY_VIS.has(filterUi.visibility);
-
   const displayTemplates = useMemo(() => {
     const out: Template[] = [];
-    for (const t of templates) {
+    for (const t of pagedSource) {
       const hasPublishedFallback =
         t.status !== 'published' &&
         !!t.latest_published_version_id;
@@ -152,7 +203,7 @@ export function TemplatesContent() {
       return out.filter((row) => row.status !== 'published');
     }
     return out;
-  }, [templates, profile?.id, filters.delivery_deadline]);
+  }, [pagedSource, profile?.id, filters.delivery_deadline]);
 
   const handleRowClick = (t: Template) => {
     if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
@@ -286,7 +337,7 @@ export function TemplatesContent() {
       <DataTable<Template>
         columns={columns}
         rows={displayTemplates}
-        loading={loading && templates.length === 0}
+        loading={loading && catalogSorted.length === 0}
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
@@ -308,27 +359,14 @@ export function TemplatesContent() {
         filtersStorageKey="maya:dms:templates-content"
         filtersPanel={
           <>
-            <FilterField label="Visibilidad">
-              <Select
+            <FilterField label="Contexto académico">
+              <TextInput
                 fieldSize="sm"
-                value={filterUi.visibility}
-                onChange={(e) =>
-                  applyFilters({
-                    visibility_level: e.target.value || undefined,
-                    study_type_id: undefined,
-                    study_id: undefined,
-                    module_id: undefined,
-                    team_id: undefined,
-                  })
-                }
-              >
-                <option value="">Todas</option>
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
             </FilterField>
             <FilterField label="Estado">
               <Select
@@ -359,38 +397,36 @@ export function TemplatesContent() {
                 ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
               />
             </FilterField>
-            {(showHierarchyFilter || showTeamFilter) && (
-              <div className="col-span-full pt-2 border-t border-ui-border/50 dark:border-ui-dark-border/50">
-                <FieldLabel>Vinculación</FieldLabel>
-                <TemplateHierarchyFields
-                  values={{
-                    study_type_id: filterUi.studyTypeId,
-                    study_id: filterUi.studyId,
-                    module_id: filterUi.moduleId,
-                    team_id: filterUi.teamId,
-                  }}
-                  onFieldChange={(key, value) =>
-                    applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
-                  }
-                  gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
-                  filterMode={true}
-                  maxLevel={showHierarchyFilter ? (filterUi.visibility as 'study_type' | 'study' | 'module') : null}
-                  showTeam={showTeamFilter}
-                />
-              </div>
-            )}
+            <div className="col-span-full pt-2 border-t border-ui-border/50 dark:border-ui-dark-border/50">
+              <FieldLabel>Vinculación</FieldLabel>
+              <TemplateHierarchyFields
+                values={{
+                  study_type_id: filterUi.studyTypeId,
+                  study_id: filterUi.studyId,
+                  module_id: filterUi.moduleId,
+                  team_id: filterUi.teamId,
+                }}
+                onFieldChange={(key, value) =>
+                  applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
+                }
+                gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+                filterMode={true}
+                maxLevel={undefined}
+                showTeam={true}
+              />
+            </div>
           </>
         }
       />
 
-      {meta && (
+      {listMeta && (
         <Pagination
-          currentPage={meta.current_page}
-          totalPages={meta.last_page}
+          currentPage={listMeta.current_page}
+          totalPages={listMeta.last_page}
           onChange={goToPage}
           info={
-            meta.total > 0
-              ? `${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(meta.current_page * meta.per_page, meta.total)} de ${meta.total} plantillas`
+            listMeta.total > 0
+              ? `${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} de ${listMeta.total} plantillas`
               : undefined
           }
         />

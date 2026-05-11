@@ -12,6 +12,7 @@ export const VISIBILITY_OPTIONS: { value: TemplateVisibilityLevel; label: string
 export const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
   { value: 'draft', label: 'Borrador' },
+  { value: 'in_review', label: 'En revisión' },
   { value: 'published', label: 'Publicada' },
   { value: 'archived', label: 'Archivada' },
 ] as const;
@@ -25,3 +26,4 @@ export const FAVORITES_FILTER_OPTIONS: { value: string; label: string }[] = [
 export function visibilityLabel(v: TemplateVisibilityLevel): string {
   return VISIBILITY_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
+

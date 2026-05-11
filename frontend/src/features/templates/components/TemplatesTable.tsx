@@ -15,9 +15,11 @@ import {
 } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
-import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
+import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS, visibilityLabel } from '../constants';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
+import { useHierarchy } from '../../../features/hierarchy';
+import { listRowSearchMatches } from '../../../utils/academicContextSearch';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
@@ -39,6 +41,7 @@ type Props = {
 export function TemplatesTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
+  const { hierarchy } = useHierarchy();
 
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
     useTablePreferences({ storageKey: 'maya:dms:templates-table' });
@@ -63,6 +66,10 @@ export function TemplatesTable({ processId }: Props = {}) {
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [academicContextInput, setAcademicContextInput] = useState('');
+  const [academicContextFilter, setAcademicContextFilter] = useState('');
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const listPage = filters.page ?? 1;
   const listPerPage = filters.per_page ?? 20;
 
@@ -75,8 +82,24 @@ export function TemplatesTable({ processId }: Props = {}) {
       const needle = nameFilter.toLowerCase();
       list = list.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
     }
+    if (academicContextFilter.trim()) {
+      list = list.filter((t) =>
+        listRowSearchMatches(
+          hierarchy,
+          {
+            visibility_level: t.visibility_level,
+            study_type_id: t.study_type_id,
+            study_id: t.study_id,
+            module_id: t.module_id,
+            team_id: t.team_id,
+            team: t.team,
+          },
+          academicContextFilter,
+        ),
+      );
+    }
     return list;
-  }, [catalogSorted, favoritesFilter, nameFilter, favoriteTemplateIds]);
+  }, [catalogSorted, favoritesFilter, nameFilter, academicContextFilter, favoriteTemplateIds, hierarchy]);
 
   useEffect(() => {
     const last = Math.max(1, Math.ceil(clientFilteredCatalog.length / Math.max(1, listPerPage)));
@@ -134,7 +157,6 @@ export function TemplatesTable({ processId }: Props = {}) {
 
   const filterUi = useMemo(
     () => ({
-      visibility: filters.visibility_level ?? '',
       status: filters.status ?? '',
       deliveryDeadline: filters.delivery_deadline ?? '',
     }),
@@ -143,7 +165,7 @@ export function TemplatesTable({ processId }: Props = {}) {
 
   const filtersActiveCount =
     (favoritesFilter ? 1 : 0) +
-    [nameFilter, filterUi.visibility, filterUi.status, filterUi.deliveryDeadline, authorInput].filter((v) => v && v !== '')
+    [nameFilter, academicContextFilter, filterUi.status, filterUi.deliveryDeadline, authorInput].filter((v) => v && v !== '')
       .length;
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -164,11 +186,23 @@ export function TemplatesTable({ processId }: Props = {}) {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      setAcademicContextFilter(value);
+    }, 400);
+  };
+
   const clearFilters = () => {
     if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setNameInput('');
     setNameFilter('');
+    setAcademicContextInput('');
+    setAcademicContextFilter('');
     setFavoritesFilter('');
     setAuthorInput('');
     applyFilters({
@@ -308,21 +342,14 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Visibilidad">
-              <Select
+            <FilterField label="Contexto académico">
+              <TextInput
                 fieldSize="sm"
-                value={filterUi.visibility}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                  applyFilters({ visibility_level: (e.target.value as any) || undefined })
-                }
-              >
-                <option value="">Todas</option>
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo o contexto académico…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
             </FilterField>
             <FilterField label="Estado">
               <Select
