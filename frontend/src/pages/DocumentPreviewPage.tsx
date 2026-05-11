@@ -657,16 +657,32 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         </Link>
       )}
       {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
-        <Button
-          type="button"
-          variant="primary"
-          size="sm"
-          loading={actionLoading}
-          disabled={!!detail.has_review_comments}
-          onClick={() => void handleSubmit()}
-        >
-          Enviar a validar
-        </Button>
+        detail.has_review_comments ? (
+          <span
+            title="No puedes enviar a validar mientras haya comentarios de revisión sin resolver"
+            className="inline-flex"
+          >
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              disabled
+              aria-disabled="true"
+            >
+              Enviar a validar
+            </Button>
+          </span>
+        ) : (
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={actionLoading}
+            onClick={() => void handleSubmit()}
+          >
+            Enviar a validar
+          </Button>
+        )
       )}
       {!isValidateMode && canStartNewVersion && (
         <Button
