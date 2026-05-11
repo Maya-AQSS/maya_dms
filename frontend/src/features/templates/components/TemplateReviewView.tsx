@@ -81,6 +81,7 @@ export function TemplateReviewView({ template }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   const [comments, setComments] = useState<BlockComment[]>([]);
+  const [commentingOpen, setCommentingOpen] = useState(true);
   const [newCommentBody, setNewCommentBody] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
 
@@ -183,8 +184,11 @@ export function TemplateReviewView({ template }: Props) {
 
   const loadComments = async () => {
     try {
-      const res = await apiFetchJson<{ data: BlockComment[] }>(`templates/${template.id}/comments`);
+      const res = await apiFetchJson<{ data: BlockComment[]; meta?: { commenting_open?: boolean } }>(
+        `templates/${template.id}/comments`,
+      );
       setComments(res.data);
+      if (res.meta?.commenting_open === false) setCommentingOpen(false);
     } catch (e) {
       console.error('Error loading comments', e);
     }
@@ -560,9 +564,10 @@ export function TemplateReviewView({ template }: Props) {
                   onNewCommentBodyChange={setNewCommentBody}
                   onAddComment={handleAddComment}
                   commentLoading={commentLoading}
-                  canAddComments={commentMode === 'validator'}
-                  onReply={commentMode === 'creator-edit' ? handleReply : undefined}
-                  onResolve={commentMode === 'creator-edit' ? handleResolve : undefined}
+                  canAddComments={commentingOpen && commentMode === 'validator'}
+                  onReply={commentingOpen && commentMode === 'creator-edit' ? handleReply : undefined}
+                  onResolve={commentingOpen && commentMode === 'creator-edit' ? handleResolve : undefined}
+                  commentingClosed={!commentingOpen}
                   headerRef={viewHeaderRef}
                   onClose={closeView}
                 />

@@ -80,6 +80,7 @@ type BlockCommentsCardProps = {
   onResolve?: (commentId: string) => Promise<void>;
 
   // shared
+  commentingClosed?: boolean;
   headerRef?: RefObject<HTMLDivElement | null>;
   onClose: () => void;
 };
@@ -89,6 +90,7 @@ export function BlockCommentsCard({
   blockSortOrder,
   blockComments,
   allComments,
+  commentingClosed = false,
   newCommentBody,
   onNewCommentBodyChange,
   onAddComment,
@@ -131,6 +133,15 @@ export function BlockCommentsCard({
         onClose={onClose}
         headerRef={headerRef}
       />
+
+      {/* Commenting closed notice */}
+      {commentingClosed && (
+        <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-ui-body/50 dark:bg-ui-dark-bg/50 shrink-0">
+          <p className="text-xs text-text-muted dark:text-text-dark-muted font-bold uppercase tracking-widest text-center">
+            Comentarios cerrados
+          </p>
+        </div>
+      )}
 
       {/* Filter tabs — creator modes only */}
       {isCreatorMode && (
