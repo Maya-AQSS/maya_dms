@@ -7,6 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: maya_dms_backend
     restart: unless-stopped
+    mem_limit: 768m
     environment:
       APP_ENV: ${APP_ENV:-local}
       APP_KEY: ${APP_KEY:-}
@@ -83,6 +84,7 @@ services:
       dockerfile: Dockerfile
     container_name: maya_dms_queue_worker
     restart: unless-stopped
+    mem_limit: 256m
     depends_on:
       backend:
         condition: service_healthy
@@ -127,6 +129,7 @@ services:
     container_name: maya_dms_frontend
     entrypoint: ["/usr/local/bin/docker-entrypoint.sh"]
     restart: unless-stopped
+    mem_limit: 512m
     environment:
       VITE_API_URL: ${VITE_API_URL:-http://maya_dms_api.localhost/api/v1}
       VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL:-http://keycloak.localhost}
