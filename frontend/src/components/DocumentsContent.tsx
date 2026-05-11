@@ -26,6 +26,7 @@ import { normalizeBlockContentForEditor } from '../features/documents/lib/normal
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { useUserProfile } from '../features/user-profile';
 import type { Document, DocumentStatus } from '../types/documents';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
 
 function snapshotBlockStateLabel(raw: string | undefined): string {
@@ -331,7 +332,7 @@ export function DocumentsContent() {
         align: 'left',
         cell: (d: Document) => (
           <span className="text-xs text-text-muted dark:text-text-dark-muted">
-            {d.delivery_deadline ? d.delivery_deadline.slice(0, 10) : '—'}
+            {d.delivery_deadline ? formatCalendarDateForBrowser(d.delivery_deadline) : '—'}
           </span>
         ),
       },

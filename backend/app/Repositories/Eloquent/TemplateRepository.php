@@ -112,10 +112,16 @@ class TemplateRepository implements TemplateRepositoryInterface
             $query->where('users.name', 'ilike', '%'.$filters->authorName.'%');
         }
         if ($filters->deliveryDeadline !== null) {
-            $query->whereDate(
-                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline')),
-                $filters->deliveryDeadline,
+            $deadlineExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'delivery_deadline');
+            $statusExpr = TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'status');
+            $cap = $filters->deliveryDeadline;
+            // Comparación por prefijo Y-m-d (ISO) para sqlite/mysql/pgsql sin depender de casts de fecha por motor.
+            $query->whereRaw(
+                "nullif(trim({$deadlineExpr}), '') is not null and substr(trim({$deadlineExpr}), 1, 10) <= ?",
+                [$cap],
             );
+            // No mezclar publicadas: el plazo de validación no se muestra en UI para ese estado.
+            $query->whereRaw("trim({$statusExpr}) <> ?", ['published']);
         }
         if ($filters->publishedOn !== null) {
             $query->whereRaw(

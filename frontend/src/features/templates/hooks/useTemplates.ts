@@ -83,8 +83,8 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
       if (columnId === 'name') {
         return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
       } else if (columnId === 'delivery_deadline') {
-        valA = a.delivery_deadline ?? '';
-        valB = b.delivery_deadline ?? '';
+        valA = a.status === 'published' ? '9999-12-31' : (a.delivery_deadline ?? '').slice(0, 10);
+        valB = b.status === 'published' ? '9999-12-31' : (b.delivery_deadline ?? '').slice(0, 10);
       } else if (columnId === 'status') {
         valA = a.status ?? '';
         valB = b.status ?? '';

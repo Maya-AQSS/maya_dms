@@ -19,6 +19,7 @@ import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { useUserProfile } from '../../../features/user-profile';
+import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
 // (los colores hex viven en `maya_infra/configs/styles/index.css`).
@@ -42,9 +43,11 @@ const VISIBILITY_FILTER_OPTIONS: { value: string; label: string }[] = [
 ];
 
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
+/** `delivery_deadline` presente y día calendario ≤ cap (Y-m-d), inclusive. */
+function deliveryDeadlineOnOrBefore(iso: string | null | undefined, capYmd: string): boolean {
+  const ymd = (iso ?? '').slice(0, 10);
+  if (!ymd) return false;
+  return ymd <= capYmd;
 }
 
 type Filters = {
@@ -76,10 +79,14 @@ function applyClientFilters(
       const name = (doc.owner_name ?? '').toLowerCase();
       if (!name.includes(filters.authorName.toLowerCase())) return false;
     }
-    if (filters.date && doc.delivery_deadline) {
-      if (!doc.delivery_deadline.startsWith(filters.date)) return false;
-    } else if (filters.date && !doc.delivery_deadline) {
-      return false;
+    if (filters.date) {
+      // La validación no aplica a publicados (no mostramos plazo en columna); no mezclar con `delivery_deadline` residual del API.
+      if (doc.status === 'published') {
+        return false;
+      }
+      if (!deliveryDeadlineOnOrBefore(doc.delivery_deadline, filters.date)) {
+        return false;
+      }
     }
     return true;
   });
@@ -147,10 +154,12 @@ export function DocumentsTable({ processId }: Props = {}) {
       },
       {
         id: 'delivery_deadline',
-        header: 'Fecha',
+        header: 'Fecha de validación',
         sortable: true,
         cell: (doc) => (
-          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{formatDate(doc.delivery_deadline)}</span>
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {doc.status === 'published' ? '—' : formatCalendarDateForBrowser(doc.delivery_deadline)}
+          </span>
         ),
       },
     ],
@@ -224,8 +233,8 @@ export function DocumentsTable({ processId }: Props = {}) {
       if (columnId === 'title') {
         return (a.title ?? '').localeCompare(b.title ?? '', 'es') * dir;
       } else if (columnId === 'delivery_deadline') {
-        valA = a.delivery_deadline ?? '';
-        valB = b.delivery_deadline ?? '';
+        valA = a.status === 'published' ? '9999-12-31' : (a.delivery_deadline ?? '').slice(0, 10);
+        valB = b.status === 'published' ? '9999-12-31' : (b.delivery_deadline ?? '').slice(0, 10);
       } else if (columnId === 'status') {
         valA = a.status ?? '';
         valB = b.status ?? '';
@@ -368,11 +377,12 @@ export function DocumentsTable({ processId }: Props = {}) {
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Fecha">
+            <FilterField label="Fecha de validación (hasta)">
               <DatePicker
                 value={filters.date || null}
                 onChange={(d) => handleFilterChange({ date: d ?? '' })}
-                placeholder="Seleccionar fecha..."
+                placeholder="Cualquier plazo…"
+                ariaLabel="Documentos no publicados cuya fecha límite de validación sea esta fecha o anterior (las filas publicadas no aplican)"
               />
             </FilterField>
           </>

@@ -11,6 +11,7 @@ import type { Template, TemplateListFilters } from '../types/templates';
 import { useFavoritesIds } from '../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../components/FavoriteInlineMark';
 import type { Process } from '../types/processes';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import {
   DataTable,
   DatePicker,
@@ -23,28 +24,6 @@ import {
   visibilityBadgeClass,
   type ColumnDef,
 } from '@maya/shared-ui-react';
-
-/** Fecha corta según el locale del navegador (d-m-y con guiones). */
-function formatPublicationDateForLocale(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  const locale = typeof navigator !== 'undefined' && navigator.language ? navigator.language : 'es';
-  try {
-    const parts = new Intl.DateTimeFormat(locale, {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    }).formatToParts(d);
-    const day = parts.find((p) => p.type === 'day')?.value ?? '';
-    const month = parts.find((p) => p.type === 'month')?.value ?? '';
-    const year = parts.find((p) => p.type === 'year')?.value ?? '';
-    if (!day || !month || !year) return '—';
-    return `${day}-${month}-${year}`;
-  } catch {
-    return '—';
-  }
-}
 
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
@@ -231,7 +210,7 @@ export function NuevaProgramacionSelectorPage() {
         sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {formatPublicationDateForLocale(t.latest_published_at)}
+            {formatCalendarDateForBrowser(t.latest_published_at)}
           </span>
         ),
       },

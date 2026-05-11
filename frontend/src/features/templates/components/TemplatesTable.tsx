@@ -20,6 +20,7 @@ import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../..
 import { useUserProfile } from '../../../features/user-profile';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
+import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 
 const STATUS_LABEL: Record<TemplateStatus, string> = {
   draft: 'Borrador',
@@ -29,11 +30,6 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
 };
 
 // Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
-}
 
 type Props = {
   /** Filtra el listado por proceso. No se expone en el panel de filtros. */
@@ -130,8 +126,11 @@ export function TemplatesTable({ processId }: Props = {}) {
       }
       out.push(publishedFallback);
     }
+    if (filters.delivery_deadline) {
+      return out.filter((row) => row.status !== 'published');
+    }
     return out;
-  }, [pagedCatalog, profile?.id]);
+  }, [pagedCatalog, profile?.id, filters.delivery_deadline]);
 
   const filterUi = useMemo(
     () => ({
@@ -252,11 +251,11 @@ export function TemplatesTable({ processId }: Props = {}) {
       },
       {
         id: 'delivery_deadline',
-        header: 'Fecha límite',
+        header: 'Fecha de validación',
         sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {formatDate(t.delivery_deadline)}
+            {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
           </span>
         ),
       },
@@ -364,14 +363,14 @@ export function TemplatesTable({ processId }: Props = {}) {
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Fecha límite">
+            <FilterField label="Fecha de validación (hasta)">
               <DatePicker
                 value={filterUi.deliveryDeadline || null}
                 onChange={(d: string | null) =>
-                  applyFilters({ delivery_deadline: d ?? undefined })
+                  applyFilters({ delivery_deadline: d ?? undefined, page: 1 })
                 }
-                placeholder="Cualquier fecha"
-                ariaLabel="Filtrar por fecha límite"
+                placeholder="Cualquier plazo…"
+                ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
               />
             </FilterField>
           </>
