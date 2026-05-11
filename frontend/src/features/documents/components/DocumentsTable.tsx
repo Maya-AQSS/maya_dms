@@ -14,14 +14,14 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
-import { FAVORITES_FILTER_OPTIONS, visibilityLabel } from '../../templates/constants';
+import { FAVORITES_FILTER_OPTIONS } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { useUserProfile } from '../../../features/user-profile';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
-import { listRowSearchMatches } from '../../../utils/academicContextSearch';
+import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
 import type { AcademicHierarchy } from '../../../types/hierarchy';
 
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
@@ -142,10 +142,25 @@ export function DocumentsTable({ processId }: Props = {}) {
         id: 'visibility_level',
         header: 'Visibilidad',
         cell: (doc) => {
-          const visLevel = (doc.visibility_level ?? 'personal') as TemplateVisibilityLevel;
+          const visLevel = doc.visibility_level;
+          if (visLevel == null) {
+            return <span className="text-xs text-text-secondary dark:text-text-dark-secondary">—</span>;
+          }
+          const level = visLevel as TemplateVisibilityLevel;
+          const caption = formatListRowVisibilityCaption(hierarchy, {
+            visibility_level: level,
+            study_type_id: doc.study_type_id,
+            study_id: doc.study_id,
+            module_id: doc.module_id,
+            team_id: doc.team_id,
+            team: doc.team,
+          });
           return (
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(visLevel)}`}>
-              {visibilityLabel(visLevel)}
+            <span
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(level)}`}
+              title={caption}
+            >
+              <span className="truncate">{caption}</span>
             </span>
           );
         },
@@ -180,7 +195,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         ),
       },
     ],
-    [favoriteDocumentIds],
+    [favoriteDocumentIds, hierarchy],
   );
 
   const [filters, setFilters] = useState<Filters>({

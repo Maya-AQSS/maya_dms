@@ -15,11 +15,11 @@ import {
 } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
-import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS, visibilityLabel } from '../constants';
+import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS } from '../constants';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
 import { useHierarchy } from '../../../features/hierarchy';
-import { listRowSearchMatches } from '../../../utils/academicContextSearch';
+import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
@@ -255,11 +255,25 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'visibility_level',
         header: 'Visibilidad',
-        cell: (t) => (
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level as TemplateVisibilityLevel)}`}>
-            {visibilityLabel(t.visibility_level as TemplateVisibilityLevel)}
-          </span>
-        ),
+        cell: (t) => {
+          const level = t.visibility_level as TemplateVisibilityLevel;
+          const caption = formatListRowVisibilityCaption(hierarchy, {
+            visibility_level: level,
+            study_type_id: t.study_type_id,
+            study_id: t.study_id,
+            module_id: t.module_id,
+            team_id: t.team_id,
+            team: t.team,
+          });
+          return (
+            <span
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(level)}`}
+              title={caption}
+            >
+              <span className="truncate">{caption}</span>
+            </span>
+          );
+        },
       },
       {
         id: 'author_name',
@@ -294,7 +308,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         ),
       },
     ],
-    [profile, favoriteTemplateIds],
+    [profile, favoriteTemplateIds, hierarchy],
   );
 
   return (

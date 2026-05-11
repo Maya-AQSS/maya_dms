@@ -22,6 +22,68 @@ function teamDisplayName(team: unknown): string | null {
   return typeof name === 'string' && name.trim() ? name.trim() : null;
 }
 
+function resolveStudyTypeName(hierarchy: AcademicHierarchy, studyTypeId: string | null | undefined): string | null {
+  if (!studyTypeId) return null;
+  const st = hierarchy.find((t) => String(t.id) === String(studyTypeId));
+  return st?.name?.trim() ? st.name.trim() : null;
+}
+
+function resolveStudyName(hierarchy: AcademicHierarchy, studyId: string | null | undefined): string | null {
+  if (!studyId) return null;
+  for (const st of hierarchy) {
+    const s = st.studies.find((x) => String(x.id) === String(studyId));
+    if (s?.name?.trim()) return s.name.trim();
+  }
+  return null;
+}
+
+function resolveModuleName(hierarchy: AcademicHierarchy, moduleId: string | null | undefined): string | null {
+  if (!moduleId) return null;
+  for (const st of hierarchy) {
+    for (const s of st.studies) {
+      const m = s.course_modules.find((x) => String(x.id) === String(moduleId));
+      if (m?.name?.trim()) return m.name.trim();
+    }
+  }
+  return null;
+}
+
+/**
+ * Texto para columna «Visibilidad»: etiqueta de nivel + solo el vínculo de ese nivel
+ * (p. ej. `Módulo · Biología`), sin el resto de la jerarquía académica.
+ */
+export function formatListRowVisibilityCaption(
+  hierarchy: AcademicHierarchy,
+  fields: ListRowSearchFields,
+): string {
+  if (fields.visibility_level == null) {
+    return '—';
+  }
+  const level = fields.visibility_level;
+  const label = visibilityLabel(level);
+  const teamNm = teamDisplayName(fields.team);
+
+  if (level === 'global' || level === 'personal') {
+    return label;
+  }
+  if (level === 'team') {
+    return teamNm ? `${label} · ${teamNm}` : label;
+  }
+  if (level === 'study_type') {
+    const n = resolveStudyTypeName(hierarchy, fields.study_type_id);
+    return n ? `${label} · ${n}` : label;
+  }
+  if (level === 'study') {
+    const n = resolveStudyName(hierarchy, fields.study_id);
+    return n ? `${label} · ${n}` : label;
+  }
+  if (level === 'module') {
+    const n = resolveModuleName(hierarchy, fields.module_id);
+    return n ? `${label} · ${n}` : label;
+  }
+  return label;
+}
+
 /**
  * Texto en minúsculas para búsqueda por subcadena: nombres de jerarquía resueltos + UUIDs + nombre de equipo si existe.
  */

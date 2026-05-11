@@ -6,14 +6,14 @@ import {
   buildTemplatesListMeta,
   sliceTemplatesPage,
 } from '../features/templates/clientTemplatePagination';
-import { FAVORITES_FILTER_OPTIONS, visibilityLabel } from '../features/templates/constants';
+import { FAVORITES_FILTER_OPTIONS } from '../features/templates/constants';
 import type { Template, TemplateListFilters } from '../types/templates';
 import { useFavoritesIds } from '../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../components/FavoriteInlineMark';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { useHierarchy } from '../features/hierarchy';
-import { listRowSearchMatches } from '../utils/academicContextSearch';
+import { formatListRowVisibilityCaption, listRowSearchMatches } from '../utils/academicContextSearch';
 import {
   DataTable,
   DatePicker,
@@ -207,11 +207,24 @@ export function NuevaProgramacionSelectorPage() {
       {
         id: 'visibility_level',
         header: 'Visibilidad',
-        cell: (t) => (
-          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}>
-            {visibilityLabel(t.visibility_level)}
-          </span>
-        ),
+        cell: (t) => {
+          const caption = formatListRowVisibilityCaption(hierarchy, {
+            visibility_level: t.visibility_level,
+            study_type_id: t.study_type_id,
+            study_id: t.study_id,
+            module_id: t.module_id,
+            team_id: t.team_id,
+            team: t.team,
+          });
+          return (
+            <span
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}
+              title={caption}
+            >
+              <span className="truncate">{caption}</span>
+            </span>
+          );
+        },
       },
       {
         id: 'author_name',
@@ -240,7 +253,7 @@ export function NuevaProgramacionSelectorPage() {
         ),
       },
     ],
-    [favoriteTemplateIds],
+    [favoriteTemplateIds, hierarchy],
   );
 
   useEffect(() => {
