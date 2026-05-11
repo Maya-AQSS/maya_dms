@@ -1526,17 +1526,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
                     {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
-                  {canDeleteOptionalBlock && (
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                      onClick={() => setShowDeleteBlockConfirm(true)}
-                    >
-                      Eliminar
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!showDocumentCommentPanel && activeBlock.document_block_id &&
+                      reviewComments.some(c => c.blockable_id === activeBlock.document_block_id && !c.resolved) && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                        onClick={() => setShowDocumentCommentPanel(true)}
+                      >
+                        Comentarios
+                      </Button>
+                    )}
+                    {canDeleteOptionalBlock && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                        onClick={() => setShowDeleteBlockConfirm(true)}
+                      >
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
 

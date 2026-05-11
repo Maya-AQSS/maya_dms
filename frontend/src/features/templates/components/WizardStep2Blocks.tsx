@@ -543,6 +543,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   {renderSaveStatus()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {!showCommentPanel && activeBlockHasComments && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setShowCommentPanel(true)}
+                      className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                    >
+                      Comentarios
+                    </Button>
+                  )}
                   <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
                   <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
                   <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
