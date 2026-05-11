@@ -205,6 +205,8 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
 
   return {
     templates,
+    /** Lista completa ordenada (misma que alimenta la paginación en cliente). Útil para filtros adicionales en la tabla. */
+    catalogSorted: sortedList,
     meta,
     filters,
     loading,

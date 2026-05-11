@@ -14,7 +14,7 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
-import { VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
+import { FAVORITES_FILTER_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
@@ -53,10 +53,19 @@ type Filters = {
   status: string;
   authorName: string;
   date: string;
+  /** '' = sin filtro; 'favorites' = solo marcados como favoritos */
+  favorites: string;
 };
 
-function applyClientFilters(docs: Document[], filters: Filters): Document[] {
+function applyClientFilters(
+  docs: Document[],
+  filters: Filters,
+  favoriteDocumentIds: ReadonlySet<string>,
+): Document[] {
   return docs.filter((doc) => {
+    if (filters.favorites === 'favorites' && !favoriteDocumentIds.has(doc.id)) {
+      return false;
+    }
     if (filters.name) {
       const title = (doc.title ?? '').toLowerCase();
       if (!title.includes(filters.name.toLowerCase())) return false;
@@ -154,6 +163,7 @@ export function DocumentsTable({ processId }: Props = {}) {
     status: '',
     authorName: '',
     date: '',
+    favorites: '',
   });
   const [nameInput, setNameInput] = useState('');
   const [authorInput, setAuthorInput] = useState('');
@@ -197,7 +207,10 @@ export function DocumentsTable({ processId }: Props = {}) {
     return out;
   }, [documents, hasPermission, profile?.id]);
 
-  const filtered = useMemo(() => applyClientFilters(displayDocuments, filters), [displayDocuments, filters]);
+  const filtered = useMemo(
+    () => applyClientFilters(displayDocuments, filters, favoriteDocumentIds),
+    [displayDocuments, filters, favoriteDocumentIds],
+  );
 
   const sorted = useMemo(() => {
     if (!sortBy) return filtered;
@@ -228,7 +241,9 @@ export function DocumentsTable({ processId }: Props = {}) {
   const safePage = Math.min(page, totalPages);
   const pageSlice = sorted.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const filtersActiveCount = [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
+  const filtersActiveCount =
+    (filters.favorites ? 1 : 0) +
+    [filters.name, filters.visibility, filters.status, filters.authorName, filters.date].filter(Boolean).length;
 
   const handleFilterChange = (patch: Partial<Filters>) => {
     setFilters((f) => ({ ...f, ...patch }));
@@ -258,7 +273,7 @@ export function DocumentsTable({ processId }: Props = {}) {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setNameInput('');
     setAuthorInput('');
-    setFilters({ name: '', visibility: '', status: '', authorName: '', date: '' });
+    setFilters({ name: '', visibility: '', status: '', authorName: '', date: '', favorites: '' });
     setPage(1);
   };
 
@@ -339,6 +354,19 @@ export function DocumentsTable({ processId }: Props = {}) {
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
+            </FilterField>
+            <FilterField label="Favoritos">
+              <Select
+                fieldSize="sm"
+                value={filters.favorites}
+                onChange={(e) => handleFilterChange({ favorites: e.target.value })}
+              >
+                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
             </FilterField>
             <FilterField label="Fecha">
               <DatePicker

@@ -6,8 +6,10 @@ import {
   buildTemplatesListMeta,
   sliceTemplatesPage,
 } from '../features/templates/clientTemplatePagination';
-import { VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
+import { FAVORITES_FILTER_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../features/templates/constants';
 import type { Template, TemplateListFilters } from '../types/templates';
+import { useFavoritesIds } from '../hooks/useFavoritesIds';
+import { FavoriteInlineMark } from '../components/FavoriteInlineMark';
 import type { Process } from '../types/processes';
 import {
   DataTable,
@@ -27,51 +29,6 @@ function formatDate(iso: string | null | undefined): string {
   return iso.slice(0, 10);
 }
 
-const COLUMNS: ColumnDef<Template>[] = [
-  {
-    id: 'name',
-    header: 'Nombre',
-    alwaysVisible: true,
-    cell: (t) => <span className="font-medium">{t.name}</span>,
-    sortable: true,
-  },
-  {
-    id: 'visibility_level',
-    header: 'Visibilidad',
-    cell: (t) => (
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}>
-        {visibilityLabel(t.visibility_level)}
-      </span>
-    ),
-  },
-  {
-    id: 'author_name',
-    header: 'Autor',
-    cell: (t) => (
-      <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-        {t.author_name ?? '—'}
-      </span>
-    ),
-  },
-  {
-    id: 'delivery_deadline',
-    header: 'Fecha límite de validación',
-    sortable: true,
-    cell: (t) => (
-      <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-        {formatDate(t.delivery_deadline)}
-      </span>
-    ),
-  },
-  {
-    id: 'version',
-    header: 'Versión',
-    cell: (t) => (
-      <span className="text-xs text-text-secondary dark:text-text-dark-secondary">v{t.version}</span>
-    ),
-  },
-];
-
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -83,7 +40,9 @@ export function NuevaProgramacionSelectorPage() {
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:nueva-programacion-selector',
   });
+  const { templateIds: favoriteTemplateIds } = useFavoritesIds();
 
+  const [favoritesFilter, setFavoritesFilter] = useState('');
   const [filters, setFilters] = useState<TemplateListFilters>({
     usable_for_documents: true,
     per_page: pageSize,
@@ -150,8 +109,8 @@ export function NuevaProgramacionSelectorPage() {
   const listPage = filters.page ?? 1;
   const listPerPage = filters.per_page ?? pageSize;
 
-  const sortedTemplates = useMemo(() => {
-    const displayTemplates = allTemplates.map((t) => {
+  const mappedTemplates = useMemo(() => {
+    return allTemplates.map((t) => {
       if (t.status !== 'published' && t.latest_published_version_id) {
         return {
           ...t,
@@ -168,12 +127,19 @@ export function NuevaProgramacionSelectorPage() {
         list_row_id: `${t.id}:live`,
       };
     });
+  }, [allTemplates]);
 
-    if (!sortBy) return displayTemplates;
+  const afterFavorites = useMemo(() => {
+    if (favoritesFilter !== 'favorites') return mappedTemplates;
+    return mappedTemplates.filter((t) => favoriteTemplateIds.has(t.id));
+  }, [mappedTemplates, favoritesFilter, favoriteTemplateIds]);
+
+  const sortedTemplates = useMemo(() => {
+    if (!sortBy) return afterFavorites;
     const { columnId, direction } = sortBy;
     const dir = direction === 'asc' ? 1 : -1;
 
-    return [...displayTemplates].sort((a, b) => {
+    return [...afterFavorites].sort((a, b) => {
       let valA: string | number = '';
       let valB: string | number = '';
 
@@ -191,7 +157,14 @@ export function NuevaProgramacionSelectorPage() {
       if (valA > valB) return 1 * dir;
       return 0;
     });
-  }, [allTemplates, sortBy]);
+  }, [afterFavorites, sortBy]);
+
+  useEffect(() => {
+    const last = Math.max(1, Math.ceil(sortedTemplates.length / Math.max(1, listPerPage)));
+    if (listPage > last) {
+      setFilters((f) => ({ ...f, page: last }));
+    }
+  }, [sortedTemplates.length, listPage, listPerPage]);
 
   const templates = useMemo(
     () => sliceTemplatesPage(sortedTemplates, listPage, listPerPage),
@@ -199,8 +172,61 @@ export function NuevaProgramacionSelectorPage() {
   );
 
   const meta = useMemo(
-    () => buildTemplatesListMeta(allTemplates.length, listPage, listPerPage),
-    [allTemplates.length, listPage, listPerPage],
+    () => buildTemplatesListMeta(sortedTemplates.length, listPage, listPerPage),
+    [sortedTemplates.length, listPage, listPerPage],
+  );
+
+  const columns: ColumnDef<Template>[] = useMemo(
+    () => [
+      {
+        id: 'name',
+        header: 'Nombre',
+        alwaysVisible: true,
+        cell: (t) => (
+          <span className="flex items-center gap-2 min-w-0">
+            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
+            <span className="truncate font-medium">{t.name}</span>
+          </span>
+        ),
+        sortable: true,
+      },
+      {
+        id: 'visibility_level',
+        header: 'Visibilidad',
+        cell: (t) => (
+          <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}>
+            {visibilityLabel(t.visibility_level)}
+          </span>
+        ),
+      },
+      {
+        id: 'author_name',
+        header: 'Autor',
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {t.author_name ?? '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'delivery_deadline',
+        header: 'Fecha límite de validación',
+        sortable: true,
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {formatDate(t.delivery_deadline)}
+          </span>
+        ),
+      },
+      {
+        id: 'version',
+        header: 'Versión',
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">v{t.version}</span>
+        ),
+      },
+    ],
+    [favoriteTemplateIds],
   );
 
   useEffect(() => {
@@ -230,6 +256,7 @@ export function NuevaProgramacionSelectorPage() {
   const clearFilters = () => {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setAuthorInput('');
+    setFavoritesFilter('');
     setFilters({ usable_for_documents: true, per_page: pageSize, page: 1 });
   };
 
@@ -241,11 +268,9 @@ export function NuevaProgramacionSelectorPage() {
     [filters],
   );
 
-  const filtersActiveCount = [
-    filters.visibility_level,
-    filters.author_name,
-    filters.delivery_deadline,
-  ].filter(Boolean).length;
+  const filtersActiveCount =
+    (favoritesFilter ? 1 : 0) +
+    [filters.visibility_level, filters.author_name, filters.delivery_deadline].filter(Boolean).length;
 
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
@@ -271,10 +296,10 @@ export function NuevaProgramacionSelectorPage() {
       )}
 
       <DataTable
-        columns={COLUMNS}
+        columns={columns}
         rows={templates}
         loading={loading}
-        rowKey={(t) => t.id}
+        rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
         pageSize={pageSize}
@@ -329,6 +354,22 @@ export function NuevaProgramacionSelectorPage() {
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
+            </FilterField>
+            <FilterField label="Favoritos">
+              <Select
+                fieldSize="sm"
+                value={favoritesFilter}
+                onChange={(e) => {
+                  setFavoritesFilter(e.target.value);
+                  setFilters((f) => ({ ...f, page: 1 }));
+                }}
+              >
+                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
             </FilterField>
             <FilterField label="Fecha límite de validación">
               <DatePicker

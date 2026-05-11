@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -14,7 +14,8 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
-import { STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
+import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
+import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS, VISIBILITY_OPTIONS, visibilityLabel } from '../constants';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
@@ -47,8 +48,7 @@ export function TemplatesTable({ processId }: Props = {}) {
     useTablePreferences({ storageKey: 'maya:dms:templates-table' });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
-    templates,
-    meta,
+    catalogSorted,
     filters,
     loading,
     listError,
@@ -62,12 +62,46 @@ export function TemplatesTable({ processId }: Props = {}) {
   const [nameFilter, setNameFilter] = useState('');
   const nameDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [favoritesFilter, setFavoritesFilter] = useState('');
+
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const listPage = filters.page ?? 1;
+  const listPerPage = filters.per_page ?? 20;
+
+  const clientFilteredCatalog = useMemo(() => {
+    let list = catalogSorted;
+    if (favoritesFilter === 'favorites') {
+      list = list.filter((t) => favoriteTemplateIds.has(t.id));
+    }
+    if (nameFilter.trim()) {
+      const needle = nameFilter.toLowerCase();
+      list = list.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
+    }
+    return list;
+  }, [catalogSorted, favoritesFilter, nameFilter, favoriteTemplateIds]);
+
+  useEffect(() => {
+    const last = Math.max(1, Math.ceil(clientFilteredCatalog.length / Math.max(1, listPerPage)));
+    if (listPage > last) {
+      applyFilters({ page: last });
+    }
+  }, [clientFilteredCatalog.length, listPage, listPerPage, applyFilters]);
+
+  const pagedCatalog = useMemo(
+    () => sliceTemplatesPage(clientFilteredCatalog, listPage, listPerPage),
+    [clientFilteredCatalog, listPage, listPerPage],
+  );
+
+  const meta = useMemo(
+    () => buildTemplatesListMeta(clientFilteredCatalog.length, listPage, listPerPage),
+    [clientFilteredCatalog.length, listPage, listPerPage],
+  );
+
   const displayTemplates = useMemo(() => {
     const out: Template[] = [];
-    for (const t of templates) {
+    for (const t of pagedCatalog) {
       const hasPublishedFallback =
         t.status !== 'published' &&
         !!t.latest_published_version_id;
@@ -97,13 +131,7 @@ export function TemplatesTable({ processId }: Props = {}) {
       out.push(publishedFallback);
     }
     return out;
-  }, [templates, profile?.id]);
-
-  const filteredTemplates = useMemo(() => {
-    if (!nameFilter) return displayTemplates;
-    const needle = nameFilter.toLowerCase();
-    return displayTemplates.filter((t) => (t.name ?? '').toLowerCase().includes(needle));
-  }, [displayTemplates, nameFilter]);
+  }, [pagedCatalog, profile?.id]);
 
   const filterUi = useMemo(
     () => ({
@@ -114,13 +142,10 @@ export function TemplatesTable({ processId }: Props = {}) {
     [filters],
   );
 
-  const filtersActiveCount = [
-    nameFilter,
-    filterUi.visibility,
-    filterUi.status,
-    filterUi.deliveryDeadline,
-    authorInput,
-  ].filter((v) => v && v !== '').length;
+  const filtersActiveCount =
+    (favoritesFilter ? 1 : 0) +
+    [nameFilter, filterUi.visibility, filterUi.status, filterUi.deliveryDeadline, authorInput].filter((v) => v && v !== '')
+      .length;
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -145,6 +170,7 @@ export function TemplatesTable({ processId }: Props = {}) {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     setNameInput('');
     setNameFilter('');
+    setFavoritesFilter('');
     setAuthorInput('');
     applyFilters({
       visibility_level: undefined,
@@ -256,8 +282,8 @@ export function TemplatesTable({ processId }: Props = {}) {
 
       <DataTable<Template>
         columns={columns}
-        rows={filteredTemplates}
-        loading={loading && templates.length === 0}
+        rows={displayTemplates}
+        loading={loading && catalogSorted.length === 0}
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
@@ -321,6 +347,22 @@ export function TemplatesTable({ processId }: Props = {}) {
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
+            </FilterField>
+            <FilterField label="Favoritos">
+              <Select
+                fieldSize="sm"
+                value={favoritesFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                  setFavoritesFilter(e.target.value);
+                  applyFilters({ page: 1 });
+                }}
+              >
+                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                  <option key={o.value || 'all'} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </Select>
             </FilterField>
             <FilterField label="Fecha límite">
               <DatePicker
