@@ -221,7 +221,10 @@ export function TemplateReviewView({ template }: Props) {
   };
 
   const handleRejectClick = () => {
-    if (comments.length === 0) setShowNoCommentsWarning(true);
+    const myUnresolved = comments.filter(
+      c => String(c.author_id) === String(currentUserId) && !c.resolved && !c.parent_id,
+    );
+    if (myUnresolved.length === 0) setShowNoCommentsWarning(true);
     else setShowRejectModal(true);
   };
 
