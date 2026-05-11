@@ -270,6 +270,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks)
   const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
+  const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
   const { profile } = useUserProfile();
   const isDocumentOwner = !!profile?.id && (detail?.created_by === profile.id || detail?.owner_id === profile.id);
 
@@ -851,10 +852,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   useEffect(() => {
     activeBlockRef.current = activeBlock;
     if (activeBlock) {
-      setLocalContent(normalizeBlockContentForEditor(activeBlock.content).length > 0 
-        ? activeBlock.content 
+      setLocalContent(normalizeBlockContentForEditor(activeBlock.content).length > 0
+        ? activeBlock.content
         : activeBlock.default_content
       );
+      setShowDocumentCommentPanel(true); // re-show comment panel on block change
     }
   }, [activeBlock]);
 
@@ -1621,7 +1623,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           </div>
 
           {/* Right: creator-edit comment panel for active block */}
-          {activeBlock && activeBlock.document_block_id && !isEditorFullscreen && (() => {
+          {showDocumentCommentPanel && activeBlock && activeBlock.document_block_id && !isEditorFullscreen && (() => {
             const blockComments = reviewComments.filter(c => c.blockable_id === activeBlock.document_block_id && !c.parent_id);
             const hasUnresolved = blockComments.some(c => !c.resolved);
             const allBlockComments = reviewComments.filter(c => {
@@ -1639,7 +1641,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   allComments={reviewComments}
                   onReply={handleReviewReply}
                   onResolve={isDocumentOwner ? handleReviewResolve : undefined}
-                  onClose={() => setActiveBlockKey(null)}
+                  onClose={() => setShowDocumentCommentPanel(false)}
                 />
               </div>
             );

@@ -202,6 +202,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
+  const [showCommentPanel, setShowCommentPanel] = useState(true);
 
   // const [multiIndex, setMultiIndex] = useState(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -316,6 +317,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setSelectedBlockIds([blockId]);
       setActiveSingleId(blockId);
       setPanelMode('edit');
+      setShowCommentPanel(true);
       loadFormFromBlock(block);
       setActiveTab('properties');
     }, 200);
@@ -669,7 +671,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       </div>
 
       {/* Right: comment panel — creator-edit mode, only when block has unresolved comments */}
-      {activeBlockHasComments && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
+      {showCommentPanel && activeBlockHasComments && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
         <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
           <BlockCommentsCard
             mode="creator-edit"
@@ -678,7 +680,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             allComments={reviewComments}
             onReply={handleReply}
             onResolve={isOwner && onResolveComment ? onResolveComment : undefined}
-            onClose={() => setActiveSingleId(null)}
+            onClose={() => setShowCommentPanel(false)}
           />
         </div>
       )}
