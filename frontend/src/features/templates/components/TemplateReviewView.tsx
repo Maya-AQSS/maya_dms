@@ -271,7 +271,17 @@ export function TemplateReviewView({ template }: Props) {
   const closeView = () => setActiveView(null);
 
   const selectedBlock = blocks.find(b => b.id === activeView?.blockId);
-  const blockComments = comments.filter(c => c.blockable_id === activeView?.blockId);
+  const blockComments = (() => {
+    const bid = activeView?.blockId;
+    if (!bid) return [];
+    const rootIds = comments
+      .filter(c => c.blockable_id === bid && !c.parent_id)
+      .map(c => c.id);
+    return comments.filter(
+      c => (c.blockable_id === bid && !c.parent_id)
+        || (c.parent_id !== null && rootIds.includes(c.parent_id)),
+    );
+  })();
 
   return (
     <div className="flex flex-col h-full bg-ui-preview-bg dark:bg-ui-dark-bg/50">
