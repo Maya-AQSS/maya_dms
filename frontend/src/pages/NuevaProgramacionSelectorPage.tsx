@@ -27,6 +27,9 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 
+/** Orden local solo en columnas con `sortable: true` (nombre y fecha de publicación). */
+const SORTABLE_SELECTOR_COLUMN_IDS = new Set(['name', 'latest_published_at']);
+
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -36,7 +39,7 @@ export function NuevaProgramacionSelectorPage() {
   const selectedProcessId = locationState?.processId;
   const [process, setProcess] = useState<Process | null>(null);
 
-  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:nueva-programacion-selector',
   });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
@@ -148,21 +151,49 @@ export function NuevaProgramacionSelectorPage() {
     );
   }, [afterFavorites, academicContextFilter, hierarchy]);
 
+  const sortedList = useMemo(() => {
+    if (!sortBy || !SORTABLE_SELECTOR_COLUMN_IDS.has(sortBy.columnId)) {
+      return afterAcademicContext;
+    }
+    const { columnId, direction } = sortBy;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    return [...afterAcademicContext].sort((a, b) => {
+      if (columnId === 'name') {
+        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
+      }
+      if (columnId === 'latest_published_at') {
+        const valA = a.latest_published_at ?? '';
+        const valB = b.latest_published_at ?? '';
+        if (valA < valB) {
+          return -1 * dir;
+        }
+        if (valA > valB) {
+          return 1 * dir;
+        }
+
+        return 0;
+      }
+
+      return 0;
+    });
+  }, [afterAcademicContext, sortBy]);
+
   useEffect(() => {
-    const last = Math.max(1, Math.ceil(afterAcademicContext.length / Math.max(1, listPerPage)));
+    const last = Math.max(1, Math.ceil(sortedList.length / Math.max(1, listPerPage)));
     if (listPage > last) {
       setFilters((f) => ({ ...f, page: last }));
     }
-  }, [afterAcademicContext.length, listPage, listPerPage]);
+  }, [sortedList.length, listPage, listPerPage]);
 
   const templates = useMemo(
-    () => sliceTemplatesPage(afterAcademicContext, listPage, listPerPage),
-    [afterAcademicContext, listPage, listPerPage],
+    () => sliceTemplatesPage(sortedList, listPage, listPerPage),
+    [sortedList, listPage, listPerPage],
   );
 
   const meta = useMemo(
-    () => buildTemplatesListMeta(afterAcademicContext.length, listPage, listPerPage),
-    [afterAcademicContext.length, listPage, listPerPage],
+    () => buildTemplatesListMeta(sortedList.length, listPage, listPerPage),
+    [sortedList.length, listPage, listPerPage],
   );
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -170,6 +201,7 @@ export function NuevaProgramacionSelectorPage() {
       {
         id: 'name',
         header: 'Nombre',
+        sortable: true,
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
@@ -212,6 +244,7 @@ export function NuevaProgramacionSelectorPage() {
       {
         id: 'latest_published_at',
         header: 'Fecha de publicación',
+        sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
             {formatCalendarDateForBrowser(t.latest_published_at)}
@@ -314,6 +347,8 @@ export function NuevaProgramacionSelectorPage() {
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
         pageSize={pageSize}
         onPageSizeChange={setPageSize}
         emptyMessage="No hay plantillas utilizables para crear documentos con los filtros actuales."

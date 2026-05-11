@@ -33,14 +33,20 @@ function formatActionError(err: unknown): string {
 
 const DEFAULT_PER_PAGE = 10;
 
+/** Columnas de tabla que admiten ordenación local (no incluye «estado»). */
+const SORTABLE_TEMPLATE_COLUMN_IDS = new Set(['name', 'delivery_deadline']);
+
+export type TemplatesTableSort = { columnId: string; direction: 'asc' | 'desc' } | null;
+
 /**
  * Listado y mutaciones de plantillas normativas.
  * La API devuelve el catálogo completo (filtrado); la paginación es en cliente.
  *
  * @param processId Si se aporta, se aplica como filtro `process_id` permanente
  *   (no se expone en el panel de filtros — viene del contexto de la URL).
+ * @param sortBy Orden local solo para columnas en {@see SORTABLE_TEMPLATE_COLUMN_IDS}.
  */
-export function useTemplates(processId?: string) {
+export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
   const [fullList, setFullList] = useState<Template[]>([]);
   /** Sin `per_page` por defecto: las pantallas usan `filters.per_page ?? pageSize` (preferencias de tabla). */
   const [filters, setFilters] = useState<TemplateListFilters>({});
@@ -72,14 +78,42 @@ export function useTemplates(processId?: string) {
   const page = filters.page ?? 1;
   const perPage = filters.per_page ?? DEFAULT_PER_PAGE;
 
+  const sortedList = useMemo(() => {
+    if (!sortBy || !SORTABLE_TEMPLATE_COLUMN_IDS.has(sortBy.columnId)) {
+      return fullList;
+    }
+    const { columnId, direction } = sortBy;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    return [...fullList].sort((a, b) => {
+      if (columnId === 'name') {
+        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
+      }
+      if (columnId === 'delivery_deadline') {
+        const valA = a.status === 'published' ? '9999-12-31' : (a.delivery_deadline ?? '').slice(0, 10);
+        const valB = b.status === 'published' ? '9999-12-31' : (b.delivery_deadline ?? '').slice(0, 10);
+        if (valA < valB) {
+          return -1 * dir;
+        }
+        if (valA > valB) {
+          return 1 * dir;
+        }
+
+        return 0;
+      }
+
+      return 0;
+    });
+  }, [fullList, sortBy]);
+
   const templates = useMemo(
-    () => sliceTemplatesPage(fullList, page, perPage),
-    [fullList, page, perPage],
+    () => sliceTemplatesPage(sortedList, page, perPage),
+    [sortedList, page, perPage],
   );
 
   const meta = useMemo(
-    () => buildTemplatesListMeta(fullList.length, page, perPage),
-    [fullList.length, page, perPage],
+    () => buildTemplatesListMeta(sortedList.length, page, perPage),
+    [sortedList.length, page, perPage],
   );
 
   const load = useCallback(async () => {
@@ -186,8 +220,8 @@ export function useTemplates(processId?: string) {
 
   return {
     templates,
-    /** Catálogo completo en el orden devuelto por la API; la paginación/filtros extra son en cliente. */
-    catalogSorted: fullList,
+    /** Catálogo completo: orden API y, si aplica, orden local por nombre o fecha de validación. */
+    catalogSorted: sortedList,
     meta,
     filters,
     loading,
