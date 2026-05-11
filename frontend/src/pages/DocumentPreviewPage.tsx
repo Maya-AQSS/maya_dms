@@ -1127,7 +1127,18 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         open={showDiscardVersionModal}
         variant="danger"
         title="¿Descartar nueva versión?"
-        description="Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada del documento."
+        description={
+          <div className="space-y-2 text-left">
+            <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
+              Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada del documento.
+            </p>
+            {detail?.status === 'in_review' && (
+              <p className="text-sm font-bold text-warning-dark dark:text-warning-light">
+                ⚠ Esta versión está en revisión. Los validadores asignados perderán su trabajo si la descartas.
+              </p>
+            )}
+          </div>
+        }
         confirmLabel="Descartar versión"
         cancelLabel="Cancelar"
         loading={discardVersionLoading}
