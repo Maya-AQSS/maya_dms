@@ -109,7 +109,7 @@ class TemplateRepository implements TemplateRepositoryInterface
             $query->where('template_head_ev.snapshot_data->template->team_id', $filters->teamId);
         }
         if ($filters->authorName !== null) {
-            $query->where('users.name', 'like', '%'.$filters->authorName.'%');
+            $query->where('users.name', 'ilike', '%'.$filters->authorName.'%');
         }
         if ($filters->deliveryDeadline !== null) {
             $query->whereDate(
