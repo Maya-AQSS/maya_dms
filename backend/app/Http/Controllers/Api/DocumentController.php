@@ -20,7 +20,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class DocumentController extends Controller
@@ -42,8 +41,8 @@ class DocumentController extends Controller
         $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
-        $this->attachLatestPublishedVersionMeta($documents);
-        $this->attachTemplateVersionNumbers($documents);
+        $this->documentService->attachLatestPublishedVersionMeta($documents);
+        $this->documentService->attachTemplateVersionNumbers($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
@@ -51,113 +50,6 @@ class DocumentController extends Controller
         );
 
         return DocumentResource::collection($documents);
-    }
-
-    /**
-     * Adjunta `template_version_number` en lote para evitar resolución por documento en el Resource.
-     *
-     * @param  Collection<int, Document>  $documents
-     */
-    private function attachTemplateVersionNumbers(Collection $documents): void
-    {
-        if ($documents->isEmpty()) {
-            return;
-        }
-
-        $versionIds = $documents
-            ->pluck('template_version_id')
-            ->filter(fn ($id) => is_string($id) && $id !== '')
-            ->unique()
-            ->values()
-            ->all();
-        if ($versionIds === []) {
-            return;
-        }
-
-        /** @var array<string,int> $versionNumberById */
-        $versionNumberById = DB::table('entity_versions')
-            ->whereIn('id', $versionIds)
-            ->pluck('version_number', 'id')
-            ->map(fn ($value) => (int) $value)
-            ->all();
-
-        foreach ($documents as $document) {
-            $templateVersionId = $document->template_version_id;
-            if (! is_string($templateVersionId) || $templateVersionId === '') {
-                continue;
-            }
-
-            if (array_key_exists($templateVersionId, $versionNumberById)) {
-                $document->setAttribute('template_version_number', $versionNumberById[$templateVersionId]);
-            }
-        }
-    }
-
-    /**
-     * Adjunta metadatos de última versión publicada por documento para construir vistas fallback.
-     *
-     * @param  \Illuminate\Support\Collection<int, Document>  $documents
-     */
-    private function attachLatestPublishedVersionMeta(\Illuminate\Support\Collection $documents): void
-    {
-        if ($documents->isEmpty()) {
-            return;
-        }
-
-        $ids = $documents->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
-        if ($ids === []) {
-            return;
-        }
-
-        $rows = DB::table('entity_versions')
-            ->where('versionable_type', Document::class)
-            ->whereIn('versionable_id', $ids)
-            ->where('status', 'published')
-            ->where('version_number', '>', 0)
-            ->orderByDesc('version_number')
-            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
-
-        /** @var array<string, object{versionable_id:string,id:string,version_number:int}> $latestByDocument */
-        $latestByDocument = [];
-        foreach ($rows as $row) {
-            $documentId = (string) $row->versionable_id;
-            if (! isset($latestByDocument[$documentId])) {
-                $latestByDocument[$documentId] = (object) [
-                    'versionable_id' => $documentId,
-                    'id' => (string) $row->id,
-                    'version_number' => (int) $row->version_number,
-                    'title' => $this->extractPublishedDocumentTitleFromSnapshotRow($row->snapshot_data),
-                ];
-            }
-        }
-
-        foreach ($documents as $document) {
-            $meta = $latestByDocument[(string) $document->id] ?? null;
-            $document->setAttribute('latest_published_version_id', $meta?->id);
-            $document->setAttribute('latest_published_version_number', $meta?->version_number);
-            $document->setAttribute('latest_published_title', $meta?->title);
-        }
-    }
-
-    private function extractPublishedDocumentTitleFromSnapshotRow(mixed $snapshot): ?string
-    {
-        if (is_string($snapshot) && $snapshot !== '') {
-            $decoded = json_decode($snapshot, true);
-            if (is_array($decoded)) {
-                $snapshot = $decoded;
-            }
-        }
-
-        if (! is_array($snapshot)) {
-            return null;
-        }
-
-        $title = data_get($snapshot, 'document.title');
-        if (! is_string($title) || trim($title) === '') {
-            return null;
-        }
-
-        return $title;
     }
 
     /**

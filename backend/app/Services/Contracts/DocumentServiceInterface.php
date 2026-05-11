@@ -212,4 +212,18 @@ interface DocumentServiceInterface
      * @param  Collection<int, Document>  $documents
      */
     public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void;
+
+    /**
+     * Adjunta metadatos de última versión publicada por documento para construir vistas fallback.
+     *
+     * @param  Collection<int, Document>  $documents
+     */
+    public function attachLatestPublishedVersionMeta(Collection $documents): void;
+
+    /**
+     * Adjunta `template_version_number` en lote para evitar resolución por documento en el Resource.
+     *
+     * @param  Collection<int, Document>  $documents
+     */
+    public function attachTemplateVersionNumbers(Collection $documents): void;
 }

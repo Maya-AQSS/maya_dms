@@ -1426,4 +1426,94 @@ class DocumentService implements DocumentServiceInterface
     {
         return $this->documentVersionService->listDocumentVersions($documentId);
     }
+
+    public function attachLatestPublishedVersionMeta(Collection $documents): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $ids = $documents->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
+        if ($ids === []) {
+            return;
+        }
+
+        $rows = DB::table('entity_versions')
+            ->where('versionable_type', Document::class)
+            ->whereIn('versionable_id', $ids)
+            ->where('status', 'published')
+            ->where('version_number', '>', 0)
+            ->orderByDesc('version_number')
+            ->get(['versionable_id', 'id', 'version_number', 'snapshot_data']);
+
+        $latestByDocument = [];
+        foreach ($rows as $row) {
+            $documentId = (string) $row->versionable_id;
+            if (! isset($latestByDocument[$documentId])) {
+                $latestByDocument[$documentId] = (object) [
+                    'id' => (string) $row->id,
+                    'version_number' => (int) $row->version_number,
+                    'title' => $this->extractPublishedTitleFromSnapshot($row->snapshot_data),
+                ];
+            }
+        }
+
+        foreach ($documents as $document) {
+            $meta = $latestByDocument[(string) $document->id] ?? null;
+            $document->setAttribute('latest_published_version_id', $meta?->id);
+            $document->setAttribute('latest_published_version_number', $meta?->version_number);
+            $document->setAttribute('latest_published_title', $meta?->title);
+        }
+    }
+
+    public function attachTemplateVersionNumbers(Collection $documents): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $versionIds = $documents
+            ->pluck('template_version_id')
+            ->filter(fn ($id) => is_string($id) && $id !== '')
+            ->unique()
+            ->values()
+            ->all();
+        if ($versionIds === []) {
+            return;
+        }
+
+        $versionNumberById = DB::table('entity_versions')
+            ->whereIn('id', $versionIds)
+            ->pluck('version_number', 'id')
+            ->map(fn ($value) => (int) $value)
+            ->all();
+
+        foreach ($documents as $document) {
+            $templateVersionId = $document->template_version_id;
+            if (! is_string($templateVersionId) || $templateVersionId === '') {
+                continue;
+            }
+            if (array_key_exists($templateVersionId, $versionNumberById)) {
+                $document->setAttribute('template_version_number', $versionNumberById[$templateVersionId]);
+            }
+        }
+    }
+
+    private function extractPublishedTitleFromSnapshot(mixed $snapshot): ?string
+    {
+        if (is_string($snapshot) && $snapshot !== '') {
+            $decoded = json_decode($snapshot, true);
+            if (is_array($decoded)) {
+                $snapshot = $decoded;
+            }
+        }
+        if (! is_array($snapshot)) {
+            return null;
+        }
+        $title = data_get($snapshot, 'document.title');
+        if (! is_string($title) || trim($title) === '') {
+            return null;
+        }
+        return $title;
+    }
 }
