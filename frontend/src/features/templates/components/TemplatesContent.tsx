@@ -169,6 +169,9 @@ export function TemplatesContent() {
   };
 
   const displayTemplates = useMemo(() => {
+    /** Con filtro de estado ≠ publicada, no mostrar la fila sintética de última publicada (siempre `published`). */
+    const includePublishedFallbackRow = !filters.status || filters.status === 'published';
+
     const out: Template[] = [];
     for (const t of pagedSource) {
       const hasPublishedFallback =
@@ -197,13 +200,15 @@ export function TemplatesContent() {
       if (canSeeLive) {
         out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
       }
-      out.push(publishedFallback);
+      if (includePublishedFallbackRow) {
+        out.push(publishedFallback);
+      }
     }
     if (filters.delivery_deadline) {
       return out.filter((row) => row.status !== 'published');
     }
     return out;
-  }, [pagedSource, profile?.id, filters.delivery_deadline]);
+  }, [pagedSource, profile?.id, filters.delivery_deadline, filters.status]);
 
   const handleRowClick = (t: Template) => {
     if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {

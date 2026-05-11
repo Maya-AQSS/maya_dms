@@ -119,6 +119,9 @@ export function TemplatesTable({ processId }: Props = {}) {
   );
 
   const displayTemplates = useMemo(() => {
+    /** Con filtro de estado ≠ publicada, no mostrar la fila sintética de última publicada (siempre `published`). */
+    const includePublishedFallbackRow = !filters.status || filters.status === 'published';
+
     const out: Template[] = [];
     for (const t of pagedCatalog) {
       const hasPublishedFallback =
@@ -147,13 +150,15 @@ export function TemplatesTable({ processId }: Props = {}) {
       if (canSeeLive) {
         out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
       }
-      out.push(publishedFallback);
+      if (includePublishedFallbackRow) {
+        out.push(publishedFallback);
+      }
     }
     if (filters.delivery_deadline) {
       return out.filter((row) => row.status !== 'published');
     }
     return out;
-  }, [pagedCatalog, profile?.id, filters.delivery_deadline]);
+  }, [pagedCatalog, profile?.id, filters.delivery_deadline, filters.status]);
 
   const filterUi = useMemo(
     () => ({
