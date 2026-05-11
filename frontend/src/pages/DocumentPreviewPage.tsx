@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchDocument,
@@ -14,7 +14,7 @@ import {
   discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
-import { fetchTemplate } from '../api/templates';
+import { fetchTemplate, resolveComment } from '../api/templates';
 import { fetchProcesses } from '../api/processes';
 import { fetchMe } from '../api/users';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -27,6 +27,10 @@ import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
+import { BlockCommentsCard } from '../features/templates/components/BlockCommentsCard';
+import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
+import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
+import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
 
 // Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
@@ -153,6 +157,20 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [rejectReason, setRejectReason] = useState('');
   const [processLabel, setProcessLabel] = useState<string | null>(null);
   const [publishedDocumentVersionCount, setPublishedDocumentVersionCount] = useState<number | null>(null);
+
+  // Validate-mode comment state (mirrors TemplateReviewView)
+  const [validateComments, setValidateComments] = useState<BlockComment[]>([]);
+  const [validateActiveBlockId, setValidateActiveBlockId] = useState<string | null>(null);
+  const [validateNewCommentBody, setValidateNewCommentBody] = useState('');
+  const [validateCommentLoading, setValidateCommentLoading] = useState(false);
+  const [validateCommentError, setValidateCommentError] = useState<string | null>(null);
+  const [validateViewPaddingTop, setValidateViewPaddingTop] = useState(0);
+  const [validateConnectorGeom, setValidateConnectorGeom] = useState<{ top: number; left: number; width: number } | null>(null);
+  const validateScrollRef = useRef<HTMLDivElement>(null);
+  const validateArticleRef = useRef<HTMLElement>(null);
+  const validateBlockRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const validateViewColRef = useRef<HTMLDivElement>(null);
+  const validateViewHeaderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!documentId) {
@@ -383,6 +401,88 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       cancelled = true;
     };
   }, [detail?.template_id]);
+
+  // Load document comments in validate mode
+  useEffect(() => {
+    if (!isValidateMode || !documentId || !detail) return;
+    let cancelled = false;
+    void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
+      .then((res) => { if (!cancelled) setValidateComments(res.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isValidateMode, documentId, detail?.id]);
+
+  // Recalculate panel position when active block changes (validate mode)
+  useEffect(() => {
+    if (!validateActiveBlockId) {
+      setValidateConnectorGeom(null);
+      setValidateViewPaddingTop(0);
+      return;
+    }
+    const raf = requestAnimationFrame(() => {
+      const blockEl = validateBlockRefs.current.get(validateActiveBlockId);
+      const scrollEl = validateScrollRef.current;
+      const artEl = validateArticleRef.current;
+      if (!blockEl || !scrollEl || !artEl) return;
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const blockRect = blockEl.getBoundingClientRect();
+      const blockTopInScroll = blockRect.top - scrollRect.top + scrollEl.scrollTop;
+      setValidateViewPaddingTop(blockTopInScroll);
+      const viewHeaderH = validateViewHeaderRef.current?.offsetHeight ?? 44;
+      const connectorTop = blockTopInScroll + viewHeaderH / 2;
+      const artRightX = artEl.getBoundingClientRect().right - scrollRect.left;
+      const viewColRect = validateViewColRef.current?.getBoundingClientRect();
+      if (viewColRect) {
+        const viewColLeftX = viewColRect.left - scrollRect.left;
+        const connectorLeft = artRightX + 6;
+        setValidateConnectorGeom({
+          top: connectorTop,
+          left: connectorLeft,
+          width: Math.max(0, viewColLeftX - 6 - connectorLeft),
+        });
+      }
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [validateActiveBlockId]);
+
+  const selectValidateBlock = (blockId: string) => {
+    setValidateActiveBlockId(prev => (prev === blockId ? null : blockId));
+    setValidateNewCommentBody('');
+  };
+
+  const handleValidateAddComment = async () => {
+    if (!validateNewCommentBody.trim() || !documentId || !validateActiveBlockId) return;
+    const block = detail?.blocks.find(b => b.template_block_id === validateActiveBlockId);
+    const blockableId = block?.document_block_id ?? null;
+    setValidateCommentLoading(true);
+    try {
+      const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
+        method: 'POST',
+        body: { body: validateNewCommentBody, blockable_id: blockableId },
+      });
+      setValidateComments(prev => [...prev, res.data]);
+      setValidateNewCommentBody('');
+    } catch {
+      setValidateCommentError('No se pudo guardar el comentario.');
+    } finally {
+      setValidateCommentLoading(false);
+    }
+  };
+
+  const handleValidateReply = async (parentCommentId: string, body: string) => {
+    if (!documentId) return;
+    const parent = validateComments.find(c => c.id === parentCommentId);
+    const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
+      method: 'POST',
+      body: { body, parent_id: parentCommentId, blockable_id: parent?.blockable_id ?? null },
+    });
+    setValidateComments(prev => [...prev, res.data]);
+  };
+
+  const handleValidateResolve = async (commentId: string) => {
+    const res = await resolveComment(commentId);
+    setValidateComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
+  };
 
   const handleDelete = async () => {
     if (!documentId) return;
@@ -661,13 +761,28 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   }));
 
   if (isValidateMode) {
+    const validateBlocks = detail?.blocks ?? [];
+    const validateSelectedBlock = validateBlocks.find(b => b.template_block_id === validateActiveBlockId);
+    const validateBlockComments = (() => {
+      if (!validateActiveBlockId || !validateSelectedBlock) return [];
+      const rootIds = validateComments
+        .filter(c => c.blockable_id === validateSelectedBlock.document_block_id && !c.parent_id)
+        .map(c => c.id);
+      return validateComments.filter(
+        c => (c.blockable_id === validateSelectedBlock.document_block_id && !c.parent_id)
+          || (c.parent_id !== null && rootIds.includes(c.parent_id)),
+      );
+    })();
+
     return (
       <>
         <div className="flex flex-col h-full bg-ui-preview-bg dark:bg-ui-dark-bg/50">
+          {/* ── Page header ── */}
           <div className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={handleBack}
+                aria-label="Volver"
                 className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-secondary transition-colors"
               >
                 ←
@@ -692,10 +807,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 variant="outlineWarning"
                 size="sm"
                 disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => {
-                  setValidationModalError(null);
-                  setValidateConfirm('reject');
-                }}
+                onClick={() => { setValidationModalError(null); setValidateConfirm('reject'); }}
                 className="text-xs font-black uppercase tracking-wider"
               >
                 Rechazar validación
@@ -705,10 +817,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 variant="primary"
                 size="sm"
                 disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => {
-                  setValidationModalError(null);
-                  setValidateConfirm('approve');
-                }}
+                onClick={() => { setValidationModalError(null); setValidateConfirm('approve'); }}
                 className="text-xs font-black uppercase tracking-wider px-6"
               >
                 Validar y aprobar
@@ -726,27 +835,164 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               Cargando datos de validación…
             </div>
           )}
-          {error && !loading && (
+          {(error && !loading) && (
             <div className="mx-6 mt-4 p-3 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
               ⚠ {error}
             </div>
           )}
+          {validateCommentError && (
+            <div className="mx-6 mt-2 p-3 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
+              ⚠ {validateCommentError}
+            </div>
+          )}
 
-          <div className="flex-1 overflow-y-auto p-8 scroll-smooth custom-scrollbar">
-            <article
-              className="mx-auto bg-white dark:bg-ui-card shadow-2xl rounded-sm transition-all duration-300"
-              style={{ maxWidth: '850px', minHeight: '100%', padding: '60px 70px' }}
-            >
-              {!loading && !error && detail ? (
-                <PaperBlocksArticle
-                  title={previewTitle}
-                  blocks={articleBlocks}
-                  emptyMessage="Este documento no tiene bloques."
-                />
-              ) : (
-                <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
+          {/* ── Work area — both columns scroll together ── */}
+          <div
+            ref={validateScrollRef}
+            className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar relative"
+          >
+            {/* Connector line */}
+            {validateActiveBlockId && validateConnectorGeom && (
+              <div
+                aria-hidden="true"
+                className="bg-odoo-purple pointer-events-none"
+                style={{
+                  position: 'absolute',
+                  top: validateConnectorGeom.top,
+                  left: validateConnectorGeom.left,
+                  width: validateConnectorGeom.width,
+                  height: 1.5,
+                  zIndex: 10,
+                  transform: 'translateY(-50%)',
+                }}
+              />
+            )}
+
+            <div className="flex min-h-full">
+              {/* Document column */}
+              <div className="flex-1 p-8">
+                <article
+                  ref={validateArticleRef as React.RefObject<HTMLElement>}
+                  className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content rounded-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+                  style={{ maxWidth: '850px', minHeight: '100%', padding: '60px 70px' }}
+                >
+                  {loading && (
+                    <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
+                  )}
+                  {!loading && !error && detail && (
+                    <>
+                      <header className="mb-12 border-b border-ui-border dark:border-ui-dark-border pb-8">
+                        <h1 className="text-3xl font-black text-text-primary dark:text-text-dark-primary mb-4 leading-tight">
+                          {previewTitle}
+                        </h1>
+                      </header>
+                      {validateBlocks.length === 0 ? (
+                        <div className="py-20 text-center border-2 border-dashed border-ui-border dark:border-ui-dark-border rounded-xl">
+                          <p className="text-sm text-text-muted italic">Este documento no tiene bloques.</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-12">
+                          {validateBlocks.map((block) => {
+                            const isSelected = validateActiveBlockId === block.template_block_id;
+                            const blockId = block.template_block_id;
+                            const hasComments = validateComments.some(
+                              c => c.blockable_id === block.document_block_id,
+                            );
+                            const nodes = normalizeBlockContentForEditor(block.content ?? block.default_content);
+
+                            return (
+                              <section
+                                key={blockId}
+                                ref={(el) => {
+                                  if (el) validateBlockRefs.current.set(blockId, el);
+                                  else validateBlockRefs.current.delete(blockId);
+                                }}
+                                onClick={(e) => { e.stopPropagation(); selectValidateBlock(blockId); }}
+                                className={[
+                                  'relative group rounded-lg transition-all duration-200 cursor-pointer',
+                                  isSelected
+                                    ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
+                                    : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
+                                ].join(' ')}
+                              >
+                                {/* Block order badge */}
+                                <div className={[
+                                  'absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200',
+                                  isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted',
+                                ].join(' ')}>
+                                  #{block.sort_order ?? '?'}
+                                </div>
+
+                                {/* Block header */}
+                                <div className="flex items-center gap-3 mb-4">
+                                  <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
+                                    {block.title ?? 'Bloque sin título'}
+                                  </h3>
+                                  <button
+                                    type="button"
+                                    aria-label={`Ver comentarios del bloque ${block.sort_order}`}
+                                    onClick={(e) => { e.stopPropagation(); selectValidateBlock(blockId); }}
+                                    className={[
+                                      'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                                      isSelected
+                                        ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                                        : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                                    ].join(' ')}
+                                  >
+                                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                    </svg>
+                                    <span>Mensajes</span>
+                                    {hasComments && (
+                                      <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-xs leading-none">
+                                        {validateComments.filter(c => c.blockable_id === block.document_block_id && !c.parent_id).length}
+                                      </span>
+                                    )}
+                                  </button>
+                                </div>
+
+                                <div>
+                                  {nodes.length > 0 ? (
+                                    <BlockContentHtml content={nodes} />
+                                  ) : (
+                                    <p className="text-xs text-text-muted italic">Sin contenido.</p>
+                                  )}
+                                </div>
+                              </section>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </article>
+              </div>
+
+              {/* Comments panel column */}
+              {validateActiveBlockId && validateSelectedBlock && (
+                <div
+                  ref={validateViewColRef}
+                  className="shrink-0 pr-6"
+                  style={{ width: 408, paddingTop: validateViewPaddingTop }}
+                >
+                  <BlockCommentsCard
+                    mode="validator"
+                    blockSortOrder={validateSelectedBlock.sort_order ?? '?'}
+                    blockComments={validateBlockComments}
+                    allComments={validateComments}
+                    newCommentBody={validateNewCommentBody}
+                    onNewCommentBodyChange={setValidateNewCommentBody}
+                    onAddComment={() => void handleValidateAddComment()}
+                    commentLoading={validateCommentLoading}
+                    canAddComments={!!actionableReviewId}
+                    onReply={handleValidateReply}
+                    onResolve={handleValidateResolve}
+                    headerRef={validateViewHeaderRef}
+                    onClose={() => { setValidateActiveBlockId(null); setValidateNewCommentBody(''); }}
+                  />
+                </div>
               )}
-            </article>
+            </div>
           </div>
         </div>
 
@@ -757,10 +1003,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           confirmLabel="Aprobar"
           error={validationModalError}
           loading={validationActionLoading}
-          onCancel={() => {
-            setValidateConfirm(null);
-            setValidationModalError(null);
-          }}
+          onCancel={() => { setValidateConfirm(null); setValidationModalError(null); }}
           onConfirm={() => void handleApproveValidation()}
         />
         <ConfirmDialog
@@ -785,11 +1028,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           variant="danger"
           error={validationModalError}
           loading={validationActionLoading}
-          onCancel={() => {
-            setValidateConfirm(null);
-            setValidationModalError(null);
-            setRejectReason('');
-          }}
+          onCancel={() => { setValidateConfirm(null); setValidationModalError(null); setRejectReason(''); }}
           onConfirm={() => void handleRejectValidation()}
         />
       </>
