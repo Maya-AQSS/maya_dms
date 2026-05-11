@@ -36,7 +36,7 @@ export function NuevaProgramacionSelectorPage() {
   const selectedProcessId = locationState?.processId;
   const [process, setProcess] = useState<Process | null>(null);
 
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
+  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
     storageKey: 'maya:dms:nueva-programacion-selector',
   });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
@@ -148,46 +148,21 @@ export function NuevaProgramacionSelectorPage() {
     );
   }, [afterFavorites, academicContextFilter, hierarchy]);
 
-  const sortedTemplates = useMemo(() => {
-    if (!sortBy) return afterAcademicContext;
-    const { columnId, direction } = sortBy;
-    const dir = direction === 'asc' ? 1 : -1;
-
-    return [...afterAcademicContext].sort((a, b) => {
-      let valA: string | number = '';
-      let valB: string | number = '';
-
-      if (columnId === 'name') {
-        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
-      } else if (columnId === 'latest_published_at') {
-        valA = a.latest_published_at ?? '';
-        valB = b.latest_published_at ?? '';
-      } else if (columnId === 'version') {
-        valA = a.version ?? 0;
-        valB = b.version ?? 0;
-      }
-
-      if (valA < valB) return -1 * dir;
-      if (valA > valB) return 1 * dir;
-      return 0;
-    });
-  }, [afterAcademicContext, sortBy]);
-
   useEffect(() => {
-    const last = Math.max(1, Math.ceil(sortedTemplates.length / Math.max(1, listPerPage)));
+    const last = Math.max(1, Math.ceil(afterAcademicContext.length / Math.max(1, listPerPage)));
     if (listPage > last) {
       setFilters((f) => ({ ...f, page: last }));
     }
-  }, [sortedTemplates.length, listPage, listPerPage]);
+  }, [afterAcademicContext.length, listPage, listPerPage]);
 
   const templates = useMemo(
-    () => sliceTemplatesPage(sortedTemplates, listPage, listPerPage),
-    [sortedTemplates, listPage, listPerPage],
+    () => sliceTemplatesPage(afterAcademicContext, listPage, listPerPage),
+    [afterAcademicContext, listPage, listPerPage],
   );
 
   const meta = useMemo(
-    () => buildTemplatesListMeta(sortedTemplates.length, listPage, listPerPage),
-    [sortedTemplates.length, listPage, listPerPage],
+    () => buildTemplatesListMeta(afterAcademicContext.length, listPage, listPerPage),
+    [afterAcademicContext.length, listPage, listPerPage],
   );
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -202,7 +177,6 @@ export function NuevaProgramacionSelectorPage() {
             <span className="truncate font-medium">{t.name}</span>
           </span>
         ),
-        sortable: true,
       },
       {
         id: 'visibility_level',
@@ -238,7 +212,6 @@ export function NuevaProgramacionSelectorPage() {
       {
         id: 'latest_published_at',
         header: 'Fecha de publicación',
-        sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
             {formatCalendarDateForBrowser(t.latest_published_at)}
@@ -343,8 +316,6 @@ export function NuevaProgramacionSelectorPage() {
         onToggleHiddenColumn={toggleHidden}
         pageSize={pageSize}
         onPageSizeChange={setPageSize}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
         emptyMessage="No hay plantillas utilizables para crear documentos con los filtros actuales."
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}

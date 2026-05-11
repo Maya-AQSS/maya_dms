@@ -43,8 +43,9 @@ export function TemplatesTable({ processId }: Props = {}) {
   const { profile } = useUserProfile();
   const { hierarchy } = useHierarchy();
 
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
-    useTablePreferences({ storageKey: 'maya:dms:templates-table' });
+  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
+    storageKey: 'maya:dms:templates-table',
+  });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
     catalogSorted,
@@ -55,7 +56,7 @@ export function TemplatesTable({ processId }: Props = {}) {
     clearActionError,
     applyFilters,
     goToPage,
-  } = useTemplates(processId, sortBy);
+  } = useTemplates(processId);
 
   const [nameInput, setNameInput] = useState('');
   const [nameFilter, setNameFilter] = useState('');
@@ -240,7 +241,6 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'name',
         header: 'Nombre',
-        sortable: true,
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
@@ -292,7 +292,6 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'status',
         header: 'Estado',
-        sortable: true,
         cell: (t) => {
           const status = t.status as TemplateStatus;
           return (
@@ -305,7 +304,6 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'delivery_deadline',
         header: 'Fecha de validación',
-        sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
             {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
@@ -339,8 +337,6 @@ export function TemplatesTable({ processId }: Props = {}) {
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
         pageSize={pageSize}
         onPageSizeChange={(size) => {
           setPageSize(size);

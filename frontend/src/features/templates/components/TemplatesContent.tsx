@@ -44,8 +44,9 @@ export function TemplatesContent() {
   const navigate = useNavigate();
   const { profile } = useUserProfile();
   const { hierarchy } = useHierarchy();
-  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } =
-    useTablePreferences({ storageKey: 'maya:dms:templates-content' });
+  const { hiddenIds, toggleHidden, pageSize, setPageSize } = useTablePreferences({
+    storageKey: 'maya:dms:templates-content',
+  });
   const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
     catalogSorted,
@@ -61,7 +62,7 @@ export function TemplatesContent() {
     goToPage,
     deleteTemplate,
     cloneTemplate,
-  } = useTemplates(undefined, sortBy);
+  } = useTemplates(undefined);
 
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -225,7 +226,6 @@ export function TemplatesContent() {
       {
         id: 'name',
         header: 'Nombre',
-        sortable: true,
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
@@ -276,7 +276,6 @@ export function TemplatesContent() {
       {
         id: 'status',
         header: 'Estado',
-        sortable: true,
         cell: (t) => {
           const status = t.status as TemplateStatus;
           return (
@@ -289,7 +288,6 @@ export function TemplatesContent() {
       {
         id: 'delivery_deadline',
         header: 'Fecha de validación',
-        sortable: true,
         cell: (t) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
             {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
@@ -359,8 +357,6 @@ export function TemplatesContent() {
         rowKey={(t) => t.list_row_id ?? t.id}
         hiddenColumnIds={hiddenIds}
         onToggleHiddenColumn={toggleHidden}
-        sortBy={sortBy}
-        onSortChange={setSortBy}
         pageSize={pageSize}
         onPageSizeChange={(size) => {
           setPageSize(size);
