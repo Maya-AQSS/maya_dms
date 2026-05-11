@@ -6,13 +6,14 @@ import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
-import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
+import { approveTemplateReview, rejectTemplateReview, resolveComment } from '../../../api/templates';
 import { fetchProcesses } from '../../../api/processes';
 import { apiFetchJson } from '../../../api/http';
 import { useAuth } from '@maya/shared-auth-react';
+import { useUserProfile } from '../../user-profile';
 import type { Process } from '../../../types/processes';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
-import type { BlockComment } from './BlockCommentsCard';
+import type { BlockComment, CommentMode } from './BlockCommentsCard';
 
 type Props = { template: Template };
 
@@ -72,6 +73,7 @@ export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const { profile } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id);
 
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
@@ -99,9 +101,19 @@ export function TemplateReviewView({ template }: Props) {
 
   const currentUserId = user?.sub || (user as any)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
-  const isAlreadyValidated = myReview && myReview.status !== 'pending';
   const isReviewer = !!myReview;
-  const isReadOnly = !isReviewer;
+  const isCreator = !!profile?.id && template.created_by === profile.id;
+
+  // Determine the comment card mode for this user:
+  // - validator: assigned reviewer while template is in_review and review is pending
+  // - creator-edit: creator viewing a draft with unresolved review comments (post-rejection)
+  // - creator-readonly: creator in any other state (in_review being actively reviewed, etc.)
+  const commentMode: CommentMode = (() => {
+    if (isReviewer && template.status === 'in_review' && myReview?.status === 'pending') return 'validator';
+    if (isCreator && template.status === 'draft' && template.has_review_comments) return 'creator-edit';
+    if (isCreator) return 'creator-readonly';
+    return 'creator-readonly';
+  })();
 
   const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
@@ -227,6 +239,32 @@ export function TemplateReviewView({ template }: Props) {
     }
   };
 
+  const handleReply = async (parentCommentId: string, body: string) => {
+    const parent = comments.find(c => c.id === parentCommentId);
+    try {
+      const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
+        method: 'POST',
+        body: {
+          body,
+          parent_id: parentCommentId,
+          blockable_id: parent?.blockable_id ?? null,
+        },
+      });
+      setComments(prev => [...prev, res.data]);
+    } catch {
+      setError('No se pudo enviar la respuesta.');
+    }
+  };
+
+  const handleResolve = async (commentId: string) => {
+    try {
+      const res = await resolveComment(commentId);
+      setComments(prev => prev.map(c => c.id === commentId ? { ...c, ...res.data } : c));
+    } catch {
+      setError('No se pudo marcar el comentario como resuelto.');
+    }
+  };
+
   const closeView = () => setActiveView(null);
 
   const selectedBlock = blocks.find(b => b.id === activeView?.blockId);
@@ -263,13 +301,7 @@ export function TemplateReviewView({ template }: Props) {
         </div>
 
         <div className="flex items-center gap-2">
-          {isReadOnly ? (
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
-              <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
-                Vista de seguimiento
-              </span>
-            </div>
-          ) : !isAlreadyValidated ? (
+          {commentMode === 'validator' ? (
             <>
               <Button variant="outlineWarning" size="sm" onClick={handleRejectClick}
                 disabled={actionLoading} loading={actionLoading}
@@ -282,17 +314,29 @@ export function TemplateReviewView({ template }: Props) {
                 Validar y Aprobar
               </Button>
             </>
-          ) : (
+          ) : myReview?.status === 'approved' ? (
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
               <span className="text-success-dark text-xs font-black uppercase tracking-widest">
-                ✓ Ya has validado esta plantilla
+                ✓ Aprobaste esta plantilla
+              </span>
+            </div>
+          ) : myReview?.status === 'rejected' ? (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-warning/10 border border-warning/20">
+              <span className="text-warning-dark dark:text-warning-light text-xs font-black uppercase tracking-widest">
+                ✗ Rechazaste esta plantilla
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
+              <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
+                Vista de seguimiento
               </span>
             </div>
           )}
         </div>
       </div>
 
-      {isAlreadyValidated && remainingReviewers.length > 0 && (
+      {myReview?.status === 'approved' && remainingReviewers.length > 0 && (
         <div className="mx-6 mt-4 p-3 bg-odoo-purple/5 border border-odoo-purple/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
           <div className="flex items-center gap-3">
             <span className="text-lg">⏳</span>
@@ -495,7 +539,7 @@ export function TemplateReviewView({ template }: Props) {
             >
               {activeView.mode === 'comments' ? (
                 <BlockCommentsCard
-                  mode="validator"
+                  mode={commentMode}
                   blockSortOrder={selectedBlock.sort_order ?? '?'}
                   blockComments={blockComments}
                   allComments={comments}
@@ -503,7 +547,9 @@ export function TemplateReviewView({ template }: Props) {
                   onNewCommentBodyChange={setNewCommentBody}
                   onAddComment={handleAddComment}
                   commentLoading={commentLoading}
-                  canAddComments={!isAlreadyValidated && !isReadOnly}
+                  canAddComments={commentMode === 'validator'}
+                  onReply={commentMode === 'creator-edit' ? handleReply : undefined}
+                  onResolve={commentMode === 'creator-edit' ? handleResolve : undefined}
                   headerRef={viewHeaderRef}
                   onClose={closeView}
                 />
