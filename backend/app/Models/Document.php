@@ -174,6 +174,34 @@ class Document extends Model
         }
 
         $builder->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id');
+
+        // Precompute aggregate columns to avoid N+1 accessor queries on list endpoints.
+        $type = addslashes(self::class);
+        $builder->addSelect([
+            DB::raw("GREATEST(1, COALESCE((
+                SELECT MAX(ev.version_number)
+                FROM entity_versions ev
+                WHERE ev.versionable_type = '{$type}'
+                  AND ev.versionable_id = documents.id
+                  AND ev.status = 'published'
+                  AND ev.deleted_at IS NULL
+            ), 0)) AS current_version"),
+            DB::raw("CASE WHEN documents.status = 'draft' THEN NULL
+                ELSE COALESCE(
+                    (SELECT MIN(dr.created_at) FROM document_reviews dr WHERE dr.document_id = documents.id),
+                    (SELECT ev.published_at FROM entity_versions ev
+                     WHERE ev.versionable_type = '{$type}' AND ev.versionable_id = documents.id
+                       AND ev.status = 'published' AND ev.deleted_at IS NULL
+                     ORDER BY ev.version_number ASC LIMIT 1)
+                )
+            END AS submitted_at"),
+            DB::raw("CASE WHEN documents.status != 'published' THEN NULL
+                ELSE (SELECT ev.published_at FROM entity_versions ev
+                      WHERE ev.versionable_type = '{$type}' AND ev.versionable_id = documents.id
+                        AND ev.status = 'published' AND ev.deleted_at IS NULL
+                      ORDER BY ev.version_number DESC LIMIT 1)
+            END AS published_at"),
+        ]);
     }
 
     /**
@@ -286,6 +314,10 @@ class Document extends Model
      */
     public function getCurrentVersionAttribute(mixed $value): int
     {
+        if (array_key_exists('current_version', $this->attributes)) {
+            return (int) $this->attributes['current_version'];
+        }
+
         $max = EntityVersion::query()
             ->where('versionable_type', self::class)
             ->where('versionable_id', $this->getKey())
@@ -304,6 +336,10 @@ class Document extends Model
      */
     public function getSubmittedAtAttribute(mixed $value): ?Carbon
     {
+        if (array_key_exists('submitted_at', $this->attributes)) {
+            return $this->attributes['submitted_at'] !== null ? Carbon::parse($this->attributes['submitted_at']) : null;
+        }
+
         if ($this->status === 'draft') {
             return null;
         }
@@ -337,6 +373,10 @@ class Document extends Model
      */
     public function getPublishedAtAttribute(mixed $value): ?Carbon
     {
+        if (array_key_exists('published_at', $this->attributes)) {
+            return $this->attributes['published_at'] !== null ? Carbon::parse($this->attributes['published_at']) : null;
+        }
+
         if ($this->status !== 'published') {
             return null;
         }
