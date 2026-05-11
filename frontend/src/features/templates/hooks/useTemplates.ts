@@ -31,7 +31,7 @@ function formatActionError(err: unknown): string {
   return err instanceof Error ? err.message : 'Error desconocido';
 }
 
-const DEFAULT_PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 10;
 
 /**
  * Listado y mutaciones de plantillas normativas.
@@ -42,7 +42,8 @@ const DEFAULT_PER_PAGE = 20;
  */
 export function useTemplates(processId?: string, sortBy?: { columnId: string; direction: 'asc' | 'desc' } | null) {
   const [fullList, setFullList] = useState<Template[]>([]);
-  const [filters, setFilters] = useState<TemplateListFilters>({ per_page: DEFAULT_PER_PAGE });
+  /** Sin `per_page` por defecto: las pantallas usan `filters.per_page ?? pageSize` (preferencias de tabla). */
+  const [filters, setFilters] = useState<TemplateListFilters>({});
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -128,7 +129,14 @@ export function useTemplates(processId?: string, sortBy?: { columnId: string; di
   }, [load]);
 
   const applyFilters = useCallback((patch: Partial<TemplateListFilters>) => {
-    setFilters((f) => ({ ...f, ...patch, page: 1 }));
+    setFilters((f) => {
+      const next = { ...f, ...patch };
+      // Solo reiniciar a la página 1 cuando el cambio no fija ya `page` (p. ej. corrección al acortar el listado).
+      if (!Object.prototype.hasOwnProperty.call(patch, 'page')) {
+        next.page = 1;
+      }
+      return next;
+    });
   }, []);
 
   const goToPage = useCallback((page: number) => {

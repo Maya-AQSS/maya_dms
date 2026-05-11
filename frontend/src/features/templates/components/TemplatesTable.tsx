@@ -71,7 +71,7 @@ export function TemplatesTable({ processId }: Props = {}) {
   const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const listPage = filters.page ?? 1;
-  const listPerPage = filters.per_page ?? 20;
+  const listPerPage = filters.per_page ?? pageSize;
 
   const clientFilteredCatalog = useMemo(() => {
     let list = catalogSorted;
