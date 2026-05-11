@@ -166,19 +166,33 @@ class TemplateRepository implements TemplateRepositoryInterface
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $bindings = array_merge([Template::class], $ids);
+        // ROW_NUMBER + CAST: portable entre PostgreSQL (prod) y SQLite (:memory: en tests).
+        // Evita DISTINCT ON y ::text, solo soportados en PG.
         $sql = '
-            SELECT DISTINCT ON (versionable_id)
-                versionable_id::text AS versionable_id,
-                id::text AS id,
+            SELECT
+                CAST(versionable_id AS TEXT) AS versionable_id,
+                CAST(id AS TEXT) AS id,
                 version_number,
                 snapshot_data,
                 published_at
-            FROM entity_versions
-            WHERE versionable_type = ?
-              AND versionable_id IN ('.$placeholders.')
-              AND status = \'published\'
-              AND version_number > 0
-            ORDER BY versionable_id, version_number DESC
+            FROM (
+                SELECT
+                    versionable_id,
+                    id,
+                    version_number,
+                    snapshot_data,
+                    published_at,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY versionable_id
+                        ORDER BY version_number DESC
+                    ) AS rn
+                FROM entity_versions
+                WHERE versionable_type = ?
+                  AND versionable_id IN ('.$placeholders.')
+                  AND status = \'published\'
+                  AND version_number > 0
+            ) AS ranked
+            WHERE ranked.rn = 1
         ';
 
         $rows = DB::select($sql, $bindings);
