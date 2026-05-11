@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import i18n from './i18n';
+import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@maya/shared-layout-react';
 import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
 import { useAuth } from '@maya/shared-auth-react';
@@ -50,17 +50,14 @@ function AppRoutes() {
 }
 
 function Main() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { profile } = useUserProfile();
   const navItems = useNavItems();
+  const { i18n: i18nInstance } = useTranslation();
 
   useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'locale' && e.newValue) void i18n.changeLanguage(e.newValue);
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [i18n]);
+    if (user?.locale) void i18nInstance.changeLanguage(user.locale as string);
+  }, [user?.locale, i18nInstance]);
 
   const userName = profile?.name?.trim() ?? '';
   const userInitials = profileDisplayInitials(profile);

@@ -1,0 +1,55 @@
+{
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "create": "Create",
+    "edit": "Edit",
+    "delete": "Delete",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "search": "Search",
+    "upload": "Upload",
+    "download": "Download",
+    "preview": "Preview",
+    "duplicate": "Duplicate"
+  },
+  "status": {
+    "loading": "Loading…",
+    "saving": "Saving…",
+    "empty": "No results",
+    "error": "An error occurred"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "documents": "Documents",
+    "templates": "Templates",
+    "trash": "Trash"
+  },
+  "dashboard": {
+    "noWidgets": "No widgets on the dashboard.",
+    "reset": "Reset",
+    "widgets": {
+      "recentDocuments": "Recent documents",
+      "pendingValidations": "Pending validation"
+    }
+  },
+  "documents": {
+    "title": "Documents",
+    "new": "New document",
+    "untitled": "Untitled",
+    "lastModified": "Last modified",
+    "createdBy": "Created by",
+    "confirmDelete": "Delete this document?",
+    "deleteMessage": "This action cannot be undone."
+  },
+  "templates": {
+    "title": "Templates",
+    "new": "New template",
+    "useTemplate": "Use template"
+  },
+  "auth": {
+    "logout": "Log out",
+    "profile": "Profile"
+  }
+}
