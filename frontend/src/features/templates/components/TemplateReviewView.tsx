@@ -272,6 +272,11 @@ export function TemplateReviewView({ template }: Props) {
     }
   };
 
+  const openView = (blockId: string, mode: 'comments' | 'info') => {
+    setActiveView({ blockId, mode });
+    setNewCommentBody('');
+  };
+
   const closeView = () => setActiveView(null);
 
   const selectedBlock = blocks.find(b => b.id === activeView?.blockId);
@@ -445,7 +450,7 @@ export function TemplateReviewView({ template }: Props) {
                           if (isSelected && activeView?.mode === 'comments') {
                             closeView();
                           } else {
-                            setActiveView({ blockId: block.id, mode: 'comments' });
+                            openView(block.id, 'comments');
                           }
                         }}
                         className={[
@@ -478,7 +483,7 @@ export function TemplateReviewView({ template }: Props) {
                                 if (isSelected && activeView?.mode === 'info') {
                                   closeView();
                                 } else {
-                                  setActiveView({ blockId: block.id, mode: 'info' });
+                                  openView(block.id, 'info');
                                 }
                               }}
                               className={[
@@ -503,7 +508,7 @@ export function TemplateReviewView({ template }: Props) {
                                 if (isSelected && activeView?.mode === 'comments') {
                                   closeView();
                                 } else {
-                                  setActiveView({ blockId: block.id, mode: 'comments' });
+                                  openView(block.id, 'comments');
                                 }
                               }}
                               className={[
