@@ -279,6 +279,11 @@ class DocumentController extends Controller
         $viewerId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+
+        $document->setAttribute(
+            'has_review_comments',
+            $document->comments()->where('resolved', false)->exists(),
+        );
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
         $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);

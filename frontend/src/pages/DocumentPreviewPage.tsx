@@ -408,7 +408,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     let cancelled = false;
     void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
       .then((res) => { if (!cancelled) setValidateComments(res.data); })
-      .catch(() => {});
+      .catch((e) => {
+        if (!cancelled) setValidateCommentError(e instanceof Error ? e.message : 'No se pudieron cargar los comentarios.');
+      });
     return () => { cancelled = true; };
   }, [isValidateMode, documentId, detail?.id]);
 
@@ -924,7 +926,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                   if (el) validateBlockRefs.current.set(blockId, el);
                                   else validateBlockRefs.current.delete(blockId);
                                 }}
-                                onClick={(e) => { e.stopPropagation(); selectValidateBlock(blockId); }}
+                                onClick={(e) => { e.stopPropagation(); if (block.document_block_id) selectValidateBlock(blockId); }}
                                 className={[
                                   'relative group rounded-lg transition-all duration-200 cursor-pointer',
                                   isSelected
@@ -948,12 +950,16 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                   <button
                                     type="button"
                                     aria-label={`Ver comentarios del bloque ${block.sort_order}`}
-                                    onClick={(e) => { e.stopPropagation(); selectValidateBlock(blockId); }}
+                                    disabled={!block.document_block_id}
+                                    title={!block.document_block_id ? 'Los bloques bloqueados no admiten comentarios por bloque' : undefined}
+                                    onClick={(e) => { e.stopPropagation(); if (block.document_block_id) selectValidateBlock(blockId); }}
                                     className={[
-                                      'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                      isSelected
-                                        ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                                        : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                                      'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all text-xs font-black uppercase tracking-wider',
+                                      !block.document_block_id
+                                        ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30'
+                                        : isSelected
+                                          ? 'cursor-pointer border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                                          : 'cursor-pointer border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                                     ].join(' ')}
                                   >
                                     <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>

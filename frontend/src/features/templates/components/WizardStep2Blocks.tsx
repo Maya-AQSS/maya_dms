@@ -678,7 +678,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             allComments={reviewComments}
             onReply={handleReply}
             onResolve={isOwner && onResolveComment ? onResolveComment : undefined}
-            onClose={() => {}}
+            onClose={() => setActiveSingleId(null)}
           />
         </div>
       )}
