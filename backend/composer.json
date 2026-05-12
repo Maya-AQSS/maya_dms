@@ -18,6 +18,7 @@
         "maya/shared-auth-laravel": "@dev",
         "maya/shared-http-laravel": "@dev",
         "maya/shared-messaging-laravel": "@dev",
+        "maya/shared-platform-laravel": "@dev",
         "maya/shared-profile-laravel": "@dev",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "dev-master"
     },
@@ -107,6 +108,10 @@
         "maya-shared-messaging": {
             "type": "path",
             "url": "../../maya_infra/packages/maya-shared-messaging-laravel"
+        },
+        "maya-shared-platform": {
+            "type": "path",
+            "url": "../../maya_infra/packages/maya-shared-platform-laravel"
         },
         "maya-shared-profile": {
             "type": "path",

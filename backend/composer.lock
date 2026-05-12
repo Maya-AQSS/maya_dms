@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "7a0400c814454097ed00f7fb6bca9edd",
+    "content-hash": "806254c6bf0bbfd1fd58ad5e4c7a79c3",
     "packages": [
         {
             "name": "brick/math",
@@ -2491,6 +2491,33 @@
                 "MIT"
             ],
             "description": "Shared RabbitMQ messaging layer for MAyA Laravel microservices: log publisher, notification publisher, alert publisher, and Monolog rabbit handler.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "maya/shared-platform-laravel",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../maya_infra/packages/maya-shared-platform-laravel",
+                "reference": "4be2ebdd2c9b80dbb480629a332e93b83ec7b849"
+            },
+            "require": {
+                "illuminate/database": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Platform\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Platform-level utilities shared by Maya Laravel microservices: PostgreSQL FDW migration helpers and other infrastructure primitives that are not specific to a single domain.",
             "transport-options": {
                 "relative": true
             }
@@ -10717,6 +10744,7 @@
         "maya/shared-auth-laravel": 20,
         "maya/shared-http-laravel": 20,
         "maya/shared-messaging-laravel": 20,
+        "maya/shared-platform-laravel": 20,
         "maya/shared-profile-laravel": 20,
         "vladimir-yuldashev/laravel-queue-rabbitmq": 20
     },
