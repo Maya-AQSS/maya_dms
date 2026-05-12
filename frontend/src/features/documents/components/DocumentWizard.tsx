@@ -1450,7 +1450,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       {!isValidateMode && step === 'blocks' && (
         <div className={isEditorFullscreen
           ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
-          : 'flex-1 overflow-visible flex flex-col md:flex-row'
+          : 'flex-1 overflow-visible flex flex-col md:flex-row min-h-0'
         }>
           {/* Compact fullscreen header */}
           {isEditorFullscreen && activeBlock && (
@@ -1527,7 +1527,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </button>
             </div>
           )}
-          <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
             {activeBlock && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
                 {!isEditorFullscreen && (
@@ -1660,7 +1660,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             });
             if (blockComments.length === 0) return null;
             return (
-              <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
+              <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
                 <BlockCommentsCard
                   mode="creator-edit"
                   blockSortOrder={activeBlock.sort_order ?? '?'}

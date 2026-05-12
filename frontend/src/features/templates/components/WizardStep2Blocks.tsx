@@ -491,7 +491,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   return (
     <div className={[
-      isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 flex flex-col md:flex-row relative overflow-visible',
+      isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 min-h-0 flex flex-col md:flex-row relative overflow-visible',
       'transition-all duration-300'
     ].join(' ')}>
       {!isEditorFullscreen && (
@@ -548,7 +548,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       {/* Main Panel */}
 
       {/* Main Panel */}
-      <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
         {panelMode === 'empty' && (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
             <p className="text-sm font-bold uppercase tracking-widest">Selecciona un bloque para editar</p>
@@ -733,7 +733,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
       {/* Right: comment panel — creator-edit mode, available even if no comments */}
       {showCommentPanel && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && formName.trim() && (
-        <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full">
+        <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
           <BlockCommentsCard
             mode="creator-edit"
             blockSortOrder={selectedBlockIndex >= 0 ? selectedBlockIndex + 1 : '?'}
