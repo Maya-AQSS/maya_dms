@@ -18,7 +18,16 @@ export type BlockComment = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const formatTime = (isoString: string) => {
-  return new Date(isoString).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+  const date = new Date(isoString);
+  const timeStr = date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="text-text-primary dark:text-text-dark-primary font-black">{timeStr}</span>
+      <span className="opacity-30">·</span>
+      <span>{dateStr}</span>
+    </span>
+  );
 };
 
 // ── ViewCardHeader ─────────────────────────────────────────────────────────────
@@ -38,22 +47,21 @@ export function ViewCardHeader({
   return (
     <div
       ref={headerRef}
-      className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0"
+      className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card"
     >
-      <div className="px-4 py-3 flex items-center shrink-0">
-        <span className="text-[11px] font-black uppercase tracking-widest text-odoo-purple">
+      <div className="px-4 py-4 flex items-center shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-ui-body/30 dark:bg-ui-dark-bg/50">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-odoo-purple">
           Bloque #{blockSortOrder as any}
         </span>
       </div>
-      <div className="w-px bg-ui-border dark:bg-ui-dark-border self-stretch" />
-      <div className="flex-1 px-4 py-3 flex items-center justify-between min-w-0">
-        <span className="text-[11px] font-black uppercase tracking-widest text-text-primary dark:text-text-dark-primary truncate">
+      <div className="flex-1 px-5 py-4 flex items-center justify-between min-w-0">
+        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary truncate">
           {title}
         </span>
         <button
-          aria-label="Cerrar panel de revisión"
+          aria-label="Cerrar panel"
           onClick={onClose}
-          className="group ml-3 w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
+          className="group ml-3 w-8 h-8 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
         >
           <span className="block text-sm leading-none group-hover:rotate-90 transition-transform duration-200">✕</span>
         </button>
@@ -105,7 +113,7 @@ function CommentItem({
           {comment.author?.name || 'Usuario'}
         </span>
         <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
-          {formatTime(comment.created_at)}
+          {formatTime(comment.created_at) as any}
         </span>
       </div>
 

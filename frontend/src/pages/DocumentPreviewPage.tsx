@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchDocument,
@@ -28,7 +28,7 @@ import { useUserProfile } from '../features/user-profile';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
-import type { BlockComment, CommentMode } from '../features/templates/components/BlockCommentsCard';
+import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
@@ -166,20 +166,14 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validateNewCommentBody, setValidateNewCommentBody] = useState('');
   const [validateCommentLoading, setValidateCommentLoading] = useState(false);
   const [validateCommentError, setValidateCommentError] = useState<string | null>(null);
-  const [validateViewPaddingTop, setValidateViewPaddingTop] = useState(0);
-  const validateScrollRef = useRef<HTMLDivElement>(null);
-  const validateArticleRef = useRef<HTMLElement>(null);
   const validateBlockRefs = useRef<Map<string, HTMLElement>>(new Map());
-  const validateViewColRef = useRef<HTMLDivElement>(null);
   const validateViewHeaderRef = useRef<HTMLDivElement>(null);
 
   // Creator preview-mode comment state (mirrors TemplatePreviewPage)
   const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
   const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
   const [selectedReviewView, setSelectedReviewView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
-  const [commentPanelTop, setCommentPanelTop] = useState(80);
   const pageHeaderRef = useRef<HTMLDivElement>(null);
-  const commentCardHeaderRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!documentId) {
@@ -423,38 +417,16 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     return () => { cancelled = true; };
   }, [isValidateMode, documentId, detail?.id]);
 
-  // Recalculate panel position when active view changes (validate mode)
-  // Sticky layout does not need position calculations
-  useEffect(() => {
-    if (!validateActiveView) {
-      setValidateViewPaddingTop(0);
-    }
-  }, [validateActiveView]);
 
   const openValidateView = (blockId: string, mode: 'comments' | 'info') => {
-    setValidateActiveView(prev =>
+    setValidateActiveView((prev: any) =>
       prev?.blockId === blockId && prev?.mode === mode ? null : { blockId, mode },
     );
     if (mode === 'comments') setValidateNewCommentBody('');
   };
 
   // Dynamic top for fixed creator-preview comment panel (below page header)
-  useLayoutEffect(() => {
-    if (isValidateMode) return;
-    const updateTop = () => {
-      if (!pageHeaderRef.current) return;
-      const bottom = pageHeaderRef.current.getBoundingClientRect().bottom;
-      setCommentPanelTop(Math.max(8, bottom + 8));
-    };
-    updateTop();
-    const ro = new ResizeObserver(updateTop);
-    if (pageHeaderRef.current) ro.observe(pageHeaderRef.current);
-    window.addEventListener('scroll', updateTop, { passive: true, capture: true });
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('scroll', updateTop, { capture: true });
-    };
-  }, [isValidateMode]);
+  // No longer needed with PaperPreviewLayout
 
   // Load creator-preview review comments when document has unresolved comments
   useEffect(() => {
@@ -482,12 +454,26 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     }
   };
 
-  // Creator-preview comment helpers
-  const blockPendingComments = (docBlockId: string | null) =>
-    docBlockId ? reviewComments.filter(c => c.blockable_id === docBlockId && !c.parent_id) : [];
+  // Comment helpers that include replies in the count
+  const getCommentsForBlock = (docBlockId: string | null, allComments: BlockComment[]) => {
+    if (!docBlockId) return [];
+    
+    // Recursive function to get all replies to a comment
+    const getReplies = (parentId: string): BlockComment[] => {
+      const replies = allComments.filter(c => c.parent_id === parentId);
+      return [...replies, ...replies.flatMap(r => getReplies(r.id))];
+    };
 
-  const blockAllComments = (docBlockId: string | null) =>
-    docBlockId ? reviewComments.filter(c => c.blockable_id === docBlockId || reviewComments.some(r => r.id === c.parent_id && r.blockable_id === docBlockId)) : [];
+    // Get all root comments for this block
+    const roots = allComments.filter(c => c.blockable_id === docBlockId && !c.parent_id);
+    
+    // Combine roots and all their recursive replies
+    const allForBlock = [...roots, ...roots.flatMap(r => getReplies(r.id))];
+
+    // Deduplicate by ID to be safe
+    const uniqueIds = Array.from(new Set(allForBlock.map(c => c.id)));
+    return uniqueIds.map(id => allForBlock.find(c => c.id === id) as BlockComment);
+  };
 
   const handleValidateAddComment = async () => {
     if (!validateNewCommentBody.trim() || !documentId || !validateActiveBlockId) return;
@@ -982,7 +968,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 type="button"
                                 aria-label={`Ver descripción del bloque ${block.sort_order}`}
                                 onClick={(e) => { e.stopPropagation(); openValidateView(blockId, 'info'); }}
-                                className={`${btnBase} ${infoActive ? btnActive : btnIdle}`}
+                                className={[
+                                  'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                                  infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                                ].join(' ')}
                                 title="Ver descripción del bloque"
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -999,17 +988,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               title={!block.document_block_id ? 'Los bloques bloqueados no admiten comentarios' : undefined}
                               onClick={(e) => { e.stopPropagation(); if (block.document_block_id) openValidateView(blockId, 'comments'); }}
                               className={[
-                                `${btnBase}`,
-                                !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30' : commentsActive ? btnActive : btnIdle,
+                                'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                                !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30' : commentsActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                               ].join(' ')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                               </svg>
                               <span>Mensajes</span>
-                              {hasComments && (
-                                <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-xs leading-none">
-                                  {validateComments.filter(c => c.blockable_id === block.document_block_id && !c.parent_id).length}
+                              {getCommentsForBlock(block.document_block_id, validateComments).length > 0 && (
+                                <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                                  {getCommentsForBlock(block.document_block_id, validateComments).length}
                                 </span>
                               )}
                             </button>
@@ -1083,6 +1072,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               blockSortOrder={(detail?.blocks?.findIndex(b => b.id === selectedReviewView.blockId) + 1) || '?'}
               blockComments={reviewComments.filter(c => c.blockable_id === selectedReviewView.blockId)}
               allComments={reviewComments}
+              commentLoading={reviewCommentsLoading}
               onClose={() => setSelectedReviewView(null)}
               onSendMessage={handlePreviewSendMessage}
             />
@@ -1142,18 +1132,14 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 {previewTitle}
               </h1>
               <div className="space-y-12">
-                {detail.blocks.map((block) => {
+                {detail.blocks.map((block: any) => {
                   const blockId = block.template_block_id;
                   const isSelected = selectedReviewView?.blockId === blockId;
                   const commentsActive = isSelected && selectedReviewView?.mode === 'comments';
                   const infoActive = isSelected && selectedReviewView?.mode === 'info';
-                  const pendingCount = blockPendingComments(block.document_block_id).length;
+                  const totalComments = getCommentsForBlock(block.document_block_id, reviewComments);
                   const hasDescription = !!block.description;
                   const nodes = blockContentForPreview(block);
-
-                  const btnBase = 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider';
-                  const btnActive = 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm';
-                  const btnIdle = 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5';
 
                   return (
                     <section
@@ -1174,14 +1160,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
                       <div className="flex items-center gap-3 mb-4">
                         <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                          {block.title ?? 'Bloque sin título'}
+                          Bloque {(detail.blocks.findIndex((b: any) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
                         </h3>
                         <div className="flex items-center gap-2">
                           {hasDescription && (
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setSelectedReviewView({ blockId, mode: 'info' }); }}
-                              className={`${btnBase} ${infoActive ? btnActive : btnIdle}`}
+                              className={[
+                                'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                                infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                              ].join(' ')}
                               title="Ver descripción del bloque"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -1195,17 +1184,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                             disabled={!block.document_block_id}
                             onClick={(e) => { e.stopPropagation(); if (block.document_block_id) setSelectedReviewView({ blockId, mode: 'comments' }); }}
                             className={[
-                              btnBase,
-                              !block.document_block_id ? 'cursor-not-allowed opacity-40' : commentsActive ? btnActive : btnIdle,
+                              'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                              !block.document_block_id ? 'cursor-not-allowed opacity-40' : commentsActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
                             ].join(' ')}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                             </svg>
                             <span>Mensajes</span>
-                            {pendingCount > 0 && (
-                              <span className="ml-1 bg-danger text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
-                                {pendingCount}
+                            {getCommentsForBlock(block.document_block_id, reviewComments).length > 0 && (
+                              <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                                {getCommentsForBlock(block.document_block_id, reviewComments).length}
                               </span>
                             )}
                           </button>

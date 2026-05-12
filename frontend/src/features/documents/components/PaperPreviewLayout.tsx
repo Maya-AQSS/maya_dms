@@ -109,7 +109,7 @@ export function PaperPreviewLayout({
     ? `${baseOverlayClass} z-[70]`
     : asOverlay
       ? `${baseOverlayClass} z-[60]`
-      : 'min-h-full'
+      : 'min-h-screen'
 
   // Tamaño del artículo:
   // - Modo normal (760px) idéntico al documento.
@@ -154,10 +154,10 @@ export function PaperPreviewLayout({
       />
       </div>
 
-      <div className={sidebar ? 'flex min-h-full' : ''}>
+      <div className={sidebar ? 'flex items-start min-h-full relative overflow-visible' : ''}>
         <div className={sidebar ? 'flex-1' : ''}>
           <article
-            className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
+            className="mx-auto bg-white dark:bg-ui-dark-card shadow-xl preview-content"
             style={articleStyle}
           >
             {children}
@@ -166,10 +166,12 @@ export function PaperPreviewLayout({
 
         {sidebar && (
           <div
-            className="shrink-0 sticky top-6 self-start pr-6"
-            style={{ width: '35%', height: 'calc(100vh - 150px)' }}
+            className="shrink-0 sticky top-32 self-start pr-6 z-30"
+            style={{ width: '35%', height: 'calc(100vh - 160px)' }}
           >
-            {sidebar}
+            <div className="h-full flex flex-col bg-white dark:bg-ui-dark-card shadow-xl rounded-sm overflow-hidden border border-ui-border dark:border-ui-dark-border">
+              {sidebar}
+            </div>
           </div>
         )}
       </div>

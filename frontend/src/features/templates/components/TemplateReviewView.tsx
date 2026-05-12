@@ -211,17 +211,26 @@ export function TemplateReviewView({ template }: Props) {
       </div>
     );
   }
-  const blockComments = (() => {
-    const bid = activeView?.blockId;
+  const getCommentsForBlock = (bid: string | null, allComments: BlockComment[]) => {
     if (!bid) return [];
-    const rootIds = comments
-      .filter(c => c.blockable_id === bid && !c.parent_id)
-      .map(c => c.id);
-    return comments.filter(
-      c => (c.blockable_id === bid && !c.parent_id)
-        || (c.parent_id !== null && rootIds.includes(c.parent_id)),
-    );
-  })();
+    
+    // Recursive function to get all replies to a comment
+    const getReplies = (parentId: string): BlockComment[] => {
+      const replies = allComments.filter(c => c.parent_id === parentId);
+      return [...replies, ...replies.flatMap(r => getReplies(r.id))];
+    };
+
+    // Get all root comments for this block
+    const roots = allComments.filter(c => c.blockable_id === bid && !c.parent_id);
+    
+    // Combine roots and all their recursive replies
+    const allForBlock = [...roots, ...roots.flatMap(r => getReplies(r.id))];
+
+    // Deduplicate by ID to be safe
+    const uniqueIds = Array.from(new Set(allForBlock.map(c => c.id)));
+    return uniqueIds.map(id => allForBlock.find(c => c.id === id) as BlockComment);
+  };
+  const blockComments = getCommentsForBlock(activeView?.blockId ?? null, comments);
 
   return (
     <PaperPreviewLayout
@@ -276,8 +285,8 @@ export function TemplateReviewView({ template }: Props) {
         activeView.mode === 'comments' ? (
           <BlockCommentsCard
             mode={commentMode}
-            blockSortOrder={(blocks.findIndex(b => b.id === selectedBlock.id) + 1) || '?'}
-            blockComments={blockComments}
+            blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
+            blockComments={getCommentsForBlock(selectedBlock.id, comments)}
             allComments={comments}
             onClose={closeView}
             onSendMessage={handleSendMessage}
@@ -286,7 +295,7 @@ export function TemplateReviewView({ template }: Props) {
         ) : (
           <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
             <ViewCardHeader
-              blockSortOrder={(blocks.findIndex(b => b.id === selectedBlock.id) + 1) || '?'}
+              blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
               title="Descripción del Bloque"
               onClose={closeView}
             />
@@ -326,7 +335,7 @@ export function TemplateReviewView({ template }: Props) {
               >
                 <div className="flex items-center gap-3 mb-4">
                   <h4 className="flex-1 text-sm font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-                    {block.title || 'Bloque sin título'}
+                    Bloque {(blocks.findIndex((b: any) => b.id === block.id) + 1)}: {block.title || 'Sin título'}
                   </h4>
                   <div className="flex items-center gap-2">
                     {block.description && (
@@ -371,8 +380,10 @@ export function TemplateReviewView({ template }: Props) {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
                       <span>Mensajes</span>
-                      {hasComments && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-odoo-purple animate-pulse" />
+                      {getCommentsForBlock(block.id, comments).length > 0 && (
+                        <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                          {getCommentsForBlock(block.id, comments).length}
+                        </span>
                       )}
                     </button>
                   </div>

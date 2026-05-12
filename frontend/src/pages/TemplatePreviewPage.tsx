@@ -240,13 +240,17 @@ export function TemplatePreviewPage() {
   };
 
 
-  // Root-level comments for a block (drives badge + card visibility).
-  const blockPendingComments = (blockId: string) =>
-    reviewComments.filter((c) => c.blockable_id === blockId && !c.parent_id);
-
-  // All comments for a block (top-level + replies, for the card to use).
-  const blockAllComments = (blockId: string) =>
-    reviewComments.filter((c) => c.blockable_id === blockId);
+  // Comment helpers that include replies in the count
+  const getCommentsForBlock = (bid: string | null, allComments: BlockComment[]) => {
+    if (!bid) return [];
+    const roots = allComments.filter(c => c.blockable_id === bid && !c.parent_id);
+    const rootIds = roots.map(r => r.id);
+    return allComments.filter(c =>
+      c.blockable_id === bid ||
+      (c.parent_id && rootIds.includes(c.parent_id)) ||
+      allComments.some(r => r.id === c.parent_id && r.blockable_id === bid)
+    );
+  };
 
   const isDraft = template?.status === 'draft';
   const isOwner = profile?.id === template?.created_by;
@@ -554,8 +558,8 @@ export function TemplatePreviewPage() {
           return (
             <BlockCommentsCard
               mode={isOwner ? 'creator-edit' : 'creator-readonly'}
-              blockSortOrder={block?.sort_order ?? '?'}
-              blockComments={blockAllComments(selectedBlockId)}
+              blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlockId) + 1) || '?'}
+              blockComments={getCommentsForBlock(selectedBlockId, reviewComments)}
               allComments={reviewComments}
               commentLoading={reviewCommentsLoading}
               onSendMessage={handleSendMessage}
@@ -586,54 +590,62 @@ export function TemplatePreviewPage() {
               </p>
             ) : (
               <div className="space-y-10">
-                {blocks.map((block) => {
+                {blocks.map((block: any) => {
                   const isLocked = block.block_state === 'locked';
                   const nodes = blockContentNodes(block);
                   const hasContent = nodes.length > 0;
-                  const pendingComments = blockPendingComments(block.id);
                   const isSelected = selectedBlockId === block.id;
+                  const totalComments = getCommentsForBlock(block.id, reviewComments);
 
                   return (
                     <section
                       key={block.id}
-                      style={isLocked ? { opacity: 0.45 } : undefined}
                       className={[
-                        'relative rounded-lg transition-all duration-150',
-                        pendingComments.length > 0
-                          ? 'cursor-pointer'
-                          : '',
+                        'relative group rounded-lg transition-all duration-200 cursor-pointer',
                         isSelected
-                          ? 'ring-2 ring-danger/40 ring-offset-4'
-                          : pendingComments.length > 0
-                            ? 'hover:ring-1 hover:ring-danger/30 hover:ring-offset-2'
-                            : '',
+                          ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
+                          : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
+                        isLocked ? 'opacity-70' : '',
                       ].join(' ')}
-                      onClick={pendingComments.length > 0 ? () => setSelectedBlockId(isSelected ? null : block.id) : undefined}
+                      onClick={() => setSelectedBlockId(isSelected ? null : block.id)}
                     >
-                      <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                        {block.title && (
-                          <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
-                            {block.title}
-                          </h4>
-                        )}
-                        {pendingComments.length > 0 && (
-                          <span
-                            className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                            title="Este bloque tiene comentarios de revisión pendientes"
+                      <div className="flex items-center gap-3 mb-4">
+                        <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
+                          Bloque {(blocks.findIndex((b: any) => b.id === block.id) + 1)}: {block.title ?? 'Sin título'}
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          {block.description && (
+                            <button
+                              type="button"
+                              className="shrink-0 px-3 py-1.5 rounded-full border border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider"
+                              title="Ver descripción"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                              </svg>
+                              <span>Info</span>
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className={[
+                              'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                              isSelected
+                                ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                                : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                            ].join(' ')}
                           >
-                            ⚠ {pendingComments.length} {pendingComments.length === 1 ? 'comentario' : 'comentarios'}
-                          </span>
-                        )}
-                        {block.mandatory && (
-                          <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-success-light text-success-dark dark:bg-success-dark/30 dark:text-success-light">
-                            Obligatorio
-                          </span>
-                        )}
-                        {isLocked && (
-                          <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
-                            Bloqueado
-                          </span>
-                        )}
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            <span>Mensajes</span>
+                            {totalComments.length > 0 && (
+                              <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                                {totalComments.length}
+                              </span>
+                            )}
+                          </button>
+                        </div>
                       </div>
                       {hasContent ? (
                         <BlockContentHtml content={nodes} />
