@@ -7,6 +7,7 @@ use App\Models\Document;
 use App\Models\JwtUser;
 use Illuminate\Auth\Access\Events\GateEvaluated;
 use Maya\Messaging\Publishers\AuditPublisher;
+use Maya\Messaging\Publishers\LogPublisher;
 use Tests\TestCase;
 
 class RecordSegregationOfDutiesDenialTest extends TestCase
@@ -47,7 +48,10 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
                 $this->anything(),
             );
 
-        $listener = new RecordSegregationOfDutiesDenial($publisher);
+        $logPublisher = $this->createMock(LogPublisher::class);
+        $logPublisher->expects($this->once())->method('publish');
+
+        $listener = new RecordSegregationOfDutiesDenial($publisher, $logPublisher);
         $listener->handle(new GateEvaluated($user, 'submit', false, [$document]));
     }
 
@@ -73,7 +77,10 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
             'status'     => 'draft',
         ]);
 
-        $listener = new RecordSegregationOfDutiesDenial($publisher);
+        $logPublisher = $this->createMock(LogPublisher::class);
+        $logPublisher->expects($this->never())->method('publish');
+
+        $listener = new RecordSegregationOfDutiesDenial($publisher, $logPublisher);
         $listener->handle(new GateEvaluated($user, 'submit', true, [$document]));
     }
 }

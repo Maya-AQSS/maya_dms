@@ -8,19 +8,34 @@ use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Log;
 use Maya\Messaging\Publishers\AuditPublisher;
+use Maya\Messaging\Publishers\LogPublisher;
+use Throwable;
 
 /**
- * Registra en el bus de auditoría cuando una política SoD deniega
- * explícitamente {@see DocumentPolicy} / {@see TemplatePolicy}.
+ * Denegación de autorización sobre flujos sensibles (abilities `review` / `submit` en
+ * {@see Document} / {@see Template}): trazado en maya_audit y notificación en maya.logs
+ * (severidad alta) para monitorizar intentos de violar políticas. Monolog (`Log::warning`)
+ * solo en el `catch` si falla la publicación a la cola.
  */
 class RecordSegregationOfDutiesDenial
 {
+    /**
+     * Abilities de política que quieres auditar / enviar a maya.logs cuando el gate devuelve false.
+     * Amplía esta lista solo si necesitas registrar otras (p. ej. `publish`) y aceptas el volumen.
+     */
     private const ABILITIES = ['review', 'submit'];
 
     public function __construct(
         private readonly AuditPublisher $auditPublisher,
+        private readonly LogPublisher $logPublisher,
     ) {}
 
+    /**
+     * Punto de extensión: aquí se decide qué denegaciones cuentan (result false, ability, tipo de modelo).
+     * No hay “huecos” que rellenar salvo que cambies criterios de negocio:
+     * - `app` / `applicationSlug` deben coincidir con el slug registrado en maya_logs (p. ej. maya-dms).
+     * - severity / errorCode en `publish()` si tu panel clasifica distinto.
+     */
     public function handle(GateEvaluated $event): void
     {
         if ($event->result !== false) {
@@ -55,12 +70,27 @@ class RecordSegregationOfDutiesDenial
 
         $request = request();
 
-        Log::warning('SoD policy denied', [
-            'ability'     => $event->ability,
-            'entity_type' => $entityType,
-            'entity_id'   => (string) $subject->getKey(),
-            'user_id'     => $userId,
-        ]);
+        try {
+            $this->logPublisher->publish(
+                severity: 'high',
+                message: sprintf('Política denegada: %s sobre %s %s', $event->ability, $entityType, $subject->getKey()),
+                errorCode: 'DMS_SOD_POLICY_DENIED',
+                file: null,
+                line: null,
+                metadata: [
+                    'ability' => $event->ability,
+                    'entity_type' => $entityType,
+                    'entity_id' => (string) $subject->getKey(),
+                    'user_id' => (string) $userId,
+                ],
+                app: 'maya-dms',
+            );
+        } catch (Throwable $e) {
+            Log::warning('maya.logs.publish_failed', [
+                'context' => 'sod_denial',
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         $this->auditPublisher->publish(
             applicationSlug: 'maya-dms',
