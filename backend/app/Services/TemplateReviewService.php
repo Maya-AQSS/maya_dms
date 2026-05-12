@@ -19,33 +19,35 @@ class TemplateReviewService
      */
     public function submitForReview(string $templateId, string $actorId): Template
     {
-        $template = $this->templateRepository->findOrFail($templateId);
+        return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
+            $template = $this->templateRepository->findOrFail($templateId);
 
-        if ($template->status !== 'draft') {
-            throw ValidationException::withMessages([
-                'status' => ['Solo las plantillas en borrador pueden enviarse a revisión.'],
-            ]);
-        }
-
-        if ($template->blocks()->doesntExist()) {
-            throw ValidationException::withMessages([
-                'blocks' => ['La plantilla debe tener al menos un bloque antes de enviarse a revisión.'],
-            ]);
-        }
-
-        if ($template->reviewers()->doesntExist()) {
-            if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
+            if ($template->status !== 'draft') {
                 throw ValidationException::withMessages([
-                    'reviewers' => ['Las plantillas no personales requieren al menos un revisor asignado antes de enviarse a revisión.'],
+                    'status' => ['Solo las plantillas en borrador pueden enviarse a revisión.'],
                 ]);
             }
 
-            return $this->templatePublishingService->publishWithSnapshot($templateId, 'Publicación automática', $actorId);
-        }
+            if ($template->blocks()->doesntExist()) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['La plantilla debe tener al menos un bloque antes de enviarse a revisión.'],
+                ]);
+            }
 
-        $template->reviewers()->update(['status' => 'pending']);
+            if ($template->reviewers()->doesntExist()) {
+                if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
+                    throw ValidationException::withMessages([
+                        'reviewers' => ['Las plantillas no personales requieren al menos un revisor asignado antes de enviarse a revisión.'],
+                    ]);
+                }
 
-        return $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
+                return $this->templatePublishingService->publishWithSnapshot($templateId, 'Publicación automática', $actorId);
+            }
+
+            $template->reviewers()->update(['status' => 'pending']);
+
+            return $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
+        });
     }
 
     /**
@@ -134,9 +136,9 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'approved']);
 
-            $allApproved = $template->reviewers()
+            $allApproved = ! $template->reviewers()
                 ->where('status', '!=', 'approved')
-                ->doesntExist();
+                ->exists();
 
             if ($allApproved) {
                 return $this->templatePublishingService->publishWithSnapshot(
