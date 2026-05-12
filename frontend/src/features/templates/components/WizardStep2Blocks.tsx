@@ -133,7 +133,7 @@ interface WizardStep2BlocksProps {
 
 export type WizardStep2BlocksHandle = {
   saveIfPending: () => Promise<void>;
-  discardInvalidBlocks: () => Promise<void>;
+  discardInvalidBlocks: () => Promise<TemplateBlock[]>;
 };
 
 export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(({
@@ -186,14 +186,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   useEffect(() => {
     if (!loading) {
       onBlocksCountChange?.(blocks.length);
-    }
-  }, [blocks.length, loading, onBlocksCountChange]);
-
-  useEffect(() => {
-    if (!loading) {
       onBlocksChange?.(blocks);
     }
-  }, [blocks, loading, onBlocksChange]);
+  }, [blocks, loading, onBlocksCountChange, onBlocksChange]);
 
   const hasInvalidBlocks = !loading && blocks.some(b => !b.title?.trim());
 
@@ -392,6 +387,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         setSelectedBlockIds([]);
         setPanelMode('empty');
       }
+      return blocks.filter(b => !!b.title?.trim());
     },
   }));
 

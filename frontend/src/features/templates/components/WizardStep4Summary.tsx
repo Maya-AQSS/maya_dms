@@ -59,14 +59,9 @@ export function WizardStep4Summary({
   useEffect(() => {
     if (!loading) {
       onBlocksCountChange?.(blocks.length);
-    }
-  }, [blocks.length, loading, onBlocksCountChange]);
-
-  useEffect(() => {
-    if (!loading) {
       onBlocksChange?.(blocks);
     }
-  }, [blocks, loading, onBlocksChange]);
+  }, [blocks, loading, onBlocksCountChange, onBlocksChange]);
 
   const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
   const [activeTab, setActiveTab] = useState<PreviewTab>('Contenido');

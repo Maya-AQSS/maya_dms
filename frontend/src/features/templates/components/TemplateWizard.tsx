@@ -47,7 +47,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   );
   const [leaveGuard, setLeaveGuard] = useState(false);
   const [hasInvalidBlocks, setHasInvalidBlocks] = useState(false);
-  const [invalidBlocksModal, setInvalidBlocksModal] = useState<{ onProceed: () => void } | null>(null);
+  const [invalidBlocksModal, setInvalidBlocksModal] = useState<{ onProceed: (remaining: TemplateBlock[]) => void } | null>(null);
+  const [blockInvariantModal, setBlockInvariantModal] = useState<string | null>(null);
 
   // Template state (synchronized with API)
   const [template, setTemplate] = useState<Template | null>(initial || null);
@@ -121,12 +122,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   useEffect(() => {
     if (step !== 'blocks') return;
     if (blocksLoading || blocksCount < 1) return;
-    if (!errors.blocks) return;
     setErrors((prev) => {
+      if (!prev.blocks) return prev;
       const { blocks: _blocks, ...rest } = prev;
       return rest;
     });
-  }, [blocksCount, blocksLoading, errors.blocks, step]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocksCount, blocksLoading, step]);
 
   useEffect(() => {
     const effectiveProcessId = processId ?? template?.process_id ?? initial?.process_id ?? null;
@@ -156,7 +158,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const blocker = useBlocker(step === 'blocks' && hasInvalidBlocks);
   useEffect(() => {
     if (blocker.state === 'blocked') {
-      setInvalidBlocksModal({ onProceed: () => blocker.proceed() });
+      setInvalidBlocksModal({ onProceed: (_remaining) => blocker.proceed() });
     }
   }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -191,7 +193,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       return;
     }
     if (step === 'blocks' && hasInvalidBlocks) {
-      setInvalidBlocksModal({ onProceed: () => setStep('properties') });
+      setInvalidBlocksModal({ onProceed: (_remaining) => setStep('properties') });
       return;
     }
     if (step === 'properties') {
@@ -313,7 +315,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const handlePublishClick = () => {
     const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
     if (blockInvariantErr) {
-      setErrors({ api: blockInvariantErr });
+      setBlockInvariantModal(blockInvariantErr);
       return;
     }
     if (requiresPublishChangelog) {
@@ -327,7 +329,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const handleSubmitForReviewClick = () => {
     const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
     if (blockInvariantErr) {
-      setErrors({ api: blockInvariantErr });
+      setBlockInvariantModal(blockInvariantErr);
       return;
     }
     setShowValidationModal(true);
@@ -405,12 +407,26 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         return;
       }
       if (hasInvalidBlocks) {
-        setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de continuar.' });
+        setInvalidBlocksModal({
+          onProceed: (remaining) => {
+            if (remaining.length === 0) {
+              setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+              return;
+            }
+            const err = validateBlocksInvariants(remaining);
+            if (err) { setBlockInvariantModal(err); return; }
+            setSaving(true);
+            void blocksRef.current?.saveIfPending().then(() => {
+              setCompletedSteps((prev) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
+              setStep('users');
+            }).finally(() => setSaving(false));
+          },
+        });
         return;
       }
       const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
       if (blockInvariantErr) {
-        setErrors({ blocks: blockInvariantErr });
+        setBlockInvariantModal(blockInvariantErr);
         return;
       }
       setErrors((prev) => {
@@ -437,7 +453,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const handleGoToStep = (s: Step) => {
     if (s === 'properties') {
       if (step === 'blocks' && hasInvalidBlocks) {
-        setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de cambiar de paso.' });
+        setInvalidBlocksModal({ onProceed: (_remaining) => setStep('properties') });
         return;
       }
       setStep(s);
@@ -453,12 +469,22 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         return;
       }
       if (hasInvalidBlocks) {
-        setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de continuar.' });
+        setInvalidBlocksModal({
+          onProceed: (remaining) => {
+            if (remaining.length === 0) {
+              setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+              return;
+            }
+            const err = validateBlocksInvariants(remaining);
+            if (err) { setBlockInvariantModal(err); return; }
+            setStep('users');
+          },
+        });
         return;
       }
       const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
       if (blockInvariantErr) {
-        setErrors({ blocks: blockInvariantErr });
+        setBlockInvariantModal(blockInvariantErr);
         return;
       }
       setStep(s);
@@ -688,14 +714,25 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         variant="danger"
         onConfirm={async () => {
           const cb = invalidBlocksModal?.onProceed;
-          await blocksRef.current?.discardInvalidBlocks();
+          const remaining = await blocksRef.current?.discardInvalidBlocks() ?? [];
           setInvalidBlocksModal(null);
-          cb?.();
+          cb?.(remaining);
         }}
         onCancel={() => {
           if (blocker.state === 'blocked') blocker.reset();
           setInvalidBlocksModal(null);
         }}
+      />
+
+      {/* Block invariant error modal */}
+      <ConfirmDialog
+        open={!!blockInvariantModal}
+        title="Estructura de bloques inválida"
+        description={blockInvariantModal ?? ''}
+        confirmLabel="Entendido"
+        variant="danger"
+        onConfirm={() => setBlockInvariantModal(null)}
+        onCancel={() => setBlockInvariantModal(null)}
       />
 
       {/* Validation modal */}
