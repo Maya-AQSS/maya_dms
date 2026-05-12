@@ -163,7 +163,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validateComments, setValidateComments] = useState<BlockComment[]>([]);
   const [validateActiveView, setValidateActiveView] = useState<ValidateActiveView>(null);
   const validateActiveBlockId = validateActiveView?.blockId ?? null;
-  const [validateNewCommentBody, setValidateNewCommentBody] = useState('');
   const [validateCommentLoading, setValidateCommentLoading] = useState(false);
   const [validateCommentError, setValidateCommentError] = useState<string | null>(null);
   const validateBlockRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -422,7 +421,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setValidateActiveView((prev: any) =>
       prev?.blockId === blockId && prev?.mode === mode ? null : { blockId, mode },
     );
-    if (mode === 'comments') setValidateNewCommentBody('');
   };
 
   // Dynamic top for fixed creator-preview comment panel (below page header)
@@ -480,42 +478,25 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     return uniqueIds.map(id => allForBlock.find(c => c.id === id) as BlockComment);
   };
 
-  const handleValidateAddComment = async () => {
-    if (!validateNewCommentBody.trim() || !documentId || !validateActiveBlockId) return;
-    const block = detail?.blocks.find(b => b.template_block_id === validateActiveBlockId);
-    const blockableId = block?.document_block_id ?? null;
+  const handleValidateSendMessage = async (parentId: string | null, body: string) => {
+    if (!documentId) return;
     setValidateCommentLoading(true);
+    setValidateCommentError(null);
     try {
+      const parent = parentId ? validateComments.find(c => c.id === parentId) : null;
+      const blockableId = parentId
+        ? (parent?.blockable_id ?? null)
+        : (detail?.blocks.find(b => b.template_block_id === validateActiveBlockId)?.document_block_id ?? null);
       const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
         method: 'POST',
-        body: {
-          body: validateNewCommentBody,
-          blockable_id: blockableId,
-          document_version_id: detail?.working_version_id || null
-        },
+        body: { body, parent_id: parentId, blockable_id: blockableId },
       });
       setValidateComments(prev => [...prev, res.data]);
-      setValidateNewCommentBody('');
     } catch {
       setValidateCommentError('No se pudo guardar el comentario.');
     } finally {
       setValidateCommentLoading(false);
     }
-  };
-
-  const handleValidateReply = async (parentCommentId: string, body: string) => {
-    if (!documentId) return;
-    const parent = validateComments.find(c => c.id === parentCommentId);
-    const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
-      method: 'POST',
-      body: {
-        body,
-        parent_id: parentCommentId,
-        blockable_id: parent?.blockable_id ?? null,
-        document_version_id: detail?.working_version_id || null
-      },
-    });
-    setValidateComments(prev => [...prev, res.data]);
   };
 
   const handleDelete = async () => {
@@ -814,16 +795,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   if (isValidateMode) {
     const validateBlocks = detail?.blocks ?? [];
     const validateSelectedBlock = validateBlocks.find(b => b.template_block_id === validateActiveBlockId);
-    const validateBlockComments = (() => {
-      if (!validateActiveBlockId || !validateSelectedBlock) return [];
-      const rootIds = validateComments
-        .filter(c => c.blockable_id === validateSelectedBlock.document_block_id && !c.parent_id)
-        .map(c => c.id);
-      return validateComments.filter(
-        c => (c.blockable_id === validateSelectedBlock.document_block_id && !c.parent_id)
-          || (c.parent_id !== null && rootIds.includes(c.parent_id)),
-      );
-    })();
+    const validateBlockComments = validateSelectedBlock
+      ? getCommentsForBlock(validateSelectedBlock.document_block_id, validateComments)
+      : [];
 
     return (
       <>
@@ -874,14 +848,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
                 blockComments={validateBlockComments}
                 allComments={validateComments}
-                newCommentBody={validateNewCommentBody}
-                onNewCommentBodyChange={setValidateNewCommentBody}
-                onAddComment={() => void handleValidateAddComment()}
+                onSendMessage={handleValidateSendMessage}
                 commentLoading={validateCommentLoading}
                 canAddComments={!!actionableReviewId}
-                onReply={handleValidateReply}
                 headerRef={validateViewHeaderRef}
-                onClose={() => { setValidateActiveView(null); setValidateNewCommentBody(''); }}
+                onClose={() => setValidateActiveView(null)}
               />
             ) : (
               <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
