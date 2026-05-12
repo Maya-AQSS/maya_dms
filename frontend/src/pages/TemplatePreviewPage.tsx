@@ -24,8 +24,9 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { useHierarchy } from '../features/hierarchy';
-import { BlockCommentsCard } from '../features/templates/components/BlockCommentsCard';
+import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
+import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 type ReviewComment = BlockComment;
@@ -140,25 +141,7 @@ export function TemplatePreviewPage() {
   // Ref for the comment card header.
   const commentCardHeaderRef = useRef<HTMLDivElement>(null);
 
-  // Dynamic top position for the fixed comment panel — stays below the page header.
-  const pageHeaderRef = useRef<HTMLDivElement>(null);
-  const [commentPanelTop, setCommentPanelTop] = useState(80);
-
-  useLayoutEffect(() => {
-    const updateTop = () => {
-      if (!pageHeaderRef.current) return;
-      const bottom = pageHeaderRef.current.getBoundingClientRect().bottom;
-      setCommentPanelTop(Math.max(8, bottom + 8));
-    };
-    updateTop();
-    const ro = new ResizeObserver(updateTop);
-    if (pageHeaderRef.current) ro.observe(pageHeaderRef.current);
-    window.addEventListener('scroll', updateTop, { passive: true, capture: true });
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('scroll', updateTop, { capture: true });
-    };
-  }, []);
+  // Dynamic top position for the fixed comment panel — no longer needed with PaperPreviewLayout
 
   useEffect(() => {
     if (!id) {
@@ -559,135 +542,114 @@ export function TemplatePreviewPage() {
   ) : null;
 
   return (
-    <div className="min-h-full overflow-y-auto">
-      <div ref={pageHeaderRef}>
-        <PageTitle
-          title={template?.name ?? 'Plantilla'}
-          subtitle="Previsualización"
-          onBack={handleBack}
-          backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
-          meta={
-            <div className="space-y-3">
-              {headerMeta}
-              {headerToolbar}
-            </div>
-          }
-        />
-      </div>
-
-      {actionError && (
-        <div className="max-w-[960px] mx-auto px-6 py-2">
-          <p className="text-sm text-warning-dark dark:text-warning-light">{actionError}</p>
-        </div>
-      )}
-
-      <div className={selectedBlockId ? 'pr-96' : ''}>
-        {/* Article (paper) — same layout as DocumentPreviewPage */}
-        <article
-          className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
-          style={{ maxWidth: '760px', minHeight: 'calc(100vh - 52px)', padding: '56px 72px' }}
-        >
-          {loading && (
-            <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</p>
-          )}
-          {error && !loading && (
-            <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
-          )}
-          {!loading && !error && template && (
-            <>
-              <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
-                {displayTitle ?? template.name}
-              </h1>
-              {blocks.length === 0 ? (
-                <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                  Esta plantilla no tiene bloques.
-                </p>
-              ) : (
-                <div className="space-y-10">
-                  {blocks.map((block) => {
-                    const isLocked = block.block_state === 'locked';
-                    const nodes = blockContentNodes(block);
-                    const hasContent = nodes.length > 0;
-                    const pendingComments = blockPendingComments(block.id);
-                    const isSelected = selectedBlockId === block.id;
-
-                    return (
-                      <section
-                        key={block.id}
-                        style={isLocked ? { opacity: 0.45 } : undefined}
-                        className={[
-                          'relative rounded-lg transition-all duration-150',
-                          pendingComments.length > 0
-                            ? 'cursor-pointer'
-                            : '',
-                          isSelected
-                            ? 'ring-2 ring-danger/40 ring-offset-4'
-                            : pendingComments.length > 0
-                              ? 'hover:ring-1 hover:ring-danger/30 hover:ring-offset-2'
-                              : '',
-                        ].join(' ')}
-                        onClick={pendingComments.length > 0 ? () => setSelectedBlockId(isSelected ? null : block.id) : undefined}
-                      >
-                        <div className="flex flex-wrap items-baseline gap-2 mb-2">
-                          {block.title && (
-                            <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
-                              {block.title}
-                            </h4>
-                          )}
-                          {pendingComments.length > 0 && (
-                            <span
-                              className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                              title="Este bloque tiene comentarios de revisión pendientes"
-                            >
-                              ⚠ {pendingComments.length} {pendingComments.length === 1 ? 'comentario' : 'comentarios'}
-                            </span>
-                          )}
-                          {block.mandatory && (
-                            <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-success-light text-success-dark dark:bg-success-dark/30 dark:text-success-light">
-                              Obligatorio
-                            </span>
-                          )}
-                          {isLocked && (
-                            <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
-                              Bloqueado
-                            </span>
-                          )}
-                        </div>
-                        {hasContent ? (
-                          <BlockContentHtml content={nodes} />
-                        ) : (
-                          <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                            Sin contenido.
-                          </p>
-                        )}
-                      </section>
-                    );
-                  })}
-                </div>
-              )}
-            </>
-          )}
-        </article>
-
-        {/* Comments panel — fixed-position card */}
-        {selectedBlockId && (() => {
+    <>
+      <PaperPreviewLayout
+        title={displayTitle ?? template?.name ?? 'Plantilla'}
+        onBack={handleBack}
+        backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
+        metaInfo={headerMeta}
+        actions={headerToolbar}
+        sidebar={selectedBlockId && (() => {
           const block = blocks.find((b) => b.id === selectedBlockId);
           return (
-            <div className="fixed right-6 w-[384px] z-30" style={{ top: commentPanelTop, height: `calc(100vh - ${commentPanelTop + 24}px)` }}>
-              <BlockCommentsCard
-                mode={isOwner ? 'creator-edit' : 'creator-readonly'}
-                blockSortOrder={block?.sort_order ?? '?'}
-                blockComments={blockAllComments(selectedBlockId)}
-                allComments={reviewComments}
-                commentLoading={reviewCommentsLoading}
-                onSendMessage={handleSendMessage}
-                headerRef={commentCardHeaderRef}
-                onClose={() => setSelectedBlockId(null)}
-              />
-            </div>
+            <BlockCommentsCard
+              mode={isOwner ? 'creator-edit' : 'creator-readonly'}
+              blockSortOrder={block?.sort_order ?? '?'}
+              blockComments={blockAllComments(selectedBlockId)}
+              allComments={reviewComments}
+              commentLoading={reviewCommentsLoading}
+              onSendMessage={handleSendMessage}
+              headerRef={commentCardHeaderRef}
+              onClose={() => setSelectedBlockId(null)}
+            />
           );
         })()}
-      </div>
+      >
+        {actionError && (
+          <p className="text-sm text-warning-dark dark:text-warning-light mb-4">{actionError}</p>
+        )}
+
+        {loading && (
+          <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantilla…</p>
+        )}
+        {error && !loading && (
+          <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
+        )}
+        {!loading && !error && template && (
+          <>
+            <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
+              {displayTitle ?? template.name}
+            </h1>
+            {blocks.length === 0 ? (
+              <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                Esta plantilla no tiene bloques.
+              </p>
+            ) : (
+              <div className="space-y-10">
+                {blocks.map((block) => {
+                  const isLocked = block.block_state === 'locked';
+                  const nodes = blockContentNodes(block);
+                  const hasContent = nodes.length > 0;
+                  const pendingComments = blockPendingComments(block.id);
+                  const isSelected = selectedBlockId === block.id;
+
+                  return (
+                    <section
+                      key={block.id}
+                      style={isLocked ? { opacity: 0.45 } : undefined}
+                      className={[
+                        'relative rounded-lg transition-all duration-150',
+                        pendingComments.length > 0
+                          ? 'cursor-pointer'
+                          : '',
+                        isSelected
+                          ? 'ring-2 ring-danger/40 ring-offset-4'
+                          : pendingComments.length > 0
+                            ? 'hover:ring-1 hover:ring-danger/30 hover:ring-offset-2'
+                            : '',
+                      ].join(' ')}
+                      onClick={pendingComments.length > 0 ? () => setSelectedBlockId(isSelected ? null : block.id) : undefined}
+                    >
+                      <div className="flex flex-wrap items-baseline gap-2 mb-2">
+                        {block.title && (
+                          <h4 className="text-sm font-bold text-text-secondary dark:text-text-dark-secondary">
+                            {block.title}
+                          </h4>
+                        )}
+                        {pendingComments.length > 0 && (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                            title="Este bloque tiene comentarios de revisión pendientes"
+                          >
+                            ⚠ {pendingComments.length} {pendingComments.length === 1 ? 'comentario' : 'comentarios'}
+                          </span>
+                        )}
+                        {block.mandatory && (
+                          <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-success-light text-success-dark dark:bg-success-dark/30 dark:text-success-light">
+                            Obligatorio
+                          </span>
+                        )}
+                        {isLocked && (
+                          <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                            Bloqueado
+                          </span>
+                        )}
+                      </div>
+                      {hasContent ? (
+                        <BlockContentHtml content={nodes} />
+                      ) : (
+                        <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                          Sin contenido.
+                        </p>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </PaperPreviewLayout>
 
       {id && (
         <VersionHistoryPanel
@@ -725,6 +687,6 @@ export function TemplatePreviewPage() {
           setDiscardVersionError(null);
         }}
       />
-    </div>
+    </>
   );
 }

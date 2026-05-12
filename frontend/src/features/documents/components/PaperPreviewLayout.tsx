@@ -22,6 +22,8 @@ interface Props {
   asOverlay?: boolean
   /** Ref opcional sobre el área del header (PageTitle) para calcular offsets de paneles fijos. */
   headerRef?: RefObject<HTMLDivElement | null>
+  /** Sidebar opcional (usado para comentarios/info) que ocupa el 35% de la pantalla. */
+  sidebar?: ReactNode
   children: ReactNode
 }
 
@@ -71,6 +73,7 @@ export function PaperPreviewLayout({
   actions,
   asOverlay = false,
   headerRef,
+  sidebar,
   children,
 }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -151,12 +154,25 @@ export function PaperPreviewLayout({
       />
       </div>
 
-      <article
-        className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
-        style={articleStyle}
-      >
-        {children}
-      </article>
+      <div className={sidebar ? 'flex min-h-full' : ''}>
+        <div className={sidebar ? 'flex-1' : ''}>
+          <article
+            className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
+            style={articleStyle}
+          >
+            {children}
+          </article>
+        </div>
+
+        {sidebar && (
+          <div
+            className="shrink-0 sticky top-6 self-start pr-6"
+            style={{ width: '35%', height: 'calc(100vh - 150px)' }}
+          >
+            {sidebar}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

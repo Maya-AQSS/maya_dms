@@ -83,14 +83,20 @@ function CommentItem({
   comment,
   mode,
   onReplyClick,
+  onMentionClick,
   mentionName,
+  mentionId,
   isSubReply = false,
+  isHighlighted = false,
 }: {
   comment: BlockComment;
   mode: CommentMode;
   onReplyClick: (parentId: string, authorName: string) => void;
+  onMentionClick?: (mentionId: string) => void;
   mentionName?: string;
+  mentionId?: string;
   isSubReply?: boolean;
+  isHighlighted?: boolean;
 }) {
   return (
     <div className="relative">
@@ -103,7 +109,21 @@ function CommentItem({
         </span>
       </div>
 
-      <div className={`text-sm leading-relaxed p-4 rounded-xl border shadow-sm text-text-primary dark:text-text-dark-primary border-ui-border/50 dark:border-ui-dark-border/50 break-words whitespace-pre-wrap ${isSubReply ? 'bg-ui-body/10 dark:bg-ui-dark-bg italic' : 'bg-ui-body/30 dark:bg-ui-dark-bg'}`}>
+      <div 
+        id={`comment-${comment.id}`}
+        onClick={() => {
+          if (mentionId && onMentionClick) onMentionClick(mentionId);
+        }}
+        className={`text-sm leading-relaxed p-4 rounded-xl border shadow-sm break-words whitespace-pre-wrap transition-all duration-500 ${
+          mentionId ? 'cursor-pointer hover:border-odoo-purple/50' : ''
+        } ${
+          isHighlighted 
+            ? 'bg-[#E3F2FD] dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary' 
+            : isSubReply 
+              ? 'bg-ui-body/10 dark:bg-ui-dark-bg italic border-ui-border/50 text-text-primary dark:text-text-dark-primary' 
+              : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
+        }`}
+      >
         {mentionName && (
           <div className="mb-2">
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-odoo-purple/10 text-odoo-purple text-[10px] font-black uppercase tracking-widest">
@@ -121,8 +141,11 @@ function CommentItem({
         <div className="mt-2 flex items-center gap-4">
           <button
             type="button"
-            onClick={() => onReplyClick(comment.id, comment.author?.name || 'Usuario')}
-            className="text-xs font-bold text-odoo-purple hover:underline"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReplyClick(comment.id, comment.author?.name || 'Usuario');
+            }}
+            className="text-xs font-bold text-odoo-purple hover:underline relative z-10"
           >
             Responder
           </button>
@@ -137,11 +160,15 @@ function CommentThread({
   allComments,
   mode,
   onReplyClick,
+  onMentionClick,
+  highlightedCommentId,
 }: {
   rootComment: BlockComment;
   allComments: BlockComment[];
   mode: CommentMode;
   onReplyClick: (parentId: string, authorName: string) => void;
+  onMentionClick: (mentionId: string) => void;
+  highlightedCommentId: string | null;
 }) {
   const flatReplies = getFlatReplies(rootComment.id, allComments);
 
@@ -153,6 +180,8 @@ function CommentThread({
         comment={rootComment}
         mode={mode}
         onReplyClick={onReplyClick}
+        onMentionClick={onMentionClick}
+        isHighlighted={highlightedCommentId === rootComment.id}
       />
 
       {flatReplies.length > 0 && (
@@ -165,8 +194,11 @@ function CommentThread({
                 comment={reply}
                 mode={mode}
                 onReplyClick={onReplyClick}
+                onMentionClick={onMentionClick}
                 isSubReply={true}
                 mentionName={parent?.author?.name || 'Usuario'}
+                mentionId={parent?.id}
+                isHighlighted={highlightedCommentId === reply.id}
               />
             );
           })}
@@ -212,6 +244,7 @@ export function BlockCommentsCard({
 }: BlockCommentsCardProps) {
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [replyBody, setReplyBody] = useState('');
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
 
   const rootComments = blockComments.filter(c => !c.parent_id);
 
@@ -233,6 +266,14 @@ export function BlockCommentsCard({
     setTimeout(() => {
       document.getElementById('block-comments-chat-input')?.focus();
     }, 50);
+  };
+
+  const handleMentionClick = (mentionId: string) => {
+    setHighlightedCommentId(mentionId);
+    document.getElementById(`comment-${mentionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => {
+      setHighlightedCommentId(null);
+    }, 1500);
   };
 
   return (
@@ -273,6 +314,8 @@ export function BlockCommentsCard({
                 allComments={allComments}
                 mode={mode}
                 onReplyClick={handleReplyClick}
+                onMentionClick={handleMentionClick}
+                highlightedCommentId={highlightedCommentId}
               />
             ))}
           </div>

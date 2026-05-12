@@ -5,6 +5,7 @@ import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
+import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { fetchProcesses } from '../../../api/processes';
@@ -19,10 +20,8 @@ type Props = { template: Template };
 
 type ActiveView = { blockId: string; mode: 'comments' | 'info' };
 
-// Comments card column width (px). The card fills 408 − 24px right gap = 384px.
-// In comments mode the document column stays flex-1 (normal folio width).
-// In info mode both columns are flex-1 (strict 50/50, no fixed widths).
-const COMMENTS_COL_WIDTH = 408;
+// Sidebar width percentage.
+const SIDEBAR_WIDTH = '35%';
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -40,32 +39,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
   return null;
 }
 
-function ValidatorInfoPage({
-  selectedBlock,
-  headerRef,
-  onClose,
-}: {
-  selectedBlock: any;
-  headerRef: RefObject<HTMLDivElement | null>;
-  onClose: () => void;
-}) {
-  return (
-    <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-      <ViewCardHeader
-        blockSortOrder={selectedBlock.sort_order ?? '?'}
-        title="Descripción del Bloque"
-        onClose={onClose}
-        headerRef={headerRef}
-      />
-      <div style={{ padding: '40px 60px' }}>
-        <InfoBlockDescription description={selectedBlock.description} />
-        {!selectedBlock.description && (
-          <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
-        )}
-      </div>
-    </div>
-  );
-}
+
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -208,7 +182,35 @@ export function TemplateReviewView({ template }: Props) {
     }
   };
 
-  const selectedBlock = blocks.find(b => b.id === activeView?.blockId);
+  const selectedBlock = blocks.find((b) => b.id === activeView?.blockId);
+
+  // Sub-component for Info sidebar (placed inside to share 'blocks' scope)
+  function ValidatorInfoPage({
+    selectedBlock,
+    headerRef,
+    onClose,
+  }: {
+    selectedBlock: any;
+    headerRef: RefObject<HTMLDivElement | null>;
+    onClose: () => void;
+  }) {
+    return (
+      <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+        <ViewCardHeader
+          blockSortOrder={(blocks.findIndex((b) => b.id === selectedBlock.id) + 1) || '?'}
+          title="Descripción del Bloque"
+          onClose={onClose}
+          headerRef={headerRef}
+        />
+        <div style={{ padding: '40px 60px' }}>
+          <InfoBlockDescription description={selectedBlock.description} />
+          {!selectedBlock.description && (
+            <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
   const blockComments = (() => {
     const bid = activeView?.blockId;
     if (!bid) return [];
@@ -222,35 +224,19 @@ export function TemplateReviewView({ template }: Props) {
   })();
 
   return (
-    <div className="flex flex-col h-full bg-ui-preview-bg dark:bg-ui-dark-bg/50">
-
-      {/* ── Page header ─────────────────────────────────────────────────────── */}
-      <div
-        ref={headerRef}
-        className="shrink-0 px-6 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shadow-md z-20"
-      >
-        <div className="flex items-center gap-3">
-          <button
-            onClick={goBack}
-            className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-ui-body dark:hover:bg-ui-dark-bg text-text-secondary transition-colors"
-          >
-            ←
-          </button>
-          <div>
-            <h2 className="text-sm font-bold text-text-primary dark:text-text-dark-primary">
-              Validación de Plantilla
-            </h2>
-            <p className="text-xs text-text-muted uppercase tracking-widest font-black truncate max-w-[200px]">
-              {template.name}
-            </p>
-            {processLabel && (
-              <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[420px]">
-                {processLabel}
-              </p>
-            )}
-          </div>
+    <PaperPreviewLayout
+      title={template.name}
+      onBack={() => navigate('/templates')}
+      backLabel="Volver a plantillas"
+      metaInfo={
+        <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-widest text-text-muted justify-center">
+          <span>{visibilityLabel(template.visibility_level)}</span>
+          {template.study_id && <span>• {String(template.study_id)}</span>}
+          {template.module_id && <span>• {String(template.module_id)}</span>}
+          {processLabel && <span>• Proceso: {processLabel}</span>}
         </div>
-
+      }
+      actions={
         <div className="flex items-center gap-2">
           {commentMode === 'validator' ? (
             <>
@@ -285,222 +271,123 @@ export function TemplateReviewView({ template }: Props) {
             </div>
           )}
         </div>
-      </div>
-
-      {myReview?.status === 'approved' && remainingReviewers.length > 0 && (
-        <div className="mx-6 mt-4 p-3 bg-odoo-purple/5 border border-odoo-purple/20 rounded-lg flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-          <div className="flex items-center gap-3">
-            <span className="text-lg">⏳</span>
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest text-odoo-purple">Pendiente de otros validadores</p>
-              <p className="text-xs text-text-secondary dark:text-text-dark-secondary">
-                Faltan {remainingReviewers.length}{' '}
-                {remainingReviewers.length === 1 ? 'persona' : 'personas'} por validar:{' '}
-                <span className="font-bold ml-1">
-                  {remainingReviewers.map(r => r.user_name || 'Usuario').join(', ')}
-                </span>
-              </p>
+      }
+      sidebar={activeView && selectedBlock && (
+        activeView.mode === 'comments' ? (
+          <BlockCommentsCard
+            mode={commentMode}
+            blockSortOrder={(blocks.findIndex(b => b.id === selectedBlock.id) + 1) || '?'}
+            blockComments={blockComments}
+            allComments={comments}
+            onClose={closeView}
+            onSendMessage={handleSendMessage}
+            commentLoading={actionLoading}
+          />
+        ) : (
+          <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+            <ViewCardHeader
+              blockSortOrder={(blocks.findIndex(b => b.id === selectedBlock.id) + 1) || '?'}
+              title="Descripción del Bloque"
+              onClose={closeView}
+            />
+            <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
+              <InfoBlockDescription description={selectedBlock.description} />
             </div>
           </div>
-        </div>
+        )
       )}
+    >
+      {/* Blocks list (article content) */}
+      <div className="space-y-12">
+        {blocks.length === 0 ? (
+          <div className="py-20 text-center border-2 border-dashed border-ui-border dark:border-ui-dark-border rounded-xl">
+            <p className="text-sm text-text-muted italic">Esta plantilla no tiene bloques configurados.</p>
+          </div>
+        ) : (
+          blocks.map((block) => {
+            const isSelected = activeView?.blockId === block.id;
+            const hasComments = comments.some(c => c.blockable_id === block.id);
+            const nodes = normalizeBlockContentForEditor(block.default_content);
 
-      {error && (
-        <div className="mx-6 mt-4 p-3 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold animate-in slide-in-from-top-1 z-10">
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* ── Work area — single scroll context, both columns move together ──── */}
-      <div
-        ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar relative"
-      >
-        <div className="flex min-h-full">
-
-          {/* ── Document (folio) column — always flex-1, fills available width ── */}
-          <div className="flex-1 p-8">
-            <article
-              ref={articleRef as RefObject<HTMLElement>}
-              className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content rounded-sm transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
-              style={{ maxWidth: '850px', minHeight: '100%', padding: '60px 70px' }}
-            >
-              {/* Document header */}
-              <header className="mb-12 border-b border-ui-border dark:border-ui-dark-border pb-8">
-                <h1 className="text-3xl font-black text-text-primary dark:text-text-dark-primary mb-4 leading-tight">
-                  {template.name}
-                </h1>
-                <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-widest text-text-muted">
-                  <span>{visibilityLabel(template.visibility_level)}</span>
-                  {template.study_id && <span>• {String(template.study_id)}</span>}
-                  {template.module_id && <span>• {String(template.module_id)}</span>}
-                </div>
-              </header>
-
-              {/* Blocks */}
-              {blocks.length === 0 ? (
-                <div className="py-20 text-center border-2 border-dashed border-ui-border dark:border-ui-dark-border rounded-xl">
-                  <p className="text-sm text-text-muted italic">Esta plantilla no tiene bloques configurados.</p>
-                </div>
-              ) : (
-                <div className="space-y-12">
-                  {blocks.map((block) => {
-                    const isSelected = activeView?.blockId === block.id;
-                    const hasComments = comments.some(c => c.blockable_id === block.id);
-                    const nodes = normalizeBlockContentForEditor(block.default_content);
-
-                    return (
-                      <section
-                        key={block.id}
-                        ref={(el) => {
-                          if (el) blockRefs.current.set(block.id, el);
-                          else blockRefs.current.delete(block.id);
-                        }}
+            return (
+              <section
+                key={block.id}
+                ref={(el) => {
+                  if (el) blockRefs.current.set(block.id, el);
+                  else blockRefs.current.delete(block.id);
+                }}
+                className={[
+                  'relative group rounded-lg transition-all duration-200 cursor-pointer',
+                  isSelected
+                    ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
+                    : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
+                ].join(' ')}
+                onClick={() => openView(block.id, 'comments')}
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <h4 className="flex-1 text-sm font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                    {block.title || 'Bloque sin título'}
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    {block.description && (
+                      <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
-                          // Click on block body toggles comment view for this block.
-                          if (isSelected && activeView?.mode === 'comments') {
-                            closeView();
-                          } else {
-                            openView(block.id, 'comments');
-                          }
+                          openView(block.id, 'info');
                         }}
                         className={[
-                          'relative group rounded-lg transition-all duration-200 cursor-pointer',
-                          isSelected
-                            ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
-                            : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
+                          'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                          isSelected && activeView?.mode === 'info'
+                            ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                            : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                         ].join(' ')}
+                        title="Ver descripción"
                       >
-                        {/* Block order badge */}
-                        <div className={[
-                          'absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200',
-                          isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted',
-                        ].join(' ')}>
-                          #{(block.sort_order ?? '?') as any}
-                        </div>
-
-                        {/* Block header row */}
-                        <div className="flex items-center gap-3 mb-4">
-                          <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                            {(block.title ? String(block.title) : 'Bloque sin título') as any}
-                          </h3>
-
-                          <div className="flex items-center gap-2">
-                            {/* Info button — opens description page */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isSelected && activeView?.mode === 'info') {
-                                  closeView();
-                                } else {
-                                  openView(block.id, 'info');
-                                }
-                              }}
-                              className={[
-                                'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                isSelected && activeView?.mode === 'info'
-                                  ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                                  : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
-                              ].join(' ')}
-                              title="Ver descripción del bloque"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              <span>Info</span>
-                            </button>
-
-                            {/* Messages button — opens comments card */}
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (isSelected && activeView?.mode === 'comments') {
-                                  closeView();
-                                } else {
-                                  openView(block.id, 'comments');
-                                }
-                              }}
-                              className={[
-                                'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                isSelected && activeView?.mode === 'comments'
-                                  ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                                  : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
-                              ].join(' ')}
-                              title="Ver comentarios del bloque"
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                              </svg>
-                              <span>Mensajes</span>
-                              {hasComments && (
-                                <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-xs leading-none">
-                                  {comments.filter(c => c.blockable_id === block.id).length}
-                                </span>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div>
-                          {nodes.length > 0 ? (
-                            <BlockContentHtml content={nodes} />
-                          ) : (
-                            <p className="text-xs text-text-muted italic">Sin contenido configurado.</p>
-                          )}
-                        </div>
-                      </section>
-                    );
-                  })}
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span>Info</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isSelected && activeView?.mode === 'comments') {
+                          closeView();
+                        } else {
+                          openView(block.id, 'comments');
+                        }
+                      }}
+                      className={[
+                        'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                        isSelected && activeView?.mode === 'comments'
+                          ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                          : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                      ].join(' ')}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                      </svg>
+                      <span>Mensajes</span>
+                      {hasComments && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-odoo-purple animate-pulse" />
+                      )}
+                    </button>
+                  </div>
                 </div>
-              )}
-            </article>
-          </div>
-
-          {/* ── View column — Sticky Sidebar ─── */}
-          {/* COMMENTS: fixed width, folio stays normal.                        */}
-          {/* INFO: flex-1, both columns share space equally (50/50).           */}
-          {activeView && selectedBlock && (
-            <div
-              ref={viewColRef}
-              className={
-                activeView.mode === 'comments'
-                  ? 'shrink-0 pr-6 sticky top-6 self-start'
-                  : 'flex-1 pr-6 sticky top-6 self-start'
-              }
-              style={{
-                ...(activeView.mode === 'comments' ? { width: COMMENTS_COL_WIDTH } : {}),
-                height: 'calc(100vh - 150px)',
-              }}
-            >
-              {activeView.mode === 'comments' ? (
-                <BlockCommentsCard
-                  mode={commentMode}
-                  blockSortOrder={selectedBlock.sort_order ?? '?'}
-                  blockComments={blockComments}
-                  allComments={comments}
-                  onSendMessage={handleSendMessage}
-                  commentLoading={commentLoading}
-                  canAddComments={commentingOpen && commentMode !== 'creator-readonly'}
-                  commentingClosed={!commentingOpen}
-                  headerRef={viewHeaderRef}
-                  onClose={closeView}
-                />
-              ) : (
-                <ValidatorInfoPage
-                  selectedBlock={selectedBlock}
-                  headerRef={viewHeaderRef}
-                  onClose={closeView}
-                />
-              )}
-            </div>
-          )}
-        </div>
+                {nodes.length > 0 ? (
+                  <BlockContentHtml content={nodes} />
+                ) : (
+                  <p className="text-sm text-text-muted italic">Bloque sin contenido.</p>
+                )}
+              </section>
+            );
+          })
+        )}
       </div>
 
-      {/* ── Dialogs ─────────────────────────────────────────────────────────── */}
       <ConfirmDialog
         open={showRejectModal}
         title="¿Rechazar validación?"
@@ -520,6 +407,6 @@ export function TemplateReviewView({ template }: Props) {
         onCancel={() => setShowNoCommentsWarning(false)}
         onConfirm={() => setShowNoCommentsWarning(false)}
       />
-    </div>
+    </PaperPreviewLayout>
   );
 }

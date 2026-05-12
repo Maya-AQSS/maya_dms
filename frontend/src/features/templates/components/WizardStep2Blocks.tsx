@@ -214,6 +214,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [tabIsDirty, setTabIsDirty] = useState(false);
+
+  useEffect(() => {
+    if (activeSingleId && !formName.trim()) {
+      setShowCommentPanel(false);
+    }
+  }, [activeSingleId, formName]);
   // Reply state is managed inside BlockCommentsCard; we only keep the API handler here.
   // Ref to always have latest activeSingleId in the autosave closure
   const activeSingleIdRef = useRef<string | null>(null);
@@ -222,6 +228,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const { profile } = useUserProfile();
 
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
+  const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
 
   const blockComments: any[] = activeSingleId
     ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
@@ -540,7 +547,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   {renderSaveStatus()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {!showCommentPanel && (
+                  {!showCommentPanel && formName.trim() && (
                     <Button
                       variant="outline"
                       size="xs"
@@ -678,11 +685,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       </div>
 
       {/* Right: comment panel — creator-edit mode, available even if no comments */}
-      {showCommentPanel && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
+      {showCommentPanel && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && formName.trim() && (
         <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full">
           <BlockCommentsCard
             mode="creator-edit"
-            blockSortOrder={selectedBlock.sort_order ?? '?'}
+            blockSortOrder={selectedBlockIndex >= 0 ? selectedBlockIndex + 1 : '?'}
             blockComments={blockComments}
             allComments={reviewComments}
             onSendMessage={handleSendMessage}
