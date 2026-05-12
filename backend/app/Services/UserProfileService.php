@@ -51,11 +51,15 @@ class UserProfileService implements UserProfileServiceInterface
 
             $teams = $this->repository->findTeamsByUserId($userId);
 
+            // MOCK locale — la columna `locale` aún no existe en `v_app_users` (FDW Odoo).
+            // Cuando se añada en maya_core_employee + se exponga en la vista, leer con:
+            //   $fdwUser['locale'] ?? 'es'.
             $profile = [
                 'id'             => $fdwUser['id'],
                 'email'          => $fdwUser['email'] ?? null,
                 'name'           => $fdwUser['name'] ?? null,
                 'department'     => $fdwUser['department'] ?? $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+                'locale'         => $fdwUser['locale'] ?? 'es',
                 'study_type_ids' => $this->repository->findStudyTypeIdsByUserId($userId),
                 'study_ids'      => $this->repository->findStudyIdsByUserId($userId),
                 'module_ids'     => $this->repository->findModuleIdsByUserId($userId),
@@ -99,6 +103,7 @@ class UserProfileService implements UserProfileServiceInterface
             'email'          => $jwtProfile['email'] ?? null,
             'name'           => $jwtProfile['name'] ?? null,
             'department'     => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+            'locale'         => 'es', // MOCK — ver getProfile().
             'study_type_ids' => $scopes['study_type_ids'],
             'study_ids'      => $scopes['study_ids'],
             'module_ids'     => $scopes['module_ids'],

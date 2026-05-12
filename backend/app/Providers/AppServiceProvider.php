@@ -102,6 +102,13 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateBlockServiceInterface::class, TemplateBlockService::class);
         $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
+        // /me + /me/locale viven en maya/shared-profile-laravel. El paquete
+        // bindea por defecto JwtPassthroughResolver; aquí lo sobrescribimos
+        // con el resolver que envuelve nuestro UserProfileService (FDW + cache).
+        $this->app->bind(
+            \Maya\Profile\Repositories\Contracts\UserProfileResolverInterface::class,
+            \App\Repositories\Resolvers\FdwUserProfileResolver::class,
+        );
         $this->app->bind(UserFavoriteServiceInterface::class, UserFavoriteService::class);
         $this->app->bind(UserDirectoryServiceInterface::class, UserDirectoryService::class);
         $this->app->bind(AcademicHierarchyServiceInterface::class, AcademicHierarchyService::class);

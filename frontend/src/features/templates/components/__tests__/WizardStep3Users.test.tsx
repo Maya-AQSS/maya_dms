@@ -24,6 +24,7 @@ vi.mock('../../../../api/users', () => ({
       team_ids: [],
       permissions: ['users.search'],
       teams: [],
+      locale: 'es',
       source: 'fdw' as const,
     },
   }),
@@ -93,6 +94,7 @@ describe('WizardStep3Users', () => {
         team_ids: [],
         permissions: ['users.search'],
         teams: [],
+        locale: 'es',
         source: 'fdw',
       },
     });
@@ -135,6 +137,7 @@ describe('WizardStep3Users', () => {
         team_ids: [],
         permissions: [],
         teams: [],
+        locale: 'es',
         source: 'fdw',
       },
     });

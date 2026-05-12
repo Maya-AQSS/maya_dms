@@ -1,3 +1,5 @@
+import type { BaseMeProfile } from '@maya/shared-profile-react';
+
 export type User = {
   id: string;
   name: string;
@@ -13,10 +15,11 @@ export type UserTeam = {
   is_department: boolean;
 };
 
-export type MeProfile = {
-  id: string;
-  email: string | null;
-  name: string | null;
+/**
+ * Shape devuelto por `GET /api/v1/me` de maya_dms — extiende `BaseMeProfile`
+ * con los campos académicos resueltos por `App\Repositories\Resolvers\FdwUserProfileResolver`.
+ */
+export type MeProfile = BaseMeProfile & {
   department: string | null;
   study_type_ids: string[];
   study_ids: string[];
@@ -29,8 +32,4 @@ export type MeProfile = {
 
 export type UsersSearchResponse = {
   data: User[];
-};
-
-export type MeProfileResponse = {
-  data: MeProfile;
 };

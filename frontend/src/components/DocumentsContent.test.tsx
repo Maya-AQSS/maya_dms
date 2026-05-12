@@ -19,6 +19,7 @@ vi.mock('../api/users', () => ({
       team_ids: [],
       permissions: ['documents.create', 'documents.read'],
       teams: [],
+      locale: 'es',
       source: 'fdw' as const,
     },
   }),
@@ -138,6 +139,7 @@ describe('DocumentsContent creation flow', () => {
         team_ids: [],
         permissions: ['documents.create', 'documents.read'],
         teams: [],
+        locale: 'es',
         source: 'fdw',
       },
     });
@@ -164,6 +166,7 @@ describe('DocumentsContent creation flow', () => {
         team_ids: [],
         permissions: ['documents.read'],
         teams: [],
+        locale: 'es',
         source: 'fdw',
       },
     });

@@ -9,6 +9,7 @@ export function meProfileFixture(overrides: Partial<MeProfile> = {}): MeProfile 
     email: 'fixture@test.local',
     name: 'Usuario Demo',
     department: 'QA',
+    locale: 'es',
     study_type_ids: [],
     study_ids: [],
     module_ids: [],

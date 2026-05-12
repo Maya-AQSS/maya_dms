@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Api\AcademicHierarchyController;
-use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
@@ -16,6 +15,7 @@ use App\Http\Controllers\Api\TemplateBlockController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
+use Maya\Profile\Routing\MeRoutes;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,8 +35,9 @@ Route::prefix('v1')->group(function () {
     // ── Rutas protegidas por JWT ───────────────────────────────
     Route::middleware('jwt')->group(function () {
 
-        // Autenticación y sesión
-        Route::get('/me', [AuthController::class, 'me']);
+        // Perfil del usuario autenticado — endpoints en maya/shared-profile-laravel
+        // (resolver FDW propio en App\Repositories\Resolvers\FdwUserProfileResolver).
+        MeRoutes::register();
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
         Route::get('/processes', [ProcessController::class, 'index']);
 
