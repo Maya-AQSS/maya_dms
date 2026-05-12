@@ -179,9 +179,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const validateBlocksInvariants = (blocksList: TemplateBlock[]): string | null => {
     const hasEditable = blocksList.some(b => b.block_state === 'editable' || b.block_state === 'modifiable');
     if (!hasEditable) return 'La plantilla debe tener al menos un bloque editable o modificable.';
+    const isEmpty = (content: unknown) =>
+      content === null || (Array.isArray(content) && content.length === 0);
+    const hasEmptyEditable = blocksList.some(b =>
+      (b.block_state === 'editable' || b.block_state === 'modifiable') && isEmpty(b.default_content)
+    );
+    if (hasEmptyEditable) return 'Los bloques editables y modificables no pueden estar vacíos.';
     const hasEmptyLocked = blocksList.some(b =>
-      b.block_state === 'locked' &&
-      (b.default_content === null || (Array.isArray(b.default_content) && b.default_content.length === 0))
+      b.block_state === 'locked' && isEmpty(b.default_content)
     );
     if (hasEmptyLocked) return 'Los bloques bloqueados no pueden estar vacíos.';
     return null;

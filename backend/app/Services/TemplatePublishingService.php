@@ -103,9 +103,21 @@ class TemplatePublishingService
                 ]);
             }
 
+            $isEmptyContent = fn ($b) => is_null($b->default_content)
+                || (is_array($b->default_content) && count($b->default_content) === 0);
+
+            $emptyEditableBlock = $template->blocks->first(
+                fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
+                    && $isEmptyContent($b)
+            );
+            if ($emptyEditableBlock !== null) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['Los bloques editables y modificables no pueden estar vacíos.'],
+                ]);
+            }
+
             $emptyLockedBlock = $template->blocks->first(
-                fn ($b) => (string) $b->block_state === 'locked'
-                    && (is_null($b->default_content) || (is_array($b->default_content) && count($b->default_content) === 0))
+                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b)
             );
             if ($emptyLockedBlock !== null) {
                 throw ValidationException::withMessages([
