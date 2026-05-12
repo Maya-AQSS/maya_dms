@@ -233,7 +233,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         name: name.trim(),
         description: description.trim() || null,
         ...(visibilityChanged ? { visibility_level: visibility } : {}),
-        delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+        delivery_deadline: deliveryDeadline || null,
         study_type_id: studyTypeId || null,
         study_id: studyId || null,
         module_id: moduleId || null,

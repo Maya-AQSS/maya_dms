@@ -906,7 +906,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
             team_id: teamId || undefined,
-            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+            delivery_deadline: deliveryDeadline || null,
           });
 
           // Navigate to the editor route with the new ID
@@ -924,7 +924,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           // Edit Mode: Update existing document
           const updated = await updateDocument(documentId, {
             title: title.trim(),
-            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+            delivery_deadline: deliveryDeadline || null,
             study_type_id: studyTypeId || undefined,
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
