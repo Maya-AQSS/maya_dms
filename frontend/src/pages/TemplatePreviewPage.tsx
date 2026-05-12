@@ -135,7 +135,7 @@ export function TemplatePreviewPage() {
   // Review comments (only loaded when owner & has_review_comments)
   const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
   const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
-  const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
   const [publishedVersionCount, setPublishedVersionCount] = useState<number | null>(null);
 
   // Ref for the comment card header.
@@ -224,12 +224,12 @@ export function TemplatePreviewPage() {
   }, [id, templateVersionId]);
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
-    if (!selectedBlockId || !id) return;
+    if (!activeView?.blockId || !id) return;
     setReviewCommentsLoading(true);
     try {
       const res = await apiFetchJson<{ data: ReviewComment }>(`templates/${id}/comments`, {
         method: 'POST',
-        body: { body, parent_id: parentId, blockable_id: selectedBlockId },
+        body: { body, parent_id: parentId, blockable_id: activeView.blockId },
       });
       setReviewComments(prev => [...prev, res.data]);
     } catch (e) {
@@ -553,19 +553,39 @@ export function TemplatePreviewPage() {
         backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
         metaInfo={headerMeta}
         actions={headerToolbar}
-        sidebar={selectedBlockId && (() => {
-          const block = blocks.find((b) => b.id === selectedBlockId);
+        sidebar={activeView && (() => {
+          const block = blocks.find((b) => b.id === activeView.blockId);
+          if (!block) return null;
+          if (activeView.mode === 'comments') {
+            return (
+              <BlockCommentsCard
+                mode={isOwner ? 'creator-edit' : 'creator-readonly'}
+                blockSortOrder={(blocks.findIndex((b: any) => b.id === activeView.blockId) + 1) || '?'}
+                blockComments={getCommentsForBlock(activeView.blockId, reviewComments)}
+                allComments={reviewComments}
+                commentLoading={reviewCommentsLoading}
+                onSendMessage={handleSendMessage}
+                headerRef={commentCardHeaderRef}
+                onClose={() => setActiveView(null)}
+              />
+            );
+          }
           return (
-            <BlockCommentsCard
-              mode={isOwner ? 'creator-edit' : 'creator-readonly'}
-              blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlockId) + 1) || '?'}
-              blockComments={getCommentsForBlock(selectedBlockId, reviewComments)}
-              allComments={reviewComments}
-              commentLoading={reviewCommentsLoading}
-              onSendMessage={handleSendMessage}
-              headerRef={commentCardHeaderRef}
-              onClose={() => setSelectedBlockId(null)}
-            />
+            <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+              <ViewCardHeader
+                blockSortOrder={(blocks.findIndex((b: any) => b.id === block.id) + 1) || '?'}
+                title="Descripción del Bloque"
+                onClose={() => setActiveView(null)}
+                headerRef={commentCardHeaderRef}
+              />
+              <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
+                {block.description ? (
+                  <BlockContentHtml content={normalizeBlockContentForEditor(block.description)} />
+                ) : (
+                  <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                )}
+              </div>
+            </div>
           );
         })()}
       >
@@ -594,7 +614,9 @@ export function TemplatePreviewPage() {
                   const isLocked = block.block_state === 'locked';
                   const nodes = blockContentNodes(block);
                   const hasContent = nodes.length > 0;
-                  const isSelected = selectedBlockId === block.id;
+                  const isSelected = activeView?.blockId === block.id;
+                  const infoActive = isSelected && activeView?.mode === 'info';
+                  const commentsActive = isSelected && activeView?.mode === 'comments';
                   const totalComments = getCommentsForBlock(block.id, reviewComments);
 
                   return (
@@ -607,7 +629,7 @@ export function TemplatePreviewPage() {
                           : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
                         isLocked ? 'opacity-70' : '',
                       ].join(' ')}
-                      onClick={() => setSelectedBlockId(isSelected ? null : block.id)}
+                      onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'comments' }); }}
                     >
                       <div className="flex items-center gap-3 mb-4">
                         <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
@@ -617,7 +639,11 @@ export function TemplatePreviewPage() {
                           {block.description && (
                             <button
                               type="button"
-                              className="shrink-0 px-3 py-1.5 rounded-full border border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 flex items-center gap-1.5 text-xs font-black uppercase tracking-wider"
+                              onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'info' }); }}
+                              className={[
+                                'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                                infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                              ].join(' ')}
                               title="Ver descripción"
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -628,9 +654,10 @@ export function TemplatePreviewPage() {
                           )}
                           <button
                             type="button"
+                            onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'comments' }); }}
                             className={[
                               'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                              isSelected
+                              commentsActive
                                 ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
                                 : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                             ].join(' ')}
