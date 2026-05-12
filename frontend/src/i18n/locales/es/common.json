@@ -51,5 +51,11 @@
   "auth": {
     "logout": "Cerrar sesión",
     "profile": "Perfil"
+  },
+  "userMenu": {
+    "darkMode": "Modo oscuro",
+    "lightMode": "Modo claro",
+    "profile": "Perfil",
+    "logout": "Cerrar sesión"
   }
 }

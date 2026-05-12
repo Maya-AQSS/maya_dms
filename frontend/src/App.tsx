@@ -1,8 +1,8 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
 import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 import { AppLayout } from '@maya/shared-layout-react';
 import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
+import { useKeycloakLocaleSync } from '@maya/shared-i18n-react';
 import { useAuth } from '@maya/shared-auth-react';
 import { SidebarProcesos } from './components/layout';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
@@ -53,11 +53,7 @@ function Main() {
   const { logout, user } = useAuth();
   const { profile } = useUserProfile();
   const navItems = useNavItems();
-  const { i18n: i18nInstance } = useTranslation();
-
-  useEffect(() => {
-    if (user?.locale) void i18nInstance.changeLanguage(user.locale as string);
-  }, [user?.locale, i18nInstance]);
+  useKeycloakLocaleSync();
 
   const userName = profile?.name?.trim() ?? '';
   const userInitials = profileDisplayInitials(profile);

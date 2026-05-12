@@ -51,5 +51,11 @@
   "auth": {
     "logout": "Log out",
     "profile": "Profile"
+  },
+  "userMenu": {
+    "darkMode": "Dark mode",
+    "lightMode": "Light mode",
+    "profile": "Profile",
+    "logout": "Log out"
   }
 }
