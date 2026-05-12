@@ -89,12 +89,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initial?.id && initial?.has_review_comments) {
+    if (initial?.id) {
       void apiFetchJson<{ data: any[] }>(`templates/${initial.id}/comments`)
         .then(res => setComments(res.data))
         .catch(console.error);
     }
-  }, [initial?.id, initial?.has_review_comments]);
+  }, [initial?.id]);
 
   useEffect(() => {
     if (!template?.id) {

@@ -82,16 +82,11 @@ export function TemplateReviewView({ template }: Props) {
 
   const [comments, setComments] = useState<BlockComment[]>([]);
   const [commentingOpen, setCommentingOpen] = useState(true);
-  const [newCommentBody, setNewCommentBody] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showNoCommentsWarning, setShowNoCommentsWarning] = useState(false);
   const [processLabel, setProcessLabel] = useState<string | null>(null);
-
-  // viewPaddingTop: pushes the view column down so its top aligns with the selected block.
-  const [viewPaddingTop, setViewPaddingTop] = useState(0);
-  const [connectorGeom, setConnectorGeom] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const headerRef = useRef<HTMLDivElement>(null);       // page header (for height only)
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -107,12 +102,11 @@ export function TemplateReviewView({ template }: Props) {
 
   // Determine the comment card mode for this user:
   // - validator: assigned reviewer while template is in_review and review is pending
-  // - creator-edit: creator viewing a draft with unresolved review comments (post-rejection)
-  // - creator-readonly: creator in any other state (in_review being actively reviewed, etc.)
+  // - creator-edit: creator can always respond, even in_review
+  // - creator-readonly: fallback
   const commentMode: CommentMode = (() => {
     if (isReviewer && template.status === 'in_review' && myReview?.status === 'pending') return 'validator';
-    if (isCreator && template.status === 'draft' && template.has_review_comments) return 'creator-edit';
-    if (isCreator) return 'creator-readonly';
+    if (isCreator) return 'creator-edit';
     return 'creator-readonly';
   })();
 
@@ -139,48 +133,7 @@ export function TemplateReviewView({ template }: Props) {
     return () => { cancelled = true; };
   }, [template.process_id]);
 
-  // Recalculate view position and connector whenever the active view changes.
-  // Both the view column and the connector are position:absolute inside the scroll
-  // container, so they scroll with the document (non-sticky).
-  useEffect(() => {
-    if (!activeView) {
-      setConnectorGeom(null);
-      setViewPaddingTop(0);
-      return;
-    }
-    const raf = requestAnimationFrame(() => {
-      const blockEl = blockRefs.current.get(activeView.blockId);
-      const scrollEl = scrollContainerRef.current;
-      const artEl = articleRef.current;
-      if (!blockEl || !scrollEl || !artEl) return;
-
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const blockRect = blockEl.getBoundingClientRect();
-      const artRect = artEl.getBoundingClientRect();
-
-      // Block's Y in scroll-content space (accounts for current scroll position).
-      const blockTopInScroll = blockRect.top - scrollRect.top + scrollEl.scrollTop;
-      setViewPaddingTop(blockTopInScroll);
-
-      // Connector geometry — both in scroll-content space.
-      const viewHeaderH = viewHeaderRef.current?.offsetHeight ?? 44;
-      const connectorTop = blockTopInScroll + viewHeaderH / 2;
-
-      // Article right edge in scroll-content X space.
-      const artRightX = artRect.right - scrollRect.left;
-
-      // View column left edge in scroll-content X space.
-      // The view column is already in the DOM (activeView triggered render before effect ran).
-      const viewColRect = viewColRef.current?.getBoundingClientRect();
-      if (viewColRect) {
-        const viewColLeftX = viewColRect.left - scrollRect.left;
-        const connectorLeft = artRightX + 6;
-        const connectorWidth = Math.max(0, viewColLeftX - 6 - connectorLeft);
-        setConnectorGeom({ top: connectorTop, left: connectorLeft, width: connectorWidth });
-      }
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [activeView]);
+  // We removed the connector line and absolute padding top because we are using a sticky sidebar now.
 
   const loadComments = async () => {
     try {
@@ -194,22 +147,31 @@ export function TemplateReviewView({ template }: Props) {
     }
   };
 
-  const handleAddComment = async () => {
-    if (!newCommentBody.trim()) return;
+  const handleSendMessage = async (parentId: string | null, body: string) => {
     setCommentLoading(true);
     try {
+      const parent = parentId ? comments.find(c => c.id === parentId) : null;
       const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
         method: 'POST',
-        body: { body: newCommentBody, blockable_id: activeView?.blockId },
+        body: { 
+          body, 
+          parent_id: parentId, 
+          blockable_id: activeView?.blockId || parent?.blockable_id || null 
+        },
       });
-      setComments([...comments, res.data]);
-      setNewCommentBody('');
+      setComments(prev => [...prev, res.data]);
     } catch (e) {
       setError('No se pudo guardar el comentario.');
     } finally {
       setCommentLoading(false);
     }
   };
+
+  const openView = (blockId: string, mode: 'comments' | 'info') => {
+    setActiveView({ blockId, mode });
+  };
+
+  const closeView = () => setActiveView(null);
 
   const handleApprove = async () => {
     setActionLoading(true);
@@ -245,30 +207,6 @@ export function TemplateReviewView({ template }: Props) {
       setActionLoading(false);
     }
   };
-
-  const handleReply = async (parentCommentId: string, body: string) => {
-    const parent = comments.find(c => c.id === parentCommentId);
-    try {
-      const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
-        method: 'POST',
-        body: {
-          body,
-          parent_id: parentCommentId,
-          blockable_id: parent?.blockable_id ?? null,
-        },
-      });
-      setComments(prev => [...prev, res.data]);
-    } catch {
-      setError('No se pudo enviar la respuesta.');
-    }
-  };
-
-  const openView = (blockId: string, mode: 'comments' | 'info') => {
-    setActiveView({ blockId, mode });
-    setNewCommentBody('');
-  };
-
-  const closeView = () => setActiveView(null);
 
   const selectedBlock = blocks.find(b => b.id === activeView?.blockId);
   const blockComments = (() => {
@@ -378,23 +316,6 @@ export function TemplateReviewView({ template }: Props) {
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar relative"
       >
-        {/* Connector line — absolute, scrolls with the page */}
-        {activeView && connectorGeom && (
-          <div
-            className="bg-odoo-purple pointer-events-none"
-            style={{
-              position: 'absolute',
-              top: connectorGeom.top,
-              left: connectorGeom.left,
-              width: connectorGeom.width,
-              height: 1.5,
-              zIndex: 10,
-              transform: 'translateY(-50%)',
-            }}
-            aria-hidden="true"
-          />
-        )}
-
         <div className="flex min-h-full">
 
           {/* ── Document (folio) column — always flex-1, fills available width ── */}
@@ -538,16 +459,20 @@ export function TemplateReviewView({ template }: Props) {
             </article>
           </div>
 
-          {/* ── View column — scrolls with document, top aligned to block ─── */}
+          {/* ── View column — Sticky Sidebar ─── */}
           {/* COMMENTS: fixed width, folio stays normal.                        */}
           {/* INFO: flex-1, both columns share space equally (50/50).           */}
           {activeView && selectedBlock && (
             <div
               ref={viewColRef}
-              className={activeView.mode === 'comments' ? 'shrink-0 pr-6' : 'flex-1 pr-6'}
+              className={
+                activeView.mode === 'comments'
+                  ? 'shrink-0 pr-6 sticky top-6 self-start'
+                  : 'flex-1 pr-6 sticky top-6 self-start'
+              }
               style={{
                 ...(activeView.mode === 'comments' ? { width: COMMENTS_COL_WIDTH } : {}),
-                paddingTop: viewPaddingTop,
+                height: 'calc(100vh - 150px)',
               }}
             >
               {activeView.mode === 'comments' ? (
@@ -556,12 +481,9 @@ export function TemplateReviewView({ template }: Props) {
                   blockSortOrder={selectedBlock.sort_order ?? '?'}
                   blockComments={blockComments}
                   allComments={comments}
-                  newCommentBody={newCommentBody}
-                  onNewCommentBodyChange={setNewCommentBody}
-                  onAddComment={handleAddComment}
+                  onSendMessage={handleSendMessage}
                   commentLoading={commentLoading}
-                  canAddComments={commentingOpen && commentMode === 'validator'}
-                  onReply={commentingOpen && commentMode === 'creator-edit' ? handleReply : undefined}
+                  canAddComments={commentingOpen && commentMode !== 'creator-readonly'}
                   commentingClosed={!commentingOpen}
                   headerRef={viewHeaderRef}
                   onClose={closeView}

@@ -444,7 +444,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     // setMultiIndex(0);
   };
 
-  const handleReply = useCallback(async (parentId: string, body: string) => {
+  const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
     if (!activeSingleId) return;
     const res = await apiFetchJson<{ data: any }>(`templates/${template.id}/comments`, {
       method: 'POST',
@@ -540,7 +540,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   {renderSaveStatus()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {!showCommentPanel && activeBlockHasComments && (
+                  {!showCommentPanel && (
                     <Button
                       variant="outline"
                       size="xs"
@@ -677,15 +677,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         )}
       </div>
 
-      {/* Right: comment panel — creator-edit mode, only when block has comments */}
-      {showCommentPanel && activeBlockHasComments && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
-        <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
+      {/* Right: comment panel — creator-edit mode, available even if no comments */}
+      {showCommentPanel && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
+        <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full">
           <BlockCommentsCard
             mode="creator-edit"
             blockSortOrder={selectedBlock.sort_order ?? '?'}
             blockComments={blockComments}
             allComments={reviewComments}
-            onReply={handleReply}
+            onSendMessage={handleSendMessage}
             onClose={() => setShowCommentPanel(false)}
           />
         </div>

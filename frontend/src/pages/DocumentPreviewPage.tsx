@@ -167,7 +167,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validateCommentLoading, setValidateCommentLoading] = useState(false);
   const [validateCommentError, setValidateCommentError] = useState<string | null>(null);
   const [validateViewPaddingTop, setValidateViewPaddingTop] = useState(0);
-  const [validateConnectorGeom, setValidateConnectorGeom] = useState<{ top: number; left: number; width: number } | null>(null);
   const validateScrollRef = useRef<HTMLDivElement>(null);
   const validateArticleRef = useRef<HTMLElement>(null);
   const validateBlockRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -176,6 +175,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   // Creator preview-mode comment state (mirrors TemplatePreviewPage)
   const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
+  const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
   const [selectedReviewBlockId, setSelectedReviewBlockId] = useState<string | null>(null);
   const [commentPanelTop, setCommentPanelTop] = useState(80);
   const pageHeaderRef = useRef<HTMLDivElement>(null);
@@ -424,36 +424,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   }, [isValidateMode, documentId, detail?.id]);
 
   // Recalculate panel position when active view changes (validate mode)
+  // Sticky layout does not need position calculations
   useEffect(() => {
     if (!validateActiveView) {
-      setValidateConnectorGeom(null);
       setValidateViewPaddingTop(0);
-      return;
     }
-    const raf = requestAnimationFrame(() => {
-      const blockEl = validateBlockRefs.current.get(validateActiveView.blockId);
-      const scrollEl = validateScrollRef.current;
-      const artEl = validateArticleRef.current;
-      if (!blockEl || !scrollEl || !artEl) return;
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const blockRect = blockEl.getBoundingClientRect();
-      const blockTopInScroll = blockRect.top - scrollRect.top + scrollEl.scrollTop;
-      setValidateViewPaddingTop(blockTopInScroll);
-      const viewHeaderH = validateViewHeaderRef.current?.offsetHeight ?? 44;
-      const connectorTop = blockTopInScroll + viewHeaderH / 2;
-      const artRightX = artEl.getBoundingClientRect().right - scrollRect.left;
-      const viewColRect = validateViewColRef.current?.getBoundingClientRect();
-      if (viewColRect) {
-        const viewColLeftX = viewColRect.left - scrollRect.left;
-        const connectorLeft = artRightX + 6;
-        setValidateConnectorGeom({
-          top: connectorTop,
-          left: connectorLeft,
-          width: Math.max(0, viewColLeftX - 6 - connectorLeft),
-        });
-      }
-    });
-    return () => cancelAnimationFrame(raf);
   }, [validateActiveView]);
 
   const openValidateView = (blockId: string, mode: 'comments' | 'info') => {
@@ -490,6 +465,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       .catch(() => {});
     return () => { cancelled = true; };
   }, [isValidateMode, documentId, detail?.has_review_comments]);
+
+  const handlePreviewSendMessage = async (parentId: string | null, body: string) => {
+    if (!documentId || !selectedReviewBlockId) return;
+    setReviewCommentsLoading(true);
+    try {
+      const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
+        method: 'POST',
+        body: { body, parent_id: parentId, blockable_id: selectedReviewBlockId },
+      });
+      setReviewComments(prev => [...prev, res.data]);
+    } catch (e) {
+      console.error('Error sending message', e);
+    } finally {
+      setReviewCommentsLoading(false);
+    }
+  };
 
   // Creator-preview comment helpers
   const blockPendingComments = (docBlockId: string | null) =>
@@ -911,22 +902,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             ref={validateScrollRef}
             className="flex-1 overflow-y-auto scroll-smooth custom-scrollbar relative"
           >
-            {/* Connector line */}
-            {validateActiveBlockId && validateConnectorGeom && (
-              <div
-                aria-hidden="true"
-                className="bg-odoo-purple pointer-events-none"
-                style={{
-                  position: 'absolute',
-                  top: validateConnectorGeom.top,
-                  left: validateConnectorGeom.left,
-                  width: validateConnectorGeom.width,
-                  height: 1.5,
-                  zIndex: 10,
-                  transform: 'translateY(-50%)',
-                }}
-              />
-            )}
+            {/* No connector line needed since it's a sticky sidebar now */}
 
             <div className="flex min-h-full">
               {/* Document column */}
@@ -1046,10 +1022,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               {validateActiveView && validateSelectedBlock && (
                 <div
                   ref={validateViewColRef}
-                  className={validateActiveView.mode === 'comments' ? 'shrink-0 pr-6' : 'flex-1 pr-6'}
+                  className={validateActiveView.mode === 'comments' ? 'shrink-0 pr-6 sticky top-6 self-start' : 'flex-1 pr-6 sticky top-6 self-start'}
                   style={{
                     ...(validateActiveView.mode === 'comments' ? { width: 408 } : {}),
-                    paddingTop: validateViewPaddingTop,
+                    height: 'calc(100vh - 150px)',
                   }}
                 >
                   {validateActiveView.mode === 'comments' ? (
@@ -1217,14 +1193,16 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       {/* Creator review comments panel (fixed, like TemplatePreviewPage) */}
       {!isHistoricalSnapshot && selectedReviewBlockId && (() => {
         const block = detail?.blocks.find(b => b.template_block_id === selectedReviewBlockId);
-        const mode: CommentMode = (isDraft && isOwner) ? 'creator-edit' : 'creator-readonly';
+        const mode: CommentMode = isOwner ? 'creator-edit' : 'creator-readonly';
         return (
-          <div className="fixed right-6 w-[384px] z-30" style={{ top: commentPanelTop }}>
+          <div className="fixed right-6 w-[384px] z-30" style={{ top: commentPanelTop, height: `calc(100vh - ${commentPanelTop + 24}px)` }}>
             <BlockCommentsCard
               mode={mode}
               blockSortOrder={block?.sort_order ?? '?'}
               blockComments={blockAllComments(block?.document_block_id ?? null)}
               allComments={reviewComments}
+              commentLoading={reviewCommentsLoading}
+              onSendMessage={handlePreviewSendMessage}
               headerRef={commentCardHeaderRef}
               onClose={() => setSelectedReviewBlockId(null)}
             />

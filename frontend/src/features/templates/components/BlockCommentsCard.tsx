@@ -15,6 +15,12 @@ export type BlockComment = {
   parent_id?: string | null;
 };
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const formatTime = (isoString: string) => {
+  return new Date(isoString).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+};
+
 // ── ViewCardHeader ─────────────────────────────────────────────────────────────
 // Git-diff-style two-zone header: [BLOQUE #N] | [title ✕]
 
@@ -56,6 +62,120 @@ export function ViewCardHeader({
   );
 }
 
+// ── Flat Comment Rendering (Instagram Style) ─────────────────────────────────
+
+function getFlatReplies(rootId: string, allComments: BlockComment[]): BlockComment[] {
+  const flat: BlockComment[] = [];
+  function traverse(parentId: string) {
+    const children = allComments.filter(c => c.parent_id === parentId);
+    // Sort oldest first
+    children.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    for (const child of children) {
+      flat.push(child);
+      traverse(child.id);
+    }
+  }
+  traverse(rootId);
+  return flat;
+}
+
+function CommentItem({
+  comment,
+  mode,
+  onReplyClick,
+  mentionName,
+  isSubReply = false,
+}: {
+  comment: BlockComment;
+  mode: CommentMode;
+  onReplyClick: (parentId: string, authorName: string) => void;
+  mentionName?: string;
+  isSubReply?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
+          {comment.author?.name || 'Usuario'}
+        </span>
+        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
+          {formatTime(comment.created_at)}
+        </span>
+      </div>
+
+      <div className={`text-sm leading-relaxed p-4 rounded-xl border shadow-sm text-text-primary dark:text-text-dark-primary border-ui-border/50 dark:border-ui-dark-border/50 break-words whitespace-pre-wrap ${isSubReply ? 'bg-ui-body/10 dark:bg-ui-dark-bg italic' : 'bg-ui-body/30 dark:bg-ui-dark-bg'}`}>
+        {mentionName && (
+          <div className="mb-2">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-odoo-purple/10 text-odoo-purple text-[10px] font-black uppercase tracking-widest">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+              </svg>
+              Responde a {mentionName}
+            </span>
+          </div>
+        )}
+        {comment.body}
+      </div>
+
+      {mode !== 'creator-readonly' && (
+        <div className="mt-2 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => onReplyClick(comment.id, comment.author?.name || 'Usuario')}
+            className="text-xs font-bold text-odoo-purple hover:underline"
+          >
+            Responder
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommentThread({
+  rootComment,
+  allComments,
+  mode,
+  onReplyClick,
+}: {
+  rootComment: BlockComment;
+  allComments: BlockComment[];
+  mode: CommentMode;
+  onReplyClick: (parentId: string, authorName: string) => void;
+}) {
+  const flatReplies = getFlatReplies(rootComment.id, allComments);
+
+  return (
+    <div className="space-y-3 relative pl-5 group">
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-full transition-colors bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40" />
+
+      <CommentItem
+        comment={rootComment}
+        mode={mode}
+        onReplyClick={onReplyClick}
+      />
+
+      {flatReplies.length > 0 && (
+        <div className="pt-2 space-y-5 ml-4 pl-4 border-l-2 border-ui-border/30 dark:border-ui-dark-border/30">
+          {flatReplies.map(reply => {
+            const parent = allComments.find(c => c.id === reply.parent_id);
+            return (
+              <CommentItem
+                key={reply.id}
+                comment={reply}
+                mode={mode}
+                onReplyClick={onReplyClick}
+                isSubReply={true}
+                mentionName={parent?.author?.name || 'Usuario'}
+              />
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── BlockCommentsCard ──────────────────────────────────────────────────────────
 
 type BlockCommentsCardProps = {
@@ -67,15 +187,10 @@ type BlockCommentsCardProps = {
   // All comments for the template (used to look up replies by parent_id).
   allComments: BlockComment[];
 
-  // validator mode — new top-level comment
-  newCommentBody?: string;
-  onNewCommentBodyChange?: (v: string) => void;
-  onAddComment?: () => void;
+  // unified action
+  onSendMessage?: (parentId: string | null, body: string) => Promise<void>;
   commentLoading?: boolean;
   canAddComments?: boolean;
-
-  // creator-edit mode — per-thread actions
-  onReply?: (parentCommentId: string, body: string) => Promise<void>;
 
   // shared
   commentingClosed?: boolean;
@@ -89,35 +204,39 @@ export function BlockCommentsCard({
   blockComments,
   allComments,
   commentingClosed = false,
-  newCommentBody,
-  onNewCommentBodyChange,
-  onAddComment,
-  commentLoading,
+  onSendMessage,
+  commentLoading = false,
   canAddComments = true,
-  onReply,
   headerRef,
   onClose,
 }: BlockCommentsCardProps) {
-  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [replyBody, setReplyBody] = useState('');
-  const [replyLoading, setReplyLoading] = useState(false);
 
   const rootComments = blockComments.filter(c => !c.parent_id);
 
-  const handleReply = async (parentId: string) => {
-    if (!replyBody.trim() || !onReply) return;
-    setReplyLoading(true);
+  const handleSubmit = async () => {
+    if (!replyBody.trim() || !onSendMessage) return;
     try {
-      await onReply(parentId, replyBody.trim());
+      await onSendMessage(replyingTo ? replyingTo.id : null, replyBody.trim());
       setReplyBody('');
       setReplyingTo(null);
-    } finally {
-      setReplyLoading(false);
+    } catch (e) {
+      // handled by parent
     }
   };
 
+  const handleReplyClick = (parentId: string, authorName: string) => {
+    setReplyingTo({ id: parentId, name: authorName });
+    // If we wanted to, we could focus the textarea here. 
+    // Using a simple ID for the textarea allows us to focus it.
+    setTimeout(() => {
+      document.getElementById('block-comments-chat-input')?.focus();
+    }, 50);
+  };
+
   return (
-    <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-2xl border border-ui-border/60 dark:border-ui-dark-border flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+    <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-2xl border border-ui-border/60 dark:border-ui-dark-border flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300 h-full">
       <ViewCardHeader
         blockSortOrder={blockSortOrder ?? '?'}
         title="Comentarios de Revisión"
@@ -135,7 +254,7 @@ export function BlockCommentsCard({
       )}
 
       {/* Comment thread list */}
-      <div className="max-h-[50vh] overflow-y-auto custom-scrollbar px-4 pt-4 pb-2 space-y-6">
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-4 pb-4 space-y-6">
         {rootComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
             <svg className="w-10 h-10 mb-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
@@ -146,113 +265,54 @@ export function BlockCommentsCard({
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {rootComments.map((comment) => {
-              const replies = allComments.filter(r => r.parent_id === comment.id);
-
-              return (
-                <div key={comment.id} className="space-y-3">
-                  {/* Root comment */}
-                  <div className="group relative pl-5">
-                    <div className="absolute left-0 top-0 bottom-0 w-1 rounded-full transition-colors bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40" />
-
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
-                        {comment.author?.name || 'Validador'}
-                      </span>
-                      <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
-                        {new Date(comment.created_at).toLocaleDateString()}
-                      </span>
-                    </div>
-
-                    <div className="text-sm leading-relaxed p-4 rounded-xl border shadow-sm text-text-primary dark:text-text-dark-primary bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 dark:border-ui-dark-border/50">
-                      {comment.body}
-                    </div>
-
-                    {/* Reply action — creator-edit only */}
-                    {mode === 'creator-edit' && (
-                      <div className="mt-2 flex items-center gap-4">
-                        <button
-                          type="button"
-                          onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
-                          className="text-xs font-bold text-odoo-purple hover:underline"
-                        >
-                          {replyingTo === comment.id ? 'Cancelar' : 'Responder'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Replies */}
-                  {replies.length > 0 && (
-                    <div className="ml-8 space-y-3">
-                      {replies.map(r => (
-                        <div key={r.id} className="relative pl-3 border-l-2 border-ui-border/30 dark:border-ui-dark-border/30">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
-                              {r.author?.name || 'Usuario'}
-                            </span>
-                            <span className="text-[10px] text-text-muted font-bold uppercase tracking-widest">
-                              {new Date(r.created_at).toLocaleDateString()}
-                            </span>
-                          </div>
-                          <div className="text-xs text-text-primary dark:text-text-dark-primary bg-ui-body/10 dark:bg-ui-dark-bg p-3 rounded-lg border border-ui-border/20 dark:border-ui-dark-border/20 italic">
-                            {r.body}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Inline reply form — creator-edit only */}
-                  {mode === 'creator-edit' && replyingTo === comment.id && (
-                    <div className="ml-8 space-y-2 animate-in slide-in-from-top-1">
-                      <textarea
-                        value={replyBody}
-                        onChange={e => setReplyBody(e.target.value)}
-                        placeholder="Escribe una respuesta..."
-                        className="w-full text-xs p-3 rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none h-20 shadow-inner"
-                      />
-                      <div className="flex justify-end">
-                        <Button
-                          size="xs"
-                          variant="primary"
-                          loading={replyLoading}
-                          disabled={!replyBody.trim() || replyLoading}
-                          onClick={() => void handleReply(comment.id)}
-                        >
-                          Enviar respuesta
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div className="space-y-6 pb-6">
+            {rootComments.map((comment) => (
+              <CommentThread
+                key={comment.id}
+                rootComment={comment}
+                allComments={allComments}
+                mode={mode}
+                onReplyClick={handleReplyClick}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      {/* Footer — validator mode: new top-level comment input */}
-      {mode === 'validator' && (
+      {/* Footer — unified chat input */}
+      {mode !== 'creator-readonly' && (
         canAddComments ? (
-          <div className="px-4 pt-3 pb-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+          <div className="px-4 pt-3 pb-4 border-t border-ui-border dark:border-ui-dark-border shrink-0 bg-ui-body/10 dark:bg-ui-dark-bg/30">
+            {replyingTo && (
+              <div className="flex items-center justify-between mb-2 px-2 py-1.5 bg-odoo-purple/10 rounded-lg text-odoo-purple animate-in slide-in-from-bottom-1">
+                <span className="text-[11px] font-black uppercase tracking-widest truncate">
+                  Respondiendo a {replyingTo.name}
+                </span>
+                <button
+                  onClick={() => setReplyingTo(null)}
+                  className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-odoo-purple/20 transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
             <textarea
-              value={newCommentBody}
-              onChange={(e) => onNewCommentBodyChange?.(e.target.value)}
-              placeholder="Escribe un mensaje de revisión..."
-              className="w-full h-24 p-3 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
+              id="block-comments-chat-input"
+              value={replyBody}
+              onChange={(e) => setReplyBody(e.target.value)}
+              placeholder="Escribe un mensaje..."
+              className="w-full h-20 p-3 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
             />
             <div className="mt-3 flex justify-end">
               <Button
                 variant="primary"
                 size="md"
-                className="text-xs font-black uppercase tracking-widest px-6 py-2"
-                onClick={onAddComment}
+                className="text-xs font-black uppercase tracking-widest px-6 py-2 shadow-md"
+                onClick={handleSubmit}
                 loading={commentLoading}
-                disabled={!newCommentBody?.trim() || commentLoading}
+                disabled={!replyBody.trim() || commentLoading}
               >
-                Enviar mensaje
+                Enviar
               </Button>
             </div>
           </div>

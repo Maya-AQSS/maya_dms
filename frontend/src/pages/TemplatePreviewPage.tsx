@@ -133,6 +133,7 @@ export function TemplatePreviewPage() {
 
   // Review comments (only loaded when owner & has_review_comments)
   const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
+  const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [publishedVersionCount, setPublishedVersionCount] = useState<number | null>(null);
 
@@ -238,6 +239,22 @@ export function TemplatePreviewPage() {
   // the backend handles authorization. Keeping it out of deps avoids a double-load flash.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, templateVersionId]);
+
+  const handleSendMessage = async (parentId: string | null, body: string) => {
+    if (!selectedBlockId || !id) return;
+    setReviewCommentsLoading(true);
+    try {
+      const res = await apiFetchJson<{ data: ReviewComment }>(`templates/${id}/comments`, {
+        method: 'POST',
+        body: { body, parent_id: parentId, blockable_id: selectedBlockId },
+      });
+      setReviewComments(prev => [...prev, res.data]);
+    } catch (e) {
+      console.error('Error sending message', e);
+    } finally {
+      setReviewCommentsLoading(false);
+    }
+  };
 
 
   // Root-level comments for a block (drives badge + card visibility).
@@ -652,16 +669,18 @@ export function TemplatePreviewPage() {
           )}
         </article>
 
-        {/* Comments panel — fixed-position card, creator-readonly mode */}
+        {/* Comments panel — fixed-position card */}
         {selectedBlockId && (() => {
           const block = blocks.find((b) => b.id === selectedBlockId);
           return (
-            <div className="fixed right-6 w-[384px] z-30" style={{ top: commentPanelTop }}>
+            <div className="fixed right-6 w-[384px] z-30" style={{ top: commentPanelTop, height: `calc(100vh - ${commentPanelTop + 24}px)` }}>
               <BlockCommentsCard
-                mode="creator-readonly"
+                mode={isOwner ? 'creator-edit' : 'creator-readonly'}
                 blockSortOrder={block?.sort_order ?? '?'}
                 blockComments={blockAllComments(selectedBlockId)}
                 allComments={reviewComments}
+                commentLoading={reviewCommentsLoading}
+                onSendMessage={handleSendMessage}
                 headerRef={commentCardHeaderRef}
                 onClose={() => setSelectedBlockId(null)}
               />
