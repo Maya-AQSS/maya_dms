@@ -34,6 +34,27 @@ class TemplateReviewService
                 ]);
             }
 
+            $template->loadMissing(['blocks']);
+
+            $hasEditableBlock = $template->blocks->contains(
+                fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
+            );
+            if (! $hasEditableBlock) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['La plantilla debe tener al menos un bloque editable o modificable.'],
+                ]);
+            }
+
+            $emptyLockedBlock = $template->blocks->first(
+                fn ($b) => (string) $b->block_state === 'locked'
+                    && (is_null($b->default_content) || (is_array($b->default_content) && count($b->default_content) === 0))
+            );
+            if ($emptyLockedBlock !== null) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['Los bloques bloqueados no pueden estar vacíos.'],
+                ]);
+            }
+
             if ($template->reviewers()->doesntExist()) {
                 if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
                     throw ValidationException::withMessages([

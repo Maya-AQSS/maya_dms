@@ -4,6 +4,7 @@ import { WizardShell, type WizardStepDef } from '../../../components/wizard/Wiza
 import { fetchProcesses } from '../../../api/processes';
 import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
+import type { TemplateBlock } from '../../../types/blocks';
 import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
@@ -88,6 +89,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [comments, setComments] = useState<any[]>([]);
   const [blocksCount, setBlocksCount] = useState(0);
   const [blocksLoading, setBlocksLoading] = useState(true);
+  const [wizardBlocks, setWizardBlocks] = useState<TemplateBlock[]>([]);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
 
   useEffect(() => {
@@ -171,6 +173,17 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
     return false;
   }, [step, name, description, visibility, template]);
+
+  const validateBlocksInvariants = (blocksList: TemplateBlock[]): string | null => {
+    const hasEditable = blocksList.some(b => b.block_state === 'editable' || b.block_state === 'modifiable');
+    if (!hasEditable) return 'La plantilla debe tener al menos un bloque editable o modificable.';
+    const hasEmptyLocked = blocksList.some(b =>
+      b.block_state === 'locked' &&
+      (b.default_content === null || (Array.isArray(b.default_content) && b.default_content.length === 0))
+    );
+    if (hasEmptyLocked) return 'Los bloques bloqueados no pueden estar vacíos.';
+    return null;
+  };
 
   const handleBackArrow = () => {
     if (isDirty) {
@@ -298,12 +311,26 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const requiresPublishChangelog = publishedVersionCount > 0;
 
   const handlePublishClick = () => {
+    const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+    if (blockInvariantErr) {
+      setErrors({ api: blockInvariantErr });
+      return;
+    }
     if (requiresPublishChangelog) {
       setPublishModalError(null);
       setShowPublishModal(true);
       return;
     }
     void handlePublish(null);
+  };
+
+  const handleSubmitForReviewClick = () => {
+    const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+    if (blockInvariantErr) {
+      setErrors({ api: blockInvariantErr });
+      return;
+    }
+    setShowValidationModal(true);
   };
 
   const handleConfirmPublish = () => {
@@ -381,6 +408,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de continuar.' });
         return;
       }
+      const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+      if (blockInvariantErr) {
+        setErrors({ blocks: blockInvariantErr });
+        return;
+      }
       setErrors((prev) => {
         const { blocks: _b, ...rest } = prev;
         return rest;
@@ -422,6 +454,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       }
       if (hasInvalidBlocks) {
         setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de continuar.' });
+        return;
+      }
+      const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+      if (blockInvariantErr) {
+        setErrors({ blocks: blockInvariantErr });
         return;
       }
       setStep(s);
@@ -477,7 +514,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           variant="primary"
           size="sm"
           disabled={blocksGateActive}
-          onClick={() => setShowValidationModal(true)}
+          onClick={handleSubmitForReviewClick}
           className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
         >
           Enviar a validar
@@ -602,6 +639,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             reviewComments={comments}
             onBlocksCountChange={setBlocksCount}
             onBlocksLoadingChange={setBlocksLoading}
+            onBlocksChange={setWizardBlocks}
             onContinue={() => void handleContinue()}
             onInvalidBlocksChange={setHasInvalidBlocks}
             onCommentAdded={handleCommentAdded}
@@ -635,6 +673,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             documentValidationType={documentValidationType}
             onBlocksCountChange={setBlocksCount}
             onBlocksLoadingChange={setBlocksLoading}
+            onBlocksChange={setWizardBlocks}
           />
         )}
       </>

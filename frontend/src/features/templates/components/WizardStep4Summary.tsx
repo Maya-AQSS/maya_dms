@@ -18,6 +18,7 @@ type Props = {
   documentValidationType?: 'libre' | 'ordenada';
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
+  onBlocksChange?: (blocks: TemplateBlock[]) => void;
 };
 
 type PreviewTab = 'Contenido' | 'Descripción';
@@ -47,6 +48,7 @@ export function WizardStep4Summary({
   documentValidationType = 'libre',
   onBlocksCountChange,
   onBlocksLoadingChange,
+  onBlocksChange,
 }: Props) {
   const { blocks, loading } = useTemplateBlocks(template.id);
 
@@ -59,6 +61,12 @@ export function WizardStep4Summary({
       onBlocksCountChange?.(blocks.length);
     }
   }, [blocks.length, loading, onBlocksCountChange]);
+
+  useEffect(() => {
+    if (!loading) {
+      onBlocksChange?.(blocks);
+    }
+  }, [blocks, loading, onBlocksChange]);
 
   const [selectedBlock, setSelectedBlock] = useState<TemplateBlock | null>(null);
   const [activeTab, setActiveTab] = useState<PreviewTab>('Contenido');

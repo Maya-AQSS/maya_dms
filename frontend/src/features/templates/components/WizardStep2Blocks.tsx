@@ -125,6 +125,7 @@ interface WizardStep2BlocksProps {
   reviewComments?: any[];
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
+  onBlocksChange?: (blocks: TemplateBlock[]) => void;
   onContinue?: () => void;
   onInvalidBlocksChange?: (hasInvalid: boolean) => void;
   onCommentAdded?: (comment: any) => void;
@@ -141,6 +142,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   reviewComments = [],
   onBlocksCountChange,
   onBlocksLoadingChange,
+  onBlocksChange,
   onContinue,
   onInvalidBlocksChange,
   onCommentAdded,
@@ -186,6 +188,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       onBlocksCountChange?.(blocks.length);
     }
   }, [blocks.length, loading, onBlocksCountChange]);
+
+  useEffect(() => {
+    if (!loading) {
+      onBlocksChange?.(blocks);
+    }
+  }, [blocks, loading, onBlocksChange]);
 
   const hasInvalidBlocks = !loading && blocks.some(b => !b.title?.trim());
 
