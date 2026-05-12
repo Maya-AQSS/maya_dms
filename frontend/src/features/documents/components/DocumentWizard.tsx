@@ -270,6 +270,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks)
   const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
   const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
     setIsEditorFullscreen(v);
@@ -1449,7 +1450,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       {!isValidateMode && step === 'blocks' && (
         <div className={isEditorFullscreen
           ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
-          : 'flex-1 overflow-hidden flex flex-col md:flex-row'
+          : 'flex-1 overflow-visible flex flex-col md:flex-row'
         }>
           {/* Compact fullscreen header */}
           {isEditorFullscreen && activeBlock && (
@@ -1476,36 +1477,57 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             </div>
           )}
           {/* Block tree — hidden when editor is in fullscreen */}
-          {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-              <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">
-                Bloques ({sortedBlocks.length})
-              </span>
+          {!isEditorFullscreen && (
+            <div className="relative shrink-0 z-30 flex flex-col overflow-visible">
+              <div className={[
+                'h-full flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card transition-all duration-300 overflow-hidden',
+                isSidebarCollapsed ? 'w-0' : 'md:w-64 lg:w-72'
+              ].join(' ')}>
+                <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0">
+                  <span className="text-xs font-bold uppercase text-text-secondary tracking-widest truncate">
+                    Bloques ({sortedBlocks.length})
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {sortedBlocks.length === 0 ? (
+                    <p className="text-xs text-text-muted">No hay bloques.</p>
+                  ) : (
+                    sortedBlocks.map((b) => {
+                      const key = b.document_block_id ?? b.template_block_id;
+                      const selected = key === activeBlockKey;
+                      const ui = blockToUiState(b);
+                      return (
+                        <BlockListItem
+                          key={key}
+                          title={b.title || ''}
+                          variant={selected ? 'selected' : 'default'}
+                          locked={ui === 'locked'}
+                          stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
+                          hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
+                          onClick={() => setActiveBlockKey(key)}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className={[
+                  'absolute top-4 -right-3 z-50 w-6 h-6 rounded-full border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex items-center justify-center text-text-muted hover:text-odoo-purple transition-all shadow-sm',
+                  isSidebarCollapsed ? 'rotate-180' : ''
+                ].join(' ')}
+                title={isSidebarCollapsed ? 'Expandir' : 'Colapsar'}
+              >
+                <svg className="w-3.5 h-3.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {sortedBlocks.length === 0 ? (
-                <p className="text-xs text-text-muted">No hay bloques.</p>
-              ) : (
-                sortedBlocks.map((b) => {
-                  const key = b.document_block_id ?? b.template_block_id;
-                  const selected = key === activeBlockKey;
-                  const ui = blockToUiState(b);
-                  return (
-                    <BlockListItem
-                      key={key}
-                      title={b.title || ''}
-                      variant={selected ? 'selected' : 'default'}
-                      locked={ui === 'locked'}
-                      stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
-                      hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
-                      onClick={() => setActiveBlockKey(key)}
-                    />
-                  );
-                })
-              )}
-            </div>
-          </div>}
-          <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
+          )}
+          <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
             {activeBlock && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
                 {!isEditorFullscreen && (

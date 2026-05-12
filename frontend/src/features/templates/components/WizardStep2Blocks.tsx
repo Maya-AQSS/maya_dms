@@ -491,7 +491,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   return (
     <div className={[
-      isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 flex flex-col md:flex-row relative overflow-hidden',
+      isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 flex flex-col md:flex-row relative overflow-visible',
       'transition-all duration-300'
     ].join(' ')}>
       {!isEditorFullscreen && (
@@ -538,8 +538,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             ].join(' ')}
             title={isSidebarCollapsed ? 'Expandir' : 'Colapsar'}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+            <svg className="w-3.5 h-3.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
         </div>
@@ -548,7 +548,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       {/* Main Panel */}
 
       {/* Main Panel */}
-      <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
+      <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
         {panelMode === 'empty' && (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
             <p className="text-sm font-bold uppercase tracking-widest">Selecciona un bloque para editar</p>
