@@ -444,7 +444,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     try {
       const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
         method: 'POST',
-        body: { body, parent_id: parentId, blockable_id: selectedReviewView.blockId },
+        body: {
+          body,
+          parent_id: parentId,
+          blockable_id: selectedReviewView.blockId,
+          document_version_id: detail?.working_version_id || null
+        },
       });
       setReviewComments(prev => [...prev, res.data]);
     } catch (e) {
@@ -483,7 +488,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     try {
       const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
         method: 'POST',
-        body: { body: validateNewCommentBody, blockable_id: blockableId },
+        body: {
+          body: validateNewCommentBody,
+          blockable_id: blockableId,
+          document_version_id: detail?.working_version_id || null
+        },
       });
       setValidateComments(prev => [...prev, res.data]);
       setValidateNewCommentBody('');
@@ -499,7 +508,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     const parent = validateComments.find(c => c.id === parentCommentId);
     const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
       method: 'POST',
-      body: { body, parent_id: parentCommentId, blockable_id: parent?.blockable_id ?? null },
+      body: {
+        body,
+        parent_id: parentCommentId,
+        blockable_id: parent?.blockable_id ?? null,
+        document_version_id: detail?.working_version_id || null
+      },
     });
     setValidateComments(prev => [...prev, res.data]);
   };
@@ -958,9 +972,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         </div>
 
                         <div className="flex items-center gap-3 mb-4">
-                          <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                            {block.title ?? 'Bloque sin título'}
-                          </h3>
+                          <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
+                            Bloque {(detail.blocks.findIndex((b: any) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
+                          </h4>
                           <div className="flex items-center gap-2">
                             {/* Info button */}
                             {hasDescription && (
@@ -1065,38 +1079,47 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         metaInfo={headerMetaInfo}
         actions={headerActions}
         headerRef={pageHeaderRef}
-        sidebar={selectedReviewView && (
-          selectedReviewView.mode === 'comments' ? (
-            <BlockCommentsCard
-              mode="creator-readonly"
-              blockSortOrder={(detail?.blocks?.findIndex(b => b.id === selectedReviewView.blockId) + 1) || '?'}
-              blockComments={reviewComments.filter(c => c.blockable_id === selectedReviewView.blockId)}
-              allComments={reviewComments}
-              commentLoading={reviewCommentsLoading}
-              onClose={() => setSelectedReviewView(null)}
-              onSendMessage={handlePreviewSendMessage}
-            />
-          ) : (() => {
-            const block = detail?.blocks?.find(b => b.id === selectedReviewView.blockId);
-            if (!block) return null;
+        sidebar={selectedReviewView && (() => {
+          const block = detail?.blocks?.find(b => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId);
+          if (!block) return null;
+
+          const isCreator = profile?.id && detail?.created_by === profile.id;
+          const isOwner = profile?.id && detail?.owner_id === profile.id;
+          const commentMode = (isCreator || isOwner) ? 'creator-edit' : 'creator-readonly';
+
+          if (selectedReviewView.mode === 'comments') {
             return (
-              <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
-                <ViewCardHeader
-                  blockSortOrder={(detail?.blocks?.findIndex(b => b.id === block.id) + 1) || '?'}
-                  title="Descripción del Bloque"
-                  onClose={() => setSelectedReviewView(null)}
-                />
-                <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
-                  {block.description ? (
-                    <BlockContentHtml content={normalizeBlockContentForEditor(block.description)} />
-                  ) : (
-                    <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
-                  )}
-                </div>
-              </div>
+              <BlockCommentsCard
+                mode={commentMode}
+                blockSortOrder={(detail?.blocks?.findIndex(b => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId) + 1) || '?'}
+                blockComments={getCommentsForBlock(block.document_block_id, reviewComments)}
+                allComments={reviewComments}
+                commentLoading={reviewCommentsLoading}
+                onClose={() => setSelectedReviewView(null)}
+                onSendMessage={handlePreviewSendMessage}
+                headerRef={pageHeaderRef}
+                canAddComments={!isHistoricalSnapshot}
+              />
             );
-          })()
-        )}
+          }
+          return (
+            <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+              <ViewCardHeader
+                blockSortOrder={(detail?.blocks?.findIndex(b => (b.document_block_id || b.template_block_id) === block.template_block_id) + 1) || '?'}
+                title="Descripción del Bloque"
+                onClose={() => setSelectedReviewView(null)}
+                headerRef={pageHeaderRef}
+              />
+              <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
+                {block.description ? (
+                  <BlockContentHtml content={normalizeBlockContentForEditor(block.description)} />
+                ) : (
+                  <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       >
         {loading && (
           <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
@@ -1125,7 +1148,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           </p>
         )}
         {!loading && !error && detail && (
-          reviewComments.length > 0 && !isHistoricalSnapshot ? (
+          !isHistoricalSnapshot ? (
             // Render blocks individually to support per-block comment selection
             <>
               <h1 className="text-2xl font-black text-text-primary dark:text-text-dark-primary mb-8 leading-tight">
@@ -1133,7 +1156,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               </h1>
               <div className="space-y-12">
                 {detail.blocks.map((block: any) => {
-                  const blockId = block.template_block_id;
+                  const blockId = block.document_block_id || block.template_block_id;
                   const isSelected = selectedReviewView?.blockId === blockId;
                   const commentsActive = isSelected && selectedReviewView?.mode === 'comments';
                   const infoActive = isSelected && selectedReviewView?.mode === 'info';
@@ -1144,24 +1167,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   return (
                     <section
                       key={blockId}
-                      onClick={() => {
-                        if (block.document_block_id) setSelectedReviewView({ blockId, mode: 'comments' });
-                      }}
                       className={[
                         'relative group rounded-lg transition-all duration-200 cursor-pointer',
                         isSelected
                           ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
                           : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
                       ].join(' ')}
+                      onClick={(e) => { e.stopPropagation(); if (block.document_block_id) setSelectedReviewView({ blockId, mode: 'comments' }); }}
                     >
                       <div className={['absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200', isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted'].join(' ')}>
                         #{block.sort_order ?? '?'}
                       </div>
 
                       <div className="flex items-center gap-3 mb-4">
-                        <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
+                        <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
                           Bloque {(detail.blocks.findIndex((b: any) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
-                        </h3>
+                        </h4>
                         <div className="flex items-center gap-2">
                           {hasDescription && (
                             <button
@@ -1185,7 +1206,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                             onClick={(e) => { e.stopPropagation(); if (block.document_block_id) setSelectedReviewView({ blockId, mode: 'comments' }); }}
                             className={[
                               'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                              !block.document_block_id ? 'cursor-not-allowed opacity-40' : commentsActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                              !block.document_block_id ? 'cursor-not-allowed opacity-40 border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30' : commentsActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
                             ].join(' ')}
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
