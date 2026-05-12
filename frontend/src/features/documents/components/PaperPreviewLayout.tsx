@@ -154,7 +154,7 @@ export function PaperPreviewLayout({
       />
       </div>
 
-      <div className={sidebar ? 'flex items-start min-h-full relative overflow-visible' : ''}>
+      <div className={sidebar ? 'flex flex-row flex-nowrap items-start min-h-screen relative overflow-visible gap-8' : ''}>
         <div className={sidebar ? 'flex-1' : ''}>
           <article
             className="mx-auto bg-white dark:bg-ui-dark-card shadow-xl preview-content"
@@ -166,10 +166,10 @@ export function PaperPreviewLayout({
 
         {sidebar && (
           <div
-            className="shrink-0 sticky top-32 self-start pr-6 z-30"
-            style={{ width: '35%', height: 'calc(100vh - 160px)' }}
+            className="shrink-0 sticky top-24 self-start z-30"
+            style={{ width: '35%', maxWidth: '420px', height: 'calc(100vh - 120px)' }}
           >
-            <div className="h-full flex flex-col bg-white dark:bg-ui-dark-card shadow-xl rounded-sm overflow-hidden border border-ui-border dark:border-ui-dark-border">
+            <div className="h-full flex flex-col bg-white dark:bg-ui-dark-card shadow-xl rounded-xl overflow-hidden border border-ui-border dark:border-ui-dark-border">
               {sidebar}
             </div>
           </div>

@@ -870,7 +870,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 onClose={() => { setValidateActiveView(null); setValidateNewCommentBody(''); }}
               />
             ) : (
-              <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
                 <ViewCardHeader
                   blockSortOrder={validateSelectedBlock.sort_order ?? '?'}
                   title="Descripción del Bloque"
@@ -1080,7 +1080,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             const block = detail?.blocks?.find(b => b.id === selectedReviewView.blockId);
             if (!block) return null;
             return (
-              <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+              <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
                 <ViewCardHeader
                   blockSortOrder={(detail?.blocks?.findIndex(b => b.id === block.id) + 1) || '?'}
                   title="Descripción del Bloque"

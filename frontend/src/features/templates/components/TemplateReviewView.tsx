@@ -195,7 +195,7 @@ export function TemplateReviewView({ template }: Props) {
     onClose: () => void;
   }) {
     return (
-      <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
+      <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
         <ViewCardHeader
           blockSortOrder={(blocks.findIndex((b) => b.id === selectedBlock.id) + 1) || '?'}
           title="Descripción del Bloque"
@@ -293,7 +293,7 @@ export function TemplateReviewView({ template }: Props) {
             commentLoading={actionLoading}
           />
         ) : (
-          <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+          <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
             <ViewCardHeader
               blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
               title="Descripción del Bloque"
