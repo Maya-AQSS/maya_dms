@@ -871,7 +871,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             validateActiveView.mode === 'comments' ? (
               <BlockCommentsCard
                 mode="validator"
-                blockSortOrder={validateSelectedBlock.sort_order ?? '?'}
+                blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
                 blockComments={validateBlockComments}
                 allComments={validateComments}
                 newCommentBody={validateNewCommentBody}
@@ -886,7 +886,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             ) : (
               <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
                 <ViewCardHeader
-                  blockSortOrder={validateSelectedBlock.sort_order ?? '?'}
+                  blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
                   title="Descripción del Bloque"
                   onClose={() => setValidateActiveView(null)}
                   headerRef={validateViewHeaderRef}
@@ -1091,7 +1091,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             return (
               <BlockCommentsCard
                 mode={commentMode}
-                blockSortOrder={(detail?.blocks?.findIndex(b => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId) + 1) || '?'}
+                blockSortOrder={(detail?.blocks?.indexOf(block) + 1) || '?'}
                 blockComments={getCommentsForBlock(block.document_block_id, reviewComments)}
                 allComments={reviewComments}
                 commentLoading={reviewCommentsLoading}
@@ -1105,7 +1105,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           return (
             <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
               <ViewCardHeader
-                blockSortOrder={(detail?.blocks?.findIndex(b => (b.document_block_id || b.template_block_id) === block.template_block_id) + 1) || '?'}
+                blockSortOrder={(detail?.blocks?.indexOf(block) + 1) || '?'}
                 title="Descripción del Bloque"
                 onClose={() => setSelectedReviewView(null)}
                 headerRef={pageHeaderRef}
