@@ -6,9 +6,11 @@ use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\UpdateDocumentBlockRequest;
+use App\Http\Resources\DocumentBlockResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 
 class DocumentBlockController extends Controller
@@ -27,15 +29,15 @@ class DocumentBlockController extends Controller
      * @param  string  $document
      * @return JsonResponse
      */
-    public function index(string $document): JsonResponse
+    public function index(string $document): AnonymousResourceCollection
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('view', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $blocks = $this->documentService->blocksForDisplay($doc);
-
-        return response()->json(['data' => $blocks]);
+        return DocumentBlockResource::collection(
+            $this->documentService->blocksForDisplay($doc),
+        );
     }
 
     /**
@@ -61,7 +63,7 @@ class DocumentBlockController extends Controller
             ),
         );
 
-        return response()->json(['data' => $updated]);
+        return (new DocumentBlockResource($updated))->response();
     }
 
     /**

@@ -198,7 +198,7 @@ class DocumentController extends Controller
         $this->authorize('update', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
-        $updated = $this->documentService->update($id, $request->validated());
+        $updated = $this->documentService->update($id, $request->toDto()->toArray());
         $this->attachCanCloneMeta($updated, $request);
         $this->apiTeamEmbedService->embedOnDocument(
             $updated,

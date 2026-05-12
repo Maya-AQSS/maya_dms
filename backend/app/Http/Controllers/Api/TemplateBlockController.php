@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
-use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TemplateBlocks\BulkUpdateTemplateBlockRequest;
@@ -81,26 +80,12 @@ class TemplateBlockController extends Controller
      */
     public function update(UpdateTemplateBlockRequest $request, string $block): TemplateBlockResource
     {
-        $validated = $request->validated();
         $blockModel = $this->blockService->findOrFail($block);
         $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail((string) $blockModel->template_id), 'update');
 
-        $dto = new UpdateTemplateBlockDto(
-            title:           $validated['title'] ?? null,
-            set_title:       $request->has('title'),
-            default_content: $validated['default_content'] ?? null,
-            set_default_content: $request->has('default_content'),
-            sort_order:      $validated['sort_order'] ?? null,
-            set_sort_order:  $request->has('sort_order'),
-            block_state:     $validated['block_state'] ?? null,
-            set_block_state: $request->has('block_state'),
-            description:     $validated['description'] ?? null,
-            set_description: $request->has('description'),
-        );
-
         $updated = $this->blockService->update(
             blockId: $block,
-            dto:     $dto,
+            dto:     $request->toDto(),
             userId:  (string) Auth::id(),
         );
 

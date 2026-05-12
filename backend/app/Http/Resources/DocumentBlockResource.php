@@ -1,0 +1,42 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+/**
+ * Serializa un bloque tal y como lo expone
+ * {@see \App\Services\DocumentBlockService::blocksForDisplay()}.
+ *
+ * El service ya devuelve un array preparado para la vista (mezclando
+ * definición del template + estado del documento); este Resource fija
+ * el contrato de salida y aporta un único punto donde añadir/renombrar
+ * campos públicos.
+ */
+class DocumentBlockResource extends JsonResource
+{
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(Request $request): array
+    {
+        /** @var array<string, mixed> $row */
+        $row = $this->resource;
+
+        return [
+            'document_block_id' => $row['document_block_id'] ?? null,
+            'template_block_id' => $row['template_block_id'] ?? null,
+            'type'              => $row['type'] ?? '',
+            'title'             => $row['title'] ?? null,
+            'description'       => $row['description'] ?? null,
+            'default_content'   => $row['default_content'] ?? null,
+            'block_state'       => $row['block_state'] ?? null,
+            'mandatory'         => (bool) ($row['mandatory'] ?? false),
+            'content'           => $row['content'] ?? null,
+            'sort_order'        => $row['sort_order'] ?? null,
+            'created_at'        => $row['created_at'] ?? null,
+            'updated_at'        => $row['updated_at'] ?? null,
+        ];
+    }
+}

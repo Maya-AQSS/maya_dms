@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DocumentVersionResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class DocumentVersionController extends Controller
 {
@@ -20,15 +22,15 @@ class DocumentVersionController extends Controller
      *
      * Metadatos de versiones (sin incluir el snapshot completo en el listado).
      */
-    public function index(string $document): JsonResponse
+    public function index(string $document): AnonymousResourceCollection
     {
         $doc = $this->documentService->findOrFail($document);
         $this->authorize('view', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $rows = $this->documentService->listDocumentVersions($doc->id);
-
-        return response()->json(['data' => $rows]);
+        return DocumentVersionResource::collection(
+            $this->documentService->listDocumentVersions($doc->id),
+        );
     }
 
     /**
@@ -42,10 +44,8 @@ class DocumentVersionController extends Controller
         $this->authorize('view', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $v = $this->documentService->findDocumentVersionDetailOrFail($document, $version);
+        $detail = $this->documentService->findDocumentVersionDetailOrFail($document, $version);
 
-        return response()->json([
-            'data' => $v,
-        ]);
+        return (new DocumentVersionResource($detail))->response();
     }
 }

@@ -3,8 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\ProcessResource;
 use App\Services\Contracts\ProcessServiceInterface;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ProcessController extends Controller
 {
@@ -15,10 +16,8 @@ class ProcessController extends Controller
     /**
      * Lista de procesos disponibles.
      */
-    public function index(): JsonResponse
+    public function index(): AnonymousResourceCollection
     {
-        return response()->json([
-            'data' => $this->processService->list(),
-        ]);
+        return ProcessResource::collection($this->processService->list());
     }
 }
