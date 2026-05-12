@@ -31,7 +31,6 @@ const formatTime = (isoString: string) => {
 };
 
 // ── ViewCardHeader ─────────────────────────────────────────────────────────────
-// Git-diff-style two-zone header: [BLOQUE #N] | [title ✕]
 
 export function ViewCardHeader({
   blockSortOrder,
@@ -70,44 +69,58 @@ export function ViewCardHeader({
   );
 }
 
-// ── Flat Comment Rendering (Instagram Style) ─────────────────────────────────
+// ── QuotedReply ───────────────────────────────────────────────────────────────
+// WhatsApp-style quoted bubble shown inside a reply message.
 
-function getFlatReplies(rootId: string, allComments: BlockComment[]): BlockComment[] {
-  const flat: BlockComment[] = [];
-  function traverse(parentId: string) {
-    const children = allComments.filter(c => c.parent_id === parentId);
-    // Sort oldest first
-    children.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-    for (const child of children) {
-      flat.push(child);
-      traverse(child.id);
-    }
-  }
-  traverse(rootId);
-  return flat;
+function QuotedReply({
+  parent,
+  onClick,
+}: {
+  parent: BlockComment;
+  onClick: () => void;
+}) {
+  const preview = parent.body.length > 120 ? parent.body.slice(0, 120) + '…' : parent.body;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => e.key === 'Enter' && onClick()}
+      className="flex mb-3 rounded-lg overflow-hidden border border-ui-border/50 dark:border-ui-dark-border/50 cursor-pointer hover:border-odoo-purple/60 transition-colors group"
+    >
+      <div className="w-1 bg-odoo-purple shrink-0" />
+      <div className="px-3 py-2 bg-black/5 dark:bg-white/5 group-hover:bg-odoo-purple/5 transition-colors flex-1 min-w-0">
+        <p className="text-[11px] font-black text-odoo-purple mb-0.5 truncate">
+          {parent.author?.name || 'Usuario'}
+        </p>
+        <p className="text-xs text-text-muted dark:text-text-dark-muted line-clamp-2 break-words whitespace-pre-wrap">
+          {preview}
+        </p>
+      </div>
+    </div>
+  );
 }
+
+// ── CommentItem ───────────────────────────────────────────────────────────────
 
 function CommentItem({
   comment,
   mode,
   onReplyClick,
-  onMentionClick,
-  mentionName,
-  mentionId,
-  isSubReply = false,
+  parentComment,
+  onScrollToComment,
   isHighlighted = false,
 }: {
   comment: BlockComment;
   mode: CommentMode;
   onReplyClick: (parentId: string, authorName: string) => void;
-  onMentionClick?: (mentionId: string) => void;
-  mentionName?: string;
-  mentionId?: string;
-  isSubReply?: boolean;
+  parentComment?: BlockComment;
+  onScrollToComment?: (commentId: string) => void;
   isHighlighted?: boolean;
 }) {
   return (
-    <div className="relative">
+    <div id={`comment-${comment.id}`} className="relative">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
           {comment.author?.name || 'Usuario'}
@@ -117,30 +130,18 @@ function CommentItem({
         </span>
       </div>
 
-      <div 
-        id={`comment-${comment.id}`}
-        onClick={() => {
-          if (mentionId && onMentionClick) onMentionClick(mentionId);
-        }}
+      <div
         className={`text-sm leading-relaxed p-4 rounded-xl border shadow-sm break-words whitespace-pre-wrap transition-all duration-500 ${
-          mentionId ? 'cursor-pointer hover:border-odoo-purple/50' : ''
-        } ${
-          isHighlighted 
-            ? 'bg-[#E3F2FD] dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary' 
-            : isSubReply 
-              ? 'bg-ui-body/10 dark:bg-ui-dark-bg italic border-ui-border/50 text-text-primary dark:text-text-dark-primary' 
-              : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
+          isHighlighted
+            ? 'bg-[#E3F2FD] dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary'
+            : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
         }`}
       >
-        {mentionName && (
-          <div className="mb-2">
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-odoo-purple/10 text-odoo-purple text-[10px] font-black uppercase tracking-widest">
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-              </svg>
-              Responde a {mentionName}
-            </span>
-          </div>
+        {parentComment && onScrollToComment && (
+          <QuotedReply
+            parent={parentComment}
+            onClick={() => onScrollToComment(parentComment.id)}
+          />
         )}
         {comment.body}
       </div>
@@ -163,76 +164,16 @@ function CommentItem({
   );
 }
 
-function CommentThread({
-  rootComment,
-  allComments,
-  mode,
-  onReplyClick,
-  onMentionClick,
-  highlightedCommentId,
-}: {
-  rootComment: BlockComment;
-  allComments: BlockComment[];
-  mode: CommentMode;
-  onReplyClick: (parentId: string, authorName: string) => void;
-  onMentionClick: (mentionId: string) => void;
-  highlightedCommentId: string | null;
-}) {
-  const flatReplies = getFlatReplies(rootComment.id, allComments);
-
-  return (
-    <div className="space-y-3 relative pl-5 group">
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-full transition-colors bg-ui-border dark:bg-ui-dark-border group-hover:bg-odoo-purple/40" />
-
-      <CommentItem
-        comment={rootComment}
-        mode={mode}
-        onReplyClick={onReplyClick}
-        onMentionClick={onMentionClick}
-        isHighlighted={highlightedCommentId === rootComment.id}
-      />
-
-      {flatReplies.length > 0 && (
-        <div className="pt-2 space-y-5 ml-4 pl-4 border-l-2 border-ui-border/30 dark:border-ui-dark-border/30">
-          {flatReplies.map(reply => {
-            const parent = allComments.find(c => c.id === reply.parent_id);
-            return (
-              <CommentItem
-                key={reply.id}
-                comment={reply}
-                mode={mode}
-                onReplyClick={onReplyClick}
-                onMentionClick={onMentionClick}
-                isSubReply={true}
-                mentionName={parent?.author?.name || 'Usuario'}
-                mentionId={parent?.id}
-                isHighlighted={highlightedCommentId === reply.id}
-              />
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── BlockCommentsCard ──────────────────────────────────────────────────────────
 
 type BlockCommentsCardProps = {
   mode: CommentMode;
   blockSortOrder?: number | string | null;
-
-  // All comments for this block (top-level + replies).
   blockComments: BlockComment[];
-  // All comments for the template (used to look up replies by parent_id).
   allComments: BlockComment[];
-
-  // unified action
   onSendMessage?: (parentId: string | null, body: string) => Promise<void>;
   commentLoading?: boolean;
   canAddComments?: boolean;
-
-  // shared
   commentingClosed?: boolean;
   headerRef?: RefObject<HTMLDivElement | null>;
   onClose: () => void;
@@ -254,7 +195,11 @@ export function BlockCommentsCard({
   const [replyBody, setReplyBody] = useState('');
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
 
-  const rootComments = blockComments.filter(c => !c.parent_id);
+  const commentById = new Map(allComments.map(c => [c.id, c]));
+
+  const sortedComments = [...blockComments].sort(
+    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
 
   const handleSubmit = async () => {
     if (!replyBody.trim() || !onSendMessage) return;
@@ -262,27 +207,25 @@ export function BlockCommentsCard({
       await onSendMessage(replyingTo ? replyingTo.id : null, replyBody.trim());
       setReplyBody('');
       setReplyingTo(null);
-    } catch (e) {
+    } catch (_) {
       // handled by parent
     }
   };
 
   const handleReplyClick = (parentId: string, authorName: string) => {
     setReplyingTo({ id: parentId, name: authorName });
-    // If we wanted to, we could focus the textarea here. 
-    // Using a simple ID for the textarea allows us to focus it.
     setTimeout(() => {
       document.getElementById('block-comments-chat-input')?.focus();
     }, 50);
   };
 
-  const handleMentionClick = (mentionId: string) => {
-    setHighlightedCommentId(mentionId);
-    document.getElementById(`comment-${mentionId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    setTimeout(() => {
-      setHighlightedCommentId(null);
-    }, 1500);
+  const handleScrollToComment = (commentId: string) => {
+    setHighlightedCommentId(commentId);
+    document.getElementById(`comment-${commentId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => setHighlightedCommentId(null), 1500);
   };
+
+  const replyingToMessage = replyingTo ? commentById.get(replyingTo.id) : undefined;
 
   return (
     <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-2xl border border-ui-border/60 dark:border-ui-dark-border flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300 h-full">
@@ -293,7 +236,6 @@ export function BlockCommentsCard({
         headerRef={headerRef}
       />
 
-      {/* Commenting closed notice */}
       {commentingClosed && (
         <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border bg-ui-body/50 dark:bg-ui-dark-bg/50 shrink-0">
           <p className="text-xs text-text-muted dark:text-text-dark-muted font-bold uppercase tracking-widest text-center">
@@ -302,9 +244,9 @@ export function BlockCommentsCard({
         </div>
       )}
 
-      {/* Comment thread list */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-4 pb-4 space-y-6">
-        {rootComments.length === 0 ? (
+      {/* Flat message list — oldest first */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-4 pb-4 space-y-5">
+        {sortedComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
             <svg className="w-10 h-10 mb-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -314,34 +256,44 @@ export function BlockCommentsCard({
             </p>
           </div>
         ) : (
-          <div className="space-y-6 pb-6">
-            {rootComments.map((comment) => (
-              <CommentThread
+          sortedComments.map((comment) => {
+            const parentComment = comment.parent_id
+              ? commentById.get(comment.parent_id)
+              : undefined;
+            return (
+              <CommentItem
                 key={comment.id}
-                rootComment={comment}
-                allComments={allComments}
+                comment={comment}
                 mode={mode}
                 onReplyClick={handleReplyClick}
-                onMentionClick={handleMentionClick}
-                highlightedCommentId={highlightedCommentId}
+                parentComment={parentComment}
+                onScrollToComment={handleScrollToComment}
+                isHighlighted={highlightedCommentId === comment.id}
               />
-            ))}
-          </div>
+            );
+          })
         )}
       </div>
 
-      {/* Footer — unified chat input */}
+      {/* Footer — chat input */}
       {mode !== 'creator-readonly' && (
         canAddComments ? (
           <div className="px-4 pt-3 pb-4 border-t border-ui-border dark:border-ui-dark-border shrink-0 bg-ui-body/10 dark:bg-ui-dark-bg/30">
             {replyingTo && (
-              <div className="flex items-center justify-between mb-2 px-2 py-1.5 bg-odoo-purple/10 rounded-lg text-odoo-purple animate-in slide-in-from-bottom-1">
-                <span className="text-[11px] font-black uppercase tracking-widest truncate">
-                  Respondiendo a {replyingTo.name}
-                </span>
+              <div className="flex items-stretch mb-2 rounded-lg overflow-hidden border-l-4 border-odoo-purple bg-odoo-purple/10 animate-in slide-in-from-bottom-1">
+                <div className="flex-1 px-3 py-2 min-w-0">
+                  <p className="text-[11px] font-black text-odoo-purple mb-0.5 truncate">
+                    {replyingTo.name}
+                  </p>
+                  {replyingToMessage && (
+                    <p className="text-xs text-text-muted dark:text-text-dark-muted line-clamp-2 break-words">
+                      {replyingToMessage.body}
+                    </p>
+                  )}
+                </div>
                 <button
                   onClick={() => setReplyingTo(null)}
-                  className="w-5 h-5 flex items-center justify-center rounded-full hover:bg-odoo-purple/20 transition-colors"
+                  className="px-3 flex items-center justify-center hover:bg-odoo-purple/20 transition-colors text-odoo-purple"
                 >
                   ✕
                 </button>
