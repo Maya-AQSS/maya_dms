@@ -162,7 +162,7 @@ export function TemplateReviewView({ template }: Props) {
 
   const handleRejectClick = () => {
     const myComments = comments.filter(
-      c => String(c.author_id) === String(currentUserId) && !c.parent_id,
+      c => String(c.author_id) === String(currentUserId),
     );
     if (myComments.length === 0) setShowNoCommentsWarning(true);
     else setShowRejectModal(true);
