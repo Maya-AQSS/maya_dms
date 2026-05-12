@@ -527,6 +527,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     </DndContext>
                   )}
                 </div>
+                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                  <Button
+                    variant="outline"
+                    className="w-full border-dashed"
+                    onClick={() => void handleAddBlock()}
+                    disabled={busy}
+                  >
+                    + Añadir bloque
+                  </Button>
+                </div>
               </div>
             )}
           </div>
