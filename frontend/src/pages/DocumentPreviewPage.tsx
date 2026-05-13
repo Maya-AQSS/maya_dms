@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchDocument,
@@ -30,6 +30,7 @@ import { PaperBlocksArticle, type PaperArticleBlock } from '../features/document
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
+import { DocumentDiffModal, computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
 import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
 
@@ -74,6 +75,7 @@ function mapSnapshotDocumentBlocks(raw: unknown): DocumentDisplayBlock[] {
       sort_order: typeof o.sort_order === 'number' ? o.sort_order : idx,
       content: o.content ?? null,
       is_filled: Boolean(o.is_filled),
+      is_deleted: Boolean(o.is_deleted),
     });
   }
   return out;
@@ -131,6 +133,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [showDiffModal, setShowDiffModal] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [versionSnapshot, setVersionSnapshot] = useState<{
     versionNumber: number;
@@ -293,6 +296,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const isDraft = detail?.status === 'draft';
   const isPublished = detail?.status === 'published';
+  const changedBlocks = useMemo(
+    () => (detail ? computeChangedBlocks(detail.blocks) : []),
+    [detail],
+  );
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
   const uid = profile?.id;
   /** Paridad con `DocumentPolicy::update` para poder mutar un publicado. */
@@ -530,6 +537,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const handleSubmit = async () => {
     if (!documentId || !detail) return;
+
+    const norm = (v: unknown) => JSON.stringify(normalizeBlockContentForEditor(v));
+    const unmodifiedModifiable = detail.blocks.filter((b: DocumentDisplayBlock) => {
+      if (b.block_state !== 'modifiable' || b.is_deleted) return false;
+      return norm(b.content) === norm(b.default_content);
+    });
+    if (unmodifiedModifiable.length > 0) {
+      const names = unmodifiedModifiable
+        .map((b: DocumentDisplayBlock) => b.title ?? 'Sin título')
+        .join(', ');
+      setActionError(
+        `Debes editar todos los bloques modificables antes de enviar a revisión. Bloques sin cambios: ${names}.`,
+      );
+      return;
+    }
+
     setActionLoading(true);
     setActionError(null);
     try {
@@ -669,6 +692,16 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             Editar
           </Button>
         </Link>
+      )}
+      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setShowDiffModal(true)}
+        >
+          Ver cambios
+        </Button>
       )}
       {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
         detail.has_review_comments ? (
@@ -1125,7 +1158,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 {previewTitle}
               </h1>
               <div className="space-y-12">
-                {detail.blocks.map((block: any) => {
+                {detail.blocks.filter((block: DocumentDisplayBlock) => !block.is_deleted).map((block: any) => {
                   const blockId = block.document_block_id || block.template_block_id;
                   const isSelected = selectedReviewView?.blockId === blockId;
                   const commentsActive = isSelected && selectedReviewView?.mode === 'comments';
@@ -1258,6 +1291,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           setDiscardVersionError(null);
         }}
       />
+      {showDiffModal && detail && (
+        <DocumentDiffModal
+          blocks={detail.blocks}
+          onClose={() => setShowDiffModal(false)}
+        />
+      )}
     </>
   );
 }

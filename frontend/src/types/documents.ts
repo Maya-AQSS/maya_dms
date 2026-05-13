@@ -58,6 +58,8 @@ export type DocumentDisplayBlock = {
   sort_order: number;
   content: unknown | null;
   is_filled: boolean;
+  /** True cuando es un bloque opcional que el usuario eliminó explícitamente. Solo aparece en la vista diff. */
+  is_deleted?: boolean;
 };
 
 export type DocumentDetail = Document & {

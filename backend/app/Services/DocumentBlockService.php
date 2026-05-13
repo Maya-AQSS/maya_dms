@@ -47,9 +47,8 @@ class DocumentBlockService
             $mandatory = $state !== 'optional';
 
             // Optional blocks with no document_block row were explicitly removed by the user.
-            if ($state === 'optional' && $row === null) {
-                continue;
-            }
+            // Keep them in the response (with is_deleted: true) so the diff view can show them.
+            $isDeleted = $state === 'optional' && $row === null;
 
             $out[] = [
                 'document_block_id' => $row?->id,
@@ -63,6 +62,7 @@ class DocumentBlockService
                 'sort_order' => (int) ($def['sort_order'] ?? 0),
                 'content' => $row?->content,
                 'is_filled' => (bool) ($row?->is_filled ?? false),
+                'is_deleted' => $isDeleted,
             ];
         }
 
@@ -164,6 +164,51 @@ class DocumentBlockService
             throw ValidationException::withMessages([
                 'blocks' => ['Debes completar todos los bloques no opcionales antes de enviar a revisión.'],
                 'missing_template_block_ids' => $missing,
+            ]);
+        }
+    }
+
+    /**
+     * Valida que todos los bloques modificables tengan contenido diferente al predeterminado de la plantilla.
+     * Debe llamarse después de {@see assertMandatoryBlocksAreFilled} (los bloques vacíos ya se detectaron allí).
+     */
+    public function assertModifiableBlocksAreModified(Document $document): void
+    {
+        $definitions = collect($this->blockDefinitionsForDocument($document))
+            ->filter(fn (array $def): bool => ($def['block_state'] ?? '') === 'modifiable');
+
+        if ($definitions->isEmpty()) {
+            return;
+        }
+
+        $document->loadMissing('blocks');
+        $blocksByTemplateBlockId = $document->blocks->keyBy('template_block_id');
+        $unmodified = [];
+
+        foreach ($definitions as $def) {
+            $templateBlockId = (string) ($def['id'] ?? '');
+            if ($templateBlockId === '') {
+                continue;
+            }
+
+            $block = $blocksByTemplateBlockId->get($templateBlockId);
+            if ($block === null) {
+                continue;
+            }
+
+            if ($this->documentBlockContentEquals($block->content, $def['default_content'] ?? null)) {
+                $unmodified[] = [
+                    'id' => $templateBlockId,
+                    'title' => (string) ($def['title'] ?? ''),
+                ];
+            }
+        }
+
+        if ($unmodified !== []) {
+            throw ValidationException::withMessages([
+                'blocks' => ['Debes editar todos los bloques modificables antes de enviar a revisión.'],
+                'unmodified_modifiable_block_ids' => array_column($unmodified, 'id'),
+                'unmodified_modifiable_block_titles' => array_column($unmodified, 'title'),
             ]);
         }
     }

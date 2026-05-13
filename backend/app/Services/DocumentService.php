@@ -1159,6 +1159,7 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
+        $this->documentBlockService->assertModifiableBlocksAreModified($document);
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
