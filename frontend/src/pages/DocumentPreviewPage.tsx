@@ -336,13 +336,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
     void (async () => {
       try {
-        const [reviews, meRes, templateResp] = await Promise.all([
+        const [reviews, meRes] = await Promise.all([
           fetchDocumentReviews(detail.id),
           fetchMe(),
-          fetchTemplate(detail.template_id),
         ]);
         if (cancelled) return;
-        const reviewMode = templateResp.data.review_mode === 'sequential' ? 'sequential' : 'parallel';
+        const reviewMode = detail.review_mode === 'sequential' ? 'sequential' : 'parallel';
         const actionable = pickActionableDocumentReview(reviews, meRes.data.id, reviewMode);
         if (!actionable) {
           setValidationSetupError(

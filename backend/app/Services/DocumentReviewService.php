@@ -175,7 +175,7 @@ class DocumentReviewService
      */
     private function assertSequentialReviewAllowsActing(Document $document, DocumentReview $review): void
     {
-        $mode = $this->resolveReviewModeForDocument($document);
+        $mode = $this->resolveReviewMode($document);
         if ($mode !== 'sequential') {
             return;
         }
@@ -193,9 +193,9 @@ class DocumentReviewService
     }
 
     /**
-     * Resuelve el modo de revisión del documento.
+     * Resuelve el modo de revisión del documento desde el snapshot anclado, con fallback a la plantilla live.
      */
-    private function resolveReviewModeForDocument(Document $document): string
+    public function resolveReviewMode(Document $document): string
     {
         $templateVersionId = is_string($document->template_version_id) ? trim($document->template_version_id) : '';
         $templateId = is_string($document->template_id) ? trim($document->template_id) : '';
