@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type RefObject } from 'react';
+import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -7,7 +7,8 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
-import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
+import { approveTemplateReview, rejectTemplateReview, fetchTemplateVersion } from '../../../api/templates';
+import type { TemplateVersionDetail } from '../../../api/templates';
 import { fetchProcesses } from '../../../api/processes';
 import { apiFetchJson } from '../../../api/http';
 import { useAuth } from '@maya/shared-auth-react';
@@ -15,6 +16,9 @@ import { useUserProfile } from '../../user-profile';
 import type { Process } from '../../../types/processes';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
+import { computeChangedBlocks } from '../../documents/components/DocumentDiffModal';
+import { DocumentDiffPanel } from '../../documents/components/DocumentDiffPanel';
+import type { DocumentDisplayBlock } from '../../../types/documents';
 
 type Props = { template: Template };
 
@@ -51,6 +55,8 @@ export function TemplateReviewView({ template }: Props) {
   const { blocks } = useTemplateBlocks(template.id);
 
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
+  const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
+  const [publishedVersion, setPublishedVersion] = useState<TemplateVersionDetail | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,6 +99,38 @@ export function TemplateReviewView({ template }: Props) {
   };
 
   useEffect(() => { void loadComments(); }, [template.id]);
+
+  useEffect(() => {
+    if (!template.latest_published_version_id) return;
+    void fetchTemplateVersion(template.latest_published_version_id)
+      .then(setPublishedVersion)
+      .catch(() => {});
+  }, [template.latest_published_version_id]);
+
+  const diffBlocks = useMemo((): DocumentDisplayBlock[] => {
+    if (!publishedVersion) return [];
+    return blocks.map((block) => {
+      const pub = publishedVersion.blocks_snapshot.find((pb) => pb.id === block.id);
+      return {
+        template_block_id: block.id,
+        document_block_id: null,
+        type: block.type,
+        title: block.title,
+        default_content: pub?.default_content ?? null,
+        block_state: block.block_state,
+        mandatory: block.mandatory,
+        sort_order: block.sort_order,
+        content: block.default_content,
+        is_filled: true,
+      };
+    });
+  }, [blocks, publishedVersion]);
+
+  const changedTemplateDiffBlocks = useMemo(() => computeChangedBlocks(diffBlocks), [diffBlocks]);
+  const changedTemplateBlockIds = useMemo(
+    () => new Set(changedTemplateDiffBlocks.map((b) => b.template_block_id)),
+    [changedTemplateDiffBlocks],
+  );
 
   useEffect(() => {
     if (!template.process_id) { setProcessLabel(null); return; }
@@ -142,6 +180,7 @@ export function TemplateReviewView({ template }: Props) {
   };
 
   const openView = (blockId: string, mode: 'comments' | 'info') => {
+    setDiffBlockId(null);
     setActiveView({ blockId, mode });
   };
 
@@ -281,31 +320,42 @@ export function TemplateReviewView({ template }: Props) {
           )}
         </div>
       }
-      sidebar={activeView && selectedBlock && (
-        activeView.mode === 'comments' ? (
-          <BlockCommentsCard
-            mode={commentMode}
-            blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
-            blockComments={getCommentsForBlock(selectedBlock.id, comments)}
-            allComments={comments}
-            onClose={closeView}
-            onSendMessage={handleSendMessage}
-            commentLoading={actionLoading}
-            canAddComments={template.status !== 'published'}
-          />
-        ) : (
-          <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
-            <ViewCardHeader
-              blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
-              title="Descripción del Bloque"
-              onClose={closeView}
+      sidebar={
+        diffBlockId !== null && !activeView
+          ? (
+            <DocumentDiffPanel
+              blocks={diffBlocks.filter((b) => b.template_block_id === diffBlockId)}
+              onClose={() => setDiffBlockId(null)}
             />
-            <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
-              <InfoBlockDescription description={selectedBlock.description} />
-            </div>
-          </div>
-        )
-      )}
+          )
+          : activeView && selectedBlock
+            ? (
+              activeView.mode === 'comments' ? (
+                <BlockCommentsCard
+                  mode={commentMode}
+                  blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
+                  blockComments={getCommentsForBlock(selectedBlock.id, comments)}
+                  allComments={comments}
+                  onClose={closeView}
+                  onSendMessage={handleSendMessage}
+                  commentLoading={actionLoading}
+                  canAddComments={template.status !== 'published'}
+                />
+              ) : (
+                <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+                  <ViewCardHeader
+                    blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
+                    title="Descripción del Bloque"
+                    onClose={closeView}
+                  />
+                  <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
+                    <InfoBlockDescription description={selectedBlock.description} />
+                  </div>
+                </div>
+              )
+            )
+            : undefined
+      }
     >
       {/* Blocks list (article content) */}
       <div className="space-y-12">
@@ -387,6 +437,28 @@ export function TemplateReviewView({ template }: Props) {
                         </span>
                       )}
                     </button>
+                    {changedTemplateBlockIds.has(block.id) && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveView(null);
+                          setDiffBlockId((prev) => (prev === block.id ? null : block.id));
+                        }}
+                        className={[
+                          'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                          diffBlockId === block.id
+                            ? 'border-odoo-teal text-odoo-teal bg-odoo-teal/10 shadow-sm'
+                            : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-teal hover:border-odoo-teal/50 hover:bg-odoo-teal/5',
+                        ].join(' ')}
+                        title="Ver cambios respecto a la versión publicada"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                        <span>Ver cambios</span>
+                      </button>
+                    )}
                   </div>
                 </div>
                 {nodes.length > 0 ? (
