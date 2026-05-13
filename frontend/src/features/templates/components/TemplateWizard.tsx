@@ -181,10 +181,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (!hasEditable) return 'La plantilla debe tener al menos un bloque editable o modificable.';
     const isEmpty = (content: unknown) =>
       content === null || (Array.isArray(content) && content.length === 0);
-    const hasEmptyEditable = blocksList.some(b =>
-      (b.block_state === 'editable' || b.block_state === 'modifiable') && isEmpty(b.default_content)
+    const hasEmptyModifiable = blocksList.some(b =>
+      b.block_state === 'modifiable' && isEmpty(b.default_content)
     );
-    if (hasEmptyEditable) return 'Los bloques editables y modificables no pueden estar vacíos.';
+    if (hasEmptyModifiable) return 'Los bloques modificables no pueden estar vacíos: el contenido predeterminado es obligatorio.';
     const hasEmptyLocked = blocksList.some(b =>
       b.block_state === 'locked' && isEmpty(b.default_content)
     );

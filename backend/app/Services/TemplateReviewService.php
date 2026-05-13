@@ -48,13 +48,12 @@ class TemplateReviewService
             $isEmptyContent = fn ($b) => is_null($b->default_content)
                 || (is_array($b->default_content) && count($b->default_content) === 0);
 
-            $emptyEditableBlock = $template->blocks->first(
-                fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
-                    && $isEmptyContent($b)
+            $emptyModifiableBlock = $template->blocks->first(
+                fn ($b) => (string) $b->block_state === 'modifiable' && $isEmptyContent($b)
             );
-            if ($emptyEditableBlock !== null) {
+            if ($emptyModifiableBlock !== null) {
                 throw ValidationException::withMessages([
-                    'blocks' => ['Los bloques editables y modificables no pueden estar vacíos.'],
+                    'blocks' => ['Los bloques modificables no pueden estar vacíos: el contenido predeterminado es obligatorio.'],
                 ]);
             }
 
