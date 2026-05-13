@@ -30,7 +30,8 @@ import { PaperBlocksArticle, type PaperArticleBlock } from '../features/document
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
-import { DocumentDiffModal, computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
+import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
+import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
 import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
 
@@ -133,7 +134,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [showDiffModal, setShowDiffModal] = useState(false);
+  const [showDiffPanel, setShowDiffPanel] = useState(isValidateMode);
   const [showHistory, setShowHistory] = useState(false);
   const [versionSnapshot, setVersionSnapshot] = useState<{
     versionNumber: number;
@@ -698,7 +699,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           type="button"
           variant="outline"
           size="sm"
-          onClick={() => setShowDiffModal(true)}
+          onClick={() => { setSelectedReviewView(null); setShowDiffPanel(true); }}
         >
           Ver cambios
         </Button>
@@ -856,7 +857,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => setShowDiffModal(true)}
+                  onClick={() => { setValidateActiveView(null); setShowDiffPanel(true); }}
                   className="text-xs font-black uppercase tracking-wider"
                 >
                   Ver cambios
@@ -884,37 +885,43 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               </Button>
             </div>
           }
-          sidebar={validateActiveView && validateSelectedBlock && (
-            validateActiveView.mode === 'comments' ? (
-              <BlockCommentsCard
-                mode="validator"
-                blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
-                blockComments={validateBlockComments}
-                allComments={validateComments}
-                onSendMessage={handleValidateSendMessage}
-                commentLoading={validateCommentLoading}
-                canAddComments={!!actionableReviewId}
-                headerRef={validateViewHeaderRef}
-                onClose={() => setValidateActiveView(null)}
-              />
-            ) : (
-              <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
-                <ViewCardHeader
-                  blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
-                  title="Descripción del Bloque"
-                  onClose={() => setValidateActiveView(null)}
-                  headerRef={validateViewHeaderRef}
-                />
-                <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
-                  {validateSelectedBlock.description ? (
-                    <BlockContentHtml content={normalizeBlockContentForEditor(validateSelectedBlock.description)} />
-                  ) : (
-                    <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
-                  )}
-                </div>
-              </div>
-            )
-          )}
+          sidebar={
+            showDiffPanel && !validateActiveView
+              ? <DocumentDiffPanel blocks={validateBlocks} onClose={() => setShowDiffPanel(false)} />
+              : validateActiveView && validateSelectedBlock
+                ? (
+                    validateActiveView.mode === 'comments' ? (
+                      <BlockCommentsCard
+                        mode="validator"
+                        blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
+                        blockComments={validateBlockComments}
+                        allComments={validateComments}
+                        onSendMessage={handleValidateSendMessage}
+                        commentLoading={validateCommentLoading}
+                        canAddComments={!!actionableReviewId}
+                        headerRef={validateViewHeaderRef}
+                        onClose={() => setValidateActiveView(null)}
+                      />
+                    ) : (
+                      <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
+                        <ViewCardHeader
+                          blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
+                          title="Descripción del Bloque"
+                          onClose={() => setValidateActiveView(null)}
+                          headerRef={validateViewHeaderRef}
+                        />
+                        <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
+                          {validateSelectedBlock.description ? (
+                            <BlockContentHtml content={normalizeBlockContentForEditor(validateSelectedBlock.description)} />
+                          ) : (
+                            <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  )
+                : undefined
+          }
         >
           {validationSetupError && !validationReviewLoading && (
             <div className="p-3 mb-4 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
@@ -1080,12 +1087,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           onCancel={() => { setValidateConfirm(null); setValidationModalError(null); setRejectReason(''); }}
           onConfirm={() => void handleRejectValidation()}
         />
-        {showDiffModal && detail && (
-          <DocumentDiffModal
-            blocks={detail.blocks}
-            onClose={() => setShowDiffModal(false)}
-          />
-        )}
       </>
     );
   }
@@ -1099,7 +1100,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         metaInfo={headerMetaInfo}
         actions={headerActions}
         headerRef={pageHeaderRef}
-        sidebar={selectedReviewView && (() => {
+        sidebar={
+          showDiffPanel && !selectedReviewView
+            ? <DocumentDiffPanel blocks={detail?.blocks ?? []} onClose={() => setShowDiffPanel(false)} />
+            : selectedReviewView && (() => {
           const block = detail?.blocks?.find(b => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId);
           if (!block) return null;
 
@@ -1139,7 +1143,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               </div>
             </div>
           );
-        })()}
+        })()
+        }
       >
         {loading && (
           <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando documento…</p>
@@ -1308,12 +1313,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           setDiscardVersionError(null);
         }}
       />
-      {showDiffModal && detail && (
-        <DocumentDiffModal
-          blocks={detail.blocks}
-          onClose={() => setShowDiffModal(false)}
-        />
-      )}
     </>
   );
 }
