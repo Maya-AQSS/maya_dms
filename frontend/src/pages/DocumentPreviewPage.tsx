@@ -1179,12 +1179,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                     <section
                       key={blockId}
                       className={[
-                        'relative group rounded-lg transition-all duration-200 cursor-pointer',
+                        'relative group rounded-lg transition-all duration-200',
+                        !isPublished ? 'cursor-pointer' : '',
                         isSelected
                           ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
-                          : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
+                          : !isPublished ? 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card' : '',
                       ].join(' ')}
-                      onClick={(e) => { e.stopPropagation(); if (block.document_block_id) setSelectedReviewView({ blockId, mode: 'comments' }); }}
+                      onClick={(e) => { e.stopPropagation(); if (block.document_block_id && !isPublished) setSelectedReviewView({ blockId, mode: 'comments' }); }}
                     >
                       <div className={['absolute -left-12 top-0 text-xs font-black uppercase tracking-tighter transition-opacity duration-200', isSelected ? 'opacity-100 text-odoo-purple' : 'opacity-0 group-hover:opacity-40 text-text-muted'].join(' ')}>
                         #{block.sort_order ?? '?'}
@@ -1227,7 +1228,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               <span>Info</span>
                             </button>
                           )}
-                          <button
+                          {!isPublished && <button
                             type="button"
                             disabled={!block.document_block_id}
                             onClick={(e) => { e.stopPropagation(); if (block.document_block_id) setSelectedReviewView({ blockId, mode: 'comments' }); }}
@@ -1245,7 +1246,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 {getCommentsForBlock(block.document_block_id, reviewComments).length}
                               </span>
                             )}
-                          </button>
+                          </button>}
                         </div>
                       </div>
                       <div>

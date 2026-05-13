@@ -1,6 +1,12 @@
-import { FavoriteStarFilled } from '@maya/shared-ui-react';
-
-/** Marca de favorito en listados DMS; misma estética que maya_dashboard (glifo ★). */
+/** Marca de favorito en listados DMS (glifo ★). */
 export function FavoriteInlineMark() {
-  return <FavoriteStarFilled title="En favoritos" aria-label="En favoritos" />;
+  return (
+    <span
+      title="En favoritos"
+      aria-label="En favoritos"
+      className="text-yellow-400 leading-none select-none"
+    >
+      ★
+    </span>
+  );
 }

@@ -27,6 +27,7 @@ import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 type ReviewComment = BlockComment;
@@ -618,13 +619,14 @@ export function TemplatePreviewPage() {
                     <section
                       key={block.id}
                       className={[
-                        'relative group rounded-lg transition-all duration-200 cursor-pointer',
+                        'relative group rounded-lg transition-all duration-200',
+                        !isPublished ? 'cursor-pointer' : '',
                         isSelected
                           ? 'ring-2 ring-odoo-purple ring-offset-8 dark:ring-offset-ui-dark-card shadow-sm'
-                          : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card',
+                          : !isPublished ? 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border hover:ring-offset-4 dark:hover:ring-offset-ui-dark-card' : '',
                         isLocked ? 'opacity-70' : '',
                       ].join(' ')}
-                      onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'comments' }); }}
+                      onClick={(e) => { e.stopPropagation(); if (!isPublished) setActiveView({ blockId: block.id, mode: 'comments' }); }}
                     >
                       <div className="flex items-center gap-3 mb-4">
                         <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
@@ -647,26 +649,28 @@ export function TemplatePreviewPage() {
                               <span>Info</span>
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'comments' }); }}
-                            className={[
-                              'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                              commentsActive
-                                ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                                : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
-                            ].join(' ')}
-                          >
-                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                            </svg>
-                            <span>Mensajes</span>
-                            {totalComments.length > 0 && (
-                              <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
-                                {totalComments.length}
-                              </span>
-                            )}
-                          </button>
+                          {!isPublished && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'comments' }); }}
+                              className={[
+                                'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                                commentsActive
+                                  ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
+                                  : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                              ].join(' ')}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                              </svg>
+                              <span>Mensajes</span>
+                              {totalComments.length > 0 && (
+                                <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                                  {totalComments.length}
+                                </span>
+                              )}
+                            </button>
+                          )}
                         </div>
                       </div>
                       {hasContent ? (
