@@ -1,7 +1,7 @@
 import type { BlockState } from './blocks';
 import type { TemplateVisibilityLevel } from './templates';
 
-export type DocumentStatus = 'draft' | 'in_review' | 'published';
+export type DocumentStatus = 'draft' | 'in_review' | 'published' | 'rejected';
 
 export type Document = {
   id: string;

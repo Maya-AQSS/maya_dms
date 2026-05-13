@@ -182,7 +182,7 @@ export function TemplatesTable({ processId }: Props = {}) {
           <span className="flex items-center gap-2 min-w-0">
             {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
             <span className="truncate font-medium">{t.name}</span>
-            {t.has_review_comments && t.status === 'draft' && profile && t.created_by === profile.id && (
+            {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                 title="Esta plantilla tiene bloques con comentarios de revisión pendientes."

@@ -70,6 +70,7 @@ const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
   published: 'Publicado',
+  rejected: 'Rechazado',
 };
 
 /** Alineado con `RejectDocumentReviewRequest` (backend): motivo obligatorio no trivial. */
@@ -281,7 +282,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   }, []);
 
   const isValidateMode = mode === 'validate';
-  const isDraft = !detail || detail.status === 'draft';
+  const isDraft = !detail || detail.status === 'draft' || detail.status === 'rejected';
   const locationState = location.state as {
     step?: string;
     processId?: string;
@@ -962,7 +963,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   };
 
   const handleSubmitForReview = async () => {
-    if (!detail || detail.status !== 'draft') {
+    if (!detail || !['draft', 'rejected'].includes(detail.status)) {
       return;
     }
     setSummaryError(null);

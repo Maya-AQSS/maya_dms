@@ -7,7 +7,7 @@ export type TemplateVisibilityLevel =
   | 'team'
   | 'personal';
 
-export type TemplateStatus = 'draft' | 'in_review' | 'published' | 'archived';
+export type TemplateStatus = 'draft' | 'in_review' | 'published' | 'archived' | 'rejected';
 
 export type ReviewMode = 'sequential' | 'parallel';
 

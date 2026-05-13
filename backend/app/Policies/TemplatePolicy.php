@@ -160,7 +160,7 @@ class TemplatePolicy
     {
         $isCreator = $user->getAuthIdentifier() === $template->created_by;
 
-        if ($template->status === 'draft') {
+        if (in_array($template->status, ['draft', 'rejected'], true)) {
             if (! $isCreator) {
                 return false;
             }
@@ -305,7 +305,7 @@ class TemplatePolicy
     public function submitForReview(JwtUser $user, Template $template): bool
     {
         return $user->getAuthIdentifier() === $template->created_by
-            && $template->status === 'draft';
+            && in_array($template->status, ['draft', 'rejected'], true);
     }
 
     /**

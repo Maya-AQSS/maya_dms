@@ -162,7 +162,7 @@ class DocumentReviewService
                 ],
             );
 
-            $this->stateService->transition($documentId, 'draft', $actorId);
+            $this->stateService->transition($documentId, 'rejected', $actorId);
 
             $this->documentRepository->deletePendingReviewsForDocument($documentId);
 

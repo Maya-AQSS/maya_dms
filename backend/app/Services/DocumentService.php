@@ -1152,9 +1152,9 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->status !== 'draft') {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo los documentos en borrador pueden enviarse a revisión.'],
+                'status' => ['Solo los documentos en borrador o rechazados pueden enviarse a revisión.'],
             ]);
         }
 

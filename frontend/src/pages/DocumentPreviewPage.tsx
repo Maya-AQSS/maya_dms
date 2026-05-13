@@ -41,6 +41,7 @@ const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
   published: 'Publicado',
+  rejected: 'Rechazado',
 };
 
 function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
@@ -293,7 +294,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     navigate('/dashboard');
   };
 
-  const isDraft = detail?.status === 'draft';
+  const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
   const isPublished = detail?.status === 'published';
   const changedBlocks = useMemo(
     () => (detail ? computeChangedBlocks(detail.blocks) : []),
@@ -325,7 +326,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const canDiscardWorkingVersion =
     !isValidateMode &&
     !isHistoricalSnapshot &&
-    (detail?.status === 'draft' || detail?.status === 'in_review') &&
+    (detail?.status === 'draft' || detail?.status === 'in_review' || detail?.status === 'rejected') &&
     canMutatePublished &&
     !!detail?.latest_published_version_id &&
     !!detail?.working_version_id;

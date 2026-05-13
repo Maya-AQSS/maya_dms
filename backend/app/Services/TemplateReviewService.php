@@ -22,9 +22,9 @@ class TemplateReviewService
         return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
             $template = $this->templateRepository->findOrFail($templateId);
 
-            if ($template->status !== 'draft') {
+            if (! in_array($template->status, ['draft', 'rejected'], true)) {
                 throw ValidationException::withMessages([
-                    'status' => ['Solo las plantillas en borrador pueden enviarse a revisión.'],
+                    'status' => ['Solo las plantillas en borrador o rechazadas pueden enviarse a revisión.'],
                 ]);
             }
 
@@ -114,7 +114,7 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'rejected']);
 
-            return $this->templatePublishingService->transitionStatus($template, 'draft', $actorId);
+            return $this->templatePublishingService->transitionStatus($template, 'rejected', $actorId);
         });
     }
 

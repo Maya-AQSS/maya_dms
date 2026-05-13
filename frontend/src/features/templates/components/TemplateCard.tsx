@@ -10,6 +10,7 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
   in_review: 'En revisión',
   published: 'Publicada',
   archived: 'Archivada',
+  rejected: 'Rechazada',
 };
 
 type Props = {
@@ -24,7 +25,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
   const [dialog, setDialog] = useState<'delete' | 'clone' | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
   const canClone = t.can_clone === true;
-  const canEdit = t.status === 'draft' && profile?.id === t.created_by;
+  const canEdit = (t.status === 'draft' || t.status === 'rejected') && profile?.id === t.created_by;
   const canDelete = profile?.id === t.created_by || hasPermission('templates.delete');
 
   const closeDialog = () => {
@@ -61,7 +62,7 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
     !!profile?.id &&
     (t.reviewers?.some((r) => r.user_id === profile.id) ?? false);
   const canValidate = isAssignedReviewer;
-  const isRejected = t.status === 'draft' && t.has_review_comments;
+  const isRejected = t.status === 'rejected';
 
   return (
     <div
