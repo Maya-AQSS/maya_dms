@@ -10,7 +10,7 @@ export const BLOCK_UI_STATE_CONFIG: Record<
     label: 'Editable',
     badgeCls:
       'bg-success/15 text-success-dark dark:bg-success-dark/30 dark:text-success-light',
-    payload: { block_state: 'editable', mandatory: true },
+    payload: { block_state: 'editable', mandatory: false },
   },
   modifiable: {
     label: 'Modificable',
