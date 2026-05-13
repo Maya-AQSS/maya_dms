@@ -340,12 +340,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     return () => { cancelled = true; };
   }, [documentId, detail?.has_review_comments]);
 
-  const handleReviewReply = useCallback(async (parentCommentId: string, body: string) => {
+  const handleDocumentCommentSend = useCallback(async (parentId: string | null, body: string) => {
     if (!documentId) return;
-    const parent = reviewComments.find(c => c.id === parentCommentId);
+    const blockableId = parentId
+      ? (reviewComments.find(c => c.id === parentId)?.blockable_id ?? null)
+      : (activeBlockRef.current?.document_block_id ?? null);
     const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
       method: 'POST',
-      body: { body, parent_id: parentCommentId, blockable_id: parent?.blockable_id ?? null },
+      body: { body, parent_id: parentId, blockable_id: blockableId },
     });
     setReviewComments(prev => [...prev, res.data]);
   }, [documentId, reviewComments]);
@@ -1672,7 +1674,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   blockSortOrder={activeBlock.sort_order ?? '?'}
                   blockComments={allBlockComments}
                   allComments={reviewComments}
-                  onReply={handleReviewReply}
+                  onSendMessage={handleDocumentCommentSend}
                   onClose={() => setShowDocumentCommentPanel(false)}
                 />
               </div>
