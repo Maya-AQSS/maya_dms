@@ -284,6 +284,41 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->publish($user, $template));
     }
 
+    public function test_submit_for_review_allowed_for_creator_on_draft(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user      = $this->makeJwtUser($creatorId);
+        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
+
+        $this->assertTrue($this->policy->submitForReview($user, $template));
+    }
+
+    public function test_submit_for_review_denied_for_creator_on_in_review(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user      = $this->makeJwtUser($creatorId);
+        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'in_review');
+
+        $this->assertFalse($this->policy->submitForReview($user, $template));
+    }
+
+    public function test_submit_for_review_denied_for_creator_on_published(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user      = $this->makeJwtUser($creatorId);
+        $template  = $this->makeTemplate(createdBy: $creatorId, status: 'published');
+
+        $this->assertFalse($this->policy->submitForReview($user, $template));
+    }
+
+    public function test_submit_for_review_denied_for_non_creator_even_on_draft(): void
+    {
+        $user     = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
+        $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', status: 'draft');
+
+        $this->assertFalse($this->policy->submitForReview($user, $template));
+    }
+
     /**
      * @param  list<string>  $permissions
      */
