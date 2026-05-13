@@ -15,10 +15,10 @@ return [
     'allowed_methods' => ['*'],
 
     'allowed_origins' => [
-        'http://maya-authorization.maya.test',
-        'http://maya-dashboard.maya.test',
-        'http://maya-dms.maya.test',
-        'http://maya-logs.maya.test',
+        'http://authorization.maya.test',
+        'http://dashboard.maya.test',
+        'http://dms.maya.test',
+        'http://logs.maya.test',
         'http://localhost:5173',
         'http://localhost:5174',
         'http://localhost:5175',

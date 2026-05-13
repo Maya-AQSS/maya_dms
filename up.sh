@@ -7,19 +7,19 @@ cd "$SCRIPT_DIR"
 
 SERVICE_LABEL="maya-dms"
 BACKEND_CONTAINER="maya_dms_backend"
-FRONTEND_URL="http://maya-dms.maya.test"
-BACKEND_API_URL="http://maya-dms-api.maya.test/api/v1"
+FRONTEND_URL="http://dms.maya.test"
+BACKEND_API_URL="http://dms-api.maya.test/api/v1"
 DEFAULT_BACKEND_PORT="8001"
 DEFAULT_FRONTEND_PORT="5174"
 SKIP_TABLES_SUFFIX_SOURCE=true
 
 setup_frontend_env() {
-    upsert_env_var frontend/.env VITE_API_URL            "${VITE_API_URL:-http://maya-dms-api.maya.test/api/v1}"
+    upsert_env_var frontend/.env VITE_API_URL            "${VITE_API_URL:-http://dms-api.maya.test/api/v1}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_URL       "${VITE_KEYCLOAK_URL:-http://keycloak.maya.test}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_REALM     "${VITE_KEYCLOAK_REALM:-maya}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_CLIENT_ID "${VITE_KEYCLOAK_CLIENT_ID:-maya-dms-dashboard}"
     upsert_env_var frontend/.env VITE_REVERB_APP_KEY     "${REVERB_APP_KEY:-}"
-    upsert_env_var frontend/.env VITE_REVERB_HOST        "${VITE_REVERB_HOST:-maya-dms-api.maya.test}"
+    upsert_env_var frontend/.env VITE_REVERB_HOST        "${VITE_REVERB_HOST:-dms-api.maya.test}"
     upsert_env_var frontend/.env VITE_REVERB_PORT        "${VITE_REVERB_PORT:-8082}"
 }
 
