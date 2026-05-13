@@ -16,7 +16,10 @@ readonly class FilterTemplatesDto
         public ?string $moduleId = null,
         public ?string $teamId = null,
         public ?string $authorName = null,
+        /** Fecha calendario (Y-m-d): cabezal con `delivery_deadline` en esa fecha o anterior (inclusive). */
         public ?string $deliveryDeadline = null,
+        /** Fecha calendario (Y-m-d): última publicación (`max(published_at)`) en ese día o posterior. */
+        public ?string $publishedOn = null,
         public ?string $processId = null,
     ) {}
 }

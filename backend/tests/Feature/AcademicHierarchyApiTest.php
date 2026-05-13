@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Support\Facades\Cache;
-use Lcobucci\JWT\Signer\Key\InMemory;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
@@ -39,7 +38,7 @@ class AcademicHierarchyApiTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $token = $this->buildJwtForSub(
             $privatePem,

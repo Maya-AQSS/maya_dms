@@ -15,11 +15,6 @@ interface Props {
   onClose: () => void;
 }
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
-}
-
 /**
  * Previsualización de plantilla — usa el mismo `PaperPreviewLayout` y
  * `PaperBlocksArticle` que `DocumentPreviewPage` para garantizar paridad
@@ -67,7 +62,9 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
       {visibilityLabel(template.visibility_level)}
       {' · '}
       {blocks.length} {blocks.length === 1 ? 'bloque' : 'bloques'}
-      {template.delivery_deadline ? <>{' · '}Fecha límite: {formatDate(template.delivery_deadline)}</> : null}
+      {template.delivery_deadline ? (
+        <>{' · '}Fecha límite: {formatCalendarDateForBrowser(template.delivery_deadline)}</>
+      ) : null}
     </p>
   );
 

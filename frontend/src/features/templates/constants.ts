@@ -12,10 +12,18 @@ export const VISIBILITY_OPTIONS: { value: TemplateVisibilityLevel; label: string
 export const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
   { value: 'draft', label: 'Borrador' },
+  { value: 'in_review', label: 'En revisión' },
   { value: 'published', label: 'Publicada' },
   { value: 'archived', label: 'Archivada' },
 ] as const;
 
+/** Valor '' = todos; 'favorites' = solo favoritos del usuario (listados DMS). */
+export const FAVORITES_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Todos' },
+  { value: 'favorites', label: 'Solo favoritos' },
+];
+
 export function visibilityLabel(v: TemplateVisibilityLevel): string {
   return VISIBILITY_OPTIONS.find((o) => o.value === v)?.label ?? v;
 }
+

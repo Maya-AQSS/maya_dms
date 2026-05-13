@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import type { Template, TemplateStatus } from '../../../types/templates';
-import { visibilityLabel } from '../constants';
 import { useUserProfile } from '../../../features/user-profile';
+import { useHierarchy } from '../../../features/hierarchy';
+import { formatListRowVisibilityCaption } from '../../../utils/academicContextSearch';
 
 const STATUS_LABEL: Record<TemplateStatus, string> = {
   draft: 'Borrador',
@@ -22,6 +23,15 @@ type Props = {
 export function TemplateCard({ template: t, onDelete, onClone }: Props) {
   const navigate = useNavigate();
   const { profile, hasPermission } = useUserProfile();
+  const { hierarchy } = useHierarchy();
+  const visibilityCaption = formatListRowVisibilityCaption(hierarchy, {
+    visibility_level: t.visibility_level,
+    study_type_id: t.study_type_id,
+    study_id: t.study_id,
+    module_id: t.module_id,
+    team_id: t.team_id,
+    team: t.team,
+  });
   const [dialog, setDialog] = useState<'delete' | 'clone' | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
   const canClone = t.can_clone === true;
@@ -107,8 +117,11 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
             <p className="text-xs text-text-secondary dark:text-text-dark-secondary line-clamp-2">{t.description}</p>
           ) : null}
           <div className="flex flex-wrap gap-2 text-xs text-text-muted dark:text-text-dark-muted font-medium">
-            <span className="rounded bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 border border-ui-border dark:border-ui-dark-border">
-              {visibilityLabel(t.visibility_level)}
+            <span
+              className="rounded bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 border border-ui-border dark:border-ui-dark-border max-w-full min-w-0 truncate inline-block align-bottom"
+              title={visibilityCaption}
+            >
+              {visibilityCaption}
             </span>
             {t.author_name ? (
               <span className="rounded bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 border border-ui-border dark:border-ui-dark-border opacity-70">

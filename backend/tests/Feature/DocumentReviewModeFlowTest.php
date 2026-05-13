@@ -14,7 +14,6 @@ use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Lcobucci\JWT\Signer\Key\InMemory;
 use Maya\Messaging\Publishers\AuditPublisher;
 use Database\Seeders\PermissionsSeeder;
 use Tests\Concerns\AssignsTestUserPermissions;
@@ -226,7 +225,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
@@ -312,7 +311,7 @@ class DocumentReviewModeFlowTest extends TestCase
         [$priv, $pub] = $this->generateRsaKeyPairForTests();
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $headersReviewer = $this->bearerFor(
             $reviewerId,
@@ -335,7 +334,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
@@ -363,7 +362,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $templateHead = EntityVersion::query()
             ->where('versionable_type', Template::class)
@@ -402,7 +401,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
@@ -429,7 +428,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
@@ -464,7 +463,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);
@@ -503,7 +502,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR2 = $this->bearerFor($ctx['rev2'], $priv, $pub, 'r2', ['documents.review']);
@@ -556,7 +555,7 @@ class DocumentReviewModeFlowTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($pub));
+            ->andReturn($pub);
 
         $hOwner = $this->bearerFor($ctx['ownerId'], $priv, $pub, 'own');
         $hR1 = $this->bearerFor($ctx['rev1'], $priv, $pub, 'r1', ['documents.review']);

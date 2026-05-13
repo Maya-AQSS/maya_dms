@@ -49,11 +49,6 @@ function blockContentNodes(block: TemplateBlock): unknown[] {
   return [];
 }
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
-}
-
 function isTemplateVisibilityLevel(
   value: string | null | undefined,
 ): value is Template['visibility_level'] {
@@ -539,9 +534,9 @@ export function TemplatePreviewPage() {
         <> ({template.team?.name ?? template.team_id})</>
       ) : null}
       {' · '}
-      Fecha límite de validación: {formatDate(displayDeadline)}
+      Fecha límite de validación: {formatCalendarDateForBrowser(displayDeadline)}
       {' · '}
-      Última edición: {formatDate(displayUpdatedAt)}
+      Última edición: {formatCalendarDateForBrowser(displayUpdatedAt)}
     </p>
   ) : null;
 

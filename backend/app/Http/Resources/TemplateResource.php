@@ -5,6 +5,7 @@ namespace App\Http\Resources;
 use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Carbon;
 
 class TemplateResource extends JsonResource
 {
@@ -70,5 +71,24 @@ class TemplateResource extends JsonResource
                     : null;
             }),
         ];
+    }
+
+    private function formatOptionalIso(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        if ($value instanceof Carbon) {
+            return $value->toIso8601String();
+        }
+        if (is_string($value) && $value !== '') {
+            try {
+                return Carbon::parse($value)->toIso8601String();
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

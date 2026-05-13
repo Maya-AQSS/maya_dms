@@ -11,7 +11,6 @@ use Maya\Auth\Contracts\JwksServiceInterface;
 use Maya\Messaging\Publishers\AuditPublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -79,7 +78,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $this->postJson(
             "/api/v1/documents/{$documentId}/submit",
@@ -173,7 +172,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $this->postJson(
             "/api/v1/documents/{$documentId}/submit",
@@ -203,7 +202,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $response = $this->postJson(
             "/api/v1/templates/{$templateId}/submit-review",
@@ -257,7 +256,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $this->postJson(
             "/api/v1/documents/{$documentId}/submit",
@@ -311,7 +310,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $this->postJson(
             "/api/v1/documents/{$documentId}/submit",

@@ -34,6 +34,7 @@ import { computeChangedBlocks } from '../features/documents/components/DocumentD
 import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
 import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 
 // Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
@@ -790,9 +791,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       {' · '}
       {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
       {' · '}
-      Fecha límite: {formatDate(detail.delivery_deadline)}
+      Fecha límite: {formatCalendarDateForBrowser(detail.delivery_deadline)}
       {' · '}
-      Última edición: {formatDate(versionSnapshot?.createdAt ?? detail.updated_at)}
+      Última edición: {formatCalendarDateForBrowser(versionSnapshot?.createdAt ?? detail.updated_at)}
     </p>
   ) : null;
 
