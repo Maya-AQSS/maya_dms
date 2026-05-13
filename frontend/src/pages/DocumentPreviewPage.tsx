@@ -851,6 +851,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           }
           actions={
             <div className="flex items-center gap-2">
+              {changedBlocks.length > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowDiffModal(true)}
+                  className="text-xs font-black uppercase tracking-wider"
+                >
+                  Ver cambios
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outlineWarning"
@@ -1069,6 +1080,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           onCancel={() => { setValidateConfirm(null); setValidationModalError(null); setRejectReason(''); }}
           onConfirm={() => void handleRejectValidation()}
         />
+        {showDiffModal && detail && (
+          <DocumentDiffModal
+            blocks={detail.blocks}
+            onClose={() => setShowDiffModal(false)}
+          />
+        )}
       </>
     );
   }
@@ -1101,7 +1118,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 onClose={() => setSelectedReviewView(null)}
                 onSendMessage={handlePreviewSendMessage}
                 headerRef={pageHeaderRef}
-                canAddComments={!isHistoricalSnapshot}
+                canAddComments={!isHistoricalSnapshot && !isPublished}
               />
             );
           }

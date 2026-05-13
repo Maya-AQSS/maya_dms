@@ -762,6 +762,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             allComments={reviewComments}
             onSendMessage={handleSendMessage}
             onClose={() => setShowCommentPanel(false)}
+            canAddComments={template.status !== 'published'}
           />
         </div>
       )}

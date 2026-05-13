@@ -291,6 +291,7 @@ export function TemplateReviewView({ template }: Props) {
             onClose={closeView}
             onSendMessage={handleSendMessage}
             commentLoading={actionLoading}
+            canAddComments={template.status !== 'published'}
           />
         ) : (
           <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">

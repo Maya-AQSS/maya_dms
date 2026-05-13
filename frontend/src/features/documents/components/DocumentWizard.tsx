@@ -263,6 +263,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [rejectReason, setRejectReason] = useState('');
   const [localContent, setLocalContent] = useState<unknown>(null);
   const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
+  const [unmodifiedBlocksModal, setUnmodifiedBlocksModal] = useState<string[] | null>(null);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
@@ -942,6 +943,17 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'blocks') {
+      if (detail) {
+        const norm = (v: unknown) => JSON.stringify(normalizeBlockContentForEditor(v));
+        const unmodified = detail.blocks.filter(
+          (b: DocumentDisplayBlock) =>
+            b.block_state === 'modifiable' && !b.is_deleted && norm(b.content) === norm(b.default_content),
+        );
+        if (unmodified.length > 0) {
+          setUnmodifiedBlocksModal(unmodified.map((b: DocumentDisplayBlock) => b.title ?? 'Sin título'));
+          return;
+        }
+      }
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
       setStep('summary');
       return;
@@ -1978,6 +1990,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         loading={summaryConfirmAction === 'submit' && submittingForReview}
         onCancel={() => setSummaryConfirmAction(null)}
         onConfirm={() => void handleConfirmSummaryAction()}
+      />
+      <ConfirmDialog
+        open={unmodifiedBlocksModal !== null}
+        title="Bloques modificables sin cambios"
+        description={
+          <div className="space-y-2">
+            <p>Debes editar todos los bloques modificables antes de continuar. Bloques sin cambios:</p>
+            <ul className="space-y-1">
+              {(unmodifiedBlocksModal ?? []).map((name, i) => (
+                <li key={i} className="font-medium">• {name}</li>
+              ))}
+            </ul>
+          </div>
+        }
+        confirmLabel="Entendido"
+        onConfirm={() => setUnmodifiedBlocksModal(null)}
+        onCancel={() => setUnmodifiedBlocksModal(null)}
       />
     </>
   );
