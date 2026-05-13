@@ -58,6 +58,8 @@ export async function fetchMe(): Promise<{ data: MeProfile }> {
 
 /**
  * PUT /api/v1/me/locale — delega en el helper compartido. El backend reporta
- * `meta.locale_persisted = false` mientras el writer sigue siendo no-op.
+ * `meta.locale_persisted = false` mientras el writer sigue siendo no-op,
+ * pero el cambio se propaga al resto del ecosistema vía la cookie
+ * `maya_session_overrides` (gestionada por `useLocale.setLocale`).
  */
 export const updateMyLocale = profileApi.updateMyLocale;
