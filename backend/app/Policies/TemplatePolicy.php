@@ -296,11 +296,16 @@ class TemplatePolicy
     }
 
     /**
-     * Enviar borrador a revisión: solo el creador.
+     * Enviar borrador a revisión: solo el creador y únicamente desde `draft`.
+     *
+     * La guardia de estado aquí es redundante con {@see TemplateReviewService::submitForReview}
+     * pero evita que UI o código externo traten `can('submitForReview', $template)` como `true`
+     * para plantillas ya en revisión o publicadas.
      */
     public function submitForReview(JwtUser $user, Template $template): bool
     {
-        return $user->getAuthIdentifier() === $template->created_by;
+        return $user->getAuthIdentifier() === $template->created_by
+            && $template->status === 'draft';
     }
 
     /**
