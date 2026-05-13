@@ -7,8 +7,8 @@ cd "$SCRIPT_DIR"
 
 SERVICE_LABEL="maya-dms"
 BACKEND_CONTAINER="maya_dms_backend"
-FRONTEND_URL="http://maya_dms.localhost"
-BACKEND_API_URL="http://maya_dms_api.localhost/api/v1"
+FRONTEND_URL="http://maya-dms.localhost"
+BACKEND_API_URL="http://maya-dms-api.localhost/api/v1"
 DEFAULT_BACKEND_PORT="8001"
 DEFAULT_FRONTEND_PORT="5174"
 SKIP_TABLES_SUFFIX_SOURCE=true

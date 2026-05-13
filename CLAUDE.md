@@ -14,8 +14,8 @@ Sistema de gestión documental (Document Management System) del ecosistema Maya 
 - Script de arranque: `./up.sh` (no usar `docker compose up` directamente)
 
 ## Accesos locales (vía Traefik)
-- Frontend:  http://maya_dms.localhost
-- Backend:   http://maya_dms_api.localhost/api/v1
+- Frontend:  http://maya-dms.localhost
+- Backend:   http://maya-dms-api.localhost/api/v1
 - Keycloak:  http://keycloak.localhost
 - Traefik:   http://localhost:8888/dashboard/
 

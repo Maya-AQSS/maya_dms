@@ -23,7 +23,7 @@ const TemplateReviewPage = lazy(() => import('./pages/TemplateReviewPage').then(
 const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').then(m => ({ default: m.TemplatePreviewPage })));
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
-const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined) ?? 'http://maya_dashboard_api.localhost';
+const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined) ?? 'http://maya-dashboard-api.localhost';
 
 function AppRoutes() {
   return (
@@ -59,7 +59,7 @@ function Main() {
   const userInitials = profileDisplayInitials(profile);
   const onProfile = () => {
     const dashboardOrigin = (import.meta.env.VITE_DASHBOARD_URL as string | undefined)
-      ?? 'http://maya_dashboard.localhost';
+      ?? 'http://maya-dashboard.localhost';
     window.location.assign(`${dashboardOrigin}/profile`);
   };
 
