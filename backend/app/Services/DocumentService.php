@@ -1183,6 +1183,13 @@ class DocumentService implements DocumentServiceInterface
                 return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
 
+            $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
+                documentId: $documentId,
+                triggerEvent: 'submitted',
+                triggeredBy: $actorId,
+                notes: 'Envío a revisión',
+            ));
+
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 

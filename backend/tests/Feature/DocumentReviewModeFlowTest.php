@@ -485,7 +485,7 @@ class DocumentReviewModeFlowTest extends TestCase
             ['rejection_reason' => 'No procede'],
             $hR1,
         )->assertOk()
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'rejected');
 
         $this->assertSame(
             0,
@@ -601,6 +601,6 @@ class DocumentReviewModeFlowTest extends TestCase
             ['rejection_reason' => $reason],
             $hR1,
         )->assertOk()
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'rejected');
     }
 }

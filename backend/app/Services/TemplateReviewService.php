@@ -78,6 +78,23 @@ class TemplateReviewService
 
             $template->reviewers()->update(['status' => 'pending']);
 
+            $template->loadMissing('headVersion');
+            $headEv = $template->headVersion;
+            if ($headEv !== null) {
+                $blocksSnapshot = $template->blocks->map(fn ($b) => [
+                    'id' => $b->id,
+                    'title' => $b->title,
+                    'default_content' => $b->default_content,
+                    'block_state' => (string) $b->block_state,
+                    'sort_order' => (int) $b->sort_order,
+                ])->values()->all();
+                $headEv->snapshot_data = array_merge(
+                    is_array($headEv->snapshot_data) ? $headEv->snapshot_data : (array) ($headEv->snapshot_data ?? []),
+                    ['blocks_at_submission' => $blocksSnapshot],
+                );
+                $headEv->save();
+            }
+
             return $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
         });
     }
