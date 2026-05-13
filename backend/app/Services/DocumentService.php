@@ -1309,6 +1309,8 @@ class DocumentService implements DocumentServiceInterface
                     'reviews' => ['El documento tiene validadores asignados. Debe completar la revisión para publicarse.'],
                 ]);
             }
+
+            $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
         }
 
         if ($document->status === 'in_review' && $this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {
