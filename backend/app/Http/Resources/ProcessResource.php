@@ -2,12 +2,21 @@
 
 namespace App\Http\Resources;
 
-use App\Models\Process;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * @property-read Process $resource
+ * El recurso recibe arrays (DTO-like) emitidos por ProcessService::list(),
+ * no modelos Eloquent — el repositorio devuelve `list<array{...}>`.
+ *
+ * @property-read array{
+ *     id: string,
+ *     code: string,
+ *     name: string,
+ *     alias: string,
+ *     description: string|null,
+ *     process_parent_id: string|null,
+ * } $resource
  */
 class ProcessResource extends JsonResource
 {
@@ -17,11 +26,12 @@ class ProcessResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'          => $this->resource->id,
-            'name'        => $this->resource->name,
-            'description' => $this->resource->description,
-            'created_at'  => optional($this->resource->created_at)->toIso8601String(),
-            'updated_at'  => optional($this->resource->updated_at)->toIso8601String(),
+            'id'                => $this->resource['id'] ?? null,
+            'code'              => $this->resource['code'] ?? null,
+            'name'              => $this->resource['name'] ?? null,
+            'alias'             => $this->resource['alias'] ?? null,
+            'description'       => $this->resource['description'] ?? null,
+            'process_parent_id' => $this->resource['process_parent_id'] ?? null,
         ];
     }
 }

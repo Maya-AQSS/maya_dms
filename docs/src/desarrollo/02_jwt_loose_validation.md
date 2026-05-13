@@ -49,7 +49,7 @@ pueda verificar el endpoint `/api/v1/hierarchy` en local desde cero.
 ### Requisitos previos
 
 - Stack levantado: `docker compose up -d`
-- Keycloak accesible en `http://keycloak.maya.test`
+- Keycloak accesible en `https://keycloak.maya.test`
 - Acceso admin a Keycloak
 
 ### 1. Configurar Keycloak
@@ -91,7 +91,7 @@ Establecer contraseña **permanente** via API REST:
 
 ```bash
 ADMIN_TOKEN=$(curl -s -X POST \
-  "http://keycloak.maya.test/realms/master/protocol/openid-connect/token" \
+  "https://keycloak.maya.test/realms/master/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password" \
   -d "client_id=admin-cli" \
@@ -100,7 +100,7 @@ ADMIN_TOKEN=$(curl -s -X POST \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'].strip())")
 
 curl -s -X PUT \
-  "http://keycloak.maya.test/admin/realms/maya/users/<USER_ID>/reset-password" \
+  "https://keycloak.maya.test/admin/realms/maya/users/<USER_ID>/reset-password" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"type":"password","value":"<USER_PASSWORD>","temporary":false}'
@@ -120,13 +120,13 @@ todos los tokens son rechazados con `not allowed to be used by this audience`.
 ```bash
 # Obtener el ID del client maya-dms-frontend
 CLIENT_ID=$(curl -s \
-  "http://keycloak.maya.test/admin/realms/maya/clients?clientId=maya-dms-frontend" \
+  "https://keycloak.maya.test/admin/realms/maya/clients?clientId=maya-dms-frontend" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['id'].strip())")
 
 # Añadir el mapper
 curl -s -X POST \
-  "http://keycloak.maya.test/admin/realms/maya/clients/$CLIENT_ID/protocol-mappers/models" \
+  "https://keycloak.maya.test/admin/realms/maya/clients/$CLIENT_ID/protocol-mappers/models" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -152,7 +152,7 @@ vez que el token expire.
 ```bash
 # Obtener token fresco
 TOKEN=$(curl -s -X POST \
-  "http://keycloak.maya.test/realms/maya/protocol/openid-connect/token" \
+  "https://keycloak.maya.test/realms/maya/protocol/openid-connect/token" \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password" \
   -d "client_id=maya-dms-frontend" \

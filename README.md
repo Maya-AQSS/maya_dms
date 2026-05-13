@@ -102,9 +102,9 @@ Para parar:
 
 | Servicio | URL (vía Traefik) | URL directa |
 | --- | --- | --- |
-| Frontend | <http://dms.maya.test> | <http://localhost:5174> |
-| Backend API | <http://dms-api.maya.test/api/v1> | <http://localhost:8001/api/v1> |
-| Keycloak | <http://keycloak.maya.test> | <http://localhost:8180> |
+| Frontend | <https://dms.maya.test> | <http://localhost:5174> |
+| Backend API | <https://dms-api.maya.test/api/v1> | <http://localhost:8001/api/v1> |
+| Keycloak | <https://keycloak.maya.test> | <http://localhost:8180> |
 | Traefik dashboard | <http://localhost:8888> | — |
 | RabbitMQ Management | — | <http://localhost:15673> |
 | PostgreSQL | — | localhost:5433 |
