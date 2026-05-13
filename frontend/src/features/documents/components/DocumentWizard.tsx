@@ -1677,6 +1677,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   allComments={reviewComments}
                   onSendMessage={handleDocumentCommentSend}
                   onClose={() => setShowDocumentCommentPanel(false)}
+                  canAddComments={detail?.status !== 'published'}
                 />
               </div>
             );
