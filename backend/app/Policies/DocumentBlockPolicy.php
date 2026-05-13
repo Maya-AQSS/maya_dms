@@ -9,14 +9,16 @@ class DocumentBlockPolicy
 {
     public function delete(JwtUser $user, DocumentBlock $block): bool
     {
-        $templateBlock = $block->templateBlock;
-        if ($templateBlock === null || $templateBlock->block_state !== 'optional') {
+        $document = $block->document;
+        if ($document === null) {
             return false;
         }
 
-        $document = $block->document;
+        $id = (string) $user->getAuthIdentifier();
 
-        return $document !== null
-            && (string) $user->getAuthIdentifier() === (string) $document->created_by;
+        // Mirrors DocumentPolicy::update — creator or current owner may delete optional blocks.
+        // block_state and draft-status validation are delegated to DocumentBlockService.
+        return $id === (string) $document->created_by
+            || $id === (string) $document->owner_id;
     }
 }

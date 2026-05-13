@@ -42,10 +42,10 @@ class DocumentBlockService
             $row = $byTemplateBlockId->get($tid);
             $state = (string) ($def['block_state'] ?? 'editable');
             // 'mandatory' is not stored as a separate column; it is fully determined by
-            // block_state: only 'modifiable' blocks are mandatory (must be filled and changed).
-            // 'editable' blocks are fillable but optional. The snapshot field is absent in older
-            // published versions, so never rely on it.
-            $mandatory = $state === 'modifiable';
+            // block_state: only 'editable' blocks are mandatory (must be filled by document creator).
+            // 'modifiable' blocks are optional — creator may keep the template default. The snapshot
+            // field is absent in older published versions, so never rely on it.
+            $mandatory = $state === 'editable';
 
             // Optional blocks with no document_block row were explicitly removed by the user.
             // Keep them in the response (with is_deleted: true) so the diff view can show them.
@@ -130,7 +130,7 @@ class DocumentBlockService
     public function assertMandatoryBlocksAreFilled(Document $document): void
     {
         $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->filter(fn (array $def): bool => ($def['block_state'] ?? '') === 'modifiable');
+            ->filter(fn (array $def): bool => ($def['block_state'] ?? '') === 'editable');
 
         if ($definitions->isEmpty()) {
             return;
@@ -159,7 +159,7 @@ class DocumentBlockService
 
         if ($missing !== []) {
             throw ValidationException::withMessages([
-                'blocks' => ['Debes completar todos los bloques modificables antes de enviar a revisión.'],
+                'blocks' => ['Debes completar todos los bloques editables antes de enviar a revisión.'],
                 'missing_template_block_ids' => $missing,
             ]);
         }

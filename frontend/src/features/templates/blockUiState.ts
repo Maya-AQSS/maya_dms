@@ -10,13 +10,13 @@ export const BLOCK_UI_STATE_CONFIG: Record<
     label: 'Editable',
     badgeCls:
       'bg-success/15 text-success-dark dark:bg-success-dark/30 dark:text-success-light',
-    payload: { block_state: 'editable', mandatory: false },
+    payload: { block_state: 'editable', mandatory: true },
   },
   modifiable: {
     label: 'Modificable',
     badgeCls:
       'bg-info/10 text-info-dark dark:bg-info-dark/30 dark:text-info-light',
-    payload: { block_state: 'modifiable', mandatory: true },
+    payload: { block_state: 'modifiable', mandatory: false },
   },
   locked: {
     label: 'Bloqueado',
@@ -32,17 +32,9 @@ export const BLOCK_UI_STATE_CONFIG: Record<
 };
 
 export function blockToUiState(block: Pick<TemplateBlock, 'block_state' | 'mandatory'>): BlockUiState {
-  // 'locked' tiene prioridad sobre 'optional': un bloque locked es no editable
-  // independientemente de mandatory. El backend (DocumentService::updateBlock)
-  // rechaza con 403 cualquier edición de un bloque cuyo block_state === 'locked'.
-  if (block.block_state === 'locked') {
-    return 'locked';
-  }
-  if (block.block_state === 'optional' || block.mandatory === false) {
-    return 'optional';
-  }
-  if (block.block_state === 'modifiable') {
-    return 'modifiable';
-  }
+  // block_state is the authoritative signal — mandatory only drives UI labels (badge), not state.
+  if (block.block_state === 'locked') return 'locked';
+  if (block.block_state === 'optional') return 'optional';
+  if (block.block_state === 'modifiable') return 'modifiable';
   return 'editable';
 }

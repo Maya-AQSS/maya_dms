@@ -261,7 +261,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [localContent, setLocalContent] = useState<unknown>(null);
   const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
-  const [unmodifiedBlocksModal, setUnmodifiedBlocksModal] = useState<string[] | null>(null);
+  const [emptyEditableBlocksModal, setEmptyEditableBlocksModal] = useState<string[] | null>(null);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
@@ -942,13 +942,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
     if (step === 'blocks') {
       if (detail) {
-        const norm = (v: unknown) => JSON.stringify(normalizeBlockContentForEditor(v));
-        const unmodified = detail.blocks.filter(
-          (b: DocumentDisplayBlock) =>
-            b.block_state === 'modifiable' && !b.is_deleted && norm(b.content) === norm(b.default_content),
+        const emptyEditable = detail.blocks.filter(
+          (b: DocumentDisplayBlock) => b.block_state === 'editable' && !b.is_filled && !b.is_deleted,
         );
-        if (unmodified.length > 0) {
-          setUnmodifiedBlocksModal(unmodified.map((b: DocumentDisplayBlock) => b.title ?? 'Sin título'));
+        if (emptyEditable.length > 0) {
+          setEmptyEditableBlocksModal(emptyEditable.map((b: DocumentDisplayBlock) => b.title ?? 'Sin título'));
           return;
         }
       }
@@ -1502,6 +1500,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       const key = b.document_block_id ?? b.template_block_id;
                       const selected = key === activeBlockKey;
                       const ui = blockToUiState(b);
+                      const isEmptyEditable = b.block_state === 'editable' && !b.is_filled && !b.is_deleted;
                       return (
                         <BlockListItem
                           key={key}
@@ -1510,6 +1509,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                           locked={ui === 'locked'}
                           stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
                           hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
+                          isEmpty={isEmptyEditable}
                           onClick={() => setActiveBlockKey(key)}
                         />
                       );
@@ -1875,6 +1875,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       </>
     </WizardShell>
     <ConfirmDialog
+        open={emptyEditableBlocksModal !== null}
+        title="Bloques editables sin rellenar"
+        description={
+          <div className="space-y-2">
+            <p>Debes rellenar todos los bloques editables antes de continuar. Bloques pendientes:</p>
+            <ul className="space-y-1">
+              {(emptyEditableBlocksModal ?? []).map((name, i) => (
+                <li key={i} className="font-medium">• {name}</li>
+              ))}
+            </ul>
+          </div>
+        }
+        confirmLabel="Entendido"
+        onConfirm={() => setEmptyEditableBlocksModal(null)}
+        onCancel={() => setEmptyEditableBlocksModal(null)}
+      />
+    <ConfirmDialog
         open={showDeleteBlockConfirm}
         variant="danger"
         title="¿Eliminar este bloque?"
@@ -1983,23 +2000,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         loading={summaryConfirmAction === 'submit' && submittingForReview}
         onCancel={() => setSummaryConfirmAction(null)}
         onConfirm={() => void handleConfirmSummaryAction()}
-      />
-      <ConfirmDialog
-        open={unmodifiedBlocksModal !== null}
-        title="Bloques modificables sin cambios"
-        description={
-          <div className="space-y-2">
-            <p>Debes editar todos los bloques modificables antes de continuar. Bloques sin cambios:</p>
-            <ul className="space-y-1">
-              {(unmodifiedBlocksModal ?? []).map((name, i) => (
-                <li key={i} className="font-medium">• {name}</li>
-              ))}
-            </ul>
-          </div>
-        }
-        confirmLabel="Entendido"
-        onConfirm={() => setUnmodifiedBlocksModal(null)}
-        onCancel={() => setUnmodifiedBlocksModal(null)}
       />
     </>
   );
