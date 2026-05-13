@@ -79,8 +79,8 @@ class DocumentBlockService
     {
         return DB::transaction(function () use ($dto) {
             $document = $this->documentRepository->findOrFail($dto->documentId);
-            if ($document->status !== 'draft') {
-                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador.');
+            if (! in_array($document->status, ['draft', 'rejected'], true)) {
+                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador o rechazados.');
             }
 
             $block = $this->documentRepository->findBlockInDocumentOrFail(
@@ -433,8 +433,8 @@ class DocumentBlockService
         DB::transaction(function () use ($dto) {
             $document = $this->documentRepository->findOrFail($dto->documentId);
 
-            if ($document->status !== 'draft') {
-                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador.');
+            if (! in_array($document->status, ['draft', 'rejected'], true)) {
+                throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador o rechazados.');
             }
 
             $block = $this->documentRepository->findBlockInDocumentOrFail(
