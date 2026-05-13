@@ -90,6 +90,11 @@ class TemplateReviewService
                 ])->values()->all();
                 $existing = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : (array) ($headEv->snapshot_data ?? []);
                 if (isset($existing['blocks_at_submission']) && is_array($existing['blocks_at_submission'])) {
+                    $history = isset($existing['blocks_submission_history']) && is_array($existing['blocks_submission_history'])
+                        ? $existing['blocks_submission_history']
+                        : [];
+                    $history[] = $existing['blocks_at_submission'];
+                    $existing['blocks_submission_history'] = $history;
                     $existing['blocks_at_previous_submission'] = $existing['blocks_at_submission'];
                 }
                 $existing['blocks_at_submission'] = $blocksSnapshot;

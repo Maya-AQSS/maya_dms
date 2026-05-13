@@ -200,6 +200,15 @@ class TemplatePublishingService
                 'status' => 'published',
             ]);
 
+            $updated->loadMissing('headVersion');
+            $headEv = $updated->headVersion;
+            if ($headEv !== null) {
+                $headData = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : [];
+                unset($headData['blocks_at_submission'], $headData['blocks_at_previous_submission'], $headData['blocks_submission_history']);
+                $headEv->snapshot_data = $headData ?: null;
+                $headEv->save();
+            }
+
             event(new TemplateStateChanged(
                 template: $updated,
                 oldStatus: $oldStatus,
