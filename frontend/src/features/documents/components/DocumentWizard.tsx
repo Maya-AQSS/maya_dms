@@ -44,7 +44,6 @@ import {
   ErrorBoundary,
   FieldLabel,
   Select,
-  TextArea,
   TextInput,
 } from '@maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
@@ -74,7 +73,6 @@ const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
 };
 
 /** Alineado con `RejectDocumentReviewRequest` (backend): motivo obligatorio no trivial. */
-const DOCUMENT_REJECT_REASON_MIN_LEN = 5;
 
 /**
  * Descripción de bloque: el backend puede enviar string, JSON string u objeto BlockNote (`{ type: 'doc', content }`).
@@ -260,7 +258,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [localContent, setLocalContent] = useState<unknown>(null);
   const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
   const [unmodifiedBlocksModal, setUnmodifiedBlocksModal] = useState<string[] | null>(null);
@@ -426,7 +424,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setActionableReviewId(null);
     setValidateConfirm(null);
     setValidationModalError(null);
-    setRejectReason('');
     if (mode === 'validate') {
       setStep('summary');
       setCompletedSteps(['properties', 'blocks', 'summary']);
@@ -496,6 +493,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         ]);
         if (cancelled) return;
         const userId = meRes.data.id;
+        setCurrentUserId(userId);
         const reviewMode = templateResp.data.review_mode === 'sequential' ? 'sequential' : 'parallel';
         const actionable = pickActionableDocumentReview(reviews, userId, reviewMode);
         if (!actionable) {
@@ -1015,25 +1013,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   };
 
+  const validatorHasCommented = currentUserId
+    ? reviewComments.some(c => c.author_id === currentUserId)
+    : false;
+
   const handleRejectValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
-    }
-    const reason = rejectReason.trim();
-    if (reason.length < DOCUMENT_REJECT_REASON_MIN_LEN) {
-      setValidationModalError(
-        `Indica un motivo de rechazo de al menos ${DOCUMENT_REJECT_REASON_MIN_LEN} caracteres (obligatorio).`,
-      );
       return;
     }
     setValidationModalError(null);
     setSummaryError(null);
     setValidationActionLoading(true);
     try {
-      const updated = await rejectDocumentReview(documentId, actionableReviewId, reason);
+      const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
       setValidateConfirm(null);
-      setRejectReason('');
       navigate('/dashboard', {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject') },
       });
@@ -1915,32 +1909,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       />
       <ConfirmDialog
         open={validateConfirm === 'reject'}
-        title="Confirmar rechazo"
+        title={validatorHasCommented ? 'Confirmar rechazo' : 'Comentario requerido'}
         description={
-          <div className="space-y-2 text-left">
+          validatorHasCommented ? (
             <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
               El documento volverá a borrador para que el titular pueda corregirlo. El resto de validadores dejarán
-              de tener esta revisión asignada.
+              de tener esta revisión asignada. Tus comentarios en los bloques quedarán registrados como motivo.
             </p>
-            <TextArea
-              fieldSize="comfortable"
-              rows={3}
-              value={rejectReason}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setRejectReason(e.target.value)}
-              placeholder={`Motivo del rechazo (obligatorio, mín. ${DOCUMENT_REJECT_REASON_MIN_LEN} caracteres)`}
-            />
-          </div>
+          ) : (
+            <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
+              Para rechazar la validación debes dejar al menos un comentario en un bloque del documento explicando
+              el motivo del rechazo. El comentario queda registrado para el titular.
+            </p>
+          )
         }
-        confirmLabel="Rechazar"
-        variant="danger"
+        confirmLabel={validatorHasCommented ? 'Rechazar' : 'Entendido'}
+        variant={validatorHasCommented ? 'danger' : 'primary'}
         error={validationModalError}
         loading={validationActionLoading}
         onCancel={() => {
           setValidateConfirm(null);
           setValidationModalError(null);
-          setRejectReason('');
         }}
-        onConfirm={() => void handleRejectValidation()}
+        onConfirm={validatorHasCommented
+          ? () => void handleRejectValidation()
+          : () => { setValidateConfirm(null); setValidationModalError(null); }}
       />
       <ConfirmDialog
         open={summaryConfirmAction !== null}
