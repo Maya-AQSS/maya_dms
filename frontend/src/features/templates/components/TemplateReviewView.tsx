@@ -100,23 +100,29 @@ export function TemplateReviewView({ template }: Props) {
 
   useEffect(() => { void loadComments(); }, [template.id]);
 
+  const hasPreviousSubmission = Array.isArray(template.blocks_at_previous_submission) && template.blocks_at_previous_submission.length > 0;
+
   useEffect(() => {
+    if (hasPreviousSubmission) return;
     if (!template.latest_published_version_id) return;
     void fetchTemplateVersion(template.latest_published_version_id)
       .then(setPublishedVersion)
       .catch(() => {});
-  }, [template.latest_published_version_id]);
+  }, [hasPreviousSubmission, template.latest_published_version_id]);
 
   const diffBlocks = useMemo((): DocumentDisplayBlock[] => {
-    if (!publishedVersion) return [];
+    const baselineBlocks = hasPreviousSubmission
+      ? template.blocks_at_previous_submission!
+      : publishedVersion?.blocks_snapshot ?? null;
+    if (!baselineBlocks) return [];
     return blocks.map((block) => {
-      const pub = publishedVersion.blocks_snapshot.find((pb) => pb.id === block.id);
+      const baseline = baselineBlocks.find((pb) => pb.id === block.id);
       return {
         template_block_id: block.id,
         document_block_id: null,
         type: block.type,
         title: block.title,
-        default_content: pub?.default_content ?? null,
+        default_content: (baseline?.default_content ?? null) as unknown,
         block_state: block.block_state,
         mandatory: block.mandatory,
         sort_order: block.sort_order,
@@ -124,7 +130,7 @@ export function TemplateReviewView({ template }: Props) {
         is_filled: true,
       };
     });
-  }, [blocks, publishedVersion]);
+  }, [blocks, hasPreviousSubmission, template.blocks_at_previous_submission, publishedVersion]);
 
   const changedTemplateDiffBlocks = useMemo(() => computeChangedBlocks(diffBlocks), [diffBlocks]);
   const changedTemplateBlockIds = useMemo(

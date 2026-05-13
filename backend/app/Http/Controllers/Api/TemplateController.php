@@ -177,7 +177,7 @@ class TemplateController extends Controller
             abort(404);
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
-        $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator']);
+        $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator', 'headVersion']);
         $this->attachCanCloneMeta($model, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(

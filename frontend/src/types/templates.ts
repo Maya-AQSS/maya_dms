@@ -60,6 +60,13 @@ export type Template = {
   created_at?: string;
   updated_at?: string;
   latest_published_name?: string | null;
+  blocks_at_previous_submission?: Array<{
+    id: string;
+    title: string;
+    default_content: unknown;
+    block_state: string;
+    sort_order: number;
+  }> | null;
 };
 
 export type TemplatesListMeta = {

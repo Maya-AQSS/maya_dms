@@ -63,6 +63,12 @@ class TemplateResource extends JsonResource
             'can_clone' => (bool) ($this->resource->getAttribute('can_clone') ?? false),
             'working_version_id' => $this->head_entity_version_id,
             'latest_published_name' => $this->resource->getAttribute('latest_published_name'),
+            'blocks_at_previous_submission' => $this->whenLoaded('headVersion', function () {
+                $data = $this->headVersion?->snapshot_data;
+                return is_array($data) && isset($data['blocks_at_previous_submission'])
+                    ? $data['blocks_at_previous_submission']
+                    : null;
+            }),
         ];
     }
 }
