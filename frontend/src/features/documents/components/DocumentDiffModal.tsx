@@ -12,7 +12,7 @@ function contentsDiffer(a: unknown, b: unknown): boolean {
 export function computeChangedBlocks(blocks: DocumentDisplayBlock[]): DocumentDisplayBlock[] {
   return blocks.filter((b) => {
     if (b.is_deleted) return true;
-    if (b.block_state !== 'modifiable') return false;
+    if (b.block_state === 'locked') return false;
     return contentsDiffer(b.content, b.default_content);
   });
 }

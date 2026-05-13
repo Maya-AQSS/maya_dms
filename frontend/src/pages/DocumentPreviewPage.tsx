@@ -133,7 +133,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [showDiffPanel, setShowDiffPanel] = useState(isValidateMode);
+  const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [versionSnapshot, setVersionSnapshot] = useState<{
     versionNumber: number;
@@ -298,6 +298,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const changedBlocks = useMemo(
     () => (detail ? computeChangedBlocks(detail.blocks) : []),
     [detail],
+  );
+  const diffPanelBlocks = useMemo(
+    () => (diffBlockId ? changedBlocks.filter((b) => b.template_block_id === diffBlockId) : []),
+    [changedBlocks, diffBlockId],
   );
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
   const uid = profile?.id;
@@ -681,16 +685,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         </Link>
       )}
       {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => { setSelectedReviewView(null); setShowDiffPanel(true); }}
-        >
-          Ver cambios
-        </Button>
-      )}
-      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
         detail.has_review_comments ? (
           <span
             title="No puedes enviar a validar mientras haya comentarios de revisión sin resolver"
@@ -838,17 +832,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           }
           actions={
             <div className="flex items-center gap-2">
-              {changedBlocks.length > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => { setValidateActiveView(null); setShowDiffPanel(true); }}
-                  className="text-xs font-black uppercase tracking-wider"
-                >
-                  Ver cambios
-                </Button>
-              )}
               <Button
                 type="button"
                 variant="outlineWarning"
@@ -872,8 +855,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             </div>
           }
           sidebar={
-            showDiffPanel && !validateActiveView
-              ? <DocumentDiffPanel blocks={validateBlocks} onClose={() => setShowDiffPanel(false)} />
+            diffBlockId !== null && !validateActiveView
+              ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
               : validateActiveView && validateSelectedBlock
                 ? (
                     validateActiveView.mode === 'comments' ? (
@@ -983,6 +966,21 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                             Bloque {(detail.blocks.findIndex((b: any) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
                           </h4>
                           <div className="flex items-center gap-2">
+                            {/* Diff button */}
+                            {changedBlocks.some(b => b.template_block_id === blockId) && (
+                              <button
+                                type="button"
+                                aria-label={`Ver cambios del bloque ${block.sort_order}`}
+                                onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setDiffBlockId(prev => prev === blockId ? null : blockId); }}
+                                className={[btnBase, diffBlockId === blockId ? btnActive : btnIdle].join(' ')}
+                                title="Ver cambios de este bloque"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                </svg>
+                                <span>Ver cambios</span>
+                              </button>
+                            )}
                             {/* Info button */}
                             {hasDescription && (
                               <button
@@ -1087,8 +1085,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         actions={headerActions}
         headerRef={pageHeaderRef}
         sidebar={
-          showDiffPanel && !selectedReviewView
-            ? <DocumentDiffPanel blocks={detail?.blocks ?? []} onClose={() => setShowDiffPanel(false)} />
+          diffBlockId !== null && !selectedReviewView
+            ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
             : selectedReviewView && (() => {
           const block = detail?.blocks?.find(b => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId);
           if (!block) return null;
@@ -1195,6 +1193,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                           Bloque {(detail.blocks.findIndex((b: any) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
                         </h4>
                         <div className="flex items-center gap-2">
+                          {changedBlocks.some(b => b.template_block_id === block.template_block_id) && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setSelectedReviewView(null); setDiffBlockId(prev => prev === block.template_block_id ? null : block.template_block_id); }}
+                              className={[
+                                'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
+                                diffBlockId === block.template_block_id ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
+                              ].join(' ')}
+                              title="Ver cambios de este bloque"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                              </svg>
+                              <span>Ver cambios</span>
+                            </button>
+                          )}
                           {hasDescription && (
                             <button
                               type="button"
