@@ -252,7 +252,7 @@ export function TemplatePreviewPage() {
     );
   };
 
-  const isDraft = template?.status === 'draft';
+  const isDraft = template?.status === 'draft' || template?.status === 'rejected';
   const isOwner = profile?.id === template?.created_by;
   const isPublished = template?.status === 'published';
   const hasReviewers = (template?.reviewers?.length ?? 0) > 0;
