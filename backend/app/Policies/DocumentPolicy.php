@@ -77,9 +77,18 @@ class DocumentPolicy
 
     /**
      * Eliminar u operaciones de baja del documento.
+     *
+     * El titular o creador puede borrar su propio documento (paridad con TemplatePolicy).
+     * Cualquier usuario con `documents.delete` puede borrar cualquier documento.
      */
     public function delete(JwtUser $user, Document $document): bool
     {
+        $id = $user->getAuthIdentifier();
+
+        if ($id === $document->owner_id || $id === $document->created_by) {
+            return true;
+        }
+
         return $user->hasPermission('documents.delete');
     }
 
