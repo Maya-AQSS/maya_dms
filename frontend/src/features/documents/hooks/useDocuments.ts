@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useState } from 'react';
+import { createDataHook } from '@maya/shared-auth-react/src/data';
 import { fetchDocuments } from '../../../api/documents';
 import type { Document } from '../../../types/documents';
 
+const useDocumentsQuery = createDataHook<string | undefined, Document[]>({
+  queryKey: (processId) => ['documents', { processId: processId ?? null }],
+  fetcher: (processId) => fetchDocuments(processId ? { process_id: processId } : {}),
+  defaultOptions: { staleTime: 30_000 },
+});
+
 /**
- * Carga el listado de documentos una vez al montar.
- * El filtrado se realiza en el cliente (sin llamadas extra a la API).
+ * Carga el listado de documentos. Si se aporta `processId`, el filtro se aplica
+ * en la API (acota al proceso activo del aside).
  *
- * @param processId Si se aporta, se aplica como filtro `process_id` en la API
- *   (acota el listado al proceso activo del aside).
+ * Wrapper de TanStack Query que preserva la forma `{ documents, loading, error,
+ * reload }` consumida por los componentes existentes.
  */
 export function useDocuments(processId?: string): {
   documents: Document[];
@@ -15,31 +21,14 @@ export function useDocuments(processId?: string): {
   error: Error | null;
   reload: () => Promise<void>;
 } {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-
-  const load = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await fetchDocuments(processId ? { process_id: processId } : {});
-      setDocuments(data);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error('Unknown error'));
-    } finally {
-      setLoading(false);
-    }
-  }, [processId]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  const query = useDocumentsQuery(processId);
 
   return {
-    documents,
-    loading,
-    error,
-    reload: load,
+    documents: query.data ?? [],
+    loading: query.isLoading,
+    error: query.error ?? null,
+    reload: async () => {
+      await query.refetch();
+    },
   };
 }

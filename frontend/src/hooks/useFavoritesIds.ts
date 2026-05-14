@@ -1,15 +1,32 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useMemo } from 'react';
+import { createDataHook } from '@maya/shared-auth-react/src/data';
 import { fetchFavorites } from '../api/favorites';
+
+interface FavoritesIds {
+  template_ids: string[];
+  document_ids: string[];
+}
+
+const useFavoritesIdsQuery = createDataHook<void, FavoritesIds>({
+  queryKey: () => ['favorites', 'ids'],
+  fetcher: async () => {
+    const { data } = await fetchFavorites();
+    return { template_ids: data.template_ids, document_ids: data.document_ids };
+  },
+  defaultOptions: {
+    staleTime: 30_000,
+    refetchOnWindowFocus: true,
+  },
+});
 
 /**
  * IDs de plantillas y documentos favoritos del usuario (GET /favorites).
- * Se recarga al montar y al recuperar el foco de la ventana (p. ej. vuelta desde preview).
+ * TanStack Query refresca al recuperar el foco de la ventana automáticamente.
  *
  * NOTA: este hook es local a DMS y NO duplica `@maya/shared-sidebar-react`
  * `useSharedFavorites`. Ese es para favoritos de aplicaciones (sidebar
  * cross-app, datos del backend maya_dashboard). Éste maneja favoritos de
- * plantillas/documentos (entidad-nivel, backend maya_dms). Ver
- * `SPIKE_useSharedFavorites.md` en la raíz del proyecto para el análisis.
+ * plantillas/documentos (entidad-nivel, backend maya_dms).
  */
 export function useFavoritesIds(): {
   templateIds: ReadonlySet<string>;
@@ -17,35 +34,23 @@ export function useFavoritesIds(): {
   loading: boolean;
   refetch: () => Promise<void>;
 } {
-  const [templateIds, setTemplateIds] = useState<Set<string>>(() => new Set());
-  const [documentIds, setDocumentIds] = useState<Set<string>>(() => new Set());
-  const [loading, setLoading] = useState(true);
+  const query = useFavoritesIdsQuery();
 
-  const refetch = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data } = await fetchFavorites();
-      setTemplateIds(new Set(data.template_ids));
-      setDocumentIds(new Set(data.document_ids));
-    } catch {
-      setTemplateIds(new Set());
-      setDocumentIds(new Set());
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const templateIds = useMemo(
+    () => new Set(query.data?.template_ids ?? []),
+    [query.data],
+  );
+  const documentIds = useMemo(
+    () => new Set(query.data?.document_ids ?? []),
+    [query.data],
+  );
 
-  useEffect(() => {
-    void refetch();
-  }, [refetch]);
-
-  useEffect(() => {
-    const onFocus = () => {
-      void refetch();
-    };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [refetch]);
-
-  return { templateIds, documentIds, loading, refetch };
+  return {
+    templateIds,
+    documentIds,
+    loading: query.isLoading,
+    refetch: async () => {
+      await query.refetch();
+    },
+  };
 }
