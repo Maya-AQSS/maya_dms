@@ -1,4 +1,4 @@
-import { createDataHook } from '@maya/shared-auth-react/src/data';
+import { createDataHook } from '@maya/shared-auth-react';
 import { fetchDocuments } from '../../../api/documents';
 import type { Document } from '../../../types/documents';
 

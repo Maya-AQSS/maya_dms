@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { createDataHook } from '@maya/shared-auth-react/src/data';
+import { createDataHook } from '@maya/shared-auth-react';
 import { fetchFavorites } from '../api/favorites';
 
 interface FavoritesIds {
