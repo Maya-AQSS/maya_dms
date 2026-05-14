@@ -224,7 +224,8 @@ class DocumentController extends Controller
         $this->authorize('delete', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
-        $this->documentService->delete($id);
+        $actorId = (string) $request->user()->getAuthIdentifier();
+        $this->documentService->delete($id, $actorId);
 
         return response()->json([], 204);
     }

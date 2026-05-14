@@ -36,7 +36,9 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
   const [dialogLoading, setDialogLoading] = useState(false);
   const canClone = t.can_clone === true;
   const canEdit = (t.status === 'draft' || t.status === 'rejected') && profile?.id === t.created_by;
-  const canDelete = profile?.id === t.created_by || hasPermission('templates.delete');
+  const isAuthorized = profile?.id === t.created_by || hasPermission('templates.delete');
+  const hasDiscardableDraft = !!(t.working_version_id && (t.status === 'draft' || t.status === 'in_review'));
+  const canDelete = isAuthorized && (!t.latest_published_version_id || hasDiscardableDraft);
 
   const closeDialog = () => {
     if (dialogLoading) return;

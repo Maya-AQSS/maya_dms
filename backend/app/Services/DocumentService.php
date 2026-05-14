@@ -313,10 +313,29 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Borrado lógico del documento.
+     * Si existe versión publicada + borrador activo, descarta el borrador y restaura la publicada.
+     * Si nunca fue publicado, elimina la entidad completa.
      */
-    public function delete(string $documentId): void
+    public function delete(string $documentId, string $actorId): void
     {
         $document = $this->documentRepository->findOrFail($documentId);
+
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
+        if ($latestPublished !== null) {
+            $document->loadMissing('headVersion');
+            $head = $document->headVersion;
+
+            if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
+                // Published version exists + working draft → discard draft, restore published.
+                $this->destroyVersion($documentId, (string) $head->id, $actorId);
+                return;
+            }
+
+            throw ValidationException::withMessages([
+                'document' => ['No se puede eliminar un documento publicado sin versión de trabajo activa.'],
+            ]);
+        }
+
         $this->documentRepository->delete($document);
     }
 

@@ -288,10 +288,11 @@ export function TemplatePreviewPage() {
   const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 0;
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
-  /** Igual que `TemplatePolicy::delete` (backend): creador o `templates.delete`, cualquier estado. */
+  /** Solo se permite eliminar plantillas que nunca han sido publicadas. */
   const canDelete =
     !viewingPublishedSnapshot &&
     template != null &&
+    !template.latest_published_version_id &&
     (isOwner || hasPermission('templates.delete'));
   /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
   const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
