@@ -225,13 +225,15 @@ export function TemplatesTable({ processId }: Props = {}) {
   };
 
   const handleRowClick = (t: Template) => {
+    const backTo = processId ? `/procesos/${processId}` : '/dashboard';
     if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
-      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`);
+      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`, {
+        state: { backTo, processId },
+      });
       return;
     }
     const isReviewer =
       t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    const backTo = processId ? `/procesos/${processId}` : '/dashboard';
     navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
       state: { backTo, processId },
     });

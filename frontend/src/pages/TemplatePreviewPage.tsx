@@ -101,11 +101,15 @@ export function TemplatePreviewPage() {
       });
       return;
     }
+    if (locationState?.backTo) {
+      navigate(locationState.backTo);
+      return;
+    }
     if (window.history.length > 1) {
       navigate(-1);
       return;
     }
-    navigate(selectionMode ? backTo : defaultBackTo);
+    navigate(defaultBackTo);
   };
 
   const { profile, hasPermission } = useUserProfile();
