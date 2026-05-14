@@ -17,6 +17,35 @@ interface EntityVersionRepositoryInterface
     public function findOrFail(string $id): EntityVersion;
 
     /**
+     * Find a version by id or return null. Used to traverse base_version_id chains.
+     */
+    public function find(string $id): ?EntityVersion;
+
+    /**
+     * Versión publicada para un (versionableType, versionableId, version_number).
+     */
+    public function findOrFailPublishedByEntityAndNumber(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+    ): EntityVersion;
+
+    /**
+     * Misma búsqueda que {@see self::findOrFailPublishedByEntityAndNumber} pero devuelve
+     * null si no existe.
+     */
+    public function findPublishedByEntityAndNumber(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+    ): ?EntityVersion;
+
+    /**
+     * Versión publicada por id (filtrada por versionable_type). Devuelve null si no existe.
+     */
+    public function findPublishedByIdAndType(string $entityVersionId, string $versionableType): ?EntityVersion;
+
+    /**
      * Obtiene una versión por su id para actualización.
      *
      * @param string $id El id de la versión.

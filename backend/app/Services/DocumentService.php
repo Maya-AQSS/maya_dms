@@ -12,6 +12,7 @@ use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Enums\TemplateVisibilityLevel;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -36,6 +37,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly DocumentStateService $documentStateService,
         private readonly DocumentReviewService $documentReviewService,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
         private readonly TemplateContextResolver $contextResolver,
     ) {}
 
@@ -530,11 +532,7 @@ class DocumentService implements DocumentServiceInterface
             return $entity;
         }
 
-        $ev = EntityVersion::query()
-            ->whereKey($versionId)
-            ->where('versionable_type', Template::class)
-            ->where('status', 'published')
-            ->first();
+        $ev = $this->entityVersionRepository->findPublishedByIdAndType($versionId, Template::class);
 
         if ($ev === null) {
             return null;
@@ -896,11 +894,9 @@ class DocumentService implements DocumentServiceInterface
      */
     private function restorePublishedDocumentBlocks(string $documentId, array $publishedBlocks): void
     {
-        $existingByTemplateBlock = DocumentBlock::query()
-            ->where('document_id', $documentId)
-            ->get()
-            ->filter(fn (DocumentBlock $block): bool => is_string($block->template_block_id) && $block->template_block_id !== '')
-            ->keyBy(fn (DocumentBlock $block): string => (string) $block->template_block_id);
+        $existingByTemplateBlock = $this->documentBlockRepository
+            ->listByDocumentKeyedByTemplateBlock($documentId)
+            ->filter(fn (DocumentBlock $block): bool => is_string($block->template_block_id) && $block->template_block_id !== '');
 
         $seenTemplateBlockIds = [];
         foreach ($publishedBlocks as $index => $row) {
@@ -934,7 +930,7 @@ class DocumentService implements DocumentServiceInterface
                 continue;
             }
 
-            DocumentBlock::query()->create([
+            $this->documentBlockRepository->create([
                 'id' => (string) Str::uuid(),
                 'document_id' => $documentId,
                 'template_block_id' => $templateBlockId,
@@ -943,14 +939,11 @@ class DocumentService implements DocumentServiceInterface
         }
 
         if ($seenTemplateBlockIds === []) {
-            DocumentBlock::query()->where('document_id', $documentId)->delete();
+            $this->documentBlockRepository->deleteAllForDocument($documentId);
             return;
         }
 
-        DocumentBlock::query()
-            ->where('document_id', $documentId)
-            ->whereNotIn('template_block_id', $seenTemplateBlockIds)
-            ->delete();
+        $this->documentBlockRepository->deleteForDocumentExceptTemplateBlocks($documentId, $seenTemplateBlockIds);
     }
 
     /**

@@ -4,25 +4,27 @@ namespace App\Services;
 
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersionBlockLayer;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 
 /**
- * Reconstruye el snapshot efectivo de bloques desde capas incrementales (sin duplicar JSON completo).
+ * Reconstruye el snapshot efectivo de bloques desde capas incrementales.
  */
 final class TemplateVersionBlockLayerResolver
 {
+    public function __construct(
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly TemplateVersionBlockLayerRepositoryInterface $layerRepository,
+    ) {}
+
     /**
      * @return list<array<string, mixed>>
      */
     public function resolveBlocksSnapshot(string $entityVersionId): array
     {
-        $version = EntityVersion::query()->findOrFail($entityVersionId);
+        $version = $this->entityVersionRepository->findOrFail($entityVersionId);
 
-        $layers = TemplateVersionBlockLayer::query()
-            ->where('entity_version_id', $entityVersionId)
-            ->orderBy('sort_order')
-            ->orderBy('template_block_id')
-            ->get();
+        $layers = $this->layerRepository->listForVersion($entityVersionId);
 
         if ($layers->isEmpty()) {
             return $version->blocksSnapshotRows();
@@ -48,10 +50,7 @@ final class TemplateVersionBlockLayerResolver
      */
     private function effectiveBlockPayload(string $templateBlockId, EntityVersion $version): ?array
     {
-        $layer = TemplateVersionBlockLayer::query()
-            ->where('entity_version_id', $version->id)
-            ->where('template_block_id', $templateBlockId)
-            ->first();
+        $layer = $this->layerRepository->findForVersionAndBlock((string) $version->id, $templateBlockId);
 
         if ($layer === null) {
             return $this->blockFromSnapshotOnly($version, $templateBlockId);
@@ -66,12 +65,11 @@ final class TemplateVersionBlockLayerResolver
                 return is_array($layer->override_payload) ? $layer->override_payload : null;
             }
 
-            $parent = EntityVersion::query()
-                ->where('versionable_type', Template::class)
-                ->where('versionable_id', $version->versionable_id)
-                ->where('status', 'published')
-                ->where('version_number', $version->version_number - 1)
-                ->firstOrFail();
+            $parent = $this->entityVersionRepository->findOrFailPublishedByEntityAndNumber(
+                Template::class,
+                (string) $version->versionable_id,
+                (int) $version->version_number - 1,
+            );
 
             return $this->effectiveBlockPayload($templateBlockId, $parent);
         }

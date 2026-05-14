@@ -11,6 +11,7 @@ use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
@@ -27,6 +28,7 @@ class TemplateService implements TemplateServiceInterface
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly TemplateBlockRepositoryInterface $templateBlockRepository,
         private readonly TemplatePublishingService $templatePublishingService,
         private readonly TemplateReviewService $templateReviewService,
         private readonly TemplateReviewerAssignmentService $templateReviewerAssignmentService,
@@ -393,13 +395,7 @@ class TemplateService implements TemplateServiceInterface
                 'sort_order' => isset($block['sort_order']) ? (int) $block['sort_order'] : (int) $index,
             ];
 
-            $updated = TemplateBlock::query()->whereKey($blockId)->update($values);
-            if ($updated === 0) {
-                TemplateBlock::query()->forceCreate([
-                    'id' => $blockId,
-                    ...$values,
-                ]);
-            }
+            $this->templateBlockRepository->upsertByIdForTemplate($blockId, $values);
         }
 
         $blockIdsInUseByDocuments = DB::table('document_blocks')
@@ -414,11 +410,7 @@ class TemplateService implements TemplateServiceInterface
 
         $protectedIds = array_values(array_unique(array_merge($publishedBlockIds, $blockIdsInUseByDocuments)));
 
-        $deleteQuery = TemplateBlock::query()->where('template_id', $templateId);
-        if ($protectedIds !== []) {
-            $deleteQuery->whereNotIn('id', $protectedIds);
-        }
-        $deleteQuery->delete();
+        $this->templateBlockRepository->deleteForTemplateExcept($templateId, $protectedIds);
     }
 
     /**

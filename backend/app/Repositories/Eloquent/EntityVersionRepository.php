@@ -21,6 +21,46 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
         return EntityVersion::query()->findOrFail($id);
     }
 
+    public function find(string $id): ?EntityVersion
+    {
+        return EntityVersion::query()->find($id);
+    }
+
+    public function findOrFailPublishedByEntityAndNumber(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+    ): EntityVersion {
+        return EntityVersion::query()
+            ->where('versionable_type', $versionableType)
+            ->where('versionable_id', $versionableId)
+            ->where('status', 'published')
+            ->where('version_number', $versionNumber)
+            ->firstOrFail();
+    }
+
+    public function findPublishedByEntityAndNumber(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+    ): ?EntityVersion {
+        return EntityVersion::query()
+            ->where('versionable_type', $versionableType)
+            ->where('versionable_id', $versionableId)
+            ->where('status', 'published')
+            ->where('version_number', $versionNumber)
+            ->first();
+    }
+
+    public function findPublishedByIdAndType(string $entityVersionId, string $versionableType): ?EntityVersion
+    {
+        return EntityVersion::query()
+            ->whereKey($entityVersionId)
+            ->where('versionable_type', $versionableType)
+            ->where('status', 'published')
+            ->first();
+    }
+
     /**
      * Obtiene una versión por su id para actualización.
      *

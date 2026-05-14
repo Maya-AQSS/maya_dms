@@ -5,34 +5,34 @@ namespace App\Services;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentVersion;
-use App\Models\DocumentVersionBlockLayer;
+use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
+use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 
 /**
  * Capas incrementales por versión publicada de documento (convive con snapshot JSON completo).
  */
 final class DocumentVersionBlockLayerWriter
 {
-    /**
-     * Sincroniza capas de bloques para una nueva versión publicada de documento.
-     *
-     * @param DocumentVersion $createdVersion La versión publicada recién creada.
-     * @param Document $document El documento al que pertenece la versión.
-     */
+    public function __construct(
+        private readonly DocumentVersionRepositoryInterface $documentVersionRepository,
+        private readonly DocumentVersionBlockLayerRepositoryInterface $layerRepository,
+    ) {}
+
     public function syncLayersForNewPublication(DocumentVersion $createdVersion, Document $document): void
     {
         $document->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
 
-        $previous = DocumentVersion::query()
-            ->where('document_id', $createdVersion->document_id)
-            ->where('version_number', $createdVersion->version_number - 1)
-            ->first();
+        $previous = $this->documentVersionRepository->findByDocumentAndVersionNumber(
+            (string) $createdVersion->document_id,
+            (int) $createdVersion->version_number - 1,
+        );
 
         $draftBlocks = $document->blocks;
 
         if ($previous === null) {
             foreach ($draftBlocks as $block) {
                 $payload = $this->blockPayloadFromDocumentBlock($block);
-                DocumentVersionBlockLayer::query()->create([
+                $this->layerRepository->create([
                     'document_version_id' => $createdVersion->id,
                     'document_block_id' => (string) $block->getKey(),
                     'sort_order' => (int) $block->sort_order,
@@ -63,7 +63,7 @@ final class DocumentVersionBlockLayerWriter
 
             $inherits = $prev !== null && $this->payloadsEqual($prev, $payload);
 
-            DocumentVersionBlockLayer::query()->create([
+            $this->layerRepository->create([
                 'document_version_id' => $createdVersion->id,
                 'document_block_id' => (string) $block->getKey(),
                 'sort_order' => (int) $block->sort_order,
@@ -75,7 +75,7 @@ final class DocumentVersionBlockLayerWriter
 
         foreach ($prevById as $id => $_prevRow) {
             if (! in_array((string) $id, $draftIdStrings, true)) {
-                DocumentVersionBlockLayer::query()->create([
+                $this->layerRepository->create([
                     'document_version_id' => $createdVersion->id,
                     'document_block_id' => (string) $id,
                     'sort_order' => 0,
@@ -88,8 +88,6 @@ final class DocumentVersionBlockLayerWriter
     }
 
     /**
-     * Convierte un bloque de documento a su payload para persistencia.
-     * 
      * @return array<string, mixed>
      */
     private function blockPayloadFromDocumentBlock(DocumentBlock $block): array
@@ -107,8 +105,6 @@ final class DocumentVersionBlockLayerWriter
     }
 
     /**
-     * Compara payloads de bloques para determinar si son iguales.
-     * 
      * @param  array<string, mixed>  $prev
      * @param  array<string, mixed>  $curr
      */
@@ -118,8 +114,6 @@ final class DocumentVersionBlockLayerWriter
     }
 
     /**
-     * Normaliza un payload de bloque para comparación (ordena claves y subarrays).
-     * 
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */

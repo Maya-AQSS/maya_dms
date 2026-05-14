@@ -3,21 +3,24 @@
 namespace App\Services;
 
 use App\Models\EntityVersion;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use RuntimeException;
 
 class EntityVersionReconstructionService
 {
+    public function __construct(
+        private readonly EntityVersionRepositoryInterface $repository,
+    ) {}
+
     /**
      * Reconstruye el estado efectivo de una versión aplicando su cadena base + change_set.
-     *
-     * Si la versión objetivo contiene snapshot_data, se devuelve como fuente canónica.
      *
      * @return array<string, mixed>
      */
     public function reconstruct(EntityVersion|string $version): array
     {
         $target = is_string($version)
-            ? EntityVersion::query()->findOrFail($version)
+            ? $this->repository->findOrFail($version)
             : $version;
 
         if (is_array($target->snapshot_data)) {
@@ -36,9 +39,6 @@ class EntityVersionReconstructionService
     }
 
     /**
-     * Resuelve la cadena de versiones desde la raíz hasta la versión objetivo.
-     *
-     * @param EntityVersion $target Versión objetivo.
      * @return list<EntityVersion>
      */
     private function resolveChainFromRoot(EntityVersion $target): array
@@ -70,7 +70,7 @@ class EntityVersionReconstructionService
                 break;
             }
 
-            $cursor = EntityVersion::query()->find($baseId);
+            $cursor = $this->repository->find($baseId);
             if ($cursor === null) {
                 throw new RuntimeException('Cadena de versiones inválida: base_version_id no encontrada.');
             }
@@ -80,9 +80,6 @@ class EntityVersionReconstructionService
     }
 
     /**
-     * Mezcla recursiva para payloads asociativos.
-     * Si ambos valores son listas, prevalece el nuevo valor completo (reemplazo).
-     *
      * @param  array<string, mixed>  $base
      * @param  array<string, mixed>  $delta
      * @return array<string, mixed>

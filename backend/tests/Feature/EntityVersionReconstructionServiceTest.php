@@ -48,7 +48,7 @@ class EntityVersionReconstructionServiceTest extends TestCase
             'created_by' => (string) Str::uuid(),
         ]);
 
-        $service = new EntityVersionReconstructionService;
+        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
         $state = $service->reconstruct($v2);
 
         $this->assertSame('Plantilla base v2', $state['name']);
@@ -85,7 +85,7 @@ class EntityVersionReconstructionServiceTest extends TestCase
             'published_at' => now(),
         ]);
 
-        $service = new EntityVersionReconstructionService;
+        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
         $state = $service->reconstruct($target);
 
         $this->assertSame('Desde snapshot', $state['name']);
@@ -119,7 +119,7 @@ class EntityVersionReconstructionServiceTest extends TestCase
         $v1->base_version_id = $v2->id;
         $v1->save();
 
-        $service = new EntityVersionReconstructionService;
+        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('ciclo detectado');
         $service->reconstruct($v2);
@@ -152,7 +152,7 @@ class EntityVersionReconstructionServiceTest extends TestCase
         $child->refresh();
         $this->assertNull($child->base_version_id);
 
-        $service = new EntityVersionReconstructionService;
+        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
         $state = $service->reconstruct($child);
         $this->assertSame('v2', $state['name']);
     }
@@ -181,7 +181,7 @@ class EntityVersionReconstructionServiceTest extends TestCase
             'created_by' => (string) Str::uuid(),
         ]);
 
-        $service = new EntityVersionReconstructionService;
+        $service = new EntityVersionReconstructionService(app(\App\Repositories\Contracts\EntityVersionRepositoryInterface::class));
         $this->expectException(RuntimeException::class);
         $this->expectExceptionMessage('mezcla de entidades detectada');
         $service->reconstruct($targetFromB);

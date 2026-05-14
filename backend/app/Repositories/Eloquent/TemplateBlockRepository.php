@@ -72,6 +72,27 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
         $block->delete();
     }
 
+    public function upsertByIdForTemplate(string $blockId, array $values): void
+    {
+        $updated = TemplateBlock::query()->whereKey($blockId)->update($values);
+        if ($updated === 0) {
+            TemplateBlock::query()->forceCreate([
+                'id' => $blockId,
+                ...$values,
+            ]);
+        }
+    }
+
+    public function deleteForTemplateExcept(string $templateId, array $protectedIds): int
+    {
+        $query = TemplateBlock::query()->where('template_id', $templateId);
+        if ($protectedIds !== []) {
+            $query->whereNotIn('id', $protectedIds);
+        }
+
+        return $query->delete();
+    }
+
     /**
      * @param  list<string>  $ids
      * @param  array<string, mixed>  $attributes

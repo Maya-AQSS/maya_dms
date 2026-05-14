@@ -11,8 +11,12 @@ use App\Policies\DocumentPolicy;
 use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
+use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
@@ -24,8 +28,12 @@ use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\CommentRepository;
+use App\Repositories\Eloquent\DocumentBlockRepository;
 use App\Repositories\Eloquent\DocumentRepository;
+use App\Repositories\Eloquent\DocumentVersionBlockLayerRepository;
+use App\Repositories\Eloquent\DocumentVersionRepository;
 use App\Repositories\Eloquent\EntityVersionRepository;
+use App\Repositories\Eloquent\TemplateVersionBlockLayerRepository;
 use App\Repositories\Eloquent\ProcessRepository;
 use App\Repositories\Eloquent\TeamReadRepository;
 use App\Repositories\Eloquent\TemplateBlockRepository;
@@ -76,6 +84,10 @@ class AppServiceProvider extends ServiceProvider
     {
         // Repository bindings
         $this->app->bind(DocumentRepositoryInterface::class, DocumentRepository::class);
+        $this->app->bind(DocumentBlockRepositoryInterface::class, DocumentBlockRepository::class);
+        $this->app->bind(DocumentVersionRepositoryInterface::class, DocumentVersionRepository::class);
+        $this->app->bind(DocumentVersionBlockLayerRepositoryInterface::class, DocumentVersionBlockLayerRepository::class);
+        $this->app->bind(TemplateVersionBlockLayerRepositoryInterface::class, TemplateVersionBlockLayerRepository::class);
         $this->app->bind(EntityVersionRepositoryInterface::class, EntityVersionRepository::class);
         $this->app->bind(ProcessRepositoryInterface::class, ProcessRepository::class);
         $this->app->bind(TeamReadRepositoryInterface::class, TeamReadRepository::class);
