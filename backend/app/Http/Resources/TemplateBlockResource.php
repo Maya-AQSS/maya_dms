@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\DTOs\TemplateBlocks\TemplateBlockDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -12,16 +13,20 @@ class TemplateBlockResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $dto = $this->resource instanceof TemplateBlockDto
+            ? $this->resource
+            : TemplateBlockDto::fromModel($this->resource);
+
         return [
-            'id'              => $this->id,
-            'template_id'     => $this->template_id,
-            'title'           => $this->title,
-            'default_content' => $this->default_content,
-            'description'     => $this->description,
-            'block_state'     => $this->block_state,
-            'sort_order'      => $this->sort_order,
-            'created_at'      => $this->created_at?->toIso8601String(),
-            'updated_at'      => $this->updated_at?->toIso8601String(),
+            'id'              => $dto->id,
+            'template_id'     => $dto->templateId,
+            'title'           => $dto->title,
+            'default_content' => $dto->defaultContent,
+            'description'     => $dto->description,
+            'block_state'     => $dto->blockState,
+            'sort_order'      => $dto->sortOrder,
+            'created_at'      => $dto->createdAt,
+            'updated_at'      => $dto->updatedAt,
         ];
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\DTOs\Comments\CommentDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -9,24 +10,32 @@ class CommentResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        return [
-            'id' => $this->id,
-            'commentable_type' => $this->commentable_type,
-            'commentable_id' => $this->commentable_id,
-            'commentable_version' => $this->commentable_version,
-            'blockable_type' => $this->blockable_type,
-            'blockable_id' => $this->blockable_id,
-            'parent_id' => $this->parent_id,
-            'author_id' => $this->author_id,
-            'author' => $this->whenLoaded('author', fn () => [
-                'id' => $this->author->id,
-                'name' => $this->author->name,
-            ]),
-            'body' => $this->body,
-            'resolved' => $this->resolved,
-            'resolved_by' => $this->resolved_by,
-            'resolved_at' => $this->resolved_at?->toIso8601String(),
-            'created_at' => $this->created_at?->toIso8601String(),
+        $dto = $this->resource instanceof CommentDto
+            ? $this->resource
+            : CommentDto::fromModel($this->resource);
+
+        $payload = [
+            'id' => $dto->id,
+            'commentable_type' => $dto->commentableType,
+            'commentable_id' => $dto->commentableId,
+            'commentable_version' => $dto->commentableVersion,
+            'blockable_type' => $dto->blockableType,
+            'blockable_id' => $dto->blockableId,
+            'parent_id' => $dto->parentId,
+            'author_id' => $dto->authorId,
+            'body' => $dto->body,
+            'resolved' => $dto->resolved,
+            'resolved_by' => $dto->resolvedBy,
+            'resolved_at' => $dto->resolvedAt,
+            'created_at' => $dto->createdAt,
         ];
+
+        if ($dto->authorLoaded) {
+            $payload['author'] = $dto->author !== null
+                ? ['id' => $dto->author->id, 'name' => $dto->author->name]
+                : null;
+        }
+
+        return $payload;
     }
 }
