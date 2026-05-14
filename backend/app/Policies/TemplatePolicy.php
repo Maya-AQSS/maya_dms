@@ -160,7 +160,7 @@ class TemplatePolicy
     {
         $isCreator = $user->getAuthIdentifier() === $template->created_by;
 
-        if ($template->status === 'draft') {
+        if (in_array($template->status, ['draft', 'rejected'], true)) {
             if (! $isCreator) {
                 return false;
             }
@@ -264,7 +264,7 @@ class TemplatePolicy
     /**
      * Ver/gestionar comentarios de plantilla.
      *
-     * Solo el creador o un revisor asignado pueden interactuar con comentarios.
+     * El creador puede comentar en cualquier estado. Los revisores asignados solo en in_review.
      */
     public function comment(JwtUser $user, Template $template): bool
     {
@@ -274,7 +274,7 @@ class TemplatePolicy
             return true;
         }
 
-        return $this->review($user, $template);
+        return $template->status === 'in_review' && $this->review($user, $template);
     }
 
     /**
@@ -296,11 +296,16 @@ class TemplatePolicy
     }
 
     /**
-     * Enviar borrador a revisión: solo el creador.
+     * Enviar borrador a revisión: solo el creador y únicamente desde `draft`.
+     *
+     * La guardia de estado aquí es redundante con {@see TemplateReviewService::submitForReview}
+     * pero evita que UI o código externo traten `can('submitForReview', $template)` como `true`
+     * para plantillas ya en revisión o publicadas.
      */
     public function submitForReview(JwtUser $user, Template $template): bool
     {
-        return $user->getAuthIdentifier() === $template->created_by;
+        return $user->getAuthIdentifier() === $template->created_by
+            && in_array($template->status, ['draft', 'rejected'], true);
     }
 
     /**

@@ -47,6 +47,8 @@ class DocumentResource extends JsonResource
             'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),
             'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
             'latest_published_title' => $this->resource->getAttribute('latest_published_title'),
+            'has_review_comments' => (bool) ($this->resource->getAttribute('has_review_comments') ?? false),
+            'review_mode' => (string) ($this->resource->getAttribute('review_mode') ?? 'parallel'),
         ];
     }
 

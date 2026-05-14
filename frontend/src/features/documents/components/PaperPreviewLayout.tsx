@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, type CSSProperties } from 'react'
+import { useEffect, useState, type ReactNode, type CSSProperties, type RefObject } from 'react'
 import { Button, PageTitle } from '@maya/shared-ui-react'
 
 interface Props {
@@ -20,6 +20,10 @@ interface Props {
   actions?: ReactNode
   /** Si true, el wrapper es un overlay fixed (para modales). Default: false (modo página). */
   asOverlay?: boolean
+  /** Ref opcional sobre el área del header (PageTitle) para calcular offsets de paneles fijos. */
+  headerRef?: RefObject<HTMLDivElement | null>
+  /** Sidebar opcional (usado para comentarios/info) que ocupa el 35% de la pantalla. */
+  sidebar?: ReactNode
   children: ReactNode
 }
 
@@ -68,6 +72,8 @@ export function PaperPreviewLayout({
   metaInfo,
   actions,
   asOverlay = false,
+  headerRef,
+  sidebar,
   children,
 }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false)
@@ -103,7 +109,7 @@ export function PaperPreviewLayout({
     ? `${baseOverlayClass} z-[70]`
     : asOverlay
       ? `${baseOverlayClass} z-[60]`
-      : 'min-h-full'
+      : 'min-h-screen'
 
   // Tamaño del artículo:
   // - Modo normal (760px) idéntico al documento.
@@ -130,6 +136,7 @@ export function PaperPreviewLayout({
 
   return (
     <div className={wrapperClass}>
+      <div ref={headerRef}>
       <PageTitle
         title={title}
         subtitle={subtitle}
@@ -145,13 +152,29 @@ export function PaperPreviewLayout({
           </div>
         }
       />
+      </div>
 
-      <article
-        className="mx-auto bg-ui-card dark:bg-ui-dark-card shadow-xl preview-content"
-        style={articleStyle}
-      >
-        {children}
-      </article>
+      <div className={sidebar ? 'flex flex-row flex-nowrap items-start min-h-screen relative overflow-visible gap-8' : ''}>
+        <div className={sidebar ? 'shrink-0' : ''}>
+          <article
+            className="mx-auto bg-white dark:bg-ui-dark-card shadow-xl preview-content"
+            style={articleStyle}
+          >
+            {children}
+          </article>
+        </div>
+
+        {sidebar && (
+          <div
+            className="flex-1 min-w-0 sticky top-24 self-start z-30"
+            style={{ minWidth: '320px', height: 'calc(100vh - 120px)' }}
+          >
+            <div className="h-full flex flex-col bg-white dark:bg-ui-dark-card shadow-xl rounded-xl overflow-hidden border border-ui-border dark:border-ui-dark-border">
+              {sidebar}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

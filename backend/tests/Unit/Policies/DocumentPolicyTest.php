@@ -168,18 +168,50 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->share($creator, $doc));
     }
 
-    public function test_delete_requires_documents_delete_permission(): void
+    public function test_delete_allows_owner_without_global_permission(): void
     {
-        $user = $this->makeJwtUser('99999999-9999-9999-9999-999999999999');
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $user    = $this->makeJwtUser($ownerId);
+        $doc     = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: $ownerId,
+        );
+
+        $this->assertTrue($this->policy->delete($user, $doc));
+    }
+
+    public function test_delete_allows_creator_without_global_permission(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user      = $this->makeJwtUser($creatorId);
+        $doc       = $this->makeDocument(
+            createdBy: $creatorId,
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+
+        $this->assertTrue($this->policy->delete($user, $doc));
+    }
+
+    public function test_delete_allows_stranger_with_documents_delete_permission(): void
+    {
+        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['documents.delete']);
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+
+        $this->assertTrue($this->policy->delete($user, $doc));
+    }
+
+    public function test_delete_denies_stranger_without_documents_delete_permission(): void
+    {
+        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc');
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
         );
 
         $this->assertFalse($this->policy->delete($user, $doc));
-
-        $withPerm = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', ['documents.delete']);
-        $this->assertTrue($this->policy->delete($withPerm, $doc));
     }
 
     /**

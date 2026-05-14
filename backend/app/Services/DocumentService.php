@@ -296,9 +296,9 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->status !== 'draft') {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo se pueden editar metadatos de documentos en borrador.'],
+                'status' => ['Solo se pueden editar metadatos de documentos en borrador o rechazados.'],
             ]);
         }
 
@@ -960,9 +960,9 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->status !== 'draft') {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo los documentos en borrador pueden enviarse a revisión.'],
+                'status' => ['Solo los documentos en borrador o rechazados pueden enviarse a revisión.'],
             ]);
         }
 
@@ -990,6 +990,13 @@ class DocumentService implements DocumentServiceInterface
 
                 return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
+
+            $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
+                documentId: $documentId,
+                triggerEvent: 'submitted',
+                triggeredBy: $actorId,
+                notes: 'Envío a revisión',
+            ));
 
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
@@ -1117,6 +1124,8 @@ class DocumentService implements DocumentServiceInterface
                     'reviews' => ['El documento tiene validadores asignados. Debe completar la revisión para publicarse.'],
                 ]);
             }
+
+            $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
         }
 
         if ($document->status === 'in_review' && $this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {
