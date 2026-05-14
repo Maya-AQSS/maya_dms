@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Document;
-use App\Models\Template;
 use App\Services\Contracts\UserFavoriteServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -35,7 +33,7 @@ class FavoriteController extends Controller
      */
     public function storeTemplate(string $template): Response
     {
-        $model = Template::query()->whereKey($template)->firstOrFail();
+        $model = $this->userFavoriteService->findTemplateOrFail($template);
         Gate::authorize('view', $model);
 
         $this->userFavoriteService->addTemplateFavorite(
@@ -66,7 +64,7 @@ class FavoriteController extends Controller
      */
     public function storeDocument(string $document): Response
     {
-        $model = Document::query()->whereKey($document)->firstOrFail();
+        $model = $this->userFavoriteService->findDocumentOrFail($document);
         Gate::authorize('view', $model);
 
         $this->userFavoriteService->addDocumentFavorite(
