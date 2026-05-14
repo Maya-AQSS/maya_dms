@@ -9,7 +9,13 @@ import {
   type ChangeEvent,
   type ReactNode,
 } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  documentStep1Schema,
+  type DocumentStep1Input,
+} from '../schemas/documentStep1';
 import {
   approveDocumentReview,
   createDocument,
@@ -221,14 +227,58 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [title, setTitle] = useState('');
-  const [deliveryDeadline, setDeliveryDeadline] = useState('');
-  const [studyTypeId, setStudyTypeId] = useState('');
-  const [studyId, setStudyId] = useState('');
-  const [moduleId, setModuleId] = useState('');
-  const [teamId, setTeamId] = useState('');
+  const step1Methods = useForm<DocumentStep1Input>({
+    defaultValues: {
+      title: '',
+      deliveryDeadline: '',
+      studyTypeId: '',
+      studyId: '',
+      moduleId: '',
+      teamId: '',
+    },
+    resolver: zodResolver(documentStep1Schema),
+    mode: 'onChange',
+  });
+  const {
+    setValue: setStep1Value,
+    watch: watchStep1,
+    setError: setStep1Error,
+    clearErrors: clearStep1Errors,
+    handleSubmit: handleStep1Submit,
+    formState: { errors: step1Errors },
+  } = step1Methods;
+  const title = watchStep1('title');
+  const deliveryDeadline = watchStep1('deliveryDeadline');
+  const studyTypeId = watchStep1('studyTypeId');
+  const studyId = watchStep1('studyId');
+  const moduleId = watchStep1('moduleId');
+  const teamId = watchStep1('teamId');
+  const setTitle = useCallback((v: string) => setStep1Value('title', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
+  const setDeliveryDeadline = useCallback((v: string) => setStep1Value('deliveryDeadline', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
+  const setStudyTypeId = useCallback((v: string) => setStep1Value('studyTypeId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
+  const setStudyId = useCallback((v: string) => setStep1Value('studyId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
+  const setModuleId = useCallback((v: string) => setStep1Value('moduleId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
+  const setTeamId = useCallback((v: string) => setStep1Value('teamId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const [availableTeams, setAvailableTeams] = useState<UserTeam[]>([]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Cross-field errors that depend on derived flags (require*) live alongside RHF formState.errors.
+  const errors: Record<string, string> = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (step1Errors.title?.message) map.title = step1Errors.title.message;
+    if (step1Errors.deliveryDeadline?.message) map.deliveryDeadline = step1Errors.deliveryDeadline.message;
+    if (step1Errors.studyTypeId?.message) map.studyTypeId = step1Errors.studyTypeId.message;
+    if (step1Errors.studyId?.message) map.studyId = step1Errors.studyId.message;
+    if (step1Errors.moduleId?.message) map.moduleId = step1Errors.moduleId.message;
+    if (step1Errors.teamId?.message) map.teamId = step1Errors.teamId.message;
+    return map;
+  }, [step1Errors]);
+  const setErrors = useCallback((updater: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => {
+    const next = typeof updater === 'function' ? updater(errors) : updater;
+    const keys: (keyof DocumentStep1Input)[] = ['title', 'deliveryDeadline', 'studyTypeId', 'studyId', 'moduleId', 'teamId'];
+    for (const k of keys) {
+      if (next[k]) setStep1Error(k, { type: 'manual', message: next[k] });
+      else clearStep1Errors(k);
+    }
+  }, [errors, setStep1Error, clearStep1Errors]);
   const [saving, setSaving] = useState(false);
   const [submittingForReview, setSubmittingForReview] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -833,30 +883,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   const handleContinue = async () => {
     setFormError(null);
-    setErrors({});
     if (step === 'properties') {
-      const newErrors: Record<string, string> = {};
-      if ((requireStudyType || (visibilityRule === 'global' && isGlobalAcademicMode && (studyId || moduleId || studyTypeId))) && !studyTypeId) {
-        newErrors.studyTypeId = 'Selecciona un tipo de estudio.';
-      }
-      if ((requireStudy || (visibilityRule === 'global' && isGlobalAcademicMode && (moduleId || studyId))) && !studyId) {
-        newErrors.studyId = 'Selecciona un estudio.';
-      }
-      if (requireModule && !moduleId) newErrors.moduleId = 'Selecciona un módulo.';
-      if (!title.trim()) newErrors.title = 'El título es obligatorio.';
-      if (!deliveryDeadline) {
-        newErrors.deliveryDeadline = 'La fecha de entrega es obligatoria.';
-      } else {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const selected = new Date(deliveryDeadline);
-        if (selected < today) {
-          newErrors.deliveryDeadline = 'La fecha no puede ser anterior a hoy.';
-        }
-      }
+      clearStep1Errors();
+      // First run zod schema validation; if it fails, errors are set automatically.
+      const valid = await new Promise<DocumentStep1Input | false>((resolve) => {
+        void handleStep1Submit(
+          (values) => resolve(values),
+          () => resolve(false),
+        )();
+      });
+      if (!valid) return;
 
-      if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
+      // Context-dependent (derived) requirements not expressible in the zod schema.
+      const contextErrors: Partial<Record<keyof DocumentStep1Input, string>> = {};
+      if ((requireStudyType || (visibilityRule === 'global' && isGlobalAcademicMode && (valid.studyId || valid.moduleId || valid.studyTypeId))) && !valid.studyTypeId) {
+        contextErrors.studyTypeId = 'Selecciona un tipo de estudio.';
+      }
+      if ((requireStudy || (visibilityRule === 'global' && isGlobalAcademicMode && (valid.moduleId || valid.studyId))) && !valid.studyId) {
+        contextErrors.studyId = 'Selecciona un estudio.';
+      }
+      if (requireModule && !valid.moduleId) contextErrors.moduleId = 'Selecciona un módulo.';
+
+      if (Object.keys(contextErrors).length > 0) {
+        for (const [field, message] of Object.entries(contextErrors)) {
+          setStep1Error(field as keyof DocumentStep1Input, { type: 'manual', message });
+        }
         return;
       }
 
