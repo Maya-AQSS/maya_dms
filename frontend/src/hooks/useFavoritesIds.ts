@@ -4,6 +4,12 @@ import { fetchFavorites } from '../api/favorites';
 /**
  * IDs de plantillas y documentos favoritos del usuario (GET /favorites).
  * Se recarga al montar y al recuperar el foco de la ventana (p. ej. vuelta desde preview).
+ *
+ * NOTA: este hook es local a DMS y NO duplica `@maya/shared-sidebar-react`
+ * `useSharedFavorites`. Ese es para favoritos de aplicaciones (sidebar
+ * cross-app, datos del backend maya_dashboard). Éste maneja favoritos de
+ * plantillas/documentos (entidad-nivel, backend maya_dms). Ver
+ * `SPIKE_useSharedFavorites.md` en la raíz del proyecto para el análisis.
  */
 export function useFavoritesIds(): {
   templateIds: ReadonlySet<string>;

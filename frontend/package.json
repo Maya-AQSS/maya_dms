@@ -22,6 +22,7 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
+    "@hookform/resolvers": "^3.10.0",
     "@maya/shared-auth-react": "file:../../maya_infra/packages/maya-shared-auth-react",
     "@maya/shared-dashboard-react": "file:../../maya_infra/packages/maya-shared-dashboard-react",
     "@maya/shared-i18n-react": "file:../../maya_infra/packages/maya-shared-i18n-react",
@@ -41,9 +42,11 @@
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-grid-layout": "^1.5.3",
+    "react-hook-form": "^7.54.0",
     "react-i18next": "^17.0.4",
     "react-router-dom": "^7.14.2",
-    "tailwindcss": "^4.2.2"
+    "tailwindcss": "^4.2.2",
+    "zod": "^3.24.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.13",
