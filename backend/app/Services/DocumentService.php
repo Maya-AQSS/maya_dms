@@ -298,9 +298,9 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->status !== 'draft') {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo se pueden editar metadatos de documentos en borrador.'],
+                'status' => ['Solo se pueden editar metadatos de documentos en borrador o rechazados.'],
             ]);
         }
 
@@ -315,10 +315,29 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Borrado lógico del documento.
+     * Si existe versión publicada + borrador activo, descarta el borrador y restaura la publicada.
+     * Si nunca fue publicado, elimina la entidad completa.
      */
-    public function delete(string $documentId): void
+    public function delete(string $documentId, string $actorId): void
     {
         $document = $this->documentRepository->findOrFail($documentId);
+
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
+        if ($latestPublished !== null) {
+            $document->loadMissing('headVersion');
+            $head = $document->headVersion;
+
+            if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
+                // Published version exists + working draft → discard draft, restore published.
+                $this->destroyVersion($documentId, (string) $head->id, $actorId);
+                return;
+            }
+
+            throw ValidationException::withMessages([
+                'document' => ['No se puede eliminar un documento publicado sin versión de trabajo activa.'],
+            ]);
+        }
+
         $this->documentRepository->delete($document);
     }
 
@@ -953,9 +972,9 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if ($document->status !== 'draft') {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
-                'status' => ['Solo los documentos en borrador pueden enviarse a revisión.'],
+                'status' => ['Solo los documentos en borrador o rechazados pueden enviarse a revisión.'],
             ]);
         }
 
@@ -983,6 +1002,13 @@ class DocumentService implements DocumentServiceInterface
 
                 return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
+
+            $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
+                documentId: $documentId,
+                triggerEvent: 'submitted',
+                triggeredBy: $actorId,
+                notes: 'Envío a revisión',
+            ));
 
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
@@ -1110,6 +1136,8 @@ class DocumentService implements DocumentServiceInterface
                     'reviews' => ['El documento tiene validadores asignados. Debe completar la revisión para publicarse.'],
                 ]);
             }
+
+            $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
         }
 
         if ($document->status === 'in_review' && $this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {

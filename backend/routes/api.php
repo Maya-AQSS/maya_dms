@@ -151,9 +151,6 @@ Route::prefix('v1')->group(function () {
             ->shallow()
             ->whereUuid('template')
             ->whereUuid('comment');
-        Route::patch('comments/{comment}/resolve', [CommentController::class, 'resolve'])
-            ->whereUuid('comment');
-
         // Usuarios — búsqueda para asignación de revisores y compartición
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);

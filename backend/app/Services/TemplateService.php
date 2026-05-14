@@ -237,6 +237,22 @@ class TemplateService implements TemplateServiceInterface
     {
         $template = $this->templateRepository->findOrFail($templateId);
 
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        if ($latestPublished !== null) {
+            $template->loadMissing('headVersion');
+            $head = $template->headVersion;
+
+            if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
+                // Published version exists + working draft → discard draft, restore published.
+                $this->destroyVersion($templateId, (string) $head->id, $actorId);
+                return false;
+            }
+
+            throw ValidationException::withMessages([
+                'template' => ['No se puede eliminar una plantilla publicada sin versión de trabajo activa.'],
+            ]);
+        }
+
         if ($this->templateRepository->templateHasDocuments($templateId)) {
             if ($template->status !== 'archived') {
                 $this->templatePublishingService->transitionStatus($template, 'archived', $actorId);

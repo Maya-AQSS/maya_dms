@@ -28,9 +28,11 @@ import {
   updateDocumentBlock,
   type DocumentReview,
 } from '../../../api/documents';
-import { ApiHttpError } from '../../../api/http';
+import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { fetchProcesses } from '../../../api/processes';
 import { fetchTemplate } from '../../../api/templates';
+import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
+import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers, type UserTeam } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
@@ -48,7 +50,6 @@ import {
   ErrorBoundary,
   FieldLabel,
   Select,
-  TextArea,
   TextInput,
 } from '@maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
@@ -75,10 +76,10 @@ const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
   published: 'Publicado',
+  rejected: 'Rechazado',
 };
 
 /** Alineado con `RejectDocumentReviewRequest` (backend): motivo obligatorio no trivial. */
-const DOCUMENT_REJECT_REASON_MIN_LEN = 5;
 
 /**
  * Descripción de bloque: el backend puede enviar string, JSON string u objeto BlockNote (`{ type: 'doc', content }`).
@@ -308,12 +309,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
-  const [rejectReason, setRejectReason] = useState('');
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [localContent, setLocalContent] = useState<unknown>(null);
   const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
+  const [emptyEditableBlocksModal, setEmptyEditableBlocksModal] = useState<string[] | null>(null);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+
+  // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks)
+  const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
+  const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
     setIsEditorFullscreen(v);
@@ -325,7 +332,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   }, []);
 
   const isValidateMode = mode === 'validate';
-  const isDraft = !detail || detail.status === 'draft';
+  const isDraft = !detail || detail.status === 'draft' || detail.status === 'rejected';
   const locationState = location.state as {
     step?: string;
     processId?: string;
@@ -373,6 +380,28 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setLoading(false);
     }
   }, [documentId]);
+
+  // Load review comments when document has unresolved ones
+  useEffect(() => {
+    if (!documentId || !detail?.has_review_comments) return;
+    let cancelled = false;
+    void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
+      .then((res) => { if (!cancelled) setReviewComments(res.data); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [documentId, detail?.has_review_comments]);
+
+  const handleDocumentCommentSend = useCallback(async (parentId: string | null, body: string) => {
+    if (!documentId) return;
+    const blockableId = parentId
+      ? (reviewComments.find(c => c.id === parentId)?.blockable_id ?? null)
+      : (activeBlockRef.current?.document_block_id ?? null);
+    const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
+      method: 'POST',
+      body: { body, parent_id: parentId, blockable_id: blockableId },
+    });
+    setReviewComments(prev => [...prev, res.data]);
+  }, [documentId, reviewComments]);
 
   const refreshDetail = useCallback(async () => {
     if (!documentId) return;
@@ -448,7 +477,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setActionableReviewId(null);
     setValidateConfirm(null);
     setValidationModalError(null);
-    setRejectReason('');
     if (mode === 'validate') {
       setStep('summary');
       setCompletedSteps(['properties', 'blocks', 'summary']);
@@ -518,6 +546,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         ]);
         if (cancelled) return;
         const userId = meRes.data.id;
+        setCurrentUserId(userId);
         const reviewMode = templateResp.data.review_mode === 'sequential' ? 'sequential' : 'parallel';
         const actionable = pickActionableDocumentReview(reviews, userId, reviewMode);
         if (!actionable) {
@@ -868,10 +897,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   useEffect(() => {
     activeBlockRef.current = activeBlock;
     if (activeBlock) {
-      setLocalContent(normalizeBlockContentForEditor(activeBlock.content).length > 0 
-        ? activeBlock.content 
+      setLocalContent(normalizeBlockContentForEditor(activeBlock.content).length > 0
+        ? activeBlock.content
         : activeBlock.default_content
       );
+      setShowDocumentCommentPanel(true); // re-show comment panel on block change
     }
   }, [activeBlock]);
 
@@ -929,7 +959,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
             team_id: teamId || undefined,
-            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+            delivery_deadline: deliveryDeadline || null,
           });
 
           // Navigate to the editor route with the new ID
@@ -947,7 +977,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           // Edit Mode: Update existing document
           const updated = await updateDocument(documentId, {
             title: title.trim(),
-            delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
+            delivery_deadline: deliveryDeadline || null,
             study_type_id: studyTypeId || undefined,
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
@@ -965,6 +995,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'blocks') {
+      if (detail) {
+        const emptyEditable = detail.blocks.filter(
+          (b: DocumentDisplayBlock) => b.block_state === 'editable' && !b.is_filled && !b.is_deleted,
+        );
+        if (emptyEditable.length > 0) {
+          setEmptyEditableBlocksModal(emptyEditable.map((b: DocumentDisplayBlock) => b.title ?? 'Sin título'));
+          return;
+        }
+      }
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
       setStep('summary');
       return;
@@ -975,7 +1014,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   };
 
   const handleSubmitForReview = async () => {
-    if (!detail || detail.status !== 'draft') {
+    if (!detail || !['draft', 'rejected'].includes(detail.status)) {
       return;
     }
     setSummaryError(null);
@@ -1026,25 +1065,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   };
 
+  const validatorHasCommented = currentUserId
+    ? reviewComments.some(c => c.author_id === currentUserId)
+    : false;
+
   const handleRejectValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
-    }
-    const reason = rejectReason.trim();
-    if (reason.length < DOCUMENT_REJECT_REASON_MIN_LEN) {
-      setValidationModalError(
-        `Indica un motivo de rechazo de al menos ${DOCUMENT_REJECT_REASON_MIN_LEN} caracteres (obligatorio).`,
-      );
       return;
     }
     setValidationModalError(null);
     setSummaryError(null);
     setValidationActionLoading(true);
     try {
-      const updated = await rejectDocumentReview(documentId, actionableReviewId, reason);
+      const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
       setValidateConfirm(null);
-      setRejectReason('');
       navigate('/dashboard', {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject') },
       });
@@ -1473,7 +1508,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       {!isValidateMode && step === 'blocks' && (
         <div className={isEditorFullscreen
           ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
-          : 'flex-1 overflow-hidden flex flex-col md:flex-row'
+          : 'flex-1 overflow-visible flex flex-col md:flex-row min-h-0'
         }>
           {/* Compact fullscreen header */}
           {isEditorFullscreen && activeBlock && (
@@ -1500,35 +1535,59 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             </div>
           )}
           {/* Block tree — hidden when editor is in fullscreen */}
-          {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
-            <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-              <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">
-                Bloques ({sortedBlocks.length})
-              </span>
+          {!isEditorFullscreen && (
+            <div className="relative shrink-0 z-30 flex flex-col overflow-visible">
+              <div className={[
+                'h-full flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card transition-all duration-300 overflow-hidden',
+                isSidebarCollapsed ? 'w-0' : 'md:w-64 lg:w-72'
+              ].join(' ')}>
+                <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0">
+                  <span className="text-xs font-bold uppercase text-text-secondary tracking-widest truncate">
+                    Bloques ({sortedBlocks.length})
+                  </span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {sortedBlocks.length === 0 ? (
+                    <p className="text-xs text-text-muted">No hay bloques.</p>
+                  ) : (
+                    sortedBlocks.map((b) => {
+                      const key = b.document_block_id ?? b.template_block_id;
+                      const selected = key === activeBlockKey;
+                      const ui = blockToUiState(b);
+                      const isEmptyEditable = b.block_state === 'editable' && !b.is_filled && !b.is_deleted;
+                      return (
+                        <BlockListItem
+                          key={key}
+                          title={b.title || ''}
+                          variant={selected ? 'selected' : 'default'}
+                          locked={ui === 'locked'}
+                          stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
+                          hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
+                          isEmpty={isEmptyEditable}
+                          onClick={() => setActiveBlockKey(key)}
+                        />
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                className={[
+                  'absolute top-4 -right-3 z-50 w-6 h-6 rounded-full border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex items-center justify-center text-text-muted hover:text-odoo-purple transition-all shadow-sm',
+                  isSidebarCollapsed ? 'rotate-180' : ''
+                ].join(' ')}
+                title={isSidebarCollapsed ? 'Expandir' : 'Colapsar'}
+              >
+                <svg className="w-3.5 h-3.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {sortedBlocks.length === 0 ? (
-                <p className="text-xs text-text-muted">No hay bloques.</p>
-              ) : (
-                sortedBlocks.map((b) => {
-                  const key = b.document_block_id ?? b.template_block_id;
-                  const selected = key === activeBlockKey;
-                  const ui = blockToUiState(b);
-                  return (
-                    <BlockListItem
-                      key={key}
-                      title={b.title || ''}
-                      variant={selected ? 'selected' : 'default'}
-                      locked={ui === 'locked'}
-                      stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
-                      onClick={() => setActiveBlockKey(key)}
-                    />
-                  );
-                })
-              )}
-            </div>
-          </div>}
-          <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
+          )}
+          <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
             {activeBlock && (
               <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
                 {!isEditorFullscreen && (
@@ -1541,17 +1600,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
                     {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
-                  {canDeleteOptionalBlock && (
-                    <Button
-                      type="button"
-                      size="xs"
-                      variant="outline"
-                      className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
-                      onClick={() => setShowDeleteBlockConfirm(true)}
-                    >
-                      Eliminar
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {!showDocumentCommentPanel && activeBlock.document_block_id &&
+                      reviewComments.some(c => c.blockable_id === activeBlock.document_block_id) && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                        onClick={() => setShowDocumentCommentPanel(true)}
+                      >
+                        Comentarios
+                      </Button>
+                    )}
+                    {canDeleteOptionalBlock && (
+                      <Button
+                        type="button"
+                        size="xs"
+                        variant="outline"
+                        className="text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                        onClick={() => setShowDeleteBlockConfirm(true)}
+                      >
+                        Eliminar
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1636,6 +1709,30 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </div>
             )}
           </div>
+
+          {/* Right: creator-edit comment panel for active block */}
+          {showDocumentCommentPanel && activeBlock && activeBlock.document_block_id && !isEditorFullscreen && (() => {
+            const blockComments = reviewComments.filter(c => c.blockable_id === activeBlock.document_block_id && !c.parent_id);
+            const allBlockComments = reviewComments.filter(c => {
+              if (c.blockable_id === activeBlock.document_block_id && !c.parent_id) return true;
+              const rootIds = blockComments.map(r => r.id);
+              return c.parent_id !== null && rootIds.includes(c.parent_id);
+            });
+            if (blockComments.length === 0) return null;
+            return (
+              <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
+                <BlockCommentsCard
+                  mode="creator-edit"
+                  blockSortOrder={activeBlock.sort_order ?? '?'}
+                  blockComments={allBlockComments}
+                  allComments={reviewComments}
+                  onSendMessage={handleDocumentCommentSend}
+                  onClose={() => setShowDocumentCommentPanel(false)}
+                  canAddComments={detail?.status !== 'published'}
+                />
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -1833,6 +1930,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       </>
     </WizardShell>
     <ConfirmDialog
+        open={emptyEditableBlocksModal !== null}
+        title="Bloques editables sin rellenar"
+        description={
+          <div className="space-y-2">
+            <p>Debes rellenar todos los bloques editables antes de continuar. Bloques pendientes:</p>
+            <ul className="space-y-1">
+              {(emptyEditableBlocksModal ?? []).map((name, i) => (
+                <li key={i} className="font-medium">• {name}</li>
+              ))}
+            </ul>
+          </div>
+        }
+        confirmLabel="Entendido"
+        onConfirm={() => setEmptyEditableBlocksModal(null)}
+        onCancel={() => setEmptyEditableBlocksModal(null)}
+      />
+    <ConfirmDialog
         open={showDeleteBlockConfirm}
         variant="danger"
         title="¿Eliminar este bloque?"
@@ -1867,32 +1981,31 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       />
       <ConfirmDialog
         open={validateConfirm === 'reject'}
-        title="Confirmar rechazo"
+        title={validatorHasCommented ? 'Confirmar rechazo' : 'Comentario requerido'}
         description={
-          <div className="space-y-2 text-left">
+          validatorHasCommented ? (
             <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
               El documento volverá a borrador para que el titular pueda corregirlo. El resto de validadores dejarán
-              de tener esta revisión asignada.
+              de tener esta revisión asignada. Tus comentarios en los bloques quedarán registrados como motivo.
             </p>
-            <TextArea
-              fieldSize="comfortable"
-              rows={3}
-              value={rejectReason}
-              onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setRejectReason(e.target.value)}
-              placeholder={`Motivo del rechazo (obligatorio, mín. ${DOCUMENT_REJECT_REASON_MIN_LEN} caracteres)`}
-            />
-          </div>
+          ) : (
+            <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
+              Para rechazar la validación debes dejar al menos un comentario en un bloque del documento explicando
+              el motivo del rechazo. El comentario queda registrado para el titular.
+            </p>
+          )
         }
-        confirmLabel="Rechazar"
-        variant="danger"
+        confirmLabel={validatorHasCommented ? 'Rechazar' : 'Entendido'}
+        variant={validatorHasCommented ? 'danger' : 'primary'}
         error={validationModalError}
         loading={validationActionLoading}
         onCancel={() => {
           setValidateConfirm(null);
           setValidationModalError(null);
-          setRejectReason('');
         }}
-        onConfirm={() => void handleRejectValidation()}
+        onConfirm={validatorHasCommented
+          ? () => void handleRejectValidation()
+          : () => { setValidateConfirm(null); setValidationModalError(null); }}
       />
       <ConfirmDialog
         open={summaryConfirmAction !== null}

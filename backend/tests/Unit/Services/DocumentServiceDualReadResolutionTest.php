@@ -15,6 +15,7 @@ use App\Services\DocumentService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
+use App\Services\TemplateContextResolver;
 use Mockery;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -58,6 +59,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             $stateSvc,
             $reviewSvc,
             $entityVersionRepo,
+            Mockery::mock(TemplateContextResolver::class),
         );
 
         $document = new Document;
@@ -116,6 +118,7 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             $stateSvc,
             $reviewSvc,
             $entityVersionRepo,
+            Mockery::mock(TemplateContextResolver::class),
         );
 
         $document = new Document;

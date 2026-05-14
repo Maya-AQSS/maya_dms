@@ -6,9 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DocumentBlock extends Model
 {
+    use SoftDeletes;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -32,6 +35,15 @@ class DocumentBlock extends Model
             'locked_at'  => 'datetime',
             'sort_order' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (DocumentBlock $block): void {
+            Comment::where('blockable_type', static::class)
+                ->where('blockable_id', $block->id)
+                ->delete();
+        });
     }
 
     public function document(): BelongsTo

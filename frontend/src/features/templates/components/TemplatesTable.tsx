@@ -225,13 +225,15 @@ export function TemplatesTable({ processId }: Props = {}) {
   };
 
   const handleRowClick = (t: Template) => {
+    const backTo = processId ? `/procesos/${processId}` : '/dashboard';
     if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
-      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`);
+      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`, {
+        state: { backTo, processId },
+      });
       return;
     }
     const isReviewer =
       t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    const backTo = processId ? `/procesos/${processId}` : '/dashboard';
     navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
       state: { backTo, processId },
     });
@@ -248,7 +250,7 @@ export function TemplatesTable({ processId }: Props = {}) {
           <span className="flex items-center gap-2 min-w-0">
             {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
             <span className="truncate font-medium">{t.name}</span>
-            {t.has_review_comments && t.status === 'draft' && profile && t.created_by === profile.id && (
+            {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                 title="Esta plantilla tiene bloques con comentarios de revisión pendientes."

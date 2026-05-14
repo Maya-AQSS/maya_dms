@@ -87,16 +87,6 @@ class CommentService implements CommentServiceInterface
         $comment->delete();
     }
 
-    public function resolve(Comment $comment, string $userId): Comment
-    {
-        $comment->update([
-            'resolved' => true,
-            'resolved_by' => $userId,
-            'resolved_at' => now(),
-        ]);
-        return $comment;
-    }
-
     private function assertBlockBelongsToResource(
         string $commentableType,
         string $commentableId,

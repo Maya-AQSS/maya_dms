@@ -132,9 +132,14 @@ interface DocumentRepositoryInterface
     public function listPendingDocumentReviewInboxForUser(string $userId): Collection;
 
     /**
-     * Mayor número de versión de snapshot guardado para el documento (0 si no hay ninguna).
+     * Mayor número de versión de snapshot publicado en entity_versions (0 si no hay ninguna).
      */
     public function maxDocumentVersionNumber(string $documentId): int;
+
+    /**
+     * Mayor número de versión en document_versions (incluye submitted, published, rejected). 0 si no hay ninguna.
+     */
+    public function maxDocumentVersionHistoryNumber(string $documentId): int;
 
     /**
      * Inserta un registro append-only en document_versions.
