@@ -107,3 +107,25 @@ export function updateCachedUserProfileLocale(_locale: string): void {
 export function clearCachedUserProfile(): void {
   /* no-op en tests */
 }
+
+// ── Session overrides (cross-app cookie) ────────────────────────────────────
+// El shim devuelve una función de detach inerte para que el efecto que la
+// instala en `UserProfileContext` pueda invocarla sin tocar cookies.
+
+export function installOverridesListeners(): () => void {
+  return () => {
+    /* no-op en tests */
+  };
+}
+
+export function readOverrides(): null {
+  return null;
+}
+
+export function writeOverrides(_patch: Record<string, unknown>): void {
+  /* no-op en tests */
+}
+
+export function clearOverrides(): void {
+  /* no-op en tests */
+}

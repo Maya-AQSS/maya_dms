@@ -221,11 +221,13 @@ describe('TemplateWizard Integration', () => {
 
   it('handles Step 1 validation errors', async () => {
     await renderWizard();
-    
+
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
 
-    expect(screen.getByText('El nombre es obligatorio.')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('El nombre es obligatorio.')).toBeTruthy();
+    });
     expect(createTemplate).not.toHaveBeenCalled();
   });
 
@@ -262,14 +264,20 @@ describe('TemplateWizard Integration', () => {
 
   it('shows leave guard when dirty', async () => {
     await renderWizard();
-    
-    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
-    fireEvent.change(nameInput, { target: { value: 'Some change' } });
 
-    // Try to go back to templates list via back arrow
+    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
+    fireEvent.input(nameInput, { target: { value: 'Some change' } });
+
+    // Wait for RHF to flush the dirty flag before triggering the leave action
+    await waitFor(() => {
+      expect((nameInput as HTMLInputElement).value).toBe('Some change');
+    });
+
     fireEvent.click(screen.getByLabelText('Volver'));
 
-    expect(screen.getByText(/Tienes cambios sin guardar/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(/Tienes cambios sin guardar/i)).toBeTruthy();
+    });
   });
 
 });

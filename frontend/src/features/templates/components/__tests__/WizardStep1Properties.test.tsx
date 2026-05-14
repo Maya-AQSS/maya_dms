@@ -83,26 +83,22 @@ describe('WizardStep1Properties', () => {
   });
 
   it('updates name via RHF register on input change', async () => {
-    let latest: TemplateStep1Input | null = null;
-    await renderWithProfile(<Harness capture={(v) => { latest = v; }} />);
+    const ref: { current: TemplateStep1Input | null } = { current: null };
+    await renderWithProfile(<Harness capture={(v) => { ref.current = v; }} />);
     const [input] = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i);
     await act(async () => {
       fireEvent.input(input, { target: { value: 'Nueva Plantilla' } });
     });
-    expect(latest?.name).toBe('Nueva Plantilla');
+    expect(ref.current?.name).toBe('Nueva Plantilla');
   });
 
-  it('shows academic hierarchy fields only when visibility requires it', async () => {
-    const { rerender } = await renderWithProfile(<Harness defaults={{ visibility: 'personal' }} />);
+  it('hides academic hierarchy block when visibility is personal', async () => {
+    await renderWithProfile(<Harness defaults={{ visibility: 'personal' }} />);
     expect(screen.queryByText('— Seleccionar —')).toBeNull();
+  });
 
-    await act(async () => {
-      rerender(
-        <UserProfileProvider>
-          <Harness defaults={{ visibility: 'study_type' }} />
-        </UserProfileProvider>,
-      );
-    });
+  it('shows academic hierarchy block when visibility requires it', async () => {
+    await renderWithProfile(<Harness defaults={{ visibility: 'study_type' }} />);
     expect(screen.getByText('No tienes tipos de estudio asignados, contacta con un administrador')).toBeTruthy();
   });
 
@@ -113,14 +109,14 @@ describe('WizardStep1Properties', () => {
       error: null,
     } as any);
 
-    let latest: TemplateStep1Input | null = null;
+    const ref: { current: TemplateStep1Input | null } = { current: null };
     await renderWithProfile(
-      <Harness defaults={{ visibility: 'study_type' }} capture={(v) => { latest = v; }} />,
+      <Harness defaults={{ visibility: 'study_type' }} capture={(v) => { ref.current = v; }} />,
     );
     // useEffect autoselect runs after mount
     await act(async () => {
       await Promise.resolve();
     });
-    expect(latest?.studyTypeId).toBe('ST_1');
+    expect(ref.current?.studyTypeId).toBe('ST_1');
   });
 });
