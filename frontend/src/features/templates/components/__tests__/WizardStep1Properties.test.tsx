@@ -1,8 +1,13 @@
 import type { ReactElement } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { FormProvider, useForm } from 'react-hook-form';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WizardStep1Properties } from '../WizardStep1Properties';
 import { UserProfileProvider } from '../../../../features/user-profile';
+import {
+  emptyTemplateStep1,
+  type TemplateStep1Input,
+} from '../../schemas/templateStep1';
 
 vi.mock('../../../../api/users', () => ({
   fetchMe: vi.fn().mockResolvedValue({
@@ -30,6 +35,29 @@ vi.mock('../../../../features/hierarchy', () => ({
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+function Harness({
+  defaults,
+  errors,
+  capture,
+}: {
+  defaults?: Partial<TemplateStep1Input>;
+  errors?: { api?: string };
+  capture?: (values: TemplateStep1Input) => void;
+}) {
+  const methods = useForm<TemplateStep1Input>({
+    defaultValues: { ...emptyTemplateStep1, ...defaults },
+  });
+  if (capture) {
+    capture(methods.getValues());
+    methods.watch((values) => capture(values as TemplateStep1Input));
+  }
+  return (
+    <FormProvider {...methods}>
+      <WizardStep1Properties errors={errors} />
+    </FormProvider>
+  );
+}
+
 async function renderWithProfile(ui: ReactElement) {
   let renderResult: ReturnType<typeof render> | null = null;
   await act(async () => {
@@ -39,56 +67,39 @@ async function renderWithProfile(ui: ReactElement) {
 }
 
 describe('WizardStep1Properties', () => {
-  const defaultProps = {
-    name: '',
-    setName: vi.fn(),
-    description: '',
-    setDescription: vi.fn(),
-    visibility: 'personal' as const,
-    setVisibility: vi.fn(),
-    deliveryDeadline: '',
-    setDeliveryDeadline: vi.fn(),
-    studyTypeId: '',
-    setStudyTypeId: vi.fn(),
-    studyId: '',
-    setStudyId: vi.fn(),
-    moduleId: '',
-    setModuleId: vi.fn(),
-    teamId: '',
-    setTeamId: vi.fn(),
-    errors: {},
-  };
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('renders correctly with default props', async () => {
-    await renderWithProfile(<WizardStep1Properties {...defaultProps} />);
+    await renderWithProfile(<Harness />);
     expect(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Visibilidad/i)).toBeTruthy();
   });
 
-  it('shows error message when passed via props', async () => {
-    await renderWithProfile(<WizardStep1Properties {...defaultProps} errors={{ name: 'El nombre es obligatorio.' }} />);
-    expect(screen.getByText(/El nombre es obligatorio./i)).toBeTruthy();
+  it('shows api error message when passed via prop', async () => {
+    await renderWithProfile(<Harness errors={{ api: 'Algo falló' }} />);
+    expect(screen.getByText(/Algo falló/i)).toBeTruthy();
   });
 
-  it('calls setName on input change', async () => {
-    await renderWithProfile(<WizardStep1Properties {...defaultProps} />);
+  it('updates name via RHF register on input change', async () => {
+    let latest: TemplateStep1Input | null = null;
+    await renderWithProfile(<Harness capture={(v) => { latest = v; }} />);
     const [input] = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i);
-    fireEvent.change(input, { target: { value: 'Nueva Plantilla' } });
-    expect(defaultProps.setName).toHaveBeenCalledWith('Nueva Plantilla');
+    await act(async () => {
+      fireEvent.input(input, { target: { value: 'Nueva Plantilla' } });
+    });
+    expect(latest?.name).toBe('Nueva Plantilla');
   });
 
   it('shows academic hierarchy fields only when visibility requires it', async () => {
-    const { rerender } = await renderWithProfile(<WizardStep1Properties {...defaultProps} visibility="personal" />);
+    const { rerender } = await renderWithProfile(<Harness defaults={{ visibility: 'personal' }} />);
     expect(screen.queryByText('— Seleccionar —')).toBeNull();
 
     await act(async () => {
       rerender(
         <UserProfileProvider>
-          <WizardStep1Properties {...defaultProps} visibility="study_type" />
+          <Harness defaults={{ visibility: 'study_type' }} />
         </UserProfileProvider>,
       );
     });
@@ -102,7 +113,14 @@ describe('WizardStep1Properties', () => {
       error: null,
     } as any);
 
-    await renderWithProfile(<WizardStep1Properties {...defaultProps} visibility="study_type" />);
-    expect(defaultProps.setStudyTypeId).toHaveBeenCalledWith('ST_1');
+    let latest: TemplateStep1Input | null = null;
+    await renderWithProfile(
+      <Harness defaults={{ visibility: 'study_type' }} capture={(v) => { latest = v; }} />,
+    );
+    // useEffect autoselect runs after mount
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(latest?.studyTypeId).toBe('ST_1');
   });
 });

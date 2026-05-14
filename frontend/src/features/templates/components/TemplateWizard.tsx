@@ -1,8 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
+import { FormProvider, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useBlocker } from 'react-router-dom';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { fetchProcesses } from '../../../api/processes';
-import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
+import type { Template } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
 import {
   updateTemplate as apiUpdateTemplate,
@@ -20,6 +22,11 @@ import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
 import { WizardStep4Summary } from './WizardStep4Summary';
+import {
+  templateStep1Schema,
+  emptyTemplateStep1,
+  type TemplateStep1Input,
+} from '../schemas/templateStep1';
 
 type Step = 'properties' | 'blocks' | 'users' | 'summary';
 
@@ -52,16 +59,25 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   // Template state (synchronized with API)
   const [template, setTemplate] = useState<Template | null>(initial || null);
 
-  // Step 1: Properties state
-  const [name, setName] = useState(initial?.name || '');
-  const [description, setDescription] = useState(initial?.description || '');
-  const [visibility, setVisibility] = useState<TemplateVisibilityLevel>(initial?.visibility_level || 'personal');
-  const [deliveryDeadline, setDeliveryDeadline] = useState(initial?.delivery_deadline ? initial.delivery_deadline.split('T')[0] : '');
-  const [studyTypeId, setStudyTypeId] = useState(initial?.study_type_id || '');
-  const [studyId, setStudyId] = useState(initial?.study_id || '');
-  const [moduleId, setModuleId] = useState(initial?.module_id || '');
-  const [teamId, setTeamId] = useState(initial?.team_id || '');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Step 1: RHF + Zod
+  const step1Methods = useForm<TemplateStep1Input>({
+    defaultValues: {
+      ...emptyTemplateStep1,
+      name: initial?.name || '',
+      description: initial?.description || '',
+      visibility: initial?.visibility_level || 'personal',
+      deliveryDeadline: initial?.delivery_deadline ? initial.delivery_deadline.split('T')[0] : '',
+      studyTypeId: initial?.study_type_id || '',
+      studyId: initial?.study_id || '',
+      moduleId: initial?.module_id || '',
+      teamId: initial?.team_id || '',
+    },
+    resolver: zodResolver(templateStep1Schema),
+    mode: 'onChange',
+  });
+
+  // Wizard-level transient errors (blocks gating, cross-step API failures)
+  const [errors, setErrors] = useState<{ blocks?: string; api?: string }>({});
 
   // Step 3: Users state — load existing reviewers when editing
   const [validators, setValidators] = useState<ValidatorEntry[]>(
@@ -119,10 +135,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (step !== 'blocks') return;
     if (blocksLoading || blocksCount < 1) return;
     if (!errors.blocks) return;
-    setErrors((prev) => {
-      const { blocks: _blocks, ...rest } = prev;
-      return rest;
-    });
+    setErrors((prev) => ({ ...prev, blocks: undefined }));
   }, [blocksCount, blocksLoading, errors.blocks, step]);
 
   useEffect(() => {
@@ -157,6 +170,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Clear permission error when user changes visibility selection.
+  useEffect(() => {
+    const subscription = step1Methods.watch((_value, info) => {
+      if (info.name === 'visibility') setPermissionError(null);
+    });
+    return () => subscription.unsubscribe();
+  }, [step1Methods]);
+
   const handleResolveComment = async (commentId: string) => {
     try {
       await apiResolveComment(commentId);
@@ -171,14 +192,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   };
 
   // Dirty check
-  const isDirty = useMemo(() => {
-    if (step === 'properties') {
-      return name !== (template?.name || '') || 
-             description !== (template?.description || '') ||
-             visibility !== (template?.visibility_level || 'personal');
-    }
-    return false;
-  }, [step, name, description, visibility, template]);
+  const isDirty = step === 'properties' && step1Methods.formState.isDirty;
 
   const handleBackArrow = () => {
     if (isDirty) {
@@ -199,55 +213,22 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     else navigate(processBackTo);
   };
 
-  const validateStep1 = () => {
-    const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'El nombre es obligatorio.';
-
-    if (visibility === 'study_type') {
-      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
-    } else if (visibility === 'study') {
-      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
-      if (!studyId) newErrors.studyId = 'Este campo es obligatorio';
-    } else if (visibility === 'module') {
-      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
-      if (!studyId) newErrors.studyId = 'Este campo es obligatorio';
-      if (!moduleId) newErrors.moduleId = 'Este campo es obligatorio';
-    } else if (visibility === 'team') {
-      if (!teamId) newErrors.teamId = 'Este campo es obligatorio';
-    }
-
-    if (!deliveryDeadline) {
-      newErrors.deliveryDeadline = 'El plazo de entrega es obligatorio.';
-    } else {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const selected = new Date(deliveryDeadline);
-      if (selected < today) {
-        newErrors.deliveryDeadline = 'La fecha no puede ser anterior a hoy.';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const saveProperties = async () => {
-    if (!validateStep1()) return;
+  const saveProperties = step1Methods.handleSubmit(async (values) => {
     setSaving(true);
     setPermissionError(null);
     try {
       const isUpdate = !!template?.id;
-      const visibilityChanged = !isUpdate || visibility !== template.visibility_level;
+      const visibilityChanged = !isUpdate || values.visibility !== template.visibility_level;
 
       const payload = {
-        name: name.trim(),
-        description: description.trim() || null,
-        ...(visibilityChanged ? { visibility_level: visibility } : {}),
-        delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
-        study_type_id: studyTypeId || null,
-        study_id: studyId || null,
-        module_id: moduleId || null,
-        team_id: teamId || null,
+        name: values.name.trim(),
+        description: values.description.trim() || null,
+        ...(visibilityChanged ? { visibility_level: values.visibility } : {}),
+        delivery_deadline: values.deliveryDeadline ? `${values.deliveryDeadline}T00:00:00Z` : null,
+        study_type_id: values.studyTypeId || null,
+        study_id: values.studyId || null,
+        module_id: values.moduleId || null,
+        team_id: values.teamId || null,
       };
 
       let res;
@@ -262,11 +243,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         }
         res = await apiCreateTemplate({
           ...payload,
-          visibility_level: visibility,
+          visibility_level: values.visibility,
           process_id: effectiveProcessId,
         });
       }
       setTemplate(res.data);
+      step1Methods.reset(values);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
     } catch (e) {
@@ -281,7 +263,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     } finally {
       setSaving(false);
     }
-  };
+  });
   const handlePublish = async (changelog?: string | null) => {
     if (!template?.id) return;
     setSaving(true);
@@ -389,10 +371,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         setErrors({ blocks: 'Hay bloques sin título. Complétalos antes de continuar.' });
         return;
       }
-      setErrors((prev) => {
-        const { blocks: _b, ...rest } = prev;
-        return rest;
-      });
+      setErrors((prev) => ({ ...prev, blocks: undefined }));
       setSaving(true);
       try {
         await blocksRef.current?.saveIfPending();
@@ -590,18 +569,9 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     >
       <>
         {step === 'properties' && (
-          <WizardStep1Properties
-            name={name} setName={setName}
-            description={description} setDescription={setDescription}
-            visibility={visibility} setVisibility={(v) => { setVisibility(v); setPermissionError(null); }}
-            deliveryDeadline={deliveryDeadline} setDeliveryDeadline={setDeliveryDeadline}
-            studyTypeId={studyTypeId} setStudyTypeId={setStudyTypeId}
-            studyId={studyId} setStudyId={setStudyId}
-            moduleId={moduleId} setModuleId={setModuleId}
-            teamId={teamId} setTeamId={setTeamId}
-            errors={errors}
-            templateStatus={template?.status}
-          />
+          <FormProvider {...step1Methods}>
+            <WizardStep1Properties errors={errors} templateStatus={template?.status} />
+          </FormProvider>
         )}
         {step === 'blocks' && template && (
           <WizardStep2Blocks
