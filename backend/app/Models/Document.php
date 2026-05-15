@@ -169,8 +169,13 @@ class Document extends Model
         }
 
         $baseQuery = $builder->getQuery();
-        if ($baseQuery->columns === null) {
-            $builder->select($builder->getModel()->getTable().'.*');
+        $existingColumns = $baseQuery->columns ?? [];
+        $hasWildcard = collect($existingColumns)->contains(
+            fn ($col) => !$col instanceof \Illuminate\Database\Query\Expression
+                && ($col === $builder->getModel()->getTable().'.*' || $col === '*'),
+        );
+        if (!$hasWildcard) {
+            $builder->addSelect($builder->getModel()->getTable().'.*');
         }
 
         $builder->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id');
@@ -184,21 +189,20 @@ class Document extends Model
                 WHERE ev.versionable_type = '{$type}'
                   AND ev.versionable_id = documents.id
                   AND ev.status = 'published'
-                  AND ev.deleted_at IS NULL
             ), 0)) AS current_version"),
             DB::raw("CASE WHEN documents.status = 'draft' THEN NULL
                 ELSE COALESCE(
                     (SELECT MIN(dr.created_at) FROM document_reviews dr WHERE dr.document_id = documents.id),
                     (SELECT ev.published_at FROM entity_versions ev
                      WHERE ev.versionable_type = '{$type}' AND ev.versionable_id = documents.id
-                       AND ev.status = 'published' AND ev.deleted_at IS NULL
+                       AND ev.status = 'published'
                      ORDER BY ev.version_number ASC LIMIT 1)
                 )
             END AS submitted_at"),
             DB::raw("CASE WHEN documents.status != 'published' THEN NULL
                 ELSE (SELECT ev.published_at FROM entity_versions ev
                       WHERE ev.versionable_type = '{$type}' AND ev.versionable_id = documents.id
-                        AND ev.status = 'published' AND ev.deleted_at IS NULL
+                        AND ev.status = 'published'
                       ORDER BY ev.version_number DESC LIMIT 1)
             END AS published_at"),
         ]);
