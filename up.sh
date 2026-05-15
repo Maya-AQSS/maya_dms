@@ -7,14 +7,14 @@ cd "$SCRIPT_DIR"
 
 SERVICE_LABEL="maya-dms"
 BACKEND_CONTAINER="maya_dms_backend"
-FRONTEND_URL="https://dms.192.168.2.1.nip.io"
-BACKEND_API_URL="https://dms-api.192.168.2.1.nip.io/api/v1"
+FRONTEND_URL="https://desarrollo-ceedcv-dms.192.168.2.1.nip.io"
+BACKEND_API_URL="https://desarrollo-ceedcv-dms-api.192.168.2.1.nip.io/api/v1"
 DEFAULT_BACKEND_PORT="8001"
 DEFAULT_FRONTEND_PORT="5174"
 SKIP_TABLES_SUFFIX_SOURCE=true
 
 setup_frontend_env() {
-    upsert_env_var frontend/.env VITE_API_URL            "${VITE_API_URL:-https://dms-api.192.168.2.1.nip.io/api/v1}"
+    upsert_env_var frontend/.env VITE_API_URL            "${VITE_API_URL:-https://desarrollo-ceedcv-dms-api.192.168.2.1.nip.io/api/v1}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_URL       "${VITE_KEYCLOAK_URL:-https://keycloak.192.168.2.1.nip.io}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_REALM     "${VITE_KEYCLOAK_REALM:-maya}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_CLIENT_ID "${VITE_KEYCLOAK_CLIENT_ID:-maya-dms-dashboard}"
