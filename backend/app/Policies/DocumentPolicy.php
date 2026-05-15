@@ -77,9 +77,18 @@ class DocumentPolicy
 
     /**
      * Eliminar u operaciones de baja del documento.
+     *
+     * El titular o creador puede borrar su propio documento (paridad con TemplatePolicy).
+     * Cualquier usuario con `documents.delete` puede borrar cualquier documento.
      */
     public function delete(JwtUser $user, Document $document): bool
     {
+        $id = $user->getAuthIdentifier();
+
+        if ($id === $document->owner_id || $id === $document->created_by) {
+            return true;
+        }
+
         return $user->hasPermission('documents.delete');
     }
 
@@ -105,11 +114,22 @@ class DocumentPolicy
     /**
      * Ver/gestionar comentarios del documento.
      *
-     * Requiere capacidad de edición o de revisión.
+     * El creador/titular puede comentar en cualquier estado. Los revisores asignados solo en in_review.
      */
     public function comment(JwtUser $user, Document $document): bool
     {
-        return $this->update($user, $document) || $this->review($user, $document);
+        if ($this->update($user, $document)) {
+            return true;
+        }
+
+        if ($document->status !== 'in_review') {
+            return false;
+        }
+
+        return $this->review($user, $document)
+            || $document->reviews()
+                ->where('reviewer_id', (string) $user->getAuthIdentifier())
+                ->exists();
     }
 
     /**

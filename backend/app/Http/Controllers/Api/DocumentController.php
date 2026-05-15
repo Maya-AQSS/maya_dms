@@ -16,6 +16,7 @@ use App\Models\Document;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\DocumentReviewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
@@ -29,6 +30,7 @@ class DocumentController extends Controller
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
         private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
+        private readonly DocumentReviewService $documentReviewService,
     ) {}
 
     /**
@@ -171,6 +173,11 @@ class DocumentController extends Controller
         $viewerId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->findOrFail($id);
         $this->authorize('view', $document);
+
+        $document->setAttribute(
+            'has_review_comments',
+            $document->comments()->exists(),
+        );
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
         $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
@@ -217,7 +224,8 @@ class DocumentController extends Controller
         $this->authorize('delete', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
-        $this->documentService->delete($id);
+        $actorId = (string) $request->user()->getAuthIdentifier();
+        $this->documentService->delete($id, $actorId);
 
         return response()->json([], 204);
     }
@@ -324,7 +332,10 @@ class DocumentController extends Controller
     }
 
     /**
-     * Adjunta `can_clone` desde policy para evitar Gate dentro de Resource.
+     * Adjunta `can_clone` y `review_mode` como atributos extra para evitar Gate y queries dentro de Resource.
+     *
+     * `review_mode` se resuelve desde el snapshot de la versión anclada para que coincida
+     * con el modo que aplica el backend al aprobar/rechazar, no el de la plantilla live.
      *
      * @param  Document|Collection<int, Document>  $documents
      */
@@ -337,6 +348,7 @@ class DocumentController extends Controller
 
         $attach = function (Document $document) use ($user): void {
             $document->setAttribute('can_clone', Gate::forUser($user)->allows('clone', $document));
+            $document->setAttribute('review_mode', $this->documentReviewService->resolveReviewMode($document));
         };
 
         if ($documents instanceof Document) {

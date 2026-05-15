@@ -15,6 +15,64 @@ interface Props {
   onFullscreenChange?: (isFullscreen: boolean) => void;
 }
 
+// BlockNote 0.49 changed blockGroup/blockContainer renderHTML to return {dom,contentDOM}
+// instead of a ProseMirror DOMSpec array. ProseMirror's renderSpec crashes on those unless
+// custom nodeViews are registered. Patch the TipTap extensionManager instance to inject them.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function patchBlockNoteStructuralNodeViews(tiptapEditor: any): void {
+  const extMgr = tiptapEditor?.extensionManager;
+  if (!extMgr) return;
+  const proto = Object.getPrototypeOf(extMgr);
+  const desc = Object.getOwnPropertyDescriptor(proto, 'nodeViews');
+  if (!desc?.get) return;
+  const origGet = desc.get;
+  Object.defineProperty(extMgr, 'nodeViews', {
+    get() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const views: Record<string, any> = origGet.call(this);
+      if (!views.blockGroup) {
+        views.blockGroup = () => {
+          const n = document.createElement('div');
+          n.className = 'bn-block-group';
+          n.setAttribute('data-node-type', 'blockGroup');
+          return { dom: n, contentDOM: n };
+        };
+      }
+      if (!views.blockContainer) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        views.blockContainer = (initialNode: any) => {
+          const outer = document.createElement('div');
+          outer.className = 'bn-block-outer';
+          outer.setAttribute('data-node-type', 'blockOuter');
+          const inner = document.createElement('div');
+          inner.className = 'bn-block';
+          inner.setAttribute('data-node-type', 'blockContainer');
+          outer.appendChild(inner);
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const applyAttrs = (node: any) => {
+            if (node.attrs?.id) inner.setAttribute('data-id', String(node.attrs.id));
+            if (node.attrs?.blockColor) inner.setAttribute('data-block-color', String(node.attrs.blockColor));
+            if (node.attrs?.blockStyle) inner.setAttribute('data-block-style', String(node.attrs.blockStyle));
+          };
+          applyAttrs(initialNode);
+          return {
+            dom: outer,
+            contentDOM: inner,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            update(newNode: any) {
+              if (newNode.type !== initialNode.type) return false;
+              applyAttrs(newNode);
+              return true;
+            },
+          };
+        };
+      }
+      return views;
+    },
+    configurable: true,
+  });
+}
+
 function FullscreenIcon({ expanded }: { expanded: boolean }) {
   return expanded ? (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -80,6 +138,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     editorRef.current = (BlockNoteEditor as any).create({
       initialContent: safeContent ? repairBlockNoteBlocks(safeContent) : undefined,
     });
+    patchBlockNoteStructuralNodeViews((editorRef.current as any)._tiptapEditor);
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editor = editorRef.current as any;

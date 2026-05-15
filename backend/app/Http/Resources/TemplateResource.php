@@ -65,7 +65,12 @@ class TemplateResource extends JsonResource
             'working_version_id' => $this->head_entity_version_id,
             'review_history' => $this->whenLoaded('headVersion', fn () => $this->headVersion?->change_set),
             'latest_published_name' => $this->resource->getAttribute('latest_published_name'),
-            'latest_published_at' => $this->formatOptionalIso($this->resource->getAttribute('latest_published_at')),
+            'blocks_at_previous_submission' => $this->whenLoaded('headVersion', function () {
+                $data = $this->headVersion?->snapshot_data;
+                return is_array($data) && isset($data['blocks_at_previous_submission'])
+                    ? $data['blocks_at_previous_submission']
+                    : null;
+            }),
         ];
     }
 

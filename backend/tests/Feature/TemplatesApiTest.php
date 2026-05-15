@@ -2490,7 +2490,7 @@ class TemplatesApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)->assertOk();
         $this->postJson("/api/v1/templates/{$tid}/reject-review", [], $headersReviewer)
             ->assertOk()
-            ->assertJsonPath('data.status', 'draft');
+            ->assertJsonPath('data.status', 'rejected');
 
         $this->assertSame(
             0,

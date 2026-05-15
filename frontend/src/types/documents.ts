@@ -15,7 +15,7 @@ export type DocumentReviewCycleSnapshot = {
   blocks: DocumentReviewCycleBlock[];
 };
 
-export type DocumentStatus = 'draft' | 'in_review' | 'published';
+export type DocumentStatus = 'draft' | 'in_review' | 'published' | 'rejected';
 
 export type Document = {
   id: string;
@@ -46,6 +46,8 @@ export type Document = {
   team?: unknown;
   has_review_comments?: boolean;
   can_clone?: boolean;
+  /** Modo de revisión resuelto desde el snapshot anclado; coincide con lo que aplica el backend al aprobar/rechazar. */
+  review_mode?: 'sequential' | 'parallel';
   working_version_id?: string | null;
   review_history?: DocumentReviewCycleSnapshot[] | null;
   latest_published_version_id?: string | null;
@@ -71,6 +73,8 @@ export type DocumentDisplayBlock = {
   sort_order: number;
   content: unknown | null;
   is_filled: boolean;
+  /** True cuando es un bloque opcional que el usuario eliminó explícitamente. Solo aparece en la vista diff. */
+  is_deleted?: boolean;
 };
 
 export type DocumentDetail = Document & {

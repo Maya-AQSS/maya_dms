@@ -463,6 +463,15 @@ class DocumentRepository implements DocumentRepositoryInterface
         return $max !== null ? (int) $max : 0;
     }
 
+    public function maxDocumentVersionHistoryNumber(string $documentId): int
+    {
+        $max = DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->max('version_number');
+
+        return $max !== null ? (int) $max : 0;
+    }
+
     /**
      * Inserta un registro append-only en document_versions.
      *

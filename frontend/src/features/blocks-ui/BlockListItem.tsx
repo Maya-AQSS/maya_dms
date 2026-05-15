@@ -14,6 +14,7 @@ type Props = {
   hasReviewComments?: boolean;
   stateLabel?: string | null;
   dragHandle?: ReactNode;
+  isEmpty?: boolean;
   onClick: () => void;
 };
 
@@ -53,6 +54,7 @@ export function BlockListItem({
   hasReviewComments = false,
   stateLabel,
   dragHandle,
+  isEmpty = false,
   onClick,
 }: Props) {
   const titleColor =
@@ -92,6 +94,12 @@ export function BlockListItem({
             <span
               className="w-2 h-2 rounded-full bg-warning shadow-[0_0_8px_rgba(255,193,7,0.5)]"
               title="Comentarios pendientes"
+            />
+          )}
+          {isEmpty && (
+            <span
+              className="w-2 h-2 rounded-full bg-danger shadow-[0_0_6px_rgba(220,38,38,0.5)]"
+              title="Obligatorio — este bloque debe rellenarse"
             />
           )}
         </span>

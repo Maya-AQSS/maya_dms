@@ -190,6 +190,8 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
         const r = await deleteTemplateRequest(id);
         if (r.hardDeleted) {
           setActionInfo('Plantilla eliminada.');
+        } else if (r.data?.status === 'published') {
+          setActionInfo('Borrador descartado. La plantilla vuelve a su versión publicada.');
         } else {
           setActionInfo('La plantilla tiene documentos asociados: se ha archivado en lugar de eliminarla.');
         }

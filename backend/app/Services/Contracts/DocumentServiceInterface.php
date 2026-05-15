@@ -37,7 +37,7 @@ interface DocumentServiceInterface
     /**
      * Borrado lógico del documento.
      */
-    public function delete(string $documentId): void;
+    public function delete(string $documentId, string $actorId): void;
 
     /**
      * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.

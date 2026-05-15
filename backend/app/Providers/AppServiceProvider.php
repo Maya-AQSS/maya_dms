@@ -3,11 +3,15 @@
 namespace App\Providers;
 
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\JwtUser;
 use App\Models\Comment;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use App\Policies\CommentPolicy;
+use App\Policies\DocumentBlockPolicy;
 use App\Policies\DocumentPolicy;
+use App\Policies\TemplateBlockPolicy;
 use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
@@ -152,6 +156,8 @@ class AppServiceProvider extends ServiceProvider
         // Registro de políticas
         Gate::policy(Comment::class, CommentPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
+        Gate::policy(DocumentBlock::class, DocumentBlockPolicy::class);
         Gate::policy(Template::class, TemplatePolicy::class);
+        Gate::policy(TemplateBlock::class, TemplateBlockPolicy::class);
     }
 }
