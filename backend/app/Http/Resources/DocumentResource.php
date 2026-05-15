@@ -43,6 +43,7 @@ class DocumentResource extends JsonResource
             'is_shared_with_me' => (bool) ($this->resource->getAttribute('is_shared_with_me') ?? false),
             'share_permission' => $this->resource->getAttribute('viewer_share_permission'),
             'can_clone' => (bool) ($this->resource->getAttribute('can_clone') ?? false),
+            'has_review_comments' => (bool) ($this->resource->has_review_comments ?? false),
             'working_version_id' => $this->head_entity_version_id,
             'review_history' => $this->whenLoaded('headVersion', fn () => $this->headVersion?->change_set),
             'latest_published_version_id' => $this->resource->getAttribute('latest_published_version_id'),

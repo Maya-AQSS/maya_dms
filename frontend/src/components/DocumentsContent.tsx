@@ -296,8 +296,18 @@ export function DocumentsContent() {
         sortable: true,
         alwaysVisible: true,
         cell: (d: Document) => (
-          <span className="font-medium text-text-primary dark:text-text-dark-primary truncate block">
-            {d.title}
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="font-medium text-text-primary dark:text-text-dark-primary truncate">
+              {d.title}
+            </span>
+            {d.has_review_comments && d.status === 'draft' && profile && (d.owner_id === profile.id || d.created_by === profile.id) && (
+              <span
+                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                title="Este documento fue rechazado en revisión."
+              >
+                ⚠ Revisión
+              </span>
+            )}
           </span>
         ),
       },
@@ -361,7 +371,7 @@ export function DocumentsContent() {
         ),
       },
     ],
-    [navigate],
+    [navigate, profile],
   );
 
   const sortedFiltered = useMemo(() => {
