@@ -14,19 +14,12 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
-        'https://authorization.maya.test',
-        'https://dashboard.maya.test',
-        'https://dms.maya.test',
-        'https://logs.maya.test',
-        'http://localhost:5173',
-        'http://localhost:5174',
-        'http://localhost:5175',
-        'http://localhost:5176',
-    ],
+    'allowed_origins' => [],
 
     'allowed_origins_patterns' => [
-        '#^https?://maya_(authorization|dashboard|dms|logs)\.localhost(:\d+)?$#',
+        '#^https://[a-z0-9-]+\.192\.168\.2\.1\.nip\.io$#',
+        '#^http://localhost:\d+$#',
+        '#^https?://maya_(authorization|dashboard|dms|logs|audit)\.localhost(:\d+)?$#',
     ],
 
     'allowed_headers' => ['*'],
