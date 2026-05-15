@@ -100,7 +100,7 @@ function App() {
   useEffect(() => {
     if (isLoading) return;
     const wasAuthenticated = wasAuthenticatedRef.current;
-    if (!wasAuthenticated && isAuthenticated && location.pathname !== '/dashboard') {
+    if (!wasAuthenticated && isAuthenticated && location.pathname === '/') {
       navigate('/dashboard', { replace: true });
     }
     wasAuthenticatedRef.current = isAuthenticated;
