@@ -110,16 +110,6 @@ class CommentController extends Controller
         return response()->json([], 204);
     }
 
-    public function resolve(Request $request, string $comment): JsonResponse
-    {
-        $commentModel = $this->commentService->findOrFail($comment);
-        $this->authorizeCommentAccess($commentModel);
-        $this->authorize('resolve', $commentModel);
-
-        $resolved = $this->commentService->resolve($commentModel, (string) Auth::id());
-        return (new CommentResource($resolved))->response();
-    }
-
     /**
      * Resuelve y autoriza el recurso comentable desde los parámetros de ruta.
      * Devuelve null cuando la ruta no incluye template ni document.

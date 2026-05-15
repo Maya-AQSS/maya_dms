@@ -111,17 +111,12 @@ class Comment extends Model
         'parent_id',
         'author_id',
         'body',
-        'resolved',
-        'resolved_by',
-        'resolved_at',
     ];
 
     protected function casts(): array
     {
         return [
             'commentable_version' => 'integer',
-            'resolved'    => 'boolean',
-            'resolved_at' => 'datetime',
         ];
     }
 

@@ -14,6 +14,7 @@ use App\Services\DocumentService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
+use App\Services\TemplateContextResolver;
 use Illuminate\Validation\ValidationException;
 use Mockery;
 use Tests\TestCase;
@@ -76,7 +77,8 @@ class DocumentServiceCreationOptionsTest extends TestCase
             ->with(Template::class, 'tpl-2')
             ->andReturn(null);
 
-        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo);
+        $contextResolver = Mockery::mock(TemplateContextResolver::class);
+        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
 
         $out = $service->creationOptionsForModule('MOD-1');
 
@@ -104,7 +106,8 @@ class DocumentServiceCreationOptionsTest extends TestCase
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo);
+        $contextResolver = Mockery::mock(TemplateContextResolver::class);
+        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
 
         $this->expectException(ValidationException::class);
 

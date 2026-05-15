@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class TemplateBlock extends Model
 {
+    use SoftDeletes;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -28,6 +31,15 @@ class TemplateBlock extends Model
             'description'     => 'array',
             'sort_order'      => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (TemplateBlock $block): void {
+            Comment::where('blockable_type', static::class)
+                ->where('blockable_id', $block->id)
+                ->delete();
+        });
     }
 
     public function template(): BelongsTo

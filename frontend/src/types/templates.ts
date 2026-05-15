@@ -7,7 +7,7 @@ export type TemplateVisibilityLevel =
   | 'team'
   | 'personal';
 
-export type TemplateStatus = 'draft' | 'in_review' | 'published' | 'archived';
+export type TemplateStatus = 'draft' | 'in_review' | 'published' | 'archived' | 'rejected';
 
 export type ReviewMode = 'sequential' | 'parallel';
 
@@ -60,8 +60,13 @@ export type Template = {
   created_at?: string;
   updated_at?: string;
   latest_published_name?: string | null;
-  /** Fecha de publicación de la versión publicada más reciente (solo listado / adjunta en índice). */
-  latest_published_at?: string | null;
+  blocks_at_previous_submission?: Array<{
+    id: string;
+    title: string;
+    default_content: unknown;
+    block_state: string;
+    sort_order: number;
+  }> | null;
 };
 
 export type TemplatesListMeta = {

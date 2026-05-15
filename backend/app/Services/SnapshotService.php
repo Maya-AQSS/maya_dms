@@ -26,8 +26,10 @@ class SnapshotService implements SnapshotServiceInterface
     public function createDocumentSnapshot(CreateDocumentSnapshotDto $dto): void
     {
         $document = $this->documentRepository->findOrFailForRefreshAfterMutation($dto->documentId);
-        $nextNumber = $this->documentRepository->maxDocumentVersionNumber($dto->documentId) + 1;
-        $snapshot = $this->buildDocumentVersionSnapshot($document, $nextNumber);
+
+        // document_versions has its own sequential counter (includes submitted, published, rejected rows).
+        $nextHistoryNumber = $this->documentRepository->maxDocumentVersionHistoryNumber($dto->documentId) + 1;
+        $snapshot = $this->buildDocumentVersionSnapshot($document, $nextHistoryNumber);
 
         $entityVersionId = null;
         if ($dto->triggerEvent === 'published') {
@@ -36,10 +38,12 @@ class SnapshotService implements SnapshotServiceInterface
                 $changelog = null;
             }
 
+            // entity_versions has a separate counter: only published snapshots appear here.
+            $nextPublishedNumber = $this->documentRepository->maxDocumentVersionNumber($dto->documentId) + 1;
             $entityVersion = $this->entityVersionLifecycleService->createPublishedSnapshotVersion(
                 Document::class,
                 $dto->documentId,
-                $nextNumber,
+                $nextPublishedNumber,
                 $snapshot,
                 $dto->triggeredBy,
                 $changelog,
@@ -49,7 +53,7 @@ class SnapshotService implements SnapshotServiceInterface
 
         $this->documentRepository->insertDocumentVersion(
             $dto->documentId,
-            $nextNumber,
+            $nextHistoryNumber,
             $dto->triggerEvent,
             $dto->triggeredBy,
             $entityVersionId !== null ? null : $snapshot,

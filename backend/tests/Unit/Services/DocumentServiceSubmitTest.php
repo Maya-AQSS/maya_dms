@@ -13,6 +13,7 @@ use App\Services\DocumentService;
 use App\Services\DocumentShareService;
 use App\Services\DocumentStateService;
 use App\Services\DocumentVersionService;
+use App\Services\TemplateContextResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use Mockery;
@@ -50,7 +51,8 @@ class DocumentServiceSubmitTest extends TestCase
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo);
+        $contextResolver = Mockery::mock(TemplateContextResolver::class);
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
 
         $this->expectException(AuthorizationException::class);
 
@@ -80,7 +82,8 @@ class DocumentServiceSubmitTest extends TestCase
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo);
+        $contextResolver = Mockery::mock(TemplateContextResolver::class);
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
 
         $this->expectException(ValidationException::class);
 

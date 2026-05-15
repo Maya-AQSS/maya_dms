@@ -23,9 +23,6 @@ class CommentResource extends JsonResource
                 'name' => $this->author->name,
             ]),
             'body' => $this->body,
-            'resolved' => $this->resolved,
-            'resolved_by' => $this->resolved_by,
-            'resolved_at' => $this->resolved_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
         ];
     }
