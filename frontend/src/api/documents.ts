@@ -259,7 +259,7 @@ export async function approveDocumentReview(
 export async function rejectDocumentReview(
   documentId: string,
   reviewId: string,
-  rejectionReason: string,
+  rejectionReason: string | null,
 ): Promise<Document> {
   const body = await apiFetchJson<DocumentMutationApiResponse>(
     `documents/${encodeURIComponent(documentId)}/reviews/${encodeURIComponent(reviewId)}/reject`,

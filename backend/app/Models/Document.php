@@ -177,6 +177,7 @@ class Document extends Model
 
         // Precompute aggregate columns to avoid N+1 accessor queries on list endpoints.
         $type = addslashes(self::class);
+        $statusExpr = DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status');
         $builder->addSelect([
             DB::raw("GREATEST(1, COALESCE((
                 SELECT MAX(ev.version_number)
@@ -184,21 +185,20 @@ class Document extends Model
                 WHERE ev.versionable_type = '{$type}'
                   AND ev.versionable_id = documents.id
                   AND ev.status = 'published'
-                  AND ev.deleted_at IS NULL
             ), 0)) AS current_version"),
-            DB::raw("CASE WHEN documents.status = 'draft' THEN NULL
+            DB::raw("CASE WHEN {$statusExpr} = 'draft' THEN NULL
                 ELSE COALESCE(
                     (SELECT MIN(dr.created_at) FROM document_reviews dr WHERE dr.document_id = documents.id),
                     (SELECT ev.published_at FROM entity_versions ev
                      WHERE ev.versionable_type = '{$type}' AND ev.versionable_id = documents.id
-                       AND ev.status = 'published' AND ev.deleted_at IS NULL
+                       AND ev.status = 'published'
                      ORDER BY ev.version_number ASC LIMIT 1)
                 )
             END AS submitted_at"),
-            DB::raw("CASE WHEN documents.status != 'published' THEN NULL
+            DB::raw("CASE WHEN {$statusExpr} != 'published' THEN NULL
                 ELSE (SELECT ev.published_at FROM entity_versions ev
                       WHERE ev.versionable_type = '{$type}' AND ev.versionable_id = documents.id
-                        AND ev.status = 'published' AND ev.deleted_at IS NULL
+                        AND ev.status = 'published'
                       ORDER BY ev.version_number DESC LIMIT 1)
             END AS published_at"),
         ]);

@@ -94,6 +94,37 @@ class TemplatePublishingService
                 ]);
             }
 
+            $hasEditableBlock = $template->blocks->contains(
+                fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
+            );
+            if (! $hasEditableBlock) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['La plantilla debe tener al menos un bloque editable o modificable.'],
+                ]);
+            }
+
+            $isEmptyContent = fn ($b) => is_null($b->default_content)
+                || (is_array($b->default_content) && count($b->default_content) === 0);
+
+            $emptyEditableBlock = $template->blocks->first(
+                fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
+                    && $isEmptyContent($b)
+            );
+            if ($emptyEditableBlock !== null) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['Los bloques editables y modificables no pueden estar vacíos.'],
+                ]);
+            }
+
+            $emptyLockedBlock = $template->blocks->first(
+                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b)
+            );
+            if ($emptyLockedBlock !== null) {
+                throw ValidationException::withMessages([
+                    'blocks' => ['Los bloques bloqueados no pueden estar vacíos.'],
+                ]);
+            }
+
             $blocksSnapshot = $template->blocks->map(fn ($b) => [
                 'id' => $b->id,
                 'title' => $b->title,
@@ -168,6 +199,15 @@ class TemplatePublishingService
             $updated = $this->templateRepository->update($template, [
                 'status' => 'published',
             ]);
+
+            $updated->loadMissing('headVersion');
+            $headEv = $updated->headVersion;
+            if ($headEv !== null) {
+                $headData = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : [];
+                unset($headData['blocks_at_submission'], $headData['blocks_at_previous_submission'], $headData['blocks_submission_history']);
+                $headEv->snapshot_data = $headData ?: null;
+                $headEv->save();
+            }
 
             event(new TemplateStateChanged(
                 template: $updated,

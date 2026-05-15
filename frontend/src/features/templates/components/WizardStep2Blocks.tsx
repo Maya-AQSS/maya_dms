@@ -123,9 +123,9 @@ interface WizardStep2BlocksProps {
   template: Template;
   isDark?: boolean;
   reviewComments?: any[];
-  onResolveComment?: (commentId: string) => Promise<void>;
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
+  onBlocksChange?: (blocks: TemplateBlock[]) => void;
   onContinue?: () => void;
   onInvalidBlocksChange?: (hasInvalid: boolean) => void;
   onCommentAdded?: (comment: any) => void;
@@ -133,20 +133,40 @@ interface WizardStep2BlocksProps {
 
 export type WizardStep2BlocksHandle = {
   saveIfPending: () => Promise<void>;
-  discardInvalidBlocks: () => Promise<void>;
+  discardInvalidBlocks: () => Promise<TemplateBlock[]>;
 };
 
 export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(({
   template,
   isDark = false,
   reviewComments = [],
-  onResolveComment,
   onBlocksCountChange,
   onBlocksLoadingChange,
+  onBlocksChange,
   onContinue,
   onInvalidBlocksChange,
   onCommentAdded,
 }, ref) => {
+  const getCommentsForBlock = (docBlockId: string | null, allComments: any[]) => {
+    if (!docBlockId) return [];
+    
+    // Recursive function to get all replies to a comment
+    const getReplies = (parentId: string): any[] => {
+      const replies = allComments.filter(c => c.parent_id === parentId);
+      return [...replies, ...replies.flatMap(r => getReplies(r.id))];
+    };
+    
+    // Get all root comments for this block
+    const roots = allComments.filter(c => c.blockable_id === docBlockId && !c.parent_id);
+    
+    // Combine roots and all their recursive replies
+    const allForBlock = [...roots, ...roots.flatMap(r => getReplies(r.id))];
+    
+    // Deduplicate by ID to be safe
+    const uniqueIds = Array.from(new Set(allForBlock.map(c => c.id)));
+    return uniqueIds.map(id => allForBlock.find(c => c.id === id));
+  };
+
   const {
     blocks,
     loading,
@@ -166,8 +186,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   useEffect(() => {
     if (!loading) {
       onBlocksCountChange?.(blocks.length);
+      onBlocksChange?.(blocks);
     }
-  }, [blocks.length, loading, onBlocksCountChange]);
+  }, [blocks, loading, onBlocksCountChange, onBlocksChange]);
 
   const hasInvalidBlocks = !loading && blocks.some(b => !b.title?.trim());
 
@@ -181,6 +202,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     return () => window.removeEventListener('beforeunload', handler);
   }, [hasInvalidBlocks]);
 
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
 
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
@@ -202,6 +224,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
+  const [showCommentPanel, setShowCommentPanel] = useState(true);
 
   // const [multiIndex, setMultiIndex] = useState(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -215,6 +238,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [tabIsDirty, setTabIsDirty] = useState(false);
+
+  useEffect(() => {
+    if (activeSingleId && !formName.trim()) {
+      setShowCommentPanel(false);
+    }
+  }, [activeSingleId, formName]);
   // Reply state is managed inside BlockCommentsCard; we only keep the API handler here.
   // Ref to always have latest activeSingleId in the autosave closure
   const activeSingleIdRef = useRef<string | null>(null);
@@ -223,12 +252,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const { profile } = useUserProfile();
 
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
+  const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
 
-  const isOwner = !!profile && template.created_by === profile.id;
   const blockComments: any[] = activeSingleId
     ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
     : [];
-  const activeBlockHasComments = blockComments.some((c) => !c.resolved);
+  const activeBlockHasComments = blockComments.length > 0;
 
   useEffect(() => {
     if (activeTab === 'comments') setActiveTab('properties');
@@ -316,6 +345,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setSelectedBlockIds([blockId]);
       setActiveSingleId(blockId);
       setPanelMode('edit');
+      setShowCommentPanel(true);
       loadFormFromBlock(block);
       setActiveTab('properties');
     }, 200);
@@ -357,6 +387,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         setSelectedBlockIds([]);
         setPanelMode('empty');
       }
+      return blocks.filter(b => !!b.title?.trim());
     },
   }));
 
@@ -384,6 +415,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setPanelMode('edit');
       loadFormFromBlock(newBlock);
       setActiveTab('properties');
+      setShowCommentPanel(false);
     } finally {
       setBusy(false);
     }
@@ -445,7 +477,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     // setMultiIndex(0);
   };
 
-  const handleReply = useCallback(async (parentId: string, body: string) => {
+  const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
     if (!activeSingleId) return;
     const res = await apiFetchJson<{ data: any }>(`templates/${template.id}/comments`, {
       method: 'POST',
@@ -462,44 +494,75 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   return (
-    <div className={isEditorFullscreen
-      ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
-      : 'flex-1 overflow-hidden flex flex-col md:flex-row'
-    }>
-      {/* Sidebar — hidden when editor is in fullscreen */}
-      {!isEditorFullscreen && <div className="md:w-1/4 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
-        <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-          <span className="text-xs font-bold uppercase text-text-secondary tracking-widest">Bloques ({blocks.length})</span>
-          <Button variant="ghost" size="xs" onClick={handleToggleSelectAll}>
-            {selectedBlockIds.length === blocks.length && blocks.length > 0 ? 'Deseleccionar todos' : 'Seleccionar todos'}
-          </Button>
+    <div className={[
+      isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 min-h-0 flex flex-col md:flex-row relative overflow-visible',
+      'transition-all duration-300'
+    ].join(' ')}>
+      {!isEditorFullscreen && (
+        <div className="relative shrink-0 z-30 flex flex-col overflow-visible">
+          <div className={[
+            'h-full flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card transition-all duration-300 overflow-hidden',
+            isSidebarCollapsed ? 'w-0' : 'w-64 md:w-72'
+          ].join(' ')}>
+            {!isSidebarCollapsed && (
+              <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-300">
+                <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0">
+                  <span className="text-xs font-black uppercase text-text-secondary tracking-widest truncate">Bloques ({blocks.length})</span>
+                  <Button variant="ghost" size="xs" onClick={handleToggleSelectAll} className="shrink-0 ml-2">
+                    {selectedBlockIds.length === blocks.length && blocks.length > 0 ? 'Deseleccionar' : 'Todos'}
+                  </Button>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {loading ? (
+                    <div className="text-xs text-text-muted p-4">Cargando bloques...</div>
+                  ) : (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                        {blocks.map((block) => (
+                          <SortableBlockItem
+                            key={block.id}
+                            block={block}
+                            itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
+                            onClick={() => handleBlockClick(block.id)}
+                            hasReviewComments={reviewComments.some(c => (c as any).blockable_id === block.id)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                </div>
+                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                  <Button
+                    variant="outline"
+                    className="w-full border-dashed"
+                    onClick={() => void handleAddBlock()}
+                    disabled={busy}
+                  >
+                    + Añadir bloque
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className={[
+              'absolute top-4 -right-3 z-50 w-6 h-6 rounded-full border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex items-center justify-center text-text-muted hover:text-odoo-purple transition-all shadow-sm',
+              isSidebarCollapsed ? 'rotate-180' : ''
+            ].join(' ')}
+            title={isSidebarCollapsed ? 'Expandir' : 'Colapsar'}
+          >
+            <svg className="w-3.5 h-3.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 space-y-2">
-          {loading ? (
-            <div className="text-xs text-text-muted p-4">Cargando bloques...</div>
-          ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                {blocks.map((block) => (
-                  <SortableBlockItem
-                    key={block.id}
-                    block={block}
-                    itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
-                    onClick={() => handleBlockClick(block.id)}
-                    hasReviewComments={reviewComments.some(c => c.blockable_id === block.id && !c.resolved)}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          )}
-        </div>
-        <div className="p-4 border-t border-ui-border dark:border-ui-dark-border">
-          <Button variant="outline" className="w-full border-dashed" onClick={handleAddBlock} loading={busy}>+ Añadir bloque</Button>
-        </div>
-      </div>}
+      )}
 
       {/* Main Panel */}
-      <div className="flex-1 min-w-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-hidden">
+
+      {/* Main Panel */}
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
         {panelMode === 'empty' && (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
             <p className="text-sm font-bold uppercase tracking-widest">Selecciona un bloque para editar</p>
@@ -523,7 +586,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
                   </svg>
                 </button>
-                <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">{selectedBlock.title}</h3>
+                <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">
+                  Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
+                </h3>
                 {renderSaveStatus()}
                 {onContinue && (
                   <Button variant="primary" size="xs" onClick={onContinue} className="shrink-0">
@@ -537,10 +602,22 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             {!isEditorFullscreen && (
               <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
                 <div className="flex items-center gap-3 min-w-0">
-                  <h3 className="text-sm font-bold truncate uppercase tracking-widest">{selectedBlock.title}</h3>
+                  <h3 className="text-sm font-bold truncate uppercase tracking-widest">
+                    Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
+                  </h3>
                   {renderSaveStatus()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {!showCommentPanel && selectedBlock?.title && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setShowCommentPanel(true)}
+                      className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                    >
+                      Comentarios ({getCommentsForBlock(activeSingleId, reviewComments).length})
+                    </Button>
+                  )}
                   <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
                   <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
                   <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
@@ -617,20 +694,32 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         </p>
                       </div>
                     ) : (
-                      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                        <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                          <BlockNoteEditorPanel
-                            key={`content-${activeSingleId ?? 'none'}`}
-                            initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                            onChange={json => {
-                              setFormContent(JSON.stringify(json));
-                              setTabIsDirty(true);
-                            }}
-                            editable={true}
-                            isDark={effectiveIsDark}
-                            onFullscreenChange={handleEditorFullscreenChange}
-                          />
-                        </Suspense>
+                      <div className="flex-1 min-h-0 flex flex-col gap-2">
+                        {formUiState === 'modifiable' && !formContent && (
+                          <p className="text-xs font-bold text-warning-dark bg-warning-light/40 border border-warning/30 rounded-lg px-3 py-2 shrink-0">
+                            Los bloques modificables deben tener contenido predeterminado (obligatorio).
+                          </p>
+                        )}
+                        {formUiState === 'editable' && !formContent && (
+                          <p className="text-xs font-medium text-info-dark bg-info/5 border border-info/20 rounded-lg px-3 py-2 shrink-0">
+                            Se recomienda añadir contenido predeterminado para los bloques editables.
+                          </p>
+                        )}
+                        <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                          <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                            <BlockNoteEditorPanel
+                              key={`content-${activeSingleId ?? 'none'}`}
+                              initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                              onChange={json => {
+                                setFormContent(JSON.stringify(json));
+                                setTabIsDirty(true);
+                              }}
+                              editable={true}
+                              isDark={effectiveIsDark}
+                              onFullscreenChange={handleEditorFullscreenChange}
+                            />
+                          </Suspense>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -668,17 +757,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         )}
       </div>
 
-      {/* Right: comment panel — creator-edit mode, only when block has unresolved comments */}
-      {activeBlockHasComments && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && (
-        <div className="hidden md:block md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border overflow-y-auto custom-scrollbar p-4">
+      {/* Right: comment panel — creator-edit mode, available even if no comments */}
+      {showCommentPanel && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && formName.trim() && (
+        <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
           <BlockCommentsCard
             mode="creator-edit"
-            blockSortOrder={selectedBlock.sort_order ?? '?'}
+            blockSortOrder={selectedBlockIndex >= 0 ? selectedBlockIndex + 1 : '?'}
             blockComments={blockComments}
             allComments={reviewComments}
-            onReply={handleReply}
-            onResolve={isOwner && onResolveComment ? onResolveComment : undefined}
-            onClose={() => {}}
+            onSendMessage={handleSendMessage}
+            onClose={() => setShowCommentPanel(false)}
+            canAddComments={template.status !== 'published'}
           />
         </div>
       )}

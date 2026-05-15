@@ -16,7 +16,6 @@ const NuevaProgramacionSelectorPage = lazy(() => import('./pages/NuevaProgramaci
 const DocumentEditorPage = lazy(() => import('./pages/DocumentEditorPage').then(m => ({ default: m.DocumentEditorPage })));
 const DocumentValidationPage = lazy(() => import('./pages/DocumentValidationPage').then(m => ({ default: m.DocumentValidationPage })));
 const DocumentPreviewPage = lazy(() => import('./pages/DocumentPreviewPage').then(m => ({ default: m.DocumentPreviewPage })));
-const TemplatesPage = lazy(() => import('./pages/TemplatesPage').then(m => ({ default: m.TemplatesPage })));
 const TemplateNewPage = lazy(() => import('./pages/TemplateNewPage').then(m => ({ default: m.TemplateNewPage })));
 const TemplateEditPage = lazy(() => import('./pages/TemplateEditPage').then(m => ({ default: m.TemplateEditPage })));
 const TemplateReviewPage = lazy(() => import('./pages/TemplateReviewPage').then(m => ({ default: m.TemplateReviewPage })));
@@ -38,7 +37,7 @@ function AppRoutes() {
         <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
         <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
         <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
-        <Route path="/templates" element={<TemplatesPage />} />
+        <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
         <Route path="/templates/new" element={<TemplateNewPage />} />
         <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
         <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
@@ -101,7 +100,7 @@ function App() {
   useEffect(() => {
     if (isLoading) return;
     const wasAuthenticated = wasAuthenticatedRef.current;
-    if (!wasAuthenticated && isAuthenticated && location.pathname !== '/dashboard') {
+    if (!wasAuthenticated && isAuthenticated && location.pathname === '/') {
       navigate('/dashboard', { replace: true });
     }
     wasAuthenticatedRef.current = isAuthenticated;

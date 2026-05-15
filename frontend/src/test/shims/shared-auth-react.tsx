@@ -107,3 +107,15 @@ export function updateCachedUserProfileLocale(_locale: string): void {
 export function clearCachedUserProfile(): void {
   /* no-op en tests */
 }
+
+// ── Session overrides ───────────────────────────────────────────────────────
+
+export type SessionOverrides = Record<string, unknown>;
+
+export function readOverrides(): SessionOverrides | null {
+  return null;
+}
+
+export function installOverridesListeners(): () => void {
+  return () => {};
+}
