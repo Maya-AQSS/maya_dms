@@ -991,6 +991,26 @@ class DocumentService implements DocumentServiceInterface
                 return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
 
+            $document->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+            $blocksSnapshot = $document->blocks->map(fn ($b) => [
+                'document_block_id' => (string) $b->id,
+                'template_block_id' => (string) $b->template_block_id,
+                'sort_order'        => (int) $b->sort_order,
+                'content'           => $b->content,
+            ])->values()->all();
+
+            $headVersion = $document->headVersion;
+            if ($headVersion !== null) {
+                $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
+                $cycles[] = [
+                    'cycle'        => count($cycles) + 1,
+                    'submitted_at' => now()->toIso8601String(),
+                    'submitted_by' => $actorId,
+                    'blocks'       => $blocksSnapshot,
+                ];
+                $this->entityVersionRepository->update($headVersion, ['change_set' => $cycles]);
+            }
+
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 

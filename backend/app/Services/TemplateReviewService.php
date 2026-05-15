@@ -43,6 +43,28 @@ class TemplateReviewService
             return $this->templatePublishingService->publishWithSnapshot($templateId, 'Publicación automática', $actorId);
         }
 
+        $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+        $blocksSnapshot = $template->blocks->map(fn ($b) => [
+            'id'              => (string) $b->id,
+            'sort_order'      => (int) $b->sort_order,
+            'title'           => $b->title,
+            'description'     => $b->description,
+            'default_content' => $b->default_content,
+            'block_state'     => $b->block_state,
+        ])->values()->all();
+
+        $headVersion = $template->headVersion;
+        if ($headVersion !== null) {
+            $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
+            $cycles[] = [
+                'cycle'        => count($cycles) + 1,
+                'submitted_at' => now()->toIso8601String(),
+                'submitted_by' => $actorId,
+                'blocks'       => $blocksSnapshot,
+            ];
+            $headVersion->update(['change_set' => $cycles]);
+        }
+
         $template->reviewers()->update(['status' => 'pending']);
 
         return $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);

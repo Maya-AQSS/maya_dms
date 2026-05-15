@@ -1,3 +1,19 @@
+export type ReviewCycleBlock = {
+  id: string;
+  sort_order: number;
+  title: string | null;
+  description: unknown;
+  default_content: unknown;
+  block_state: string;
+};
+
+export type ReviewCycleSnapshot = {
+  cycle: number;
+  submitted_at: string;
+  submitted_by: string;
+  blocks: ReviewCycleBlock[];
+};
+
 /** Valores de visibility_level en la API (alineados con el backend). */
 export type TemplateVisibilityLevel =
   | 'global'
@@ -57,6 +73,7 @@ export type Template = {
   /** Alineado con `TemplatePolicy::clone` en el servidor. */
   can_clone?: boolean;
   working_version_id?: string | null;
+  review_history?: ReviewCycleSnapshot[] | null;
   created_at?: string;
   updated_at?: string;
   latest_published_name?: string | null;

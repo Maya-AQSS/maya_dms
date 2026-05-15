@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type RefObject } from 'react';
+import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -105,6 +105,23 @@ export function TemplateReviewView({ template }: Props) {
 
   const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
+
+  const changedBlockIds = useMemo((): Set<string> => {
+    const history = template.review_history;
+    if (!Array.isArray(history) || history.length < 2) return new Set();
+    const prev = history[history.length - 2];
+    const curr = history[history.length - 1];
+    if (!prev || !curr) return new Set();
+    const prevMap = new Map(prev.blocks.map((b) => [b.id, JSON.stringify(b.default_content)]));
+    const changed = new Set<string>();
+    for (const block of curr.blocks) {
+      const prevContent = prevMap.get(block.id);
+      if (prevContent === undefined || prevContent !== JSON.stringify(block.default_content)) {
+        changed.add(block.id);
+      }
+    }
+    return changed;
+  }, [template.review_history]);
 
   const goBack = () => {
     if (window.history.length > 1) { navigate(-1); return; }
@@ -407,6 +424,14 @@ export function TemplateReviewView({ template }: Props) {
                           <h3 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
                             {(block.title ? String(block.title) : 'Bloque sin título') as any}
                           </h3>
+                          {changedBlockIds.has(block.id) && (
+                            <span
+                              className="shrink-0 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-warning/10 text-warning-dark dark:text-warning-light border border-warning/20"
+                              title="Este bloque fue modificado desde la última sesión de revisión"
+                            >
+                              Modificado
+                            </span>
+                          )}
 
                           <div className="flex items-center gap-2">
                             {/* Info button — opens description page */}

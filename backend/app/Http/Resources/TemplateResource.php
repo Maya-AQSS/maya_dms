@@ -63,6 +63,7 @@ class TemplateResource extends JsonResource
             'latest_published_version_number' => $this->resource->getAttribute('latest_published_version_number'),
             'can_clone' => (bool) ($this->resource->getAttribute('can_clone') ?? false),
             'working_version_id' => $this->head_entity_version_id,
+            'review_history' => $this->whenLoaded('headVersion', fn () => $this->headVersion?->change_set),
             'latest_published_name' => $this->resource->getAttribute('latest_published_name'),
             'latest_published_at' => $this->formatOptionalIso($this->resource->getAttribute('latest_published_at')),
         ];
