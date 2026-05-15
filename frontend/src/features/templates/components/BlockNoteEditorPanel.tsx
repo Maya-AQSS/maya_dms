@@ -85,7 +85,12 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   const editor = editorRef.current as any;
 
   useEffect(() => {
-    const dom = (editor as any)._tiptapEditor?.view?.dom as HTMLElement | undefined;
+    let dom: HTMLElement | undefined;
+    try {
+      dom = (editor as any)._tiptapEditor?.view?.dom as HTMLElement | undefined;
+    } catch {
+      return;
+    }
     if (!dom) return;
 
     const handlePaste = (e: ClipboardEvent) => {

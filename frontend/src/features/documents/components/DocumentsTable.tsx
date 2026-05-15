@@ -135,6 +135,14 @@ export function DocumentsTable({ processId }: Props = {}) {
           <span className="flex items-center gap-2 min-w-0">
             {favoriteDocumentIds.has(doc.id) && <FavoriteInlineMark />}
             <span className="font-medium truncate">{doc.title}</span>
+            {doc.has_review_comments && doc.status === 'draft' && profile && (doc.owner_id === profile.id || doc.created_by === profile.id) && (
+              <span
+                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                title="Este documento fue rechazado en revisión."
+              >
+                ⚠ Revisión
+              </span>
+            )}
           </span>
         ),
         sortable: true,
@@ -196,7 +204,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         ),
       },
     ],
-    [favoriteDocumentIds, hierarchy],
+    [favoriteDocumentIds, hierarchy, profile],
   );
 
   const [filters, setFilters] = useState<Filters>({

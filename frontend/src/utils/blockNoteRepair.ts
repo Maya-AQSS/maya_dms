@@ -35,13 +35,13 @@ export const repairBlockNoteBlocks = (blocks: unknown): any[] => {
               if (typeof c === 'string') return { type: 'text', text: c, styles: {} };
               if (c && typeof c === 'object' && !Array.isArray(c)) {
                 return {
+                  ...c,
                   type: c.type || 'text',
                   text: typeof c.text === 'string' ? c.text : '',
                   // PHP round-trip converts {} to [] for empty objects; normalise back to {}.
                   styles: (c.styles && typeof c.styles === 'object' && !Array.isArray(c.styles))
                     ? { ...c.styles }
                     : {},
-                  ...c,
                 };
               }
               return { type: 'text', text: '', styles: {} };

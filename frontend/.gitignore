@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 .vite
+.vite-cache
 *.local
 package-lock.json
 

@@ -46,6 +46,7 @@ function resolveExportCondition(entry: unknown): string | undefined {
 }
 
 export default defineConfig({
+  cacheDir: '.vite-cache',
   plugins: [
     react(),
     tailwindcss(),
@@ -103,10 +104,20 @@ export default defineConfig({
     },
     watch: {
       usePolling: true,
+      ignored: ['**/node_modules/.vite/**', '**/.vite-cache/**', '**/.git/**'],
     }
   },
   optimizeDeps: {
-    include: ['keycloak-js', 'axios', '@blocknote/core', '@blocknote/react', '@blocknote/ariakit', 'html-parse-stringify', 'void-elements', 'use-sync-external-store', 'use-sync-external-store/shim'],
+    include: [
+      'keycloak-js', 'axios',
+      '@blocknote/core', '@blocknote/react', '@blocknote/ariakit',
+      'html-parse-stringify', 'void-elements',
+      'use-sync-external-store', 'use-sync-external-store/shim',
+      '@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities',
+      '@tanstack/react-query',
+      'react-i18next', 'i18next', 'i18next-browser-languagedetector',
+      'dompurify', 'react-router-dom', 'react-dom', 'react-dom/client',
+    ],
     exclude: ['@maya/shared-auth-react', '@maya/shared-i18n-react', '@maya/shared-layout-react', '@maya/shared-sidebar-react'],
   },
   resolve: {

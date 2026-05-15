@@ -1,7 +1,21 @@
 import type { BlockState } from './blocks';
 import type { TemplateVisibilityLevel } from './templates';
 
-export type DocumentStatus = 'draft' | 'in_review' | 'published' | 'rejected';
+export type DocumentReviewCycleBlock = {
+  document_block_id: string;
+  template_block_id: string;
+  sort_order: number;
+  content: unknown;
+};
+
+export type DocumentReviewCycleSnapshot = {
+  cycle: number;
+  submitted_at: string;
+  submitted_by: string;
+  blocks: DocumentReviewCycleBlock[];
+};
+
+export type DocumentStatus = 'draft' | 'in_review' | 'published';
 
 export type Document = {
   id: string;
@@ -35,6 +49,7 @@ export type Document = {
   /** Modo de revisión resuelto desde el snapshot anclado; coincide con lo que aplica el backend al aprobar/rechazar. */
   review_mode?: 'sequential' | 'parallel';
   working_version_id?: string | null;
+  review_history?: DocumentReviewCycleSnapshot[] | null;
   latest_published_version_id?: string | null;
   latest_published_version_number?: number | null;
   latest_published_title?: string | null;

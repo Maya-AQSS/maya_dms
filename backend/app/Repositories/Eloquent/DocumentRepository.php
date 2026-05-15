@@ -29,7 +29,11 @@ class DocumentRepository implements DocumentRepositoryInterface
      */
     public function findOrFail(string $id): Document
     {
-        return Document::query()->with(['templateVersion', 'headVersion'])->whereKey($id)->firstOrFail();
+        return Document::query()
+            ->with(['templateVersion', 'headVersion'])
+            ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
+            ->whereKey($id)
+            ->firstOrFail();
     }
 
     public function findOrFailForRefreshAfterMutation(string $id): Document
@@ -37,6 +41,7 @@ class DocumentRepository implements DocumentRepositoryInterface
         return Document::query()
             ->withoutGlobalScope('user_access')
             ->with(['templateVersion', 'headVersion'])
+            ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
             ->whereKey($id)
             ->firstOrFail();
     }
@@ -319,6 +324,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                     'owner_user.id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id')
                 );
             })
+            ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
             ->with(['template', 'templateVersion'])
             ->orderByDesc('documents.created_at');
 

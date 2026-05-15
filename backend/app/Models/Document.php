@@ -169,8 +169,13 @@ class Document extends Model
         }
 
         $baseQuery = $builder->getQuery();
-        if ($baseQuery->columns === null) {
-            $builder->select($builder->getModel()->getTable().'.*');
+        $existingColumns = $baseQuery->columns ?? [];
+        $hasWildcard = collect($existingColumns)->contains(
+            fn ($col) => !$col instanceof \Illuminate\Database\Query\Expression
+                && ($col === $builder->getModel()->getTable().'.*' || $col === '*'),
+        );
+        if (!$hasWildcard) {
+            $builder->addSelect($builder->getModel()->getTable().'.*');
         }
 
         $builder->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id');

@@ -93,6 +93,23 @@ export function TemplateReviewView({ template }: Props) {
   const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
 
+  const changedBlockIds = useMemo((): Set<string> => {
+    const history = template.review_history;
+    if (!Array.isArray(history) || history.length < 2) return new Set();
+    const prev = history[history.length - 2];
+    const curr = history[history.length - 1];
+    if (!prev || !curr) return new Set();
+    const prevMap = new Map(prev.blocks.map((b) => [b.id, JSON.stringify(b.default_content)]));
+    const changed = new Set<string>();
+    for (const block of curr.blocks) {
+      const prevContent = prevMap.get(block.id);
+      if (prevContent === undefined || prevContent !== JSON.stringify(block.default_content)) {
+        changed.add(block.id);
+      }
+    }
+    return changed;
+  }, [template.review_history]);
+
   const goBack = () => {
     if (window.history.length > 1) { navigate(-1); return; }
     navigate(backTo);
@@ -107,7 +124,7 @@ export function TemplateReviewView({ template }: Props) {
     if (!template.latest_published_version_id) return;
     void fetchTemplateVersion(template.latest_published_version_id)
       .then(setPublishedVersion)
-      .catch(() => {});
+      .catch(() => { });
   }, [hasPreviousSubmission, template.latest_published_version_id]);
 
   const diffBlocks = useMemo((): DocumentDisplayBlock[] => {
@@ -171,10 +188,10 @@ export function TemplateReviewView({ template }: Props) {
       const parent = parentId ? comments.find(c => c.id === parentId) : null;
       const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
         method: 'POST',
-        body: { 
-          body, 
-          parent_id: parentId, 
-          blockable_id: activeView?.blockId || parent?.blockable_id || null 
+        body: {
+          body,
+          parent_id: parentId,
+          blockable_id: activeView?.blockId || parent?.blockable_id || null
         },
       });
       setComments(prev => [...prev, res.data]);
@@ -258,7 +275,7 @@ export function TemplateReviewView({ template }: Props) {
   }
   const getCommentsForBlock = (bid: string | null, allComments: BlockComment[]) => {
     if (!bid) return [];
-    
+
     // Recursive function to get all replies to a comment
     const getReplies = (parentId: string): BlockComment[] => {
       const replies = allComments.filter(c => c.parent_id === parentId);
@@ -267,7 +284,7 @@ export function TemplateReviewView({ template }: Props) {
 
     // Get all root comments for this block
     const roots = allComments.filter(c => c.blockable_id === bid && !c.parent_id);
-    
+
     // Combine roots and all their recursive replies
     const allForBlock = [...roots, ...roots.flatMap(r => getReplies(r.id))];
 
