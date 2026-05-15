@@ -57,7 +57,6 @@ use App\Services\Contracts\DashboardServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\ProcessServiceInterface;
-use App\Services\Contracts\HealthCheckServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
@@ -70,7 +69,6 @@ use App\Services\DocumentService;
 use App\Services\EntityVersionLifecycleService;
 use App\Services\ProcessService;
 use App\Services\DashboardService;
-use App\Services\HealthCheckService;
 use App\Services\TeamReadService;
 use App\Services\SnapshotService;
 use App\Services\TemplateBlockService;
@@ -116,7 +114,6 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DashboardServiceInterface::class, DashboardService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(TemplateBlockServiceInterface::class, TemplateBlockService::class);
-        $this->app->bind(HealthCheckServiceInterface::class, HealthCheckService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
         // /me + /me/locale viven en maya/shared-profile-laravel. El paquete
         // bindea por defecto JwtPassthroughResolver; aquí lo sobrescribimos

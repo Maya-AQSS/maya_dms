@@ -1,10 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, ErrorBoundary, PageTitle } from '@maya/shared-ui-react';
+import { createDataHook } from '@maya/shared-auth-react';
 import { TemplatesTable } from '../features/templates/components/TemplatesTable';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
 import { fetchProcesses } from '../api/processes';
 import type { Process } from '../types/processes';
+
+const useProcessesQuery = createDataHook<void, { data: Process[] }>({
+  queryKey: () => ['processes'],
+  fetcher: () => fetchProcesses(),
+  defaultOptions: { staleTime: 60_000 },
+});
 
 type Tab = 'templates' | 'documents';
 
@@ -22,34 +29,12 @@ export function ProcesosPage() {
   const { processId } = useParams<{ processId?: string }>();
   const locationState = location.state as { tab?: Tab } | null;
   const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
-  const [process, setProcess] = useState<Process | null>(null);
-  const [processLoading, setProcessLoading] = useState(false);
 
   // Resuelve el proceso activo (para mostrar nombre en el header).
-  useEffect(() => {
-    if (!processId) {
-      setProcessLoading(false);
-      setProcess(null);
-      return;
-    }
-    let cancelled = false;
-    setProcessLoading(true);
-    fetchProcesses()
-      .then((res) => {
-        if (cancelled) return;
-        const found = res.data.find((p) => p.id === processId) ?? null;
-        setProcess(found);
-      })
-      .catch(() => {
-        if (!cancelled) setProcess(null);
-      })
-      .finally(() => {
-        if (!cancelled) setProcessLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [processId]);
+  const processesQuery = useProcessesQuery(undefined, { enabled: !!processId });
+  const process: Process | null =
+    processesQuery.data?.data.find((p) => p.id === processId) ?? null;
+  const processLoading = !!processId && processesQuery.isLoading;
 
   const navState = processId ? { processId } : undefined;
 

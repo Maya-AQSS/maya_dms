@@ -2,6 +2,17 @@ import { useMemo } from 'react';
 import { createDataHook } from '@maya/shared-auth-react';
 import { fetchFavorites } from '../api/favorites';
 
+/**
+ * Favoritos a nivel ENTIDAD (templates + documents) dentro de DMS.
+ * Coexiste intencionalmente con `useSharedFavorites` (paquete shared
+ * `@maya/shared-sidebar-react`), que gestiona favoritos a nivel APLICACIÓN
+ * en el sidebar del ecosistema. No son duplicados: backends distintos
+ * (este → `dms-api/api/v1/favorites`; shared → `dashboard-api/api/v1/dashboard/user/{sub}/favorites`),
+ * dominios distintos y rutas de mutación distintas.
+ *
+ * Decisión registrada en `maya_dms/SPIKE_useSharedFavorites.md` (2026-05-14).
+ */
+
 interface FavoritesIds {
   template_ids: string[];
   document_ids: string[];

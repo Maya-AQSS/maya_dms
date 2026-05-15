@@ -2,46 +2,59 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
-use App\Services\Contracts\HealthCheckServiceInterface;
-use Illuminate\Http\JsonResponse;
+use Maya\Http\Controllers\AbstractHealthCheckController;
+use Maya\Http\Health\DatabaseHealthCheck;
+use Maya\Http\Health\FdwHealthCheck;
+use Maya\Http\Health\HealthCheck;
+use Maya\Http\Health\RedisHealthCheck;
+use Maya\Http\Health\TcpHealthCheck;
 
-class HealthCheckController extends Controller
+/**
+ * Health endpoints de maya_dms.
+ *
+ *   - GET /health        — checks completos (todos los servicios externos)
+ *   - GET /health/live   — liveness (siempre 200)
+ *   - GET /health/ready  — readiness (BD + Redis)
+ *
+ * Extiende {@see AbstractHealthCheckController} del paquete shared
+ * `maya-shared-http-laravel`. Cualquier cambio al runner de checks vive
+ * allí; aquí solo se declara la composición específica de DMS.
+ */
+class HealthCheckController extends AbstractHealthCheckController
 {
-    public function __construct(
-        private readonly HealthCheckServiceInterface $healthCheckService,
-    ) {}
-
     /**
-     * Estado completo de todos los servicios dependientes.
-     * HTTP 200 si todos ok, HTTP 503 si alguno falla.
+     * @return array<int, HealthCheck>
      */
-    public function index(): JsonResponse
+    protected function checks(): array
     {
-        $result = $this->healthCheckService->checkAll();
-        $status = $result['status'] === 'ok' ? 200 : 503;
-
-        return response()->json($result, $status);
+        return [
+            new DatabaseHealthCheck(),
+            new RedisHealthCheck(),
+            new FdwHealthCheck(table: 'users_fdw'),
+            new TcpHealthCheck(
+                checkName: 'rabbitmq',
+                host: (string) config('services.rabbitmq.host'),
+                port: (int) config('services.rabbitmq.port'),
+            ),
+            new TcpHealthCheck(
+                checkName: 'websocket',
+                host: (string) config('services.health.websocket_host'),
+                port: (int) config('services.health.websocket_port'),
+            ),
+        ];
     }
 
     /**
-     * Liveness probe: confirma que el proceso Laravel está vivo.
-     * No verifica dependencias externas. Siempre HTTP 200.
+     * Readiness: solo BD y Redis. RabbitMQ y WebSocket pueden estar caídos
+     * sin que el pod deje de servir tráfico HTTP sincrónico.
+     *
+     * @return array<int, HealthCheck>
      */
-    public function live(): JsonResponse
+    protected function readinessChecks(): array
     {
-        return response()->json(['status' => 'ok']);
-    }
-
-    /**
-     * Readiness probe: verifica dependencias críticas (BD y Redis).
-     * HTTP 200 cuando está listo, HTTP 503 mientras no lo esté.
-     */
-    public function ready(): JsonResponse
-    {
-        $result = $this->healthCheckService->checkReadiness();
-        $status = $result['status'] === 'ok' ? 200 : 503;
-
-        return response()->json($result, $status);
+        return [
+            new DatabaseHealthCheck(),
+            new RedisHealthCheck(),
+        ];
     }
 }

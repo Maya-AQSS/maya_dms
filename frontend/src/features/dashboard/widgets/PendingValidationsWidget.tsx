@@ -1,38 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { createDataHook } from '@maya/shared-auth-react';
 import { fetchDashboard } from '../../../api/dashboard';
+import type { DashboardPayload } from '../../../api/dashboard';
+
+const useDashboardQuery = createDataHook<void, DashboardPayload>({
+  queryKey: () => ['dashboard'],
+  fetcher: () => fetchDashboard(),
+  defaultOptions: { staleTime: 30_000 },
+});
 
 /** Widget StatCard: nº de documentos pendientes de validación del usuario. */
 export default function PendingValidationsWidget() {
   const [activeFilter, setActiveFilter] = useState<'all' | 'template' | 'document'>('all');
-  const [count, setCount] = useState<number | null>(null);
-  const [documentCount, setDocumentCount] = useState<number>(0);
-  const [templateCount, setTemplateCount] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { data, isLoading, isError } = useDashboardQuery();
 
-  useEffect(() => {
-    let mounted = true;
-    fetchDashboard()
-      .then((data) => {
-        if (!mounted) return;
-        const pendingDocuments = data.document_review_inbox?.length ?? 0;
-        const pendingTemplates = data.template_review_inbox?.length ?? 0;
-        setDocumentCount(pendingDocuments);
-        setTemplateCount(pendingTemplates);
-        setCount(pendingDocuments + pendingTemplates);
-      })
-      .catch(() => {
-        if (!mounted) return;
-        setError(true);
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const templateCount = data?.template_review_inbox?.length ?? 0;
+  const documentCount = data?.document_review_inbox?.length ?? 0;
+  const count = data ? templateCount + documentCount : null;
+  const loading = isLoading;
+  const error = isError;
 
   const emitFilter = (filter: 'all' | 'template' | 'document') => {
     setActiveFilter(filter);

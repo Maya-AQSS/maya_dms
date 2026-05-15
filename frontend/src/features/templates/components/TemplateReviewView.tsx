@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef, useMemo, type RefObject } from 'react';
+import { useState, useRef, useMemo, type RefObject } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
@@ -7,11 +8,11 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
+import { createDataHook, useAuth } from '@maya/shared-auth-react';
 import { approveTemplateReview, rejectTemplateReview, fetchTemplateVersion } from '../../../api/templates';
 import type { TemplateVersionDetail } from '../../../api/templates';
 import { fetchProcesses } from '../../../api/processes';
 import { apiFetchJson } from '../../../api/http';
-import { useAuth } from '@maya/shared-auth-react';
 import { useUserProfile } from '../../user-profile';
 import type { Process } from '../../../types/processes';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
@@ -19,6 +20,31 @@ import type { BlockComment, CommentMode } from './BlockCommentsCard';
 import { computeChangedBlocks } from '../../documents/components/DocumentDiffModal';
 import { DocumentDiffPanel } from '../../documents/components/DocumentDiffPanel';
 import type { DocumentDisplayBlock } from '../../../types/documents';
+
+interface TemplateCommentsResponse {
+  data: BlockComment[];
+  meta?: { commenting_open?: boolean };
+}
+
+const templateCommentsKey = (templateId: string) => ['templates', templateId, 'comments'] as const;
+
+const useTemplateCommentsQuery = createDataHook<string, TemplateCommentsResponse>({
+  queryKey: (templateId) => templateCommentsKey(templateId),
+  fetcher: (templateId) => apiFetchJson<TemplateCommentsResponse>(`templates/${templateId}/comments`),
+  defaultOptions: { staleTime: 0 },
+});
+
+const useTemplateVersionQuery = createDataHook<string, TemplateVersionDetail>({
+  queryKey: (versionId) => ['template-version', versionId],
+  fetcher: (versionId) => fetchTemplateVersion(versionId),
+  defaultOptions: { staleTime: 60_000 },
+});
+
+const useProcessesQuery = createDataHook<void, { data: Process[] }>({
+  queryKey: () => ['processes'],
+  fetcher: () => fetchProcesses(),
+  defaultOptions: { staleTime: 60_000 },
+});
 
 type Props = { template: Template };
 
@@ -53,20 +79,17 @@ export function TemplateReviewView({ template }: Props) {
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id);
+  const queryClient = useQueryClient();
 
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
-  const [publishedVersion, setPublishedVersion] = useState<TemplateVersionDetail | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [comments, setComments] = useState<BlockComment[]>([]);
-  const [commentingOpen, setCommentingOpen] = useState(true);
   const [commentLoading, setCommentLoading] = useState(false);
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showNoCommentsWarning, setShowNoCommentsWarning] = useState(false);
-  const [processLabel, setProcessLabel] = useState<string | null>(null);
 
   const headerRef = useRef<HTMLDivElement>(null);       // page header (for height only)
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -115,17 +138,19 @@ export function TemplateReviewView({ template }: Props) {
     navigate(backTo);
   };
 
-  useEffect(() => { void loadComments(); }, [template.id]);
+  // Comentarios del template (TanStack Query).
+  const commentsQuery = useTemplateCommentsQuery(template.id);
+  const comments = commentsQuery.data?.data ?? [];
+  const commentingOpen = commentsQuery.data?.meta?.commenting_open !== false;
 
   const hasPreviousSubmission = Array.isArray(template.blocks_at_previous_submission) && template.blocks_at_previous_submission.length > 0;
 
-  useEffect(() => {
-    if (hasPreviousSubmission) return;
-    if (!template.latest_published_version_id) return;
-    void fetchTemplateVersion(template.latest_published_version_id)
-      .then(setPublishedVersion)
-      .catch(() => { });
-  }, [hasPreviousSubmission, template.latest_published_version_id]);
+  // Versión publicada (solo si no hay snapshot previo embebido).
+  const publishedVersionQuery = useTemplateVersionQuery(
+    template.latest_published_version_id ?? '',
+    { enabled: !hasPreviousSubmission && !!template.latest_published_version_id },
+  );
+  const publishedVersion = publishedVersionQuery.data ?? null;
 
   const diffBlocks = useMemo((): DocumentDisplayBlock[] => {
     const baselineBlocks = hasPreviousSubmission
@@ -155,32 +180,15 @@ export function TemplateReviewView({ template }: Props) {
     [changedTemplateDiffBlocks],
   );
 
-  useEffect(() => {
-    if (!template.process_id) { setProcessLabel(null); return; }
-    let cancelled = false;
-    void fetchProcesses()
-      .then((res) => {
-        if (cancelled) return;
-        const process = res.data.find((p: Process) => p.id === template.process_id) ?? null;
-        setProcessLabel(process ? `Proceso: ${process.code} — ${process.name}` : null);
-      })
-      .catch(() => { if (!cancelled) setProcessLabel(null); });
-    return () => { cancelled = true; };
-  }, [template.process_id]);
+  // Etiqueta del proceso (TanStack Query, caché compartida con ProcesosPage).
+  const processesQuery = useProcessesQuery(undefined, { enabled: !!template.process_id });
+  const processLabel = useMemo<string | null>(() => {
+    if (!template.process_id) return null;
+    const process = processesQuery.data?.data.find((p) => p.id === template.process_id) ?? null;
+    return process ? `Proceso: ${process.code} — ${process.name}` : null;
+  }, [template.process_id, processesQuery.data]);
 
   // We removed the connector line and absolute padding top because we are using a sticky sidebar now.
-
-  const loadComments = async () => {
-    try {
-      const res = await apiFetchJson<{ data: BlockComment[]; meta?: { commenting_open?: boolean } }>(
-        `templates/${template.id}/comments`,
-      );
-      setComments(res.data);
-      if (res.meta?.commenting_open === false) setCommentingOpen(false);
-    } catch (e) {
-      console.error('Error loading comments', e);
-    }
-  };
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
     setCommentLoading(true);
@@ -194,8 +202,15 @@ export function TemplateReviewView({ template }: Props) {
           blockable_id: activeView?.blockId || parent?.blockable_id || null
         },
       });
-      setComments(prev => [...prev, res.data]);
-    } catch (e) {
+      // Append optimista al cache de la query (sin refetch completo).
+      queryClient.setQueryData<TemplateCommentsResponse>(
+        templateCommentsKey(template.id),
+        (current) => {
+          if (!current) return { data: [res.data] };
+          return { ...current, data: [...current.data, res.data] };
+        },
+      );
+    } catch {
       setError('No se pudo guardar el comentario.');
     } finally {
       setCommentLoading(false);
