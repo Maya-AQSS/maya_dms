@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\DTOs\Comments\CommentDto;
+use App\DTOs\Pagination\PaginatedDto;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -9,7 +11,6 @@ use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Services\Contracts\CommentServiceInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
 
 class CommentService implements CommentServiceInterface
@@ -18,22 +19,37 @@ class CommentService implements CommentServiceInterface
         private readonly CommentRepositoryInterface $commentRepository,
     ) {}
 
-    /**
-     * Localiza un comentario por su ID o lanza ModelNotFoundException.
-     */
-    public function findOrFail(string $id): Comment
+    public function findOrFail(string $id): CommentDto
+    {
+        return CommentDto::fromModel($this->commentRepository->findOrFail($id));
+    }
+
+    public function findModelOrFail(string $id): Comment
     {
         return $this->commentRepository->findOrFail($id);
     }
 
+    /**
+     * @return PaginatedDto<CommentDto>
+     */
     public function listForResource(
         string $commentableType,
         string $commentableId,
         int $commentableVersion,
         int $perPage,
-    ): LengthAwarePaginator
+    ): PaginatedDto
     {
-        return $this->commentRepository->listForResource($commentableType, $commentableId, $commentableVersion, $perPage);
+        $page = $this->commentRepository->listForResource(
+            $commentableType,
+            $commentableId,
+            $commentableVersion,
+            $perPage,
+        );
+
+        return PaginatedDto::fromPaginator(
+            $page,
+            static fn (Comment $comment): CommentDto => CommentDto::fromModel($comment),
+        );
     }
 
     public function createForResource(
@@ -45,7 +61,7 @@ class CommentService implements CommentServiceInterface
         ?string $parentId,
         string $authorId,
         string $body,
-    ): Comment
+    ): CommentDto
     {
         if (! in_array($commentableType, Comment::ALLOWED_COMMENTABLE_TYPES, true)) {
             throw ValidationException::withMessages([
@@ -70,7 +86,7 @@ class CommentService implements CommentServiceInterface
 
         $this->assertBlockBelongsToResource($commentableType, $commentableId, $blockableType, $blockableId);
 
-        return $this->commentRepository->create([
+        $comment = $this->commentRepository->create([
             'commentable_type' => $commentableType,
             'commentable_id' => $commentableId,
             'commentable_version' => $commentableVersion,
@@ -80,6 +96,10 @@ class CommentService implements CommentServiceInterface
             'author_id' => $authorId,
             'body' => $body,
         ]);
+
+        $comment->loadMissing('author');
+
+        return CommentDto::fromModel($comment);
     }
 
     public function delete(Comment $comment): void

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Documents\DocumentDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\CloneDocumentRequest;
@@ -51,7 +52,9 @@ class DocumentController extends Controller
             $viewerId,
         );
 
-        return DocumentResource::collection($documents);
+        return DocumentResource::collection(
+            $documents->map(static fn (Document $doc) => DocumentDto::fromModel($doc)),
+        );
     }
 
     /**
@@ -67,7 +70,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($document))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ], 201);
@@ -78,7 +81,7 @@ class DocumentController extends Controller
      */
     public function clone(CloneDocumentRequest $request, string $document): JsonResponse
     {
-        $source = $this->documentService->findOrFail($document);
+        $source = $this->documentService->findModelOrFail($document);
         $this->assertOptionalProcessContextMatches((string) $source->process_id);
 
         $userId = (string) $request->user()->getAuthIdentifier();
@@ -89,7 +92,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($copy))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($copy)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ], 201);
@@ -143,7 +146,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($document))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ], 201);
@@ -156,7 +159,7 @@ class DocumentController extends Controller
      */
     public function templateVersionStatus(Request $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('view', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -171,7 +174,7 @@ class DocumentController extends Controller
     public function show(Request $request, string $id): JsonResponse
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('view', $document);
 
         $document->setAttribute(
@@ -190,7 +193,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($document))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ]);
@@ -201,7 +204,7 @@ class DocumentController extends Controller
      */
     public function update(UpdateDocumentRequest $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('update', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -212,7 +215,7 @@ class DocumentController extends Controller
             (string) $request->user()->getAuthIdentifier(),
         );
 
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 
     /**
@@ -220,7 +223,7 @@ class DocumentController extends Controller
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('delete', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -235,7 +238,7 @@ class DocumentController extends Controller
      */
     public function submit(Request $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('submit', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -243,7 +246,7 @@ class DocumentController extends Controller
         $updated = $this->documentService->submitToReview($document->id, $actorId);
         $this->attachCanCloneMeta($updated, $request);
 
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 
     /**
@@ -251,7 +254,7 @@ class DocumentController extends Controller
      */
     public function publish(PublishDocumentRequest $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('publish', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -263,7 +266,7 @@ class DocumentController extends Controller
         );
         $this->attachCanCloneMeta($updated, $request);
 
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 
     /**
@@ -271,7 +274,7 @@ class DocumentController extends Controller
      */
     public function startNewVersion(StartNewDocumentRevisionRequest $request, string $document): JsonResponse
     {
-        $model = $this->documentService->findOrFail($document);
+        $model = $this->documentService->findModelOrFail($document);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $userId = (string) $request->user()->getAuthIdentifier();
@@ -283,7 +286,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($updated))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ]);
@@ -294,7 +297,7 @@ class DocumentController extends Controller
      */
     public function destroyVersion(Request $request, string $document, string $version): JsonResponse
     {
-        $model = $this->documentService->findOrFail($document);
+        $model = $this->documentService->findModelOrFail($document);
         $this->authorize('update', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
@@ -305,7 +308,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($updated))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ]);
@@ -316,7 +319,7 @@ class DocumentController extends Controller
      */
     public function delegate(DelegateDocumentRequest $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('delegate', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -328,7 +331,7 @@ class DocumentController extends Controller
         );
         $this->attachCanCloneMeta($updated, $request);
 
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 
     /**

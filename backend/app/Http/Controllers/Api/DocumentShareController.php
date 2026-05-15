@@ -28,7 +28,7 @@ class DocumentShareController extends Controller
      */
     public function store(StoreDocumentShareRequest $request, string $document): JsonResponse
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('share', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
@@ -50,7 +50,7 @@ class DocumentShareController extends Controller
      */
     public function destroy(Request $request, string $document, string $userId): Response
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('share', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 

@@ -17,12 +17,12 @@ class UserFavoriteService implements UserFavoriteServiceInterface
         private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
-    public function findTemplateOrFail(string $templateId): Template
+    public function findTemplateModelOrFail(string $templateId): Template
     {
         return $this->templateRepository->findOrFail($templateId);
     }
 
-    public function findDocumentOrFail(string $documentId): Document
+    public function findDocumentModelOrFail(string $documentId): Document
     {
         return $this->documentRepository->findOrFail($documentId);
     }

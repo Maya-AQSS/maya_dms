@@ -6,6 +6,9 @@ use App\DTOs\TemplateBlocks\TemplateBlockDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @property TemplateBlockDto $resource
+ */
 class TemplateBlockResource extends JsonResource
 {
     /**
@@ -13,9 +16,8 @@ class TemplateBlockResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $dto = $this->resource instanceof TemplateBlockDto
-            ? $this->resource
-            : TemplateBlockDto::fromModel($this->resource);
+        /** @var TemplateBlockDto $dto */
+        $dto = $this->resource;
 
         return [
             'id'              => $dto->id,

@@ -67,10 +67,10 @@ class TemplateBlockController extends Controller
      */
     public function show(string $block): TemplateBlockResource
     {
-        $blockModel = $this->blockService->findOrFail($block);
-        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail((string) $blockModel->template_id), 'view');
+        $blockDto = $this->blockService->findOrFail($block);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail($blockDto->templateId), 'view');
 
-        return new TemplateBlockResource($blockModel);
+        return new TemplateBlockResource($blockDto);
     }
 
     /**
@@ -80,8 +80,8 @@ class TemplateBlockController extends Controller
      */
     public function update(UpdateTemplateBlockRequest $request, string $block): TemplateBlockResource
     {
-        $blockModel = $this->blockService->findOrFail($block);
-        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail((string) $blockModel->template_id), 'update');
+        $blockDto = $this->blockService->findOrFail($block);
+        $this->authorizeAndValidateTemplateContext($this->findTemplateOrFail($blockDto->templateId), 'update');
 
         $updated = $this->blockService->update(
             blockId: $block,
@@ -99,7 +99,9 @@ class TemplateBlockController extends Controller
      */
     public function destroy(string $block): Response
     {
-        $blockModel = $this->blockService->findOrFail($block);
+        // findModelOrFail: la policy `authorize('delete', $model)` requiere el Model
+        // Eloquent (no DTO). Excepción documentada al patrón canónico.
+        $blockModel = $this->blockService->findModelOrFail($block);
         $template = $this->findTemplateOrFail((string) $blockModel->template_id);
         $blockModel->setRelation('template', $template);
         $this->authorize('delete', $blockModel);
@@ -141,7 +143,10 @@ class TemplateBlockController extends Controller
     {
         $validated = $request->validated();
         $blocks = $this->blockService->findBlocksByIdsOrFail($validated['ids']);
-        $templateIds = $blocks->pluck('template_id')->map(static fn ($id): string => (string) $id)->unique()->values()->all();
+        $templateIds = array_values(array_unique(array_map(
+            static fn ($dto): string => $dto->templateId,
+            $blocks,
+        )));
 
         // findManyByIds aplica el global scope: solo devuelve plantillas visibles para el usuario.
         $templates = $this->templateService->findManyByIds($templateIds);

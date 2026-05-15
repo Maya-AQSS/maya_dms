@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Documents\DocumentDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ApproveDocumentReviewRequest;
@@ -24,7 +25,7 @@ class ReviewController extends Controller
      */
     public function index(Request $request, string $documentId): JsonResponse
     {
-        $document = $this->documentService->findOrFail($documentId);
+        $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('view', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -38,7 +39,7 @@ class ReviewController extends Controller
      */
     public function approve(ApproveDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
     {
-        $document = $this->documentService->findOrFail($documentId);
+        $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('review', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -50,7 +51,7 @@ class ReviewController extends Controller
             $request->validated('changelog'),
         );
 
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 
     /**
@@ -58,7 +59,7 @@ class ReviewController extends Controller
      */
     public function reject(RejectDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
     {
-        $document = $this->documentService->findOrFail($documentId);
+        $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('review', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
@@ -70,6 +71,6 @@ class ReviewController extends Controller
             $request->validated('rejection_reason'),
         );
 
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 }

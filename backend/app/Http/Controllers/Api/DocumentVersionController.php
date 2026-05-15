@@ -24,7 +24,7 @@ class DocumentVersionController extends Controller
      */
     public function index(string $document): AnonymousResourceCollection
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('view', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
@@ -40,7 +40,7 @@ class DocumentVersionController extends Controller
      */
     public function show(string $document, string $version): JsonResponse
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('view', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 

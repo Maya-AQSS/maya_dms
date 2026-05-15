@@ -7,6 +7,13 @@ use App\Models\Template;
 
 /**
  * Favoritos de plantillas y documentos para el usuario autenticado.
+ *
+ * Excepción B4 documentada: {@see findTemplateModelOrFail()} y
+ * {@see findDocumentModelOrFail()} devuelven el Model porque su único uso
+ * en {@see \App\Http\Controllers\Api\FavoriteController} es
+ * `Gate::authorize('view', $model)`. No se entrega como respuesta — no hay
+ * conversión a DTO/Resource. Si en el futuro se devuelve detalle, añadir
+ * `findTemplateOrFail(): TemplateDto` y `findDocumentOrFail(): DocumentDto`.
  */
 interface UserFavoriteServiceInterface
 {
@@ -14,13 +21,13 @@ interface UserFavoriteServiceInterface
      * Resuelve un Template para el flujo de favoritos. La autorización vía Gate
      * se ejecuta sobre el Model resultante en el controlador.
      */
-    public function findTemplateOrFail(string $templateId): Template;
+    public function findTemplateModelOrFail(string $templateId): Template;
 
     /**
      * Resuelve un Document para el flujo de favoritos. La autorización vía Gate
      * se ejecuta sobre el Model resultante en el controlador.
      */
-    public function findDocumentOrFail(string $documentId): Document;
+    public function findDocumentModelOrFail(string $documentId): Document;
 
     /**
      * Lista de IDs de plantillas y documentos favoritos del usuario.

@@ -28,7 +28,7 @@ class DocumentBlockController extends Controller
      */
     public function index(string $document): AnonymousResourceCollection
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('view', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
@@ -44,7 +44,7 @@ class DocumentBlockController extends Controller
      */
     public function update(UpdateDocumentBlockRequest $request, string $document, string $block): JsonResponse
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('update', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
@@ -66,7 +66,7 @@ class DocumentBlockController extends Controller
      */
     public function destroy(Request $request, string $document, string $block): Response
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $blockModel = DocumentBlock::where('id', $block)

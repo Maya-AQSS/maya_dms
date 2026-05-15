@@ -6,13 +6,15 @@ use App\DTOs\Documents\DocumentDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
+/**
+ * @property DocumentDto $resource
+ */
 class DocumentResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
-        $dto = $this->resource instanceof DocumentDto
-            ? $this->resource
-            : DocumentDto::fromModel($this->resource);
+        /** @var DocumentDto $dto */
+        $dto = $this->resource;
 
         return [
             'id' => $dto->id,

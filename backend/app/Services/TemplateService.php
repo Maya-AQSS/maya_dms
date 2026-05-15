@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
+use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
@@ -35,9 +36,19 @@ class TemplateService implements TemplateServiceInterface
     ) {}
 
     /**
-     * Localiza una plantilla por su ID.
+     * Canónico: devuelve el DTO de la plantilla.
      */
-    public function findOrFail(string $id): Template
+    public function findOrFail(string $id): TemplateDto
+    {
+        return TemplateDto::fromModel($this->templateRepository->findOrFail($id));
+    }
+
+    /**
+     * Variante de uso interno: devuelve el Model. Necesario para attachs
+     * (`can_clone`, `review_mode`, etc.), policies y encadenado con otros
+     * métodos del Service que reciben Model.
+     */
+    public function findModelOrFail(string $id): Template
     {
         return $this->templateRepository->findOrFail($id);
     }

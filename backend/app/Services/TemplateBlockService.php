@@ -3,14 +3,15 @@
 namespace App\Services;
 
 use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
+use App\DTOs\TemplateBlocks\TemplateBlockDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
-use Maya\Messaging\Publishers\AuditPublisher;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Publishers\AuditPublisher;
 
 class TemplateBlockService implements TemplateBlockServiceInterface
 {
@@ -22,36 +23,53 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     }
 
     /**
-     * Lista todos los bloques de una plantilla.
-     * 
-     * @return Collection<int, TemplateBlock>
+     * @return list<TemplateBlockDto>
      */
-    public function listForTemplate(string $templateId): Collection
+    public function listForTemplate(string $templateId): array
     {
         // Existencia sin scope de catálogo: la visibilidad la marca el controlador con policy tras cargar.
         $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
 
-        return $this->blockRepository->allForTemplate($templateId);
+        return $this->blockRepository
+            ->allForTemplate($templateId)
+            ->map(static fn (TemplateBlock $block): TemplateBlockDto => TemplateBlockDto::fromModel($block))
+            ->values()
+            ->all();
     }
 
-    /**
-     * Busca un bloque por ID. Lanza excepción si no existe.
-     * 
-     * @param  string  $id
-     * @return TemplateBlock
-     */
-    public function findOrFail(string $id): TemplateBlock
+    public function findOrFail(string $id): TemplateBlockDto
+    {
+        return TemplateBlockDto::fromModel($this->blockRepository->findOrFail($id));
+    }
+
+    public function findModelOrFail(string $id): TemplateBlock
     {
         return $this->blockRepository->findOrFail($id);
     }
 
     /**
-     * Carga todos los bloques por ID (IDs únicos). Lanza validación si falta alguno.
+     * @param  list<string>  $ids
+     * @return list<TemplateBlockDto>
+     */
+    public function findBlocksByIdsOrFail(array $ids): array
+    {
+        return $this
+            ->findModelsByIdsOrFail($ids)
+            ->map(static fn (TemplateBlock $block): TemplateBlockDto => TemplateBlockDto::fromModel($block))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Variante interna que devuelve los Models. Necesario para casos como
+     * {@see bulkUpdate()} donde se necesita capturar el estado previo
+     * (block_state) antes de la mutación masiva sin pagar la conversión a DTO
+     * dos veces.
      *
      * @param  list<string>  $ids
      * @return Collection<int, TemplateBlock>
      */
-    public function findBlocksByIdsOrFail(array $ids): Collection
+    private function findModelsByIdsOrFail(array $ids): Collection
     {
         $unique = array_values(array_unique($ids));
 
@@ -92,7 +110,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
 
         $currentBlocks = $this->blockRepository->allForTemplate($templateId);
-        $currentIds = $currentBlocks->pluck('id')->map(static fn($id): string => (string) $id)->all();
+        $currentIds = $currentBlocks->pluck('id')->map(static fn ($id): string => (string) $id)->all();
 
         if (count($currentIds) !== count($orderedBlockIds)) {
             throw ValidationException::withMessages([
@@ -123,14 +141,9 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     }
 
     /**
-     * Crea un nuevo bloque para una plantilla.
-     * 
-     * @param  string  $templateId
-     * @param  string  $userId
      * @param  array<string, mixed>  $attributes
-     * @return TemplateBlock
      */
-    public function create(string $templateId, array $attributes, string $userId): TemplateBlock
+    public function create(string $templateId, array $attributes, string $userId): TemplateBlockDto
     {
         $template = $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
         $block = $this->blockRepository->create($template, $attributes);
@@ -145,18 +158,10 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             newValue:        ['block_state' => $block->block_state],
         );
 
-        return $block;
+        return TemplateBlockDto::fromModel($block);
     }
 
-    /**
-     * Actualiza un bloque existente de una plantilla.
-     * 
-     * @param  string  $blockId
-     * @param  UpdateTemplateBlockDto  $dto
-     * @param  string  $userId
-     * @return TemplateBlock
-     */
-    public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlock
+    public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlockDto
     {
         $block = $this->blockRepository->findOrFail($blockId);
 
@@ -178,7 +183,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         }
 
         if ($attributes === []) {
-            return $block;
+            return TemplateBlockDto::fromModel($block);
         }
 
         // Audit only when there is an actual block_state transition.
@@ -206,16 +211,9 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             );
         }
 
-        return $updated;
+        return TemplateBlockDto::fromModel($updated);
     }
 
-    /**
-     * Elimina un bloque de una plantilla.
-     * 
-     * @param  string  $blockId
-     * @param  string  $userId
-     * @return void
-     */
     public function delete(string $blockId, string $userId): void
     {
         $block = $this->blockRepository->findOrFail($blockId);
@@ -234,18 +232,16 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     }
 
     /**
-     * Actualiza múltiples bloques de una plantilla.
-     * 
-     * @param  BulkUpdateTemplateBlocksDto  $dto
-     * @param  string  $userId
-     * @return Collection<int, TemplateBlock>
+     * @return list<TemplateBlockDto>
      */
-    public function bulkUpdate(BulkUpdateTemplateBlocksDto $dto, string $userId): Collection
+    public function bulkUpdate(BulkUpdateTemplateBlocksDto $dto, string $userId): array
     {
         $uniqueIds = array_values(array_unique($dto->ids));
 
-        // Capture previous states before the bulk update to identify actual changes
-        $before = $this->findBlocksByIdsOrFail($uniqueIds)->keyBy('id');
+        // Capture previous states before the bulk update to identify actual changes.
+        // Uso findModelsByIdsOrFail() porque necesito acceso al block_state previo
+        // para detectar transición real antes de auditar.
+        $before = $this->findModelsByIdsOrFail($uniqueIds)->keyBy('id');
 
         $attributes = [];
         if ($dto->set_block_state) {
@@ -274,6 +270,9 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             }
         }
 
-        return $updated;
+        return $updated
+            ->map(static fn (TemplateBlock $block): TemplateBlockDto => TemplateBlockDto::fromModel($block))
+            ->values()
+            ->all();
     }
 }

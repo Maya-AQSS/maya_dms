@@ -33,7 +33,7 @@ class FavoriteController extends Controller
      */
     public function storeTemplate(string $template): Response
     {
-        $model = $this->userFavoriteService->findTemplateOrFail($template);
+        $model = $this->userFavoriteService->findTemplateModelOrFail($template);
         Gate::authorize('view', $model);
 
         $this->userFavoriteService->addTemplateFavorite(
@@ -64,7 +64,7 @@ class FavoriteController extends Controller
      */
     public function storeDocument(string $document): Response
     {
-        $model = $this->userFavoriteService->findDocumentOrFail($document);
+        $model = $this->userFavoriteService->findDocumentModelOrFail($document);
         Gate::authorize('view', $model);
 
         $this->userFavoriteService->addDocumentFavorite(

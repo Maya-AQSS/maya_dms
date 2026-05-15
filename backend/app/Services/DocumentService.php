@@ -5,6 +5,7 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
+use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -43,9 +44,20 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
-     * Localiza un documento por su ID.
+     * Canónico: devuelve el DTO del documento. Lanza ModelNotFoundException
+     * si no existe.
      */
-    public function findOrFail(string $id): Document
+    public function findOrFail(string $id): DocumentDto
+    {
+        return DocumentDto::fromModel($this->documentRepository->findOrFail($id));
+    }
+
+    /**
+     * Variante de uso interno: devuelve el Model. Necesario cuando el caller
+     * adjunta atributos derivados (`can_clone`, `review_mode`, etc.) antes de
+     * representar como DTO, o cuando invoca `authorize($ability, $model)`.
+     */
+    public function findModelOrFail(string $id): Document
     {
         return $this->documentRepository->findOrFail($id);
     }

@@ -5,17 +5,36 @@ namespace App\Services\Contracts;
 use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
+use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use Illuminate\Support\Collection;
 
+/**
+ * Excepción B4 documentada: análoga a {@see DocumentServiceInterface} —
+ * la mayoría de métodos de mutación devuelven el Model Eloquent porque el
+ * {@see \App\Http\Controllers\Api\TemplateController} adjunta atributos
+ * derivados (`can_clone`, `review_mode`, etc.) mediante `setAttribute()` antes
+ * de presentar como DTO. La conversión final a DTO se hace en el Controller
+ * con `TemplateDto::fromModel($model)` antes de pasar al Resource (que es
+ * `TemplateDto`-only estricto).
+ */
 interface TemplateServiceInterface
 {
     /**
-     * Localiza una plantilla por su ID.
+     * Canónico: devuelve el DTO de la plantilla. Lanza ModelNotFoundException
+     * si no existe.
      */
-    public function findOrFail(string $id): Template;
+    public function findOrFail(string $id): TemplateDto;
+
+    /**
+     * Variante de uso interno: devuelve el Model. Necesario cuando el caller
+     * adjunta atributos derivados con `setAttribute()`, invoca
+     * `authorize($ability, $model)`, o encadena a `update($model, ...)` de
+     * este mismo Service.
+     */
+    public function findModelOrFail(string $id): Template;
 
     /**
      * Carga múltiples plantillas por sus IDs aplicando el global scope de visibilidad.

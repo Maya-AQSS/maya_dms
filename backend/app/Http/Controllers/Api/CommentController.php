@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Comments\CommentDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\DTO\CommentableResource;
@@ -44,7 +45,7 @@ class CommentController extends Controller
         }
 
         $perPage = min((int) $request->get('per_page', self::DEFAULT_PER_PAGE), self::MAX_PER_PAGE);
-        $paginator = $this->commentService->listForResource(
+        $page = $this->commentService->listForResource(
             $resource->class,
             (string) $resource->model->id,
             $resource->version,
@@ -52,13 +53,13 @@ class CommentController extends Controller
         );
 
         return response()->json([
-            'data' => CommentResource::collection($paginator->items()),
+            'data' => CommentResource::collection($page->items),
             'meta' => [
                 'commenting_open' => true,
-                'total' => $paginator->total(),
-                'per_page' => $paginator->perPage(),
-                'current_page' => $paginator->currentPage(),
-                'last_page' => $paginator->lastPage(),
+                'total' => $page->total,
+                'per_page' => $page->perPage,
+                'current_page' => $page->currentPage,
+                'last_page' => $page->lastPage,
             ],
         ]);
     }
@@ -76,7 +77,7 @@ class CommentController extends Controller
         }
 
         $blockableId = $request->blockableId();
-        $comment = $this->commentService->createForResource(
+        $commentDto = $this->commentService->createForResource(
             commentableType: $resource->class,
             commentableId: (string) $resource->model->id,
             commentableVersion: $resource->version,
@@ -87,21 +88,23 @@ class CommentController extends Controller
             body: $request->commentBody(),
         );
 
-        $comment->loadMissing('author');
-        return (new CommentResource($comment))->response()->setStatusCode(201);
+        return (new CommentResource($commentDto))->response()->setStatusCode(201);
     }
 
     public function show(string $comment): JsonResponse
     {
-        $commentModel = $this->commentService->findOrFail($comment);
+        // findModelOrFail: authorizeCommentAccess pasa el Model a la policy y
+        // setea la relación commentable; ambos requieren Model Eloquent.
+        $commentModel = $this->commentService->findModelOrFail($comment);
         $this->authorizeCommentAccess($commentModel);
 
-        return (new CommentResource($commentModel))->response();
+        return (new CommentResource(CommentDto::fromModel($commentModel)))->response();
     }
 
     public function destroy(string $comment): JsonResponse
     {
-        $commentModel = $this->commentService->findOrFail($comment);
+        // findModelOrFail: authorize('delete', $model) requiere Model Eloquent.
+        $commentModel = $this->commentService->findModelOrFail($comment);
         $this->authorizeCommentAccess($commentModel);
         $this->authorize('delete', $commentModel);
 
@@ -127,7 +130,7 @@ class CommentController extends Controller
         }
 
         if ($documentId) {
-            $model = $this->documentService->findOrFail($documentId);
+            $model = $this->documentService->findModelOrFail($documentId);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
             return new CommentableResource($model, Document::class, $model->currentVersion());
@@ -150,7 +153,7 @@ class CommentController extends Controller
         }
 
         if ($commentableType === Document::class) {
-            $model = $this->documentService->findOrFail((string) $comment->commentable_id);
+            $model = $this->documentService->findModelOrFail((string) $comment->commentable_id);
             $this->loadAndAuthorizeCommentable($comment, $model);
             return;
         }

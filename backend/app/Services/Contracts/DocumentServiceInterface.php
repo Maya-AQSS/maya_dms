@@ -4,31 +4,51 @@ namespace App\Services\Contracts;
 
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
+use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use Illuminate\Support\Collection;
 
+/**
+ * Excepción B4 documentada: la mayoría de métodos de mutación devuelven el
+ * Model Eloquent (no DTO). Razón: el {@see \App\Http\Controllers\Api\DocumentController}
+ * adjunta atributos derivados (`can_clone`, `review_mode`, `is_shared_with_me`,
+ * etc.) mediante `setAttribute()` sobre el Model resultante antes de presentar
+ * como DTO. La conversión final a DTO se hace en el Controller con
+ * `DocumentDto::fromModel($model)` antes de pasar al Resource (que es
+ * `DocumentDto`-only estricto).
+ */
 interface DocumentServiceInterface
 {
     /**
-     * Localiza un documento por su ID.
+     * Devuelve el DTO de un documento. Lanza ModelNotFoundException si no existe.
      */
-    public function findOrFail(string $id): Document;
+    public function findOrFail(string $id): DocumentDto;
 
     /**
-     * Crea un documento a partir de un DTO.
+     * Devuelve el modelo Eloquent del documento. Variante de uso interno cuando
+     * el caller necesita el Model para `authorize($ability, $model)`, adjuntar
+     * atributos derivados con `setAttribute()`, o encadenar a `update`/`delete`
+     * de este mismo Service. Resto de consumidores deben usar `findOrFail()`.
+     */
+    public function findModelOrFail(string $id): Document;
+
+    /**
+     * Crea un documento a partir de un DTO. Devuelve Model — ver excepción B4
+     * documentada en el docblock del interface.
      */
     public function create(CreateDocumentDto $dto): Document;
 
     /**
-     * Clona un documento visible hacia un nuevo borrador con el mismo ancla de plantilla y contenido de bloques copiado.
+     * Clona un documento visible hacia un nuevo borrador con el mismo ancla
+     * de plantilla y contenido de bloques copiado. Devuelve Model.
      */
     public function clone(string $sourceDocumentId, string $actorId): Document;
 
     /**
-     * Actualiza metadatos editables del documento.
+     * Actualiza metadatos editables del documento. Devuelve Model.
      *
      * @param  array<string, mixed>  $attributes
      */
@@ -53,56 +73,58 @@ interface DocumentServiceInterface
 
     /**
      * Elimina un bloque opcional de un documento en borrador.
-     * Solo permite bloques con block_state === 'optional'.
      */
     public function deleteOptionalBlock(DeleteDocumentBlockDto $dto): void;
 
     /**
-     * Transiciona el documento a un nuevo estado y emite el evento de dominio DocumentStateChanged.
+     * Transiciona el documento a un nuevo estado. Devuelve Model.
      *
      * @param  array<string, mixed>  $extraAttributes
      */
     public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document;
 
     /**
-     * Envia el documento a revisión.
+     * Envia el documento a revisión. Devuelve Model.
      */
     public function submitToReview(string $documentId, string $actorId): Document;
 
     /**
-     * Publica el documento.
+     * Publica el documento. Devuelve Model.
      */
     public function publishDocument(string $documentId, string $actorId, ?string $changelog): Document;
 
     /**
-     * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión antes de volver a publicar.
+     * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión. Devuelve Model.
      */
     public function startNewRevisionCycle(string $documentId, string $actorId): Document;
 
     /**
-     * Descarta una versión no publicada en curso y restaura la última publicación.
+     * Descarta una versión no publicada en curso y restaura la última publicación. Devuelve Model.
      */
     public function destroyVersion(string $documentId, string $versionId, string $actorId): Document;
 
     /**
-     * Delega la propiedad del documento a otro usuario.
+     * Delega la propiedad del documento a otro usuario. Devuelve Model.
      */
     public function delegateOwner(string $documentId, string $newOwnerId, string $actorId): Document;
 
     /**
-     * Lista las revisiones del documento.
-     * 
+     * Lista las revisiones del documento. Devuelve Collection<DocumentReview>
+     * (Eloquent) — uso interno del Controller para `ReviewResource`. Aplicable
+     * a la misma excepción B4 documentada arriba.
+     *
      * @return Collection<int, DocumentReview>
      */
     public function listReviews(string $documentId): Collection;
 
     /**
-     * Aprueba una revisión del documento.
+     * Aprueba una revisión del documento. Devuelve Model.
      */
     public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document;
 
     /**
-     * Localiza una versión snapshot del documento por id.
+     * Localiza una versión snapshot del documento por id. Devuelve Model —
+     * el Controller adjunta atributos derivados para la representación final.
      */
     public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
 
@@ -139,12 +161,14 @@ interface DocumentServiceInterface
     public function listDocumentVersions(string $documentId): array;
 
     /**
-     * Rechaza una revisión del documento.
+     * Rechaza una revisión del documento. Devuelve Model.
      */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document;
 
     /**
-     * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
+     * Lista documentos visibles para el usuario actual. Devuelve Collection<Document>
+     * (Eloquent) porque el Controller adjunta `can_clone`, `is_shared_with_me`,
+     * `team`, etc. a cada item antes de presentar como DTO.
      *
      * @return Collection<int, Document>
      */
@@ -167,7 +191,7 @@ interface DocumentServiceInterface
     public function creationOptionsForModule(string $moduleId): array;
 
     /**
-     * Crea documento desde la vista de módulo resolviendo plantilla/version disponibles.
+     * Crea documento desde la vista de módulo. Devuelve Model.
      */
     public function createFromModule(
         string $moduleId,
@@ -207,7 +231,7 @@ interface DocumentServiceInterface
     public function removeDocumentShare(string $documentId, string $targetUserId, string $actorId): void;
 
     /**
-     * Anota en cada documento si el visor accede vía `document_shares` y con qué permiso (listado / detalle).
+     * Anota en cada documento si el visor accede vía `document_shares` y con qué permiso.
      *
      * @param  Collection<int, Document>  $documents
      */
