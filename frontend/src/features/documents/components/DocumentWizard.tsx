@@ -7,7 +7,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type ReactNode,
 } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,156 +63,27 @@ const BlockNoteEditorPanel = lazy(() =>
   )
 );
 
-type Step = 'properties' | 'blocks' | 'summary';
-type SummaryConfirmAction = 'save' | 'submit' | null;
-type BlockViewTab = 'content' | 'description';
-type ReviewModeView = 'sequential' | 'parallel';
-type VisibilityRuleMode = 'global' | 'study_type' | 'study' | 'module' | 'team' | 'personal' | 'unknown';
-type ReviewerView = {
-  id: string;
-  name: string;
-  resolved: boolean;
-};
-
-const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicado',
-  rejected: 'Rechazado',
-};
-
-/** Alineado con `RejectDocumentReviewRequest` (backend): motivo obligatorio no trivial. */
-
-/**
- * Descripción de bloque: el backend puede enviar string, JSON string u objeto BlockNote (`{ type: 'doc', content }`).
- * Renderizar un objeto dentro de `<p>` rompe React (pantalla en blanco).
- */
-function DocumentBlockDescriptionView({ description }: { description: unknown }) {
-  if (description === null || description === undefined || description === '') {
-    return null;
-  }
-
-  const wrapProse = (inner: ReactNode) => (
-    <div className="prose prose-sm dark:prose-invert max-w-none">{inner}</div>
-  );
-
-  if (typeof description === 'string') {
-    try {
-      const parsed: unknown = JSON.parse(description);
-      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-        const doc = parsed as { type?: string; content?: unknown };
-        if (doc.type === 'doc' && Array.isArray(doc.content)) {
-          return wrapProse(<BlockContentHtml content={doc.content as unknown[]} />);
-        }
-      }
-      if (Array.isArray(parsed)) {
-        return wrapProse(<BlockContentHtml content={parsed as unknown[]} />);
-      }
-    } catch {
-      return (
-        <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
-          {description}
-        </p>
-      );
-    }
-    return (
-      <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
-        {description}
-      </p>
-    );
-  }
-
-  if (Array.isArray(description)) {
-    return wrapProse(<BlockContentHtml content={description as unknown[]} />);
-  }
-
-  if (typeof description === 'object') {
-    const doc = description as { type?: string; content?: unknown };
-    if (doc.type === 'doc' && Array.isArray(doc.content)) {
-      return wrapProse(<BlockContentHtml content={doc.content as unknown[]} />);
-    }
-    return wrapProse(<BlockContentHtml content={[description] as unknown[]} />);
-  }
-
-  return (
-    <p className="text-sm text-text-secondary dark:text-text-dark-secondary leading-relaxed whitespace-pre-wrap">
-      {String(description)}
-    </p>
-  );
-}
-
-function DocSummaryRow({ label, value }: { label: string; value: ReactNode }) {
-  return (
-    <div className="flex flex-col py-1.5 border-b border-ui-border dark:border-ui-dark-border/30 last:border-0">
-      <dt className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
-        {label}
-      </dt>
-      <dd className="mt-0.5 text-xs font-medium text-text-primary dark:text-text-dark-primary">
-        {value || <span className="text-text-muted italic">—</span>}
-      </dd>
-    </div>
-  );
-}
-
-function dateIsoToInput(value: string | null | undefined): string {
-  if (!value) return '';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-function blockEditorContent(block: DocumentDisplayBlock): unknown[] {
-  const fromDoc = normalizeBlockContentForEditor(block.content);
-  if (fromDoc.length > 0) {
-    return fromDoc;
-  }
-  return normalizeBlockContentForEditor(block.default_content);
-}
-
-function validationSuccessBannerMessage(
-  updated: { title: string; status: DocumentStatus },
-  action: 'approve' | 'reject',
-): string {
-  if (action === 'reject') {
-    return 'Rechazo registrado. El documento ha vuelto a borrador para que el titular pueda corregirlo.';
-  }
-  if (updated.status === 'published') {
-    return `Validación realizada. El documento «${updated.title}» ha sido publicado.`;
-  }
-  return 'Validación realizada. Este documento se ha pasado al siguiente validador.';
-}
-
-function pickActionableDocumentReview(
-  reviews: DocumentReview[],
-  reviewerUserId: string,
-  reviewMode: 'sequential' | 'parallel',
-): DocumentReview | null {
-  const pending = reviews.filter((r) => r.status === 'pending');
-  if (pending.length === 0) return null;
-  const mine = pending.filter((r) => r.reviewer_id === reviewerUserId);
-  if (mine.length === 0) return null;
-  if (reviewMode !== 'sequential') {
-    return mine[0] ?? null;
-  }
-  const minStage = Math.min(...pending.map((r) => r.stage));
-  return mine.find((r) => r.stage === minStage) ?? null;
-}
+import {
+  type Step,
+  type SummaryConfirmAction,
+  type BlockViewTab,
+  type ReviewModeView,
+  type VisibilityRuleMode,
+  type ReviewerView,
+  DOCUMENT_STATUS_LABELS,
+  dateIsoToInput,
+  blockEditorContent,
+  validationSuccessBannerMessage,
+  pickActionableDocumentReview,
+  isUuidLike,
+} from './documentWizardUtils';
+import { DocumentBlockDescriptionView, DocSummaryRow } from './DocumentWizardSubviews';
 
 type Props = {
   documentId?: string | null;
   templateId?: string | null;
   mode?: 'edit' | 'validate';
 };
-
-function isUuidLike(value: string | null | undefined): value is string {
-  if (!value) return false;
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-    value.trim(),
-  );
-}
 
 /**
  * Asistente de edición de documento (3 pasos, sin usuarios/validadores).
