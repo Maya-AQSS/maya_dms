@@ -8,9 +8,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ApproveDocumentReviewRequest;
 use App\Http\Requests\Documents\RejectDocumentReviewRequest;
 use App\Http\Resources\DocumentResource;
+use App\Http\Resources\DocumentReviewResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ReviewController extends Controller
 {
@@ -23,7 +25,7 @@ class ReviewController extends Controller
     /**
      * Listar revisiones de un documento.
      */
-    public function index(Request $request, string $documentId): JsonResponse
+    public function index(Request $request, string $documentId): AnonymousResourceCollection
     {
         $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('view', $document);
@@ -31,7 +33,7 @@ class ReviewController extends Controller
 
         $reviews = $this->documentService->listReviews($document->id);
 
-        return response()->json(['data' => $reviews]);
+        return DocumentReviewResource::collection($reviews);
     }
 
     /**

@@ -429,7 +429,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
 
   const openValidateView = (blockId: string, mode: 'comments' | 'info') => {
-    setValidateActiveView((prev: any) =>
+    setValidateActiveView((prev) =>
       prev?.blockId === blockId && prev?.mode === mode ? null : { blockId, mode },
     );
   };
@@ -965,7 +965,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
                         <div className="flex items-center gap-3 mb-4">
                           <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                            Bloque {(detail.blocks.findIndex((b: any) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
+                            Bloque {(detail.blocks.findIndex((b) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
                           </h4>
                           <div className="flex items-center gap-2">
                             {/* Diff button */}
@@ -1166,7 +1166,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 {previewTitle}
               </h1>
               <div className="space-y-12">
-                {detail.blocks.filter((block: DocumentDisplayBlock) => !block.is_deleted).map((block: any) => {
+                {detail.blocks.filter((block: DocumentDisplayBlock) => !block.is_deleted).map((block) => {
                   const blockId = block.document_block_id || block.template_block_id;
                   const isSelected = selectedReviewView?.blockId === blockId;
                   const commentsActive = isSelected && selectedReviewView?.mode === 'comments';
@@ -1193,7 +1193,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
                       <div className="flex items-center gap-3 mb-4">
                         <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                          Bloque {(detail.blocks.findIndex((b: any) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
+                          Bloque {(detail.blocks.findIndex((b) => b.template_block_id === block.template_block_id) + 1)}: {block.title ?? 'Sin título'}
                         </h4>
                         <div className="flex items-center gap-2">
                           {changedBlocks.some(b => b.template_block_id === block.template_block_id) && (

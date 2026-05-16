@@ -528,13 +528,13 @@ export function TemplatePreviewPage() {
       {' · '}
       {displayVisibility ? visibilityLabel(displayVisibility) : '—'}
       {displayVisibility === 'study_type' && template.study_type_id ? (
-        <> ({(hierarchy.find((t: any) => String(t.id) === String(template.study_type_id))?.name ?? template.study_type_id)})</>
+        <> ({(hierarchy.find((t) => String(t.id) === String(template.study_type_id))?.name ?? template.study_type_id)})</>
       ) : null}
       {displayVisibility === 'study' && template.study_id ? (
-        <> ({(hierarchy.flatMap((t: any) => t.studies ?? []).find((s: any) => String(s.id) === String(template.study_id))?.name ?? template.study_id)})</>
+        <> ({(hierarchy.flatMap((t) => t.studies ?? []).find((s) => String(s.id) === String(template.study_id))?.name ?? template.study_id)})</>
       ) : null}
       {displayVisibility === 'module' && template.module_id ? (
-        <> ({(hierarchy.flatMap((t: any) => t.studies ?? []).flatMap((s: any) => s.course_modules ?? []).find((m: any) => String(m.id) === String(template.module_id))?.name ?? template.module_id)})</>
+        <> ({(hierarchy.flatMap((t) => t.studies ?? []).flatMap((s) => s.course_modules ?? []).find((m) => String(m.id) === String(template.module_id))?.name ?? template.module_id)})</>
       ) : null}
       {displayVisibility === 'team' && (template.team?.name || template.team_id) ? (
         <> ({template.team?.name ?? template.team_id})</>
@@ -561,7 +561,7 @@ export function TemplatePreviewPage() {
             return (
               <BlockCommentsCard
                 mode={isOwner ? 'creator-edit' : 'creator-readonly'}
-                blockSortOrder={(blocks.findIndex((b: any) => b.id === activeView.blockId) + 1) || '?'}
+                blockSortOrder={(blocks.findIndex((b) => b.id === activeView.blockId) + 1) || '?'}
                 blockComments={getCommentsForBlock(activeView.blockId, reviewComments)}
                 allComments={reviewComments}
                 commentLoading={reviewCommentsLoading}
@@ -574,7 +574,7 @@ export function TemplatePreviewPage() {
           return (
             <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
               <ViewCardHeader
-                blockSortOrder={(blocks.findIndex((b: any) => b.id === block.id) + 1) || '?'}
+                blockSortOrder={(blocks.findIndex((b) => b.id === block.id) + 1) || '?'}
                 title="Descripción del Bloque"
                 onClose={() => setActiveView(null)}
                 headerRef={commentCardHeaderRef}
@@ -611,7 +611,7 @@ export function TemplatePreviewPage() {
               </p>
             ) : (
               <div className="space-y-10">
-                {blocks.map((block: any) => {
+                {blocks.map((block) => {
                   const isLocked = block.block_state === 'locked';
                   const nodes = blockContentNodes(block);
                   const hasContent = nodes.length > 0;
@@ -635,7 +635,7 @@ export function TemplatePreviewPage() {
                     >
                       <div className="flex items-center gap-3 mb-4">
                         <h4 className="flex-1 min-w-0 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary opacity-60 truncate">
-                          Bloque {(blocks.findIndex((b: any) => b.id === block.id) + 1)}: {block.title ?? 'Sin título'}
+                          Bloque {(blocks.findIndex((b) => b.id === block.id) + 1)}: {block.title ?? 'Sin título'}
                         </h4>
                         <div className="flex items-center gap-2">
                           {block.description && (
