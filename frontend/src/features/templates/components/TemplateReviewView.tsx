@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import type { TemplateBlock } from '../../../types/blocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
@@ -99,7 +100,7 @@ export function TemplateReviewView({ template }: Props) {
   const viewColRef = useRef<HTMLDivElement>(null);
   const viewHeaderRef = useRef<HTMLDivElement>(null);   // card/page header inside the view
 
-  const currentUserId = user?.sub || (user as any)?.id;
+  const currentUserId = user?.sub ?? (user as { id?: string } | null | undefined)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
   const isReviewer = !!myReview;
   const isCreator = !!profile?.id && template.created_by === profile.id;
@@ -268,7 +269,7 @@ export function TemplateReviewView({ template }: Props) {
     headerRef,
     onClose,
   }: {
-    selectedBlock: any;
+    selectedBlock: TemplateBlock;
     headerRef: RefObject<HTMLDivElement | null>;
     onClose: () => void;
   }) {
@@ -352,7 +353,7 @@ export function TemplateReviewView({ template }: Props) {
               activeView.mode === 'comments' ? (
                 <BlockCommentsCard
                   mode={commentMode}
-                  blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
+                  blockSortOrder={(blocks.findIndex((b) => b.id === selectedBlock.id) + 1) || '?'}
                   blockComments={getCommentsForBlock(selectedBlock.id, comments)}
                   allComments={comments}
                   onClose={closeView}
@@ -363,7 +364,7 @@ export function TemplateReviewView({ template }: Props) {
               ) : (
                 <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
                   <ViewCardHeader
-                    blockSortOrder={(blocks.findIndex((b: any) => b.id === selectedBlock.id) + 1) || '?'}
+                    blockSortOrder={(blocks.findIndex((b) => b.id === selectedBlock.id) + 1) || '?'}
                     title="Descripción del Bloque"
                     onClose={closeView}
                   />
@@ -405,7 +406,7 @@ export function TemplateReviewView({ template }: Props) {
               >
                 <div className="flex items-center gap-3 mb-4">
                   <h4 className="flex-1 text-sm font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-                    Bloque {(blocks.findIndex((b: any) => b.id === block.id) + 1)}: {block.title || 'Sin título'}
+                    Bloque {(blocks.findIndex((b) => b.id === block.id) + 1)}: {block.title || 'Sin título'}
                   </h4>
                   <div className="flex items-center gap-2">
                     {block.description && (

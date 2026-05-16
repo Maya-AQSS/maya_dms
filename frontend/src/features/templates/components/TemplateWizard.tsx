@@ -21,6 +21,7 @@ import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
+import type { BlockComment } from './BlockCommentsCard';
 import { WizardStep4Summary } from './WizardStep4Summary';
 import {
   templateStep1Schema,
@@ -103,7 +104,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [publishChangelog, setPublishChangelog] = useState('');
   const [publishModalError, setPublishModalError] = useState<string | null>(null);
   const [publishedVersionCount, setPublishedVersionCount] = useState(0);
-  const [comments, setComments] = useState<any[]>([]);
+  const [comments, setComments] = useState<BlockComment[]>([]);
   const [blocksCount, setBlocksCount] = useState(0);
   const [blocksLoading, setBlocksLoading] = useState(true);
   const [wizardBlocks, setWizardBlocks] = useState<TemplateBlock[]>([]);
@@ -111,7 +112,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
 
   useEffect(() => {
     if (initial?.id) {
-      void apiFetchJson<{ data: any[] }>(`templates/${initial.id}/comments`)
+      void apiFetchJson<{ data: BlockComment[] }>(`templates/${initial.id}/comments`)
         .then(res => setComments(res.data))
         .catch(console.error);
     }
@@ -195,7 +196,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   };
 
-  const handleCommentAdded = (comment: any) => {
+  const handleCommentAdded = (comment: BlockComment) => {
     setComments(prev => [...prev, comment]);
   };
 

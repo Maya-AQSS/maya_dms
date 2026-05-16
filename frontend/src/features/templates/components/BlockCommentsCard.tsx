@@ -38,7 +38,7 @@ export function ViewCardHeader({
   onClose,
   headerRef,
 }: {
-  blockSortOrder: unknown;
+  blockSortOrder: number | string | null;
   title: string;
   onClose: () => void;
   headerRef?: RefObject<HTMLDivElement | null>;
@@ -50,7 +50,7 @@ export function ViewCardHeader({
     >
       <div className="px-4 py-4 flex items-center shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-ui-body/30 dark:bg-ui-dark-bg/50">
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-odoo-purple">
-          Bloque #{blockSortOrder as any}
+          Bloque #{blockSortOrder ?? '?'}
         </span>
       </div>
       <div className="flex-1 px-5 py-4 flex items-center justify-between min-w-0">
@@ -126,7 +126,7 @@ function CommentItem({
           {comment.author?.name || 'Usuario'}
         </span>
         <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
-          {formatTime(comment.created_at) as any}
+          {formatTime(comment.created_at)}
         </span>
       </div>
 
