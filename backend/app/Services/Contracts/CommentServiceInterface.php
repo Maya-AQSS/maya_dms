@@ -3,7 +3,7 @@
 namespace App\Services\Contracts;
 
 use App\DTOs\Comments\CommentDto;
-use App\DTOs\Pagination\PaginatedDto;
+use Maya\Http\Pagination\PaginatedDto;
 use App\Models\Comment;
 
 interface CommentServiceInterface

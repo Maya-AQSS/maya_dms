@@ -3,23 +3,21 @@ import { useTranslation } from 'react-i18next';
 import {
   DashboardEditToggleButton,
   DashboardEditToolbar,
+  DashboardSkeleton,
   WidgetGrid,
   useDashboardLayoutLocal,
   type LayoutItem,
+  type SkeletonBlock,
 } from '@maya/shared-dashboard-react';
 import { PageTitle } from '@maya/shared-ui-react';
 import { WIDGET_REGISTRY, DEFAULT_LAYOUT } from '../widgets/registry';
 
 const STORAGE_KEY = 'maya:dms:dashboard-layout';
 
-function DashboardSkeleton() {
-  return (
-    <div className="p-4 sm:p-6 grid grid-cols-12 gap-4 animate-pulse">
-      <div className="col-span-12 sm:col-span-8 h-64 bg-ui-border-l dark:bg-ui-dark-border rounded-2xl" />
-      <div className="col-span-12 sm:col-span-4 h-32 bg-ui-border-l dark:bg-ui-dark-border rounded-2xl" />
-    </div>
-  );
-}
+const SKELETON_BLOCKS: SkeletonBlock[] = [
+  { colSpanClasses: 'col-span-12 sm:col-span-8', heightClass: 'h-64' },
+  { colSpanClasses: 'col-span-12 sm:col-span-4', heightClass: 'h-32' },
+];
 
 /** Dashboard principal con grid de widgets drag-and-drop persistido en localStorage. */
 export function DashboardPage() {
@@ -99,7 +97,7 @@ export function DashboardPage() {
   }, [resetToDefault]);
 
   if (loading) {
-    return <DashboardSkeleton />;
+    return <DashboardSkeleton blocks={SKELETON_BLOCKS} />;
   }
 
   return (

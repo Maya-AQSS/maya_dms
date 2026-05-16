@@ -3,7 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\Comments\CommentDto;
-use App\DTOs\Pagination\PaginatedDto;
+use Maya\Http\Pagination\PaginatedDto;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
