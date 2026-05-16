@@ -3,37 +3,37 @@
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Templates\TemplateDto;
+use App\Http\Concerns\AttachesTemplateCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
-use App\Http\Requests\Templates\PublishTemplateRequest;
-use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
-use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
-use App\Http\Resources\TemplateVersionResource;
-use App\Http\Resources\TemplateVersionSummaryResource;
 use App\Models\Template;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
+ * CRUD canónico de Template (index/store/show/update/destroy/clone). Las
+ * transiciones de estado viven en {@see TemplateStateController}, las
+ * versiones en {@see TemplateVersionController} y el sync de revisores
+ * en {@see TemplateReviewersController}. Split de B9.
+ *
  * Los métodos reciben el UUID como string (route {template}) para no usar
  * route model binding implícito antes del middleware JWT; el global scope
  * de {@see Template} depende de auth y fallaría en SubstituteBindings.
  */
 class TemplateController extends Controller
 {
+    use AttachesTemplateCanCloneMeta;
     use ValidatesOptionalProcessContext;
 
     public function __construct(
@@ -57,32 +57,6 @@ class TemplateController extends Controller
         return TemplateResource::collection(
             $templates->map(static fn (Template $template) => TemplateDto::fromModel($template)),
         );
-    }
-
-    /**
-     * Adjunta `can_clone` desde policy para evitar Gate por recurso en listados.
-     *
-     * @param  Template|Collection<int, Template>  $templates
-     */
-    private function attachCanCloneMeta(Template|Collection $templates, Request $request): void
-    {
-        $user = $request->user();
-        if ($user === null) {
-            return;
-        }
-
-        $attach = function (Template $template) use ($user): void {
-            $template->setAttribute('can_clone', Gate::forUser($user)->allows('clone', $template));
-        };
-
-        if ($templates instanceof Template) {
-            $attach($templates);
-            return;
-        }
-
-        foreach ($templates as $template) {
-            $attach($template);
-        }
     }
 
     /**
@@ -176,192 +150,5 @@ class TemplateController extends Controller
         $this->attachCanCloneMeta($copy, $_request);
 
         return (new TemplateResource(TemplateDto::fromModel($copy)))->response()->setStatusCode(201);
-    }
-
-    /**
-     * Borrador → en revisión (autor o quien puede editar).
-     */
-    public function submitForReview(string $template): TemplateResource
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('submitForReview', $model);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $updated = $this->templateService->submitForReview($model->id, (string) Auth::id());
-        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
-
-        return new TemplateResource(TemplateDto::fromModel($updated));
-    }
-
-    /**
-     * En revisión → borrador (revisor).
-     */
-    public function rejectReview(string $template): TemplateResource
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('review', $model);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $updated = $this->templateService->rejectReview($model->id, (string) Auth::id());
-        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
-
-        return new TemplateResource(TemplateDto::fromModel($updated));
-    }
-
-    /**
-     * En revisión → aprobación del revisor activo.
-     *
-     * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
-     * En modo secuencial verifica que los stages anteriores estén aprobados.
-     */
-    public function approveReview(string $template): TemplateResource
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('review', $model);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
-        $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
-
-        return new TemplateResource(TemplateDto::fromModel($updated));
-    }
-
-    /**
-     * Publicación explícita de plantilla + snapshot (changelog obligatorio para v2+).
-     *
-     * Flujos aceptados:
-     *  - Creador sin revisores asignados: puede publicar directamente desde `draft`.
-     *  - Revisor asignado: puede publicar desde `in_review` tras el proceso de revisión.
-     */
-    public function publish(PublishTemplateRequest $request, string $template): TemplateResource
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('publish', $model);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $updated = $this->templateService->publishWithSnapshot(
-            $model->id,
-            $request->validated('changelog'),
-            (string) Auth::id(),
-        );
-        $this->attachCanCloneMeta($updated, $request);
-
-        return new TemplateResource(TemplateDto::fromModel($updated));
-    }
-
-    /**
-     * Publicada → borrador (nueva versión de edición sobre la misma plantilla).
-     */
-    public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $updated = $this->templateService->startNewRevisionCycle(
-            $model->id,
-            (string) $request->user()->getAuthIdentifier(),
-        );
-        $this->attachCanCloneMeta($updated, $request);
-
-        $this->apiTeamEmbedService->embedOnTemplate(
-            $updated,
-            (string) $request->user()->getAuthIdentifier(),
-        );
-
-        return new TemplateResource(TemplateDto::fromModel($updated));
-    }
-
-    /**
-     * Descarta una versión no publicada en curso y restaura la última publicación.
-     */
-    public function destroyVersion(Request $request, string $template, string $version): TemplateResource
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('update', $model);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $updated = $this->templateService->destroyVersion(
-            $model->id,
-            $version,
-            (string) $request->user()->getAuthIdentifier(),
-        );
-        $this->attachCanCloneMeta($updated, $request);
-
-        $this->apiTeamEmbedService->embedOnTemplate(
-            $updated,
-            (string) $request->user()->getAuthIdentifier(),
-        );
-
-        return new TemplateResource(TemplateDto::fromModel($updated));
-    }
-
-    /**
-     * Historial de versiones publicadas (metadatos).
-     */
-    public function versions(string $template): ResourceCollection
-    {
-        $model = $this->templateService->findOrFailWithoutCatalogScope($template);
-        if (! Gate::forUser(Auth::user())->allows('view', $model)) {
-            abort(404);
-        }
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $excludeCurrentPublishedVersion = (string) $model->status === 'published';
-        $currentVersion = (int) $model->version;
-
-        return TemplateVersionSummaryResource::collection(
-            $this->templateService
-                ->listPublishedVersions($model->id)
-                ->reject(
-                    static fn ($row): bool =>
-                        $excludeCurrentPublishedVersion && (int) $row->version_number === $currentVersion,
-                )
-                ->values(),
-        );
-    }
-
-    /**
-     * Detalle de un snapshot (incluye bloques).
-     */
-    public function showVersion(string $template_version): TemplateVersionResource
-    {
-        $version = $this->templateService->findVersionOrFail($template_version);
-        $templateId = (string) $version->versionable_id;
-
-        $template = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-        if (! Gate::forUser(Auth::user())->allows('view', $template)) {
-            abort(404);
-        }
-        $this->assertOptionalProcessContextMatches((string) $template->process_id);
-
-        return new TemplateVersionResource($version);
-    }
-
-    /**
-     * Sincroniza los revisores de la plantilla normativa.
-     */
-    public function syncReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('update', $model);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $this->templateService->syncReviewers($model->id, $request->toDto());
-
-        return response()->json(['message' => 'Revisores de plantilla sincronizados correctamente.']);
-    }
-
-    /**
-     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
-     */
-    public function syncDocumentReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
-    {
-        $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('update', $model);
-        $this->assertOptionalProcessContextMatches((string) $model->process_id);
-
-        $this->templateService->syncDocumentReviewers($model->id, $request->toDto());
-
-        return response()->json(['message' => 'Validadores de documento sincronizados correctamente.']);
     }
 }

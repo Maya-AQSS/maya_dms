@@ -5,7 +5,9 @@ use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\DocumentOptionsController;
 use App\Http\Controllers\Api\DocumentShareController;
+use App\Http\Controllers\Api\DocumentStateController;
 use App\Http\Controllers\Api\DocumentVersionController;
 use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\HealthCheckController;
@@ -13,6 +15,9 @@ use App\Http\Controllers\Api\ProcessController;
 use App\Http\Controllers\Api\ReviewController;
 use App\Http\Controllers\Api\TemplateBlockController;
 use App\Http\Controllers\Api\TemplateController;
+use App\Http\Controllers\Api\TemplateReviewersController;
+use App\Http\Controllers\Api\TemplateStateController;
+use App\Http\Controllers\Api\TemplateVersionController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 use Maya\Profile\Routing\MeRoutes;
@@ -45,9 +50,9 @@ Route::prefix('v1')->group(function () {
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
         Route::apiResource('templates', TemplateController::class)
             ->whereUuid('template');
-        Route::post('templates/{template}/reviewers', [TemplateController::class, 'syncReviewers'])
+        Route::post('templates/{template}/reviewers', [TemplateReviewersController::class, 'syncReviewers'])
             ->whereUuid('template');
-        Route::post('templates/{template}/document-reviewers', [TemplateController::class, 'syncDocumentReviewers'])
+        Route::post('templates/{template}/document-reviewers', [TemplateReviewersController::class, 'syncDocumentReviewers'])
             ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
         Route::patch('templates/{template}/blocks/reorder', [TemplateBlockController::class, 'reorder'])
@@ -59,34 +64,36 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('block');
         Route::post('templates/{template}/clone', [TemplateController::class, 'clone'])
             ->whereUuid('template');
-        Route::post('templates/{template}/submit-review', [TemplateController::class, 'submitForReview'])
+        Route::post('templates/{template}/submit-review', [TemplateStateController::class, 'submitForReview'])
             ->whereUuid('template');
-        Route::post('templates/{template}/reject-review', [TemplateController::class, 'rejectReview'])
+        Route::post('templates/{template}/reject-review', [TemplateStateController::class, 'rejectReview'])
             ->whereUuid('template');
-        Route::post('templates/{template}/approve-review', [TemplateController::class, 'approveReview'])
+        Route::post('templates/{template}/approve-review', [TemplateStateController::class, 'approveReview'])
             ->whereUuid('template');
-        Route::post('templates/{template}/publish', [TemplateController::class, 'publish'])
+        Route::post('templates/{template}/publish', [TemplateStateController::class, 'publish'])
             ->whereUuid('template');
-        Route::post('templates/{template}/new-version', [TemplateController::class, 'startNewVersion'])
+        Route::post('templates/{template}/new-version', [TemplateStateController::class, 'startNewVersion'])
             ->whereUuid('template');
-        Route::delete('templates/{template}/versions/{version}', [TemplateController::class, 'destroyVersion'])
+        Route::delete('templates/{template}/versions/{version}', [TemplateStateController::class, 'destroyVersion'])
             ->whereUuid('template')
             ->whereUuid('version');
-        Route::get('templates/{template}/versions', [TemplateController::class, 'versions'])
+        Route::get('templates/{template}/versions', [TemplateVersionController::class, 'index'])
             ->whereUuid('template');
-        Route::get('template-versions/{template_version}', [TemplateController::class, 'showVersion'])
+        Route::get('template-versions/{template_version}', [TemplateVersionController::class, 'show'])
             ->whereUuid('template_version');
         Route::match(['put', 'patch', 'delete'], 'template-versions/{template_version}', fn () => abort(403, 'Los snapshots de plantilla son de solo inserción (append-only).'))
             ->whereUuid('template_version');
 
-        // Documentos
-        Route::get('documents/creation-options', [DocumentController::class, 'creationOptions']);
-        Route::post('documents/create-from-module', [DocumentController::class, 'createFromModule']);
+        // Documentos — lookups y opciones (DocumentOptionsController)
+        Route::get('documents/creation-options', [DocumentOptionsController::class, 'creationOptions']);
+        Route::post('documents/create-from-module', [DocumentOptionsController::class, 'createFromModule']);
+        Route::get('documents/{document}/template-version-status', [DocumentOptionsController::class, 'templateVersionStatus'])
+            ->whereUuid('document');
+
+        // Documentos — CRUD (DocumentController)
         Route::get('documents', [DocumentController::class, 'index']);
         Route::post('documents', [DocumentController::class, 'store']);
         Route::post('documents/{document}/clone', [DocumentController::class, 'clone'])
-            ->whereUuid('document');
-        Route::get('documents/{document}/template-version-status', [DocumentController::class, 'templateVersionStatus'])
             ->whereUuid('document');
         Route::get('documents/{document}', [DocumentController::class, 'show'])
             ->whereUuid('document');
@@ -94,13 +101,15 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('document');
         Route::delete('documents/{document}', [DocumentController::class, 'destroy'])
             ->whereUuid('document');
-        Route::post('documents/{document}/submit', [DocumentController::class, 'submit'])
+
+        // Documentos — transiciones de estado (DocumentStateController)
+        Route::post('documents/{document}/submit', [DocumentStateController::class, 'submit'])
             ->whereUuid('document');
-        Route::post('documents/{document}/publish', [DocumentController::class, 'publish'])
+        Route::post('documents/{document}/publish', [DocumentStateController::class, 'publish'])
             ->whereUuid('document');
-        Route::post('documents/{document}/new-version', [DocumentController::class, 'startNewVersion'])
+        Route::post('documents/{document}/new-version', [DocumentStateController::class, 'startNewVersion'])
             ->whereUuid('document');
-        Route::post('documents/{document}/delegate', [DocumentController::class, 'delegate'])
+        Route::post('documents/{document}/delegate', [DocumentStateController::class, 'delegate'])
             ->whereUuid('document');
 
         Route::get('documents/{document}/blocks', [DocumentBlockController::class, 'index'])
@@ -117,7 +126,7 @@ Route::prefix('v1')->group(function () {
         Route::get('documents/{document}/versions/{version}', [DocumentVersionController::class, 'show'])
             ->whereUuid('document')
             ->whereUuid('version');
-        Route::delete('documents/{document}/versions/{version}', [DocumentController::class, 'destroyVersion'])
+        Route::delete('documents/{document}/versions/{version}', [DocumentStateController::class, 'destroyVersion'])
             ->whereUuid('document')
             ->whereUuid('version');
         Route::match(['put', 'patch'], 'documents/{document}/versions/{version}', fn () => abort(403, 'Los snapshots de documento son de solo inserción (append-only).'))
