@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Comments\CommentableResource;
 use App\DTOs\Comments\CommentDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
-use App\Http\DTO\CommentableResource;
 use App\Http\Requests\Comments\StoreCommentRequest;
 use App\Http\Resources\CommentResource;
 use App\Models\Comment;

@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\FavoriteController;
 use App\Http\Controllers\Api\HealthCheckController;
 use App\Http\Controllers\Api\ProcessController;
 use App\Http\Controllers\Api\ReviewController;
+use App\Http\Controllers\Api\TemplateBlockBulkController;
 use App\Http\Controllers\Api\TemplateBlockController;
 use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\TemplateReviewersController;
@@ -54,8 +55,8 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::post('templates/{template}/document-reviewers', [TemplateReviewersController::class, 'syncDocumentReviewers'])
             ->whereUuid('template');
-        Route::put('blocks/bulk', [TemplateBlockController::class, 'bulkUpdate']);
-        Route::patch('templates/{template}/blocks/reorder', [TemplateBlockController::class, 'reorder'])
+        Route::put('blocks/bulk', [TemplateBlockBulkController::class, 'bulkUpdate']);
+        Route::patch('templates/{template}/blocks/reorder', [TemplateBlockBulkController::class, 'reorder'])
             ->whereUuid('template');
 
         Route::apiResource('templates.blocks', TemplateBlockController::class)

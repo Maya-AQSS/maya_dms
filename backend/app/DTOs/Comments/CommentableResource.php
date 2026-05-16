@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\DTO;
+namespace App\DTOs\Comments;
 
 use App\Models\Document;
 use App\Models\DocumentBlock;
