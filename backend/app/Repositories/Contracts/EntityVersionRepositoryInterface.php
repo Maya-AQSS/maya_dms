@@ -135,4 +135,32 @@ interface EntityVersionRepositoryInterface
      * @return mixed El resultado de la función.
      */
     public function transaction(callable $callback): mixed;
+
+    /**
+     * Mapa `versionable_id => entity_version_id` de la última versión publicada
+     * (max version_number > 0, status=published) para cada uno de los versionable
+     * IDs solicitados. Si un versionable no tiene versiones publicadas, no aparece
+     * en el resultado.
+     *
+     * @param  list<string>  $versionableIds
+     * @return array<string, string>
+     */
+    public function findLatestPublishedIdsByVersionables(string $versionableType, array $versionableIds): array;
+
+    /**
+     * Mapa `versionable_id => row` (id, version_number, snapshot_data) de la última
+     * versión publicada por cada versionable solicitado. Para batch attach de metadata.
+     *
+     * @param  list<string>  $versionableIds
+     * @return array<string, array{id: string, version_number: int, snapshot_data: mixed}>
+     */
+    public function findLatestPublishedRowsByVersionables(string $versionableType, array $versionableIds): array;
+
+    /**
+     * Mapa `entity_version_id => version_number` para los IDs solicitados.
+     *
+     * @param  list<string>  $entityVersionIds
+     * @return array<string, int>
+     */
+    public function findVersionNumbersByIds(array $entityVersionIds): array;
 }

@@ -111,4 +111,17 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
             ->values()
             ->all();
     }
+
+    public function findNameById(string $userId): ?string
+    {
+        $value = DB::table('users')->where('id', $userId)->value('name');
+
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
 }

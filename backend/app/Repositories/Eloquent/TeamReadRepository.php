@@ -111,5 +111,27 @@ class TeamReadRepository implements TeamReadRepositoryInterface
             'is_department' => (bool) ($row->is_department ?? false),
         ];
     }
+
+    public function isMember(string $teamId, string $userId): bool
+    {
+        $query = DB::table('team_members')
+            ->tap(fn (Builder $q) => $this->whereTeamIdMatches($q, 'team_members.team_id', $teamId))
+            ->tap(fn (Builder $q) => $this->whereUserIdMatches($q, 'team_members.user_id', $userId));
+
+        return $query->exists();
+    }
+
+    public function getTeamNamesByIds(array $teamIds): array
+    {
+        if ($teamIds === []) {
+            return [];
+        }
+
+        return DB::table('teams')
+            ->whereIn('id', $teamIds)
+            ->pluck('name', 'id')
+            ->map(static fn ($name): string => (string) $name)
+            ->all();
+    }
 }
 

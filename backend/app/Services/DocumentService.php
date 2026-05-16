@@ -13,16 +13,17 @@ use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Enums\TemplateVisibilityLevel;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\TemplateContextResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -40,6 +41,8 @@ class DocumentService implements DocumentServiceInterface
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
         private readonly TemplateContextResolver $contextResolver,
+        private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
+        private readonly TeamReadRepositoryInterface $teamReadRepository,
     ) {
     }
 
@@ -378,41 +381,26 @@ class DocumentService implements DocumentServiceInterface
         $templateIds = $templates->pluck('id')->map(fn($id) => (string) $id)->values()->all();
 
         // Batch: one query for the latest published version of each template.
-        $maxVersions = DB::table('entity_versions')
-            ->where('versionable_type', Template::class)
-            ->whereIn('versionable_id', $templateIds)
-            ->where('status', 'published')
-            ->where('version_number', '>', 0)
-            ->groupBy('versionable_id')
-            ->select('versionable_id', DB::raw('MAX(version_number) as max_version'));
-
-        $publishedById = DB::table('entity_versions as ev')
-            ->joinSub($maxVersions, 'mv', function ($join) {
-                $join->on('ev.versionable_id', '=', 'mv.versionable_id')
-                    ->on('ev.version_number', '=', 'mv.max_version');
-            })
-            ->where('ev.versionable_type', Template::class)
-            ->where('ev.status', 'published')
-            ->get(['ev.id', 'ev.versionable_id'])
-            ->keyBy('versionable_id');
+        $publishedById = $this->entityVersionRepository->findLatestPublishedIdsByVersionables(
+            Template::class,
+            $templateIds,
+        );
 
         // Batch: one query for all distinct team names.
         $teamIds = $templates->pluck('team_id')->filter()->map(fn($id) => (string) $id)->unique()->values()->all();
-        $teamNames = $teamIds !== []
-            ? DB::table('teams')->whereIn('id', $teamIds)->pluck('name', 'id')
-            : collect();
+        $teamNames = $this->teamReadRepository->getTeamNamesByIds($teamIds);
 
         $options = [];
         foreach ($templates as $template) {
             $templateId = (string) $template->id;
-            $published = $publishedById->get($templateId);
-            if ($published === null) {
+            $publishedVersionId = $publishedById[$templateId] ?? null;
+            if ($publishedVersionId === null) {
                 continue;
             }
 
             $options[] = [
                 'template_id' => $template->id,
-                'template_version_id' => (string) $published->id,
+                'template_version_id' => $publishedVersionId,
                 'process_id' => (string) $template->process_id,
                 'name' => (string) $template->name,
                 'description' => $template->description,
@@ -421,7 +409,7 @@ class DocumentService implements DocumentServiceInterface
                     : (string) $template->visibility_level,
                 'team_id' => $template->team_id !== null ? (string) $template->team_id : null,
                 'team_name' => $template->team_id !== null
-                    ? ($teamNames->get((string) $template->team_id) ?: null)
+                    ? ($teamNames[(string) $template->team_id] ?? null)
                     : null,
             ];
         }
@@ -740,10 +728,8 @@ class DocumentService implements DocumentServiceInterface
                 $normalized['study_id'] = $templateStudyId;
             }
             if (is_string($moduleId) && $moduleId !== '') {
-                $moduleStudyId = DB::table('course_modules')
-                    ->where('id', $moduleId)
-                    ->value('study_id');
-                if (!is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
+                $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
+                if ($moduleStudyId === null || $moduleStudyId !== $templateStudyId) {
                     throw ValidationException::withMessages([
                         'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
                     ]);
@@ -760,32 +746,26 @@ class DocumentService implements DocumentServiceInterface
             }
 
             if (is_string($moduleId) && $moduleId !== '') {
-                $module = DB::table('course_modules')
-                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
-                    ->where('course_modules.id', $moduleId)
-                    ->select('course_modules.study_id', 'studies.study_type_id')
-                    ->first();
-                if (!$module || (string) $module->study_type_id !== $templateStudyTypeId) {
+                $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($moduleId);
+                if ($module === null || $module['study_type_id'] !== $templateStudyTypeId) {
                     throw ValidationException::withMessages([
                         'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
                     ]);
                 }
-                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                if (is_string($studyId) && $studyId !== '' && $studyId !== $module['study_id']) {
                     throw ValidationException::withMessages([
                         'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                     ]);
                 }
                 $normalized['module_id'] = $moduleId;
-                $normalized['study_id'] = (string) $module->study_id;
+                $normalized['study_id'] = $module['study_id'];
 
                 return $normalized;
             }
 
             if (is_string($studyId) && $studyId !== '') {
-                $studyTypeFromStudy = DB::table('studies')
-                    ->where('id', $studyId)
-                    ->value('study_type_id');
-                if (!is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
+                $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($studyId);
+                if ($studyTypeFromStudy === null || $studyTypeFromStudy !== $templateStudyTypeId) {
                     throw ValidationException::withMessages([
                         'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
                     ]);
@@ -797,16 +777,13 @@ class DocumentService implements DocumentServiceInterface
 
         if ($visibility === TemplateVisibilityLevel::Global ->value) {
             if (is_string($moduleId) && $moduleId !== '') {
-                $module = DB::table('course_modules')
-                    ->where('id', $moduleId)
-                    ->select('study_id')
-                    ->first();
-                if (!$module || !is_string($module->study_id)) {
+                $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
+                if ($moduleStudyId === null) {
                     throw ValidationException::withMessages([
                         'module_id' => ['El módulo seleccionado no existe.'],
                     ]);
                 }
-                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                if (is_string($studyId) && $studyId !== '' && $studyId !== $moduleStudyId) {
                     throw ValidationException::withMessages([
                         'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                     ]);
@@ -1279,38 +1256,19 @@ class DocumentService implements DocumentServiceInterface
             return;
         }
 
-        $maxVersions = DB::table('entity_versions')
-            ->where('versionable_type', Document::class)
-            ->whereIn('versionable_id', $ids)
-            ->where('status', 'published')
-            ->where('version_number', '>', 0)
-            ->groupBy('versionable_id')
-            ->select('versionable_id', DB::raw('MAX(version_number) as max_version'));
-
-        $rows = DB::table('entity_versions as ev')
-            ->joinSub($maxVersions, 'mv', function ($join) {
-                $join->on('ev.versionable_id', '=', 'mv.versionable_id')
-                    ->on('ev.version_number', '=', 'mv.max_version');
-            })
-            ->where('ev.versionable_type', Document::class)
-            ->where('ev.status', 'published')
-            ->get(['ev.versionable_id', 'ev.id', 'ev.version_number', 'ev.snapshot_data']);
-
-        $latestByDocument = [];
-        foreach ($rows as $row) {
-            $documentId = (string) $row->versionable_id;
-            $latestByDocument[$documentId] = (object) [
-                'id' => (string) $row->id,
-                'version_number' => (int) $row->version_number,
-                'title' => $this->extractPublishedTitleFromSnapshot($row->snapshot_data),
-            ];
-        }
+        $latestByDocument = $this->entityVersionRepository->findLatestPublishedRowsByVersionables(
+            Document::class,
+            $ids,
+        );
 
         foreach ($documents as $document) {
             $meta = $latestByDocument[(string) $document->id] ?? null;
-            $document->setAttribute('latest_published_version_id', $meta?->id);
-            $document->setAttribute('latest_published_version_number', $meta?->version_number);
-            $document->setAttribute('latest_published_title', $meta?->title);
+            $document->setAttribute('latest_published_version_id', $meta['id'] ?? null);
+            $document->setAttribute('latest_published_version_number', $meta['version_number'] ?? null);
+            $document->setAttribute(
+                'latest_published_title',
+                $meta !== null ? $this->extractPublishedTitleFromSnapshot($meta['snapshot_data']) : null,
+            );
         }
     }
 
@@ -1330,11 +1288,7 @@ class DocumentService implements DocumentServiceInterface
             return;
         }
 
-        $versionNumberById = DB::table('entity_versions')
-            ->whereIn('id', $versionIds)
-            ->pluck('version_number', 'id')
-            ->map(fn($value) => (int) $value)
-            ->all();
+        $versionNumberById = $this->entityVersionRepository->findVersionNumbersByIds($versionIds);
 
         foreach ($documents as $document) {
             $templateVersionId = $document->template_version_id;

@@ -32,4 +32,13 @@ interface DocumentBlockRepositoryInterface
      * @param  list<string>  $keepTemplateBlockIds
      */
     public function deleteForDocumentExceptTemplateBlocks(string $documentId, array $keepTemplateBlockIds): int;
+
+    /**
+     * IDs únicos de `template_blocks.id` que están en uso por cualquier
+     * `document_blocks.template_block_id` para la plantilla dada. Se usa
+     * para proteger bloques referenciados desde la limpieza de plantilla.
+     *
+     * @return list<string>
+     */
+    public function findTemplateBlockIdsInUseByTemplate(string $templateId): array;
 }

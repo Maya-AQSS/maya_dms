@@ -111,6 +111,13 @@ interface DocumentRepositoryInterface
     public function minPendingReviewStageForDocument(string $documentId): ?int;
 
     /**
+     * `created_at` de la primera revisión del documento (la más antigua), o null
+     * si no hay ninguna revisión. Tipo concreto depende del driver: string ISO o
+     * Carbon-compatible. El caller debe normalizar.
+     */
+    public function firstReviewCreatedAt(string $documentId): mixed;
+
+    /**
      * Guarda una revisión del documento.
      */
     public function saveReview(DocumentReview $review): void;

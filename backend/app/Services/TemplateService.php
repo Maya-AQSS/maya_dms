@@ -11,6 +11,8 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -18,7 +20,6 @@ use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -33,6 +34,8 @@ class TemplateService implements TemplateServiceInterface
         private readonly TemplatePublishingService $templatePublishingService,
         private readonly TemplateReviewService $templateReviewService,
         private readonly TemplateReviewerAssignmentService $templateReviewerAssignmentService,
+        private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
+        private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
     ) {}
 
     /**
@@ -425,15 +428,8 @@ class TemplateService implements TemplateServiceInterface
             $this->templateBlockRepository->upsertByIdForTemplate($blockId, $values);
         }
 
-        $blockIdsInUseByDocuments = DB::table('document_blocks')
-            ->whereIn('template_block_id', function ($query) use ($templateId) {
-                $query->select('id')
-                    ->from('template_blocks')
-                    ->where('template_id', $templateId);
-            })
-            ->pluck('template_block_id')
-            ->map(static fn ($id) => (string) $id)
-            ->all();
+        $blockIdsInUseByDocuments = $this->documentBlockRepository
+            ->findTemplateBlockIdsInUseByTemplate($templateId);
 
         $protectedIds = array_values(array_unique(array_merge($publishedBlockIds, $blockIdsInUseByDocuments)));
 
@@ -912,10 +908,8 @@ class TemplateService implements TemplateServiceInterface
             $normalized['study_type_id'] = $templateStudyTypeId;
 
             if (is_string($moduleId) && $moduleId !== '') {
-                $moduleStudyId = DB::table('course_modules')
-                    ->where('id', $moduleId)
-                    ->value('study_id');
-                if (! is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
+                $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
+                if ($moduleStudyId === null || $moduleStudyId !== $templateStudyId) {
                     throw ValidationException::withMessages([
                         'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
                     ]);
@@ -930,35 +924,29 @@ class TemplateService implements TemplateServiceInterface
             $normalized['study_type_id'] = $templateStudyTypeId;
 
             if (is_string($moduleId) && $moduleId !== '') {
-                $module = DB::table('course_modules')
-                    ->join('studies', 'studies.id', '=', 'course_modules.study_id')
-                    ->where('course_modules.id', $moduleId)
-                    ->select('course_modules.study_id', 'studies.study_type_id')
-                    ->first();
+                $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($moduleId);
 
-                if (! $module || (string) $module->study_type_id !== $templateStudyTypeId) {
+                if ($module === null || $module['study_type_id'] !== $templateStudyTypeId) {
                     throw ValidationException::withMessages([
                         'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
                     ]);
                 }
 
-                if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+                if (is_string($studyId) && $studyId !== '' && $studyId !== $module['study_id']) {
                     throw ValidationException::withMessages([
                         'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                     ]);
                 }
 
                 $normalized['module_id'] = $moduleId;
-                $normalized['study_id'] = (string) $module->study_id;
+                $normalized['study_id'] = $module['study_id'];
 
                 return $normalized;
             }
 
             if (is_string($studyId) && $studyId !== '') {
-                $studyTypeFromStudy = DB::table('studies')
-                    ->where('id', $studyId)
-                    ->value('study_type_id');
-                if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
+                $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($studyId);
+                if ($studyTypeFromStudy === null || $studyTypeFromStudy !== $templateStudyTypeId) {
                     throw ValidationException::withMessages([
                         'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
                     ]);
@@ -969,16 +957,13 @@ class TemplateService implements TemplateServiceInterface
         }
 
         if ($visibility === TemplateVisibilityLevel::Global->value && is_string($moduleId) && $moduleId !== '') {
-            $module = DB::table('course_modules')
-                ->where('id', $moduleId)
-                ->select('study_id')
-                ->first();
-            if (! $module || ! is_string($module->study_id)) {
+            $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
+            if ($moduleStudyId === null) {
                 throw ValidationException::withMessages([
                     'module_id' => ['El módulo seleccionado no existe.'],
                 ]);
             }
-            if (is_string($studyId) && $studyId !== '' && $studyId !== (string) $module->study_id) {
+            if (is_string($studyId) && $studyId !== '' && $studyId !== $moduleStudyId) {
                 throw ValidationException::withMessages([
                     'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                 ]);

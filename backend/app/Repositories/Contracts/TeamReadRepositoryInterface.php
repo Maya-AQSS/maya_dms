@@ -17,5 +17,19 @@ interface TeamReadRepositoryInterface
      * @return array{id: string, name: string, is_department: bool}|null
      */
     public function findVisibleTeamByIdForUser(string $userId, string $teamId): ?array;
+
+    /**
+     * Comprueba si el usuario pertenece al equipo (vía team_members).
+     */
+    public function isMember(string $teamId, string $userId): bool;
+
+    /**
+     * Mapa `id => name` para los IDs solicitados. Sin filtros de visibilidad —
+     * el caller ya restringió la lista a equipos accesibles.
+     *
+     * @param  list<string>  $teamIds
+     * @return array<string, string>
+     */
+    public function getTeamNamesByIds(array $teamIds): array;
 }
 

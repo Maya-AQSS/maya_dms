@@ -8,7 +8,6 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class SnapshotService implements SnapshotServiceInterface
 {
@@ -127,9 +126,7 @@ class SnapshotService implements SnapshotServiceInterface
             return ['submitted_at' => null, 'published_at' => null];
         }
 
-        $reviewFirst = DB::table('document_reviews')
-            ->where('document_id', $document->id)
-            ->min('created_at');
+        $reviewFirst = $this->documentRepository->firstReviewCreatedAt((string) $document->id);
 
         $submitted = $reviewFirst !== null
             ? Carbon::parse($reviewFirst)->toIso8601String()

@@ -252,4 +252,83 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     {
         return DB::transaction($callback);
     }
+
+    public function findLatestPublishedIdsByVersionables(string $versionableType, array $versionableIds): array
+    {
+        if ($versionableIds === []) {
+            return [];
+        }
+
+        $maxVersions = EntityVersion::query()
+            ->where('versionable_type', $versionableType)
+            ->whereIn('versionable_id', $versionableIds)
+            ->where('status', 'published')
+            ->where('version_number', '>', 0)
+            ->groupBy('versionable_id')
+            ->select('versionable_id', DB::raw('MAX(version_number) as max_version'));
+
+        $rows = EntityVersion::query()->from('entity_versions as ev')
+            ->joinSub($maxVersions, 'mv', function ($join): void {
+                $join->on('ev.versionable_id', '=', 'mv.versionable_id')
+                    ->on('ev.version_number', '=', 'mv.max_version');
+            })
+            ->where('ev.versionable_type', $versionableType)
+            ->where('ev.status', 'published')
+            ->get(['ev.id', 'ev.versionable_id']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(string) $row->versionable_id] = (string) $row->id;
+        }
+
+        return $out;
+    }
+
+    public function findLatestPublishedRowsByVersionables(string $versionableType, array $versionableIds): array
+    {
+        if ($versionableIds === []) {
+            return [];
+        }
+
+        $maxVersions = EntityVersion::query()
+            ->where('versionable_type', $versionableType)
+            ->whereIn('versionable_id', $versionableIds)
+            ->where('status', 'published')
+            ->where('version_number', '>', 0)
+            ->groupBy('versionable_id')
+            ->select('versionable_id', DB::raw('MAX(version_number) as max_version'));
+
+        $rows = EntityVersion::query()->from('entity_versions as ev')
+            ->joinSub($maxVersions, 'mv', function ($join): void {
+                $join->on('ev.versionable_id', '=', 'mv.versionable_id')
+                    ->on('ev.version_number', '=', 'mv.max_version');
+            })
+            ->where('ev.versionable_type', $versionableType)
+            ->where('ev.status', 'published')
+            ->get(['ev.versionable_id', 'ev.id', 'ev.version_number', 'ev.snapshot_data']);
+
+        $out = [];
+        foreach ($rows as $row) {
+            $out[(string) $row->versionable_id] = [
+                'id'             => (string) $row->id,
+                'version_number' => (int) $row->version_number,
+                'snapshot_data'  => $row->snapshot_data,
+            ];
+        }
+
+        return $out;
+    }
+
+    public function findVersionNumbersByIds(array $entityVersionIds): array
+    {
+        if ($entityVersionIds === []) {
+            return [];
+        }
+
+        return EntityVersion::query()
+            ->whereIn('id', $entityVersionIds)
+            ->pluck('version_number', 'id')
+            ->map(static fn ($value): int => (int) $value)
+            ->all();
+    }
 }

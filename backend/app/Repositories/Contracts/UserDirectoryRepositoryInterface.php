@@ -24,4 +24,9 @@ interface UserDirectoryRepositoryInterface
      * @return list<array{id: string, name: ?string, email: ?string, role: ?string}>
      */
     public function searchDocumentReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array;
+
+    /**
+     * Nombre legible del usuario por su ID, o null si no existe / está vacío.
+     */
+    public function findNameById(string $userId): ?string;
 }

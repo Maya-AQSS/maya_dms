@@ -19,7 +19,7 @@ class TemplateContextResolverTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->resolver = new TemplateContextResolver();
+        $this->resolver = app(TemplateContextResolver::class);
     }
 
     // ── Helpers ────────────────────────────────────────────────────────────

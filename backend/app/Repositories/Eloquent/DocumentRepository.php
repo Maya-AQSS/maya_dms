@@ -303,6 +303,13 @@ class DocumentRepository implements DocumentRepositoryInterface
         return $min !== null ? (int) $min : null;
     }
 
+    public function firstReviewCreatedAt(string $documentId): mixed
+    {
+        return DocumentReview::query()
+            ->where('document_id', $documentId)
+            ->min('created_at');
+    }
+
     /**
      * Guarda una revisión del documento.
      */

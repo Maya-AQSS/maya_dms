@@ -6,16 +6,20 @@ use App\Models\Document;
 use App\Models\DocumentVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 class DocumentVersionService
 {
+    /** @var array<string, ?string> */
+    private array $userNameCache = [];
+
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly DocumentVersionBlockLayerResolver $documentVersionBlockLayerResolver,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -72,9 +76,9 @@ class DocumentVersionService
                 'version_number' => (int) $version->version_number,
                 'trigger_event' => (string) $version->trigger_event,
                 'triggered_by' => (string) $version->triggered_by,
-                'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
-                'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
-                'owner_name' => $ownerId !== null ? self::resolveUserNameById($ownerId) : null,
+                'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                'owner_name' => $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
                 'changelog' => $version->notes,
                 'snapshot_data' => $snapshotData,
                 'created_at' => $version->created_at?->toIso8601String(),
@@ -106,9 +110,9 @@ class DocumentVersionService
                 'version_number' => (int) $entityVersion->version_number,
                 'trigger_event' => 'published',
                 'triggered_by' => (string) ($entityVersion->published_by ?? $entityVersion->created_by),
-                'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
-                'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
-                'owner_name' => $ownerId !== null ? self::resolveUserNameById($ownerId) : null,
+                'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                'owner_name' => $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
                 'changelog' => $entityVersion->changelog,
                 'snapshot_data' => $snapshotData,
                 'created_at' => ($entityVersion->published_at ?? $entityVersion->created_at)?->toIso8601String(),
@@ -139,7 +143,7 @@ class DocumentVersionService
         $entityVersions = $this->entityVersionRepository->listPublishedForEntityOrdered(
             Document::class,
             $documentId,
-        )->map(static function ($v): array {
+        )->map(function ($v): array {
             $snapshot = is_array($v->snapshot_data) ? $v->snapshot_data : [];
             $authorId = data_get($snapshot, 'document.created_by');
             $authorId = is_string($authorId) && $authorId !== '' ? $authorId : (is_string($v->created_by) ? $v->created_by : null);
@@ -150,8 +154,8 @@ class DocumentVersionService
                 'version_number' => (int) $v->version_number,
                 'trigger_event' => 'published',
                 'triggered_by' => (string) ($v->published_by ?? $v->created_by),
-                'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
-                'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
+                'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
                 'changelog' => $v->changelog,
                 'notes' => $v->changelog,
                 'created_at' => ($v->published_at ?? $v->created_at)?->toIso8601String(),
@@ -161,7 +165,7 @@ class DocumentVersionService
         $legacyVersions = $document->versions()
             ->orderByDesc('version_number')
             ->get()
-            ->map(static function (DocumentVersion $v): array {
+            ->map(function (DocumentVersion $v): array {
                 $snapshot = $v->snapshot_data;
                 if (is_string($snapshot)) {
                     $decoded = json_decode($snapshot, true);
@@ -177,8 +181,8 @@ class DocumentVersionService
                     'version_number' => $v->version_number,
                     'trigger_event' => $v->trigger_event,
                     'triggered_by' => $v->triggered_by,
-                    'published_by_name' => $publishedBy !== null ? self::resolveUserNameById($publishedBy) : null,
-                    'author_name' => $authorId !== null ? self::resolveUserNameById($authorId) : null,
+                    'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
+                    'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
                     'changelog' => $v->notes,
                     'notes' => $v->notes,
                     'created_at' => $v->created_at?->toIso8601String(),
@@ -241,14 +245,12 @@ class DocumentVersionService
             ->all();
     }
 
-    private static function resolveUserNameById(string $userId): ?string
+    private function resolveUserNameById(string $userId): ?string
     {
-        static $cache = [];
-        if (array_key_exists($userId, $cache)) {
-            return $cache[$userId];
+        if (array_key_exists($userId, $this->userNameCache)) {
+            return $this->userNameCache[$userId];
         }
-        $name = DB::table('users')->where('id', $userId)->value('name');
-        $cache[$userId] = is_string($name) && trim($name) !== '' ? trim($name) : null;
-        return $cache[$userId];
+
+        return $this->userNameCache[$userId] = $this->userDirectoryRepository->findNameById($userId);
     }
 }

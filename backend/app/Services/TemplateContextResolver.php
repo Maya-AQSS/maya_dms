@@ -6,7 +6,8 @@ namespace App\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
 use App\Enums\TemplateVisibilityLevel;
-use Illuminate\Support\Facades\DB;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -15,6 +16,11 @@ use Illuminate\Validation\ValidationException;
  */
 class TemplateContextResolver
 {
+    public function __construct(
+        private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
+        private readonly TeamReadRepositoryInterface $teamReadRepository,
+    ) {}
+
     /**
      * @param  array<string, mixed>|null  $templateMeta
      * @return array{studyTypeId: ?string, studyId: ?string, moduleId: ?string, teamId: ?string}
@@ -133,10 +139,8 @@ class TemplateContextResolver
         $studyId  = $templateStudyId;
 
         if ($dto->moduleId !== null) {
-            $moduleStudyId = DB::table('course_modules')
-                ->where('id', $dto->moduleId)
-                ->value('study_id');
-            if (! is_string($moduleStudyId) || $moduleStudyId !== $templateStudyId) {
+            $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($dto->moduleId);
+            if ($moduleStudyId === null || $moduleStudyId !== $templateStudyId) {
                 throw ValidationException::withMessages([
                     'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
                 ]);
@@ -172,34 +176,28 @@ class TemplateContextResolver
         }
 
         if ($dto->moduleId !== null) {
-            $module = DB::table('course_modules')
-                ->join('studies', 'studies.id', '=', 'course_modules.study_id')
-                ->where('course_modules.id', $dto->moduleId)
-                ->select('course_modules.study_id', 'studies.study_type_id')
-                ->first();
-            if (! $module || (string) $module->study_type_id !== $templateStudyTypeId) {
+            $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($dto->moduleId);
+            if ($module === null || $module['study_type_id'] !== $templateStudyTypeId) {
                 throw ValidationException::withMessages([
                     'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
                 ]);
             }
-            if ($dto->studyId !== null && $dto->studyId !== (string) $module->study_id) {
+            if ($dto->studyId !== null && $dto->studyId !== $module['study_id']) {
                 throw ValidationException::withMessages([
                     'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                 ]);
             }
             return [
                 'studyTypeId' => $templateStudyTypeId,
-                'studyId'     => (string) $module->study_id,
+                'studyId'     => $module['study_id'],
                 'moduleId'    => $dto->moduleId,
                 'teamId'      => null,
             ];
         }
 
         if ($dto->studyId !== null) {
-            $studyTypeFromStudy = DB::table('studies')
-                ->where('id', $dto->studyId)
-                ->value('study_type_id');
-            if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy !== $templateStudyTypeId) {
+            $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($dto->studyId);
+            if ($studyTypeFromStudy === null || $studyTypeFromStudy !== $templateStudyTypeId) {
                 throw ValidationException::withMessages([
                     'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
                 ]);
@@ -224,11 +222,7 @@ class TemplateContextResolver
                     'team_id' => ['En plantillas globales, selecciona equipo o contexto académico, pero no ambos a la vez.'],
                 ]);
             }
-            $isTeamMember = DB::table('team_members')
-                ->where('team_id', $dto->teamId)
-                ->where('user_id', $dto->createdBy)
-                ->exists();
-            if (! $isTeamMember) {
+            if (! $this->teamReadRepository->isMember($dto->teamId, (string) $dto->createdBy)) {
                 throw ValidationException::withMessages([
                     'team_id' => ['Solo miembros del equipo seleccionado pueden crear este documento en ese equipo.'],
                 ]);
@@ -237,39 +231,33 @@ class TemplateContextResolver
         }
 
         if ($dto->moduleId !== null) {
-            $module = DB::table('course_modules')
-                ->join('studies', 'studies.id', '=', 'course_modules.study_id')
-                ->where('course_modules.id', $dto->moduleId)
-                ->select('course_modules.study_id', 'studies.study_type_id')
-                ->first();
-            if (! $module || ! is_string($module->study_id) || ! is_string($module->study_type_id)) {
+            $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($dto->moduleId);
+            if ($module === null) {
                 throw ValidationException::withMessages([
                     'module_id' => ['El módulo seleccionado no existe.'],
                 ]);
             }
-            if ($dto->studyId !== null && $dto->studyId !== (string) $module->study_id) {
+            if ($dto->studyId !== null && $dto->studyId !== $module['study_id']) {
                 throw ValidationException::withMessages([
                     'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                 ]);
             }
-            if ($dto->studyTypeId !== null && $dto->studyTypeId !== (string) $module->study_type_id) {
+            if ($dto->studyTypeId !== null && $dto->studyTypeId !== $module['study_type_id']) {
                 throw ValidationException::withMessages([
                     'study_type_id' => ['El tipo de estudio indicado no corresponde con el módulo seleccionado.'],
                 ]);
             }
             return [
-                'studyTypeId' => (string) $module->study_type_id,
-                'studyId'     => (string) $module->study_id,
+                'studyTypeId' => $module['study_type_id'],
+                'studyId'     => $module['study_id'],
                 'moduleId'    => $dto->moduleId,
                 'teamId'      => null,
             ];
         }
 
         if ($dto->studyId !== null) {
-            $studyTypeFromStudy = DB::table('studies')
-                ->where('id', $dto->studyId)
-                ->value('study_type_id');
-            if (! is_string($studyTypeFromStudy) || $studyTypeFromStudy === '') {
+            $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($dto->studyId);
+            if ($studyTypeFromStudy === null) {
                 throw ValidationException::withMessages([
                     'study_id' => ['El estudio seleccionado no existe.'],
                 ]);
