@@ -11,6 +11,15 @@ use Illuminate\Support\Collection;
 
 class DocumentBlockRepository implements DocumentBlockRepositoryInterface
 {
+    public function findInDocumentOrFail(string $blockId, string $documentId): DocumentBlock
+    {
+        return DocumentBlock::query()
+            ->with('templateBlock')
+            ->where('id', $blockId)
+            ->where('document_id', $documentId)
+            ->firstOrFail();
+    }
+
     public function listByDocumentKeyedByTemplateBlock(string $documentId): Collection
     {
         return DocumentBlock::query()

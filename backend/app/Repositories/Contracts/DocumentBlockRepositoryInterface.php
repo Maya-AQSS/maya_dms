@@ -10,6 +10,13 @@ use Illuminate\Support\Collection;
 interface DocumentBlockRepositoryInterface
 {
     /**
+     * Devuelve un bloque concreto del documento, con relaciones
+     * `templateBlock` y `document` eager-loaded. Lanza
+     * `ModelNotFoundException` si el par (block, document) no existe.
+     */
+    public function findInDocumentOrFail(string $blockId, string $documentId): DocumentBlock;
+
+    /**
      * Bloques existentes en el documento agrupados por template_block_id.
      *
      * @return Collection<string, DocumentBlock>
