@@ -70,12 +70,12 @@ export function createApiClient(_keycloak: unknown, _baseUrl: string): ApiClient
   void _keycloak;
   void _baseUrl;
   return {
-    apiFetchJson: async <T,>(_path: string) => {
+    apiFetchJson: async <_T,>(_path: string) => {
       throw new Error(
         '@maya/shared-auth-react (shim): apiFetchJson invoked without mock — vi.mock the calling module',
       );
     },
-    apiGetJson: async <T,>(_path: string) => {
+    apiGetJson: async <_T,>(_path: string) => {
       throw new Error(
         '@maya/shared-auth-react (shim): apiGetJson invoked without mock — vi.mock the calling module',
       );

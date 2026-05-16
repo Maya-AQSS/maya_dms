@@ -1717,7 +1717,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             const allBlockComments = reviewComments.filter(c => {
               if (c.blockable_id === activeBlock.document_block_id && !c.parent_id) return true;
               const rootIds = blockComments.map(r => r.id);
-              return c.parent_id !== null && rootIds.includes(c.parent_id);
+              return c.parent_id != null && rootIds.includes(c.parent_id);
             });
             if (blockComments.length === 0) return null;
             return (

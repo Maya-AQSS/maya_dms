@@ -24,7 +24,6 @@ import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '../../../hooks/useAutoSave';
-import { useUserProfile } from '../../../features/user-profile';
 import { apiFetchJson } from '../../../api/http';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
 import { getCommentsForBlock } from '../../../utils/blockComments';
@@ -231,15 +230,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const activeSingleIdRef = useRef<string | null>(null);
   activeSingleIdRef.current = activeSingleId;
 
-  const { profile } = useUserProfile();
-
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
   const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
 
   const blockComments: BlockComment[] = activeSingleId
     ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
     : [];
-  const activeBlockHasComments = blockComments.length > 0;
 
   useEffect(() => {
     if (activeTab === 'comments') setActiveTab('properties');

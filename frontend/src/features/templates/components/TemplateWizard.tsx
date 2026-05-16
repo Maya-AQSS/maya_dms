@@ -187,15 +187,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     return () => subscription.unsubscribe();
   }, [step1Methods]);
 
-  const handleResolveComment = async (commentId: string) => {
-    try {
-      await apiResolveComment(commentId);
-      setComments(prev => prev.map(c => c.id === commentId ? { ...c, resolved: true } : c));
-    } catch (e) {
-      console.error('Error resolving comment:', e);
-    }
-  };
-
   const handleCommentAdded = (comment: BlockComment) => {
     setComments(prev => [...prev, comment]);
   };

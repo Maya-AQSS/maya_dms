@@ -11,6 +11,7 @@ const baseDoc = (overrides: Partial<Document>): Document => ({
   study_type_id: null,
   study_id: 's1',
   module_id: 'm1',
+  team_id: null,
   created_by: 'u1',
   owner_id: 'u1',
   status: 'draft',

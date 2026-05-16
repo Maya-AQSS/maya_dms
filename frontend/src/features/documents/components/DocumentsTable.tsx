@@ -32,6 +32,7 @@ const STATUS_LABEL: Record<DocumentStatus, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
   published: 'Publicado',
+  rejected: 'Rechazado',
 };
 
 const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [

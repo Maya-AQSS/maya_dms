@@ -44,6 +44,7 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
   published: 'Publicado',
+  rejected: 'Rechazado',
 };
 
 const STATUS_CLASS: Record<DocumentStatus, string> = {
@@ -53,6 +54,8 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
     'bg-warning-light text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light',
   draft:
     'bg-ui-border dark:bg-ui-dark-border text-text-secondary dark:text-text-dark-secondary',
+  rejected:
+    'bg-danger-light text-danger-dark dark:bg-danger-dark/20 dark:text-danger-light',
 };
 
 /**

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchTemplate,
@@ -19,7 +19,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { BlockState, TemplateBlock } from '../types/blocks';
-import { Button, ConfirmDialog, PageTitle, statusBadgeClass } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -628,7 +628,7 @@ export function TemplatePreviewPage() {
                           Bloque {(blocks.findIndex((b) => b.id === block.id) + 1)}: {block.title ?? 'Sin título'}
                         </h4>
                         <div className="flex items-center gap-2">
-                          {block.description && (
+                          {Boolean(block.description) && (
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'info' }); }}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchDocument,
@@ -51,12 +51,6 @@ function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
   if (fromContent.length > 0) return fromContent;
   return normalizeBlockContentForEditor(block.default_content);
 }
-
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  return iso.slice(0, 10);
-}
-
 
 function mapSnapshotDocumentBlocks(raw: unknown): DocumentDisplayBlock[] {
   if (!Array.isArray(raw)) return [];
@@ -916,7 +910,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                     const isSelected = validateActiveView?.blockId === blockId;
                     const commentsActive = isSelected && validateActiveView?.mode === 'comments';
                     const infoActive = isSelected && validateActiveView?.mode === 'info';
-                    const hasComments = validateComments.some(c => c.blockable_id === block.document_block_id);
                     const nodes = normalizeBlockContentForEditor(block.content ?? block.default_content);
                     const hasDescription = !!block.description;
                     const btnBase = 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider';
@@ -1081,7 +1074,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             return (
               <BlockCommentsCard
                 mode={commentMode}
-                blockSortOrder={(detail?.blocks?.indexOf(block) + 1) || '?'}
+                blockSortOrder={((detail?.blocks?.indexOf(block) ?? -1) + 1) || '?'}
                 blockComments={getCommentsForBlock(block.document_block_id, reviewComments)}
                 allComments={reviewComments}
                 commentLoading={reviewCommentsLoading}
@@ -1095,7 +1088,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           return (
             <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
               <ViewCardHeader
-                blockSortOrder={(detail?.blocks?.indexOf(block) + 1) || '?'}
+                blockSortOrder={((detail?.blocks?.indexOf(block) ?? -1) + 1) || '?'}
                 title="Descripción del Bloque"
                 onClose={() => setSelectedReviewView(null)}
                 headerRef={pageHeaderRef}
@@ -1151,7 +1144,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   const isSelected = selectedReviewView?.blockId === blockId;
                   const commentsActive = isSelected && selectedReviewView?.mode === 'comments';
                   const infoActive = isSelected && selectedReviewView?.mode === 'info';
-                  const totalComments = getCommentsForBlock(block.document_block_id, reviewComments);
                   const hasDescription = !!block.description;
                   const nodes = blockContentForPreview(block);
 

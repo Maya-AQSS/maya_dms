@@ -77,6 +77,7 @@ export type Template = {
   created_at?: string;
   updated_at?: string;
   latest_published_name?: string | null;
+  latest_published_at?: string | null;
   blocks_at_previous_submission?: Array<{
     id: string;
     title: string;

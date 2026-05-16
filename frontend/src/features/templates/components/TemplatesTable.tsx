@@ -30,6 +30,7 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
   in_review: 'En revisión',
   published: 'Publicada',
   archived: 'Archivada',
+  rejected: 'Rechazada',
 };
 
 // Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.

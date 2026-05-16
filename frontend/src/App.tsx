@@ -49,7 +49,7 @@ function AppRoutes() {
 }
 
 function Main() {
-  const { logout, user } = useAuth();
+  const { logout } = useAuth();
   const { profile } = useUserProfile();
   const navItems = useNavItems();
   useKeycloakLocaleSync();

@@ -5,7 +5,7 @@ import { fetchProcesses } from '../../../api/processes';
 import { visibilityLabel } from '../constants';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
-import { PaperBlocksArticle, type PaperArticleBlock } from '../../documents/components/PaperBlocksArticle';
+import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 import { ViewCardHeader } from './BlockCommentsCard';
 import { BlockContentHtml } from './BlockContentHtml';
 
@@ -80,14 +80,6 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
       )}
     </>
   );
-
-  const articleBlocks: PaperArticleBlock[] = blocks.map((b) => ({
-    id: b.id,
-    title: b.title,
-    mandatory: b.mandatory,
-    isLocked: b.block_state === 'locked',
-    nodes: normalizeBlockContentForEditor(b.default_content),
-  }));
 
   return (
     <PaperPreviewLayout

@@ -1,9 +1,8 @@
-import { useState, useRef, useMemo, type RefObject } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
-import type { TemplateBlock } from '../../../types/blocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
@@ -52,9 +51,6 @@ type Props = { template: Template };
 
 type ActiveView = { blockId: string; mode: 'comments' | 'info' };
 
-// Sidebar width percentage.
-const SIDEBAR_WIDTH = '35%';
-
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function InfoBlockDescription({ description }: { description: unknown }) {
@@ -78,6 +74,7 @@ function InfoBlockDescription({ description }: { description: unknown }) {
 export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
+  const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
   const { user } = useAuth();
   const { profile } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id);
@@ -86,19 +83,15 @@ export function TemplateReviewView({ template }: Props) {
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // Error state is tracked for telemetry but not surfaced in this view yet.
+  const [, setError] = useState<string | null>(null);
 
-  const [commentLoading, setCommentLoading] = useState(false);
+  const [, setCommentLoading] = useState(false);
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showNoCommentsWarning, setShowNoCommentsWarning] = useState(false);
 
-  const headerRef = useRef<HTMLDivElement>(null);       // page header (for height only)
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const articleRef = useRef<HTMLElement>(null);
-  const viewColRef = useRef<HTMLDivElement>(null);
-  const viewHeaderRef = useRef<HTMLDivElement>(null);   // card/page header inside the view
 
   const currentUserId = user?.sub ?? (user as { id?: string } | null | undefined)?.id;
   const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
@@ -115,35 +108,10 @@ export function TemplateReviewView({ template }: Props) {
     return 'creator-readonly';
   })();
 
-  const remainingReviewers = template.reviewers?.filter(r => r.status === 'pending') || [];
-  const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
-
-  const changedBlockIds = useMemo((): Set<string> => {
-    const history = template.review_history;
-    if (!Array.isArray(history) || history.length < 2) return new Set();
-    const prev = history[history.length - 2];
-    const curr = history[history.length - 1];
-    if (!prev || !curr) return new Set();
-    const prevMap = new Map(prev.blocks.map((b) => [b.id, JSON.stringify(b.default_content)]));
-    const changed = new Set<string>();
-    for (const block of curr.blocks) {
-      const prevContent = prevMap.get(block.id);
-      if (prevContent === undefined || prevContent !== JSON.stringify(block.default_content)) {
-        changed.add(block.id);
-      }
-    }
-    return changed;
-  }, [template.review_history]);
-
-  const goBack = () => {
-    if (window.history.length > 1) { navigate(-1); return; }
-    navigate(backTo);
-  };
 
   // Comentarios del template (TanStack Query).
   const commentsQuery = useTemplateCommentsQuery(template.id);
   const comments = commentsQuery.data?.data ?? [];
-  const commentingOpen = commentsQuery.data?.meta?.commenting_open !== false;
 
   const hasPreviousSubmission = Array.isArray(template.blocks_at_previous_submission) && template.blocks_at_previous_submission.length > 0;
 
@@ -263,34 +231,6 @@ export function TemplateReviewView({ template }: Props) {
 
   const selectedBlock = blocks.find((b) => b.id === activeView?.blockId);
 
-  // Sub-component for Info sidebar (placed inside to share 'blocks' scope)
-  function ValidatorInfoPage({
-    selectedBlock,
-    headerRef,
-    onClose,
-  }: {
-    selectedBlock: TemplateBlock;
-    headerRef: RefObject<HTMLDivElement | null>;
-    onClose: () => void;
-  }) {
-    return (
-      <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300">
-        <ViewCardHeader
-          blockSortOrder={(blocks.findIndex((b) => b.id === selectedBlock.id) + 1) || '?'}
-          title="Descripción del Bloque"
-          onClose={onClose}
-          headerRef={headerRef}
-        />
-        <div style={{ padding: '40px 60px' }}>
-          <InfoBlockDescription description={selectedBlock.description} />
-          {!selectedBlock.description && (
-            <p className="text-sm text-text-muted italic">Este bloque no tiene descripción.</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <PaperPreviewLayout
       title={template.name}
@@ -386,7 +326,6 @@ export function TemplateReviewView({ template }: Props) {
         ) : (
           blocks.map((block) => {
             const isSelected = activeView?.blockId === block.id;
-            const hasComments = comments.some(c => c.blockable_id === block.id);
             const nodes = normalizeBlockContentForEditor(block.default_content);
 
             return (
@@ -409,7 +348,7 @@ export function TemplateReviewView({ template }: Props) {
                     Bloque {(blocks.findIndex((b) => b.id === block.id) + 1)}: {block.title || 'Sin título'}
                   </h4>
                   <div className="flex items-center gap-2">
-                    {block.description && (
+                    {Boolean(block.description) && (
                       <button
                         type="button"
                         onClick={(e) => {
