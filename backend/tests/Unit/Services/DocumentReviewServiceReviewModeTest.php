@@ -11,7 +11,6 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentStateService;
-use Maya\Messaging\Publishers\AuditPublisher;
 use Mockery;
 use Tests\TestCase;
 
@@ -32,7 +31,6 @@ class DocumentReviewServiceReviewModeTest extends TestCase
             $evRepo,
             Mockery::mock(SnapshotServiceInterface::class),
             Mockery::mock(DocumentStateService::class),
-            Mockery::mock(AuditPublisher::class),
         );
     }
 

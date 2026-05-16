@@ -2,24 +2,23 @@
 
 namespace App\Listeners;
 
+use App\Events\SodViolationDetected;
 use App\Models\Document;
 use App\Models\Template;
 use Illuminate\Auth\Access\Events\GateEvaluated;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Log;
-use Maya\Messaging\Publishers\AuditPublisher;
 
 /**
- * Registra en el bus de auditoría cuando una política SoD deniega
- * explícitamente {@see DocumentPolicy} / {@see TemplatePolicy}.
+ * Detecta denegaciones de SoD desde el evento marco
+ * {@see \Illuminate\Auth\Access\Events\GateEvaluated} y dispara el
+ * domain event {@see SodViolationDetected} (implementa `AuditableEvent`)
+ * para que el wildcard del package publique en `maya.audit`. El listener
+ * NO publica directamente — cumple E5.
  */
 class RecordSegregationOfDutiesDenial
 {
     private const ABILITIES = ['review', 'submit'];
-
-    public function __construct(
-        private readonly AuditPublisher $auditPublisher,
-    ) {}
 
     public function handle(GateEvaluated $event): void
     {
@@ -62,19 +61,13 @@ class RecordSegregationOfDutiesDenial
             'user_id'     => $userId,
         ]);
 
-        $this->auditPublisher->publish(
-            applicationSlug: 'maya-dms',
-            entityType:      $entityType,
-            entityId:        (string) $subject->getKey(),
-            action:          'sod_violation',
-            userId:          (string) $userId,
-            newValue:        [
-                'ability' => $event->ability,
-                'level'   => 'WARNING',
-                'reason'  => 'segregation_of_duties',
-            ],
-            ipAddress:       $request?->ip(),
-            userAgent:       $request?->userAgent(),
+        SodViolationDetected::dispatch(
+            $entityType,
+            (string) $subject->getKey(),
+            (string) $userId,
+            (string) $event->ability,
+            $request?->ip(),
+            $request?->userAgent(),
         );
     }
 }
