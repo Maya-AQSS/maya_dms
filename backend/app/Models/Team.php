@@ -1,8 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Contracts\Support\Arrayable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -77,10 +79,11 @@ class Team extends Model
             return parent::newEloquentBuilder($query);
         }
 
-        return new class($query) extends Builder {
+        return new class($query) extends Builder
+        {
             public function whereKey($id): static
             {
-                if (is_array($id) || $id instanceof \Illuminate\Contracts\Support\Arrayable) {
+                if (is_array($id) || $id instanceof Arrayable) {
                     $ids = collect($id)->map(fn ($v) => (string) $v)->all();
                     $this->query->whereIn(
                         DB::raw($this->model->getQualifiedKeyName().'::text'),

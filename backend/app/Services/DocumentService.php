@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -8,12 +9,13 @@ use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\DocumentBlock;
+use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Enums\TemplateVisibilityLevel;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
@@ -22,7 +24,6 @@ use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
-use App\Services\TemplateContextResolver;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
@@ -44,8 +45,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly TemplateContextResolver $contextResolver,
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
         private readonly TeamReadRepositoryInterface $teamReadRepository,
-    ) {
-    }
+    ) {}
 
     /**
      * Canónico: devuelve el DTO del documento. Lanza ModelNotFoundException
@@ -101,8 +101,8 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $blockRows = collect($snapshot)
-            ->sortBy(fn($b) => $b['sort_order'] ?? 0)
-            ->map(fn(array $b) => [
+            ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
+            ->map(fn (array $b) => [
                 'template_block_id' => (string) $b['id'],
                 'content' => $b['default_content'] ?? null,
                 'sort_order' => (int) ($b['sort_order'] ?? 0),
@@ -151,6 +151,7 @@ class DocumentService implements DocumentServiceInterface
 
                 if ($blockRows !== []) {
                     $attributes = $this->cloneDocumentAttributesFromPublishedSnapshot($source, $docSnap, $actorId);
+
                     return $this->documentRepository->createDocumentWithBlocks(
                         $attributes,
                         $blockRows,
@@ -158,7 +159,7 @@ class DocumentService implements DocumentServiceInterface
                 }
             }
 
-            $source->load(['blocks' => fn($q) => $q->orderBy('sort_order')]);
+            $source->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
 
             /** @var list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}> $blockRows */
             $blockRows = $source->blocks->map(function (DocumentBlock $b) use ($actorId): array {
@@ -189,7 +190,7 @@ class DocumentService implements DocumentServiceInterface
                 'process_id' => $source->process_id,
                 'template_id' => $templateId,
                 'template_version_id' => $publishedTemplateVersionId,
-                'title' => $source->title . ' (copia)',
+                'title' => $source->title.' (copia)',
                 'study_type_id' => $source->study_type_id,
                 'study_id' => $source->study_id,
                 'module_id' => $source->module_id,
@@ -210,12 +211,12 @@ class DocumentService implements DocumentServiceInterface
     {
         $rows = [];
         foreach ($blockSnapshots as $b) {
-            if (!is_array($b)) {
+            if (! is_array($b)) {
                 continue;
             }
 
             $tid = $b['template_block_id'] ?? null;
-            if (!is_string($tid) || $tid === '') {
+            if (! is_string($tid) || $tid === '') {
                 continue;
             }
 
@@ -253,7 +254,7 @@ class DocumentService implements DocumentServiceInterface
             : (string) $source->template_id;
 
         $templateVersionId = $docSnap['template_version_id'] ?? $source->template_version_id;
-        if ($templateVersionId !== null && !is_string($templateVersionId)) {
+        if ($templateVersionId !== null && ! is_string($templateVersionId)) {
             $templateVersionId = $source->template_version_id;
         }
         $templateVersionId = $this->resolvePublishedTemplateVersionIdForClone(
@@ -273,7 +274,7 @@ class DocumentService implements DocumentServiceInterface
             'process_id' => $processId,
             'template_id' => $templateId,
             'template_version_id' => $templateVersionId,
-            'title' => $titleBase . ' (copia)',
+            'title' => $titleBase.' (copia)',
             'study_type_id' => array_key_exists('study_type_id', $docSnap) ? $docSnap['study_type_id'] : $source->study_type_id,
             'study_id' => array_key_exists('study_id', $docSnap) ? $docSnap['study_id'] : $source->study_id,
             'module_id' => array_key_exists('module_id', $docSnap) ? $docSnap['module_id'] : $source->module_id,
@@ -315,7 +316,7 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if (!in_array($document->status, ['draft', 'rejected'], true)) {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
                 'status' => ['Solo se pueden editar metadatos de documentos en borrador o rechazados.'],
             ]);
@@ -347,6 +348,7 @@ class DocumentService implements DocumentServiceInterface
             if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
                 // Published version exists + working draft → discard draft, restore published.
                 $this->destroyVersion($documentId, (string) $head->id, $actorId);
+
                 return;
             }
 
@@ -379,7 +381,7 @@ class DocumentService implements DocumentServiceInterface
             return [];
         }
 
-        $templateIds = $templates->pluck('id')->map(fn($id) => (string) $id)->values()->all();
+        $templateIds = $templates->pluck('id')->map(fn ($id) => (string) $id)->values()->all();
 
         // Batch: one query for the latest published version of each template.
         $publishedById = $this->entityVersionRepository->findLatestPublishedIdsByVersionables(
@@ -388,7 +390,7 @@ class DocumentService implements DocumentServiceInterface
         );
 
         // Batch: one query for all distinct team names.
-        $teamIds = $templates->pluck('team_id')->filter()->map(fn($id) => (string) $id)->unique()->values()->all();
+        $teamIds = $templates->pluck('team_id')->filter()->map(fn ($id) => (string) $id)->unique()->values()->all();
         $teamNames = $this->teamReadRepository->getTeamNamesByIds($teamIds);
 
         $options = [];
@@ -539,7 +541,7 @@ class DocumentService implements DocumentServiceInterface
     {
         $versionId = $document->template_version_id;
 
-        if (!is_string($versionId) || $versionId === '') {
+        if (! is_string($versionId) || $versionId === '') {
             return null;
         }
 
@@ -594,7 +596,7 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Anota en cada documento si el visor accede vía `document_shares` y con qué permiso (listado / detalle).
-     * 
+     *
      * @param  Collection<int, Document>  $documents
      */
     public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void
@@ -604,7 +606,7 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
-     * 
+     *
      * @return Collection<int, Document>
      */
     public function listOrderedByCreatedAtDesc(?string $processId = null): Collection
@@ -639,7 +641,7 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Transiciona el documento a un nuevo estado y emite el evento de dominio DocumentStateChanged.
-     * 
+     *
      * @param  array<string, mixed>  $extraAttributes
      */
     public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document
@@ -680,7 +682,7 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $visibility = $templateMeta['visibility_level'] ?? null;
-        if (!is_string($visibility) || $visibility === '') {
+        if (! is_string($visibility) || $visibility === '') {
             return $normalized;
         }
 
@@ -702,6 +704,7 @@ class DocumentService implements DocumentServiceInterface
             $normalized['study_type_id'] = $templateStudyTypeId;
             $normalized['study_id'] = $templateStudyId;
             $normalized['module_id'] = $templateModuleId;
+
             return $normalized;
         }
 
@@ -716,6 +719,7 @@ class DocumentService implements DocumentServiceInterface
             }
             $normalized['study_id'] = $templateStudyId;
             $normalized['study_type_id'] = $templateStudyTypeId;
+
             return $normalized;
         }
 
@@ -738,6 +742,7 @@ class DocumentService implements DocumentServiceInterface
                 $normalized['module_id'] = $moduleId;
             }
             $normalized['study_type_id'] = $templateStudyTypeId;
+
             return $normalized;
         }
 
@@ -776,7 +781,7 @@ class DocumentService implements DocumentServiceInterface
             return $normalized;
         }
 
-        if ($visibility === TemplateVisibilityLevel::Global ->value) {
+        if ($visibility === TemplateVisibilityLevel::Global->value) {
             if (is_string($moduleId) && $moduleId !== '') {
                 $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
                 if ($moduleStudyId === null) {
@@ -821,7 +826,7 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
-        if ($latestPublished === null || !is_array($latestPublished->snapshot_data)) {
+        if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
             return null;
         }
 
@@ -861,14 +866,14 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
 
-            if (!in_array((string) $head->status, ['draft', 'in_review'], true)) {
+            if (! in_array((string) $head->status, ['draft', 'in_review'], true)) {
                 throw ValidationException::withMessages([
                     'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review).'],
                 ]);
             }
 
             $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
-            if ($latestPublished === null || !is_array($latestPublished->snapshot_data)) {
+            if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
                 throw ValidationException::withMessages([
                     'version' => ['No existe una versión publicada a la que restaurar.'],
                 ]);
@@ -898,18 +903,18 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Restaura los bloques de un documento desde una versión publicada.
-     * 
-     * @param list<array<string, mixed>> $publishedBlocks
+     *
+     * @param  list<array<string, mixed>>  $publishedBlocks
      */
     private function restorePublishedDocumentBlocks(string $documentId, array $publishedBlocks): void
     {
         $existingByTemplateBlock = $this->documentBlockRepository
             ->listByDocumentKeyedByTemplateBlock($documentId)
-            ->filter(fn(DocumentBlock $block): bool => is_string($block->template_block_id) && $block->template_block_id !== '');
+            ->filter(fn (DocumentBlock $block): bool => is_string($block->template_block_id) && $block->template_block_id !== '');
 
         $seenTemplateBlockIds = [];
         foreach ($publishedBlocks as $index => $row) {
-            if (!is_array($row)) {
+            if (! is_array($row)) {
                 continue;
             }
 
@@ -936,6 +941,7 @@ class DocumentService implements DocumentServiceInterface
             if ($existing !== null) {
                 $existing->fill($payload);
                 $existing->save();
+
                 continue;
             }
 
@@ -949,6 +955,7 @@ class DocumentService implements DocumentServiceInterface
 
         if ($seenTemplateBlockIds === []) {
             $this->documentBlockRepository->deleteAllForDocument($documentId);
+
             return;
         }
 
@@ -962,7 +969,7 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if (!in_array($document->status, ['draft', 'rejected'], true)) {
+        if (! in_array($document->status, ['draft', 'rejected'], true)) {
             throw ValidationException::withMessages([
                 'status' => ['Solo los documentos en borrador o rechazados pueden enviarse a revisión.'],
             ]);
@@ -1009,13 +1016,13 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Resuelve candidatos de revisión desde la versión de plantilla anclada al documento.
-     * 
+     *
      * @return list<array{reviewer_id: string, stage: int}>
      */
     private function resolveReviewCandidatesFromTemplateVersion(Document $document): array
     {
         $versionId = $document->template_version_id;
-        if (!is_string($versionId) || $versionId === '') {
+        if (! is_string($versionId) || $versionId === '') {
             return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
         }
 
@@ -1025,12 +1032,12 @@ class DocumentService implements DocumentServiceInterface
             (string) $document->template_id,
         );
 
-        if ($entityVersion === null || !is_array($entityVersion->snapshot_data)) {
+        if ($entityVersion === null || ! is_array($entityVersion->snapshot_data)) {
             return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
         }
 
         $reviewersPayload = $entityVersion->snapshot_data['reviewers'] ?? null;
-        if (!is_array($reviewersPayload)) {
+        if (! is_array($reviewersPayload)) {
             return $this->resolveReviewCandidatesFromTemplateLiveConfig($document);
         }
 
@@ -1039,7 +1046,7 @@ class DocumentService implements DocumentServiceInterface
             $candidates = [];
             $stage = 1;
             foreach ($documentReviewers as $row) {
-                if (!is_array($row) || !isset($row['user_id']) || !is_string($row['user_id']) || $row['user_id'] === '') {
+                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                     continue;
                 }
                 $candidates[] = [
@@ -1053,13 +1060,13 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $templateReviewers = $reviewersPayload['template_reviewers'] ?? [];
-        if (!is_array($templateReviewers) || $templateReviewers === []) {
+        if (! is_array($templateReviewers) || $templateReviewers === []) {
             return [];
         }
 
         $candidates = [];
         foreach ($templateReviewers as $row) {
-            if (!is_array($row) || !isset($row['user_id']) || !is_string($row['user_id']) || $row['user_id'] === '') {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                 continue;
             }
 
@@ -1095,7 +1102,7 @@ class DocumentService implements DocumentServiceInterface
                 $candidates = $template->reviewers
                     ->sortBy('stage')
                     ->values()
-                    ->map(fn($r): array => [
+                    ->map(fn ($r): array => [
                         'reviewer_id' => (string) $r->user_id,
                         'stage' => (int) $r->stage,
                     ])
@@ -1113,7 +1120,7 @@ class DocumentService implements DocumentServiceInterface
     {
         $document = $this->documentRepository->findOrFail($documentId);
 
-        if (!in_array($document->status, ['draft', 'in_review'], true)) {
+        if (! in_array($document->status, ['draft', 'in_review'], true)) {
             throw ValidationException::withMessages([
                 'status' => ['Solo se puede publicar un documento en borrador o en revisión.'],
             ]);
@@ -1176,8 +1183,8 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Lista las revisiones del documento.
-     * 
-     * @return Collection<int, \App\Models\DocumentReview>
+     *
+     * @return Collection<int, DocumentReview>
      */
     public function listReviews(string $documentId): Collection
     {
@@ -1252,7 +1259,7 @@ class DocumentService implements DocumentServiceInterface
             return;
         }
 
-        $ids = $documents->pluck('id')->filter(fn($id) => is_string($id) && $id !== '')->values()->all();
+        $ids = $documents->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
         if ($ids === []) {
             return;
         }
@@ -1281,7 +1288,7 @@ class DocumentService implements DocumentServiceInterface
 
         $versionIds = $documents
             ->pluck('template_version_id')
-            ->filter(fn($id) => is_string($id) && $id !== '')
+            ->filter(fn ($id) => is_string($id) && $id !== '')
             ->unique()
             ->values()
             ->all();
@@ -1293,7 +1300,7 @@ class DocumentService implements DocumentServiceInterface
 
         foreach ($documents as $document) {
             $templateVersionId = $document->template_version_id;
-            if (!is_string($templateVersionId) || $templateVersionId === '') {
+            if (! is_string($templateVersionId) || $templateVersionId === '') {
                 continue;
             }
             if (array_key_exists($templateVersionId, $versionNumberById)) {
@@ -1310,13 +1317,14 @@ class DocumentService implements DocumentServiceInterface
                 $snapshot = $decoded;
             }
         }
-        if (!is_array($snapshot)) {
+        if (! is_array($snapshot)) {
             return null;
         }
         $title = data_get($snapshot, 'document.title');
-        if (!is_string($title) || trim($title) === '') {
+        if (! is_string($title) || trim($title) === '') {
             return null;
         }
+
         return $title;
     }
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -46,13 +47,13 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
             ->max('sort_order') ?? -1;
 
         return TemplateBlock::forceCreate([
-            'id'              => (string) Str::uuid(),
-            'template_id'     => $template->getKey(),
-            'title'           => $attributes['title'] ?? null,
+            'id' => (string) Str::uuid(),
+            'template_id' => $template->getKey(),
+            'title' => $attributes['title'] ?? null,
             'default_content' => $attributes['default_content'] ?? null,
-            'description'     => $attributes['description'] ?? null,
-            'block_state'     => $attributes['block_state'] ?? 'editable',
-            'sort_order'      => $attributes['sort_order'] ?? ($maxOrder + 1),
+            'description' => $attributes['description'] ?? null,
+            'block_state' => $attributes['block_state'] ?? 'editable',
+            'sort_order' => $attributes['sort_order'] ?? ($maxOrder + 1),
         ]);
     }
 

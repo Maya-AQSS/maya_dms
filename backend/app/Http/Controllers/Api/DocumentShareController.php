@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
@@ -6,13 +7,14 @@ namespace App\Http\Controllers\Api;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\StoreDocumentShareRequest;
+use App\Policies\DocumentPolicy;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 /**
- * Compartición: alta/revocación gestionada solo por el titular ({@see \App\Policies\DocumentPolicy::share}).
+ * Compartición: alta/revocación gestionada solo por el titular ({@see DocumentPolicy::share}).
  */
 class DocumentShareController extends Controller
 {

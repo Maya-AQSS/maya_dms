@@ -1,11 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
 use App\DTOs\Comments\CommentDto;
-use Maya\Http\Pagination\PaginatedDto;
 use App\Models\Comment;
+use Maya\Http\Pagination\PaginatedDto;
 
 interface CommentServiceInterface
 {

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\Comments;
@@ -14,7 +15,7 @@ class StoreCommentRequest extends FormRequest
 
     /**
      * Reglas de validación.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
@@ -66,6 +67,7 @@ class StoreCommentRequest extends FormRequest
     public function parentId(): ?string
     {
         $value = $this->validated('parent_id');
+
         return is_string($value) && $value !== '' ? $value : null;
     }
 

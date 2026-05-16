@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
@@ -10,14 +11,14 @@ interface UserFavoriteRepositoryInterface
 {
     /**
      * Lista de IDs de plantillas favoritas del usuario.
-     * 
+     *
      * @return list<string>
      */
     public function listTemplateIdsForUser(string $userId): array;
 
     /**
      * Lista de IDs de documentos favoritos del usuario.
-     * 
+     *
      * @return list<string>
      */
     public function listDocumentIdsForUser(string $userId): array;

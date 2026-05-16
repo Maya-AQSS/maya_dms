@@ -1,11 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
-use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -56,7 +57,7 @@ class TemplateReviewerAssignmentService
             foreach ($uniqueUserIds as $index => $userId) {
                 $template->reviewers()->create([
                     'user_id' => $userId,
-                    'stage'   => $index + 1,
+                    'stage' => $index + 1,
                 ]);
             }
         });
@@ -95,8 +96,8 @@ class TemplateReviewerAssignmentService
 
     /**
      * Aserta que los usuarios tienen el permiso requerido.
-     * 
-     * @param list<string> $userIds
+     *
+     * @param  list<string>  $userIds
      */
     private function assertUsersHavePermission(array $userIds, string $requiredPermission, string $field): void
     {
@@ -118,5 +119,4 @@ class TemplateReviewerAssignmentService
             ],
         ]);
     }
-
 }

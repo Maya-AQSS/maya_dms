@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
@@ -7,6 +8,7 @@ use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
+use App\Support\DocumentHeadSnapshot;
 use Illuminate\Support\Collection;
 
 interface DocumentRepositoryInterface
@@ -44,7 +46,7 @@ interface DocumentRepositoryInterface
     /**
      * Fusiona atributos delegados en la versión cabezal y sincroniza {@see EntityVersion::status} si viene `status`.
      *
-     * @param  array<string, mixed>  $updates  Claves de {@see \App\Support\DocumentHeadSnapshot::DELEGATED_ATTRIBUTES}.
+     * @param  array<string, mixed>  $updates  Claves de {@see DocumentHeadSnapshot::DELEGATED_ATTRIBUTES}.
      */
     public function mergeHeadWorkingCopy(Document $document, array $updates): Document;
 
@@ -96,7 +98,7 @@ interface DocumentRepositoryInterface
 
     /**
      * Crea las revisiones pendientes del documento.
-     * 
+     *
      * @param  list<array{reviewer_id: string, stage: int}>  $rows
      */
     public function createPendingReviews(string $documentId, array $rows): void;

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
@@ -32,7 +33,7 @@ class UserController extends Controller
             abort(403, 'No tienes permiso para buscar usuarios.');
         }
 
-        $search  = trim((string) $request->get('search', ''));
+        $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
 
@@ -63,7 +64,7 @@ class UserController extends Controller
             abort(403, 'No tienes permiso para buscar validadores de plantilla.');
         }
 
-        $search  = trim((string) $request->get('search', ''));
+        $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
 
@@ -90,7 +91,7 @@ class UserController extends Controller
             abort(403, 'No tienes permiso para buscar validadores de documento.');
         }
 
-        $search  = trim((string) $request->get('search', ''));
+        $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
 

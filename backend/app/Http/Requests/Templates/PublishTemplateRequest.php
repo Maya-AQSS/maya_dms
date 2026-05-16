@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
@@ -78,8 +79,6 @@ class PublishTemplateRequest extends FormRequest
 
     /**
      * Resuelve la plantilla.
-     * 
-     * @return Template
      */
     private function resolveTemplate(): Template
     {

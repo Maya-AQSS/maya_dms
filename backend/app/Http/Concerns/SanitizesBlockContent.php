@@ -1,7 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Concerns;
+
+use App\Enums\BlockState;
 
 /**
  * Normaliza campos de contenido enriquecido (title, description, default_content)
@@ -38,22 +41,18 @@ trait SanitizesBlockContent
 
     /**
      * Mensajes de error para las reglas de validación.
-     * 
+     *
      * @return array<string, string>
      */
     public function messages(): array
     {
         return [
-            'block_state.in' => 'El estado del bloque debe ser uno de: '.implode(', ', \App\Enums\BlockState::values()).'. Valor recibido: :input.',
+            'block_state.in' => 'El estado del bloque debe ser uno de: '.implode(', ', BlockState::values()).'. Valor recibido: :input.',
         ];
     }
 
     /**
      * Normaliza el contenido enriquecido.
-     * 
-     * @param  mixed  $value
-     * @param  string|null  $parentKey
-     * @return mixed
      */
     private function sanitizeRichContent(mixed $value, ?string $parentKey = null): mixed
     {

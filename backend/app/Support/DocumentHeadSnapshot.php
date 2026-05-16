@@ -1,13 +1,14 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Support;
 
-use Illuminate\Support\Carbon;
+use App\Models\EntityVersion;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Forma canónica de la clave `document` dentro de {@see \App\Models\EntityVersion::snapshot_data}
+ * Forma canónica de la clave `document` dentro de {@see EntityVersion::snapshot_data}
  * para la versión cabezal (número 0) de un documento.
  */
 final class DocumentHeadSnapshot

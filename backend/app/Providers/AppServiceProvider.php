@@ -1,12 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\JwtUser;
-use App\Models\Comment;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Policies\CommentPolicy;
@@ -21,16 +22,16 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
-use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
+use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
-use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
-use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentBlockRepository;
@@ -38,19 +39,20 @@ use App\Repositories\Eloquent\DocumentRepository;
 use App\Repositories\Eloquent\DocumentVersionBlockLayerRepository;
 use App\Repositories\Eloquent\DocumentVersionRepository;
 use App\Repositories\Eloquent\EntityVersionRepository;
-use App\Repositories\Eloquent\TemplateVersionBlockLayerRepository;
 use App\Repositories\Eloquent\ProcessRepository;
 use App\Repositories\Eloquent\TeamReadRepository;
 use App\Repositories\Eloquent\TemplateBlockRepository;
 use App\Repositories\Eloquent\TemplateRepository;
+use App\Repositories\Eloquent\TemplateVersionBlockLayerRepository;
 use App\Repositories\Eloquent\TemplateVersionRepository;
+use App\Repositories\Eloquent\UserDirectoryRepository;
+use App\Repositories\Eloquent\UserFavoriteRepository;
 use App\Repositories\Eloquent\UserPermissionRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
-use App\Repositories\Eloquent\UserFavoriteRepository;
-use App\Repositories\Eloquent\UserDirectoryRepository;
+use App\Repositories\Resolvers\FdwUserProfileResolver;
 use App\Services\AcademicHierarchyService;
-use App\Services\CommentService;
 use App\Services\ApiTeamEmbedService;
+use App\Services\CommentService;
 use App\Services\Contracts\AcademicHierarchyServiceInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
@@ -58,28 +60,28 @@ use App\Services\Contracts\DashboardServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\ProcessServiceInterface;
-use App\Services\Contracts\TeamReadServiceInterface;
-use Maya\Auth\Contracts\JwksServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Services\Contracts\TeamReadServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
-use App\Services\Contracts\UserProfileServiceInterface;
-use App\Services\Contracts\UserFavoriteServiceInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
+use App\Services\Contracts\UserFavoriteServiceInterface;
+use App\Services\Contracts\UserProfileServiceInterface;
+use App\Services\DashboardService;
 use App\Services\DocumentService;
 use App\Services\EntityVersionLifecycleService;
 use App\Services\ProcessService;
-use App\Services\DashboardService;
-use App\Services\TeamReadService;
 use App\Services\SnapshotService;
+use App\Services\TeamReadService;
 use App\Services\TemplateBlockService;
 use App\Services\TemplateService;
-use App\Services\UserProfileService;
-use App\Services\UserFavoriteService;
 use App\Services\UserDirectoryService;
+use App\Services\UserFavoriteService;
+use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Maya\Profile\Repositories\Contracts\UserProfileResolverInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -120,8 +122,8 @@ class AppServiceProvider extends ServiceProvider
         // bindea por defecto JwtPassthroughResolver; aquí lo sobrescribimos
         // con el resolver que envuelve nuestro UserProfileService (FDW + cache).
         $this->app->bind(
-            \Maya\Profile\Repositories\Contracts\UserProfileResolverInterface::class,
-            \App\Repositories\Resolvers\FdwUserProfileResolver::class,
+            UserProfileResolverInterface::class,
+            FdwUserProfileResolver::class,
         );
         $this->app->bind(UserFavoriteServiceInterface::class, UserFavoriteService::class);
         $this->app->bind(UserDirectoryServiceInterface::class, UserDirectoryService::class);
@@ -146,16 +148,16 @@ class AppServiceProvider extends ServiceProvider
             $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, $jwtProfile);
 
             $profile = array_merge($jwtProfile, [
-                'study_type_ids'    => $fromDb['study_type_ids'] ?? [],
-                'study_type_id'     => null,
-                'study_ids'         => $fromDb['study_ids'] ?? [],
-                'study_id'          => null,
-                'module_ids'        => $fromDb['module_ids'] ?? [],
-                'module_id'         => null,
+                'study_type_ids' => $fromDb['study_type_ids'] ?? [],
+                'study_type_id' => null,
+                'study_ids' => $fromDb['study_ids'] ?? [],
+                'study_id' => null,
+                'module_ids' => $fromDb['module_ids'] ?? [],
+                'module_id' => null,
                 'course_module_ids' => null,
-                'course_module_id'  => null,
-                'team_ids'          => $fromDb['team_ids'] ?? [],
-                'team_id'           => null,
+                'course_module_id' => null,
+                'team_ids' => $fromDb['team_ids'] ?? [],
+                'team_id' => null,
             ]);
 
             $profile['permissions'] = $fromDb['permissions'] ?? [];

@@ -1,15 +1,16 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
 use App\Models\BlockVersion;
 use App\Models\Document;
-use App\Models\EntityVersion;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
+use App\Models\EntityVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
@@ -274,11 +275,11 @@ class DocumentRepository implements DocumentRepositoryInterface
     {
         foreach ($rows as $row) {
             DocumentReview::forceCreate([
-                'id'          => (string) Str::uuid(),
+                'id' => (string) Str::uuid(),
                 'document_id' => $documentId,
                 'reviewer_id' => $row['reviewer_id'],
-                'stage'       => $row['stage'],
-                'status'      => 'pending',
+                'stage' => $row['stage'],
+                'status' => 'pending',
             ]);
         }
     }

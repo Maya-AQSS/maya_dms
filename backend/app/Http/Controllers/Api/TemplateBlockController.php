@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
@@ -56,7 +57,7 @@ class TemplateBlockController extends Controller
         $block = $this->blockService->create(
             templateId: $template,
             attributes: $request->validated(),
-            userId:     (string) Auth::id(),
+            userId: (string) Auth::id(),
         );
 
         return (new TemplateBlockResource($block))->response()->setStatusCode(201);
@@ -89,8 +90,8 @@ class TemplateBlockController extends Controller
 
         $updated = $this->blockService->update(
             blockId: $block,
-            dto:     $request->toDto(),
-            userId:  (string) Auth::id(),
+            dto: $request->toDto(),
+            userId: (string) Auth::id(),
         );
 
         return new TemplateBlockResource($updated);

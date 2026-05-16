@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\TemplateBlocks;
@@ -20,15 +21,15 @@ class UpdateTemplateBlockRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'           => ['sometimes', 'required', 'string', 'min:1', 'max:255', function ($attr, $value, $fail) {
+            'title' => ['sometimes', 'required', 'string', 'min:1', 'max:255', function ($attr, $value, $fail) {
                 if (mb_strtolower(trim((string) $value)) === 'bloque sin nombre') {
                     $fail('"Bloque sin nombre" no es un nombre válido para un bloque.');
                 }
             }],
             'default_content' => ['sometimes', 'nullable', 'array'],
-            'description'     => ['sometimes', 'nullable', 'array'],
-            'block_state'     => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
-            'sort_order'      => ['sometimes', 'integer', 'min:0'],
+            'description' => ['sometimes', 'nullable', 'array'],
+            'block_state' => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
+            'sort_order' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 
@@ -42,16 +43,16 @@ class UpdateTemplateBlockRequest extends FormRequest
         $validated = $this->validated();
 
         return new UpdateTemplateBlockDto(
-            title:               $validated['title'] ?? null,
-            set_title:           $this->has('title'),
-            default_content:     $validated['default_content'] ?? null,
+            title: $validated['title'] ?? null,
+            set_title: $this->has('title'),
+            default_content: $validated['default_content'] ?? null,
             set_default_content: $this->has('default_content'),
-            sort_order:          $validated['sort_order'] ?? null,
-            set_sort_order:      $this->has('sort_order'),
-            block_state:         $validated['block_state'] ?? null,
-            set_block_state:     $this->has('block_state'),
-            description:         $validated['description'] ?? null,
-            set_description:     $this->has('description'),
+            sort_order: $validated['sort_order'] ?? null,
+            set_sort_order: $this->has('sort_order'),
+            block_state: $validated['block_state'] ?? null,
+            set_block_state: $this->has('block_state'),
+            description: $validated['description'] ?? null,
+            set_description: $this->has('description'),
         );
     }
 }

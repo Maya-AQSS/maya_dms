@@ -1,10 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
 use App\Models\UserFdw;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -22,7 +24,7 @@ class UserProfileRepository implements UserProfileRepositoryInterface
      * Obtiene el perfil del usuario desde la vista FDW.
      * SIEMPRE filtra por user_id — nunca ejecuta SELECT sin filtro.
      *
-     * @throws \Illuminate\Database\QueryException Si FDW no responde en STATEMENT_TIMEOUT_MS.
+     * @throws QueryException Si FDW no responde en STATEMENT_TIMEOUT_MS.
      */
     public function findById(string $userId): ?array
     {
@@ -38,9 +40,9 @@ class UserProfileRepository implements UserProfileRepositoryInterface
             }
 
             return [
-                'id'    => $user->id,
+                'id' => $user->id,
                 'email' => $user->email,
-                'name'  => $user->name,
+                'name' => $user->name,
             ];
         });
     }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\Contracts;
@@ -23,9 +24,8 @@ interface AcademicHierarchyServiceInterface
      *   intersectando con `study_ids` y `module_ids` respectivamente.
      *
      * @param  array<string, mixed>  $profile  Perfil resuelto por
-     *   `UserProfileService::getProfile()` (con `study_type_ids`,
-     *   `study_ids`, `module_ids`, `permissions`).
-     *
+     *                                         `UserProfileService::getProfile()` (con `study_type_ids`,
+     *                                         `study_ids`, `module_ids`, `permissions`).
      * @return list<array<string, mixed>>
      */
     public function getFilteredTreeForProfile(array $profile): array;

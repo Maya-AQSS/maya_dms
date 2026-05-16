@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Listeners;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Detecta denegaciones de SoD desde el evento marco
- * {@see \Illuminate\Auth\Access\Events\GateEvaluated} y dispara el
+ * {@see GateEvaluated} y dispara el
  * domain event {@see SodViolationDetected} (implementa `AuditableEvent`)
  * para que el wildcard del package publique en `maya.audit`. El listener
  * NO publica directamente — cumple E5.
@@ -41,7 +42,7 @@ class RecordSegregationOfDutiesDenial
         $entityType = match (true) {
             $subject instanceof Document => 'document',
             $subject instanceof Template => 'template',
-            default                      => null,
+            default => null,
         };
 
         if ($entityType === null || ! $subject->getKey()) {
@@ -56,10 +57,10 @@ class RecordSegregationOfDutiesDenial
         $request = request();
 
         Log::warning('SoD policy denied', [
-            'ability'     => $event->ability,
+            'ability' => $event->ability,
             'entity_type' => $entityType,
-            'entity_id'   => (string) $subject->getKey(),
-            'user_id'     => $userId,
+            'entity_id' => (string) $subject->getKey(),
+            'user_id' => $userId,
         ]);
 
         SodViolationDetected::dispatch(

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -92,6 +93,7 @@ class EntityVersionReconstructionService
         foreach ($delta as $key => $value) {
             if (! array_key_exists($key, $result)) {
                 $result[$key] = $value;
+
                 continue;
             }
 
@@ -101,6 +103,7 @@ class EntityVersionReconstructionService
                 $valueIsList = array_is_list($value);
                 if ($baseIsList || $valueIsList) {
                     $result[$key] = $value;
+
                     continue;
                 }
 
@@ -109,6 +112,7 @@ class EntityVersionReconstructionService
                 /** @var array<string, mixed> $deltaAssoc */
                 $deltaAssoc = $value;
                 $result[$key] = $this->mergeRecursivePreservingLists($baseAssoc, $deltaAssoc);
+
                 continue;
             }
 

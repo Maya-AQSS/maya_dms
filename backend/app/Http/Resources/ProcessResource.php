@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Resources;
@@ -27,11 +28,11 @@ class ProcessResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'                => $this->resource['id'] ?? null,
-            'code'              => $this->resource['code'] ?? null,
-            'name'              => $this->resource['name'] ?? null,
-            'alias'             => $this->resource['alias'] ?? null,
-            'description'       => $this->resource['description'] ?? null,
+            'id' => $this->resource['id'] ?? null,
+            'code' => $this->resource['code'] ?? null,
+            'name' => $this->resource['name'] ?? null,
+            'alias' => $this->resource['alias'] ?? null,
+            'description' => $this->resource['description'] ?? null,
             'process_parent_id' => $this->resource['process_parent_id'] ?? null,
         ];
     }

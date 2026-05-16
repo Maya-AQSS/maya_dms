@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Policies;
@@ -49,7 +50,7 @@ class TemplatePolicy
     }
 
     /**
-     * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see \App\Models\Template})
+     * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see Template})
      * o vínculo con un documento visible; además hace falta al menos `templates.read` o `documents.create`
      * (quien puede crear programaciones desde módulo puede previsualizar plantillas ofrecidas allí).
      *

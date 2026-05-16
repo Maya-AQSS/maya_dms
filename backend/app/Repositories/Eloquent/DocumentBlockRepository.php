@@ -51,7 +51,7 @@ class DocumentBlockRepository implements DocumentBlockRepositoryInterface
         return DocumentBlock::query()
             ->whereIn('template_block_id', function ($query) use ($templateId): void {
                 $query->select('id')
-                    ->from((new TemplateBlock())->getTable())
+                    ->from((new TemplateBlock)->getTable())
                     ->where('template_id', $templateId);
             })
             ->pluck('template_block_id')

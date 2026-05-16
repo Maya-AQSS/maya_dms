@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -31,9 +32,9 @@ class DocumentBlock extends Model
     protected function casts(): array
     {
         return [
-            'content'    => 'array',
-            'is_filled'  => 'boolean',
-            'locked_at'  => 'datetime',
+            'content' => 'array',
+            'is_filled' => 'boolean',
+            'locked_at' => 'datetime',
             'sort_order' => 'integer',
         ];
     }

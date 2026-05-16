@@ -1,10 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
 
 use App\DTOs\Comments\CommentDto;
-use Maya\Http\Pagination\PaginatedDto;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -13,6 +13,7 @@ use App\Models\TemplateBlock;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use Illuminate\Validation\ValidationException;
+use Maya\Http\Pagination\PaginatedDto;
 
 class CommentService implements CommentServiceInterface
 {
@@ -38,8 +39,7 @@ class CommentService implements CommentServiceInterface
         string $commentableId,
         int $commentableVersion,
         int $perPage,
-    ): PaginatedDto
-    {
+    ): PaginatedDto {
         $page = $this->commentRepository->listForResource(
             $commentableType,
             $commentableId,
@@ -62,8 +62,7 @@ class CommentService implements CommentServiceInterface
         ?string $parentId,
         string $authorId,
         string $body,
-    ): CommentDto
-    {
+    ): CommentDto {
         if (! in_array($commentableType, Comment::ALLOWED_COMMENTABLE_TYPES, true)) {
             throw ValidationException::withMessages([
                 'commentable_type' => ['Tipo de recurso no permitido para comentarios.'],

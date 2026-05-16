@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\Contracts;
@@ -22,4 +23,3 @@ interface TeamReadServiceInterface
      */
     public function embeddableTeam(?string $teamId, string $viewerUserId): ?array;
 }
-

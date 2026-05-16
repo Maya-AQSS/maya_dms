@@ -1,15 +1,17 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Support;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\EntityVersion;
 use App\Models\Template;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Forma canónica de la clave `template` dentro de {@see \App\Models\EntityVersion::snapshot_data}
+ * Forma canónica de la clave `template` dentro de {@see EntityVersion::snapshot_data}
  * para la versión cabezal (número 0) de una plantilla.
  */
 final class TemplateHeadSnapshot

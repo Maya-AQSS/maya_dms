@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Concerns;
@@ -31,6 +32,7 @@ trait AttachesTemplateCanCloneMeta
 
         if ($templates instanceof Template) {
             $attach($templates);
+
             return;
         }
 

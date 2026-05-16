@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -29,8 +30,8 @@ class TemplateBlock extends Model
     {
         return [
             'default_content' => 'array',
-            'description'     => 'array',
-            'sort_order'      => 'integer',
+            'description' => 'array',
+            'sort_order' => 'integer',
         ];
     }
 

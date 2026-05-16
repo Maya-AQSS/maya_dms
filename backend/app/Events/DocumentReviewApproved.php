@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Events;
@@ -24,19 +25,19 @@ class DocumentReviewApproved implements AuditableEvent
     {
         return [
             'applicationSlug' => 'maya-dms',
-            'entityType'      => 'document',
-            'entityId'        => $this->documentId,
-            'action'          => 'review_approved',
-            'userId'          => $this->actorId,
-            'previousValue'   => [
+            'entityType' => 'document',
+            'entityId' => $this->documentId,
+            'action' => 'review_approved',
+            'userId' => $this->actorId,
+            'previousValue' => [
                 'review_id' => (string) $this->review->id,
-                'stage'     => (int) $this->review->stage,
-                'status'    => 'pending',
+                'stage' => (int) $this->review->stage,
+                'status' => 'pending',
             ],
-            'newValue'        => [
+            'newValue' => [
                 'review_id' => (string) $this->review->id,
-                'stage'     => (int) $this->review->stage,
-                'status'    => 'approved',
+                'stage' => (int) $this->review->stage,
+                'status' => 'approved',
             ],
         ];
     }

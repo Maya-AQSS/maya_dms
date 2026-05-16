@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
@@ -29,8 +30,8 @@ class HealthCheckController extends AbstractHealthCheckController
     protected function checks(): array
     {
         return [
-            new DatabaseHealthCheck(),
-            new RedisHealthCheck(),
+            new DatabaseHealthCheck,
+            new RedisHealthCheck,
             new FdwHealthCheck(table: 'users_fdw'),
             new TcpHealthCheck(
                 checkName: 'rabbitmq',
@@ -54,8 +55,8 @@ class HealthCheckController extends AbstractHealthCheckController
     protected function readinessChecks(): array
     {
         return [
-            new DatabaseHealthCheck(),
-            new RedisHealthCheck(),
+            new DatabaseHealthCheck,
+            new RedisHealthCheck,
         ];
     }
 }

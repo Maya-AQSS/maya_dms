@@ -1,15 +1,15 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Concerns\HasCommentingStatus;
+use App\Policies\TemplatePolicy;
 use App\Support\TemplateHeadSnapshot;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,16 +17,18 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * Ancla en proceso; metadatos de nombre, visibilidad, revisión, etc. en la versión cabezal ({@see EntityVersion}, número 0).
  */
 class Template extends Model
 {
-    use HasUuids, SoftDeletes, HasCommentingStatus;
+    use HasCommentingStatus, HasUuids, SoftDeletes;
 
     /**
-     * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see \App\Policies\TemplatePolicy}):
+     * Visibilidad efectiva (solo SQL; la lectura API exige además `templates.read` en {@see TemplatePolicy}):
      * - Creador o revisor asignado en `template_reviewers` (acceso a esa plantilla concreta; editar/comentar se gobiernan aparte).
      * - Plantillas compartidas según nivel (global, tipo de estudio, estudio, módulo, equipo)
      *   usando contexto académico resuelto en BD y membresía en team_members.
@@ -229,8 +231,6 @@ class Template extends Model
 
     /**
      * Solapa académico en BD para alias de plantilla (p.ej. templates / t).
-     *
-     * @param  Builder|QueryBuilder  $query
      */
     public static function applyAcademicOverlapForTableAlias(Builder|QueryBuilder $query, string $userId, string $alias): void
     {
@@ -410,5 +410,4 @@ class Template extends Model
     {
         return $this->morphMany(Comment::class, 'commentable');
     }
-
 }

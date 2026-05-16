@@ -40,13 +40,13 @@ class TemplateContextResolver
         $isTeamScopedTemplate = $visibility === TemplateVisibilityLevel::Team->value;
 
         $templateStudyTypeId = $this->nullableString($templateMeta['study_type_id'] ?? null);
-        $templateStudyId     = $this->nullableString($templateMeta['study_id'] ?? null);
-        $templateModuleId    = $this->nullableString($templateMeta['module_id'] ?? null);
+        $templateStudyId = $this->nullableString($templateMeta['study_id'] ?? null);
+        $templateModuleId = $this->nullableString($templateMeta['module_id'] ?? null);
 
         $studyTypeId = $dto->studyTypeId;
-        $studyId     = $dto->studyId;
-        $moduleId    = $dto->moduleId;
-        $teamId      = $dto->teamId;
+        $studyId = $dto->studyId;
+        $moduleId = $dto->moduleId;
+        $teamId = $dto->teamId;
 
         if ($isTeamScopedTemplate) {
             $templateTeamId = $this->nullableString($templateMeta['team_id'] ?? null);
@@ -55,6 +55,7 @@ class TemplateContextResolver
                     'template_id' => ['La plantilla de equipo no tiene un equipo válido asociado.'],
                 ]);
             }
+
             return ['studyTypeId' => null, 'studyId' => null, 'moduleId' => null, 'teamId' => $templateTeamId];
         }
 
@@ -69,11 +70,12 @@ class TemplateContextResolver
                     'template_id' => ['Las plantillas personales no permiten cambiar el contexto académico al crear documentos.'],
                 ]);
             }
+
             return [
                 'studyTypeId' => $templateStudyTypeId,
-                'studyId'     => $templateStudyId,
-                'moduleId'    => $templateModuleId,
-                'teamId'      => null,
+                'studyId' => $templateStudyId,
+                'moduleId' => $templateModuleId,
+                'teamId' => null,
             ];
         }
 
@@ -93,11 +95,12 @@ class TemplateContextResolver
                     'module_id' => ['El documento debe crearse en el mismo módulo de la plantilla.'],
                 ]);
             }
+
             return [
                 'studyTypeId' => $templateStudyTypeId,
-                'studyId'     => $templateStudyId,
-                'moduleId'    => $templateModuleId,
-                'teamId'      => null,
+                'studyId' => $templateStudyId,
+                'moduleId' => $templateModuleId,
+                'teamId' => null,
             ];
         }
 
@@ -136,7 +139,7 @@ class TemplateContextResolver
         }
 
         $moduleId = null;
-        $studyId  = $templateStudyId;
+        $studyId = $templateStudyId;
 
         if ($dto->moduleId !== null) {
             $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($dto->moduleId);
@@ -150,9 +153,9 @@ class TemplateContextResolver
 
         return [
             'studyTypeId' => $templateStudyTypeId,
-            'studyId'     => $studyId,
-            'moduleId'    => $moduleId,
-            'teamId'      => null,
+            'studyId' => $studyId,
+            'moduleId' => $moduleId,
+            'teamId' => null,
         ];
     }
 
@@ -187,11 +190,12 @@ class TemplateContextResolver
                     'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
                 ]);
             }
+
             return [
                 'studyTypeId' => $templateStudyTypeId,
-                'studyId'     => $module['study_id'],
-                'moduleId'    => $dto->moduleId,
-                'teamId'      => null,
+                'studyId' => $module['study_id'],
+                'moduleId' => $dto->moduleId,
+                'teamId' => null,
             ];
         }
 
@@ -202,11 +206,12 @@ class TemplateContextResolver
                     'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
                 ]);
             }
+
             return [
                 'studyTypeId' => $templateStudyTypeId,
-                'studyId'     => $dto->studyId,
-                'moduleId'    => null,
-                'teamId'      => null,
+                'studyId' => $dto->studyId,
+                'moduleId' => null,
+                'teamId' => null,
             ];
         }
 
@@ -227,6 +232,7 @@ class TemplateContextResolver
                     'team_id' => ['Solo miembros del equipo seleccionado pueden crear este documento en ese equipo.'],
                 ]);
             }
+
             return ['studyTypeId' => null, 'studyId' => null, 'moduleId' => null, 'teamId' => $dto->teamId];
         }
 
@@ -247,11 +253,12 @@ class TemplateContextResolver
                     'study_type_id' => ['El tipo de estudio indicado no corresponde con el módulo seleccionado.'],
                 ]);
             }
+
             return [
                 'studyTypeId' => $module['study_type_id'],
-                'studyId'     => $module['study_id'],
-                'moduleId'    => $dto->moduleId,
-                'teamId'      => null,
+                'studyId' => $module['study_id'],
+                'moduleId' => $dto->moduleId,
+                'teamId' => null,
             ];
         }
 
@@ -267,11 +274,12 @@ class TemplateContextResolver
                     'study_type_id' => ['El tipo de estudio indicado no corresponde con el estudio seleccionado.'],
                 ]);
             }
+
             return [
                 'studyTypeId' => $studyTypeFromStudy,
-                'studyId'     => $dto->studyId,
-                'moduleId'    => null,
-                'teamId'      => null,
+                'studyId' => $dto->studyId,
+                'moduleId' => null,
+                'teamId' => null,
             ];
         }
 

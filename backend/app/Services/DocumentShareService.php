@@ -1,10 +1,13 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
 
-use Illuminate\Support\Collection;
+use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use Illuminate\Support\Collection;
+use Illuminate\Validation\ValidationException;
 
 class DocumentShareService
 {
@@ -28,13 +31,13 @@ class DocumentShareService
         }
 
         if ($targetUserId === $actorId) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'user_id' => ['No puedes compartir el documento contigo mismo.'],
             ]);
         }
 
         if ($targetUserId === $document->owner_id) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
+            throw ValidationException::withMessages([
                 'user_id' => ['El titular ya tiene acceso completo al documento.'],
             ]);
         }
@@ -65,7 +68,7 @@ class DocumentShareService
     }
 
     /**
-     * @param  Collection<int, \App\Models\Document>  $documents
+     * @param  Collection<int, Document>  $documents
      */
     public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void
     {

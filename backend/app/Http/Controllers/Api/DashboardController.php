@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
@@ -15,10 +16,8 @@ class DashboardController extends Controller
 
     /**
      * GET /api/v1/dashboard
-     * 
+     *
      * Muestra las métricas y documentos recientes.
-     * 
-     * @return JsonResponse
      */
     public function index(): JsonResponse
     {

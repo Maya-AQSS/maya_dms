@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Events;
@@ -26,11 +27,11 @@ class TemplateBlocksReordered implements AuditableEvent
     {
         return [
             'applicationSlug' => 'maya-dms',
-            'entityType'      => 'template',
-            'entityId'        => $this->templateId,
-            'action'          => 'blocks_reordered',
-            'userId'          => $this->actorId,
-            'newValue'        => ['block_ids' => $this->orderedBlockIds],
+            'entityType' => 'template',
+            'entityId' => $this->templateId,
+            'action' => 'blocks_reordered',
+            'userId' => $this->actorId,
+            'newValue' => ['block_ids' => $this->orderedBlockIds],
         ];
     }
 }

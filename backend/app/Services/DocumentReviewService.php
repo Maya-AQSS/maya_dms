@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -29,7 +30,7 @@ class DocumentReviewService
 
     /**
      * @param  string  $documentId  ID ya verificado por el llamador (controller).
-     * @return Collection<int, \App\Models\DocumentReview>
+     * @return Collection<int, DocumentReview>
      */
     public function listReviews(string $documentId): Collection
     {
@@ -183,6 +184,7 @@ class DocumentReviewService
         }
 
         $document->loadMissing('template');
+
         return (string) ($document->template?->review_mode ?? 'parallel');
     }
 }

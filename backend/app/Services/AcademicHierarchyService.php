@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -30,9 +31,9 @@ class AcademicHierarchyService implements AcademicHierarchyServiceInterface
         $tree = $this->getCachedTree();
 
         $allowedStudyTypeIds = $profile['study_type_ids'] ?? [];
-        $allowedStudyIds     = $profile['study_ids'] ?? [];
-        $allowedModuleIds    = $profile['module_ids'] ?? [];
-        $permissions         = $profile['permissions'] ?? [];
+        $allowedStudyIds = $profile['study_ids'] ?? [];
+        $allowedModuleIds = $profile['module_ids'] ?? [];
+        $permissions = $profile['permissions'] ?? [];
 
         $hasGlobalPermission = (bool) array_intersect(self::GLOBAL_PERMISSIONS, $permissions);
         $hasWildcardStudyType = in_array('*', $allowedStudyTypeIds, true);

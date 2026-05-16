@@ -1,10 +1,12 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\Models\Template;
+use App\Policies\TemplatePolicy;
 use Illuminate\Support\Collection;
 
 interface TemplateRepositoryInterface
@@ -21,7 +23,7 @@ interface TemplateRepositoryInterface
 
     /**
      * Igual que {@see self::findOrFail} pero sin el global scope de catálogo `user_access`.
-     * Solo para rutas que aplican {@see \App\Policies\TemplatePolicy::view} después.
+     * Solo para rutas que aplican {@see TemplatePolicy::view} después.
      */
     public function findOrFailWithoutCatalogScope(string $id): Template;
 
@@ -89,9 +91,9 @@ interface TemplateRepositoryInterface
     /**
      * Lista plantillas publicadas disponibles para un módulo.
      *
-     * @return \Illuminate\Support\Collection<int, Template>
+     * @return Collection<int, Template>
      */
-    public function listPublishedByModule(string $moduleId): \Illuminate\Support\Collection;
+    public function listPublishedByModule(string $moduleId): Collection;
 
     /**
      * Recupera plantilla para resolver candidatos de revisión documental sin scope de catálogo.
@@ -102,9 +104,9 @@ interface TemplateRepositoryInterface
     /**
      * Bandeja de revisión de plantillas pendientes para un revisor.
      *
-     * @return \Illuminate\Support\Collection<int, array<string, mixed>>
+     * @return Collection<int, array<string, mixed>>
      */
-    public function listPendingReviewInboxForUser(string $userId): \Illuminate\Support\Collection;
+    public function listPendingReviewInboxForUser(string $userId): Collection;
 
     /**
      * Ejecuta una operación dentro de transacción.

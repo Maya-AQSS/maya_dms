@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
@@ -24,23 +25,23 @@ class IndexTemplateRequest extends FormRequest
 
     /**
      * Reglas de validación para el listado de plantillas.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
             'visibility_level' => ['sometimes', 'nullable', Rule::enum(TemplateVisibilityLevel::class)],
-            'status'           => ['sometimes', 'nullable', 'string', 'in:draft,in_review,published,archived'],
+            'status' => ['sometimes', 'nullable', 'string', 'in:draft,in_review,published,archived'],
             'usable_for_documents' => ['sometimes', 'boolean'],
-            'study_type_id'    => ['sometimes', 'nullable', 'string', 'max:255'],
-            'study_id'         => ['sometimes', 'nullable', 'string', 'max:255'],
-            'module_id'        => ['sometimes', 'nullable', 'string', 'max:255'],
-            'team_id'          => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
-            'author_name'      => ['sometimes', 'nullable', 'string', 'max:255'],
+            'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'team_id' => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
+            'author_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'delivery_deadline' => ['sometimes', 'nullable', 'date'],
-            'published_on'     => ['sometimes', 'nullable', 'date'],
-            'process_id'       => ['sometimes', 'nullable', 'uuid', 'exists:processes,id'],
+            'published_on' => ['sometimes', 'nullable', 'date'],
+            'process_id' => ['sometimes', 'nullable', 'uuid', 'exists:processes,id'],
         ];
     }
 

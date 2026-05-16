@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
@@ -20,7 +21,7 @@ class CloneTemplateRequest extends FormRequest
 
     /**
      * Reglas de validación para la clonación de una plantilla.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -13,8 +14,7 @@ class TemplateReviewService
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplatePublishingService $templatePublishingService,
-    ) {
-    }
+    ) {}
 
     /**
      * Envia el borrador a revisión.
@@ -24,7 +24,7 @@ class TemplateReviewService
         return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
             $template = $this->templateRepository->findOrFail($templateId);
 
-            if (!in_array($template->status, ['draft', 'rejected'], true)) {
+            if (! in_array($template->status, ['draft', 'rejected'], true)) {
                 throw ValidationException::withMessages([
                     'status' => ['Solo las plantillas en borrador o rechazadas pueden enviarse a revisión.'],
                 ]);
@@ -36,8 +36,8 @@ class TemplateReviewService
                 ]);
             }
 
-            $template->load(['blocks' => fn($q) => $q->orderBy('sort_order')]);
-            $blocksSnapshot = $template->blocks->map(fn($b) => [
+            $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+            $blocksSnapshot = $template->blocks->map(fn ($b) => [
                 'id' => (string) $b->id,
                 'sort_order' => (int) $b->sort_order,
                 'title' => $b->title,
@@ -61,19 +61,19 @@ class TemplateReviewService
             $template->reviewers()->update(['status' => 'pending']);
 
             $hasEditableBlock = $template->blocks->contains(
-                fn($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
+                fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
             );
-            if (!$hasEditableBlock) {
+            if (! $hasEditableBlock) {
                 throw ValidationException::withMessages([
                     'blocks' => ['La plantilla debe tener al menos un bloque editable o modificable.'],
                 ]);
             }
 
-            $isEmptyContent = fn($b) => is_null($b->default_content)
+            $isEmptyContent = fn ($b) => is_null($b->default_content)
                 || (is_array($b->default_content) && count($b->default_content) === 0);
 
             $emptyModifiableBlock = $template->blocks->first(
-                fn($b) => (string) $b->block_state === 'modifiable' && $isEmptyContent($b)
+                fn ($b) => (string) $b->block_state === 'modifiable' && $isEmptyContent($b)
             );
             if ($emptyModifiableBlock !== null) {
                 throw ValidationException::withMessages([
@@ -82,7 +82,7 @@ class TemplateReviewService
             }
 
             $emptyLockedBlock = $template->blocks->first(
-                fn($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b)
+                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b)
             );
             if ($emptyLockedBlock !== null) {
                 throw ValidationException::withMessages([
@@ -105,7 +105,7 @@ class TemplateReviewService
             $template->loadMissing('headVersion');
             $headEv = $template->headVersion;
             if ($headEv !== null) {
-                $blocksSnapshot = $template->blocks->map(fn($b) => [
+                $blocksSnapshot = $template->blocks->map(fn ($b) => [
                     'id' => $b->id,
                     'title' => $b->title,
                     'default_content' => $b->default_content,
@@ -146,7 +146,7 @@ class TemplateReviewService
 
             $reviewer = $template->reviewers()->where('user_id', $actorId)->first();
 
-            if (!$reviewer) {
+            if (! $reviewer) {
                 throw ValidationException::withMessages([
                     'user' => ['No estás asignado como revisor de esta plantilla.'],
                 ]);
@@ -187,7 +187,7 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->first();
 
-            if (!$reviewer) {
+            if (! $reviewer) {
                 throw ValidationException::withMessages([
                     'user' => ['No estás asignado como revisor de esta plantilla.'],
                 ]);
@@ -216,7 +216,7 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'approved']);
 
-            $allApproved = !$template->reviewers()
+            $allApproved = ! $template->reviewers()
                 ->where('status', '!=', 'approved')
                 ->exists();
 
@@ -231,5 +231,4 @@ class TemplateReviewService
             return $template->fresh();
         });
     }
-
 }

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
@@ -11,8 +12,9 @@ interface EntityVersionRepositoryInterface
     /**
      * Obtiene una versión por su id.
      *
-     * @param string $id El id de la versión.
+     * @param  string  $id  El id de la versión.
      * @return EntityVersion La versión encontrada.
+     *
      * @throws EntityVersionNotFoundException Si la versión no existe.
      */
     public function findOrFail(string $id): EntityVersion;
@@ -49,8 +51,9 @@ interface EntityVersionRepositoryInterface
     /**
      * Obtiene una versión por su id para actualización.
      *
-     * @param string $id El id de la versión.
+     * @param  string  $id  El id de la versión.
      * @return EntityVersion La versión encontrada.
+     *
      * @throws EntityVersionNotFoundException Si la versión no existe.
      */
     public function findOrFailForUpdate(string $id): EntityVersion;
@@ -58,8 +61,8 @@ interface EntityVersionRepositoryInterface
     /**
      * Obtiene el próximo número de versión para un tipo y id de versionable.
      *
-     * @param string $versionableType El tipo de versionable.
-     * @param string $versionableId El id de la versionable.
+     * @param  string  $versionableType  El tipo de versionable.
+     * @param  string  $versionableId  El id de la versionable.
      * @return int El próximo número de versión.
      */
     public function nextVersionNumber(string $versionableType, string $versionableId): int;
@@ -115,7 +118,7 @@ interface EntityVersionRepositoryInterface
     /**
      * Crea una nueva versión.
      *
-     * @param array<string, mixed> $attributes Los atributos de la versión.
+     * @param  array<string, mixed>  $attributes  Los atributos de la versión.
      * @return EntityVersion La versión creada.
      */
     public function create(array $attributes): EntityVersion;
@@ -123,8 +126,8 @@ interface EntityVersionRepositoryInterface
     /**
      * Actualiza una versión.
      *
-     * @param EntityVersion $version La versión a actualizar.
-     * @param array<string, mixed> $attributes Los atributos de la versión.
+     * @param  EntityVersion  $version  La versión a actualizar.
+     * @param  array<string, mixed>  $attributes  Los atributos de la versión.
      * @return EntityVersion La versión actualizada.
      */
     public function update(EntityVersion $version, array $attributes): EntityVersion;
@@ -132,7 +135,7 @@ interface EntityVersionRepositoryInterface
     /**
      * Ejecuta una transacción.
      *
-     * @param callable $callback La función a ejecutar en la transacción.
+     * @param  callable  $callback  La función a ejecutar en la transacción.
      * @return mixed El resultado de la función.
      */
     public function transaction(callable $callback): mixed;

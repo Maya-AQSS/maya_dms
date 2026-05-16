@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
@@ -25,6 +26,7 @@ class CommentController extends Controller
     use ValidatesOptionalProcessContext;
 
     private const int DEFAULT_PER_PAGE = 100;
+
     private const int MAX_PER_PAGE = 200;
 
     public function __construct(
@@ -127,6 +129,7 @@ class CommentController extends Controller
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
             return new CommentableResource($model, Template::class, $model->currentVersion());
         }
 
@@ -134,6 +137,7 @@ class CommentController extends Controller
             $model = $this->documentService->findModelOrFail($documentId);
             $this->authorize('comment', $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
             return new CommentableResource($model, Document::class, $model->currentVersion());
         }
 
@@ -150,12 +154,14 @@ class CommentController extends Controller
         if ($commentableType === Template::class) {
             $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
             $this->loadAndAuthorizeCommentable($comment, $model);
+
             return;
         }
 
         if ($commentableType === Document::class) {
             $model = $this->documentService->findModelOrFail((string) $comment->commentable_id);
             $this->loadAndAuthorizeCommentable($comment, $model);
+
             return;
         }
 

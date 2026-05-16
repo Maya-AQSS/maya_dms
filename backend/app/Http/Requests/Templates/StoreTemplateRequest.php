@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
@@ -24,17 +25,17 @@ class StoreTemplateRequest extends FormRequest
 
     /**
      * Reglas de validación para la creación de una plantilla.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'name'              => ['required', 'string', 'max:255'],
-            'description'       => ['nullable', 'string'],
-            'visibility_level'  => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'visibility_level' => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
             'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
-            'study_type_id'     => [
+            'study_type_id' => [
                 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,study_type',
                 function (string $attribute, mixed $value, \Closure $fail): void {
@@ -43,7 +44,7 @@ class StoreTemplateRequest extends FormRequest
                     }
                 },
             ],
-            'study_id'          => [
+            'study_id' => [
                 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,study',
                 function (string $attribute, mixed $value, \Closure $fail): void {
@@ -52,7 +53,7 @@ class StoreTemplateRequest extends FormRequest
                     }
                 },
             ],
-            'module_id'         => [
+            'module_id' => [
                 'nullable', 'string', 'max:255',
                 'required_if:visibility_level,module',
                 function (string $attribute, mixed $value, \Closure $fail): void {
@@ -61,7 +62,7 @@ class StoreTemplateRequest extends FormRequest
                     }
                 },
             ],
-            'team_id'           => [
+            'team_id' => [
                 'nullable', 'uuid', 'exists:teams,id',
                 'required_if:visibility_level,team',
                 function (string $attribute, mixed $value, \Closure $fail): void {
@@ -76,9 +77,9 @@ class StoreTemplateRequest extends FormRequest
                     }
                 },
             ],
-            'review_stages'     => ['sometimes', 'integer', 'min:0'],
-            'review_mode'       => ['sometimes', 'string', 'in:sequential,parallel'],
-            'process_id'        => ['required', 'uuid', 'exists:processes,id'],
+            'review_stages' => ['sometimes', 'integer', 'min:0'],
+            'review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
+            'process_id' => ['required', 'uuid', 'exists:processes,id'],
         ];
     }
 

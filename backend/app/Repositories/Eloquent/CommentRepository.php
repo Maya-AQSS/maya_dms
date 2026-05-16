@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -30,8 +31,7 @@ class CommentRepository implements CommentRepositoryInterface
         string $commentableId,
         int $commentableVersion,
         int $perPage,
-    ): LengthAwarePaginator
-    {
+    ): LengthAwarePaginator {
         return Comment::query()
             ->select('comments.*')
             ->where('commentable_type', $commentableType)

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Concerns;
@@ -39,6 +40,7 @@ trait AttachesDocumentCanCloneMeta
 
         if ($documents instanceof Document) {
             $attach($documents);
+
             return;
         }
 

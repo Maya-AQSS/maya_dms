@@ -1,15 +1,17 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Services\UserProfileService;
 use Maya\Auth\Models\BaseJwtUser;
 
 /**
- * DTO específico de DMS: extiende {@see \Maya\Auth\Models\BaseJwtUser} añadiendo
+ * DTO específico de DMS: extiende {@see BaseJwtUser} añadiendo
  * los IDs de scope académico (study types, studies, modules, teams).
  *
- * El guard `api` fusiona el JWT con {@see \App\Services\UserProfileService::getProfile()}:
+ * El guard `api` fusiona el JWT con {@see UserProfileService::getProfile()}:
  * ámbito académico y equipos vienen de la BD (FDW / mocks); si cae en fallback JWT,
  * esas listas equivalen a los claims del token.
  *

@@ -12,7 +12,7 @@ final class SearchAccentFold
 {
     /**
      * Map de caracteres UTF-8 (tras mb_strtolower) → caracteres base (translate 1:1).
-     * 
+     *
      * @return array<string, string> un carácter (tras mb_strtolower) → un carácter base (translate 1:1)
      */
     private static function translateCharMap(): array
@@ -60,8 +60,8 @@ final class SearchAccentFold
 
     /**
      * Plegado de acentos: œ/æ → oe/ae y caracteres UTF-8 (tras mb_strtolower) → caracteres base (translate 1:1).
-     * 
-     * @param string $value el valor a plegar
+     *
+     * @param  string  $value  el valor a plegar
      * @return string el valor plegado
      */
     public static function fold(string $value): string
@@ -76,7 +76,7 @@ final class SearchAccentFold
 
     /**
      * Argumentos para translate(from, to) — solo pares 1:1.
-     * 
+     *
      * @return array{0: string, 1: string} argumentos para translate(from, to) — solo pares 1:1
      */
     public static function sqlTranslatePair(): array
@@ -109,8 +109,8 @@ final class SearchAccentFold
 
     /**
      * Escapar comodines para LIKE.
-     * 
-     * @param string $value el valor a escapar
+     *
+     * @param  string  $value  el valor a escapar
      * @return string el valor escapado
      */
     public static function escapeLike(string $value): string

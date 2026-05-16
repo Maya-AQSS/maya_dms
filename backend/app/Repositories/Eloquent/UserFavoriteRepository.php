@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -10,7 +11,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
 {
     /**
      * Lista de IDs de plantillas favoritas del usuario.
-     * 
+     *
      * @return list<string>
      */
     public function listTemplateIdsForUser(string $userId): array
@@ -26,7 +27,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
 
     /**
      * Lista de IDs de documentos favoritos del usuario.
-     * 
+     *
      * @return list<string>
      */
     public function listDocumentIdsForUser(string $userId): array
@@ -47,10 +48,10 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
     {
         $now = now();
         DB::table('user_favorite_templates')->insertOrIgnore([
-            'user_id'     => $userId,
+            'user_id' => $userId,
             'template_id' => $templateId,
-            'created_at'  => $now,
-            'updated_at'  => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
     }
 
@@ -72,10 +73,10 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
     {
         $now = now();
         DB::table('user_favorite_documents')->insertOrIgnore([
-            'user_id'     => $userId,
+            'user_id' => $userId,
             'document_id' => $documentId,
-            'created_at'  => $now,
-            'updated_at'  => $now,
+            'created_at' => $now,
+            'updated_at' => $now,
         ]);
     }
 

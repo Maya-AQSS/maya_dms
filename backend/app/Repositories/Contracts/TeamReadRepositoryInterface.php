@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
@@ -33,4 +34,3 @@ interface TeamReadRepositoryInterface
      */
     public function getTeamNamesByIds(array $teamIds): array;
 }
-

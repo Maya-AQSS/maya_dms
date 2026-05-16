@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -21,7 +22,7 @@ class SnapshotService implements SnapshotServiceInterface
     /**
      * Crea un snapshot de versión de documento y sincroniza capas de bloques.
      *
-     * @param CreateDocumentSnapshotDto $dto Datos de creación del snapshot.
+     * @param  CreateDocumentSnapshotDto  $dto  Datos de creación del snapshot.
      */
     public function createDocumentSnapshot(CreateDocumentSnapshotDto $dto): void
     {
@@ -70,9 +71,9 @@ class SnapshotService implements SnapshotServiceInterface
 
     /**
      * Construye el snapshot de versión de documento.
-     * 
-     * @param Document $document El documento a snapshotear.
-     * @param int $snapshotVersionNumber El número de versión del snapshot.
+     *
+     * @param  Document  $document  El documento a snapshotear.
+     * @param  int  $snapshotVersionNumber  El número de versión del snapshot.
      * @return array<string, mixed>
      */
     private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array

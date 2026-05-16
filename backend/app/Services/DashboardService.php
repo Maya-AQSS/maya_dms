@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -16,9 +17,6 @@ class DashboardService implements DashboardServiceInterface
 
     /**
      * Construye el dashboard para un usuario.
-     * 
-     * @param string $userId
-     * @return array
      */
     public function buildForUser(string $userId): array
     {
@@ -40,7 +38,7 @@ class DashboardService implements DashboardServiceInterface
 
     /**
      * Cuenta las items con severidad crítica.
-     * 
+     *
      * @param  list<array<string, mixed>>  $items
      */
     private function countCritical(array $items): int
@@ -57,7 +55,7 @@ class DashboardService implements DashboardServiceInterface
 
     /**
      * Cuenta las items con severidad alta.
-     * 
+     *
      * @param  list<array<string, mixed>>  $items
      */
     private function countHigh(array $items): int

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -13,8 +14,9 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Obtiene una versión por su id.
      *
-     * @param string $id El id de la versión.
+     * @param  string  $id  El id de la versión.
      * @return EntityVersion La versión encontrada.
+     *
      * @throws EntityVersionNotFoundException Si la versión no existe.
      */
     public function findOrFail(string $id): EntityVersion
@@ -65,8 +67,9 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Obtiene una versión por su id para actualización.
      *
-     * @param string $id El id de la versión.
+     * @param  string  $id  El id de la versión.
      * @return EntityVersion La versión encontrada.
+     *
      * @throws EntityVersionNotFoundException Si la versión no existe.
      */
     public function findOrFailForUpdate(string $id): EntityVersion
@@ -77,8 +80,8 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Obtiene el próximo número de versión para un tipo y id de versionable.
      *
-     * @param string $versionableType El tipo de versionable.
-     * @param string $versionableId El id de la versionable.
+     * @param  string  $versionableType  El tipo de versionable.
+     * @param  string  $versionableId  El id de la versionable.
      * @return int El próximo número de versión.
      */
     public function nextVersionNumber(string $versionableType, string $versionableId): int
@@ -102,8 +105,8 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Obtiene la última versión publicada para una entidad.
      *
-     * @param string $versionableType El tipo de versionable.
-     * @param string $versionableId El id de la versionable.
+     * @param  string  $versionableType  El tipo de versionable.
+     * @param  string  $versionableId  El id de la versionable.
      * @return ?EntityVersion La versión encontrada o null si no existe.
      */
     public function findLatestPublishedForEntity(string $versionableType, string $versionableId): ?EntityVersion
@@ -138,9 +141,9 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Obtiene una versión publicada concreta por número de versión.
      *
-     * @param string $versionableType El tipo de versionable.
-     * @param string $versionableId El id de la versionable.
-     * @param int $versionNumber El número de versión.
+     * @param  string  $versionableType  El tipo de versionable.
+     * @param  string  $versionableId  El id de la versionable.
+     * @param  int  $versionNumber  El número de versión.
      * @return ?EntityVersion La versión encontrada o null si no existe.
      */
     public function findPublishedForEntityVersionNumber(
@@ -219,7 +222,7 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Crea una nueva versión.
      *
-     * @param array<string, mixed> $attributes Los atributos de la versión.
+     * @param  array<string, mixed>  $attributes  Los atributos de la versión.
      * @return EntityVersion La versión creada.
      */
     public function create(array $attributes): EntityVersion
@@ -230,8 +233,8 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Actualiza una versión.
      *
-     * @param EntityVersion $version La versión a actualizar.
-     * @param array<string, mixed> $attributes Los atributos de la versión.
+     * @param  EntityVersion  $version  La versión a actualizar.
+     * @param  array<string, mixed>  $attributes  Los atributos de la versión.
      * @return EntityVersion La versión actualizada.
      */
     public function update(EntityVersion $version, array $attributes): EntityVersion
@@ -246,7 +249,7 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
     /**
      * Ejecuta una transacción.
      *
-     * @param callable $callback La función a ejecutar en la transacción.
+     * @param  callable  $callback  La función a ejecutar en la transacción.
      * @return mixed El resultado de la función.
      */
     public function transaction(callable $callback): mixed
@@ -311,9 +314,9 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
         $out = [];
         foreach ($rows as $row) {
             $out[(string) $row->versionable_id] = [
-                'id'             => (string) $row->id,
+                'id' => (string) $row->id,
                 'version_number' => (int) $row->version_number,
-                'snapshot_data'  => $row->snapshot_data,
+                'snapshot_data' => $row->snapshot_data,
             ];
         }
 

@@ -1,8 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Repositories\Eloquent\UserFavoriteRepository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -12,7 +14,7 @@ class UserFavoriteDocument extends Model
 
     /**
      * PK compuesta (user_id, document_id). No usar save() vía Eloquent;
-     * la persistencia va por {@see \App\Repositories\Eloquent\UserFavoriteRepository}.
+     * la persistencia va por {@see UserFavoriteRepository}.
      */
     public $incrementing = false;
 

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -8,8 +9,8 @@ use App\DTOs\TemplateBlocks\TemplateBlockDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Events\TemplateBlockCreated;
 use App\Events\TemplateBlockDeleted;
-use App\Events\TemplateBlockStateChanged;
 use App\Events\TemplateBlocksReordered;
+use App\Events\TemplateBlockStateChanged;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -22,8 +23,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     public function __construct(
         private readonly TemplateBlockRepositoryInterface $blockRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
-    ) {
-    }
+    ) {}
 
     /**
      * @return list<TemplateBlockDto>

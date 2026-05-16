@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -40,7 +41,7 @@ class AcademicHierarchyRepository implements AcademicHierarchyRepositoryInterfac
             return null;
         }
 
-        $studyId     = is_string($row->study_id) ? $row->study_id : null;
+        $studyId = is_string($row->study_id) ? $row->study_id : null;
         $studyTypeId = is_string($row->study_type_id) ? $row->study_type_id : null;
 
         if ($studyId === null || $studyTypeId === null) {

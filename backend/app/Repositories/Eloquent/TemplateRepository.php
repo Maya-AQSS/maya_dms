@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -6,12 +7,13 @@ namespace App\Repositories\Eloquent;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\SearchAccentFold;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -39,7 +41,7 @@ class TemplateRepository implements TemplateRepositoryInterface
 
     /**
      * Igual que {@see self::findOrFail} pero sin el global scope de catálogo `user_access`.
-     * Solo para rutas que aplican {@see \App\Policies\TemplatePolicy::view} después.
+     * Solo para rutas que aplican {@see TemplatePolicy::view} después.
      */
     public function findOrFailWithoutCatalogScope(string $id): Template
     {
@@ -158,7 +160,7 @@ class TemplateRepository implements TemplateRepositoryInterface
      * Rellena en memoria `latest_published_*` desde `entity_versions` (última versión publicada por plantilla).
      *
      * @param  Collection<int, Template>  $templates
-     * {@inheritDoc}
+     *                                                {@inheritDoc}
      */
     public function attachLatestPublishedVersionMeta(Collection $templates): void
     {
@@ -429,9 +431,9 @@ class TemplateRepository implements TemplateRepositoryInterface
      * Carga múltiples plantillas por sus IDs (con el global scope activo), indexadas por ID.
      *
      * @param  list<string>  $ids
-     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     * @return EloquentCollection<string, Template>
      */
-    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection
+    public function findManyByIds(array $ids): EloquentCollection
     {
         $table = (new Template)->getTable();
 

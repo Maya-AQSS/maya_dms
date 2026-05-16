@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
@@ -21,7 +22,7 @@ class SyncTemplateUsersRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'user_ids'   => ['present', 'array'],
+            'user_ids' => ['present', 'array'],
             'user_ids.*' => ['required', 'string', 'distinct', 'exists:users,id'],
         ];
     }

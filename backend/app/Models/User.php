@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -13,13 +14,16 @@ use Illuminate\Foundation\Auth\Access\Authorizable;
  * Mapea la vista FDW 'users' → odoo.v_app_users (read-only).
  * PK = keycloak_user_id (UUID Keycloak). Sin timestamps ni password local.
  */
-class User extends Model implements AuthenticatableContract, \Illuminate\Contracts\Auth\Access\Authorizable
+class User extends Model implements \Illuminate\Contracts\Auth\Access\Authorizable, AuthenticatableContract
 {
-    use HasFactory, Authenticatable, Authorizable;
+    use Authenticatable, Authorizable, HasFactory;
 
     public $timestamps = false;
+
     protected $primaryKey = 'id';
+
     public $incrementing = false;
+
     protected $keyType = 'string';
 
     protected $fillable = [

@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -14,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Query\Expression;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -22,7 +24,7 @@ use Illuminate\Support\Str;
  */
 class Document extends Model
 {
-    use HasUuids, SoftDeletes, HasCommentingStatus;
+    use HasCommentingStatus, HasUuids, SoftDeletes;
 
     /**
      * Visibilidad efectiva (SQL):
@@ -172,10 +174,10 @@ class Document extends Model
         $baseQuery = $builder->getQuery();
         $existingColumns = $baseQuery->columns ?? [];
         $hasWildcard = collect($existingColumns)->contains(
-            fn ($col) => !$col instanceof \Illuminate\Database\Query\Expression
+            fn ($col) => ! $col instanceof Expression
                 && ($col === $builder->getModel()->getTable().'.*' || $col === '*'),
         );
-        if (!$hasWildcard) {
+        if (! $hasWildcard) {
             $builder->addSelect($builder->getModel()->getTable().'.*');
         }
 
@@ -212,8 +214,6 @@ class Document extends Model
 
     /**
      * Condiciones OR sobre columnas del documento alineadas con contexto académico en BD.
-     *
-     * @param  Builder|QueryBuilder  $query
      */
     public static function applyAcademicOverlapOnDocumentsTable(Builder|QueryBuilder $query, string $userId): void
     {
@@ -222,8 +222,6 @@ class Document extends Model
 
     /**
      * Misma regla con prefijo de tabla personalizado (p. ej. `d` en JOIN).
-     *
-     * @param  Builder|QueryBuilder  $query
      */
     public static function applyAcademicOverlapForTableAlias(Builder|QueryBuilder $query, string $userId, string $alias): void
     {
@@ -469,5 +467,4 @@ class Document extends Model
     {
         return $this->morphMany(Comment::class, 'commentable');
     }
-
 }

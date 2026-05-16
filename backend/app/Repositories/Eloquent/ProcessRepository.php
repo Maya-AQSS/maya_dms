@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -24,12 +25,12 @@ class ProcessRepository implements ProcessRepositoryInterface
             ->orderBy('code')
             ->get()
             ->map(static fn (Process $process): array => [
-                'id'                 => (string) $process->id,
-                'code'               => (string) $process->code,
-                'name'               => (string) $process->name,
-                'alias'              => (string) $process->alias,
-                'description'        => $process->description,
-                'process_parent_id'  => $process->process_parent_id,
+                'id' => (string) $process->id,
+                'code' => (string) $process->code,
+                'name' => (string) $process->name,
+                'alias' => (string) $process->alias,
+                'description' => $process->description,
+                'process_parent_id' => $process->process_parent_id,
             ])
             ->values()
             ->all();

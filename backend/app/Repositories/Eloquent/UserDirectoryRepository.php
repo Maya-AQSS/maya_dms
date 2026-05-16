@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
@@ -21,14 +22,10 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
 
     /**
      * Busca usuarios por nombre o email.
-     *
-     * @param string $search
-     * @param int $limit
-     * @return array
      */
     public function searchUsers(string $search, int $limit, ?string $excludeUserId = null): array
     {
-        $term = '%' . mb_strtolower($search) . '%';
+        $term = '%'.mb_strtolower($search).'%';
 
         $query = DB::table('users')
             ->where(function ($query) use ($term) {
@@ -73,8 +70,7 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
     /**
      * Candidatos a validador filtrados por un único código de permiso de revisión ya presente en `user_permissions`.
      *
-     * @param string $permissionCode p. ej. {@see self::PERMISSION_TEMPLATE_REVIEW} o {@see self::PERMISSION_DOCUMENT_REVIEW}
-     *
+     * @param  string  $permissionCode  p. ej. {@see self::PERMISSION_TEMPLATE_REVIEW} o {@see self::PERMISSION_DOCUMENT_REVIEW}
      * @return list<array{id: string, name: ?string, email: ?string, role: ?string}> `role` reservado para la API (sin datos en `users` FDW)
      */
     private function searchReviewerCandidatesByPermission(
@@ -92,7 +88,7 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
         }
 
         if (mb_strlen($search) >= 2) {
-            $term = '%' . mb_strtolower($search) . '%';
+            $term = '%'.mb_strtolower($search).'%';
             $query->where(function ($q) use ($term) {
                 $q->whereRaw('LOWER(users.name) LIKE ?', [$term])
                     ->orWhereRaw('LOWER(users.email) LIKE ?', [$term]);

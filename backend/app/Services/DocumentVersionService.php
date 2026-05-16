@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -124,7 +125,7 @@ class DocumentVersionService
     /**
      * Metadatos de versiones del documento ordenados descendentemente.
      * No incluye el snapshot completo en el listado.
-     * 
+     *
      * @return list<array{
      *   id: string,
      *   document_id: string,
@@ -149,6 +150,7 @@ class DocumentVersionService
             $authorId = data_get($snapshot, 'document.created_by');
             $authorId = is_string($authorId) && $authorId !== '' ? $authorId : (is_string($v->created_by) ? $v->created_by : null);
             $publishedBy = is_string($v->published_by) && $v->published_by !== '' ? $v->published_by : (is_string($v->created_by) ? $v->created_by : null);
+
             return [
                 'id' => $v->id,
                 'document_id' => $v->versionable_id,
@@ -176,6 +178,7 @@ class DocumentVersionService
                 $authorId = data_get($snapshot, 'document.created_by');
                 $authorId = is_string($authorId) && $authorId !== '' ? $authorId : null;
                 $publishedBy = is_string($v->triggered_by) && $v->triggered_by !== '' ? $v->triggered_by : null;
+
                 return [
                     'id' => $v->id,
                     'document_id' => $v->document_id,
@@ -193,8 +196,7 @@ class DocumentVersionService
         if ($entityVersions->isEmpty()) {
             return $legacyVersions
                 ->reject(
-                    fn (array $row): bool =>
-                        $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
+                    fn (array $row): bool => $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
                 )
                 ->values()
                 ->all();
@@ -203,8 +205,7 @@ class DocumentVersionService
         if ($legacyVersions->isEmpty()) {
             return $entityVersions
                 ->reject(
-                    fn (array $row): bool =>
-                        $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
+                    fn (array $row): bool => $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
                 )
                 ->values()
                 ->all();
@@ -212,8 +213,7 @@ class DocumentVersionService
 
         return collect($this->mergeDocumentVersionListRowsPreferringEntity($entityVersions, $legacyVersions))
             ->reject(
-                fn (array $row): bool =>
-                    $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
+                fn (array $row): bool => $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
             )
             ->values()
             ->all();

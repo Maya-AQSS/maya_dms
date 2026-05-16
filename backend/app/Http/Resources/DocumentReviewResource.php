@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Resources;
@@ -21,15 +22,15 @@ class DocumentReviewResource extends JsonResource
         $review = $this->resource;
 
         return [
-            'id'               => (string) $review->id,
-            'document_id'      => (string) $review->document_id,
-            'reviewer_id'      => (string) $review->reviewer_id,
-            'stage'            => (int) $review->stage,
-            'status'           => (string) $review->status,
+            'id' => (string) $review->id,
+            'document_id' => (string) $review->document_id,
+            'reviewer_id' => (string) $review->reviewer_id,
+            'stage' => (int) $review->stage,
+            'status' => (string) $review->status,
             'rejection_reason' => $review->rejection_reason,
-            'reviewed_at'      => $review->reviewed_at?->toIso8601String(),
-            'created_at'       => $review->created_at?->toIso8601String(),
-            'updated_at'       => $review->updated_at?->toIso8601String(),
+            'reviewed_at' => $review->reviewed_at?->toIso8601String(),
+            'created_at' => $review->created_at?->toIso8601String(),
+            'updated_at' => $review->updated_at?->toIso8601String(),
         ];
     }
 }

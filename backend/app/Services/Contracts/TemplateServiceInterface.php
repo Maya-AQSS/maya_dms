@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\Contracts;
@@ -8,14 +9,16 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\UpdateTemplateDto;
+use App\Http\Controllers\Api\TemplateController;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Policies\TemplatePolicy;
 use Illuminate\Support\Collection;
 
 /**
  * Excepción B4 documentada: análoga a {@see DocumentServiceInterface} —
  * la mayoría de métodos de mutación devuelven el Model Eloquent porque el
- * {@see \App\Http\Controllers\Api\TemplateController} adjunta atributos
+ * {@see TemplateController} adjunta atributos
  * derivados (`can_clone`, `review_mode`, etc.) mediante `setAttribute()` antes
  * de presentar como DTO. La conversión final a DTO se hace en el Controller
  * con `TemplateDto::fromModel($model)` antes de pasar al Resource (que es
@@ -47,7 +50,7 @@ interface TemplateServiceInterface
     public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection;
 
     /**
-     * Resuelve la plantilla sin scope de catálogo; exige {@see \App\Policies\TemplatePolicy::view} en el controlador.
+     * Resuelve la plantilla sin scope de catálogo; exige {@see TemplatePolicy::view} en el controlador.
      */
     public function findOrFailWithoutCatalogScope(string $id): Template;
 

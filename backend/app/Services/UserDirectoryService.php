@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -17,10 +18,6 @@ class UserDirectoryService implements UserDirectoryServiceInterface
 
     /**
      * Busca usuarios por nombre o email.
-     *
-     * @param string $search
-     * @param int $limit
-     * @return array
      */
     public function searchUsers(string $search, int $limit, ?string $excludeUserId = null): array
     {

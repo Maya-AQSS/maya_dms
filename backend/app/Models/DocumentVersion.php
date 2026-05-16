@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -36,10 +37,10 @@ class DocumentVersion extends Model
     protected function casts(): array
     {
         return [
-            'snapshot_data'  => 'array',
+            'snapshot_data' => 'array',
             'version_number' => 'integer',
-            'is_immutable'   => 'boolean',
-            'created_at'     => 'datetime',
+            'is_immutable' => 'boolean',
+            'created_at' => 'datetime',
         ];
     }
 

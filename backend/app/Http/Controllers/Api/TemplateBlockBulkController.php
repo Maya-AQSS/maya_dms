@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
@@ -85,13 +86,13 @@ class TemplateBlockBulkController extends Controller
         }
 
         $dto = new BulkUpdateTemplateBlocksDto(
-            ids:             $validated['ids'],
-            block_state:     $validated['block_state'] ?? null,
+            ids: $validated['ids'],
+            block_state: $validated['block_state'] ?? null,
             set_block_state: $request->has('block_state'),
         );
 
         $blocks = $this->blockService->bulkUpdate(
-            dto:    $dto,
+            dto: $dto,
             userId: (string) Auth::id(),
         );
 

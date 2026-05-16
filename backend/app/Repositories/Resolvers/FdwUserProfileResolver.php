@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Resolvers;
@@ -34,11 +35,11 @@ final class FdwUserProfileResolver implements UserProfileResolverInterface
             : Locale::default();
 
         return new UserProfileDto(
-            id:     (string) ($profile['id'] ?? $userId),
-            email:  $this->stringOrNull($profile['email'] ?? null),
-            name:   $this->stringOrNull($profile['name'] ?? null),
+            id: (string) ($profile['id'] ?? $userId),
+            email: $this->stringOrNull($profile['email'] ?? null),
+            name: $this->stringOrNull($profile['name'] ?? null),
             locale: $locale,
-            extra:  array_diff_key($profile, array_flip(self::COMMON_KEYS)),
+            extra: array_diff_key($profile, array_flip(self::COMMON_KEYS)),
         );
     }
 
@@ -52,6 +53,7 @@ final class FdwUserProfileResolver implements UserProfileResolverInterface
         if (is_string($value)) {
             return $value === '' ? null : $value;
         }
+
         return null;
     }
 }

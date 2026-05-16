@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 class UserProfileService implements UserProfileServiceInterface
 {
     private const CACHE_PREFIX = 'user_profile:';
+
     private const CACHE_TTL_SECONDS = 900; // 15 minutos
 
     public function __construct(
@@ -31,12 +33,12 @@ class UserProfileService implements UserProfileServiceInterface
      * 2. Si no hay caché, consulta FDW con timeout de 500 ms.
      * 3. Si FDW falla o no responde, usa los datos mínimos del JWT como fallback.
      *
-     * @param string $userId     ID del usuario (claim `sub` del JWT).
-     * @param array  $jwtProfile Datos mínimos extraídos del JWT para fallback.
+     * @param  string  $userId  ID del usuario (claim `sub` del JWT).
+     * @param  array  $jwtProfile  Datos mínimos extraídos del JWT para fallback.
      */
     public function getProfile(string $userId, array $jwtProfile): array
     {
-        $cacheKey = self::CACHE_PREFIX . $userId;
+        $cacheKey = self::CACHE_PREFIX.$userId;
 
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
@@ -56,18 +58,18 @@ class UserProfileService implements UserProfileServiceInterface
             // Cuando se añada en maya_core_employee + se exponga en la vista, leer con:
             //   $fdwUser['locale'] ?? 'es'.
             $profile = [
-                'id'             => $fdwUser['id'],
-                'email'          => $fdwUser['email'] ?? null,
-                'name'           => $fdwUser['name'] ?? null,
-                'department'     => $fdwUser['department'] ?? $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
-                'locale'         => $fdwUser['locale'] ?? 'es',
+                'id' => $fdwUser['id'],
+                'email' => $fdwUser['email'] ?? null,
+                'name' => $fdwUser['name'] ?? null,
+                'department' => $fdwUser['department'] ?? $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+                'locale' => $fdwUser['locale'] ?? 'es',
                 'study_type_ids' => $this->repository->findStudyTypeIdsByUserId($userId),
-                'study_ids'      => $this->repository->findStudyIdsByUserId($userId),
-                'module_ids'     => $this->repository->findModuleIdsByUserId($userId),
-                'team_ids'       => array_column($teams, 'id'),
-                'permissions'    => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
-                'teams'          => $teams,
-                'source'         => 'fdw',
+                'study_ids' => $this->repository->findStudyIdsByUserId($userId),
+                'module_ids' => $this->repository->findModuleIdsByUserId($userId),
+                'team_ids' => array_column($teams, 'id'),
+                'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+                'teams' => $teams,
+                'source' => 'fdw',
             ];
 
             Cache::put($cacheKey, $profile, self::CACHE_TTL_SECONDS);
@@ -76,7 +78,7 @@ class UserProfileService implements UserProfileServiceInterface
         } catch (\Throwable $e) {
             Log::warning('FDW query failed, using JWT fallback', [
                 'user_id' => $userId,
-                'error'   => $e->getMessage(),
+                'error' => $e->getMessage(),
             ]);
 
             return $this->buildFallbackProfile($userId, $jwtProfile);
@@ -89,7 +91,7 @@ class UserProfileService implements UserProfileServiceInterface
     public function invalidateCache(string $userId): void
     {
         $this->userPermissionRepository->forgetCachedCodesForUser($userId);
-        Cache::forget(self::CACHE_PREFIX . $userId);
+        Cache::forget(self::CACHE_PREFIX.$userId);
     }
 
     /**
@@ -100,18 +102,18 @@ class UserProfileService implements UserProfileServiceInterface
         $scopes = $this->scopeListsFromJwtProfile($jwtProfile);
 
         return [
-            'id'             => $jwtProfile['id'] ?? $userId,
-            'email'          => $jwtProfile['email'] ?? null,
-            'name'           => $jwtProfile['name'] ?? null,
-            'department'     => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
-            'locale'         => 'es', // MOCK — ver getProfile().
+            'id' => $jwtProfile['id'] ?? $userId,
+            'email' => $jwtProfile['email'] ?? null,
+            'name' => $jwtProfile['name'] ?? null,
+            'department' => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+            'locale' => 'es', // MOCK — ver getProfile().
             'study_type_ids' => $scopes['study_type_ids'],
-            'study_ids'      => $scopes['study_ids'],
-            'module_ids'     => $scopes['module_ids'],
-            'team_ids'       => [],
-            'permissions'    => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
-            'teams'          => [],
-            'source'         => 'jwt_fallback',
+            'study_ids' => $scopes['study_ids'],
+            'module_ids' => $scopes['module_ids'],
+            'team_ids' => [],
+            'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+            'teams' => [],
+            'source' => 'jwt_fallback',
         ];
     }
 
@@ -125,12 +127,11 @@ class UserProfileService implements UserProfileServiceInterface
     {
         return [
             'study_type_ids' => JwtUser::mergeScopeIds($jwtProfile['study_type_ids'] ?? null, $jwtProfile['study_type_id'] ?? null),
-            'study_ids'      => JwtUser::mergeScopeIds($jwtProfile['study_ids'] ?? null, $jwtProfile['study_id'] ?? null),
-            'module_ids'     => array_values(array_unique(array_merge(
+            'study_ids' => JwtUser::mergeScopeIds($jwtProfile['study_ids'] ?? null, $jwtProfile['study_id'] ?? null),
+            'module_ids' => array_values(array_unique(array_merge(
                 JwtUser::mergeScopeIds($jwtProfile['module_ids'] ?? null, $jwtProfile['module_id'] ?? null),
                 JwtUser::mergeScopeIds($jwtProfile['course_module_ids'] ?? null, $jwtProfile['course_module_id'] ?? null),
             ))),
         ];
     }
-
 }

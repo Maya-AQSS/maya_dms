@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -11,7 +12,6 @@ use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateBlock;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
@@ -260,6 +260,7 @@ class TemplateService implements TemplateServiceInterface
             if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
                 // Published version exists + working draft → discard draft, restore published.
                 $this->destroyVersion($templateId, (string) $head->id, $actorId);
+
                 return false;
             }
 
@@ -611,8 +612,7 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Resuelve la última versión publicada con metadatos si el ganador por meta no produce snapshot usable.
-     * 
-     * @param  string  $templateId
+     *
      * @return ?array{
      *     kind: 'entity'|'legacy',
      *     template_meta: array<string, mixed>,
@@ -676,7 +676,7 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Construye el payload de clonación de la plantilla.
-     * 
+     *
      * @param  array<string, mixed>  $data
      * @return ?array{
      *     kind: 'entity',
@@ -713,8 +713,7 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Clona el nombre base de la plantilla.
-     * 
-     * @param  string  $kind
+     *
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateNameBase(string $kind, array $templateMeta, Template $source): string
@@ -728,8 +727,7 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Clona el nombre base de la plantilla.
-     * 
-     * @param  string  $kind
+     *
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateDescription(string $kind, array $templateMeta, Template $source): ?string
@@ -755,9 +753,7 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Clona el valor de un FK de la plantilla.
-     * 
-     * @param  string  $key
-     * @return mixed
+     *
      * @param  array<string, mixed>  $templateMeta
      */
     private function cloneTemplateNullableFk(string $kind, array $templateMeta, Template $source, string $key): mixed
@@ -771,9 +767,8 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Normaliza el nivel de visibilidad de la plantilla.
-     * 
+     *
      * @param  TemplateVisibilityLevel|string  $level
-     * @return string
      */
     private function normalizeTemplateVisibilityLevelForClone(string $kind, array $templateMeta, Template $source): string
     {
@@ -828,8 +823,7 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Aserta las invariantes de los metadatos de la plantilla.
      * Lanza excepción si alguna invariante no se cumple.
-     * 
-     * @param  string  $name
+     *
      * @param  Carbon|string|null  $deliveryDeadline
      * @param  TemplateVisibilityLevel|string  $visibilityLevel
      */
@@ -859,7 +853,7 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Normaliza los atributos de actualización contra el scope de la plantilla.
-     * 
+     *
      * @param  array<string, mixed>  $attributes
      * @return array<string, mixed>
      */
@@ -989,5 +983,4 @@ class TemplateService implements TemplateServiceInterface
     {
         $this->templateReviewerAssignmentService->syncDocumentReviewers($templateId, $dto);
     }
-
 }

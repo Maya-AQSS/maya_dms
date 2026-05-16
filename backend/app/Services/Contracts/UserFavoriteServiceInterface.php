@@ -1,8 +1,10 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\Http\Controllers\Api\FavoriteController;
 use App\Models\Document;
 use App\Models\Template;
 
@@ -11,7 +13,7 @@ use App\Models\Template;
  *
  * Excepción B4 documentada: {@see findTemplateModelOrFail()} y
  * {@see findDocumentModelOrFail()} devuelven el Model porque su único uso
- * en {@see \App\Http\Controllers\Api\FavoriteController} es
+ * en {@see FavoriteController} es
  * `Gate::authorize('view', $model)`. No se entrega como respuesta — no hay
  * conversión a DTO/Resource. Si en el futuro se devuelve detalle, añadir
  * `findTemplateOrFail(): TemplateDto` y `findDocumentOrFail(): DocumentDto`.

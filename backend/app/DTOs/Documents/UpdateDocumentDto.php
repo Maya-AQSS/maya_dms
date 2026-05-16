@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\DTOs\Documents;
@@ -38,11 +39,11 @@ readonly class UpdateDocumentDto
     public function toArray(): array
     {
         $map = [
-            'title'             => $this->title,
+            'title' => $this->title,
             'delivery_deadline' => $this->deliveryDeadline,
-            'study_type_id'     => $this->studyTypeId,
-            'study_id'          => $this->studyId,
-            'module_id'         => $this->moduleId,
+            'study_type_id' => $this->studyTypeId,
+            'study_id' => $this->studyId,
+            'module_id' => $this->moduleId,
         ];
 
         return array_intersect_key($map, array_flip($this->changedFields));

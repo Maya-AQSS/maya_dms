@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -6,9 +7,9 @@ namespace App\Services;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
-use App\Support\TemplateHeadSnapshot;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Validation\ValidationException;
 
 class TemplatePublishingService
@@ -30,8 +31,7 @@ class TemplatePublishingService
         string $newStatus,
         string $actorId,
         array $extraHeadAttributes = [],
-    ): Template
-    {
+    ): Template {
         $oldStatus = $template->status;
         $updated = $this->templateRepository->update(
             $template,

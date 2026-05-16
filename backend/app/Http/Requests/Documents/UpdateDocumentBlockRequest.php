@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Requests\Documents;
@@ -25,11 +26,6 @@ class UpdateDocumentBlockRequest extends FormRequest
 
     /**
      * Transforma el request en un DTO.
-     *
-     * @param string $documentId
-     * @param string $documentBlockId
-     * @param string $actorId
-     * @return UpdateDocumentBlockDto
      */
     public function toDto(string $documentId, string $documentBlockId, string $actorId): UpdateDocumentBlockDto
     {

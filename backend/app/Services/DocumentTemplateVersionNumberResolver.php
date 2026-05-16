@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -18,8 +19,8 @@ final class DocumentTemplateVersionNumberResolver
     /**
      * Resuelve el número de versión publicada de plantilla anclada a un documento.
      *
-     * @param string|null $templateId ID de la plantilla o null si no hay plantilla.
-     * @param string|null $templateVersionId ID de la versión de plantilla o null si no hay versión.
+     * @param  string|null  $templateId  ID de la plantilla o null si no hay plantilla.
+     * @param  string|null  $templateVersionId  ID de la versión de plantilla o null si no hay versión.
      * @return int|null El número de versión publicada o null si no se puede resolver.
      */
     public function resolve(?string $templateId, ?string $templateVersionId): ?int

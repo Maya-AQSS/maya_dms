@@ -33,6 +33,7 @@ trait AttachesCanCloneMeta
 
         if ($resources instanceof Document || $resources instanceof Template) {
             $attach($resources);
+
             return;
         }
 

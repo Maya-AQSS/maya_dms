@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
@@ -42,4 +43,3 @@ class TeamReadService implements TeamReadServiceInterface
         return $this->findVisibleTeamByIdForUser($viewerUserId, $teamId);
     }
 }
-

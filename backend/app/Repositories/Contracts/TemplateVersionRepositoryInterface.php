@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
@@ -7,11 +8,10 @@ use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
 
 /**
- * Consultas de publicaciones de plantilla en {@see \App\Models\EntityVersion} (morph Template).
+ * Consultas de publicaciones de plantilla en {@see EntityVersion} (morph Template).
  */
 interface TemplateVersionRepositoryInterface
 {
-    
     public function findOrFail(string $id): EntityVersion;
 
     public function findOptional(string $id): ?EntityVersion;

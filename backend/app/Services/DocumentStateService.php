@@ -1,10 +1,11 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Document;
 use App\Events\DocumentStateChanged;
+use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 
 class DocumentStateService

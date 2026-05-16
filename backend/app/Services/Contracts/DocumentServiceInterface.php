@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Services\Contracts;
@@ -7,6 +8,7 @@ use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
@@ -14,7 +16,7 @@ use Illuminate\Support\Collection;
 
 /**
  * Excepción B4 documentada: la mayoría de métodos de mutación devuelven el
- * Model Eloquent (no DTO). Razón: el {@see \App\Http\Controllers\Api\DocumentController}
+ * Model Eloquent (no DTO). Razón: el {@see DocumentController}
  * adjunta atributos derivados (`can_clone`, `review_mode`, `is_shared_with_me`,
  * etc.) mediante `setAttribute()` sobre el Model resultante antes de presentar
  * como DTO. La conversión final a DTO se hace en el Controller con

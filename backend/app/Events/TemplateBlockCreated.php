@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Events;
@@ -24,12 +25,12 @@ class TemplateBlockCreated implements AuditableEvent
     {
         return [
             'applicationSlug' => 'maya-dms',
-            'entityType'      => 'template',
-            'entityId'        => $this->templateId,
-            'action'          => 'block_created',
-            'userId'          => $this->actorId,
-            'blockId'         => (string) $this->block->getKey(),
-            'newValue'        => ['block_state' => $this->block->block_state],
+            'entityType' => 'template',
+            'entityId' => $this->templateId,
+            'action' => 'block_created',
+            'userId' => $this->actorId,
+            'blockId' => (string) $this->block->getKey(),
+            'newValue' => ['block_state' => $this->block->block_state],
         ];
     }
 }

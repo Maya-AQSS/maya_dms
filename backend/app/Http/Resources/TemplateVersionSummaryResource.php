@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Http\Resources;
@@ -50,6 +51,7 @@ class TemplateVersionSummaryResource extends JsonResource
             return null;
         }
         $authorId = data_get($snapshot, 'template.created_by');
+
         return is_string($authorId) && $authorId !== '' ? $authorId : null;
     }
 
@@ -61,6 +63,7 @@ class TemplateVersionSummaryResource extends JsonResource
         }
         $name = DB::table('users')->where('id', $userId)->value('name');
         $cache[$userId] = is_string($name) && trim($name) !== '' ? trim($name) : null;
+
         return $cache[$userId];
     }
 }

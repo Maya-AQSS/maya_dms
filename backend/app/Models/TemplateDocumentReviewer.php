@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace App\Models;
@@ -35,5 +36,4 @@ class TemplateDocumentReviewer extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-
 }
