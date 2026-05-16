@@ -38,6 +38,7 @@ import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
+import type { Study, CourseModule } from '../../../types/hierarchy';
 import type { Template } from '../../../types/templates';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
@@ -582,15 +583,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   useEffect(() => {
     if (documentId || !studyTypeId || studyId) return;
-    const typeNode = hierarchy.find((t: any) => String(t.id) === studyTypeId);
+    const typeNode = hierarchy.find((t) => String(t.id) === studyTypeId);
     if (!typeNode) return;
     if ((typeNode.studies ?? []).length === 1) setStudyId(String(typeNode.studies[0].id));
   }, [documentId, hierarchy, studyTypeId, studyId]);
 
   useEffect(() => {
     if (documentId || !studyId || moduleId) return;
-    const allStudiesFlat = hierarchy.flatMap((t: any) => t.studies ?? []);
-    const studyNode = allStudiesFlat.find((s: any) => String(s.id) === studyId);
+    const allStudiesFlat = hierarchy.flatMap((t) => t.studies ?? []);
+    const studyNode = allStudiesFlat.find((s) => String(s.id) === studyId);
     if (!studyNode) return;
     if ((studyNode.course_modules ?? []).length === 1) setModuleId(String(studyNode.course_modules[0].id));
   }, [documentId, hierarchy, studyId, moduleId]);
@@ -613,22 +614,22 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const templateStudyId = template?.study_id ?? null;
   const templateModuleId = template?.module_id ?? null;
 
-  const selectedStudyNode = allStudies.find((s: any) => String(s.id) === studyId) ?? null;
+  const selectedStudyNode = allStudies.find((s) => String(s.id) === studyId) ?? null;
 
-  const filteredStudies = useMemo(() => {
+  const filteredStudies = useMemo<Study[]>(() => {
     if (!studyTypeId) return [];
-    const byType = (hierarchy.find((t: any) => String(t.id) === studyTypeId)?.studies ?? []) as any[];
+    const byType = hierarchy.find((t) => String(t.id) === studyTypeId)?.studies ?? [];
     if (visibilityRule === 'study' || visibilityRule === 'module') {
-      return byType.filter((s: any) => String(s.id) === String(templateStudyId ?? ''));
+      return byType.filter((s) => String(s.id) === String(templateStudyId ?? ''));
     }
     return byType;
   }, [studyTypeId, hierarchy, visibilityRule, templateStudyId]);
 
-  const filteredModules = useMemo(() => {
+  const filteredModules = useMemo<CourseModule[]>(() => {
     if (!studyId) return [];
-    const byStudy = (allStudies.find((s: any) => String(s.id) === studyId)?.course_modules ?? []) as any[];
+    const byStudy = allStudies.find((s) => String(s.id) === studyId)?.course_modules ?? [];
     if (visibilityRule === 'module') {
-      return byStudy.filter((m: any) => String(m.id) === String(templateModuleId ?? ''));
+      return byStudy.filter((m) => String(m.id) === String(templateModuleId ?? ''));
     }
     return byStudy;
   }, [studyId, allStudies, visibilityRule, templateModuleId]);
@@ -640,11 +641,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const fixedTeamId = visibilityRule === 'team' ? (template?.team_id ?? '') : '';
   const templateScopeLabel = useMemo(() => {
     if (!template) return null;
-    const studyType = hierarchy.find((t: any) => String(t.id) === String(template.study_type_id ?? ''));
-    const studies = (studyType?.studies ?? hierarchy.flatMap((t: any) => t.studies ?? [])) as any[];
-    const study = studies.find((s: any) => String(s.id) === String(template.study_id ?? ''));
-    const modules = (study?.course_modules ?? []) as any[];
-    const module = modules.find((m: any) => String(m.id) === String(template.module_id ?? ''));
+    const studyType = hierarchy.find((t) => String(t.id) === String(template.study_type_id ?? ''));
+    const studies: Study[] = studyType?.studies ?? hierarchy.flatMap((t) => t.studies ?? []);
+    const study = studies.find((s) => String(s.id) === String(template.study_id ?? ''));
+    const modules: CourseModule[] = study?.course_modules ?? [];
+    const module = modules.find((m) => String(m.id) === String(template.module_id ?? ''));
     if (template.visibility_level === 'study_type') return studyType?.name ?? null;
     if (template.visibility_level === 'study') return study?.name ?? null;
     if (template.visibility_level === 'module') return module?.name ?? null;
@@ -677,18 +678,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (visibilityRule === 'study' && templateStudyId) {
-      const stFromStudy = allStudies.find((s: any) => String(s.id) === String(templateStudyId))?.study_type_id;
+      const stFromStudy = allStudies.find((s) => String(s.id) === String(templateStudyId))?.study_type_id;
       if (stFromStudy) setStudyTypeId(String(stFromStudy));
       setStudyId(String(templateStudyId));
       if (moduleId) {
-        const moduleInStudy = (allStudies.find((s: any) => String(s.id) === String(templateStudyId))?.course_modules ?? [])
-          .some((m: any) => String(m.id) === String(moduleId));
+        const moduleInStudy = (allStudies.find((s) => String(s.id) === String(templateStudyId))?.course_modules ?? [])
+          .some((m) => String(m.id) === String(moduleId));
         if (!moduleInStudy) setModuleId('');
       }
       return;
     }
     if (visibilityRule === 'module' && templateModuleId) {
-      const owningStudy = allStudies.find((s: any) => (s.course_modules ?? []).some((m: any) => String(m.id) === String(templateModuleId))) ?? null;
+      const owningStudy = allStudies.find((s) => (s.course_modules ?? []).some((m) => String(m.id) === String(templateModuleId))) ?? null;
       if (owningStudy) {
         setStudyTypeId(String(owningStudy.study_type_id));
         setStudyId(String(owningStudy.id));
@@ -752,7 +753,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
         const docIds = templateResp.data.document_reviewers ?? [];
         const tplRows = templateResp.data.reviewers ?? [];
-        const tplUserIds = tplRows.map((r: any) => r.user_id);
+        const tplUserIds = tplRows.map((r: { user_id: string }) => r.user_id);
         setDocumentReviewerPoolIds(docIds);
         setTemplateReviewerPoolIds(tplUserIds);
 
@@ -770,7 +771,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           return;
         }
 
-        const byId = new Map(usersResp.data.map((u: any) => [u.id, u.name] as const));
+        const byId = new Map(usersResp.data.map((u: { id: string; name: string }) => [u.id, u.name] as const));
         const initial = displayIds.map((id: string) => ({
           id,
           name: byId.get(id) ?? '',
@@ -1406,7 +1407,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         {hierarchyLoading ? 'Cargando…' : '— Seleccionar —'}
                       </option>
                     )}
-                    {hierarchy.map((t: any) => (
+                    {hierarchy.map((t) => (
                       <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </Select>
@@ -1430,7 +1431,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     error={!!errors.studyId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {filteredStudies.map((s: any) => (
+                    {filteredStudies.map((s) => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </Select>
@@ -1453,7 +1454,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     error={!!errors.moduleId}
                   >
                     <option value="">— Seleccionar —</option>
-                    {filteredModules.map((m: any) => (
+                    {filteredModules.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </Select>

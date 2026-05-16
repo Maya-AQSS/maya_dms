@@ -129,7 +129,7 @@ interface WizardStep2BlocksProps {
   onBlocksChange?: (blocks: TemplateBlock[]) => void;
   onContinue?: () => void;
   onInvalidBlocksChange?: (hasInvalid: boolean) => void;
-  onCommentAdded?: (comment: any) => void;
+  onCommentAdded?: (comment: BlockComment) => void;
 }
 
 export type WizardStep2BlocksHandle = {
@@ -236,7 +236,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
   const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
 
-  const blockComments: any[] = activeSingleId
+  const blockComments: BlockComment[] = activeSingleId
     ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
     : [];
   const activeBlockHasComments = blockComments.length > 0;
@@ -278,10 +278,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     // Normalize whitespace-only BlockNote content to null so it is stored as empty
     // and the UI shows "Este bloque no tiene contenido." instead of blank text nodes.
     if (Array.isArray(parsedContent) && parsedContent.length > 0) {
-      const isBlank = (parsedContent as any[]).every((b: any) =>
+      type BlockNoteNode = { content?: Array<{ text?: unknown }> };
+      const isBlank = (parsedContent as BlockNoteNode[]).every((b) =>
         !Array.isArray(b.content) ||
         b.content.length === 0 ||
-        b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
+        b.content.every((c) => typeof c.text !== 'string' || !c.text.trim()),
       );
       if (isBlank) parsedContent = null;
     }
@@ -461,7 +462,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
     if (!activeSingleId) return;
-    const res = await apiFetchJson<{ data: any }>(`templates/${template.id}/comments`, {
+    const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
       method: 'POST',
       body: { body, parent_id: parentId, blockable_id: activeSingleId },
     });
