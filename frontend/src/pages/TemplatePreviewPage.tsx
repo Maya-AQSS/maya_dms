@@ -28,6 +28,7 @@ import { BlockCommentsCard, ViewCardHeader } from '../features/templates/compone
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
+import { getCommentsForBlock } from '../utils/blockComments';
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 type ReviewComment = BlockComment;
@@ -240,17 +241,6 @@ export function TemplatePreviewPage() {
   };
 
 
-  // Comment helpers that include replies in the count
-  const getCommentsForBlock = (bid: string | null, allComments: BlockComment[]) => {
-    if (!bid) return [];
-    const roots = allComments.filter(c => c.blockable_id === bid && !c.parent_id);
-    const rootIds = roots.map(r => r.id);
-    return allComments.filter(c =>
-      c.blockable_id === bid ||
-      (c.parent_id && rootIds.includes(c.parent_id)) ||
-      allComments.some(r => r.id === c.parent_id && r.blockable_id === bid)
-    );
-  };
 
   const isDraft = template?.status === 'draft' || template?.status === 'rejected';
   const isOwner = profile?.id === template?.created_by;

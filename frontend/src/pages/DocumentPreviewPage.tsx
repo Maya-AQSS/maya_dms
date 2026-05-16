@@ -35,6 +35,7 @@ import { DocumentDiffPanel } from '../features/documents/components/DocumentDiff
 import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
+import { getCommentsForBlock } from '../utils/blockComments';
 
 // Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
@@ -466,27 +467,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     } finally {
       setReviewCommentsLoading(false);
     }
-  };
-
-  // Comment helpers that include replies in the count
-  const getCommentsForBlock = (docBlockId: string | null, allComments: BlockComment[]) => {
-    if (!docBlockId) return [];
-    
-    // Recursive function to get all replies to a comment
-    const getReplies = (parentId: string): BlockComment[] => {
-      const replies = allComments.filter(c => c.parent_id === parentId);
-      return [...replies, ...replies.flatMap(r => getReplies(r.id))];
-    };
-
-    // Get all root comments for this block
-    const roots = allComments.filter(c => c.blockable_id === docBlockId && !c.parent_id);
-    
-    // Combine roots and all their recursive replies
-    const allForBlock = [...roots, ...roots.flatMap(r => getReplies(r.id))];
-
-    // Deduplicate by ID to be safe
-    const uniqueIds = Array.from(new Set(allForBlock.map(c => c.id)));
-    return uniqueIds.map(id => allForBlock.find(c => c.id === id) as BlockComment);
   };
 
   const handleValidateSendMessage = async (parentId: string | null, body: string) => {

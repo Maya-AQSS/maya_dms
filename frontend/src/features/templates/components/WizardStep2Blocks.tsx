@@ -26,7 +26,8 @@ import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blo
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useUserProfile } from '../../../features/user-profile';
 import { apiFetchJson } from '../../../api/http';
-import { BlockCommentsCard } from './BlockCommentsCard';
+import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
+import { getCommentsForBlock } from '../../../utils/blockComments';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
 
@@ -122,7 +123,7 @@ function SortableBlockItem({
 interface WizardStep2BlocksProps {
   template: Template;
   isDark?: boolean;
-  reviewComments?: any[];
+  reviewComments?: BlockComment[];
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
   onBlocksChange?: (blocks: TemplateBlock[]) => void;
@@ -147,25 +148,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   onInvalidBlocksChange,
   onCommentAdded,
 }, ref) => {
-  const getCommentsForBlock = (docBlockId: string | null, allComments: any[]) => {
-    if (!docBlockId) return [];
-    
-    // Recursive function to get all replies to a comment
-    const getReplies = (parentId: string): any[] => {
-      const replies = allComments.filter(c => c.parent_id === parentId);
-      return [...replies, ...replies.flatMap(r => getReplies(r.id))];
-    };
-    
-    // Get all root comments for this block
-    const roots = allComments.filter(c => c.blockable_id === docBlockId && !c.parent_id);
-    
-    // Combine roots and all their recursive replies
-    const allForBlock = [...roots, ...roots.flatMap(r => getReplies(r.id))];
-    
-    // Deduplicate by ID to be safe
-    const uniqueIds = Array.from(new Set(allForBlock.map(c => c.id)));
-    return uniqueIds.map(id => allForBlock.find(c => c.id === id));
-  };
 
   const {
     blocks,
@@ -524,7 +506,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             block={block}
                             itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
                             onClick={() => handleBlockClick(block.id)}
-                            hasReviewComments={reviewComments.some(c => (c as any).blockable_id === block.id)}
+                            hasReviewComments={reviewComments.some(c => c.blockable_id === block.id)}
                           />
                         ))}
                       </SortableContext>

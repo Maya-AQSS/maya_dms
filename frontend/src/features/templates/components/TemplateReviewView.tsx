@@ -18,6 +18,7 @@ import type { Process } from '../../../types/processes';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
 import { computeChangedBlocks } from '../../documents/components/DocumentDiffModal';
+import { getCommentsForBlock } from '../../../utils/blockComments';
 import { DocumentDiffPanel } from '../../documents/components/DocumentDiffPanel';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 
@@ -288,26 +289,6 @@ export function TemplateReviewView({ template }: Props) {
       </div>
     );
   }
-  const getCommentsForBlock = (bid: string | null, allComments: BlockComment[]) => {
-    if (!bid) return [];
-
-    // Recursive function to get all replies to a comment
-    const getReplies = (parentId: string): BlockComment[] => {
-      const replies = allComments.filter(c => c.parent_id === parentId);
-      return [...replies, ...replies.flatMap(r => getReplies(r.id))];
-    };
-
-    // Get all root comments for this block
-    const roots = allComments.filter(c => c.blockable_id === bid && !c.parent_id);
-
-    // Combine roots and all their recursive replies
-    const allForBlock = [...roots, ...roots.flatMap(r => getReplies(r.id))];
-
-    // Deduplicate by ID to be safe
-    const uniqueIds = Array.from(new Set(allForBlock.map(c => c.id)));
-    return uniqueIds.map(id => allForBlock.find(c => c.id === id) as BlockComment);
-  };
-  const blockComments = getCommentsForBlock(activeView?.blockId ?? null, comments);
 
   return (
     <PaperPreviewLayout
