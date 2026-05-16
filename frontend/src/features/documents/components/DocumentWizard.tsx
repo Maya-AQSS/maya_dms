@@ -28,9 +28,11 @@ import {
   updateDocumentBlock,
   type DocumentReview,
 } from '../../../api/documents';
+import { useQueryClient } from '@tanstack/react-query';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { fetchProcesses } from '../../../api/processes';
 import { fetchTemplate } from '../../../api/templates';
+import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchUsers, type UserTeam } from '../../../api/users';
@@ -219,6 +221,7 @@ function isUuidLike(value: string | null | undefined): value is string {
  */
 export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const location = useLocation();
   const { isDark } = useDarkMode();
 
@@ -318,8 +321,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
 
-  // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks)
-  const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
+  // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks).
+  // Sourced from the shared TanStack Query cache (useDocumentCommentsQuery) so the
+  // DocumentPreviewPage and the wizard reuse the same in-memory comments.
   const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -382,15 +386,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   }, [documentId]);
 
-  // Load review comments when document has unresolved ones
-  useEffect(() => {
-    if (!documentId || !detail?.has_review_comments) return;
-    let cancelled = false;
-    void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
-      .then((res) => { if (!cancelled) setReviewComments(res.data); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [documentId, detail?.has_review_comments]);
+  const documentCommentsQuery = useDocumentCommentsQuery(documentId ?? '', {
+    enabled: !!documentId && !!detail?.has_review_comments,
+  });
+  const reviewComments: BlockComment[] = documentCommentsQuery.data?.data ?? [];
 
   const handleDocumentCommentSend = useCallback(async (parentId: string | null, body: string) => {
     if (!documentId) return;
@@ -401,8 +400,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       method: 'POST',
       body: { body, parent_id: parentId, blockable_id: blockableId },
     });
-    setReviewComments(prev => [...prev, res.data]);
-  }, [documentId, reviewComments]);
+    queryClient.setQueryData<{ data: BlockComment[] }>(
+      ['documents', documentId, 'comments'],
+      (current) => ({ data: [...(current?.data ?? []), res.data] }),
+    );
+  }, [documentId, reviewComments, queryClient]);
 
   const refreshDetail = useCallback(async () => {
     if (!documentId) return;

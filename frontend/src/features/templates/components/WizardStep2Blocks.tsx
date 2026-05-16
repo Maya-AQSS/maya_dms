@@ -22,6 +22,7 @@ import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { apiFetchJson } from '../../../api/http';
@@ -122,7 +123,6 @@ function SortableBlockItem({
 interface WizardStep2BlocksProps {
   template: Template;
   isDark?: boolean;
-  reviewComments?: BlockComment[];
   onBlocksCountChange?: (count: number) => void;
   onBlocksLoadingChange?: (loading: boolean) => void;
   onBlocksChange?: (blocks: TemplateBlock[]) => void;
@@ -139,7 +139,6 @@ export type WizardStep2BlocksHandle = {
 export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(({
   template,
   isDark = false,
-  reviewComments = [],
   onBlocksCountChange,
   onBlocksLoadingChange,
   onBlocksChange,
@@ -147,6 +146,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   onInvalidBlocksChange,
   onCommentAdded,
 }, ref) => {
+  const commentsQuery = useTemplateCommentsQuery(template.id);
+  const reviewComments = commentsQuery.data?.data ?? [];
 
   const {
     blocks,

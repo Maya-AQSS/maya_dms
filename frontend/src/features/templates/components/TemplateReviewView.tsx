@@ -14,25 +14,17 @@ import type { TemplateVersionDetail } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
+import {
+  useTemplateCommentsQuery,
+  templateCommentsKey,
+  type TemplateCommentsResponse,
+} from '../hooks/useTemplateComments';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
 import { computeChangedBlocks } from '../../documents/components/DocumentDiffModal';
 import { getCommentsForBlock } from '../../../utils/blockComments';
 import { DocumentDiffPanel } from '../../documents/components/DocumentDiffPanel';
 import type { DocumentDisplayBlock } from '../../../types/documents';
-
-interface TemplateCommentsResponse {
-  data: BlockComment[];
-  meta?: { commenting_open?: boolean };
-}
-
-const templateCommentsKey = (templateId: string) => ['templates', templateId, 'comments'] as const;
-
-const useTemplateCommentsQuery = createDataHook<string, TemplateCommentsResponse>({
-  queryKey: (templateId) => templateCommentsKey(templateId),
-  fetcher: (templateId) => apiFetchJson<TemplateCommentsResponse>(`templates/${templateId}/comments`),
-  defaultOptions: { staleTime: 0 },
-});
 
 const useTemplateVersionQuery = createDataHook<string, TemplateVersionDetail>({
   queryKey: (versionId) => ['template-version', versionId],

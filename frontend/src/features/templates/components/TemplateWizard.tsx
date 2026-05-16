@@ -2,8 +2,8 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useBlocker } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
-import { fetchProcesses } from '../../../api/processes';
 import type { Template } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
@@ -11,13 +11,18 @@ import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
   publishTemplate as apiPublishTemplate,
-  fetchTemplateVersionSummaries,
   submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
 } from '../../../api/templates';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
+import { useProcessesQuery } from '../../../hooks/useProcesses';
+import { useTemplateVersionSummariesQuery } from '../hooks/useTemplateVersionSummaries';
+import {
+  templateCommentsKey,
+  type TemplateCommentsResponse,
+} from '../hooks/useTemplateComments';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
@@ -40,6 +45,7 @@ type Props = {
 
 export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const initial = templateProp || initialTemplate;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = processId ?? templateProp?.process_id ?? initialTemplate?.process_id ?? null;
@@ -103,38 +109,27 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishChangelog, setPublishChangelog] = useState('');
   const [publishModalError, setPublishModalError] = useState<string | null>(null);
-  const [publishedVersionCount, setPublishedVersionCount] = useState(0);
-  const [comments, setComments] = useState<BlockComment[]>([]);
   const [blocksCount, setBlocksCount] = useState(0);
   const [blocksLoading, setBlocksLoading] = useState(true);
   const [wizardBlocks, setWizardBlocks] = useState<TemplateBlock[]>([]);
-  const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (initial?.id) {
-      void apiFetchJson<{ data: BlockComment[] }>(`templates/${initial.id}/comments`)
-        .then(res => setComments(res.data))
-        .catch(console.error);
-    }
-  }, [initial?.id]);
+  const versionSummariesQuery = useTemplateVersionSummariesQuery(template?.id ?? '', {
+    enabled: !!template?.id,
+  });
+  const publishedVersionCount = versionSummariesQuery.data?.length ?? 0;
 
-  useEffect(() => {
-    if (!template?.id) {
-      setPublishedVersionCount(0);
-      return;
-    }
-    let cancelled = false;
-    void fetchTemplateVersionSummaries(template.id)
-      .then((rows) => {
-        if (!cancelled) setPublishedVersionCount(rows.length);
-      })
-      .catch(() => {
-        if (!cancelled) setPublishedVersionCount(0);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [template?.id]);
+  const effectiveProcessId =
+    processId ?? template?.process_id ?? initial?.process_id ?? null;
+  const processesQuery = useProcessesQuery(undefined, {
+    enabled: !!effectiveProcessId,
+  });
+  const processSubtitle = (() => {
+    if (!effectiveProcessId) return null;
+    const selectedProcess =
+      processesQuery.data?.data.find((p) => p.id === effectiveProcessId) ?? null;
+    if (!selectedProcess) return null;
+    return `Proceso: ${selectedProcess.code} — ${selectedProcess.name}`;
+  })();
 
   useEffect(() => {
     if (step !== 'blocks') return;
@@ -146,31 +141,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocksCount, blocksLoading, step]);
-
-  useEffect(() => {
-    const effectiveProcessId = processId ?? template?.process_id ?? initial?.process_id ?? null;
-    if (!effectiveProcessId) {
-      setProcessSubtitle(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchProcesses()
-      .then((res) => {
-        if (cancelled) return;
-        const selectedProcess = res.data.find((p) => p.id === effectiveProcessId) ?? null;
-        if (!selectedProcess) {
-          setProcessSubtitle(null);
-          return;
-        }
-        setProcessSubtitle(`Proceso: ${selectedProcess.code} — ${selectedProcess.name}`);
-      })
-      .catch(() => {
-        if (!cancelled) setProcessSubtitle(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [initial?.process_id, processId, template?.process_id]);
 
   const blocker = useBlocker(step === 'blocks' && hasInvalidBlocks);
   useEffect(() => {
@@ -188,7 +158,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   }, [step1Methods]);
 
   const handleCommentAdded = (comment: BlockComment) => {
-    setComments(prev => [...prev, comment]);
+    if (!initial?.id) return;
+    queryClient.setQueryData<TemplateCommentsResponse>(
+      templateCommentsKey(initial.id),
+      (current) => ({ data: [...(current?.data ?? []), comment] }),
+    );
   };
 
   // Dirty check
@@ -641,7 +615,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             <WizardStep2Blocks
               ref={blocksRef}
               template={template}
-              reviewComments={comments}
               onBlocksCountChange={setBlocksCount}
               onBlocksLoadingChange={setBlocksLoading}
               onBlocksChange={setWizardBlocks}
