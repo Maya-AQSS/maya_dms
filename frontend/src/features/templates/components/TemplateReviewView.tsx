@@ -11,10 +11,9 @@ import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { createDataHook, useAuth } from '@maya/shared-auth-react';
 import { approveTemplateReview, rejectTemplateReview, fetchTemplateVersion } from '../../../api/templates';
 import type { TemplateVersionDetail } from '../../../api/templates';
-import { fetchProcesses } from '../../../api/processes';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
-import type { Process } from '../../../types/processes';
+import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
 import { computeChangedBlocks } from '../../documents/components/DocumentDiffModal';
@@ -38,12 +37,6 @@ const useTemplateCommentsQuery = createDataHook<string, TemplateCommentsResponse
 const useTemplateVersionQuery = createDataHook<string, TemplateVersionDetail>({
   queryKey: (versionId) => ['template-version', versionId],
   fetcher: (versionId) => fetchTemplateVersion(versionId),
-  defaultOptions: { staleTime: 60_000 },
-});
-
-const useProcessesQuery = createDataHook<void, { data: Process[] }>({
-  queryKey: () => ['processes'],
-  fetcher: () => fetchProcesses(),
   defaultOptions: { staleTime: 60_000 },
 });
 

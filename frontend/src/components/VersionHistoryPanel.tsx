@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@maya/shared-ui-react';
 import { ApiHttpError } from '../api/http';
-import { fetchDocumentVersionSummaries, type DocumentVersionSummary } from '../api/documents';
-import { fetchTemplateVersionSummaries, type TemplateVersionSummary } from '../api/templates';
+import type { DocumentVersionSummary } from '../api/documents';
+import type { TemplateVersionSummary } from '../api/templates';
+import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
+import { useTemplateVersionSummariesQuery } from '../features/templates/hooks/useTemplateVersionSummaries';
 
 type Props = {
   open: boolean;
@@ -21,12 +23,36 @@ function formatWhen(iso: string | null | undefined): string {
   }
 }
 
+function fetchErrorMessage(e: unknown): string {
+  if (e instanceof ApiHttpError) return e.message || `Error ${e.status}`;
+  return 'No se pudo cargar el historial.';
+}
+
 export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Props) {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [templateRows, setTemplateRows] = useState<TemplateVersionSummary[]>([]);
-  const [documentRows, setDocumentRows] = useState<DocumentVersionSummary[]>([]);
+
+  const enabledTemplate = open && entityType === 'template' && !!entityId;
+  const enabledDocument = open && entityType === 'document' && !!entityId;
+
+  const templateQuery = useTemplateVersionSummariesQuery(entityId, {
+    enabled: enabledTemplate,
+  });
+  const documentQuery = useDocumentVersionSummariesQuery(entityId, {
+    enabled: enabledDocument,
+  });
+
+  const activeQuery = entityType === 'template' ? templateQuery : documentQuery;
+  const loading = activeQuery.isLoading || activeQuery.isFetching;
+  const error = activeQuery.error ? fetchErrorMessage(activeQuery.error) : null;
+
+  const templateRows = useMemo<TemplateVersionSummary[]>(
+    () => (templateQuery.data ? [...templateQuery.data].sort((a, b) => b.version_number - a.version_number) : []),
+    [templateQuery.data],
+  );
+  const documentRows = useMemo<DocumentVersionSummary[]>(
+    () => (documentQuery.data ? [...documentQuery.data].sort((a, b) => b.version_number - a.version_number) : []),
+    [documentQuery.data],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -36,50 +62,6 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
-
-  useEffect(() => {
-    if (!open || !entityId) return;
-
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setTemplateRows([]);
-    setDocumentRows([]);
-
-    void (async () => {
-      try {
-        if (entityType === 'template') {
-          const rows = await fetchTemplateVersionSummaries(entityId);
-          if (!cancelled) {
-            setTemplateRows(
-              [...rows].sort((a, b) => b.version_number - a.version_number),
-            );
-          }
-        } else {
-          const rows = await fetchDocumentVersionSummaries(entityId);
-          if (!cancelled) {
-            setDocumentRows(
-              [...rows].sort((a, b) => b.version_number - a.version_number),
-            );
-          }
-        }
-      } catch (e) {
-        if (!cancelled) {
-          const msg =
-            e instanceof ApiHttpError
-              ? e.message || `Error ${e.status}`
-              : 'No se pudo cargar el historial.';
-          setError(msg);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [open, entityType, entityId]);
 
   const empty = useMemo(() => {
     if (entityType === 'template') return templateRows.length === 0;

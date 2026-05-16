@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchTemplate,
-  fetchTemplateVersionSummaries,
   type TemplateVersionDetail,
   submitTemplateForReview,
   deleteTemplate,
@@ -12,8 +11,9 @@ import {
   fetchTemplateVersion,
 } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
-import { fetchProcesses } from '../api/processes';
 import { apiFetchJson } from '../api/http';
+import { useTemplateVersionSummariesQuery } from '../features/templates/hooks/useTemplateVersionSummaries';
+import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { visibilityLabel } from '../features/templates/constants';
@@ -129,7 +129,7 @@ export function TemplatePreviewPage() {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
-  const [processLabel, setProcessLabel] = useState<string | null>(null);
+  // processLabel derived from useProcessesQuery + template.process_id below.
   const { hierarchy } = useHierarchy();
   const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
 
@@ -137,30 +137,17 @@ export function TemplatePreviewPage() {
   const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
   const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
   const [activeView, setActiveView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
-  const [publishedVersionCount, setPublishedVersionCount] = useState<number | null>(null);
+  // publishedVersionCount derived from useTemplateVersionSummariesQuery below.
 
   // Ref for the comment card header.
   const commentCardHeaderRef = useRef<HTMLDivElement>(null);
 
   // Dynamic top position for the fixed comment panel — no longer needed with PaperPreviewLayout
 
-  useEffect(() => {
-    if (!id) {
-      setPublishedVersionCount(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchTemplateVersionSummaries(id)
-      .then((rows) => {
-        if (!cancelled) setPublishedVersionCount(rows.length);
-      })
-      .catch(() => {
-        if (!cancelled) setPublishedVersionCount(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
+  const versionSummariesQuery = useTemplateVersionSummariesQuery(id ?? '', {
+    enabled: !!id,
+  });
+  const publishedVersionCount = versionSummariesQuery.data?.length ?? null;
 
   useEffect(() => {
     if (!id) {
@@ -306,29 +293,15 @@ export function TemplatePreviewPage() {
     !!template.working_version_id &&
     (isOwner || hasPermission('templates.update'));
 
-  useEffect(() => {
-    if (!template?.process_id) {
-      setProcessLabel(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchProcesses()
-      .then((res) => {
-        if (cancelled) return;
-        const process = res.data.find((p) => p.id === template.process_id) ?? null;
-        if (!process) {
-          setProcessLabel(null);
-          return;
-        }
-        setProcessLabel(`Proceso: ${process.code} — ${process.name}`);
-      })
-      .catch(() => {
-        if (!cancelled) setProcessLabel(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [template?.process_id]);
+  const processesQuery = useProcessesQuery(undefined, {
+    enabled: !!template?.process_id,
+  });
+  const processLabel = (() => {
+    if (!template?.process_id) return null;
+    const process = processesQuery.data?.data.find((p) => p.id === template.process_id) ?? null;
+    if (!process) return null;
+    return `Proceso: ${process.code} — ${process.name}`;
+  })();
 
   const handleSubmitForReview = async () => {
     if (!id || !template) return;

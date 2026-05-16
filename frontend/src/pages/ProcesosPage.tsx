@@ -1,17 +1,9 @@
 import { useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Button, ErrorBoundary, PageTitle } from '@maya/shared-ui-react';
-import { createDataHook } from '@maya/shared-auth-react';
 import { TemplatesTable } from '../features/templates/components/TemplatesTable';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
-import { fetchProcesses } from '../api/processes';
-import type { Process } from '../types/processes';
-
-const useProcessesQuery = createDataHook<void, { data: Process[] }>({
-  queryKey: () => ['processes'],
-  fetcher: () => fetchProcesses(),
-  defaultOptions: { staleTime: 60_000 },
-});
+import { useProcessesQuery } from '../hooks/useProcesses';
 
 type Tab = 'templates' | 'documents';
 

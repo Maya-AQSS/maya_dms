@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchDocument,
   fetchDocumentReviews,
-  fetchDocumentVersionSummaries,
   fetchDocumentVersionDetail,
   submitDocumentForReview,
   deleteDocument,
@@ -14,9 +14,11 @@ import {
   discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
-import { fetchTemplate } from '../api/templates';
-import { fetchProcesses } from '../api/processes';
 import { fetchMe } from '../api/users';
+import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
+import { useDocumentCommentsQuery } from '../features/documents/hooks/useDocumentComments';
+import { useTemplateQuery } from '../features/templates/hooks/useTemplate';
+import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import type { BlockState } from '../types/blocks';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
@@ -119,6 +121,7 @@ type Props = {
 export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const documentVersionId = searchParams.get('documentVersionId');
   const location = useLocation();
@@ -154,42 +157,27 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
-  const [processLabel, setProcessLabel] = useState<string | null>(null);
-  const [publishedDocumentVersionCount, setPublishedDocumentVersionCount] = useState<number | null>(null);
+  // processLabel + publishedDocumentVersionCount derive from createDataHook queries below.
 
   // Validate-mode comment + info state (mirrors TemplateReviewView)
   type ValidateActiveView = { blockId: string; mode: 'comments' | 'info' } | null;
-  const [validateComments, setValidateComments] = useState<BlockComment[]>([]);
   const [validateActiveView, setValidateActiveView] = useState<ValidateActiveView>(null);
   const validateActiveBlockId = validateActiveView?.blockId ?? null;
   const [validateCommentLoading, setValidateCommentLoading] = useState(false);
-  const [validateCommentError, setValidateCommentError] = useState<string | null>(null);
+  const [validateCommentSubmitError, setValidateCommentSubmitError] = useState<string | null>(null);
   const validateBlockRefs = useRef<Map<string, HTMLElement>>(new Map());
   const validateViewHeaderRef = useRef<HTMLDivElement>(null);
 
   // Creator preview-mode comment state (mirrors TemplatePreviewPage)
-  const [reviewComments, setReviewComments] = useState<BlockComment[]>([]);
   const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
   const [selectedReviewView, setSelectedReviewView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
   const pageHeaderRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!documentId) {
-      setPublishedDocumentVersionCount(null);
-      return;
-    }
-    let cancelled = false;
-    void fetchDocumentVersionSummaries(documentId)
-      .then((rows) => {
-        if (!cancelled) setPublishedDocumentVersionCount(rows.length);
-      })
-      .catch(() => {
-        if (!cancelled) setPublishedDocumentVersionCount(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [documentId]);
+  const versionSummariesQuery = useDocumentVersionSummariesQuery(documentId ?? '', {
+    enabled: !!documentId,
+  });
+  const publishedDocumentVersionCount =
+    versionSummariesQuery.data?.length ?? null;
 
   useEffect(() => {
     if (!documentId) {
@@ -376,52 +364,38 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     };
   }, [isValidateMode, detail?.id, detail?.status, detail?.template_id]);
 
-  useEffect(() => {
-    if (!detail?.template_id) {
-      setProcessLabel(null);
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const [templateResp, processesResp] = await Promise.all([
-          fetchTemplate(detail.template_id),
-          fetchProcesses(),
-        ]);
-        if (cancelled) return;
-        const processId = templateResp.data.process_id;
-        if (!processId) {
-          setProcessLabel(null);
-          return;
-        }
-        const process = processesResp.data.find((p: Process) => p.id === processId) ?? null;
-        if (!process) {
-          setProcessLabel(null);
-          return;
-        }
-        setProcessLabel(`Proceso: ${process.code} — ${process.name}`);
-      } catch {
-        if (!cancelled) setProcessLabel(null);
-      }
-    })();
+  const templateForLabelQuery = useTemplateQuery(detail?.template_id ?? '', {
+    enabled: !!detail?.template_id,
+  });
+  const processesQuery = useProcessesQuery(undefined, {
+    enabled: !!detail?.template_id,
+  });
+  const processLabel = useMemo<string | null>(() => {
+    const processId = templateForLabelQuery.data?.data.process_id;
+    if (!processId) return null;
+    const process = processesQuery.data?.data.find((p: Process) => p.id === processId) ?? null;
+    if (!process) return null;
+    return `Proceso: ${process.code} — ${process.name}`;
+  }, [templateForLabelQuery.data, processesQuery.data]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [detail?.template_id]);
-
-  // Load document comments in validate mode
-  useEffect(() => {
-    if (!isValidateMode || !documentId || !detail) return;
-    let cancelled = false;
-    void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
-      .then((res) => { if (!cancelled) setValidateComments(res.data); })
-      .catch((e) => {
-        if (!cancelled) setValidateCommentError(e instanceof Error ? e.message : 'No se pudieron cargar los comentarios.');
-      });
-    return () => { cancelled = true; };
-  }, [isValidateMode, documentId, detail?.id]);
-
+  // Document comments — used for validate-mode panel and preview-mode review banner.
+  const validateCommentsEnabled = isValidateMode && !!documentId && !!detail;
+  const previewCommentsEnabled =
+    !isValidateMode && !!documentId && !!detail?.has_review_comments;
+  const documentCommentsQuery = useDocumentCommentsQuery(documentId ?? '', {
+    enabled: validateCommentsEnabled || previewCommentsEnabled,
+  });
+  const validateComments: BlockComment[] = validateCommentsEnabled
+    ? documentCommentsQuery.data?.data ?? []
+    : [];
+  const reviewComments: BlockComment[] = previewCommentsEnabled
+    ? documentCommentsQuery.data?.data ?? []
+    : [];
+  const validateCommentLoadError =
+    validateCommentsEnabled && documentCommentsQuery.error
+      ? documentCommentsQuery.error.message ?? 'No se pudieron cargar los comentarios.'
+      : null;
+  const validateCommentError = validateCommentSubmitError ?? validateCommentLoadError;
 
   const openValidateView = (blockId: string, mode: 'comments' | 'info') => {
     setValidateActiveView((prev) =>
@@ -429,18 +403,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     );
   };
 
-  // Dynamic top for fixed creator-preview comment panel (below page header)
-  // No longer needed with PaperPreviewLayout
-
-  // Load creator-preview review comments when document has unresolved comments
-  useEffect(() => {
-    if (isValidateMode || !documentId || !detail?.has_review_comments) return;
-    let cancelled = false;
-    void apiFetchJson<{ data: BlockComment[] }>(`documents/${documentId}/comments`)
-      .then((res) => { if (!cancelled) setReviewComments(res.data); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, [isValidateMode, documentId, detail?.has_review_comments]);
+  const appendCommentToCache = (id: string, comment: BlockComment) => {
+    queryClient.setQueryData<{ data: BlockComment[] }>(
+      ['documents', id, 'comments'],
+      (prev) => ({ data: [...(prev?.data ?? []), comment] }),
+    );
+  };
 
   const handlePreviewSendMessage = async (parentId: string | null, body: string) => {
     if (!documentId || !selectedReviewView?.blockId) return;
@@ -455,7 +423,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           document_version_id: detail?.working_version_id || null
         },
       });
-      setReviewComments(prev => [...prev, res.data]);
+      appendCommentToCache(documentId, res.data);
     } catch (e) {
       console.error('Error sending message', e);
     } finally {
@@ -466,7 +434,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const handleValidateSendMessage = async (parentId: string | null, body: string) => {
     if (!documentId) return;
     setValidateCommentLoading(true);
-    setValidateCommentError(null);
+    setValidateCommentSubmitError(null);
     try {
       const parent = parentId ? validateComments.find(c => c.id === parentId) : null;
       const blockableId = parentId
@@ -476,9 +444,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         method: 'POST',
         body: { body, parent_id: parentId, blockable_id: blockableId },
       });
-      setValidateComments(prev => [...prev, res.data]);
+      appendCommentToCache(documentId, res.data);
     } catch {
-      setValidateCommentError('No se pudo guardar el comentario.');
+      setValidateCommentSubmitError('No se pudo guardar el comentario.');
     } finally {
       setValidateCommentLoading(false);
     }
