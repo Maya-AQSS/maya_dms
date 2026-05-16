@@ -159,7 +159,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                 (string) $document->template_id,
             );
 
-            $now = Carbon::now();
+            $now = now();
             $headId = (string) Str::uuid();
 
             DB::table('entity_versions')->insert([
