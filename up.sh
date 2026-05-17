@@ -18,6 +18,7 @@ setup_frontend_env() {
     upsert_env_var frontend/.env VITE_KEYCLOAK_URL       "${VITE_KEYCLOAK_URL:-https://keycloak.${DOMAIN_SUFFIX:-localhost}}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_REALM     "${VITE_KEYCLOAK_REALM:-${MAYA_SLOT:-maya}}"
     upsert_env_var frontend/.env VITE_KEYCLOAK_CLIENT_ID "${VITE_KEYCLOAK_CLIENT_ID:-maya-dms-dashboard}"
+    upsert_env_var frontend/.env VITE_DASHBOARD_API_URL  "${VITE_DASHBOARD_API_URL:-https://${HOST_PREFIX:-}dashboard-api.${DOMAIN_SUFFIX:-localhost}}"
     upsert_env_var frontend/.env VITE_REVERB_APP_KEY     "${REVERB_APP_KEY:-}"
     upsert_env_var frontend/.env VITE_REVERB_HOST        "${VITE_REVERB_HOST:-dms-api.${DOMAIN_SUFFIX:-localhost}}"
     upsert_env_var frontend/.env VITE_REVERB_PORT        "${VITE_REVERB_PORT:-8082}"
