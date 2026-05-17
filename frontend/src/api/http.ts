@@ -8,9 +8,12 @@
  */
 import { createApiClient, ApiHttpError, type ApiFetchOptions } from '@maya/shared-auth-react'
 import { oidcAuthService } from '../auth/oidcAdapter'
+import { peerOrigin } from '../lib/peerService'
 
-const DEFAULT_BASE_URL = 'https://dms-api.maya.test/api/v1'
-const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? DEFAULT_BASE_URL
+// Si `VITE_API_URL` no está definida, derivamos el origen del hostname actual
+// (convención Maya: `<slot>-<service>.<domain>` ↔ `<slot>-<service>-api.<domain>`).
+const baseUrl = ((import.meta.env.VITE_API_URL as string | undefined)?.trim())
+  || `${peerOrigin('dms-api')}/api/v1`
 
 const client = createApiClient(oidcAuthService.keycloak, baseUrl)
 

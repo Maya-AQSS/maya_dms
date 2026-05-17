@@ -8,6 +8,7 @@ import { SidebarProcesos } from './components/layout';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
 import { useNavItems } from './components/layout/navItems';
+import { resolveServiceUrl } from './lib/peerService';
 
 // Lazy-loaded pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -22,7 +23,10 @@ const TemplateReviewPage = lazy(() => import('./pages/TemplateReviewPage').then(
 const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').then(m => ({ default: m.TemplatePreviewPage })));
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
-const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined) ?? 'https://dashboard-api.maya.test';
+const DASHBOARD_API_URL = resolveServiceUrl(
+  import.meta.env.VITE_DASHBOARD_API_URL as string | undefined,
+  'dashboard-api',
+);
 
 function AppRoutes() {
   return (
@@ -57,8 +61,10 @@ function Main() {
   const userName = profile?.name?.trim() ?? '';
   const userInitials = profileDisplayInitials(profile);
   const onProfile = () => {
-    const dashboardOrigin = (import.meta.env.VITE_DASHBOARD_URL as string | undefined)
-      ?? 'https://dashboard.maya.test';
+    const dashboardOrigin = resolveServiceUrl(
+      import.meta.env.VITE_DASHBOARD_URL as string | undefined,
+      'dashboard',
+    );
     window.location.assign(`${dashboardOrigin}/profile`);
   };
 
