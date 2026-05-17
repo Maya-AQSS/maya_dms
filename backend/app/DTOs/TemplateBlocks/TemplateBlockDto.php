@@ -14,7 +14,7 @@ final readonly class TemplateBlockDto
         public string $templateId,
         public ?string $title,
         public mixed $defaultContent,
-        public ?string $description,
+        public mixed $description,
         public ?string $blockState,
         public int $sortOrder,
         public ?string $createdAt,
