@@ -43,6 +43,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Los packages compartidos viven en Maya-AQSS/maya_infra. composer.json los
+      # referencia vía `path: ../../maya_infra/packages/*`. Requiere el secret
+      # `MAYA_INFRA_TOKEN` (PAT con Contents:read sobre maya_infra).
+      - name: Checkout maya_infra (shared packages)
+        uses: actions/checkout@v4
+        with:
+          repository: Maya-AQSS/maya_infra
+          ref: refactor/globalExpertsv2
+          path: .maya_infra_checkout
+          token: ${{ secrets.MAYA_INFRA_TOKEN }}
+
+      - name: Relocate maya_infra to sibling path
+        run: mv "$GITHUB_WORKSPACE/.maya_infra_checkout" "$GITHUB_WORKSPACE/../maya_infra"
+        working-directory: .
+
       - name: Setup PHP 8.4
         uses: shivammathur/setup-php@v2
         with:
@@ -81,6 +96,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Checkout maya_infra (shared packages)
+        uses: actions/checkout@v4
+        with:
+          repository: Maya-AQSS/maya_infra
+          ref: refactor/globalExpertsv2
+          path: .maya_infra_checkout
+          token: ${{ secrets.MAYA_INFRA_TOKEN }}
+
+      - name: Relocate maya_infra to sibling path
+        run: mv "$GITHUB_WORKSPACE/.maya_infra_checkout" "$GITHUB_WORKSPACE/../maya_infra"
+        working-directory: .
 
       - name: Setup Node 22
         uses: actions/setup-node@v4
