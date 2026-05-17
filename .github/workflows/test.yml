@@ -61,6 +61,14 @@ jobs:
       - name: Run tests
         run: ./vendor/bin/pest --no-coverage --colors=never
 
+      # Coverage no bloqueante: mostramos métricas en el log para hacer seguimiento
+      # progresivo del 80% objetivo. Cuando la cobertura real lo alcance, eliminar
+      # `continue-on-error` y añadir `--min=80` para que sea bloqueante.
+      - name: Coverage report (non-blocking)
+        if: always()
+        continue-on-error: true
+        run: ./vendor/bin/pest --coverage --coverage-text --colors=never
+
   frontend:
     name: Frontend (Vitest)
     runs-on: ubuntu-latest
