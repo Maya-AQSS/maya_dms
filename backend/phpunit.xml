@@ -17,6 +17,12 @@
             <directory>app</directory>
         </include>
     </source>
+    <coverage>
+        <report>
+            <text outputFile="coverage.txt" showOnlySummary="true"/>
+            <html outputDirectory="coverage-html"/>
+        </report>
+    </coverage>
     <php>
         <!-- force: el compose inyecta pgsql y APP_ENV=local; sin esto RefreshDatabase hace migrate:fresh sobre maya_dms_db y borra los seeds que ves en el navegador. -->
         <env name="APP_ENV" value="testing" force="true"/>

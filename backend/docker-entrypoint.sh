@@ -5,6 +5,10 @@ set -e
 echo "[entrypoint] Clearing bootstrap cache..."
 rm -f /var/www/html/bootstrap/cache/packages.php
 rm -f /var/www/html/bootstrap/cache/services.php
+# config.php cacheado congela env() — eliminarlo permite que tests/bootstrap.php
+# imponga sqlite ANTES de Laravel cargar config. Sin esto, pest --coverage ejecuta
+# contra la BD pgsql cacheada.
+rm -f /var/www/html/bootstrap/cache/config.php
 
 # Install dependencies if vendor is missing OR if path packages are not linked
 # (handles fresh anonymous volumes AND the case where autoload.php exists but

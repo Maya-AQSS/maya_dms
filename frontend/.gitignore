@@ -32,3 +32,6 @@ refresh_token.sh
 *.njsproj
 *.sln
 *.sw?
+
+# Vitest coverage (Fase B test coverage tooling)
+coverage/
