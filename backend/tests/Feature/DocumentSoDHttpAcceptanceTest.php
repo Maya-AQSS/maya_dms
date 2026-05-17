@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateBlock;
@@ -39,12 +40,13 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
+        $templateBlockId = (string) Str::uuid();
         TemplateBlock::query()->forceCreate([
-            'id' => (string) Str::uuid(),
+            'id' => $templateBlockId,
             'template_id' => $templateId,
             'title' => 'Bloque SoD',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['text' => 'Contenido inicial'],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -56,6 +58,19 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'created_by' => $creatorId,
             'owner_id' => $creatorId,
             'status' => 'draft',
+        ]);
+
+        // El submit valida que todos los bloques editables tienen contenido. Como el
+        // documento se crea aquí sin pasar por la API, sembramos el document_block
+        // ya rellenado para que el submit no falle por validación de bloques vacíos.
+        DocumentBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'document_id' => $documentId,
+            'template_block_id' => $templateBlockId,
+            'content' => ['text' => 'Contenido inicial'],
+            'is_filled' => true,
+            'sort_order' => 0,
+            'last_edited_by' => $creatorId,
         ]);
 
         return [$templateId, $documentId];

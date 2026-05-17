@@ -508,11 +508,7 @@ class TemplatesApiTest extends TestCase
             'blockable_id' => null,
             'parent_id' => null,
             'author_id' => $userId,
-            'body' => 'Comentario de revision abierto',
-            'resolved' => false,
-            'resolved_by' => null,
-            'resolved_at' => null,
-        ]);
+            'body' => 'Comentario de revision abierto',        ]);
 
         $this->getJson('/api/v1/templates', $headers)
             ->assertOk()
@@ -674,7 +670,7 @@ class TemplatesApiTest extends TestCase
             'id' => $bid,
             'template_id' => $tid,
             'title' => 'Titulo publicado',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -766,7 +762,7 @@ class TemplatesApiTest extends TestCase
             'id' => $bid,
             'template_id' => $tid,
             'title' => 'B',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -815,7 +811,7 @@ class TemplatesApiTest extends TestCase
             'id' => $bid,
             'template_id' => $tid,
             'title' => 'B',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -975,7 +971,9 @@ class TemplatesApiTest extends TestCase
             'block_state' => 'locked',
             'sort_order' => 1,
         ]);
-        $this->assertDatabaseMissing('template_blocks', [
+        // TemplateBlock usa SoftDeletes; tras el rollback el bloque live se marca
+        // como deleted, no se elimina físicamente. Validamos el soft-delete.
+        $this->assertSoftDeleted('template_blocks', [
             'id' => $liveOnlyBlockId,
             'template_id' => $tid,
         ]);
@@ -1111,7 +1109,7 @@ class TemplatesApiTest extends TestCase
             'id' => $bid,
             'template_id' => $tid,
             'title' => 'B',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -1815,8 +1813,8 @@ class TemplatesApiTest extends TestCase
             'id' => $bid,
             'template_id' => $tid,
             'title' => 'T',
-            'default_content' => null,
-            'block_state' => 'locked',
+            'default_content' => ['text' => 'editable content'],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -2480,7 +2478,7 @@ class TemplatesApiTest extends TestCase
             'id' => (string) Str::uuid(),
             'template_id' => $tid,
             'title' => 'Bloque rechazo',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -2527,7 +2525,7 @@ class TemplatesApiTest extends TestCase
             'id' => (string) Str::uuid(),
             'template_id' => $tid,
             'title' => 'Bloque aprobaci?n',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);

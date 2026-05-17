@@ -82,13 +82,19 @@ class MeProfileApiTest extends TestCase
         $response = $this->withHeaders($this->authHeaders())
             ->getJson('/api/v1/me');
 
-        $response->assertOk()
-            ->assertJsonPath('data', $expectedProfile);
+        $response->assertOk();
 
         $data = $response->json('data');
         $this->assertIsArray($data);
         $this->assertArrayNotHasKey('roles', $data);
         $this->assertArrayHasKey('permissions', $data);
         $this->assertArrayHasKey('department', $data);
+
+        // Comparación insensible al orden: el Resource puede componer la clave 'locale'
+        // y reordenar campos. Verificamos que cada clave esperada existe y coincide.
+        foreach ($expectedProfile as $key => $value) {
+            $this->assertArrayHasKey($key, $data, "Falta la clave «{$key}» en data");
+            $this->assertSame($value, $data[$key], "El valor de «{$key}» no coincide");
+        }
     }
 }

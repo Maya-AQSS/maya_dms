@@ -4,8 +4,11 @@ namespace Tests\Unit\Services;
 
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
@@ -60,25 +63,21 @@ class DocumentServiceCreationOptionsTest extends TestCase
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
-        $published = new EntityVersion;
-        $published->forceFill([
-            'id' => 'ev-1',
-            'versionable_id' => 'tpl-1',
-            'version_number' => 1,
-        ]);
-
-        $entityVersionRepo->shouldReceive('findLatestPublishedForEntity')
+        // El servicio ahora hace UNA sola query batched para todos los template ids.
+        $entityVersionRepo->shouldReceive('findLatestPublishedIdsByVersionables')
             ->once()
-            ->with(Template::class, 'tpl-1')
-            ->andReturn($published);
+            ->with(Template::class, ['tpl-1', 'tpl-2'])
+            ->andReturn(['tpl-1' => 'ev-1']);
 
-        $entityVersionRepo->shouldReceive('findLatestPublishedForEntity')
-            ->once()
-            ->with(Template::class, 'tpl-2')
-            ->andReturn(null);
-
+        $blockRepo       = Mockery::mock(DocumentBlockRepositoryInterface::class);
         $contextResolver = Mockery::mock(TemplateContextResolver::class);
-        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
+        $academicRepo    = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $teamRepo        = Mockery::mock(TeamReadRepositoryInterface::class);
+        $teamRepo->shouldReceive('getTeamNamesByIds')
+            ->once()
+            ->with([])
+            ->andReturn([]);
+        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo);
 
         $out = $service->creationOptionsForModule('MOD-1');
 
@@ -106,8 +105,11 @@ class DocumentServiceCreationOptionsTest extends TestCase
         $reviewSvc = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
+        $blockRepo       = Mockery::mock(DocumentBlockRepositoryInterface::class);
         $contextResolver = Mockery::mock(TemplateContextResolver::class);
-        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
+        $academicRepo    = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $teamRepo        = Mockery::mock(TeamReadRepositoryInterface::class);
+        $service = new DocumentService($docRepo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo);
 
         $this->expectException(ValidationException::class);
 

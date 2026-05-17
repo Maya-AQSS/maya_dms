@@ -5,6 +5,9 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Vista `users` alineada con FDW (`v_app_users`): sin columna `department`.
+ *
+ * Testing: no-op — la migración 0000 ya crea una tabla física `users` sin FDW.
+ * Producción/staging: recrea la vista sobre users_fdw sin la columna department.
  */
 return new class extends Migration
 {
@@ -14,7 +17,7 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (DB::getDriverName() !== 'pgsql') {
+        if ($this->isTestEnv() || DB::getDriverName() !== 'pgsql') {
             return;
         }
 
@@ -41,7 +44,7 @@ return new class extends Migration
 
     public function down(): void
     {
-        if (DB::getDriverName() !== 'pgsql') {
+        if ($this->isTestEnv() || DB::getDriverName() !== 'pgsql') {
             return;
         }
 
@@ -65,5 +68,15 @@ return new class extends Migration
 
         $dbUser = config('database.connections.pgsql.username', 'maya_dms_user');
         DB::statement('GRANT SELECT ON '.self::VIEW.' TO "'.$dbUser.'"');
+    }
+
+    private function isTestEnv(): bool
+    {
+        if (app()->environment('testing')) {
+            return true;
+        }
+
+        $db = config('database.connections.pgsql.database');
+        return is_string($db) && str_ends_with($db, '_test');
     }
 };

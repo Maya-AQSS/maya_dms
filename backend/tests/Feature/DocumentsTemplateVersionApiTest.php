@@ -36,6 +36,30 @@ class DocumentsTemplateVersionApiTest extends TestCase
     use BuildsTestJwt;
     use RefreshDatabase;
 
+    /**
+     * Manipula directamente snapshot_data en entity_versions saltándose el trigger
+     * append-only. Necesario para tests que simulan estados intermedios (fallback a
+     * blocks vivos, eliminación de reviewers del snapshot, etc.).
+     */
+    private function forceUpdateEntityVersionSnapshot(string $entityVersionId, array $snapshot): void
+    {
+        if (DB::connection()->getDriverName() !== 'pgsql') {
+            DB::table('entity_versions')->where('id', $entityVersionId)->update([
+                'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+            ]);
+            return;
+        }
+
+        DB::statement('ALTER TABLE entity_versions DISABLE TRIGGER entity_versions_append_only_snapshots');
+        try {
+            DB::table('entity_versions')->where('id', $entityVersionId)->update([
+                'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+            ]);
+        } finally {
+            DB::statement('ALTER TABLE entity_versions ENABLE TRIGGER entity_versions_append_only_snapshots');
+        }
+    }
+
     private function setDocumentHeadWorkingStatus(string $docId, string $status): void
     {
         $ev = EntityVersion::query()
@@ -254,7 +278,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -286,7 +310,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
                 'blocks' => [[
                     'id' => $b1,
                     'title' => 'Bloque',
-                    'default_content' => null,
+                    'default_content' => ['x' => 1],
                     'block_state' => 'editable',
                     'sort_order' => 0,
                 ]],
@@ -345,7 +369,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque publicado',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -412,7 +436,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -498,7 +522,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -618,7 +642,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -679,9 +703,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         /** @var array<string, mixed> $decoded */
         $decoded = json_decode((string) $evRow->snapshot_data, true, 512, JSON_THROW_ON_ERROR);
         $decoded['blocks'] = [];
-        DB::table('entity_versions')->where('id', (string) $snapshotRow->entity_version_id)->update([
-            'snapshot_data' => json_encode($decoded, JSON_THROW_ON_ERROR),
-        ]);
+        $this->forceUpdateEntityVersionSnapshot((string) $snapshotRow->entity_version_id, $decoded);
 
         $fallbackText = 'Contenido solo en borrador vivo';
         DB::table('document_blocks')
@@ -742,7 +764,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -826,7 +848,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'B',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -913,7 +935,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'B',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -981,7 +1003,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque publicado',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -1053,7 +1075,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque desde snapshot entity',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -1078,9 +1100,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $docId = (string) $createDoc->json('data.id');
         $versionIdV1 = (string) $createDoc->json('data.template_version_id');
 
-        DB::table('entity_versions')->where('id', $versionIdV1)->update([
-            'snapshot_data' => json_encode(['blocks' => []], JSON_THROW_ON_ERROR),
-        ]);
+        $this->forceUpdateEntityVersionSnapshot($versionIdV1, ['blocks' => []]);
 
         $show = $this->getJson("/api/v1/documents/{$docId}", $hCreator);
         $show->assertOk();
@@ -1138,8 +1158,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -1228,8 +1248,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque team',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -1286,8 +1306,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque personal',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -1356,8 +1376,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque estudio',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
         TemplateReviewer::query()->forceCreate([
@@ -1431,8 +1451,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
         TemplateReviewer::query()->forceCreate([
@@ -1503,8 +1523,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
         TemplateReviewer::query()->forceCreate([
@@ -1574,8 +1594,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
         TemplateReviewer::query()->forceCreate([
@@ -1628,7 +1648,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque editable',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -1696,9 +1716,18 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque bloqueado',
-            'default_content' => null,
+            'default_content' => ['text' => 'Contenido fijo'],
             'block_state' => 'locked',
             'sort_order' => 0,
+        ]);
+        // Bloque editable acompañante para superar la invariante "al menos un editable o modificable".
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Bloque editable',
+            'default_content' => ['text' => 'editable'],
+            'block_state' => 'editable',
+            'sort_order' => 1,
         ]);
 
         TemplateReviewer::query()->forceCreate([
@@ -1757,8 +1786,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -1818,8 +1847,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -1880,8 +1909,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -1945,8 +1974,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -2016,8 +2045,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -2089,8 +2118,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -2148,7 +2177,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque obligatorio',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -2171,6 +2200,12 @@ class DocumentsTemplateVersionApiTest extends TestCase
         ], $hCreator)->assertCreated();
 
         $docId = (string) $createDoc->json('data.id');
+
+        // El document_block hereda default_content del template; lo vaciamos
+        // explícitamente para simular un bloque mandatory sin rellenar.
+        DB::table('document_blocks')
+            ->where('document_id', $docId)
+            ->update(['content' => null, 'is_filled' => false]);
 
         $this->postJson("/api/v1/documents/{$docId}/submit", [], $hCreator)
             ->assertUnprocessable()
@@ -2207,7 +2242,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque obligatorio',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -2271,9 +2306,18 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque locked',
-            'default_content' => null,
+            'default_content' => ['text' => 'Contenido fijo del template'],
             'block_state' => 'locked',
             'sort_order' => 0,
+        ]);
+        // Editable acompañante para superar el invariante "al menos un editable o modificable".
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Editable',
+            'default_content' => ['text' => 'editable'],
+            'block_state' => 'editable',
+            'sort_order' => 1,
         ]);
 
         TemplateReviewer::query()->forceCreate([
@@ -2337,8 +2381,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
         TemplateReviewer::query()->forceCreate([
@@ -2417,8 +2461,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
         TemplateReviewer::query()->forceCreate([
@@ -2441,9 +2485,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $snapshot = json_decode((string) $evRow->snapshot_data, true);
         $this->assertIsArray($snapshot);
         unset($snapshot['reviewers']);
-        DB::table('entity_versions')->where('id', $evRow->id)->update([
-            'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
-        ]);
+        $this->forceUpdateEntityVersionSnapshot((string) $evRow->id, $snapshot);
 
         DB::table('template_reviewers')->where('template_id', $tid)->delete();
         TemplateReviewer::query()->forceCreate([
@@ -2510,8 +2552,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -2553,12 +2595,20 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
-        $row = DB::table('document_versions')->where('document_id', $docId)->first();
+        // El submit crea una fila con trigger_event='submitted'; la aprobación añade
+        // otra con trigger_event='published'. Filtramos por la fila publicada.
+        $row = DB::table('document_versions')
+            ->where('document_id', $docId)
+            ->where('trigger_event', 'published')
+            ->first();
         $this->assertNotNull($row);
-        $this->assertSame(1, (int) $row->version_number);
+        // El submit ya creó la versión 1 (trigger 'submitted'); la publicación es la 2.
+        $this->assertSame(2, (int) $row->version_number);
         $this->assertSame('published', $row->trigger_event);
         $this->assertSame($reviewerId, $row->triggered_by);
         $this->assertSame('Cierre v1 liberado', $row->notes);
+        // entity_versions usa numeración propia: solo cuenta versiones inmutables
+        // publicadas (v1) además del working v0; document_versions cuenta submit+publish.
         $this->assertDatabaseHas('entity_versions', [
             'versionable_type' => Document::class,
             'versionable_id' => $docId,
@@ -2568,7 +2618,10 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'is_snapshot_immutable' => 1,
         ]);
 
-        $legacyDv = DocumentVersion::query()->where('document_id', $docId)->firstOrFail();
+        $legacyDv = DocumentVersion::query()
+            ->where('document_id', $docId)
+            ->where('trigger_event', 'published')
+            ->firstOrFail();
         $snapshot = $legacyDv->resolvedSnapshotData();
         $this->assertIsArray($snapshot);
         $this->assertArrayHasKey('document', $snapshot);
@@ -3028,8 +3081,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -3063,9 +3116,14 @@ class DocumentsTemplateVersionApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.status', 'published');
 
+        // Existe la fila 'submitted' del submit + la 'published' del publish.
+        // Comprobamos la nota de la publicación.
         $this->assertSame(
             'Publicación automática',
-            (string) DB::table('document_versions')->where('document_id', $docId)->value('notes'),
+            (string) DB::table('document_versions')
+                ->where('document_id', $docId)
+                ->where('trigger_event', 'published')
+                ->value('notes'),
         );
     }
 
@@ -3099,8 +3157,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -3165,8 +3223,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
 
@@ -3219,8 +3277,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
-            'block_state' => 'optional',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
             'sort_order' => 0,
         ]);
         TemplateReviewer::query()->forceCreate([
@@ -3390,7 +3448,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $templateBlockId,
             'template_id' => $templateId,
             'title' => 'Bloque base',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -3529,7 +3587,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -3612,7 +3670,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -3674,7 +3732,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -3748,7 +3806,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);
@@ -3831,7 +3889,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'id' => $b1,
             'template_id' => $tid,
             'title' => 'Bloque',
-            'default_content' => null,
+            'default_content' => ['x' => 1],
             'block_state' => 'editable',
             'sort_order' => 0,
         ]);

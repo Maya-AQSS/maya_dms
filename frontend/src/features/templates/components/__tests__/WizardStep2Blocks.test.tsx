@@ -151,32 +151,19 @@ describe('WizardStep2Blocks', () => {
     });
   });
 
-  it('enters multi-selection mode when selecting all blocks', () => {
-    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
-    fireEvent.click(screen.getByText('Seleccionar todos'));
-    // After selecting all, "Bloque 1" appears in both the sidebar and the edit panel
-    // header, so we use getAllByText to handle multiple matches.
-    expect(screen.getAllByText('Bloque 1').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Bloque 2').length).toBeGreaterThan(0);
+  // Los tests "Seleccionar todos / Deseleccionar todos" se eliminaron porque la
+  // funcionalidad multi-selección ya no existe en WizardStep2Blocks. Los
+  // skippeamos para mantener histórico hasta que se decida si se reintroduce.
+  it.skip('enters multi-selection mode when selecting all blocks', () => {
+    // Feature removida del componente.
   });
 
-  it('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
-    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
-    const selectAllBtn = screen.getByText('Seleccionar todos');
-    
-    fireEvent.click(selectAllBtn);
-    
-    // After clicking select all, the button text should change
-    expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
+  it.skip('toggles selection of all blocks when "Seleccionar todos" is clicked', () => {
+    // Feature removida del componente.
   });
 
-  it('sale del modo multi al deseleccionar todos', () => {
-    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
-    fireEvent.click(screen.getByText('Seleccionar todos'));
-    expect(screen.getByText('Propiedades')).toBeTruthy();
-
-    fireEvent.click(screen.getByText('Deseleccionar todos'));
-    expect(screen.queryByText('Propiedades')).toBeNull();
+  it.skip('sale del modo multi al deseleccionar todos', () => {
+    // Feature removida del componente.
   });
 
   it('block name input shows "Nuevo bloque" placeholder', async () => {
@@ -210,14 +197,8 @@ describe('WizardStep2Blocks', () => {
     });
   });
 
-  it('shows selected state on all blocks after "Seleccionar todos"', () => {
-    renderWithProfile(<WizardStep2Blocks {...defaultProps} />);
-    fireEvent.click(screen.getByText('Seleccionar todos'));
-    // Both blocks should have multi-queued or selected styling via data rendered by BlockListItem
-    // The presence of 'Deseleccionar todos' confirms multi-select is active
-    expect(screen.getByText('Deseleccionar todos')).toBeTruthy();
-    expect(screen.getAllByText('Bloque 1').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('Bloque 2').length).toBeGreaterThan(0);
+  it.skip('shows selected state on all blocks after "Seleccionar todos"', () => {
+    // Feature removida del componente.
   });
 
   describe('block title placeholder behavior', () => {

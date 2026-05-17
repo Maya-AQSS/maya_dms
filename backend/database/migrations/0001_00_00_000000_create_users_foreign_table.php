@@ -11,6 +11,9 @@ use Illuminate\Support\Facades\Schema;
  * El servidor "odoo_server" y el user mapping son creados por init-databases.sh
  * como superuser maya, ya que maya_dms_user no tiene privilegios suficientes.
  * Esta migración sólo crea la foreign table y la view.
+ *
+ * Producción/staging: FOREIGN TABLE + VIEW → odoo.v_app_users.
+ * Testing:            tabla física con la misma estructura para factories.
  */
 return new class extends Migration
 {
@@ -20,25 +23,59 @@ return new class extends Migration
 
     public function up(): void
     {
-        if (DB::getDriverName() !== 'pgsql') {
-            Schema::dropIfExists(self::VIEW);
-            Schema::create(self::VIEW, function (Blueprint $table): void {
-                $table->string('id')->primary();
-                $table->string('name')->nullable();
-                $table->string('email')->nullable();
-                $table->string('first_name')->nullable();
-                $table->string('last_name')->nullable();
-                $table->string('username')->nullable();
-                $table->string('employee_id')->nullable();
-                $table->string('dni')->nullable();
-                $table->string('employee_type')->nullable();
-                $table->boolean('is_active')->default(true);
-                $table->timestamps();
-            });
+        if ($this->isTestEnv()) {
+            $this->createStubTable();
+        } else {
+            $this->createFdwTable();
+        }
+    }
 
-            return;
+    public function down(): void
+    {
+        if ($this->isTestEnv()) {
+            Schema::dropIfExists(self::VIEW);
+        } else {
+            DB::statement('DROP VIEW IF EXISTS ' . self::VIEW . ' CASCADE');
+            DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TBL . ' CASCADE');
+        }
+    }
+
+    private function isTestEnv(): bool
+    {
+        if (app()->environment('testing')) {
+            return true;
         }
 
+        $db = config('database.connections.pgsql.database');
+        return is_string($db) && str_ends_with($db, '_test');
+    }
+
+    /**
+     * Tabla física para entorno testing (sin FDW).
+     * Misma estructura de columnas que expone la vista FDW en producción.
+     */
+    private function createStubTable(): void
+    {
+        Schema::create(self::VIEW, function (Blueprint $table): void {
+            // String PK igual que producción (keycloak UUID / odoo external_id)
+            $table->string('id')->primary();
+            $table->string('email')->nullable();
+            $table->string('name')->nullable();
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
+            $table->string('username')->nullable();
+            $table->string('employee_id')->nullable();
+            $table->string('dni')->nullable();
+            $table->string('employee_type')->nullable();
+            $table->boolean('is_active')->default(true);
+            // El modelo User no usa timestamps, pero UsersSourceSeeder los inserta
+            // explícitamente — el stub debe aceptarlos para que el seeder pase.
+            $table->timestamps();
+        });
+    }
+
+    private function createFdwTable(): void
+    {
         $dbUser = config('database.connections.pgsql.username', 'maya_dms_user');
 
         // Idempotente: drop primero para que migrate:fresh no falle
@@ -79,17 +116,5 @@ return new class extends Migration
 
         DB::statement("GRANT SELECT ON " . self::FDW_TBL . " TO \"{$dbUser}\"");
         DB::statement("GRANT SELECT ON " . self::VIEW . " TO \"{$dbUser}\"");
-    }
-
-    public function down(): void
-    {
-        if (DB::getDriverName() !== 'pgsql') {
-            Schema::dropIfExists(self::VIEW);
-
-            return;
-        }
-
-        DB::statement('DROP VIEW IF EXISTS ' . self::VIEW . ' CASCADE');
-        DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TBL . ' CASCADE');
     }
 };

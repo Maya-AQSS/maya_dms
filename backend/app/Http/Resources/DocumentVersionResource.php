@@ -33,6 +33,10 @@ class DocumentVersionResource extends JsonResource
             'changelog' => $row['changelog'] ?? null,
             'notes' => $row['notes'] ?? null,
             'snapshot' => $row['snapshot'] ?? null,
+            'snapshot_data' => $row['snapshot_data'] ?? null,
+            'published_by_name' => $row['published_by_name'] ?? null,
+            'author_name' => $row['author_name'] ?? null,
+            'owner_name' => $row['owner_name'] ?? null,
             'created_at' => $row['created_at'] ?? null,
         ];
     }

@@ -4,8 +4,11 @@ namespace Tests\Unit\Services;
 
 use App\Models\Document;
 use App\Models\EntityVersion;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
@@ -51,8 +54,11 @@ class DocumentServicePublishTest extends TestCase
         $reviewSvc         = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
+        $blockRepo       = Mockery::mock(DocumentBlockRepositoryInterface::class);
         $contextResolver = Mockery::mock(TemplateContextResolver::class);
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
+        $academicRepo    = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $teamRepo        = Mockery::mock(TeamReadRepositoryInterface::class);
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo);
 
         $this->expectException(ValidationException::class);
 
@@ -96,8 +102,11 @@ class DocumentServicePublishTest extends TestCase
         $reviewSvc         = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
+        $blockRepo       = Mockery::mock(DocumentBlockRepositoryInterface::class);
         $contextResolver = Mockery::mock(TemplateContextResolver::class);
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
+        $academicRepo    = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $teamRepo        = Mockery::mock(TeamReadRepositoryInterface::class);
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo);
 
         $this->expectException(ValidationException::class);
 
@@ -146,8 +155,11 @@ class DocumentServicePublishTest extends TestCase
         $reviewSvc         = Mockery::mock(DocumentReviewService::class);
         $entityVersionRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
 
+        $blockRepo       = Mockery::mock(DocumentBlockRepositoryInterface::class);
         $contextResolver = Mockery::mock(TemplateContextResolver::class);
-        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $contextResolver);
+        $academicRepo    = Mockery::mock(AcademicHierarchyRepositoryInterface::class);
+        $teamRepo        = Mockery::mock(TeamReadRepositoryInterface::class);
+        $service = new DocumentService($repo, $tplRepo, $snap, $blockSvc, $verSvc, $shareSvc, $stateSvc, $reviewSvc, $entityVersionRepo, $blockRepo, $contextResolver, $academicRepo, $teamRepo);
 
         $result = $service->publishDocument('doc-uuid', 'actor-uuid', null);
 

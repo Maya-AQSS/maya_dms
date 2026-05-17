@@ -221,11 +221,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'     => null,
             'parent_id'        => null,
             'author_id'        => $userA,
-            'body'             => 'Comentario privado',
-            'resolved'         => false,
-            'resolved_by'      => null,
-            'resolved_at'      => null,
-        ]);
+            'body'             => 'Comentario privado',        ]);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
         $this->getJson(
@@ -256,11 +252,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'     => null,
             'parent_id'        => null,
             'author_id'        => $userA,
-            'body'             => 'Comentario con tipo inválido',
-            'resolved'         => false,
-            'resolved_by'      => null,
-            'resolved_at'      => null,
-        ]);
+            'body'             => 'Comentario con tipo inválido',        ]);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
         $this->getJson(
@@ -285,11 +277,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'     => null,
             'parent_id'        => null,
             'author_id'        => $userA,
-            'body'             => 'Comentario padre',
-            'resolved'         => false,
-            'resolved_by'      => null,
-            'resolved_at'      => null,
-        ]);
+            'body'             => 'Comentario padre',        ]);
 
         Comment::withoutGlobalScopes()->whereKey($parentId)->firstOrFail()->delete();
 
@@ -309,6 +297,12 @@ class GlobalScopesIsolationTest extends TestCase
 
     public function test_owner_can_create_and_resolve_template_comment_with_polymorphic_contract(): void
     {
+        // Endpoint /api/v1/comments/{id}/resolve fue eliminado en la migración
+        // 0001_00_00_000030_drop_resolved_columns_from_comments. El test queda
+        // obsoleto hasta que se rediseñe el flujo de resolución (si vuelve).
+        $this->markTestSkipped('Comment resolve endpoint removed (migration 30 dropped resolved columns).');
+
+        // @phpstan-ignore-next-line unreachable
         $userA = 'user-a-uuid-123';
         [$templateId] = $this->seedTemplateAndDocument($userA);
         $tokenA = $this->buildAuthTokensForUser($userA);
@@ -354,11 +348,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'        => null,
             'parent_id'           => null,
             'author_id'           => $userA,
-            'body'                => 'Comentario documento',
-            'resolved'            => false,
-            'resolved_by'         => null,
-            'resolved_at'         => null,
-        ]);
+            'body'                => 'Comentario documento',        ]);
 
         $this->getJson(
             "/api/v1/documents/{$documentId}/comments",
@@ -376,6 +366,10 @@ class GlobalScopesIsolationTest extends TestCase
      */
     public function test_template_comments_remain_visible_after_first_publish(): void
     {
+        // Depende de /api/v1/comments/{id}/resolve (eliminado en migration 30).
+        $this->markTestSkipped('Comment resolve endpoint removed (migration 30).');
+
+        // @phpstan-ignore-next-line unreachable
         $userA = 'user-a-uuid-123';
         [$templateId] = $this->seedTemplateAndDocument($userA);
         $headTemplateEv = EntityVersion::query()
@@ -399,11 +393,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'        => null,
             'parent_id'           => null,
             'author_id'           => $userA,
-            'body'                => 'Comentario previo a publicar',
-            'resolved'            => false,
-            'resolved_by'         => null,
-            'resolved_at'         => null,
-        ]);
+            'body'                => 'Comentario previo a publicar',        ]);
 
         $now = now();
         DB::table('entity_versions')->insert([
@@ -465,11 +455,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'        => null,
             'parent_id'           => null,
             'author_id'           => $userA,
-            'body'                => 'Comentario con plantilla en publicado',
-            'resolved'            => false,
-            'resolved_by'         => null,
-            'resolved_at'         => null,
-        ]);
+            'body'                => 'Comentario con plantilla en publicado',        ]);
 
         $head = EntityVersion::query()
             ->where('versionable_type', Template::class)
@@ -503,6 +489,10 @@ class GlobalScopesIsolationTest extends TestCase
 
     public function test_document_comments_remain_visible_after_first_publish(): void
     {
+        // Depende de /api/v1/comments/{id}/resolve (eliminado en migration 30).
+        $this->markTestSkipped('Comment resolve endpoint removed (migration 30).');
+
+        // @phpstan-ignore-next-line unreachable
         $userA = 'user-a-uuid-123';
         [, $documentId] = $this->seedTemplateAndDocument($userA);
         $headDocEv = EntityVersion::query()
@@ -526,11 +516,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'        => null,
             'parent_id'           => null,
             'author_id'           => $userA,
-            'body'                => 'Comentario previo a publicar doc',
-            'resolved'            => false,
-            'resolved_by'         => null,
-            'resolved_at'         => null,
-        ]);
+            'body'                => 'Comentario previo a publicar doc',        ]);
 
         DocumentVersion::query()->forceCreate([
             'id'             => (string) Str::uuid(),
@@ -585,11 +571,7 @@ class GlobalScopesIsolationTest extends TestCase
             'blockable_id'        => null,
             'parent_id'           => null,
             'author_id'           => $userA,
-            'body'                => 'Comentario con documento publicado',
-            'resolved'            => false,
-            'resolved_by'         => null,
-            'resolved_at'         => null,
-        ]);
+            'body'                => 'Comentario con documento publicado',        ]);
 
         $headDoc = EntityVersion::query()
             ->where('versionable_type', Document::class)
@@ -653,9 +635,7 @@ class GlobalScopesIsolationTest extends TestCase
             'commentable_id' => $templateId,
             'commentable_version' => 1,
             'author_id' => $userA,
-            'body' => 'Comentario original',
-            'resolved' => false,
-        ]);
+            'body' => 'Comentario original',        ]);
 
         $this->putJson(
             "/api/v1/comments/{$commentId}",
@@ -740,9 +720,7 @@ class GlobalScopesIsolationTest extends TestCase
             'commentable_id'   => $templateId,
             'commentable_version' => 1,
             'author_id'        => $userA,
-            'body'             => 'Comentario de A',
-            'resolved'         => false,
-        ]);
+            'body'             => 'Comentario de A',        ]);
 
         // userB is added as reviewer so they can see the template comments
         \Illuminate\Support\Facades\DB::table('template_reviewers')->insert([

@@ -10,8 +10,8 @@ import {
 import { UserProfileProvider } from '../../../../features/user-profile';
 
 vi.mock('../../../../api/users', () => ({
-  searchTemplateReviewerCandidates: vi.fn(),
-  searchDocumentReviewerCandidates: vi.fn(),
+  searchTemplateReviewerCandidates: vi.fn().mockResolvedValue({ data: [{ id: 'u2', name: 'User 2', role: 'Staff' }] }),
+  searchDocumentReviewerCandidates: vi.fn().mockResolvedValue({ data: [{ id: 'u2', name: 'User 2', role: 'Staff' }] }),
   fetchMe: vi.fn().mockResolvedValue({
     data: {
       id: 'usr_step3',

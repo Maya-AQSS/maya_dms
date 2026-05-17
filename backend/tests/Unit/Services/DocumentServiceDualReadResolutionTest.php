@@ -5,8 +5,11 @@ namespace Tests\Unit\Services;
 use App\Models\Document;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentBlockService;
@@ -59,7 +62,10 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             $stateSvc,
             $reviewSvc,
             $entityVersionRepo,
+            Mockery::mock(DocumentBlockRepositoryInterface::class),
             Mockery::mock(TemplateContextResolver::class),
+            Mockery::mock(AcademicHierarchyRepositoryInterface::class),
+            Mockery::mock(TeamReadRepositoryInterface::class),
         );
 
         $document = new Document;
@@ -118,7 +124,10 @@ class DocumentServiceDualReadResolutionTest extends TestCase
             $stateSvc,
             $reviewSvc,
             $entityVersionRepo,
+            Mockery::mock(DocumentBlockRepositoryInterface::class),
             Mockery::mock(TemplateContextResolver::class),
+            Mockery::mock(AcademicHierarchyRepositoryInterface::class),
+            Mockery::mock(TeamReadRepositoryInterface::class),
         );
 
         $document = new Document;

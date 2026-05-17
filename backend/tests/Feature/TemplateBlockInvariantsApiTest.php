@@ -64,7 +64,7 @@ class TemplateBlockInvariantsApiTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $token = $this->buildJwtForSub(
             $privatePem,

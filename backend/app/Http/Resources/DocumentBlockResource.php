@@ -38,6 +38,8 @@ class DocumentBlockResource extends JsonResource
             'mandatory' => (bool) ($row['mandatory'] ?? false),
             'content' => $row['content'] ?? null,
             'sort_order' => $row['sort_order'] ?? null,
+            'is_filled' => array_key_exists('is_filled', $row) ? (bool) $row['is_filled'] : null,
+            'last_edited_by' => $row['last_edited_by'] ?? null,
             'created_at' => $row['created_at'] ?? null,
             'updated_at' => $row['updated_at'] ?? null,
         ];

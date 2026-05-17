@@ -1,5 +1,6 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TemplateWizard } from '../TemplateWizard';
 import {
   createTemplate,
@@ -142,13 +143,18 @@ describe('TemplateWizard Integration', () => {
 
   const renderWizard = async (props = {}) => {
     let renderResult: ReturnType<typeof render> | null = null;
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
     await act(async () => {
       renderResult = render(
-        <MemoryRouter>
-          <UserProfileProvider>
-            <TemplateWizard {...props} />
-          </UserProfileProvider>
-        </MemoryRouter>,
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <UserProfileProvider>
+              <TemplateWizard {...props} />
+            </UserProfileProvider>
+          </MemoryRouter>
+        </QueryClientProvider>,
       );
     });
     return renderResult!;
@@ -157,7 +163,15 @@ describe('TemplateWizard Integration', () => {
   it('completes full "Create" flow from Step 1 to Step 4', async () => {
     const mockNewTemplate = fullTemplate({ id: 't123', name: 'New Template' });
     (createTemplate as any).mockResolvedValue({ data: mockNewTemplate });
-    (fetchBlocks as any).mockResolvedValue({ data: [{ id: 'b1', title: 'Block 1', mandatory: true, block_state: 'locked' }] });
+    (fetchBlocks as any).mockResolvedValue({
+      data: [{
+        id: 'b1',
+        title: 'Block 1',
+        mandatory: true,
+        block_state: 'editable',
+        default_content: { text: 'content' },
+      }],
+    });
 
     await renderWizard({ processId: 'proc-test-1' });
 

@@ -7,6 +7,7 @@ import viteConfig from './vite.config';
 /** Vitest puede cargar vite.config antes de que exista `process.env.VITEST`; el shim debe aplicarse aquí. */
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const sharedAuthShim = path.resolve(dir, 'src/test/shims/shared-auth-react.tsx');
+const sharedProfileShim = path.resolve(dir, 'src/test/shims/shared-profile-react.tsx');
 
 export default mergeConfig(
   viteConfig,
@@ -14,7 +15,18 @@ export default mergeConfig(
     resolve: {
       alias: {
         '@maya/shared-auth-react': sharedAuthShim,
+        '@maya/shared-profile-react': sharedProfileShim,
       },
+    },
+    test: {
+      // DMS frontend tiene grafos de imports muy grandes (DocumentWizard, etc.)
+      // que en vitest 4 con worker_threads (default) provocan OOM. Forks + un
+      // único worker serializan la suite y mantienen el heap estable.
+      // Vitest 4: las opciones de pool se aplanaron — `maxWorkers` y
+      // `minWorkers` son top-level, ya no `poolOptions.forks.singleFork`.
+      pool: 'forks',
+      maxWorkers: 1,
+      minWorkers: 1,
     },
   }),
 );
