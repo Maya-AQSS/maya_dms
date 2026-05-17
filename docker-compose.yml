@@ -127,12 +127,17 @@ services:
       dockerfile: Dockerfile.dev
     entrypoint: ["/usr/local/bin/docker-entrypoint.sh"]
     restart: unless-stopped
-    mem_limit: 768m
+    # 2g: Vite bundling de DMS (mayor superficie del ecosistema, 29 services +
+    # 21 controllers + features wizard/templates) sobrepasa 768m durante el
+    # `optimizeDeps` inicial y recibe SIGKILL. Ver CLAUDE.md para historial.
+    mem_limit: 2g
     environment:
       VITE_API_URL: ${VITE_API_URL}
       VITE_KEYCLOAK_URL: ${VITE_KEYCLOAK_URL}
       VITE_KEYCLOAK_REALM: ${VITE_KEYCLOAK_REALM:-maya}
       VITE_KEYCLOAK_CLIENT_ID: ${VITE_KEYCLOAK_CLIENT_ID:-maya-dms}
+      VITE_DASHBOARD_API_URL: ${VITE_DASHBOARD_API_URL:-}
+      VITE_DASHBOARD_URL: ${VITE_DASHBOARD_URL:-}
       VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-}
       VITE_REVERB_HOST: ${VITE_REVERB_HOST}
       VITE_REVERB_PORT: ${VITE_REVERB_PORT:-8082}
