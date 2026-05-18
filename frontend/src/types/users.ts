@@ -1,4 +1,4 @@
-import type { BaseMeProfile } from '@maya/shared-profile-react';
+import type { BaseMeProfile, UserTeam as SharedUserTeam } from '@maya/shared-profile-react';
 
 export type User = {
   id: string;
@@ -7,33 +7,24 @@ export type User = {
   role?: string;
 };
 
-export type UserTeam = {
-  id: string;
-  name: string;
+/**
+ * Equipo del usuario tal como lo devuelve maya_dms (con `description` extra).
+ * `SharedUserTeam` ya cubre id/name/role/is_department; aquí extendemos con
+ * la descripción que solo dms expone hoy.
+ */
+export type UserTeam = SharedUserTeam & {
   description: string | null;
-  role: string;
-  is_department: boolean;
 };
 
 /**
  * Shape devuelto por `GET /api/v1/me` de maya_dms — extiende `BaseMeProfile`
- * (que aporta los campos canónicos cross-app `permisos`, `tipo_estudios`,
- * `estudios`, `modulos`, `equipos` en español).
+ * (snake_case en inglés: `permissions`, `study_type_ids`, `study_ids`,
+ * `module_ids`, `team_ids`, `teams`).
  *
- * Los campos legacy (`study_type_ids`, `study_ids`, `module_ids`, `team_ids`,
- * `permissions`, `teams`, `department`, `source`) se mantienen como
- * **opcionales** únicamente para no romper tests/fixtures que aún los
- * referencian directamente — el backend `FdwUserProfileResolver` YA no
- * los expone en /me. Eliminar tras refactorizar los tests.
+ * `source` solo se mantiene como **opcional** para tests/fixtures legacy; el
+ * backend `FdwUserProfileResolver` YA no lo expone en /me.
  */
 export type MeProfile = BaseMeProfile & {
-  department?: string | null;
-  study_type_ids?: string[];
-  study_ids?: string[];
-  module_ids?: string[];
-  team_ids?: string[];
-  permissions?: string[];
-  teams?: UserTeam[];
   source?: 'fdw' | 'jwt_fallback';
 };
 

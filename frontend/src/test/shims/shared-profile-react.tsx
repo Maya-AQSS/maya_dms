@@ -15,30 +15,35 @@ import {
   type ReactNode,
 } from 'react';
 
+export type SharedUserTeam = {
+  id: string;
+  name: string;
+  description?: string | null;
+  role?: string | null;
+  is_department?: boolean;
+};
+
+// Alias para compatibilidad con import { UserTeam } from '@maya/shared-profile-react'.
+export type UserTeam = SharedUserTeam;
+
 /**
- * Forma canónica cross-app (2026-05-18). Los campos legacy `study_type_ids`,
- * `study_ids`, `module_ids`, `team_ids`, `permissions`, `department`,
- * `teams`, `source` se mantienen como opcionales solo para compatibilidad
- * con tests que aún no se han renombrado — el backend ya no los expone.
+ * Forma canónica cross-app (snake_case en inglés). El campo legacy
+ * `department` y `source` se mantienen opcionales solo para tests/fixtures
+ * que aún los referencian — el backend ya no los expone.
  */
 export interface BaseMeProfile {
   id?: string;
   email?: string | null;
   name?: string | null;
   locale?: string;
-  permisos?: string[];
-  tipo_estudios?: string[];
-  estudios?: string[];
-  modulos?: string[];
-  equipos?: unknown[];
-  // Legacy (deprecado, eliminar tras rolling de los 5 backends):
-  department?: string | null;
+  permissions?: string[];
   study_type_ids?: string[];
   study_ids?: string[];
   module_ids?: string[];
   team_ids?: string[];
-  permissions?: string[];
-  teams?: unknown[];
+  teams?: UserTeam[];
+  // Legacy (deprecado, eliminar tras refactor de tests):
+  department?: string | null;
   source?: 'fdw' | 'idp' | string;
 }
 
@@ -89,7 +94,7 @@ export function UserProfileProvider<TProfile extends BaseMeProfile>({
 
   const hasPermission = useCallback(
     (code: string) => {
-      const list = profile?.permisos ?? profile?.permissions;
+      const list = profile?.permissions;
       return Array.isArray(list) && list.includes(code);
     },
     [profile],

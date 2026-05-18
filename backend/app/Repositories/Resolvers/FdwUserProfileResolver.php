@@ -17,19 +17,19 @@ use Maya\Profile\Repositories\Contracts\UserProfileResolverInterface;
  * guard, y adapta el array resultante al `UserProfileDto` canónico que espera
  * el paquete compartido.
  *
- * Forma canónica del DTO devuelto (cross-app, 2026-05-18 — campos en español):
- *   `permisos`, `tipo_estudios`, `estudios`, `modulos`, `equipos`.
+ * Forma canónica del DTO devuelto (cross-app, snake_case en inglés):
+ *   `permissions`, `study_type_ids`, `study_ids`, `module_ids`, `team_ids`,
+ *   `teams` (objetos completos).
  *
  * Los nombres internos del Service (`study_type_ids`, `study_ids`,
- * `module_ids`, `team_ids`, `permissions`, `teams`) se mantienen para no
- * romper consumidores HTTP internos (AcademicHierarchyController, auth
- * guard, etc.). El renombrado vive ÚNICAMENTE en este resolver, que es
- * quien proyecta al endpoint público `/me`.
+ * `module_ids`, `team_ids`, `permissions`, `teams`) coinciden con la forma
+ * canónica, por lo que el resolver SOLO filtra los campos sobrantes del
+ * payload — no renombra.
  *
  * Campos eliminados del payload `/me` (no se exponen):
  * - `department`/`departamento`: claim del JWT, no debe ir en /me.
- * - `roles`: la autorización pasa por `permisos`.
- * - `organizacion_id`: obsoleto.
+ * - `roles`: la autorización pasa por `permissions`.
+ * - `organization_id`/`organizacion_id`: obsoleto.
  * - `source`: detalle interno de implementación.
  */
 final class FdwUserProfileResolver implements UserProfileResolverInterface
@@ -61,22 +61,13 @@ final class FdwUserProfileResolver implements UserProfileResolverInterface
         $extra = array_diff_key($profile, array_flip(self::COMMON_KEYS));
         $extra = array_diff_key($extra, array_flip(self::EXTRA_DROP_KEYS));
 
-        // Renombrado: nombres canónicos en español para el payload público.
-        $extra['permisos'] = $this->arrayList($extra['permissions'] ?? []);
-        $extra['tipo_estudios'] = $this->arrayList($extra['study_type_ids'] ?? []);
-        $extra['estudios'] = $this->arrayList($extra['study_ids'] ?? []);
-        $extra['modulos'] = $this->arrayList($extra['module_ids'] ?? []);
-        $extra['equipos'] = is_array($extra['teams'] ?? null) ? $extra['teams'] : [];
-
-        // Limpiar las claves internas del Service tras el remap (no exponer).
-        unset(
-            $extra['permissions'],
-            $extra['study_type_ids'],
-            $extra['study_ids'],
-            $extra['module_ids'],
-            $extra['team_ids'],
-            $extra['teams'],
-        );
+        // Garantizar la forma canónica: arrays presentes con type list.
+        $extra['permissions'] = $this->arrayList($extra['permissions'] ?? []);
+        $extra['study_type_ids'] = $this->arrayList($extra['study_type_ids'] ?? []);
+        $extra['study_ids'] = $this->arrayList($extra['study_ids'] ?? []);
+        $extra['module_ids'] = $this->arrayList($extra['module_ids'] ?? []);
+        $extra['team_ids'] = $this->arrayList($extra['team_ids'] ?? []);
+        $extra['teams'] = is_array($extra['teams'] ?? null) ? $extra['teams'] : [];
 
         return new UserProfileDto(
             id: (string) ($profile['id'] ?? $userId),

@@ -9,16 +9,15 @@ use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
 /**
- * Contrato JSON de GET /api/v1/me (forma canónica cross-app 2026-05-18):
+ * Contrato JSON de GET /api/v1/me (forma canónica cross-app, snake_case en
+ * inglés):
  *
- * Campos en español:
- *  - permisos: list<string>
- *  - tipo_estudios, estudios, modulos: list<string>
- *  - equipos: list<{id,name,role,...}>
+ *  - permissions: list<string>
+ *  - study_type_ids, study_ids, module_ids, team_ids: list<string>
+ *  - teams: list<{id,name,role,...}> (objetos completos, opcional)
  *
  * NO presentes en /me (eliminados):
- *  - roles, department/departamento, organizacion_id, permissions (antiguo),
- *    study_type_ids, study_ids, module_ids, team_ids, teams, source.
+ *  - roles, department/departamento, organizacion_id/organization_id, source.
  */
 class MeProfileApiTest extends TestCase
 {
@@ -63,10 +62,11 @@ class MeProfileApiTest extends TestCase
         return ['Authorization' => 'Bearer '.$token];
     }
 
-    public function test_me_response_uses_canonical_es_keys_without_legacy_fields(): void
+    public function test_me_response_uses_canonical_snake_case_keys_without_legacy_fields(): void
     {
-        // El Service interno sigue devolviendo el shape antiguo; el resolver
-        // renombra al canónico al proyectar al DTO público.
+        // El Service interno devuelve el shape canónico directamente (los
+        // nombres internos coinciden con la forma cross-app). El resolver
+        // solo filtra los campos sobrantes.
         $serviceProfile = [
             'id'             => self::SUB,
             'email'          => 'me.contract@test.local',
@@ -98,20 +98,19 @@ class MeProfileApiTest extends TestCase
         $data = $response->json('data');
         $this->assertIsArray($data);
 
-        // Campos canónicos en español, presentes y con valores correctos.
-        $this->assertSame(['templates.read', 'documents.create'], $data['permisos']);
-        $this->assertSame(['ST_ESO'], $data['tipo_estudios']);
-        $this->assertSame(['STU_FOO'], $data['estudios']);
-        $this->assertSame(['MOD_BAR'], $data['modulos']);
+        // Campos canónicos presentes y con valores correctos.
+        $this->assertSame(['templates.read', 'documents.create'], $data['permissions']);
+        $this->assertSame(['ST_ESO'], $data['study_type_ids']);
+        $this->assertSame(['STU_FOO'], $data['study_ids']);
+        $this->assertSame(['MOD_BAR'], $data['module_ids']);
+        $this->assertSame(['T1'], $data['team_ids']);
         $this->assertSame(
             [['id' => 'T1', 'name' => 'Equipo Calidad', 'role' => 'member', 'is_department' => false]],
-            $data['equipos'],
+            $data['teams'],
         );
 
-        // Campos legacy / internos: NO deben estar en el payload público.
-        foreach (['roles', 'department', 'departamento', 'organization_id', 'organizacion_id',
-                  'permissions', 'study_type_ids', 'study_ids', 'module_ids',
-                  'team_ids', 'teams', 'source'] as $forbidden) {
+        // Campos legacy / sobrantes: NO deben estar en el payload público.
+        foreach (['roles', 'department', 'departamento', 'organization_id', 'organizacion_id', 'source'] as $forbidden) {
             $this->assertArrayNotHasKey($forbidden, $data, "No debería existir «{$forbidden}» en /me");
         }
     }
