@@ -36,12 +36,9 @@ class TemplateBlocksApiTest extends TestCase
 
     private function grantTemplatesReadOnly(string $userId): void
     {
-        DB::table('user_permissions')->insert([
-            'id' => (string) Str::uuid(),
+        DB::table('user_resolved_permissions')->insertOrIgnore([
             'user_id' => $userId,
-            'permission_code' => 'templates.read',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'permission_slug' => 'templates.read',
         ]);
     }
 

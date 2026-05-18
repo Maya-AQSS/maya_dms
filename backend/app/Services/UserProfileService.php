@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Models\JwtUser;
-use App\Repositories\Contracts\UserPermissionRepositoryInterface;
+use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Support\Facades\Cache;
@@ -22,7 +22,7 @@ class UserProfileService implements UserProfileServiceInterface
 
     public function __construct(
         private readonly UserProfileRepositoryInterface $repository,
-        private readonly UserPermissionRepositoryInterface $userPermissionRepository,
+        private readonly ResolvedPermissionReaderInterface $resolvedPermissions,
     ) {}
 
     /**
@@ -67,7 +67,7 @@ class UserProfileService implements UserProfileServiceInterface
                 'study_ids' => $this->repository->findStudyIdsByUserId($userId),
                 'module_ids' => $this->repository->findModuleIdsByUserId($userId),
                 'team_ids' => array_column($teams, 'id'),
-                'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+                'permissions' => $this->resolvedPermissions->findPermissionSlugsByUserId($userId),
                 'teams' => $teams,
                 'source' => 'fdw',
             ];
@@ -90,7 +90,7 @@ class UserProfileService implements UserProfileServiceInterface
      */
     public function invalidateCache(string $userId): void
     {
-        $this->userPermissionRepository->forgetCachedCodesForUser($userId);
+        $this->resolvedPermissions->forgetCachedSlugsForUser($userId);
         Cache::forget(self::CACHE_PREFIX.$userId);
     }
 
@@ -111,7 +111,7 @@ class UserProfileService implements UserProfileServiceInterface
             'study_ids' => $scopes['study_ids'],
             'module_ids' => $scopes['module_ids'],
             'team_ids' => [],
-            'permissions' => $this->userPermissionRepository->findPermissionCodesByUserId($userId),
+            'permissions' => $this->resolvedPermissions->findPermissionSlugsByUserId($userId),
             'teams' => [],
             'source' => 'jwt_fallback',
         ];

@@ -163,14 +163,17 @@ return [
             'table'    => env('FDW_TEAMS_TABLE', 'teams'),
         ],
 
+        // Permisos resueltos por usuario — FDW de solo lectura sobre
+        // maya_auth.v_dms_user_permissions (CTE recursivo de roles + overrides).
+        // Lectura vía `user_resolved_permissions` local (vista pass-through).
         'user_permissions' => [
-            'host'     => env('FDW_USER_PERMISSIONS_HOST', '127.0.0.1'),
-            'port'     => env('FDW_USER_PERMISSIONS_PORT', '5432'),
-            'database' => env('FDW_USER_PERMISSIONS_DATABASE', 'main_db'),
-            'username' => env('FDW_USER_PERMISSIONS_USERNAME', 'readonly_user'),
-            'password' => env('FDW_USER_PERMISSIONS_PASSWORD', ''),
-            'schema'   => env('FDW_USER_PERMISSIONS_SCHEMA', 'public'),
-            'table'    => env('FDW_USER_PERMISSIONS_TABLE', 'user_permissions'),
+            'host'        => env('FDW_USER_PERMISSIONS_HOST', 'maya_infra_postgres'),
+            'port'        => env('FDW_USER_PERMISSIONS_PORT', '5432'),
+            'database'    => env('FDW_USER_PERMISSIONS_DATABASE', 'maya_auth'),
+            'username'    => env('FDW_USER_PERMISSIONS_USERNAME', 'maya'),
+            'password'    => env('FDW_USER_PERMISSIONS_PASSWORD', 'secret'),
+            'schema'      => env('FDW_USER_PERMISSIONS_SCHEMA', 'public'),
+            'remote_view' => env('FDW_USER_PERMISSIONS_REMOTE_VIEW', 'v_dms_user_permissions'),
         ],
 
         // Catálogo de permisos DMS — FDW de solo lectura sobre maya_auth.v_dms_permissions.

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * Catálogo de permisos de DMS.
@@ -30,8 +29,4 @@ class Permission extends Model
         'description',
     ];
 
-    public function userPermissions(): HasMany
-    {
-        return $this->hasMany(UserPermission::class, 'permission_code', 'code');
-    }
 }

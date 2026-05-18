@@ -1,6 +1,6 @@
 <?php
 
-use App\Repositories\Contracts\UserPermissionRepositoryInterface;
+use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Cache;
@@ -11,14 +11,14 @@ uses(Tests\TestCase::class);
 
 beforeEach(function () {
     $this->repository = Mockery::mock(UserProfileRepositoryInterface::class);
-    $this->userPermissionRepository = Mockery::mock(UserPermissionRepositoryInterface::class);
-    $this->userPermissionRepository->shouldReceive('findPermissionCodesByUserId')->andReturn([])->byDefault();
-    $this->userPermissionRepository->shouldReceive('forgetCachedCodesForUser')->byDefault();
+    $this->resolvedPermissions = Mockery::mock(ResolvedPermissionReaderInterface::class);
+    $this->resolvedPermissions->shouldReceive('findPermissionSlugsByUserId')->andReturn([])->byDefault();
+    $this->resolvedPermissions->shouldReceive('forgetCachedSlugsForUser')->byDefault();
 
     $this->repository->shouldReceive('findStudyTypeIdsByUserId')->andReturn([])->byDefault();
     $this->repository->shouldReceive('findStudyIdsByUserId')->andReturn([])->byDefault();
     $this->repository->shouldReceive('findModuleIdsByUserId')->andReturn([])->byDefault();
-    $this->service = new UserProfileService($this->repository, $this->userPermissionRepository);
+    $this->service = new UserProfileService($this->repository, $this->resolvedPermissions);
 
     $this->jwtProfile = [
         'id'    => 'user-uuid-123',
@@ -63,8 +63,8 @@ it('queries FDW filtered by user id from JWT', function () {
         ->with('user-uuid-123')
         ->andReturn($this->teams);
 
-    $this->userPermissionRepository
-        ->shouldReceive('findPermissionCodesByUserId')
+    $this->resolvedPermissions
+        ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
         ->andReturn(['templates.read']);
@@ -136,8 +136,8 @@ it('caches profile with key user_profile:{user_id} and 15 min TTL', function () 
         ->once()
         ->andReturn([]);
 
-    $this->userPermissionRepository
-        ->shouldReceive('findPermissionCodesByUserId')
+    $this->resolvedPermissions
+        ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
         ->andReturn([]);
@@ -176,8 +176,8 @@ it('falls back to JWT data when FDW throws exception', function () {
                 && $context['user_id'] === 'user-uuid-123';
         });
 
-    $this->userPermissionRepository
-        ->shouldReceive('findPermissionCodesByUserId')
+    $this->resolvedPermissions
+        ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
         ->andReturn([]);
@@ -202,8 +202,8 @@ it('falls back copies department from jwt departamento claim', function () {
 
     $this->repository->shouldReceive('findById')->once()->andReturnNull();
 
-    $this->userPermissionRepository
-        ->shouldReceive('findPermissionCodesByUserId')
+    $this->resolvedPermissions
+        ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
         ->andReturn([]);
@@ -220,8 +220,8 @@ it('falls back copies department from jwt department claim', function () {
 
     $this->repository->shouldReceive('findById')->once()->andReturnNull();
 
-    $this->userPermissionRepository
-        ->shouldReceive('findPermissionCodesByUserId')
+    $this->resolvedPermissions
+        ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
         ->andReturn([]);
@@ -243,8 +243,8 @@ it('falls back to JWT data when FDW user not found', function () {
         ->with('user-uuid-123')
         ->andReturnNull();
 
-    $this->userPermissionRepository
-        ->shouldReceive('findPermissionCodesByUserId')
+    $this->resolvedPermissions
+        ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
         ->andReturn([]);
@@ -258,8 +258,8 @@ it('falls back to JWT data when FDW user not found', function () {
 // ── Escenario 4: Invalidación de caché ─────────────────────────────────
 
 it('invalidates cache for a specific user', function () {
-    $this->userPermissionRepository
-        ->shouldReceive('forgetCachedCodesForUser')
+    $this->resolvedPermissions
+        ->shouldReceive('forgetCachedSlugsForUser')
         ->once()
         ->with('user-uuid-123');
 
@@ -281,7 +281,7 @@ it('returns empty scope lists when user has no hierarchy assigned in DB', functi
 
     $this->repository->shouldReceive('findById')->once()->andReturn($this->fdwUser);
     $this->repository->shouldReceive('findTeamsByUserId')->once()->andReturn([]);
-    $this->userPermissionRepository->shouldReceive('findPermissionCodesByUserId')->once()->andReturn([]);
+    $this->resolvedPermissions->shouldReceive('findPermissionSlugsByUserId')->once()->andReturn([]);
     Cache::shouldReceive('put')->once();
 
     $jwt = array_merge($this->jwtProfile, ['study_id' => 'ST-1', 'module_ids' => json_encode(['M-1', 'M-2'])]);
@@ -305,8 +305,8 @@ it('merges FDW data, JWT claims, and teams into complete profile', function () {
         ->once()
         ->andReturn($this->teams);
 
-    $this->userPermissionRepository
-        ->shouldReceive('findPermissionCodesByUserId')
+    $this->resolvedPermissions
+        ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
         ->andReturn([]);

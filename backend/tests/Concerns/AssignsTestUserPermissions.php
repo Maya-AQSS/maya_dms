@@ -3,27 +3,25 @@
 namespace Tests\Concerns;
 
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 trait AssignsTestUserPermissions
 {
     /**
-     * @param  list<string>  $codes
+     * Asigna slugs de permiso al usuario en la tabla stub
+     * `user_resolved_permissions` (en testing).
+     *
+     * @param  list<string>  $slugs
      */
-    protected function assignUserPermissions(string $userId, array $codes): void
+    protected function assignUserPermissions(string $userId, array $slugs): void
     {
-        if ($codes === []) {
+        if ($slugs === []) {
             return;
         }
 
-        $now = now();
-        foreach ($codes as $code) {
-            DB::table('user_permissions')->insertOrIgnore([
-                'id' => (string) Str::uuid(),
+        foreach ($slugs as $slug) {
+            DB::table('user_resolved_permissions')->insertOrIgnore([
                 'user_id' => $userId,
-                'permission_code' => $code,
-                'created_at' => $now,
-                'updated_at' => $now,
+                'permission_slug' => $slug,
             ]);
         }
     }

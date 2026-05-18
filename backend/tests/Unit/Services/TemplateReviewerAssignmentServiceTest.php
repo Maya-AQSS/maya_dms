@@ -7,7 +7,7 @@ namespace Tests\Unit\Services;
 use App\DTOs\Templates\SyncUsersDto;
 use App\Models\Template;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\UserPermissionRepositoryInterface;
+use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Services\TemplateReviewerAssignmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -52,7 +52,7 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
 
     private function makeService(
         TemplateRepositoryInterface $templateRepo,
-        UserPermissionRepositoryInterface $permRepo,
+        ResolvedPermissionReaderInterface $permRepo,
     ): TemplateReviewerAssignmentService {
         return new TemplateReviewerAssignmentService($templateRepo, $permRepo);
     }
@@ -77,8 +77,8 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
-        $permRepo = Mockery::mock(UserPermissionRepositoryInterface::class);
-        $permRepo->shouldNotReceive('findPermissionCodesByUserId');
+        $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
+        $permRepo->shouldNotReceive('findPermissionSlugsByUserId');
 
         $service = $this->makeService($tmplRepo, $permRepo);
 
@@ -100,8 +100,8 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
-        $permRepo = Mockery::mock(UserPermissionRepositoryInterface::class);
-        $permRepo->shouldNotReceive('findPermissionCodesByUserId');
+        $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
+        $permRepo->shouldNotReceive('findPermissionSlugsByUserId');
 
         $service = $this->makeService($tmplRepo, $permRepo);
 
@@ -123,8 +123,8 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
-        $permRepo = Mockery::mock(UserPermissionRepositoryInterface::class);
-        $permRepo->shouldReceive('findPermissionCodesByUserId')
+        $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
+        $permRepo->shouldReceive('findPermissionSlugsByUserId')
             ->once()
             ->with('user-a')
             ->andReturn(['templates.read']); // no templates.review
@@ -149,8 +149,8 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
-        $permRepo = Mockery::mock(UserPermissionRepositoryInterface::class);
-        $permRepo->shouldNotReceive('findPermissionCodesByUserId');
+        $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
+        $permRepo->shouldNotReceive('findPermissionSlugsByUserId');
 
         $service = $this->makeService($tmplRepo, $permRepo);
         $dto     = new SyncUsersDto(userIds: ['user-a', 'user-a']);
@@ -172,8 +172,8 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $tmplRepo = Mockery::mock(TemplateRepositoryInterface::class);
         $tmplRepo->shouldReceive('findOrFail')->once()->with('tmpl-uuid')->andReturn($template);
 
-        $permRepo = Mockery::mock(UserPermissionRepositoryInterface::class);
-        $permRepo->shouldReceive('findPermissionCodesByUserId')
+        $permRepo = Mockery::mock(ResolvedPermissionReaderInterface::class);
+        $permRepo->shouldReceive('findPermissionSlugsByUserId')
             ->once()
             ->with('user-a')
             ->andReturn(['documents.read']); // no documents.review

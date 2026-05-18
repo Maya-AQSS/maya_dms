@@ -41,13 +41,10 @@ class UsersSearchApiTest extends TestCase
 
         $now = now();
         foreach ($codes as $code) {
-            DB::table('user_permissions')->insert([
-                'id' => (string) Str::uuid(),
-                'user_id' => $sub,
-                'permission_code' => $code,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
+            DB::table('user_resolved_permissions')->insertOrIgnore([
+            'user_id' => $sub,
+            'permission_slug' => $code,
+        ]);
         }
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
@@ -123,12 +120,9 @@ class UsersSearchApiTest extends TestCase
         ]);
 
         $now = now();
-        DB::table('user_permissions')->insert([
-            'id' => (string) Str::uuid(),
+        DB::table('user_resolved_permissions')->insertOrIgnore([
             'user_id' => $reviewerId,
-            'permission_code' => 'documents.review',
-            'created_at' => $now,
-            'updated_at' => $now,
+            'permission_slug' => 'documents.review',
         ]);
 
         $response = $this->getJson(
@@ -157,13 +151,10 @@ class UsersSearchApiTest extends TestCase
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            DB::table('user_permissions')->insert([
-                'id' => (string) Str::uuid(),
-                'user_id' => $rid,
-                'permission_code' => 'documents.review',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('user_resolved_permissions')->insertOrIgnore([
+            'user_id' => $rid,
+            'permission_slug' => 'documents.review',
+        ]);
         }
 
         $url = '/api/v1/users/document-reviewer-candidates?search=Reviewer&exclude_user_id='.urlencode($reviewerA);
@@ -189,13 +180,10 @@ class UsersSearchApiTest extends TestCase
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
-            DB::table('user_permissions')->insert([
-                'id' => (string) Str::uuid(),
-                'user_id' => $rid,
-                'permission_code' => 'templates.review',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+            DB::table('user_resolved_permissions')->insertOrIgnore([
+            'user_id' => $rid,
+            'permission_slug' => 'templates.review',
+        ]);
         }
 
         $url = '/api/v1/users/reviewer-candidates?search=Tpl&exclude_user_id='.urlencode($reviewerA);

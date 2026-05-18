@@ -2,23 +2,28 @@
 
 namespace Database\Seeders;
 
-use App\Repositories\Contracts\UserPermissionRepositoryInterface;
+use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
+/**
+ * Seed de asignaciones usuario→permiso para el ecosistema dms.
+ *
+ * En testing, `user_resolved_permissions` es una tabla física stub con
+ * columnas `(user_id, permission_slug)` creada por la migración shared
+ * `maya/shared-profile-laravel`. En local/staging/prod los permisos viven
+ * en maya_authorization (`v_dms_user_permissions`) — este seeder es no-op
+ * fuera de testing porque dms no puede escribir en la vista FDW.
+ */
 class UserPermissionsSeeder extends Seeder
 {
     public function run(): void
     {
         $this->call(PermissionsSeeder::class);
 
-        $table = $this->writableAssignmentsTable();
-
-        if ($table === null) {
+        if (! Schema::hasTable('user_resolved_permissions')) {
             return;
         }
 
@@ -28,19 +33,14 @@ class UserPermissionsSeeder extends Seeder
             return;
         }
 
-        $now = Carbon::now();
-
-        $rows = array_map(static function (array $row) use ($now): array {
+        $rows = array_map(static function (array $row): array {
             return [
-                'id'              => (string) Str::uuid(),
                 'user_id'         => $row['user_id'],
-                'permission_code' => $row['permission_code'],
-                'created_at'      => $now,
-                'updated_at'      => $now,
+                'permission_slug' => $row['permission_slug'],
             ];
         }, $assignments);
 
-        DB::table($table)->insertOrIgnore($rows);
+        DB::table('user_resolved_permissions')->insertOrIgnore($rows);
 
         $userIds = array_values(array_unique(array_map(
             static fn (array $row): string => (string) $row['user_id'],
@@ -48,29 +48,13 @@ class UserPermissionsSeeder extends Seeder
         )));
 
         foreach ($userIds as $userId) {
-            app(UserPermissionRepositoryInterface::class)->forgetCachedCodesForUser($userId);
+            app(ResolvedPermissionReaderInterface::class)->forgetCachedSlugsForUser($userId);
             app(UserProfileServiceInterface::class)->invalidateCache($userId);
         }
     }
 
     /**
-     * Tabla física donde se pueden insertar filas (no la vista FDW de producción).
-     */
-    private function writableAssignmentsTable(): ?string
-    {
-        if (Schema::hasTable('user_permissions_source')) {
-            return 'user_permissions_source';
-        }
-
-        if (app()->environment('testing') && Schema::hasTable('user_permissions')) {
-            return 'user_permissions';
-        }
-
-        return null;
-    }
-
-    /**
-     * @return list<array{user_id: string, permission_code: string}>
+     * @return list<array{user_id: string, permission_slug: string}>
      */
     private function mockAssignments(): array
     {

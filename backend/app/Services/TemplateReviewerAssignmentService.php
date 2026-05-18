@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
+use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -14,7 +14,7 @@ class TemplateReviewerAssignmentService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
-        private readonly UserPermissionRepositoryInterface $userPermissionRepository,
+        private readonly ResolvedPermissionReaderInterface $resolvedPermissions,
     ) {}
 
     /**
@@ -103,8 +103,8 @@ class TemplateReviewerAssignmentService
     {
         $missingPermission = [];
         foreach ($userIds as $userId) {
-            $codes = $this->userPermissionRepository->findPermissionCodesByUserId($userId);
-            if (! in_array($requiredPermission, $codes, true)) {
+            $slugs = $this->resolvedPermissions->findPermissionSlugsByUserId($userId);
+            if (! in_array($requiredPermission, $slugs, true)) {
                 $missingPermission[] = $userId;
             }
         }

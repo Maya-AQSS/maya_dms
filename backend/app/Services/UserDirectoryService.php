@@ -8,7 +8,7 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 
 /**
- * Orquesta búsquedas de directorio; candidatos a validador = filas en `user_permissions` con el permiso de revisión pedido.
+ * Orquesta búsquedas de directorio; candidatos a validador = filas en `user_resolved_permissions` con el permiso de revisión pedido.
  */
 class UserDirectoryService implements UserDirectoryServiceInterface
 {

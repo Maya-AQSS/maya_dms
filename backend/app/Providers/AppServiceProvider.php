@@ -23,6 +23,7 @@ use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
+use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -30,7 +31,6 @@ use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
-use App\Repositories\Contracts\UserPermissionRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
 use App\Repositories\Eloquent\CommentRepository;
@@ -40,6 +40,7 @@ use App\Repositories\Eloquent\DocumentVersionBlockLayerRepository;
 use App\Repositories\Eloquent\DocumentVersionRepository;
 use App\Repositories\Eloquent\EntityVersionRepository;
 use App\Repositories\Eloquent\ProcessRepository;
+use App\Repositories\Eloquent\ResolvedPermissionReader;
 use App\Repositories\Eloquent\TeamReadRepository;
 use App\Repositories\Eloquent\TemplateBlockRepository;
 use App\Repositories\Eloquent\TemplateRepository;
@@ -47,7 +48,6 @@ use App\Repositories\Eloquent\TemplateVersionBlockLayerRepository;
 use App\Repositories\Eloquent\TemplateVersionRepository;
 use App\Repositories\Eloquent\UserDirectoryRepository;
 use App\Repositories\Eloquent\UserFavoriteRepository;
-use App\Repositories\Eloquent\UserPermissionRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
 use App\Repositories\Resolvers\FdwUserProfileResolver;
 use App\Services\AcademicHierarchyService;
@@ -104,7 +104,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
         $this->app->bind(UserFavoriteRepositoryInterface::class, UserFavoriteRepository::class);
         $this->app->bind(UserDirectoryRepositoryInterface::class, UserDirectoryRepository::class);
-        $this->app->bind(UserPermissionRepositoryInterface::class, UserPermissionRepository::class);
+        $this->app->bind(ResolvedPermissionReaderInterface::class, ResolvedPermissionReader::class);
         $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
 
         // Service bindings
@@ -133,13 +133,13 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
-        // Migraciones académicas + de equipos compartidas con el resto de
-        // apps Maya (vienen de `maya/shared-profile-laravel`). dms NO carga
-        // `Migrations::userPermissions()` porque tiene su propio esquema
-        // de permisos basado en `permission_code` (catálogo CRUD) en lugar
-        // de `permission_slug` (resolved view).
+        // Migraciones compartidas con el resto de apps Maya (paquete
+        // `maya/shared-profile-laravel`). dms consume la vista resuelta de
+        // permisos vía FDW (`v_dms_user_permissions` en maya_authorization)
+        // — eliminada la tabla local `user_permissions`.
         $this->loadMigrationsFrom(ProfileMigrations::academicAssignments());
         $this->loadMigrationsFrom(ProfileMigrations::teams());
+        $this->loadMigrationsFrom(ProfileMigrations::userPermissions());
 
         // Guard JWT stateless: resuelve el usuario desde el atributo 'jwt_user'
         // que JwtMiddleware deposita en el request tras validar el token.

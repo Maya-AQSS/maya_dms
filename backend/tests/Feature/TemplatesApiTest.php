@@ -1304,9 +1304,9 @@ class TemplatesApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $headers = $this->authHeaders($creatorId, []);
-        DB::table('user_permissions')
+        DB::table('user_resolved_permissions')
             ->where('user_id', $creatorId)
-            ->whereIn('permission_code', ['templates.read', 'documents.create'])
+            ->whereIn('permission_slug', ['templates.read', 'documents.create'])
             ->delete();
 
         $tid = (string) Str::uuid();
