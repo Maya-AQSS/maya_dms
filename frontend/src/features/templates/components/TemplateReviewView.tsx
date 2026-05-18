@@ -1,16 +1,15 @@
 import { useState, useRef, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import type { Template } from '../../../types/templates';
+import type { Template, ReviewCycleSnapshot, ReviewCycleBlock } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
-import { createDataHook, useAuth } from '@maya/shared-auth-react';
-import { approveTemplateReview, rejectTemplateReview, fetchTemplateVersion } from '../../../api/templates';
-import type { TemplateVersionDetail } from '../../../api/templates';
+import { useAuth } from '@maya/shared-auth-react';
+import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
@@ -21,20 +20,86 @@ import {
 } from '../hooks/useTemplateComments';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
-import { computeChangedBlocks } from '../../documents/components/DocumentDiffModal';
 import { getCommentsForBlock } from '../../../utils/blockComments';
-import { DocumentDiffPanel } from '../../documents/components/DocumentDiffPanel';
-import type { DocumentDisplayBlock } from '../../../types/documents';
-
-const useTemplateVersionQuery = createDataHook<string, TemplateVersionDetail>({
-  queryKey: (versionId) => ['template-version', versionId],
-  fetcher: (versionId) => fetchTemplateVersion(versionId),
-  defaultOptions: { staleTime: 60_000 },
-});
 
 type Props = { template: Template };
 
 type ActiveView = { blockId: string; mode: 'comments' | 'info' };
+
+// ─── Diff utilities (same logic as DocumentDiffPanel) ─────────────────────────
+
+function extractBlockText(block: unknown): string {
+  if (!block || typeof block !== 'object') return '';
+  const b = block as Record<string, unknown>;
+  const content = Array.isArray(b.content) ? b.content : [];
+  const inline = content
+    .map((c: unknown) => {
+      if (!c || typeof c !== 'object') return '';
+      const item = c as Record<string, unknown>;
+      if (item.type === 'text') return String(item.text ?? '');
+      if (item.type === 'link') {
+        const lc = Array.isArray(item.content) ? item.content : [];
+        return lc.map((x: unknown) => String((x as Record<string, unknown>).text ?? '')).join('');
+      }
+      return '';
+    })
+    .join('');
+  const type = String(b.type ?? '');
+  const props = (b.props ?? {}) as Record<string, unknown>;
+  let prefix = '';
+  if (type === 'heading') prefix = '#'.repeat(Number(props.level ?? 1)) + ' ';
+  else if (type === 'bulletListItem') prefix = '• ';
+  else if (type === 'numberedListItem') prefix = '1. ';
+  return prefix + inline;
+}
+
+function extractTextLines(content: unknown): string[] {
+  const blocks = normalizeBlockContentForEditor(content);
+  if (!Array.isArray(blocks)) return [];
+  const lines: string[] = [];
+  for (const block of blocks) {
+    const text = extractBlockText(block);
+    if (text.trim()) lines.push(text);
+    const b = block as Record<string, unknown>;
+    const children = Array.isArray(b.children) ? b.children : [];
+    for (const child of children) {
+      const ct = extractBlockText(child);
+      if (ct.trim()) lines.push('  ' + ct);
+    }
+  }
+  return lines;
+}
+
+type DiffLine = { type: 'removed' | 'added' | 'unchanged'; text: string };
+
+function computeLineDiff(original: string[], modified: string[]): DiffLine[] {
+  const m = original.length;
+  const n = modified.length;
+  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] =
+        original[i - 1] === modified[j - 1]
+          ? dp[i - 1][j - 1] + 1
+          : Math.max(dp[i - 1][j], dp[i][j - 1]);
+  const result: DiffLine[] = [];
+  let i = m;
+  let j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && original[i - 1] === modified[j - 1]) {
+      result.unshift({ type: 'unchanged', text: original[i - 1] });
+      i--;
+      j--;
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+      result.unshift({ type: 'added', text: modified[j - 1] });
+      j--;
+    } else {
+      result.unshift({ type: 'removed', text: original[i - 1] });
+      i--;
+    }
+  }
+  return result;
+}
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -52,7 +117,146 @@ function InfoBlockDescription({ description }: { description: unknown }) {
   return null;
 }
 
+type CycleEntry = {
+  cycle: number;
+  submitted_at: string;
+  block: ReviewCycleBlock;
+  diff: DiffLine[];
+};
 
+type HistoryPanelProps = {
+  blockId: string;
+  blockNumber: number | string;
+  history: ReviewCycleSnapshot[];
+  onClose: () => void;
+};
+
+function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: HistoryPanelProps) {
+  const [ascending, setAscending] = useState(false);
+
+  const entriesChron = useMemo((): CycleEntry[] => {
+    return history
+      .map((cycle, i) => {
+        const block = cycle.blocks.find((b) => b.id === blockId) ?? null;
+        if (!block) return null;
+        const prevBlock = i > 0 ? (history[i - 1].blocks.find((b) => b.id === blockId) ?? null) : null;
+        const currentLines = extractTextLines(block.default_content);
+        const prevLines = prevBlock ? extractTextLines(prevBlock.default_content) : [];
+        const diff = prevBlock
+          ? computeLineDiff(prevLines, currentLines).filter((l) => l.type !== 'unchanged')
+          : currentLines.map((text) => ({ type: 'added' as const, text }));
+        return { cycle: cycle.cycle, submitted_at: cycle.submitted_at, block, diff };
+      })
+      .filter((e): e is CycleEntry => e !== null && e.diff.length > 0);
+  }, [history, blockId]);
+
+  const entries = useMemo(
+    () => (ascending ? entriesChron : [...entriesChron].reverse()),
+    [entriesChron, ascending],
+  );
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
+        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
+          ⎇ Bloque {blockNumber} · Historial de cambios
+        </span>
+        <button
+          type="button"
+          onClick={() => setAscending((v) => !v)}
+          className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
+          title={ascending ? 'Mostrar más recientes primero' : 'Mostrar más antiguos primero'}
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            {ascending
+              ? <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+            }
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Cerrar panel"
+          className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 overflow-y-auto divide-y divide-ui-border dark:divide-ui-dark-border">
+        {entries.length === 0 ? (
+          <p className="py-8 text-center text-xs text-text-muted dark:text-text-dark-muted italic">
+            Este bloque no tiene cambios registrados.
+          </p>
+        ) : (
+          entries.map((entry) => (
+            <div key={entry.cycle} className="px-4 py-3">
+              {/* Cycle header */}
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
+                  Revisión {entry.cycle}
+                </p>
+                <span className="text-[10px] text-text-muted dark:text-text-dark-muted tabular-nums">
+                  {new Date(entry.submitted_at).toLocaleString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
+              </div>
+              {/* Git-diff lines */}
+              <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-[11px] font-mono">
+                {entry.diff.length === 0 ? (
+                  <p className="px-2 py-1 text-text-muted italic text-[11px]">
+                    Sin cambios respecto al envío anterior.
+                  </p>
+                ) : (
+                  entry.diff.map((line, li) => (
+                    <div
+                      key={li}
+                      className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
+                        line.type === 'removed'
+                          ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
+                          : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
+                      }`}
+                    >
+                      <span className="mr-2 select-none font-bold opacity-70">
+                        {line.type === 'removed' ? '−' : '+'}
+                      </span>
+                      {line.text}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Footer legend */}
+      {entries.length > 0 && (
+        <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border px-4 py-2 flex items-center gap-3 text-[10px] text-text-muted dark:text-text-dark-muted bg-ui-body/30 dark:bg-ui-dark-bg/30">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-sm bg-danger/25 border border-danger/40" />
+            Eliminado
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block w-3 h-3 rounded-sm bg-success/25 border border-success/40" />
+            Añadido
+          </span>
+          <span className="ml-auto font-semibold">
+            {entries.length} revisión{entries.length !== 1 ? 'es' : ''}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -68,7 +272,7 @@ export function TemplateReviewView({ template }: Props) {
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  // Error state is tracked for telemetry but not surfaced in this view yet.
+  // Error state tracked for telemetry but not surfaced in this view yet.
   const [, setError] = useState<string | null>(null);
 
   const [, setCommentLoading] = useState(false);
@@ -83,67 +287,23 @@ export function TemplateReviewView({ template }: Props) {
   const isReviewer = !!myReview;
   const isCreator = !!profile?.id && template.created_by === profile.id;
 
-  // Determine the comment card mode for this user:
-  // - validator: assigned reviewer while template is in_review and review is pending
-  // - creator-edit: creator can always respond, even in_review
-  // - creator-readonly: fallback
   const commentMode: CommentMode = (() => {
     if (isReviewer && template.status === 'in_review' && myReview?.status === 'pending') return 'validator';
     if (isCreator) return 'creator-edit';
     return 'creator-readonly';
   })();
 
-
-  // Comentarios del template (TanStack Query).
   const commentsQuery = useTemplateCommentsQuery(template.id);
   const comments = commentsQuery.data?.data ?? [];
 
-  const hasPreviousSubmission = Array.isArray(template.blocks_at_previous_submission) && template.blocks_at_previous_submission.length > 0;
+  const hasHistory = Array.isArray(template.review_history) && template.review_history.length > 0;
 
-  // Versión publicada (solo si no hay snapshot previo embebido).
-  const publishedVersionQuery = useTemplateVersionQuery(
-    template.latest_published_version_id ?? '',
-    { enabled: !hasPreviousSubmission && !!template.latest_published_version_id },
-  );
-  const publishedVersion = publishedVersionQuery.data ?? null;
-
-  const diffBlocks = useMemo((): DocumentDisplayBlock[] => {
-    const baselineBlocks = hasPreviousSubmission
-      ? template.blocks_at_previous_submission!
-      : publishedVersion?.blocks_snapshot ?? null;
-    if (!baselineBlocks) return [];
-    return blocks.map((block) => {
-      const baseline = baselineBlocks.find((pb) => pb.id === block.id);
-      return {
-        template_block_id: block.id,
-        document_block_id: null,
-        type: block.type,
-        title: block.title,
-        default_content: (baseline?.default_content ?? null) as unknown,
-        block_state: block.block_state,
-        mandatory: block.mandatory,
-        sort_order: block.sort_order,
-        content: block.default_content,
-        is_filled: true,
-      };
-    });
-  }, [blocks, hasPreviousSubmission, template.blocks_at_previous_submission, publishedVersion]);
-
-  const changedTemplateDiffBlocks = useMemo(() => computeChangedBlocks(diffBlocks), [diffBlocks]);
-  const changedTemplateBlockIds = useMemo(
-    () => new Set(changedTemplateDiffBlocks.map((b) => b.template_block_id)),
-    [changedTemplateDiffBlocks],
-  );
-
-  // Etiqueta del proceso (TanStack Query, caché compartida con ProcesosPage).
   const processesQuery = useProcessesQuery(undefined, { enabled: !!template.process_id });
   const processLabel = useMemo<string | null>(() => {
     if (!template.process_id) return null;
     const process = processesQuery.data?.data.find((p) => p.id === template.process_id) ?? null;
     return process ? `Proceso: ${process.code} — ${process.name}` : null;
   }, [template.process_id, processesQuery.data]);
-
-  // We removed the connector line and absolute padding top because we are using a sticky sidebar now.
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
     setCommentLoading(true);
@@ -157,7 +317,6 @@ export function TemplateReviewView({ template }: Props) {
           blockable_id: activeView?.blockId || parent?.blockable_id || null
         },
       });
-      // Append optimista al cache de la query (sin refetch completo).
       queryClient.setQueryData<TemplateCommentsResponse>(
         templateCommentsKey(template.id),
         (current) => {
@@ -268,8 +427,10 @@ export function TemplateReviewView({ template }: Props) {
       sidebar={
         diffBlockId !== null && !activeView
           ? (
-            <DocumentDiffPanel
-              blocks={diffBlocks.filter((b) => b.template_block_id === diffBlockId)}
+            <TemplateBlockHistoryPanel
+              blockId={diffBlockId}
+              blockNumber={(blocks.findIndex((b) => b.id === diffBlockId) + 1) || '?'}
+              history={template.review_history ?? []}
               onClose={() => setDiffBlockId(null)}
             />
           )
@@ -328,11 +489,11 @@ export function TemplateReviewView({ template }: Props) {
                 ].join(' ')}
                 onClick={() => openView(block.id, 'comments')}
               >
-                <div className="flex items-center gap-3 mb-4">
-                  <h4 className="flex-1 text-sm font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                <div className="flex flex-wrap items-start gap-x-3 gap-y-2 mb-4">
+                  <h4 className="flex-1 min-w-[140px] text-sm font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
                     Bloque {(blocks.findIndex((b) => b.id === block.id) + 1)}: {block.title || 'Sin título'}
                   </h4>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
                     {Boolean(block.description) && (
                       <button
                         type="button"
@@ -381,7 +542,7 @@ export function TemplateReviewView({ template }: Props) {
                         </span>
                       )}
                     </button>
-                    {changedTemplateBlockIds.has(block.id) && (
+                    {hasHistory && (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -395,7 +556,7 @@ export function TemplateReviewView({ template }: Props) {
                             ? 'border-odoo-teal text-odoo-teal bg-odoo-teal/10 shadow-sm'
                             : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-teal hover:border-odoo-teal/50 hover:bg-odoo-teal/5',
                         ].join(' ')}
-                        title="Ver cambios respecto a la versión publicada"
+                        title="Ver historial de cambios del bloque"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />

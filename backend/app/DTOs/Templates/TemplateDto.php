@@ -48,6 +48,8 @@ final readonly class TemplateDto
         public ?string $workingVersionId,
         public ?string $latestPublishedName,
         public ?string $latestPublishedAt,
+        public ?array $blocksAtPreviousSubmission,
+        public ?array $reviewHistory,
     ) {}
 
     public static function fromModel(Template $m): self
@@ -55,6 +57,19 @@ final readonly class TemplateDto
         $team = $m->getAttribute(ApiEmbeddedTeamResponse::ATTRIBUTE_KEY);
         $authorName = $m->getAttribute('author_name')
             ?? ($m->relationLoaded('creator') ? $m->creator?->name : null);
+
+        $blocksAtPreviousSubmission = null;
+        $reviewHistory = null;
+        if ($m->relationLoaded('headVersion') && $m->headVersion !== null) {
+            $snap = $m->headVersion->snapshot_data;
+            if (is_array($snap) && isset($snap['blocks_at_previous_submission']) && is_array($snap['blocks_at_previous_submission'])) {
+                $blocksAtPreviousSubmission = $snap['blocks_at_previous_submission'];
+            }
+            $changeSet = $m->headVersion->change_set;
+            if (is_array($changeSet) && count($changeSet) > 0) {
+                $reviewHistory = $changeSet;
+            }
+        }
         $reviewersLoaded = $m->relationLoaded('reviewers');
         $reviewers = null;
         if ($reviewersLoaded) {
@@ -121,6 +136,8 @@ final readonly class TemplateDto
             workingVersionId: $m->head_entity_version_id !== null ? (string) $m->head_entity_version_id : null,
             latestPublishedName: $m->getAttribute('latest_published_name'),
             latestPublishedAt: self::formatOptionalIso($m->getAttribute('latest_published_at')),
+            blocksAtPreviousSubmission: $blocksAtPreviousSubmission,
+            reviewHistory: $reviewHistory,
         );
     }
 

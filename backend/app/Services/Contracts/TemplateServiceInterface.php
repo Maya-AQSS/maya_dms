@@ -94,6 +94,13 @@ interface TemplateServiceInterface
     public function listFiltered(FilterTemplatesDto $filters): Collection;
 
     /**
+     * Adjunta latest_published_version_id y campos relacionados a una colección de plantillas.
+     *
+     * @param  Collection<int, Template>  $templates
+     */
+    public function attachLatestPublishedVersionMeta(Collection $templates): void;
+
+    /**
      * Crea una plantilla con los atributos dados.
      */
     public function create(CreateTemplateDto $dto): Template;
