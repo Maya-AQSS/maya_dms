@@ -117,11 +117,14 @@ function InfoBlockDescription({ description }: { description: unknown }) {
   return null;
 }
 
+type HistoryTab = 'content' | 'description';
+
 type CycleEntry = {
   cycle: number;
   submitted_at: string;
   block: ReviewCycleBlock;
-  diff: DiffLine[];
+  diffContent: DiffLine[];
+  diffDescription: DiffLine[];
 };
 
 type HistoryPanelProps = {
@@ -131,8 +134,38 @@ type HistoryPanelProps = {
   onClose: () => void;
 };
 
+function DiffLines({ lines }: { lines: DiffLine[] }) {
+  if (lines.length === 0) {
+    return (
+      <p className="px-2 py-1 text-text-muted italic text-[11px]">
+        Sin cambios en este envío.
+      </p>
+    );
+  }
+  return (
+    <>
+      {lines.map((line, li) => (
+        <div
+          key={li}
+          className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
+            line.type === 'removed'
+              ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
+              : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
+          }`}
+        >
+          <span className="mr-2 select-none font-bold opacity-70">
+            {line.type === 'removed' ? '−' : '+'}
+          </span>
+          {line.text}
+        </div>
+      ))}
+    </>
+  );
+}
+
 function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: HistoryPanelProps) {
   const [ascending, setAscending] = useState(false);
+  const [tab, setTab] = useState<HistoryTab>('content');
 
   const entriesChron = useMemo((): CycleEntry[] => {
     return history
@@ -140,14 +173,22 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
         const block = cycle.blocks.find((b) => b.id === blockId) ?? null;
         if (!block) return null;
         const prevBlock = i > 0 ? (history[i - 1].blocks.find((b) => b.id === blockId) ?? null) : null;
-        const currentLines = extractTextLines(block.default_content);
-        const prevLines = prevBlock ? extractTextLines(prevBlock.default_content) : [];
-        const diff = prevBlock
-          ? computeLineDiff(prevLines, currentLines).filter((l) => l.type !== 'unchanged')
-          : currentLines.map((text) => ({ type: 'added' as const, text }));
-        return { cycle: cycle.cycle, submitted_at: cycle.submitted_at, block, diff };
+
+        const mkDiff = (getCurrent: (b: ReviewCycleBlock) => unknown, getPrev: (b: ReviewCycleBlock) => unknown) => {
+          const cur = extractTextLines(getCurrent(block));
+          const prev = prevBlock ? extractTextLines(getPrev(prevBlock)) : [];
+          return prevBlock
+            ? computeLineDiff(prev, cur).filter((l) => l.type !== 'unchanged')
+            : cur.map((text) => ({ type: 'added' as const, text }));
+        };
+
+        const diffContent = mkDiff((b) => b.default_content, (b) => b.default_content);
+        const diffDescription = mkDiff((b) => b.description, (b) => b.description);
+
+        if (diffContent.length === 0 && diffDescription.length === 0) return null;
+        return { cycle: cycle.cycle, submitted_at: cycle.submitted_at, block, diffContent, diffDescription };
       })
-      .filter((e): e is CycleEntry => e !== null && e.diff.length > 0);
+      .filter((e): e is CycleEntry => e !== null);
   }, [history, blockId]);
 
   const entries = useMemo(
@@ -185,6 +226,25 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
         </button>
       </div>
 
+      {/* Tabs */}
+      <div className="shrink-0 flex border-b border-ui-border dark:border-ui-dark-border">
+        {(['content', 'description'] as HistoryTab[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(t)}
+            className={[
+              'flex-1 py-2 text-[10px] font-black uppercase tracking-widest transition-colors cursor-pointer',
+              tab === t
+                ? 'text-odoo-teal border-b-2 border-odoo-teal -mb-px bg-odoo-teal/5'
+                : 'text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary',
+            ].join(' ')}
+          >
+            {t === 'content' ? 'Contenido' : 'Descripción'}
+          </button>
+        ))}
+      </div>
+
       {/* Body */}
       <div className="flex-1 overflow-y-auto divide-y divide-ui-border dark:divide-ui-dark-border">
         {entries.length === 0 ? (
@@ -194,7 +254,6 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
         ) : (
           entries.map((entry) => (
             <div key={entry.cycle} className="px-4 py-3">
-              {/* Cycle header */}
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
                   Revisión {entry.cycle}
@@ -209,29 +268,8 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
                   })}
                 </span>
               </div>
-              {/* Git-diff lines */}
               <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-[11px] font-mono">
-                {entry.diff.length === 0 ? (
-                  <p className="px-2 py-1 text-text-muted italic text-[11px]">
-                    Sin cambios respecto al envío anterior.
-                  </p>
-                ) : (
-                  entry.diff.map((line, li) => (
-                    <div
-                      key={li}
-                      className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
-                        line.type === 'removed'
-                          ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
-                          : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
-                      }`}
-                    >
-                      <span className="mr-2 select-none font-bold opacity-70">
-                        {line.type === 'removed' ? '−' : '+'}
-                      </span>
-                      {line.text}
-                    </div>
-                  ))
-                )}
+                <DiffLines lines={tab === 'content' ? entry.diffContent : entry.diffDescription} />
               </div>
             </div>
           ))
