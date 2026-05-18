@@ -37,7 +37,7 @@ class CommentController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $resource = $this->resolveAndAuthorizeResource($request);
+        $resource = $this->resolveAndAuthorizeResource($request, 'view');
 
         if ($resource === null) {
             abort(404);
@@ -69,7 +69,7 @@ class CommentController extends Controller
 
     public function store(StoreCommentRequest $request): JsonResponse
     {
-        $resource = $this->resolveAndAuthorizeResource($request);
+        $resource = $this->resolveAndAuthorizeResource($request, 'comment');
 
         if ($resource === null) {
             abort(404);
@@ -99,7 +99,7 @@ class CommentController extends Controller
         // findModelOrFail: authorizeCommentAccess pasa el Model a la policy y
         // setea la relación commentable; ambos requieren Model Eloquent.
         $commentModel = $this->commentService->findModelOrFail($comment);
-        $this->authorizeCommentAccess($commentModel);
+        $this->authorizeCommentAccess($commentModel, 'view');
 
         return (new CommentResource(CommentDto::fromModel($commentModel)))->response();
     }
@@ -108,7 +108,7 @@ class CommentController extends Controller
     {
         // findModelOrFail: authorize('delete', $model) requiere Model Eloquent.
         $commentModel = $this->commentService->findModelOrFail($comment);
-        $this->authorizeCommentAccess($commentModel);
+        $this->authorizeCommentAccess($commentModel, 'view');
         $this->authorize('delete', $commentModel);
 
         $this->commentService->delete($commentModel);
@@ -120,14 +120,14 @@ class CommentController extends Controller
      * Resuelve y autoriza el recurso comentable desde los parámetros de ruta.
      * Devuelve null cuando la ruta no incluye template ni document.
      */
-    private function resolveAndAuthorizeResource(Request $request): ?CommentableResource
+    private function resolveAndAuthorizeResource(Request $request, string $ability = 'comment'): ?CommentableResource
     {
         $templateId = $request->route('template');
         $documentId = $request->route('document');
 
         if ($templateId) {
             $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-            $this->authorize('comment', $model);
+            $this->authorize($ability, $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
             return new CommentableResource($model, Template::class, $model->currentVersion());
@@ -135,7 +135,7 @@ class CommentController extends Controller
 
         if ($documentId) {
             $model = $this->documentService->findModelOrFail($documentId);
-            $this->authorize('comment', $model);
+            $this->authorize($ability, $model);
             $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
             return new CommentableResource($model, Document::class, $model->currentVersion());
@@ -147,20 +147,20 @@ class CommentController extends Controller
     /**
      * Verifica que el usuario puede acceder al comentario vía su recurso padre.
      */
-    private function authorizeCommentAccess(Comment $comment): void
+    private function authorizeCommentAccess(Comment $comment, string $ability = 'comment'): void
     {
         $commentableType = $comment->commentable_type;
 
         if ($commentableType === Template::class) {
             $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
-            $this->loadAndAuthorizeCommentable($comment, $model);
+            $this->loadAndAuthorizeCommentable($comment, $model, $ability);
 
             return;
         }
 
         if ($commentableType === Document::class) {
             $model = $this->documentService->findModelOrFail((string) $comment->commentable_id);
-            $this->loadAndAuthorizeCommentable($comment, $model);
+            $this->loadAndAuthorizeCommentable($comment, $model, $ability);
 
             return;
         }
@@ -171,10 +171,10 @@ class CommentController extends Controller
     /**
      * Inyecta el modelo cargado en la relación (evita N+1 en policies) y verifica acceso.
      */
-    private function loadAndAuthorizeCommentable(Comment $comment, Model $model): void
+    private function loadAndAuthorizeCommentable(Comment $comment, Model $model, string $ability = 'comment'): void
     {
         $comment->setRelation('commentable', $model);
-        $this->authorize('comment', $model);
+        $this->authorize($ability, $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         if (! $model->isCommentingOpen()) {

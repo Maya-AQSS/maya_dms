@@ -329,8 +329,11 @@ export function TemplateReviewView({ template }: Props) {
   const isReviewer = !!myReview;
   const isCreator = !!profile?.id && template.created_by === profile.id;
 
+  const isActiveValidator =
+    isReviewer && template.status === 'in_review' && myReview?.status === 'pending';
+
   const commentMode: CommentMode = (() => {
-    if (isReviewer && template.status === 'in_review' && myReview?.status === 'pending') return 'validator';
+    if (isReviewer && template.status === 'in_review') return 'validator';
     if (isCreator) return 'creator-edit';
     return 'creator-readonly';
   })();
@@ -432,7 +435,7 @@ export function TemplateReviewView({ template }: Props) {
       }
       actions={
         <div className="flex items-center gap-2">
-          {commentMode === 'validator' ? (
+          {isActiveValidator ? (
             <>
               <Button variant="outlineWarning" size="sm" onClick={handleRejectClick}
                 disabled={actionLoading} loading={actionLoading}

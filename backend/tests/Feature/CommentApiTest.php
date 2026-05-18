@@ -347,6 +347,63 @@ class CommentApiTest extends TestCase
         $this->assertTrue($response->json('meta.commenting_open'));
     }
 
+    public function test_non_owner_with_read_permission_can_index_comments_but_cannot_store_comments(): void
+    {
+        $otherUserId = (string) Str::uuid();
+
+        // 1. Template: User B is assigned as a reviewer of a draft template owned by User A.
+        $tplCtx = $this->seedDraftTemplateWithBlock();
+        DB::table('template_reviewers')->insert([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tplCtx['templateId'],
+            'user_id' => $otherUserId,
+            'stage' => 1,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $headers = $this->authHeaders($otherUserId, ['templates.read']);
+
+        // Can view/index template comments (since they can view the template as a reviewer)
+        $response = $this->getJson("/api/v1/templates/{$tplCtx['templateId']}/comments", $headers)
+            ->assertOk();
+        $this->assertIsArray($response->json('data'));
+
+        // Cannot store template comments (since draft templates are not commenting open to reviewers)
+        $this->postJson(
+            "/api/v1/templates/{$tplCtx['templateId']}/comments",
+            ['body' => 'Intento de comentario por tercero'],
+            $headers
+        )->assertForbidden();
+
+        // 2. Document: User B has a read-only share on a draft document owned by User A.
+        $docCtx = $this->seedDraftDocumentWithBlocks();
+        DB::table('document_shares')->insert([
+            'id' => (string) Str::uuid(),
+            'document_id' => $docCtx['documentId'],
+            'user_id' => $otherUserId,
+            'permission' => 'read',
+            'granted_by' => $docCtx['ownerId'],
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $docHeaders = $this->authHeaders($otherUserId, ['documents.read']);
+
+        // Can view/index document comments (since they have a read share)
+        $docResponse = $this->getJson("/api/v1/documents/{$docCtx['documentId']}/comments", $docHeaders)
+            ->assertOk();
+        $this->assertIsArray($docResponse->json('data'));
+
+        // Cannot store document comments (since they only have read access)
+        $this->postJson(
+            "/api/v1/documents/{$docCtx['documentId']}/comments",
+            ['body' => 'Intento de comentario en doc por tercero'],
+            $docHeaders
+        )->assertForbidden();
+    }
+
     // ─── store — template — basic happy path ──────────────────────────────────
 
     public function test_store_template_comment_requires_authentication(): void

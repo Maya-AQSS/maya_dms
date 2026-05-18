@@ -266,17 +266,25 @@ class TemplatePolicy
     /**
      * Ver/gestionar comentarios de plantilla.
      *
-     * El creador puede comentar en cualquier estado. Los revisores asignados solo en in_review.
+     * El creador puede comentar en cualquier estado. Los revisores asignados solo en in_review,
+     * sin requerir el permiso templates.review (paridad con DocumentPolicy::comment).
      */
     public function comment(JwtUser $user, Template $template): bool
     {
         $userId = (string) $user->getAuthIdentifier();
 
-        if ($userId === $template->created_by) {
+        if ($userId === (string) $template->created_by) {
             return true;
         }
 
-        return $template->status === 'in_review' && $this->review($user, $template);
+        if ($template->status !== 'in_review') {
+            return false;
+        }
+
+        return $this->review($user, $template)
+            || $template->reviewers()
+                ->where('user_id', $userId)
+                ->exists();
     }
 
     /**
