@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Observers\DocumentObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+
 use App\Models\Concerns\HasCommentingStatus;
 use App\Support\DocumentHeadSnapshot;
 use Carbon\Carbon;
@@ -22,6 +25,7 @@ use Illuminate\Support\Str;
 /**
  * Ancla en proceso/plantilla; metadatos de título, ámbito, titularidad y estado del ciclo en la versión cabezal ({@see EntityVersion}, número 0).
  */
+#[ObservedBy(DocumentObserver::class)]
 class Document extends Model
 {
     use HasCommentingStatus, HasUuids, SoftDeletes;
