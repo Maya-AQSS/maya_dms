@@ -15,10 +15,23 @@ import {
   type ReactNode,
 } from 'react';
 
+/**
+ * Forma canónica cross-app (2026-05-18). Los campos legacy `study_type_ids`,
+ * `study_ids`, `module_ids`, `team_ids`, `permissions`, `department`,
+ * `teams`, `source` se mantienen como opcionales solo para compatibilidad
+ * con tests que aún no se han renombrado — el backend ya no los expone.
+ */
 export interface BaseMeProfile {
   id?: string;
   email?: string | null;
   name?: string | null;
+  locale?: string;
+  permisos?: string[];
+  tipo_estudios?: string[];
+  estudios?: string[];
+  modulos?: string[];
+  equipos?: unknown[];
+  // Legacy (deprecado, eliminar tras rolling de los 5 backends):
   department?: string | null;
   study_type_ids?: string[];
   study_ids?: string[];
@@ -26,7 +39,6 @@ export interface BaseMeProfile {
   team_ids?: string[];
   permissions?: string[];
   teams?: unknown[];
-  locale?: string;
   source?: 'fdw' | 'idp' | string;
 }
 
@@ -77,7 +89,7 @@ export function UserProfileProvider<TProfile extends BaseMeProfile>({
 
   const hasPermission = useCallback(
     (code: string) => {
-      const list = profile?.permissions;
+      const list = profile?.permisos ?? profile?.permissions;
       return Array.isArray(list) && list.includes(code);
     },
     [profile],
