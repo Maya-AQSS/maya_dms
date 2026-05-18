@@ -97,17 +97,14 @@ final class TemplateHeadSnapshot
     }
 
     /**
-     * Lectura JSON comparable con columnas PostgreSQL {@code uuid}; el operador {@code ->>} devuelve {@code text}.
+     * Lectura JSON comparable con columnas tipo `VARCHAR` (todas las
+     * referencias a entidades del ecosistema Maya son varchar tras
+     * unificar con `maya/shared-profile-laravel`). El operador `->>`
+     * devuelve `text`, compatible directamente con varchar.
      */
     public static function jsonTemplateFieldUuidExpression(string $entityVersionsAlias, string $field): string
     {
-        $textExpr = self::jsonTemplateFieldExpression($entityVersionsAlias, $field);
-        $driver = DB::getDriverName();
-
-        return match ($driver) {
-            'pgsql' => '('.$textExpr.'::uuid)',
-            default => $textExpr,
-        };
+        return self::jsonTemplateFieldExpression($entityVersionsAlias, $field);
     }
 
     /**

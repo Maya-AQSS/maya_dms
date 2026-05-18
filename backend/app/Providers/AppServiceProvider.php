@@ -81,6 +81,7 @@ use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Maya\Profile\Migrations as ProfileMigrations;
 use Maya\Profile\Repositories\Contracts\UserProfileResolverInterface;
 
 class AppServiceProvider extends ServiceProvider
@@ -132,6 +133,14 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Migraciones académicas + de equipos compartidas con el resto de
+        // apps Maya (vienen de `maya/shared-profile-laravel`). dms NO carga
+        // `Migrations::userPermissions()` porque tiene su propio esquema
+        // de permisos basado en `permission_code` (catálogo CRUD) en lugar
+        // de `permission_slug` (resolved view).
+        $this->loadMigrationsFrom(ProfileMigrations::academicAssignments());
+        $this->loadMigrationsFrom(ProfileMigrations::teams());
+
         // Guard JWT stateless: resuelve el usuario desde el atributo 'jwt_user'
         // que JwtMiddleware deposita en el request tras validar el token.
         // Auth::user() / $request->user() lo invocan de forma diferida, sin sesión.
