@@ -1,16 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Documents\DocumentDto;
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ApproveDocumentReviewRequest;
 use App\Http\Requests\Documents\RejectDocumentReviewRequest;
+use App\Http\Resources\DocumentResource;
+use App\Http\Resources\DocumentReviewResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ReviewController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
     ) {}
@@ -18,15 +27,15 @@ class ReviewController extends Controller
     /**
      * Listar revisiones de un documento.
      */
-    public function index(Request $request, string $documentId): JsonResponse
+    public function index(Request $request, string $documentId): AnonymousResourceCollection
     {
-        $document = $this->documentService->findOrFail($documentId);
-        // Listar revisiones: participantes con acceso al documento (SoD solo aplica a aprobar/rechazar).
+        $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $reviews = $this->documentService->listReviews($document->id);
 
-        return response()->json(['data' => $reviews]);
+        return DocumentReviewResource::collection($reviews);
     }
 
     /**
@@ -34,8 +43,9 @@ class ReviewController extends Controller
      */
     public function approve(ApproveDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
     {
-        $document = $this->documentService->findOrFail($documentId);
+        $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('review', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->approveReview(
@@ -45,7 +55,7 @@ class ReviewController extends Controller
             $request->validated('changelog'),
         );
 
-        return response()->json(['data' => $updated]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 
     /**
@@ -53,8 +63,9 @@ class ReviewController extends Controller
      */
     public function reject(RejectDocumentReviewRequest $request, string $documentId, string $reviewId): JsonResponse
     {
-        $document = $this->documentService->findOrFail($documentId);
+        $document = $this->documentService->findModelOrFail($documentId);
         $this->authorize('review', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->rejectReview(
@@ -64,6 +75,6 @@ class ReviewController extends Controller
             $request->validated('rejection_reason'),
         );
 
-        return response()->json(['data' => $updated]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 }

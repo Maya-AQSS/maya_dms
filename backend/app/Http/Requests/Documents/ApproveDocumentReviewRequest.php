@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Documents;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -13,7 +15,7 @@ class ApproveDocumentReviewRequest extends FormRequest
 
     /**
      * Reglas de validación para la aprobación de una revisión de un documento.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array

@@ -1,27 +1,32 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
-use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
-use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
+use App\Http\Concerns\AuthorizesTemplateForBlocks;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\TemplateBlocks\BulkUpdateTemplateBlockRequest;
-use App\Http\Requests\TemplateBlocks\ReorderTemplateBlocksRequest;
 use App\Http\Requests\TemplateBlocks\StoreTemplateBlockRequest;
 use App\Http\Requests\TemplateBlocks\UpdateTemplateBlockRequest;
 use App\Http\Resources\TemplateBlockResource;
-use App\Models\Template;
 use App\Services\Contracts\TemplateBlockServiceInterface;
+use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 
+/**
+ * CRUD de bloques de plantilla.
+ * Las operaciones bulk (reorder, bulkUpdate) viven en TemplateBlockBulkController.
+ */
 class TemplateBlockController extends Controller
 {
+    use AuthorizesTemplateForBlocks;
+
     public function __construct(
         private readonly TemplateBlockServiceInterface $blockService,
+        private readonly TemplateServiceInterface $templateService,
     ) {}
 
     /**
@@ -29,8 +34,10 @@ class TemplateBlockController extends Controller
      */
     public function index(string $template): AnonymousResourceCollection
     {
-        $templateModel = Template::query()->findOrFail($template);
-        $this->authorize('view', $templateModel);
+        $this->authorizeAndValidateTemplateContext(
+            $this->findTemplateOrFail($this->templateService, $template),
+            'view',
+        );
 
         $blocks = $this->blockService->listForTemplate($template);
 
@@ -42,10 +49,15 @@ class TemplateBlockController extends Controller
      */
     public function store(StoreTemplateBlockRequest $request, string $template): JsonResponse
     {
+        $this->authorizeAndValidateTemplateContext(
+            $this->findTemplateOrFail($this->templateService, $template),
+            'update',
+        );
+
         $block = $this->blockService->create(
             templateId: $template,
             attributes: $request->validated(),
-            userId:     (string) Auth::id(),
+            userId: (string) Auth::id(),
         );
 
         return (new TemplateBlockResource($block))->response()->setStatusCode(201);
@@ -56,11 +68,13 @@ class TemplateBlockController extends Controller
      */
     public function show(string $block): TemplateBlockResource
     {
-        $blockModel = $this->blockService->findOrFail($block);
-        $templateModel = Template::query()->findOrFail($blockModel->template_id);
-        $this->authorize('view', $templateModel);
+        $blockDto = $this->blockService->findOrFail($block);
+        $this->authorizeAndValidateTemplateContext(
+            $this->findTemplateOrFail($this->templateService, $blockDto->templateId),
+            'view',
+        );
 
-        return new TemplateBlockResource($blockModel);
+        return new TemplateBlockResource($blockDto);
     }
 
     /**
@@ -68,24 +82,16 @@ class TemplateBlockController extends Controller
      */
     public function update(UpdateTemplateBlockRequest $request, string $block): TemplateBlockResource
     {
-        $validated = $request->validated();
-        $dto = new UpdateTemplateBlockDto(
-            title:           $validated['title'] ?? null,
-            set_title:       $request->has('title'),
-            default_content: $validated['default_content'] ?? null,
-            set_default_content: $request->has('default_content'),
-            sort_order:      $validated['sort_order'] ?? null,
-            set_sort_order:  $request->has('sort_order'),
-            block_state:     $validated['block_state'] ?? null,
-            set_block_state: $request->has('block_state'),
-            description:     $validated['description'] ?? null,
-            set_description: $request->has('description'),
+        $blockDto = $this->blockService->findOrFail($block);
+        $this->authorizeAndValidateTemplateContext(
+            $this->findTemplateOrFail($this->templateService, $blockDto->templateId),
+            'update',
         );
 
         $updated = $this->blockService->update(
             blockId: $block,
-            dto:     $dto,
-            userId:  (string) Auth::id(),
+            dto: $request->toDto(),
+            userId: (string) Auth::id(),
         );
 
         return new TemplateBlockResource($updated);
@@ -96,41 +102,16 @@ class TemplateBlockController extends Controller
      */
     public function destroy(string $block): Response
     {
+        // findModelOrFail: la policy `authorize('delete', $model)` requiere el Model
+        // Eloquent (no DTO). Excepción documentada al patrón canónico.
+        $blockModel = $this->blockService->findModelOrFail($block);
+        $template = $this->findTemplateOrFail($this->templateService, (string) $blockModel->template_id);
+        $blockModel->setRelation('template', $template);
+        $this->authorize('delete', $blockModel);
+        $this->assertOptionalProcessContextMatches((string) $template->process_id);
+
         $this->blockService->delete($block, (string) Auth::id());
 
         return response()->noContent();
-    }
-
-    /**
-     * PATCH /api/v1/templates/{template}/blocks/reorder
-     * Reordena todos los bloques de una plantilla. Recibe { block_ids: [...] } en el nuevo orden.
-     */
-    public function reorder(ReorderTemplateBlocksRequest $request, string $template): \Illuminate\Http\Response
-    {
-        $blockIds = $request->validated('block_ids');
-        $this->blockService->reorderForTemplate($template, $blockIds);
-
-        return response()->noContent();
-    }
-
-    /**
-     * PUT /api/v1/blocks/bulk
-     */
-    public function bulkUpdate(BulkUpdateTemplateBlockRequest $request): AnonymousResourceCollection
-    {
-        $validated = $request->validated();
-
-        $dto = new BulkUpdateTemplateBlocksDto(
-            ids:             $validated['ids'],
-            block_state:     $validated['block_state'] ?? null,
-            set_block_state: $request->has('block_state'),
-        );
-
-        $blocks = $this->blockService->bulkUpdate(
-            dto:    $dto,
-            userId: (string) Auth::id(),
-        );
-
-        return TemplateBlockResource::collection($blocks);
     }
 }

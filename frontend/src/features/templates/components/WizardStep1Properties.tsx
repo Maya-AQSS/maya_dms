@@ -1,51 +1,43 @@
-import { FieldLabel, Select, TextArea, TextInput } from '../../../ui';
+import { useEffect } from 'react';
+import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
 import type { UserTeam } from '../../../api/users';
 import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
+import type { TemplateStep1Input } from '../schemas/templateStep1';
 
 type Props = {
-  name: string;
-  setName: (v: string) => void;
-  description: string;
-  setDescription: (v: string) => void;
-  visibility: TemplateVisibilityLevel;
-  setVisibility: (v: TemplateVisibilityLevel) => void;
-  deliveryDeadline: string;
-  setDeliveryDeadline: (v: string) => void;
-  studyTypeId: string;
-  setStudyTypeId: (v: string) => void;
-  studyId: string;
-  setStudyId: (v: string) => void;
-  moduleId: string;
-  setModuleId: (v: string) => void;
-  teamId: string;
-  setTeamId: (v: string) => void;
-  errors: Record<string, string>;
+  errors?: { api?: string };
   templateStatus?: TemplateStatus;
 };
 
-export function WizardStep1Properties({
-  name, setName,
-  description, setDescription,
-  visibility, setVisibility,
-  deliveryDeadline, setDeliveryDeadline,
-  studyTypeId, setStudyTypeId,
-  studyId, setStudyId,
-  moduleId, setModuleId,
-  teamId, setTeamId,
-  errors,
-  templateStatus,
-}: Props) {
+export function WizardStep1Properties({ errors, templateStatus }: Props) {
   const deadlineLocked = templateStatus === 'in_review' || templateStatus === 'published';
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
-  const { profile, loading: profileLoading, error: profileError } = useUserProfile();
+  const { profile, loading: profileLoading, error: profileError, hasPermission } = useUserProfile();
   const teams: UserTeam[] = profile?.teams ?? [];
   const teamsLoading = profileLoading;
   const teamsError = profileError
     ? 'No se pudo cargar el perfil (equipos). Revisa la sesión o inténtalo de nuevo.'
     : null;
+
+  const {
+    control,
+    register,
+    setValue,
+    formState: { errors: formErrors },
+  } = useFormContext<TemplateStep1Input>();
+
+  const visibility = useWatch({ control, name: 'visibility' });
+  const studyTypeId = useWatch({ control, name: 'studyTypeId' });
+  const studyId = useWatch({ control, name: 'studyId' });
+
+  const canCreateShared = hasPermission('templates.create');
+  const visibilityOptions = VISIBILITY_OPTIONS.filter(
+    (o) => o.value === 'personal' || canCreateShared,
+  );
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
   const filteredStudies = studyTypeId
@@ -55,164 +47,208 @@ export function WizardStep1Properties({
     ? (allStudies.find((s) => String(s.id) === studyId)?.course_modules ?? [])
     : [];
 
+  useEffect(() => {
+    if (hierarchyLoading || hierarchy.length === 0 || studyTypeId) return;
+    if (hierarchy.length === 1) {
+      setValue('studyTypeId', String(hierarchy[0].id), { shouldDirty: false });
+    }
+  }, [hierarchy, hierarchyLoading, studyTypeId, setValue]);
+
+  useEffect(() => {
+    if (!studyTypeId || studyId) return;
+    const typeNode = hierarchy.find((t) => String(t.id) === studyTypeId);
+    if (!typeNode) return;
+    if ((typeNode.studies ?? []).length === 1) {
+      setValue('studyId', String(typeNode.studies[0].id), { shouldDirty: false });
+    }
+  }, [hierarchy, studyTypeId, studyId, setValue]);
+
+  const moduleId = useWatch({ control, name: 'moduleId' });
+  useEffect(() => {
+    if (!studyId || moduleId) return;
+    const studyNode = allStudies.find((s) => String(s.id) === studyId);
+    if (!studyNode) return;
+    if ((studyNode.course_modules ?? []).length === 1) {
+      setValue('moduleId', String(studyNode.course_modules[0].id), { shouldDirty: false });
+    }
+  }, [allStudies, studyId, moduleId, setValue]);
+
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
 
   return (
-    <div className="flex-1 overflow-y-auto px-8 py-6">
-      <div className="space-y-6">
-        {errors.api && (
+    <div className="flex-1 min-h-0 flex flex-col bg-ui-card dark:bg-ui-dark-card overflow-hidden">
+      <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
+        {errors?.api && (
           <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
             {errors.api}
           </div>
         )}
 
-        {/* Campos generales — grid sin card wrapper */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
             <FieldLabel required>Nombre</FieldLabel>
             <TextInput
               type="text"
               fieldSize="comfortable"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
               placeholder="Ej. Acta de Evaluación Final"
-              error={!!errors.name}
+              error={!!formErrors.name}
+              {...register('name')}
             />
-            {errors.name && <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.name}</p>}
+            {formErrors.name?.message && (
+              <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.name.message}</p>
+            )}
           </div>
 
           <div className="md:col-span-2">
             <FieldLabel>Descripción</FieldLabel>
             <TextArea
               fieldSize="comfortable"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
               placeholder="Propósito de la plantilla…"
               style={{ minHeight: '64px' }}
+              {...register('description')}
             />
           </div>
 
           <div>
             <FieldLabel required>Visibilidad</FieldLabel>
-            <Select
-              fieldSize="comfortable"
-              value={visibility}
-              onChange={(e) => {
-                const v = e.target.value as TemplateVisibilityLevel;
-                setVisibility(v);
-                setStudyTypeId('');
-                setStudyId('');
-                setModuleId('');
-                setTeamId('');
-              }}
-            >
-              {VISIBILITY_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </Select>
+            <Controller
+              control={control}
+              name="visibility"
+              render={({ field }) => (
+                <Select
+                  fieldSize="comfortable"
+                  value={field.value}
+                  onChange={(e) => {
+                    const v = e.target.value as TemplateVisibilityLevel;
+                    field.onChange(v);
+                    setValue('studyTypeId', '', { shouldDirty: true });
+                    setValue('studyId', '', { shouldDirty: true });
+                    setValue('moduleId', '', { shouldDirty: true });
+                    setValue('teamId', '', { shouldDirty: true });
+                  }}
+                  onBlur={field.onBlur}
+                >
+                  {visibilityOptions.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </Select>
+              )}
+            />
           </div>
 
           <div>
-            <FieldLabel>Plazo de entrega</FieldLabel>
-            <TextInput
-              type="date"
-              fieldSize="comfortable"
-              value={deliveryDeadline}
-              onChange={(e) => setDeliveryDeadline(e.target.value)}
-              disabled={deadlineLocked}
+            <FieldLabel htmlFor="delivery-deadline" required>Plazo de entrega</FieldLabel>
+            <Controller
+              control={control}
+              name="deliveryDeadline"
+              render={({ field }) => (
+                <DatePicker
+                  value={field.value || null}
+                  onChange={(d: string | null) => field.onChange(d ?? '')}
+                  disabled={deadlineLocked}
+                  placeholder="Seleccionar fecha…"
+                  ariaLabel="Plazo de entrega"
+                />
+              )}
             />
+            {formErrors.deliveryDeadline?.message && (
+              <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.deliveryDeadline.message}</p>
+            )}
             {deadlineLocked && (
-              <p className="mt-1 text-[10px] text-text-muted italic">
+              <p className="mt-1 text-xs text-text-muted italic">
                 No editable en estado actual.
               </p>
             )}
           </div>
         </div>
 
-        {/* Bloque de vinculación — separador, sin card */}
         {showAcademicBlock && (
-          <div
-            className="pt-5 border-t border-ui-border dark:border-ui-dark-border"
-            style={{ animation: 'wizardFadeSlide 150ms ease both' }}
-          >
-            <style>{`
-              @keyframes wizardFadeSlide {
-                from { opacity: 0; transform: translateY(-4px); }
-                to   { opacity: 1; transform: translateY(0); }
-              }
-            `}</style>
-
+          <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in">
             <div className={`grid gap-4 ${
               visibility === 'module' ? 'grid-cols-3' :
               visibility === 'study' ? 'grid-cols-2' :
               'grid-cols-1'
             }`}>
-              {/* Tipo de Estudio — required parent context for study_type, study, module */}
               {(visibility === 'study_type' || visibility === 'study' || visibility === 'module') && (
                 <div>
-                  <Select
-                    fieldSize="comfortable"
-                    value={studyTypeId}
-                    disabled={hierarchyLoading}
-                    onChange={(e) => {
-                      setStudyTypeId(e.target.value);
-                      setStudyId('');
-                      setModuleId('');
-                    }}
-                    error={!!errors.studyTypeId}
-                  >
-                    <option value="">— Seleccionar —</option>
-                    {hierarchy.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </Select>
-                  {errors.studyTypeId && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.studyTypeId}</p>
+                  <Controller
+                    control={control}
+                    name="studyTypeId"
+                    render={({ field }) => (
+                      <Select
+                        fieldSize="comfortable"
+                        value={field.value}
+                        disabled={hierarchyLoading}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          setValue('studyId', '', { shouldDirty: true });
+                          setValue('moduleId', '', { shouldDirty: true });
+                        }}
+                        onBlur={field.onBlur}
+                        error={!!formErrors.studyTypeId}
+                      >
+                        {hierarchy.length === 0 && !hierarchyLoading ? (
+                          <option value="" disabled>No tienes tipos de estudio asignados, contacta con un administrador</option>
+                        ) : (
+                          <option value="">— Seleccionar —</option>
+                        )}
+                        {hierarchy.map((t) => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                  {formErrors.studyTypeId?.message && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.studyTypeId.message}</p>
                   )}
                 </div>
               )}
 
-              {/* Estudio — filtered by Tipo de Estudio; required parent context for study, module */}
               {(visibility === 'study' || visibility === 'module') && (
                 <div>
-                  <Select
-                    fieldSize="comfortable"
-                    value={studyId}
-                    disabled={hierarchyLoading}
-                    onChange={(e) => {
-                      setStudyId(e.target.value);
-                      setModuleId('');
-                    }}
-                    error={!!errors.studyId}
-                  >
-                    <option value="">— Seleccionar —</option>
-                    {filteredStudies.map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </Select>
-                  {errors.studyId && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.studyId}</p>
+                  <Controller
+                    control={control}
+                    name="studyId"
+                    render={({ field }) => (
+                      <Select
+                        fieldSize="comfortable"
+                        value={field.value}
+                        disabled={hierarchyLoading}
+                        onChange={(e) => {
+                          field.onChange(e.target.value);
+                          setValue('moduleId', '', { shouldDirty: true });
+                        }}
+                        onBlur={field.onBlur}
+                        error={!!formErrors.studyId}
+                      >
+                        <option value="">— Seleccionar —</option>
+                        {filteredStudies.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </Select>
+                    )}
+                  />
+                  {formErrors.studyId?.message && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.studyId.message}</p>
                   )}
                 </div>
               )}
 
-              {/* Módulo — filtered by Estudio */}
               {visibility === 'module' && (
                 <div>
                   <Select
                     fieldSize="comfortable"
-                    value={moduleId}
                     disabled={hierarchyLoading}
-                    onChange={(e) => setModuleId(e.target.value)}
-                    error={!!errors.moduleId}
+                    error={!!formErrors.moduleId}
+                    {...register('moduleId')}
                   >
                     <option value="">— Seleccionar —</option>
                     {filteredModules.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
                   </Select>
-                  {errors.moduleId && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.moduleId}</p>
+                  {formErrors.moduleId?.message && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.moduleId.message}</p>
                   )}
                 </div>
               )}
@@ -221,10 +257,9 @@ export function WizardStep1Properties({
                 <div>
                   <Select
                     fieldSize="comfortable"
-                    value={teamId}
                     disabled={teamsLoading || !teams.length}
-                    onChange={(e) => setTeamId(e.target.value)}
-                    error={!!errors.teamId}
+                    error={!!formErrors.teamId}
+                    {...register('teamId')}
                   >
                     <option value="">
                       {teamsLoading ? 'Cargando equipos…' : '— Seleccionar —'}
@@ -236,8 +271,8 @@ export function WizardStep1Properties({
                   {teamsError && (
                     <p className="mt-1 text-xs text-danger-dark dark:text-danger">{teamsError}</p>
                   )}
-                  {errors.teamId && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{errors.teamId}</p>
+                  {formErrors.teamId?.message && (
+                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.teamId.message}</p>
                   )}
                 </div>
               )}

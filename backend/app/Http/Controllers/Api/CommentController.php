@@ -1,137 +1,184 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Comments\CommentableResource;
+use App\DTOs\Comments\CommentDto;
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Comments\StoreCommentRequest;
+use App\Http\Resources\CommentResource;
+use App\Models\Comment;
+use App\Models\Document;
+use App\Models\Template;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\TemplateServiceInterface;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
 
 class CommentController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
+    private const int DEFAULT_PER_PAGE = 100;
+
+    private const int MAX_PER_PAGE = 200;
+
     public function __construct(
         private readonly CommentServiceInterface $commentService,
         private readonly DocumentServiceInterface $documentService,
-        private readonly \App\Services\Contracts\TemplateServiceInterface $templateService,
+        private readonly TemplateServiceInterface $templateService,
     ) {}
 
-    /**
-     * Listar comentarios.
-     */
     public function index(Request $request): JsonResponse
     {
-        $templateId = $request->route('template');
-        $documentId = $request->route('document');
+        $resource = $this->resolveAndAuthorizeResource($request);
 
-        if ($templateId) {
-            $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
-            return response()->json(['data' => $this->commentService->listForTemplate($templateId)]);
+        if ($resource === null) {
+            abort(404);
         }
 
-        if ($documentId) {
-            $doc = $this->documentService->findOrFail($documentId);
-            $this->authorize('view', $doc);
-            return response()->json(['data' => []]);
+        if (! $resource->model->isCommentingOpen()) {
+            return response()->json(['data' => [], 'meta' => ['commenting_open' => false]]);
         }
 
-        return response()->json(['data' => []]);
-    }
+        $perPage = min((int) $request->get('per_page', self::DEFAULT_PER_PAGE), self::MAX_PER_PAGE);
+        $page = $this->commentService->listForResource(
+            $resource->class,
+            (string) $resource->model->id,
+            $resource->version,
+            $perPage,
+        );
 
-    /**
-     * Crear comentario.
-     */
-    public function store(Request $request): JsonResponse
-    {
-        $templateId = $request->route('template');
-        $documentId = $request->route('document');
-
-        $validated = $request->validate([
-            'body' => 'required|string',
-            'template_block_id' => 'nullable|uuid',
-            'document_block_id' => 'nullable|uuid',
-            'type' => 'nullable|string',
+        return response()->json([
+            'data' => CommentResource::collection($page->items),
+            'meta' => [
+                'commenting_open' => true,
+                'total' => $page->total,
+                'per_page' => $page->perPage,
+                'current_page' => $page->currentPage,
+                'last_page' => $page->lastPage,
+            ],
         ]);
-
-        if ($templateId) {
-            $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
-            
-            $comment = $this->commentService->createForTemplate($templateId, (string) Auth::id(), $validated);
-            return response()->json(['data' => $comment], 201);
-        }
-
-        if ($documentId) {
-            $doc = $this->documentService->findOrFail($documentId);
-            $this->authorize('view', $doc);
-            return response()->json(['message' => 'Not implemented for documents'], 501);
-        }
-
-        return response()->json(['message' => 'Resource not found'], 404);
     }
 
-    /**
-     * Mostrar comentario.
-     */
+    public function store(StoreCommentRequest $request): JsonResponse
+    {
+        $resource = $this->resolveAndAuthorizeResource($request);
+
+        if ($resource === null) {
+            abort(404);
+        }
+
+        if (! $resource->model->isCommentingOpen()) {
+            abort(422, 'Los comentarios están cerrados para este recurso.');
+        }
+
+        $blockableId = $request->blockableId();
+        $commentDto = $this->commentService->createForResource(
+            commentableType: $resource->class,
+            commentableId: (string) $resource->model->id,
+            commentableVersion: $resource->version,
+            blockableType: $resource->blockableClass($blockableId),
+            blockableId: $blockableId,
+            parentId: $request->parentId(),
+            authorId: (string) Auth::id(),
+            body: $request->commentBody(),
+        );
+
+        return (new CommentResource($commentDto))->response()->setStatusCode(201);
+    }
+
     public function show(string $comment): JsonResponse
     {
-        $commentModel = $this->commentService->findOrFail($comment);
-        $document     = $this->documentService->findOrFail($commentModel->document_id);
-        $this->authorize('view', $document);
+        // findModelOrFail: authorizeCommentAccess pasa el Model a la policy y
+        // setea la relación commentable; ambos requieren Model Eloquent.
+        $commentModel = $this->commentService->findModelOrFail($comment);
+        $this->authorizeCommentAccess($commentModel);
 
-        return response()->json(['data' => $commentModel]);
+        return (new CommentResource(CommentDto::fromModel($commentModel)))->response();
     }
 
-    /**
-     * Actualizar comentario.
-     */
-    public function update(Request $request, string $comment): JsonResponse
-    {
-        $commentModel = $this->commentService->findOrFail($comment);
-        $document     = $this->documentService->findOrFail($commentModel->document_id);
-        $this->authorize('view', $document);
-
-        return response()->json(['message' => 'Not implemented'], 501);
-    }
-
-    /**
-     * Eliminar comentario.
-     */
     public function destroy(string $comment): JsonResponse
     {
-        $commentModel = $this->commentService->findOrFail($comment);
-        $document     = $this->documentService->findOrFail($commentModel->document_id);
-        $this->authorize('view', $document);
+        // findModelOrFail: authorize('delete', $model) requiere Model Eloquent.
+        $commentModel = $this->commentService->findModelOrFail($comment);
+        $this->authorizeCommentAccess($commentModel);
+        $this->authorize('delete', $commentModel);
 
-        return response()->json(['message' => 'Not implemented'], 501);
+        $this->commentService->delete($commentModel);
+
+        return response()->json([], 204);
     }
 
     /**
-     * Marcar comentario como resuelto.
+     * Resuelve y autoriza el recurso comentable desde los parámetros de ruta.
+     * Devuelve null cuando la ruta no incluye template ni document.
      */
-    public function resolve(Request $request, string $comment): JsonResponse
+    private function resolveAndAuthorizeResource(Request $request): ?CommentableResource
     {
-        $commentModel = $this->commentService->findOrFail($comment);
-        
-        // Autorización basada en el recurso al que pertenece el comentario
-        if ($commentModel->template_id) {
-            $model = $this->templateService->findOrFailWithoutCatalogScope((string) $commentModel->template_id);
-            if (! Gate::forUser($request->user())->allows('view', $model)) {
-                abort(404);
-            }
-        } elseif ($commentModel->document_id) {
-            $model = $this->documentService->findOrFail($commentModel->document_id);
-            $this->authorize('view', $model);
+        $templateId = $request->route('template');
+        $documentId = $request->route('document');
+
+        if ($templateId) {
+            $model = $this->templateService->findOrFailWithoutCatalogScope($templateId);
+            $this->authorize('comment', $model);
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+            return new CommentableResource($model, Template::class, $model->currentVersion());
         }
 
-        $resolved = $this->commentService->resolve($comment, (string) Auth::id());
-        return response()->json(['data' => $resolved]);
+        if ($documentId) {
+            $model = $this->documentService->findModelOrFail($documentId);
+            $this->authorize('comment', $model);
+            $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+            return new CommentableResource($model, Document::class, $model->currentVersion());
+        }
+
+        return null;
+    }
+
+    /**
+     * Verifica que el usuario puede acceder al comentario vía su recurso padre.
+     */
+    private function authorizeCommentAccess(Comment $comment): void
+    {
+        $commentableType = $comment->commentable_type;
+
+        if ($commentableType === Template::class) {
+            $model = $this->templateService->findOrFailWithoutCatalogScope((string) $comment->commentable_id);
+            $this->loadAndAuthorizeCommentable($comment, $model);
+
+            return;
+        }
+
+        if ($commentableType === Document::class) {
+            $model = $this->documentService->findModelOrFail((string) $comment->commentable_id);
+            $this->loadAndAuthorizeCommentable($comment, $model);
+
+            return;
+        }
+
+        abort(422, 'Tipo de recurso de comentario no soportado.');
+    }
+
+    /**
+     * Inyecta el modelo cargado en la relación (evita N+1 en policies) y verifica acceso.
+     */
+    private function loadAndAuthorizeCommentable(Comment $comment, Model $model): void
+    {
+        $comment->setRelation('commentable', $model);
+        $this->authorize('comment', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        if (! $model->isCommentingOpen()) {
+            abort(404);
+        }
     }
 }

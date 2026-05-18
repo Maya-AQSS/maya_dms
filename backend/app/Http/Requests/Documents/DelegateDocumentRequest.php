@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Documents;
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -17,7 +19,7 @@ class DelegateDocumentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'new_owner_id' => ['required', 'string'],
+            'new_owner_id' => ['required', 'string', 'uuid'],
         ];
     }
 }

@@ -1,55 +1,64 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Templates\TemplateDto;
+use App\Http\Concerns\AttachesTemplateCanCloneMeta;
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
 use App\Http\Requests\Templates\IndexTemplateRequest;
-use App\Http\Requests\Templates\PublishTemplateRequest;
-use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
-use App\Http\Resources\TemplateVersionResource;
-use App\Http\Resources\TemplateVersionSummaryResource;
+use App\Models\Template;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Http\Resources\Json\ResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 /**
+ * CRUD canónico de Template (index/store/show/update/destroy/clone). Las
+ * transiciones de estado viven en {@see TemplateStateController}, las
+ * versiones en {@see TemplateVersionController} y el sync de revisores
+ * en {@see TemplateReviewersController}. Split de B9.
+ *
  * Los métodos reciben el UUID como string (route {template}) para no usar
  * route model binding implícito antes del middleware JWT; el global scope
  * de {@see Template} depende de auth y fallaría en SubstituteBindings.
  */
 class TemplateController extends Controller
 {
+    use AttachesTemplateCanCloneMeta;
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly TemplateServiceInterface $templateService,
         private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
     ) {}
 
     /**
-     * Listar plantillas (filtros en query; paginación máx. 20).
+     * Listar plantillas (filtros en query; sin paginación en servidor, como documentos).
      */
     public function index(IndexTemplateRequest $request): AnonymousResourceCollection
     {
-        $paginator = $this->templateService->paginateFiltered(
-            $request->toFilterDto(),
-            $request->perPage(),
-        );
+        $templates = $this->templateService->listFiltered($request->toFilterDto());
+        $this->attachCanCloneMeta($templates, $request);
 
-        $this->apiTeamEmbedService->embedOnTemplatePaginator(
-            $paginator,
+        $this->apiTeamEmbedService->embedOnTemplates(
+            $templates,
             (string) $request->user()->getAuthIdentifier(),
         );
 
-        return TemplateResource::collection($paginator);
+        return TemplateResource::collection(
+            $templates->map(static fn (Template $template) => TemplateDto::fromModel($template)),
+        );
     }
 
     /**
@@ -58,13 +67,14 @@ class TemplateController extends Controller
     public function store(StoreTemplateRequest $request): JsonResponse
     {
         $template = $this->templateService->create($request->toCreateDto());
+        $this->attachCanCloneMeta($template, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $template,
             (string) $request->user()->getAuthIdentifier(),
         );
 
-        return (new TemplateResource($template))->response()->setStatusCode(201);
+        return (new TemplateResource(TemplateDto::fromModel($template)))->response()->setStatusCode(201);
     }
 
     /**
@@ -76,14 +86,16 @@ class TemplateController extends Controller
         if (! Gate::forUser($request->user())->allows('view', $model)) {
             abort(404);
         }
-        $model->loadMissing(['reviewers', 'documentReviewers']);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+        $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator', 'headVersion']);
+        $this->attachCanCloneMeta($model, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
             (string) $request->user()->getAuthIdentifier(),
         );
 
-        return new TemplateResource($model);
+        return new TemplateResource(TemplateDto::fromModel($model));
     }
 
     /**
@@ -92,19 +104,21 @@ class TemplateController extends Controller
      */
     public function update(UpdateTemplateRequest $request, string $template): TemplateResource
     {
-        $model = $this->templateService->findOrFail($template);
+        $model = $this->templateService->findModelOrFail($template);
         $this->authorize('update', [$model, $request->input('visibility_level')]);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $dto = $request->toUpdateDto();
 
-        $updated = $this->templateService->update($model->id, $dto);
+        $updated = $this->templateService->update($model, $dto);
+        $this->attachCanCloneMeta($updated, $request);
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $updated,
             (string) $request->user()->getAuthIdentifier(),
         );
 
-        return new TemplateResource($updated);
+        return new TemplateResource(TemplateDto::fromModel($updated));
     }
 
     /**
@@ -112,8 +126,9 @@ class TemplateController extends Controller
      */
     public function destroy(string $template): JsonResponse|Response
     {
-        $model = $this->templateService->findOrFail($template);
+        $model = $this->templateService->findModelOrFail($template);
         $this->authorize('delete', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $hardDeleted = $this->templateService->destroy($model->id, (string) Auth::id());
 
@@ -121,7 +136,7 @@ class TemplateController extends Controller
             return response()->noContent();
         }
 
-        return (new TemplateResource($this->templateService->findOrFail($model->id)))->response();
+        return (new TemplateResource(TemplateDto::fromModel($this->templateService->findModelOrFail($model->id))))->response();
     }
 
     /**
@@ -129,125 +144,13 @@ class TemplateController extends Controller
      */
     public function clone(CloneTemplateRequest $_request, string $template): JsonResponse
     {
-        $model = $this->templateService->findOrFail($template);
+        $model = $this->templateService->findModelOrFail($template);
         $this->authorize('clone', $model);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $copy = $this->templateService->clone($template, (string) Auth::id());
+        $this->attachCanCloneMeta($copy, $_request);
 
-        return (new TemplateResource($copy))->response()->setStatusCode(201);
-    }
-
-    /**
-     * Borrador → en revisión (autor o quien puede editar).
-     */
-    public function submitForReview(string $template): TemplateResource
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('submitForReview', $model);
-
-        $updated = $this->templateService->submitForReview($model->id, (string) Auth::id());
-
-        return new TemplateResource($updated);
-    }
-
-    /**
-     * En revisión → borrador (revisor).
-     */
-    public function rejectReview(string $template): TemplateResource
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('review', $model);
-
-        $updated = $this->templateService->rejectReview($model->id, (string) Auth::id());
-
-        return new TemplateResource($updated);
-    }
-
-    /**
-     * En revisión → aprobación del revisor activo.
-     *
-     * Si todos los revisores han aprobado, la plantilla se publica automáticamente.
-     * En modo secuencial verifica que los stages anteriores estén aprobados.
-     */
-    public function approveReview(string $template): TemplateResource
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('review', $model);
-
-        $updated = $this->templateService->approveReview($model->id, (string) Auth::id());
-
-        return new TemplateResource($updated);
-    }
-
-    /**
-     * En revisión → publicado + snapshot (revisor; changelog obligatorio).
-     */
-    public function publish(PublishTemplateRequest $request, string $template): TemplateResource
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('publish', $model);
-
-        $updated = $this->templateService->publishWithSnapshot(
-            $model->id,
-            $request->validated('changelog'),
-            (string) Auth::id(),
-        );
-
-        return new TemplateResource($updated);
-    }
-
-    /**
-     * Historial de versiones publicadas (metadatos).
-     */
-    public function versions(string $template): ResourceCollection
-    {
-        $model = $this->templateService->findOrFailWithoutCatalogScope($template);
-        if (! Gate::forUser(Auth::user())->allows('view', $model)) {
-            abort(404);
-        }
-
-        return TemplateVersionSummaryResource::collection(
-            $this->templateService->listPublishedVersions($model->id),
-        );
-    }
-
-    /**
-     * Detalle de un snapshot (incluye bloques).
-     */
-    public function showVersion(string $template_version): TemplateVersionResource
-    {
-        $version = $this->templateService->findVersionOrFail($template_version);
-        $template = $this->templateService->findOrFailWithoutCatalogScope((string) $version->template_id);
-        if (! Gate::forUser(Auth::user())->allows('view', $template)) {
-            abort(404);
-        }
-
-        return new TemplateVersionResource($version);
-    }
-
-    /**
-     * Sincroniza los revisores de la plantilla normativa.
-     */
-    public function syncReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('update', $model);
-
-        $this->templateService->syncReviewers($model->id, $request->validated('user_ids'));
-
-        return response()->json(['message' => 'Revisores de plantilla sincronizados correctamente.']);
-    }
-
-    /**
-     * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
-     */
-    public function syncDocumentReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
-    {
-        $model = $this->templateService->findOrFail($template);
-        $this->authorize('update', $model);
-
-        $this->templateService->syncDocumentReviewers($model->id, $request->validated('user_ids'));
-
-        return response()->json(['message' => 'Validadores de documento sincronizados correctamente.']);
+        return (new TemplateResource(TemplateDto::fromModel($copy)))->response()->setStatusCode(201);
     }
 }

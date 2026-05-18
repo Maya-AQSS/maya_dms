@@ -1,17 +1,22 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Policies;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\JwtUser;
 use App\Models\Template;
+use App\Support\DocumentHeadSnapshot;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Autorización sobre plantillas normativas y Segregación de Funciones (SoD).
  *
  * REGLAS DE EDICIÓN:
- * - Solo el creador puede editar una plantilla, y únicamente cuando está en borrador (`draft`).
+ * - En borrador (`draft`): solo el creador puede editar.
+ * - En publicada (`published`): puede editar el creador o quien tenga `templates.update`,
+ *   siempre que además pueda ver la plantilla (scope/contexto académico + `templates.read`).
  * - La visibilidad no personal (compartida) exige además `templates.create`.
  *
  * REGLAS DE BORRADO:
@@ -19,8 +24,16 @@ use Illuminate\Support\Facades\DB;
  * - Cualquier usuario con `templates.delete` puede borrar cualquier plantilla.
  *
  * REGLAS DE REVISIÓN:
- * - Solo los revisores explícitamente asignados en `template_reviewers` pueden aprobar/rechazar.
- * - El creador nunca puede ser revisor de su propia plantilla.
+ * - Solo usuarios con permiso `templates.review` y asignados en `template_reviewers`
+ *   pueden aprobar/rechazar.
+ * - El creador puede autoasignarse como revisor si tiene `templates.review`; en ese
+ *   caso su aprobación cuenta igual que la de cualquier otro revisor.
+ *
+ * REGLAS DE PUBLICACIÓN:
+ * - Sin revisores: el creador publica directamente desde `draft` (vía submit-review o /publish).
+ * - Con revisores: la publicación es automática al aprobar el último revisor (approveReview).
+ *   El endpoint /publish también está disponible para revisores desde `in_review`.
+ * - El rechazo devuelve la plantilla a `draft`; el resto de revisores ya no necesita actuar.
  *
  * Uso en controladores:
  *   $this->authorize('create', [Template::class, $visibilityLevelString]);
@@ -37,19 +50,42 @@ class TemplatePolicy
     }
 
     /**
-     * Ver una plantilla: requiere `templates.read` y visibilidad de catálogo o vínculo con un documento
-     * que el usuario ya puede ver (misma idea que el scope de {@see \App\Models\Document}).
+     * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see Template})
+     * o vínculo con un documento visible; además hace falta al menos `templates.read` o `documents.create`
+     * (quien puede crear programaciones desde módulo puede previsualizar plantillas ofrecidas allí).
      *
      * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
      */
     public function view(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('templates.read')) {
+        $userId = (string) $user->getAuthIdentifier();
+
+        // Gestión global / auditoría: mismo espíritu que {@see AcademicHierarchyController} (`admin`)
+        // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `templates.delete`).
+        if ($user->hasPermission('admin') || $user->hasPermission('templates.delete')) {
+            return true;
+        }
+
+        if ((string) $template->created_by === $userId) {
+            return true;
+        }
+
+        if (! $user->hasPermission('templates.read') && ! $user->hasPermission('documents.create')) {
             return false;
         }
 
         $templateId = $template->getKey();
+        // Un modelo sin ID es una instancia transitoria (no persistida). En ese caso no hay
+        // datos que proteger, por lo que se permite la vista si el permiso está presente.
+        // En producción los controladores siempre pasan un modelo recuperado de BD.
         if ($templateId === null || $templateId === '') {
+            return true;
+        }
+
+        if (DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->where('user_id', $userId)
+            ->exists()) {
             return true;
         }
 
@@ -57,7 +93,9 @@ class TemplatePolicy
             return true;
         }
 
-        return $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
+        // Fuera del listado del scope: p. ej. anclada solo vía documento; requiere leer plantillas.
+        return $user->hasPermission('templates.read')
+            && $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
     }
 
     /**
@@ -71,11 +109,12 @@ class TemplatePolicy
         }
 
         return DB::table('documents')
-            ->where('template_id', $templateId)
-            ->whereNull('deleted_at')
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
+            ->where('documents.template_id', $templateId)
+            ->whereNull('documents.deleted_at')
             ->where(function ($outer) use ($userId) {
-                $outer->where('owner_id', $userId)
-                    ->orWhere('created_by', $userId)
+                $outer->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' = ?', [$userId])
+                    ->orWhereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'created_by').' = ?', [$userId])
                     ->orWhereExists(function ($sub) use ($userId) {
                         $sub->select(DB::raw(1))
                             ->from('document_reviews')
@@ -121,11 +160,28 @@ class TemplatePolicy
      */
     public function update(JwtUser $user, Template $template, ?string $targetVisibilityLevel = null): bool
     {
-        if ($user->getAuthIdentifier() !== $template->created_by) {
+        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+
+        if (in_array($template->status, ['draft', 'rejected'], true)) {
+            if (! $isCreator) {
+                return false;
+            }
+            if ($targetVisibilityLevel !== null) {
+                return $this->create($user, $targetVisibilityLevel);
+            }
+
+            return true;
+        }
+
+        if ($template->status !== 'published') {
             return false;
         }
 
-        if ($template->status !== 'draft') {
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        if (! $isCreator && ! $user->hasPermission('templates.update')) {
             return false;
         }
 
@@ -169,18 +225,38 @@ class TemplatePolicy
     }
 
     /**
-     * Revisión / aprobación (SoD).
+     * Publicada → borrador para preparar una nueva versión (misma plantilla).
      *
-     * Requiere estar asignado en `template_reviewers` Y no ser el creador de la plantilla.
-     * El creador nunca puede aprobar o rechazar su propia plantilla.
+     * Misma idea que {@see self::update} en estado `published`: hace falta poder ver la plantilla
+     * y ser creador o tener `templates.update`.
+     */
+    public function startRevision(JwtUser $user, Template $template): bool
+    {
+        if ($template->status !== 'published') {
+            return false;
+        }
+
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+
+        return $isCreator || $user->hasPermission('templates.update');
+    }
+
+    /**
+     * Revisión / aprobación.
+     *
+     * Requiere permiso `templates.review` y estar asignado en `template_reviewers`.
      */
     public function review(JwtUser $user, Template $template): bool
     {
-        $userId = $user->getAuthIdentifier();
-
-        if ($userId === $template->created_by) {
+        if (! $user->hasPermission('templates.review')) {
             return false;
         }
+
+        $userId = $user->getAuthIdentifier();
 
         return $template->reviewers()
             ->where('user_id', $userId)
@@ -188,26 +264,50 @@ class TemplatePolicy
     }
 
     /**
-     * Publicación de plantilla.
-     * 
-     * El creador puede publicar directamente si no hay revisores asignados.
-     * En caso contrario, solo un revisor asignado puede realizar la publicación.
+     * Ver/gestionar comentarios de plantilla.
+     *
+     * El creador puede comentar en cualquier estado. Los revisores asignados solo en in_review.
+     */
+    public function comment(JwtUser $user, Template $template): bool
+    {
+        $userId = (string) $user->getAuthIdentifier();
+
+        if ($userId === $template->created_by) {
+            return true;
+        }
+
+        return $template->status === 'in_review' && $this->review($user, $template);
+    }
+
+    /**
+     * Publicación explícita de plantilla.
+     *
+     * - Creador de plantilla personal sin revisores: puede publicar directamente desde `draft`.
+     * - Revisiones no personales: requieren al menos un revisor; solo el revisor asignado
+     *   puede publicar explícitamente desde `in_review`.
+     *   (La publicación automática al último approval se gestiona en approveReview.)
      */
     public function publish(JwtUser $user, Template $template): bool
     {
         if ($user->getAuthIdentifier() === $template->created_by) {
-            return $template->reviewers()->doesntExist();
+            return in_array($template->status, ['draft', 'in_review'], true)
+                && $template->reviewers()->doesntExist();
         }
 
-        return $this->review($user, $template);
+        return $template->status === 'in_review' && $this->review($user, $template);
     }
 
     /**
-     * Enviar borrador a revisión: solo el creador.
+     * Enviar borrador a revisión: solo el creador y únicamente desde `draft`.
+     *
+     * La guardia de estado aquí es redundante con {@see TemplateReviewService::submitForReview}
+     * pero evita que UI o código externo traten `can('submitForReview', $template)` como `true`
+     * para plantillas ya en revisión o publicadas.
      */
     public function submitForReview(JwtUser $user, Template $template): bool
     {
-        return $user->getAuthIdentifier() === $template->created_by;
+        return $user->getAuthIdentifier() === $template->created_by
+            && in_array($template->status, ['draft', 'rejected'], true);
     }
 
     /**

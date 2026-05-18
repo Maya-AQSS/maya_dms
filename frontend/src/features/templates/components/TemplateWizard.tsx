@@ -1,7 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import type { Template, TemplateVisibilityLevel } from '../../../types/templates';
+import { FormProvider, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useNavigate, useBlocker } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
+import type { Template } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
+import type { TemplateBlock } from '../../../types/blocks';
 import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
@@ -9,144 +14,231 @@ import {
   submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
-  resolveComment as apiResolveComment,
 } from '../../../api/templates';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
-import { Button, ConfirmDialog } from '../../../ui';
+import { Button, ConfirmDialog } from '@maya/shared-ui-react';
+import { useProcessesQuery } from '../../../hooks/useProcesses';
+import { useTemplateVersionSummariesQuery } from '../hooks/useTemplateVersionSummaries';
+import {
+  templateCommentsKey,
+  type TemplateCommentsResponse,
+} from '../hooks/useTemplateComments';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
+import type { BlockComment } from './BlockCommentsCard';
 import { WizardStep4Summary } from './WizardStep4Summary';
+import {
+  templateStep1Schema,
+  emptyTemplateStep1,
+  type TemplateStep1Input,
+} from '../schemas/templateStep1';
 
 type Step = 'properties' | 'blocks' | 'users' | 'summary';
 
 type Props = {
   template?: Template | null;
   initialTemplate?: Template | null;
+  /** Proceso al que se asocia la plantilla cuando se crea desde el contexto de un proceso. */
+  processId?: string;
 };
 
-export function TemplateWizard({ template: templateProp, initialTemplate }: Props) {
+export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const initial = templateProp || initialTemplate;
+  const processBackTo = useMemo(() => {
+    const effectiveProcessId = processId ?? templateProp?.process_id ?? initialTemplate?.process_id ?? null;
+    return effectiveProcessId ? `/procesos/${effectiveProcessId}` : '/dashboard';
+  }, [initialTemplate?.process_id, processId, templateProp?.process_id]);
 
-  // Step state
-  const [step, setStep] = useState<Step>('properties');
+  // Rejected templates start on the blocks step so the creator sees comment badges immediately.
+  const [step, setStep] = useState<Step>(
+    initial?.id && initial?.has_review_comments ? 'blocks' : 'properties',
+  );
   const [completedSteps, setCompletedSteps] = useState<Step[]>(
     initial?.id ? (['properties', 'blocks', 'users'] as Step[]) : [],
   );
   const [leaveGuard, setLeaveGuard] = useState(false);
+  const [hasInvalidBlocks, setHasInvalidBlocks] = useState(false);
+  const [invalidBlocksModal, setInvalidBlocksModal] = useState<{ onProceed: (remaining: TemplateBlock[]) => void } | null>(null);
+  const [blockInvariantModal, setBlockInvariantModal] = useState<string | null>(null);
 
   // Template state (synchronized with API)
   const [template, setTemplate] = useState<Template | null>(initial || null);
 
-  // Step 1: Properties state
-  const [name, setName] = useState(initial?.name || '');
-  const [description, setDescription] = useState(initial?.description || '');
-  const [visibility, setVisibility] = useState<TemplateVisibilityLevel>(initial?.visibility_level || 'personal');
-  const [deliveryDeadline, setDeliveryDeadline] = useState(initial?.delivery_deadline ? initial.delivery_deadline.split('T')[0] : '');
-  const [studyTypeId, setStudyTypeId] = useState(initial?.study_type_id || '');
-  const [studyId, setStudyId] = useState(initial?.study_id || '');
-  const [moduleId, setModuleId] = useState(initial?.module_id || '');
-  const [teamId, setTeamId] = useState(initial?.team_id || '');
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Step 1: RHF + Zod
+  const step1Methods = useForm<TemplateStep1Input>({
+    defaultValues: {
+      ...emptyTemplateStep1,
+      name: initial?.name || '',
+      description: initial?.description || '',
+      visibility: initial?.visibility_level || 'personal',
+      deliveryDeadline: initial?.delivery_deadline ? initial.delivery_deadline.split('T')[0] : '',
+      studyTypeId: initial?.study_type_id || '',
+      studyId: initial?.study_id || '',
+      moduleId: initial?.module_id || '',
+      teamId: initial?.team_id || '',
+    },
+    resolver: zodResolver(templateStep1Schema),
+    mode: 'onChange',
+  });
 
-  // Step 3: Users state
-  const [validators, setValidators] = useState<ValidatorEntry[]>([]);
-  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>([]);
+  // Wizard-level transient errors (blocks gating, cross-step API failures)
+  const [errors, setErrors] = useState<{ blocks?: string; api?: string }>({});
+
+  // Step 3: Users state — load existing reviewers when editing
+  const [validators, setValidators] = useState<ValidatorEntry[]>(
+    initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
+  );
+  const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>(
+    initial?.document_reviewer_users?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
+  );
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
-    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre'
+    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
   );
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
+  // Dirty flag: only sync reviewers to API if the user actually changed them in Step 3
+  const [usersDirty, setUsersDirty] = useState(false);
 
   // UI state
   const [saving, setSaving] = useState(false);
   const blocksRef = useRef<WizardStep2BlocksHandle>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishChangelog, setPublishChangelog] = useState('');
+  const [publishModalError, setPublishModalError] = useState<string | null>(null);
+  const [blocksCount, setBlocksCount] = useState(0);
+  const [blocksLoading, setBlocksLoading] = useState(true);
+  const [wizardBlocks, setWizardBlocks] = useState<TemplateBlock[]>([]);
+
+  const versionSummariesQuery = useTemplateVersionSummariesQuery(template?.id ?? '', {
+    enabled: !!template?.id,
+  });
+  const publishedVersionCount = versionSummariesQuery.data?.length ?? 0;
+
+  const effectiveProcessId =
+    processId ?? template?.process_id ?? initial?.process_id ?? null;
+  const processesQuery = useProcessesQuery(undefined, {
+    enabled: !!effectiveProcessId,
+  });
+  const processSubtitle = (() => {
+    if (!effectiveProcessId) return null;
+    const selectedProcess =
+      processesQuery.data?.data.find((p) => p.id === effectiveProcessId) ?? null;
+    if (!selectedProcess) return null;
+    return `Proceso: ${selectedProcess.code} — ${selectedProcess.name}`;
+  })();
 
   useEffect(() => {
-    if (initial?.id && initial?.has_review_comments) {
-      void apiFetchJson<{ data: any[] }>(`templates/${initial.id}/comments`)
-        .then(res => setComments(res.data))
-        .catch(console.error);
-    }
-  }, [initial?.id, initial?.has_review_comments]);
+    if (step !== 'blocks') return;
+    if (blocksLoading || blocksCount < 1) return;
+    setErrors((prev) => {
+      if (!prev.blocks) return prev;
+      const { blocks: _blocks, ...rest } = prev;
+      return rest;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocksCount, blocksLoading, step]);
 
-  const handleResolveComment = async (commentId: string) => {
-    try {
-      await apiResolveComment(commentId);
-      setComments(prev => prev.map(c => c.id === commentId ? { ...c, resolved: true } : c));
-    } catch (e) {
-      console.error('Error resolving comment:', e);
+  const blocker = useBlocker(step === 'blocks' && hasInvalidBlocks);
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      setInvalidBlocksModal({ onProceed: (_remaining) => blocker.proceed() });
     }
+  }, [blocker.state]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Clear permission error when user changes visibility selection.
+  useEffect(() => {
+    const subscription = step1Methods.watch((_value, info) => {
+      if (info.name === 'visibility') setPermissionError(null);
+    });
+    return () => subscription.unsubscribe();
+  }, [step1Methods]);
+
+  const handleCommentAdded = (comment: BlockComment) => {
+    if (!initial?.id) return;
+    queryClient.setQueryData<TemplateCommentsResponse>(
+      templateCommentsKey(initial.id),
+      (current) => ({ data: [...(current?.data ?? []), comment] }),
+    );
   };
 
   // Dirty check
-  const isDirty = useMemo(() => {
-    if (step === 'properties') {
-      return name !== (template?.name || '') || 
-             description !== (template?.description || '') ||
-             visibility !== (template?.visibility_level || 'personal');
-    }
-    return false;
-  }, [step, name, description, visibility, template]);
+  const isDirty = step === 'properties' && step1Methods.formState.isDirty;
+
+  const validateBlocksInvariants = (blocksList: TemplateBlock[]): string | null => {
+    const hasEditable = blocksList.some(b => b.block_state === 'editable' || b.block_state === 'modifiable');
+    if (!hasEditable) return 'La plantilla debe tener al menos un bloque editable o modificable.';
+    const isEmpty = (content: unknown) =>
+      content === null || (Array.isArray(content) && content.length === 0);
+    const hasEmptyModifiable = blocksList.some(b =>
+      b.block_state === 'modifiable' && isEmpty(b.default_content)
+    );
+    if (hasEmptyModifiable) return 'Los bloques modificables no pueden estar vacíos: el contenido predeterminado es obligatorio.';
+    const hasEmptyLocked = blocksList.some(b =>
+      b.block_state === 'locked' && isEmpty(b.default_content)
+    );
+    if (hasEmptyLocked) return 'Los bloques bloqueados no pueden estar vacíos.';
+    return null;
+  };
 
   const handleBackArrow = () => {
     if (isDirty) {
       setLeaveGuard(true);
       return;
     }
-    navigate('/templates');
-  };
-
-  const validateStep1 = () => {
-    const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'El nombre es obligatorio.';
-
-    if (visibility === 'study_type') {
-      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
-    } else if (visibility === 'study') {
-      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
-      if (!studyId) newErrors.studyId = 'Este campo es obligatorio';
-    } else if (visibility === 'module') {
-      if (!studyTypeId) newErrors.studyTypeId = 'Este campo es obligatorio';
-      if (!studyId) newErrors.studyId = 'Este campo es obligatorio';
-      if (!moduleId) newErrors.moduleId = 'Este campo es obligatorio';
-    } else if (visibility === 'team') {
-      if (!teamId) newErrors.teamId = 'Este campo es obligatorio';
+    if (step === 'blocks' && hasInvalidBlocks) {
+      setInvalidBlocksModal({ onProceed: (_remaining) => setStep('properties') });
+      return;
     }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (step === 'properties') {
+      navigate(processBackTo);
+      return;
+    }
+    const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
+    const idx = order.indexOf(step);
+    if (idx > 0) setStep(order[idx - 1]!);
+    else navigate(processBackTo);
   };
 
-  const saveProperties = async () => {
-    if (!validateStep1()) return;
+  const saveProperties = step1Methods.handleSubmit(async (values) => {
     setSaving(true);
     setPermissionError(null);
     try {
       const isUpdate = !!template?.id;
-      const visibilityChanged = !isUpdate || visibility !== template.visibility_level;
+      const visibilityChanged = !isUpdate || values.visibility !== template.visibility_level;
 
       const payload = {
-        name: name.trim(),
-        description: description.trim() || null,
-        ...(visibilityChanged ? { visibility_level: visibility } : {}),
-        delivery_deadline: deliveryDeadline ? `${deliveryDeadline}T00:00:00Z` : null,
-        study_type_id: studyTypeId || null,
-        study_id: studyId || null,
-        module_id: moduleId || null,
-        team_id: teamId || null,
+        name: values.name.trim(),
+        description: values.description.trim() || null,
+        ...(visibilityChanged ? { visibility_level: values.visibility } : {}),
+        delivery_deadline: values.deliveryDeadline ? `${values.deliveryDeadline}T00:00:00Z` : null,
+        study_type_id: values.studyTypeId || null,
+        study_id: values.studyId || null,
+        module_id: values.moduleId || null,
+        team_id: values.teamId || null,
       };
 
       let res;
       if (isUpdate) {
         res = await apiUpdateTemplate(template.id, payload);
       } else {
-        res = await apiCreateTemplate({ ...payload, visibility_level: visibility });
+        const effectiveProcessId = processId ?? initial?.process_id ?? undefined;
+        if (!effectiveProcessId) {
+          throw new Error(
+            'Falta el proceso de la plantilla. Crea una plantilla desde un proceso del aside.',
+          );
+        }
+        res = await apiCreateTemplate({
+          ...payload,
+          visibility_level: values.visibility,
+          process_id: effectiveProcessId,
+        });
       }
       setTemplate(res.data);
+      step1Methods.reset(values);
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'])) as Step[]);
       setStep('blocks');
     } catch (e) {
@@ -161,18 +253,59 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     } finally {
       setSaving(false);
     }
-  };
-  const handlePublish = async () => {
+  });
+  const handlePublish = async (changelog?: string | null) => {
     if (!template?.id) return;
     setSaving(true);
     try {
-      await apiPublishTemplate(template.id);
-      navigate('/templates');
+      await apiPublishTemplate(template.id, changelog);
+      setShowPublishModal(false);
+      setPublishModalError(null);
+      setPublishChangelog('');
+      navigate(processBackTo);
     } catch (e) {
-      setErrors({ api: e instanceof Error ? e.message : 'Error al publicar la plantilla' });
+      const message = e instanceof Error ? e.message : 'Error al publicar la plantilla';
+      if (showPublishModal) {
+        setPublishModalError(message);
+      } else {
+        setErrors({ api: message });
+      }
     } finally {
       setSaving(false);
     }
+  };
+
+  const requiresPublishChangelog = publishedVersionCount > 0;
+
+  const handlePublishClick = () => {
+    const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+    if (blockInvariantErr) {
+      setBlockInvariantModal(blockInvariantErr);
+      return;
+    }
+    if (requiresPublishChangelog) {
+      setPublishModalError(null);
+      setShowPublishModal(true);
+      return;
+    }
+    void handlePublish(null);
+  };
+
+  const handleSubmitForReviewClick = () => {
+    const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+    if (blockInvariantErr) {
+      setBlockInvariantModal(blockInvariantErr);
+      return;
+    }
+    setShowValidationModal(true);
+  };
+
+  const handleConfirmPublish = () => {
+    if (requiresPublishChangelog && publishChangelog.trim() === '') {
+      setPublishModalError('El changelog es obligatorio a partir de la segunda versión.');
+      return;
+    }
+    void handlePublish(publishChangelog.trim());
   };
 
   const handleSubmitForReview = async () => {
@@ -183,7 +316,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
       const res = await apiSubmitTemplateForReview(template.id);
       setTemplate(res.data);
       setShowValidationModal(false);
-      navigate('/templates');
+      navigate(processBackTo);
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
     } finally {
@@ -192,26 +325,38 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
   };
   const saveUsers = async () => {
     if (!template?.id) return;
-
-    const userIds = validators.map((v: ValidatorEntry) => v.userId);
+    if (blocksLoading || blocksCount < 1) {
+      setErrors({ api: 'Añade al menos un bloque antes de continuar.' });
+      return;
+    }
 
     setSaving(true);
     setErrors({});
     try {
-      // 1. Guardar modo de revisión (libre/ordenada -> parallel/sequential)
-      const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
-      await apiUpdateTemplate(template.id, { review_mode: reviewMode });
-
-      // 2. Sincronizar validadores de plantilla y de documento
-      const docUserIds = documentValidators.map((v: ValidatorEntry) => v.userId);
-      await syncTemplateValidators(template.id, userIds);
-      await syncDocumentReviewers(template.id, docUserIds);
+      if (usersDirty) {
+        const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
+        // In sequential mode each reviewer occupies exactly one stage, so review_stages
+        // must equal the reviewer count before syncing — otherwise the backend rejects
+        // the sync with a 422 when the count exceeds the previous review_stages value.
+        await apiUpdateTemplate(template.id, {
+          review_mode: reviewMode,
+          ...(reviewMode === 'sequential' ? { review_stages: validators.length } : {}),
+        });
+        await syncTemplateValidators(template.id, validators.map((v) => v.userId));
+        await syncDocumentReviewers(template.id, documentValidators.map((v) => v.userId));
+      }
 
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
       setStep('summary');
     } catch (e) {
       console.error('[saveUsers]', e);
-      setErrors({ api: 'Error al guardar los validadores' });
+      const detail =
+        e instanceof ApiHttpError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : 'Error al guardar los validadores';
+      setErrors({ api: detail || 'Error al guardar los validadores' });
     } finally {
       setSaving(false);
     }
@@ -221,6 +366,35 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     if (step === 'properties') {
       void saveProperties();
     } else if (step === 'blocks') {
+      if (blocksLoading) return;
+      if (blocksCount < 1) {
+        setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+        return;
+      }
+      if (hasInvalidBlocks) {
+        setInvalidBlocksModal({
+          onProceed: (remaining) => {
+            if (remaining.length === 0) {
+              setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+              return;
+            }
+            const err = validateBlocksInvariants(remaining);
+            if (err) { setBlockInvariantModal(err); return; }
+            setSaving(true);
+            void blocksRef.current?.saveIfPending().then(() => {
+              setCompletedSteps((prev) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
+              setStep('users');
+            }).finally(() => setSaving(false));
+          },
+        });
+        return;
+      }
+      const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+      if (blockInvariantErr) {
+        setBlockInvariantModal(blockInvariantErr);
+        return;
+      }
+      setErrors((prev) => ({ ...prev, blocks: undefined }));
       setSaving(true);
       try {
         await blocksRef.current?.saveIfPending();
@@ -234,253 +408,284 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
     } else if (step === 'users') {
       void saveUsers();
     } else if (step === 'summary') {
-      navigate('/templates');
+      navigate(processBackTo);
     }
   };
 
   const handleGoToStep = (s: Step) => {
-    if (s === 'properties') setStep(s);
-    else if (s === 'blocks' && completedSteps.includes('properties')) setStep(s);
-    else if (s === 'users' && completedSteps.includes('blocks')) setStep(s);
-    else if (s === 'summary' && completedSteps.includes('users')) setStep(s);
+    if (s === 'properties') {
+      if (step === 'blocks' && hasInvalidBlocks) {
+        setInvalidBlocksModal({ onProceed: (_remaining) => setStep('properties') });
+        return;
+      }
+      setStep(s);
+      return;
+    }
+    if (s === 'blocks' && completedSteps.includes('properties')) {
+      setStep(s);
+      return;
+    }
+    if (s === 'users' && completedSteps.includes('blocks')) {
+      if (blocksLoading || blocksCount < 1) {
+        setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+        return;
+      }
+      if (hasInvalidBlocks) {
+        setInvalidBlocksModal({
+          onProceed: (remaining) => {
+            if (remaining.length === 0) {
+              setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+              return;
+            }
+            const err = validateBlocksInvariants(remaining);
+            if (err) { setBlockInvariantModal(err); return; }
+            setStep('users');
+          },
+        });
+        return;
+      }
+      const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
+      if (blockInvariantErr) {
+        setBlockInvariantModal(blockInvariantErr);
+        return;
+      }
+      setStep(s);
+      return;
+    }
+    if (s === 'summary' && completedSteps.includes('users')) {
+      if (blocksLoading || blocksCount < 1) {
+        setErrors({ api: 'Añade al menos un bloque antes de publicar o enviar a validación.' });
+        return;
+      }
+      setStep(s);
+    }
   };
 
   // ── Render Helpers ─────────────────────────────────────────────────────────
 
-  const renderStepper = () => {
-    const stepsData: { id: Step; label: string; sub: string }[] = [
-      { id: 'properties', label: 'Propiedades', sub: 'Nombre, descripción…' },
-      { id: 'blocks', label: 'Bloques', sub: 'Estructura del documento' },
-      { id: 'users', label: 'Usuarios', sub: 'Validadores' },
-      { id: 'summary', label: 'Resumen', sub: 'Revisión final' },
-    ];
+  const stepsData: WizardStepDef<Step>[] = [
+    { id: 'properties', label: 'Propiedades', sub: 'Nombre, descripción…' },
+    { id: 'blocks', label: 'Bloques', sub: 'Estructura del documento' },
+    { id: 'users', label: 'Usuarios', sub: 'Validadores' },
+    { id: 'summary', label: 'Resumen', sub: 'Revisión final' },
+  ];
 
-    return (
-      <div className="flex items-center px-6 py-4 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shrink-0">
-        {stepsData.map((s, i) => {
-          const isActive = step === s.id;
-          const isDone = completedSteps.includes(s.id);
-          const isPending = !isActive && !isDone;
+  const blocksGateActive = blocksLoading || blocksCount < 1;
 
-          const circleCls = isActive
-            ? 'bg-odoo-purple text-text-inverse'
-            : isDone
-              ? 'bg-success text-text-inverse'
-              : 'border border-ui-border text-text-muted';
+  const headerActions = (
+    <>
+      {step === 'summary' && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(processBackTo)}
+          className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
+        >
+          Guardar y salir
+        </Button>
+      )}
 
-          const labelCls = isActive
-            ? 'text-odoo-purple'
-            : isDone
-              ? 'text-success'
-              : 'text-text-muted';
+      {step !== 'summary' && (
+        <Button
+          variant="primary"
+          size="sm"
+          loading={saving}
+          disabled={step === 'blocks' && blocksGateActive}
+          onClick={() => void handleContinue()}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Guardar y continuar →
+        </Button>
+      )}
+      {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
+        <Button
+          variant="primary"
+          size="sm"
+          disabled={blocksGateActive}
+          onClick={handleSubmitForReviewClick}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Enviar a validar
+        </Button>
+      )}
+      {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
+        <Button
+          variant="primary"
+          size="sm"
+          loading={saving}
+          disabled={blocksGateActive}
+          onClick={handlePublishClick}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Publicar plantilla
+        </Button>
+      )}
+    </>
+  );
 
-          return (
-            <div key={s.id} className="flex flex-1 items-center last:flex-none">
-              <button
-                type="button"
-                onClick={() => handleGoToStep(s.id)}
-                className={`flex items-center gap-3 focus:outline-none transition-all group ${isPending ? 'opacity-50 cursor-default' : 'cursor-pointer hover:scale-105'}`}
-                disabled={isPending}
-              >
-                <span className={`flex items-center justify-center w-8 h-8 rounded-full text-xs font-bold shrink-0 transition-colors shadow-sm ${circleCls}`}>
-                  {isDone && !isActive ? '✓' : i + 1}
-                </span>
-                <span className="text-left hidden lg:block">
-                  <span className={`block text-[10px] font-black uppercase tracking-widest ${labelCls}`}>
-                    {s.label}
-                  </span>
-                  <span className="block text-[10px] text-text-muted">
-                    {s.sub}
-                  </span>
-                </span>
-              </button>
-              {i < stepsData.length - 1 && (
-                <div className={`flex-1 h-0.5 mx-4 rounded-full ${completedSteps.includes(s.id) ? 'bg-success' : 'bg-ui-border'}`} />
-              )}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  return (
-    <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
-      {/* Top bar */}
-      <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <div className="flex items-center gap-3 min-w-0">
-          <button
-            type="button"
-            onClick={handleBackArrow}
-            className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95 shrink-0"
-            aria-label="Volver"
-          >
-            ←
-          </button>
-          <span className="text-sm text-text-secondary truncate">
-            Plantillas /{' '}
-            <span className="font-bold text-text-primary dark:text-text-dark-primary">
-              {template ? `Editando «${template.name}»` : 'Nueva plantilla'}
-            </span>
-          </span>
-        </div>
-
-        {/* Topbar actions */}
-        <div className="flex items-center gap-2 shrink-0">
-          {step === 'summary' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => navigate('/templates')}
-              className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10 dark:border-odoo-dark-teal dark:text-odoo-dark-teal dark:hover:bg-odoo-dark-teal/10"
-            >
-              Guardar y salir
-            </Button>
-          )}
-
-          {step !== 'summary' && (
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saving}
-              onClick={() => void handleContinue()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Guardar y continuar →
-            </Button>
-          )}
-          {step === 'summary' && validators.length > 0 && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => setShowValidationModal(true)}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Enviar a validar
-            </Button>
-          )}
-          {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saving}
-              onClick={() => void handlePublish()}
-              className="text-[10px] font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Publicar plantilla
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Leave guard confirmation */}
+  const banner = (
+    <>
       {leaveGuard && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-warning/30 bg-warning-light/40 animate-in slide-in-from-top-1">
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-warning/30 bg-warning-light/40 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-warning-dark">
             ⚠️ Tienes cambios sin guardar en este paso. ¿Seguro que quieres salir?
           </span>
           <div className="flex gap-2">
-            <button
-               type="button"
-              className="bg-warning-dark text-text-inverse px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider shadow-sm active:scale-95 transition-transform"
-              onClick={() => navigate('/templates')}
-            >
+            <Button variant="outlineWarning" size="xs" onClick={() => navigate(processBackTo)}>
               Salir sin guardar
-            </button>
-            <button
-              type="button"
-              className="bg-white border border-ui-border px-4 py-1.5 rounded font-bold text-[10px] uppercase tracking-wider text-text-secondary active:scale-95 transition-transform"
-              onClick={() => setLeaveGuard(false)}
-            >
+            </Button>
+            <Button variant="secondary" size="xs" onClick={() => setLeaveGuard(false)}>
               Cancelar
-            </button>
+            </Button>
           </div>
         </div>
       )}
-
-
-      {/* Permission / API error banner — step 1 */}
       {step === 'properties' && permissionError && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">{permissionError}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setPermissionError(null)}
-            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
             aria-label="Cerrar"
+            className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
             ✕
-          </button>
+          </Button>
         </div>
       )}
-
-      {/* API error banner — steps 2, 3, 4 (step 1 shows errors.api inline) */}
+      {errors.blocks && step === 'blocks' && (
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+          <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">
+            ⚠️ {errors.blocks}
+          </span>
+          <Button
+            variant="ghost"
+            size="xs"
+            onClick={() => setErrors((prev) => {
+              const { blocks: _b, ...rest } = prev;
+              return rest;
+            })}
+            aria-label="Cerrar"
+            className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
+          >
+            ✕
+          </Button>
+        </div>
+      )}
       {errors.api && step !== 'properties' && (
-        <div className="shrink-0 flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
+        <div className="flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 dark:border-danger/30 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark dark:text-danger">
             ⚠️ {errors.api}. Inténtalo de nuevo.
           </span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setErrors({})}
-            className="shrink-0 text-danger-dark dark:text-danger font-bold text-sm leading-none opacity-70 hover:opacity-100 transition-opacity"
             aria-label="Cerrar"
+            className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
             ✕
-          </button>
+          </Button>
         </div>
       )}
+    </>
+  );
 
-      {/* Stepper */}
-      {renderStepper()}
+  return (
+    <>
+      <WizardShell<Step>
+        title={template ? template.name : 'Nueva plantilla'}
+        subtitle={processSubtitle ?? (template ? 'Editar plantilla' : undefined)}
+        onBack={handleBackArrow}
+        actions={headerActions}
+        steps={stepsData}
+        currentStep={step}
+        completedSteps={completedSteps}
+        onGoToStep={handleGoToStep}
+        banner={banner}
+      >
+        <>
+          {step === 'properties' && (
+            <FormProvider {...step1Methods}>
+              <WizardStep1Properties errors={errors} templateStatus={template?.status} />
+            </FormProvider>
+          )}
+          {step === 'blocks' && template && (
+            <WizardStep2Blocks
+              ref={blocksRef}
+              template={template}
+              onBlocksCountChange={setBlocksCount}
+              onBlocksLoadingChange={setBlocksLoading}
+              onBlocksChange={setWizardBlocks}
+              onContinue={() => void handleContinue()}
+              onInvalidBlocksChange={setHasInvalidBlocks}
+              onCommentAdded={handleCommentAdded}
+            />
+          )}
+          {step === 'users' && (
+            <WizardStep3Users
+              validators={validators}
+              onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
+              validationType={validationType}
+              onValidationTypeChange={(t) => {
+                setValidationType(t);
+                setUsersDirty(true);
+                if (template?.id) {
+                  const reviewMode: ReviewMode = t === 'ordenada' ? 'sequential' : 'parallel';
+                  void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch(() => {/* non-blocking */ });
+                }
+              }}
+              documentValidators={documentValidators}
+              onDocumentValidatorsChange={(v) => { setDocumentValidators(v); setUsersDirty(true); }}
+              documentValidationType={documentValidationType}
+              onDocumentValidationTypeChange={(t) => { setDocumentValidationType(t); setUsersDirty(true); }}
+            />
+          )}
+          {step === 'summary' && template && (
+            <WizardStep4Summary
+              template={template}
+              validators={validators}
+              validationType={validationType}
+              documentValidators={documentValidators}
+              documentValidationType={documentValidationType}
+              onBlocksCountChange={setBlocksCount}
+              onBlocksLoadingChange={setBlocksLoading}
+              onBlocksChange={setWizardBlocks}
+            />
+          )}
+        </>
+      </WizardShell>
 
-      {/* Body — only this element scrolls */}
-      <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-ui-body/30 dark:bg-ui-dark-bg">
-        {step === 'properties' && (
-          <WizardStep1Properties
-            name={name} setName={setName}
-            description={description} setDescription={setDescription}
-            visibility={visibility} setVisibility={(v) => { setVisibility(v); setPermissionError(null); }}
-            deliveryDeadline={deliveryDeadline} setDeliveryDeadline={setDeliveryDeadline}
-            studyTypeId={studyTypeId} setStudyTypeId={setStudyTypeId}
-            studyId={studyId} setStudyId={setStudyId}
-            moduleId={moduleId} setModuleId={setModuleId}
-            teamId={teamId} setTeamId={setTeamId}
-            errors={errors}
-            templateStatus={template?.status}
-          />
-        )}
-        {step === 'blocks' && template && (
-          <WizardStep2Blocks
-            ref={blocksRef}
-            template={template}
-            reviewComments={comments}
-            onResolveComment={handleResolveComment}
-          />
-        )}
-        {step === 'users' && (
-          <WizardStep3Users
-            templateCreatedBy={template?.created_by ?? null}
-            validators={validators}
-            onValidatorsChange={setValidators}
-            validationType={validationType}
-            onValidationTypeChange={setValidationType}
-            documentValidators={documentValidators}
-            onDocumentValidatorsChange={setDocumentValidators}
-            documentValidationType={documentValidationType}
-            onDocumentValidationTypeChange={setDocumentValidationType}
-          />
-        )}
-        {step === 'summary' && template && (
-          <WizardStep4Summary
-            template={template}
-            validators={validators}
-            validationType={validationType}
-            documentValidators={documentValidators}
-            documentValidationType={documentValidationType}
-          />
-        )}
-      </div>
+      {/* Invalid blocks navigation guard */}
+      <ConfirmDialog
+        open={!!invalidBlocksModal}
+        title="Bloques sin título"
+        description="Hay bloques sin título. Debes completarlos antes de salir, o puedes descartarlos."
+        confirmLabel="Descartar bloques sin título"
+        variant="danger"
+        onConfirm={async () => {
+          const cb = invalidBlocksModal?.onProceed;
+          const remaining = await blocksRef.current?.discardInvalidBlocks() ?? [];
+          setInvalidBlocksModal(null);
+          cb?.(remaining);
+        }}
+        onCancel={() => {
+          if (blocker.state === 'blocked') blocker.reset();
+          setInvalidBlocksModal(null);
+        }}
+      />
+
+      {/* Block invariant error modal */}
+      <ConfirmDialog
+        open={!!blockInvariantModal}
+        title="Estructura de bloques inválida"
+        description={blockInvariantModal ?? ''}
+        confirmLabel="Entendido"
+        variant="danger"
+        onConfirm={() => setBlockInvariantModal(null)}
+        onCancel={() => setBlockInvariantModal(null)}
+      />
 
       {/* Validation modal */}
       <ConfirmDialog
@@ -489,31 +694,59 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         icon="✉️"
         description={
           <div className="space-y-4">
-            <p className="text-xs text-text-muted">Se notificará a los validadores asignados.</p>
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-text-secondary mb-2">
-                Validadores ({validators.length})
-              </p>
-              {validators.map((v, i) => {
-                const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
-                return (
-                  <div key={v.userId} className="flex items-center gap-2.5">
-                    {validationType === 'ordenada' && (
-                      <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[10px] font-bold flex items-center justify-center">
-                        {i + 1}
+            <p className="text-xs text-text-muted">Se notificará a los validadores asignados. Una vez enviada, la plantilla no podrá editarse hasta ser aprobada o rechazada.</p>
+            {validators.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+                  Validadores de plantilla ({validationType}) — {validators.length}
+                </p>
+                {validators.map((v, i) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      {validationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                      )}
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20 flex items-center justify-center">
+                        {initials}
                       </span>
-                    )}
-                    <span className="shrink-0 w-8 h-8 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20 flex items-center justify-center">
-                      {initials}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                      {v.role && <p className="text-[10px] text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
+            {documentValidators.length > 0 && (
+              <div className="space-y-2 pt-3 border-t border-ui-border dark:border-ui-dark-border">
+                <p className="text-xs font-bold uppercase tracking-widest text-odoo-teal">
+                  Validadores de documento ({documentValidationType}) — {documentValidators.length}
+                </p>
+                {documentValidators.map((v, i) => {
+                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+                  return (
+                    <div key={v.userId} className="flex items-center gap-2.5">
+                      {documentValidationType === 'ordenada' && (
+                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-xs font-bold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                      )}
+                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-xs font-black border border-odoo-teal/20 flex items-center justify-center">
+                        {initials}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         }
         confirmLabel={saving ? 'Enviando…' : 'Confirmar y salir →'}
@@ -521,7 +754,34 @@ export function TemplateWizard({ template: templateProp, initialTemplate }: Prop
         onCancel={() => setShowValidationModal(false)}
         onConfirm={handleSubmitForReview}
       />
-
-    </div>
+      <ConfirmDialog
+        open={showPublishModal}
+        title="Publicar plantilla"
+        description={
+          <div className="space-y-2">
+            <p className="text-xs text-text-muted">
+              Añade un changelog para esta publicación.
+            </p>
+            <textarea
+              value={publishChangelog}
+              onChange={(e) => {
+                setPublishChangelog(e.target.value);
+                if (publishModalError) setPublishModalError(null);
+              }}
+              placeholder="Describe los cambios de esta versión..."
+              className="w-full min-h-24 rounded-md border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
+            />
+          </div>
+        }
+        confirmLabel={saving ? 'Publicando…' : 'Publicar'}
+        loading={saving}
+        error={publishModalError}
+        onCancel={() => {
+          setShowPublishModal(false);
+          setPublishModalError(null);
+        }}
+        onConfirm={handleConfirmPublish}
+      />
+    </>
   );
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ApiHttpError } from '../../../api/http';
 import {
   cloneTemplate as cloneTemplateRequest,
@@ -8,7 +8,8 @@ import {
   updateTemplate as updateTemplateRequest,
 } from '../../../api/templates';
 import type { CreateTemplatePayload, UpdateTemplatePayload } from '../../../api/templates';
-import type { Template, TemplateListFilters, TemplatesListMeta } from '../../../types/templates';
+import type { Template, TemplateListFilters } from '../../../types/templates';
+import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
 
 function formatActionError(err: unknown): string {
   if (err instanceof ApiHttpError) {
@@ -30,45 +31,118 @@ function formatActionError(err: unknown): string {
   return err instanceof Error ? err.message : 'Error desconocido';
 }
 
-const DEFAULT_PER_PAGE = 20;
+const DEFAULT_PER_PAGE = 10;
+
+/** Columnas de tabla que admiten ordenación local (no incluye «estado»). */
+const SORTABLE_TEMPLATE_COLUMN_IDS = new Set(['name', 'delivery_deadline']);
+
+export type TemplatesTableSort = { columnId: string; direction: 'asc' | 'desc' } | null;
 
 /**
- * Listado y mutaciones de plantillas normativas (filtros + paginación acotada a 20).
+ * Listado y mutaciones de plantillas normativas.
+ * La API devuelve el catálogo completo (filtrado); la paginación es en cliente.
+ *
+ * @param processId Si se aporta, se aplica como filtro `process_id` permanente
+ *   (no se expone en el panel de filtros — viene del contexto de la URL).
+ * @param sortBy Orden local solo para columnas en {@see SORTABLE_TEMPLATE_COLUMN_IDS}.
  */
-export function useTemplates() {
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [meta, setMeta] = useState<TemplatesListMeta | null>(null);
-  const [filters, setFilters] = useState<TemplateListFilters>({ per_page: DEFAULT_PER_PAGE });
+export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
+  const [fullList, setFullList] = useState<Template[]>([]);
+  /** Sin `per_page` por defecto: las pantallas usan `filters.per_page ?? pageSize` (preferencias de tabla). */
+  const [filters, setFilters] = useState<TemplateListFilters>({});
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionInfo, setActionInfo] = useState<string | null>(null);
 
+  const filtersForApi = useMemo(() => {
+    const { page: _page, per_page: _perPage, ...rest } = filters;
+    return {
+      ...rest,
+      ...(processId ? { process_id: processId } : {}),
+    };
+  }, [
+    filters.visibility_level,
+    filters.status,
+    filters.study_type_id,
+    filters.study_id,
+    filters.module_id,
+    filters.team_id,
+    filters.author_name,
+    filters.delivery_deadline,
+    filters.published_on,
+    filters.process_id,
+    processId,
+  ]);
+
+  const page = filters.page ?? 1;
+  const perPage = filters.per_page ?? DEFAULT_PER_PAGE;
+
+  const sortedList = useMemo(() => {
+    if (!sortBy || !SORTABLE_TEMPLATE_COLUMN_IDS.has(sortBy.columnId)) {
+      return fullList;
+    }
+    const { columnId, direction } = sortBy;
+    const dir = direction === 'asc' ? 1 : -1;
+
+    return [...fullList].sort((a, b) => {
+      if (columnId === 'name') {
+        return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
+      }
+      if (columnId === 'delivery_deadline') {
+        const valA = a.status === 'published' ? '9999-12-31' : (a.delivery_deadline ?? '').slice(0, 10);
+        const valB = b.status === 'published' ? '9999-12-31' : (b.delivery_deadline ?? '').slice(0, 10);
+        if (valA < valB) {
+          return -1 * dir;
+        }
+        if (valA > valB) {
+          return 1 * dir;
+        }
+
+        return 0;
+      }
+
+      return 0;
+    });
+  }, [fullList, sortBy]);
+
+  const templates = useMemo(
+    () => sliceTemplatesPage(sortedList, page, perPage),
+    [sortedList, page, perPage],
+  );
+
+  const meta = useMemo(
+    () => buildTemplatesListMeta(sortedList.length, page, perPage),
+    [sortedList.length, page, perPage],
+  );
+
   const load = useCallback(async () => {
     try {
       setListError(null);
       setLoading(true);
-      const res = await fetchTemplates({
-        ...filters,
-        per_page: Math.min(filters.per_page ?? DEFAULT_PER_PAGE, DEFAULT_PER_PAGE),
-      });
-      setTemplates(res.data);
-      setMeta(res.meta);
+      const res = await fetchTemplates(filtersForApi);
+      setFullList(res.data);
     } catch (e) {
       setListError(formatActionError(e));
-      setTemplates([]);
-      setMeta(null);
+      setFullList([]);
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filtersForApi]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
   const applyFilters = useCallback((patch: Partial<TemplateListFilters>) => {
-    setFilters((f) => ({ ...f, ...patch, page: 1 }));
+    setFilters((f) => {
+      const next = { ...f, ...patch };
+      // Solo reiniciar a la página 1 cuando el cambio no fija ya `page` (p. ej. corrección al acortar el listado).
+      if (!Object.prototype.hasOwnProperty.call(patch, 'page')) {
+        next.page = 1;
+      }
+      return next;
+    });
   }, []);
 
   const goToPage = useCallback((page: number) => {
@@ -116,6 +190,8 @@ export function useTemplates() {
         const r = await deleteTemplateRequest(id);
         if (r.hardDeleted) {
           setActionInfo('Plantilla eliminada.');
+        } else if (r.data?.status === 'published') {
+          setActionInfo('Borrador descartado. La plantilla vuelve a su versión publicada.');
         } else {
           setActionInfo('La plantilla tiene documentos asociados: se ha archivado en lugar de eliminarla.');
         }
@@ -146,6 +222,8 @@ export function useTemplates() {
 
   return {
     templates,
+    /** Catálogo completo: orden API y, si aplica, orden local por nombre o fecha de validación. */
+    catalogSorted: sortedList,
     meta,
     filters,
     loading,

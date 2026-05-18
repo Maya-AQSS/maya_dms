@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { fileURLToPath, URL } from 'node:url';
@@ -29,6 +29,10 @@ const sharedSidebarRoot = defaultSharedSidebarRoot;
 
 // The app root dir — used to resolve bare imports from shared package sources.
 const appRoot = fileURLToPath(new URL('.', import.meta.url));
+const sharedAuthSource = path.resolve(
+  appRoot,
+  '../../maya_infra/packages/maya-shared-auth-react/src/index.ts',
+);
 
 // Recursively unwrap nested package export condition objects until a string path is found.
 // e.g. exports['.'].import can be { types: '...', default: './dist/esm/foo.js' }
@@ -42,6 +46,7 @@ function resolveExportCondition(entry: unknown): string | undefined {
 }
 
 export default defineConfig({
+  cacheDir: '.vite-cache',
   plugins: [
     react(),
     tailwindcss(),
@@ -93,24 +98,46 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     allowedHosts: true,
+    hmr: { clientPort: 443, protocol: 'wss' },
     fs: {
       allow: ['..', sharedAuthRoot, sharedLayoutRoot, sharedSidebarRoot, sharedI18nRoot],
     },
     watch: {
       usePolling: true,
+      ignored: ['**/node_modules/.vite/**', '**/.vite-cache/**', '**/.git/**'],
     }
   },
   optimizeDeps: {
-    include: ['keycloak-js', 'axios', '@blocknote/core', '@blocknote/react', '@blocknote/ariakit', 'html-parse-stringify', 'void-elements', 'use-sync-external-store', 'use-sync-external-store/shim'],
+    include: [
+      'keycloak-js', 'axios',
+      '@blocknote/core', '@blocknote/react', '@blocknote/ariakit',
+      'html-parse-stringify', 'void-elements',
+      'use-sync-external-store', 'use-sync-external-store/shim',
+      '@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities',
+      '@tanstack/react-query',
+      'react-i18next', 'i18next', 'i18next-browser-languagedetector',
+      'dompurify', 'react-router-dom', 'react-dom', 'react-dom/client',
+    ],
     exclude: ['@maya/shared-auth-react', '@maya/shared-i18n-react', '@maya/shared-layout-react', '@maya/shared-sidebar-react'],
   },
   resolve: {
     dedupe: ['react', 'react-dom', 'react-router-dom'],
     alias: {
-      '@maya/shared-auth-react': path.join(sharedAuthRoot, 'src/index.ts'),
-      '@maya/shared-i18n-react': path.join(sharedI18nRoot, 'src/index.ts'),
-      '@maya/shared-layout-react': path.join(sharedLayoutRoot, 'src/index.ts'),
-      '@maya/shared-sidebar-react': path.join(sharedSidebarRoot, 'src/index.ts'),
+      '@maya/shared-auth-react': sharedAuthSource,
+      '@maya/shared-i18n-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-i18n-react/src/index.ts'),
+      '@maya/shared-layout-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-layout-react/src/index.ts'),
+      '@maya/shared-sidebar-react': path.resolve(appRoot, '../../maya_infra/packages/maya-shared-sidebar-react/src/index.ts'),
+    },
+  },
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    include: ['src/**/*.test.{ts,tsx}'],
+    setupFiles: ['./vitest.setup.ts'],
+    server: {
+      deps: {
+        inline: [/@maya\/shared/],
+      },
     },
   },
 });

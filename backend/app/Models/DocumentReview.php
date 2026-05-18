@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -23,7 +25,7 @@ class DocumentReview extends Model
     protected function casts(): array
     {
         return [
-            'stage'       => 'integer',
+            'stage' => 'integer',
             'reviewed_at' => 'datetime',
         ];
     }

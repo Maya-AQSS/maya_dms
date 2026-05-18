@@ -1,7 +1,10 @@
-import type { MeProfileResponse, UsersSearchResponse } from '../types/users';
-import { apiGetJson } from './http';
+import { createProfileApi } from '@maya/shared-profile-react';
+import type { MeProfile, UsersSearchResponse } from '../types/users';
+import { apiFetchJson, apiGetJson } from './http';
 
 export type { MeProfile, User, UserTeam } from '../types/users';
+
+const profileApi = createProfileApi<MeProfile>({ apiFetchJson, apiGetJson });
 
 /** GET /api/v1/users?search={query}&per_page=20 */
 export async function searchUsers(query: string, excludeUserId?: string): Promise<UsersSearchResponse> {
@@ -44,7 +47,19 @@ export async function searchDocumentReviewerCandidates(
   return apiGetJson<UsersSearchResponse>(`users/document-reviewer-candidates?${q.toString()}`);
 }
 
-/** GET /api/v1/me */
-export async function fetchMe(): Promise<MeProfileResponse> {
-  return apiGetJson<MeProfileResponse>('me');
+/**
+ * GET /api/v1/me — devuelve el perfil envuelto en `{ data }` por compatibilidad
+ * con los consumidores históricos de DMS (DocumentPreviewPage, DocumentWizard…).
+ */
+export async function fetchMe(): Promise<{ data: MeProfile }> {
+  const data = await profileApi.fetchMe();
+  return { data };
 }
+
+/**
+ * PUT /api/v1/me/locale — delega en el helper compartido. El backend reporta
+ * `meta.locale_persisted = false` mientras el writer sigue siendo no-op,
+ * pero el cambio se propaga al resto del ecosistema vía la cookie
+ * `maya_session_overrides` (gestionada por `useLocale.setLocale`).
+ */
+export const updateMyLocale = profileApi.updateMyLocale;

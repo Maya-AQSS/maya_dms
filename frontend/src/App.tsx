@@ -1,97 +1,90 @@
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
-import { useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import './index.css';
-import './App.css';
+import { lazy, Suspense, useEffect, useRef } from 'react';
+import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@maya/shared-layout-react';
-import { LocaleSelector, NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
-import { useNavItems } from './components/layout';
-
-const DASHBOARD_API_URL = (import.meta.env.VITE_DASHBOARD_API_URL as string | undefined)
-  ?? 'http://maya_dashboard_api.localhost';
-import {
-  DashboardPage,
-  DocumentEditorPage,
-  DocumentValidationPage,
-  DocumentPreviewPage,
-  DocumentsPage,
-  PlaceholderPage,
-  TemplateEditPage,
-  TemplateNewPage,
-  TemplateReviewPage,
-  TemplatesPage,
-} from './pages';
-import { useOidcSession } from './auth/useOidcSession';
-import { HierarchyProvider } from './features/hierarchy';
+import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
+import { useKeycloakLocaleSync } from '@maya/shared-i18n-react';
+import { useAuth } from '@maya/shared-auth-react';
+import { SidebarProcesos } from './components/layout';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
+import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
+import { useNavItems } from './components/layout/navItems';
+import { resolveServiceUrl } from './lib/peerService';
+
+// Lazy-loaded pages
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const ProcesosPage = lazy(() => import('./pages/ProcesosPage').then(m => ({ default: m.ProcesosPage })));
+const NuevaProgramacionSelectorPage = lazy(() => import('./pages/NuevaProgramacionSelectorPage').then(m => ({ default: m.NuevaProgramacionSelectorPage })));
+const DocumentEditorPage = lazy(() => import('./pages/DocumentEditorPage').then(m => ({ default: m.DocumentEditorPage })));
+const DocumentValidationPage = lazy(() => import('./pages/DocumentValidationPage').then(m => ({ default: m.DocumentValidationPage })));
+const DocumentPreviewPage = lazy(() => import('./pages/DocumentPreviewPage').then(m => ({ default: m.DocumentPreviewPage })));
+const TemplateNewPage = lazy(() => import('./pages/TemplateNewPage').then(m => ({ default: m.TemplateNewPage })));
+const TemplateEditPage = lazy(() => import('./pages/TemplateEditPage').then(m => ({ default: m.TemplateEditPage })));
+const TemplateReviewPage = lazy(() => import('./pages/TemplateReviewPage').then(m => ({ default: m.TemplateReviewPage })));
+const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').then(m => ({ default: m.TemplatePreviewPage })));
+const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
+
+const DASHBOARD_API_URL = resolveServiceUrl(
+  import.meta.env.VITE_DASHBOARD_API_URL as string | undefined,
+  'dashboard-api',
+);
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
-      <Route path="/documents" element={<DocumentsPage />} />
-      <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
-      <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
-      <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
-      <Route path="/templates" element={<TemplatesPage />} />
-      <Route path="/templates/new" element={<TemplateNewPage />} />
-      <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
-      <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
-      <Route path="*" element={<PlaceholderPage />} />
-    </Routes>
+    <Suspense fallback={<div className="p-8">Cargando...</div>}>
+      <Routes>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/procesos" element={<ProcesosPage />} />
+        <Route path="/procesos/:processId" element={<ProcesosPage />} />
+        <Route path="/documentos/nuevo" element={<NuevaProgramacionSelectorPage />} />
+        <Route path="/documentos/nuevo/:templateId/wizard" element={<DocumentEditorPage />} />
+        <Route path="/documents/:documentId/editor" element={<DocumentEditorPage />} />
+        <Route path="/documents/:documentId/validate" element={<DocumentValidationPage />} />
+        <Route path="/documents/:documentId" element={<DocumentPreviewPage />} />
+        <Route path="/templates" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/templates/new" element={<TemplateNewPage />} />
+        <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
+        <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
+        <Route path="/templates/:id" element={<TemplatePreviewPage />} />
+        <Route path="*" element={<PlaceholderPage />} />
+      </Routes>
+    </Suspense>
   );
 }
 
-function AppWithLayout() {
-  const { logout, user } = useOidcSession();
+function Main() {
+  const { logout } = useAuth();
   const { profile } = useUserProfile();
   const navItems = useNavItems();
-  const { i18n } = useTranslation();
-  const location = useLocation();
-
-  useEffect(() => {
-    if (user?.locale) void i18n.changeLanguage(user.locale);
-  }, [user?.locale, i18n]);
-
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'locale' && e.newValue) void i18n.changeLanguage(e.newValue);
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [i18n]);
-
-  const isEditorRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/editor');
-  const isDocumentValidateRoute = location.pathname.startsWith('/documents/') && location.pathname.endsWith('/validate');
-  const isDocumentPreviewRoute = /^\/documents\/[^/]+$/.test(location.pathname);
-  const titleOverride = isEditorRoute
-    ? 'Editor de Programación'
-    : isDocumentValidateRoute
-      ? 'Validación de programación'
-      : isDocumentPreviewRoute
-        ? 'Previsualización'
-        : undefined;
+  useKeycloakLocaleSync();
 
   const userName = profile?.name?.trim() ?? '';
   const userInitials = profileDisplayInitials(profile);
+  const onProfile = () => {
+    const dashboardOrigin = resolveServiceUrl(
+      import.meta.env.VITE_DASHBOARD_URL as string | undefined,
+      'dashboard',
+    );
+    window.location.assign(`${dashboardOrigin}/profile`);
+  };
 
   return (
     <AppLayout
       navItems={navItems}
       brandName="Maya DMS"
-      brandVersion="Maya DMS v1.0"
+      brandVersion="v1.0"
+      brandLogoUrl="/favicon.png"
       userName={userName}
       userInitials={userInitials}
       onLogout={logout}
-      titleOverride={titleOverride}
-      topbarActions={
+      onProfile={onProfile}
+      favoritesSlot={
         <>
-          <NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />
-          <LocaleSelector />
+          <SidebarProcesos />
+          <SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />
         </>
       }
-      sidebarFooter={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
+      notificationsSlot={<NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />}
     >
       <AppRoutes />
     </AppLayout>
@@ -99,15 +92,27 @@ function AppWithLayout() {
 }
 
 function App() {
-  const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
+  const { isLoading, isAuthenticated, login } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const wasAuthenticatedRef = useRef(false);
 
   useEffect(() => {
-    if (!isOidcLoading && !isOidcSignedIn) {
-      beginSignIn();
+    if (!isLoading && !isAuthenticated) {
+      login();
     }
-  }, [isOidcLoading, isOidcSignedIn, beginSignIn]);
+  }, [isLoading, isAuthenticated, login]);
 
-  if (isOidcLoading) {
+  useEffect(() => {
+    if (isLoading) return;
+    const wasAuthenticated = wasAuthenticatedRef.current;
+    if (!wasAuthenticated && isAuthenticated && location.pathname === '/') {
+      navigate('/dashboard', { replace: true });
+    }
+    wasAuthenticatedRef.current = isAuthenticated;
+  }, [isAuthenticated, isLoading, location.pathname, navigate]);
+
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
         Iniciando sesión…
@@ -115,17 +120,11 @@ function App() {
     );
   }
 
-  if (!isOidcSignedIn) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
-        Redirigiendo al inicio de sesión...
-      </div>
-    );
-  }
+  if (!isAuthenticated) return null;
 
   return (
     <HierarchyProvider>
-      <AppWithLayout />
+      <Main />
     </HierarchyProvider>
   );
 }

@@ -1,154 +1,120 @@
 <?php
 
-use App\Support\PostgresFdwMigration;
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
+/**
+ * FDW directo a Odoo.v_app_users para maya_dms_db.
+ *
+ * El servidor "odoo_server" y el user mapping son creados por init-databases.sh
+ * como superuser maya, ya que maya_dms_user no tiene privilegios suficientes.
+ * Esta migración sólo crea la foreign table y la view.
+ *
+ * Producción/staging: FOREIGN TABLE + VIEW → odoo.v_app_users.
+ * Testing:            tabla física con la misma estructura para factories.
+ */
 return new class extends Migration
 {
-    /**
-     * Nombre de la vista pública que consume la aplicación.
-     */
-    private const VIEW_NAME = 'users';
-
-    /**
-     * Nombre de la foreign table física gestionada por FDW.
-     */
-    private const FDW_TABLE = 'users_fdw';
-
-    /**
-     * Nombre del servidor FDW compartido en el esquema.
-     */
-    private const FDW_SERVER = 'users_server';
-
-    /**
-     * Tabla local usada como origen de datos en entorno local.
-     */
-    private const LOCAL_SOURCE_TABLE = 'users_source';
+    private const SERVER  = 'odoo_server';
+    private const FDW_TBL = 'users_fdw';
+    private const VIEW    = 'users';
 
     public function up(): void
     {
-        if (app()->environment('testing')) {
-            $this->createTestingUsersTable();
-            return;
+        if ($this->isTestEnv()) {
+            $this->createStubTable();
+        } else {
+            $this->createFdwTable();
         }
-
-        $this->setupFdw();
     }
 
     public function down(): void
     {
-        if (app()->environment('testing')) {
-            DB::statement('DROP TABLE IF EXISTS ' . self::VIEW_NAME);
-            return;
-        }
-
-        PostgresFdwMigration::dropViewOrTableInPublic(self::VIEW_NAME);
-
-        PostgresFdwMigration::dropForeignTableIfExists(self::FDW_TABLE);
-        PostgresFdwMigration::dropFdwServerAndUserMapping(self::FDW_SERVER);
-
-        if (app()->environment('local')) {
-            DB::statement('DROP TABLE IF EXISTS ' . self::LOCAL_SOURCE_TABLE);
-        }
-
-        // La extensión puede ser gestionada por infra (sin permisos para borrarla).
-        DB::statement("
-            DO \$\$ BEGIN
-                DROP EXTENSION IF EXISTS postgres_fdw;
-            EXCEPTION WHEN insufficient_privilege THEN
-                NULL;
-            END \$\$
-        ");
-    }
-
-    /**
-     * Tabla local de solo testing (SQLite compatible).
-     */
-    private function createTestingUsersTable(): void
-    {
-        DB::statement('
-            CREATE TABLE IF NOT EXISTS users (
-                id           VARCHAR(255) PRIMARY KEY,
-                name         VARCHAR(255),
-                email        VARCHAR(255) NOT NULL UNIQUE,
-                department   VARCHAR(255),
-                created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ');
-    }
-
-    /**
-     * Configura FDW para local y producción.
-     * - local: apunta a users_source (misma BD)
-     * - producción: apunta a BD externa (config database.fdw.users.*)
-     */
-    private function setupFdw(): void
-    {
-        $isLocal = app()->environment('local');
-
-        if ($isLocal) {
-            $this->createLocalSourceTable();
-
-            $host = config('database.connections.pgsql.host');
-            $port = config('database.connections.pgsql.port');
-            $database = config('database.connections.pgsql.database');
-            $username = config('database.connections.pgsql.username');
-            $password = config('database.connections.pgsql.password');
-            $schema = 'public';
-            $sourceTable = self::LOCAL_SOURCE_TABLE;
+        if ($this->isTestEnv()) {
+            Schema::dropIfExists(self::VIEW);
         } else {
-            $host = config('database.fdw.users.host');
-            $port = config('database.fdw.users.port');
-            $database = config('database.fdw.users.database');
-            $username = config('database.fdw.users.username');
-            $password = config('database.fdw.users.password');
-            $schema = config('database.fdw.users.schema', 'public');
-            $sourceTable = config('database.fdw.users.table', 'users');
+            DB::statement('DROP VIEW IF EXISTS ' . self::VIEW . ' CASCADE');
+            DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TBL . ' CASCADE');
+        }
+    }
+
+    private function isTestEnv(): bool
+    {
+        if (app()->environment('testing')) {
+            return true;
         }
 
-        if (! PostgresFdwMigration::ensurePostgresFdwExtension('users catalog')) {
-            return;
-        }
-
-        PostgresFdwMigration::createFdwServerWithUserMapping(
-            self::FDW_SERVER,
-            (string) $host,
-            (string) $port,
-            (string) $database,
-            (string) $username,
-            (string) $password,
-        );
-
-        $foreignColumnsSql = 'id VARCHAR(255), nombre VARCHAR(255), email VARCHAR(255), departamento VARCHAR(255)';
-        $viewSelectSql = 'id, nombre AS name, email, departamento AS department';
-
-        PostgresFdwMigration::createForeignTableWithPassThroughView(
-            self::VIEW_NAME,
-            $foreignColumnsSql,
-            $viewSelectSql,
-            self::FDW_SERVER,
-            (string) $schema,
-            (string) $sourceTable,
-        );
+        $db = config('database.connections.pgsql.database');
+        return is_string($db) && str_ends_with($db, '_test');
     }
 
     /**
-     * Fuente local para simular origen externo en entorno local.
+     * Tabla física para entorno testing (sin FDW).
+     * Misma estructura de columnas que expone la vista FDW en producción.
      */
-    private function createLocalSourceTable(): void
+    private function createStubTable(): void
     {
-        DB::statement('
-            CREATE TABLE IF NOT EXISTS users_source (
-                id           VARCHAR(255) PRIMARY KEY,
-                nombre       VARCHAR(255),
-                email        VARCHAR(255) NOT NULL UNIQUE,
-                departamento VARCHAR(255),
-                created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        ');
+        Schema::create(self::VIEW, function (Blueprint $table): void {
+            // String PK igual que producción (keycloak UUID / odoo external_id)
+            $table->string('id')->primary();
+            $table->string('email')->nullable();
+            $table->string('name')->nullable();
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
+            $table->string('username')->nullable();
+            $table->string('employee_id')->nullable();
+            $table->string('dni')->nullable();
+            $table->string('employee_type')->nullable();
+            $table->boolean('is_active')->default(true);
+            // El modelo User no usa timestamps, pero UsersSourceSeeder los inserta
+            // explícitamente — el stub debe aceptarlos para que el seeder pase.
+            $table->timestamps();
+        });
     }
 
+    private function createFdwTable(): void
+    {
+        $dbUser = config('database.connections.pgsql.username', 'maya_dms_user');
+
+        // Idempotente: drop primero para que migrate:fresh no falle
+        DB::statement('DROP VIEW IF EXISTS ' . self::VIEW . ' CASCADE');
+        DB::statement('DROP FOREIGN TABLE IF EXISTS ' . self::FDW_TBL . ' CASCADE');
+
+        DB::statement("
+            CREATE FOREIGN TABLE " . self::FDW_TBL . " (
+                id            varchar(255) NOT NULL,
+                email         varchar(255) NOT NULL,
+                display_name  varchar(255),
+                first_name    varchar(150),
+                last_name     varchar(150),
+                username      varchar(150),
+                employee_id   varchar(64),
+                dni           varchar(32),
+                employee_type varchar(64),
+                is_active     boolean NOT NULL DEFAULT true
+            )
+            SERVER " . self::SERVER . "
+            OPTIONS (schema_name 'public', table_name 'v_app_users')
+        ");
+
+        DB::statement("
+            CREATE VIEW " . self::VIEW . " AS
+            SELECT id,
+                   display_name AS name,
+                   email,
+                   first_name,
+                   last_name,
+                   username,
+                   employee_id,
+                   dni,
+                   employee_type,
+                   is_active
+            FROM " . self::FDW_TBL . "
+        ");
+
+        DB::statement("GRANT SELECT ON " . self::FDW_TBL . " TO \"{$dbUser}\"");
+        DB::statement("GRANT SELECT ON " . self::VIEW . " TO \"{$dbUser}\"");
+    }
 };

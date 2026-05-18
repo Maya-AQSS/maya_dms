@@ -27,10 +27,9 @@ beforeEach(function () {
     ];
 
     $this->fdwUser = [
-        'id'         => 'user-uuid-123',
-        'email'      => 'test@example.com',
-        'name'       => 'Test User',
-        'department' => 'Ingeniería',
+        'id'    => 'user-uuid-123',
+        'email' => 'test@example.com',
+        'name'  => 'Test User',
     ];
 
     $this->teams = [
@@ -76,7 +75,7 @@ it('queries FDW filtered by user id from JWT', function () {
             return $key === 'user_profile:user-uuid-123' && $ttl === 900;
         });
 
-    $profile = $this->service->getProfile('user-uuid-123', $this->jwtProfile);
+    $profile = $this->service->getProfile('user-uuid-123', array_merge($this->jwtProfile, ['department' => 'Ingeniería']));
 
     expect($profile['id'])->toBe('user-uuid-123')
         ->and($profile['source'])->toBe('fdw')
@@ -314,7 +313,7 @@ it('merges FDW data, JWT claims, and teams into complete profile', function () {
 
     Cache::shouldReceive('put')->once();
 
-    $profile = $this->service->getProfile('user-uuid-123', $this->jwtProfile);
+    $profile = $this->service->getProfile('user-uuid-123', array_merge($this->jwtProfile, ['department' => 'Ingeniería']));
 
     expect($profile)
         ->toHaveKeys([

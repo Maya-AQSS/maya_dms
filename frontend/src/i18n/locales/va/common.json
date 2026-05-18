@@ -21,9 +21,18 @@
     "error": "S'ha produït un error"
   },
   "nav": {
+    "dashboard": "Panell",
     "documents": "Documents",
     "templates": "Plantilles",
     "trash": "Paperera"
+  },
+  "dashboard": {
+    "noWidgets": "No hi ha widgets al panell.",
+    "reset": "Restablir",
+    "widgets": {
+      "recentDocuments": "Documents recents",
+      "pendingValidations": "Pendents de validar"
+    }
   },
   "documents": {
     "title": "Documents",
@@ -42,5 +51,11 @@
   "auth": {
     "logout": "Tancar sessió",
     "profile": "Perfil"
+  },
+  "userMenu": {
+    "darkMode": "Mode fosc",
+    "lightMode": "Mode clar",
+    "profile": "Perfil",
+    "logout": "Tancar sessió"
   }
 }

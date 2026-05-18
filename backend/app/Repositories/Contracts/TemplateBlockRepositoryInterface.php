@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Contracts;
 
 use App\Models\Template;
@@ -32,6 +34,21 @@ interface TemplateBlockRepositoryInterface
     public function update(TemplateBlock $block, array $attributes): TemplateBlock;
 
     public function delete(TemplateBlock $block): void;
+
+    /**
+     * Update por id; si no existe, inserta una fila con id fijo (forceCreate).
+     * Pensado para reconstruir el conjunto de bloques publicados de una plantilla.
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public function upsertByIdForTemplate(string $blockId, array $values): void;
+
+    /**
+     * Elimina bloques de una plantilla excluyendo la lista provista.
+     *
+     * @param  list<string>  $protectedIds
+     */
+    public function deleteForTemplateExcept(string $templateId, array $protectedIds): int;
 
     /**
      * Actualiza block_state en múltiples bloques.

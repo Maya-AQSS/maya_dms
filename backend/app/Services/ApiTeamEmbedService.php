@@ -1,13 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
+use App\Http\Resources\DocumentResource;
+use App\Http\Resources\TemplateResource;
 use App\Models\Document;
 use App\Models\Template;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
 use App\Support\ApiEmbeddedTeamResponse;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
 {
@@ -16,7 +19,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     ) {}
 
     /**
-     * Resuelve el equipo visible para la plantilla y lo deja listo para {@see \App\Http\Resources\TemplateResource}.
+     * Resuelve el equipo visible para la plantilla y lo deja listo para {@see TemplateResource}.
      */
     public function embedOnTemplate(Template $template, string $viewerUserId): void
     {
@@ -30,7 +33,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     }
 
     /**
-     * Resuelve el equipo visible para las plantillas y lo deja listo para {@see \App\Http\Resources\TemplateResource}.
+     * Resuelve el equipo visible para las plantillas y lo deja listo para {@see TemplateResource}.
      */
     public function embedOnTemplates(iterable $templates, string $viewerUserId): void
     {
@@ -40,20 +43,12 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     }
 
     /**
-     * Resuelve el equipo visible para las plantillas paginadas y lo deja listo para {@see \App\Http\Resources\TemplateResource}.
-     */
-    public function embedOnTemplatePaginator(LengthAwarePaginator $paginator, string $viewerUserId): void
-    {
-        $this->embedOnTemplates($paginator->items(), $viewerUserId);
-    }
-
-    /**
-     * Resuelve el equipo visible para el documento y lo deja listo para {@see \App\Http\Resources\DocumentResource}.
+     * Resuelve el equipo visible para el documento y lo deja listo para {@see DocumentResource}.
      */
     public function embedOnDocument(Document $document, string $viewerUserId): void
     {
         $document->loadMissing('template');
-        $teamCatalogId = $document->template?->team_id;
+        $teamCatalogId = $document->team_id ?? $document->template?->team_id;
 
         $team = $this->teamReadService->embeddableTeam(
             $teamCatalogId !== null ? (string) $teamCatalogId : null,
@@ -64,7 +59,7 @@ class ApiTeamEmbedService implements ApiTeamEmbedServiceInterface
     }
 
     /**
-     * Resuelve el equipo visible para los documentos y lo deja listo para {@see \App\Http\Resources\DocumentResource}.
+     * Resuelve el equipo visible para los documentos y lo deja listo para {@see DocumentResource}.
      */
     public function embedOnDocuments(iterable $documents, string $viewerUserId): void
     {

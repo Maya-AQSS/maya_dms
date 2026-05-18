@@ -17,7 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
 import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
-import { Button } from '../../../ui';
+import { Button, TextInput } from '@maya/shared-ui-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,17 +77,17 @@ function SortableValidatorItem({
         </button>
       )}
       {isOrdered && (
-        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-[9px] font-bold">
+        <span className="shrink-0 flex items-center justify-center w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold">
           {index + 1}
         </span>
       )}
-      <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-[10px] font-black border border-odoo-purple/20">
+      <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20">
         {initials}
       </span>
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{entry.name}</p>
         {entry.role && (
-          <p className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{entry.role}</p>
+          <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{entry.role}</p>
         )}
       </div>
       <div className="flex items-center gap-1">
@@ -145,7 +145,7 @@ function ValidatorSection({
   return (
     <div className="flex-1 min-h-0 flex flex-col border-b border-ui-border dark:border-ui-dark-border last:border-b-0 overflow-hidden">
       <div className="px-4 py-2 flex items-center gap-2 shrink-0 bg-ui-card/50 dark:bg-ui-dark-card/50">
-        <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary flex-1 min-w-0">
+        <span className="text-xs font-bold uppercase tracking-widest text-text-secondary flex-1 min-w-0">
           {title} ({validators.length})
         </span>
         {validationType && onValidationTypeChange && (
@@ -155,7 +155,7 @@ function ValidatorSection({
                 key={t}
                 type="button"
                 onClick={() => onValidationTypeChange(t)}
-                className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                className={`px-2 py-0.5 rounded text-xs font-bold transition-all border ${
                   validationType === t
                     ? 'bg-odoo-purple text-text-inverse border-odoo-purple'
                     : 'bg-transparent text-text-secondary border-ui-border hover:border-odoo-purple/50'
@@ -170,13 +170,13 @@ function ValidatorSection({
 
       {validationType === 'ordenada' && (
         <div className="px-4 py-1 border-b border-warning/20 bg-warning-light/10 shrink-0">
-          <p className="text-[10px] text-warning-dark font-bold">Validación ordenada — arrastra para reordenar.</p>
+          <p className="text-xs text-warning-dark font-bold">Validación ordenada — arrastra para reordenar.</p>
         </div>
       )}
 
       <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
         {validators.length === 0 ? (
-          <p className="text-[10px] text-text-muted italic">Sin validadores asignados.</p>
+          <p className="text-xs text-text-muted italic">Sin validadores asignados.</p>
         ) : (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={validators.map((v) => v.userId)} strategy={verticalListSortingStrategy}>
@@ -221,7 +221,7 @@ function ValidatorSection({
             <div className="flex gap-3">
               <Button
                 type="button"
-                variant="primary"
+                variant="secondary"
                 size="md"
                 className="flex-1"
                 onClick={() => setConfirmDelete(null)}
@@ -230,9 +230,9 @@ function ValidatorSection({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="danger"
                 size="md"
-                className="flex-1 text-danger border-danger/40 hover:border-danger hover:bg-danger/5"
+                className="flex-1"
                 onClick={handleConfirmRemove}
               >
                 Eliminar definitivamente
@@ -269,22 +269,23 @@ function UserAddPanel({
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border shrink-0 space-y-1.5">
-        <span className="block text-[10px] font-bold uppercase tracking-widest text-text-secondary">{title}</span>
+        <span className="block text-xs font-bold uppercase tracking-widest text-text-secondary">{title}</span>
         {!canSearchUsers && (
           <p className="text-xs text-text-muted dark:text-text-dark-muted">
             No tienes permiso para buscar usuarios (users.search).
           </p>
         )}
         <div className="relative">
-          <input
-            type="text"
+          <TextInput
+            type="search"
+            fieldSize="comfortable"
             disabled={!canSearchUsers}
-            className="w-full bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-lg pl-9 pr-4 py-2 text-sm focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             placeholder="Filtrar usuarios..."
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
+            className="pl-9"
           />
-          <svg className="absolute left-3 top-2.5 w-4 h-4 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="absolute left-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
@@ -320,7 +321,7 @@ function UserAddPanel({
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-text-primary dark:text-text-dark-primary truncate">{u.name}</p>
-                {u.role && <p className="text-[10px] text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{u.role}</p>}
+                {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{u.role}</p>}
               </div>
               <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-odoo-purple text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">+</span>
             </button>
@@ -334,8 +335,6 @@ function UserAddPanel({
 // ── Main component ────────────────────────────────────────────────────────────
 
 type Props = {
-  /** Creador de la plantilla: no se ofrece en los listados de candidatos a validador (SoD). */
-  templateCreatedBy?: string | null;
   validators: ValidatorEntry[];
   onValidatorsChange: (validators: ValidatorEntry[]) => void;
   validationType: 'libre' | 'ordenada';
@@ -347,7 +346,6 @@ type Props = {
 };
 
 export function WizardStep3Users({
-  templateCreatedBy = null,
   validators,
   onValidatorsChange,
   validationType,
@@ -385,14 +383,13 @@ export function WizardStep3Users({
     const timer = setTimeout(() => {
       setSearchingTemplate(true);
       setSearchErrorTemplate(null);
-      const exclude = templateCreatedBy?.trim() || undefined;
-      searchTemplateReviewerCandidates(q, exclude)
+      searchTemplateReviewerCandidates(q)
         .then((res) => setSearchResultsTemplate(res.data))
         .catch(() => setSearchErrorTemplate('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingTemplate(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryTemplate, canSearchUsers, templateCreatedBy]);
+  }, [searchQueryTemplate, canSearchUsers]);
 
   useEffect(() => {
     if (!canSearchUsers) {
@@ -407,14 +404,13 @@ export function WizardStep3Users({
     const timer = setTimeout(() => {
       setSearchingDocument(true);
       setSearchErrorDocument(null);
-      const exclude = templateCreatedBy?.trim() || undefined;
-      searchDocumentReviewerCandidates(q, exclude)
+      searchDocumentReviewerCandidates(q)
         .then((res) => setSearchResultsDocument(res.data))
         .catch(() => setSearchErrorDocument('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingDocument(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryDocument, canSearchUsers, templateCreatedBy]);
+  }, [searchQueryDocument, canSearchUsers]);
 
   const handleAddToTemplate = (user: User) => {
     if (!validators.some((v) => v.userId === user.id)) {

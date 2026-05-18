@@ -3,15 +3,16 @@
 namespace Tests\Feature;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Document;
+use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
+use App\Support\DocumentHeadSnapshot;
 use Database\Seeders\PermissionsSeeder;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Lcobucci\JWT\Signer\Key\InMemory;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -63,7 +64,7 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $token = $this->buildJwtForSub(
             $privatePem,
@@ -99,13 +100,16 @@ class DocumentsModuleCreationApiTest extends TestCase
         ]);
     }
 
+    /**
+     * @return string Id en {@see entity_versions} de la publicación.
+     */
     private function createPublishedTemplateWithVersion(
         string $templateId,
         string $creatorId,
         string $moduleId,
         string $name,
         ?string $description = null,
-    ): TemplateVersion {
+    ): string {
         $templateBlockId = (string) Str::uuid();
 
         Template::query()->forceCreate([
@@ -120,7 +124,6 @@ class DocumentsModuleCreationApiTest extends TestCase
             'team_id' => null,
             'created_by' => $creatorId,
             'status' => 'published',
-            'version' => 1,
             'review_stages' => 0,
             'review_mode' => 'sequential',
         ]);
@@ -136,23 +139,38 @@ class DocumentsModuleCreationApiTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        return TemplateVersion::query()->forceCreate([
-            'id' => (string) Str::uuid(),
-            'template_id' => $templateId,
+        $entityVersionId = (string) Str::uuid();
+        $publishedAt = now();
+
+        DB::table('entity_versions')->insert([
+            'id' => $entityVersionId,
+            'versionable_type' => Template::class,
+            'versionable_id' => $templateId,
             'version_number' => 1,
-            'blocks_snapshot' => [[
-                'id' => $templateBlockId,
-                'title' => 'Objetivos',
-                'default_content' => null,
-                'block_state' => 'editable',
-                'sort_order' => 1,
-            ]],
-            'changelog' => 'Versión inicial',
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
             'published_by' => $creatorId,
-            'published_at' => now(),
-            'created_at' => now(),
-            'updated_at' => now(),
+            'published_at' => $publishedAt,
+            'changelog' => 'Versión inicial',
+            'snapshot_data' => json_encode([
+                'blocks' => [[
+                    'id' => $templateBlockId,
+                    'title' => 'Objetivos',
+                    'default_content' => null,
+                    'block_state' => 'editable',
+                    'sort_order' => 1,
+                    'type' => '',
+                    'mandatory' => false,
+                ]],
+            ]),
+            'is_snapshot_immutable' => true,
+            'created_at' => $publishedAt,
+            'updated_at' => $publishedAt,
         ]);
+
+        return $entityVersionId;
     }
 
     public function test_creation_options_returns_none_when_module_has_no_published_templates(): void
@@ -188,7 +206,7 @@ class DocumentsModuleCreationApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.can_create', true)
             ->assertJsonPath('data.mode', 'auto')
-            ->assertJsonPath('data.options.0.template_version_id', $version->id)
+            ->assertJsonPath('data.options.0.template_version_id', $version)
             ->assertJsonPath('data.options.0.name', 'Plantilla Única');
     }
 
@@ -220,6 +238,31 @@ class DocumentsModuleCreationApiTest extends TestCase
             ->assertJsonCount(2, 'data.options');
     }
 
+    public function test_creation_options_keeps_published_template_when_live_head_is_draft(): void
+    {
+        $userId = (string) Str::uuid();
+        $this->grantPermissionsForUser($userId);
+        $headers = $this->authHeaders($userId);
+        $this->seedAcademicHierarchy();
+
+        $templateId = (string) Str::uuid();
+        $version = $this->createPublishedTemplateWithVersion(
+            templateId: $templateId,
+            creatorId: $userId,
+            moduleId: 'MOD-1',
+            name: 'Plantilla con v1 publicada',
+        );
+
+        $template = Template::query()->withoutGlobalScopes()->findOrFail($templateId);
+        $template->update(['status' => 'draft']);
+
+        $this->getJson('/api/v1/documents/creation-options?module_id=MOD-1', $headers)
+            ->assertOk()
+            ->assertJsonPath('data.can_create', true)
+            ->assertJsonPath('data.options.0.template_id', $templateId)
+            ->assertJsonPath('data.options.0.template_version_id', $version);
+    }
+
     public function test_create_from_module_uses_sub_claim_as_creator_and_owner(): void
     {
         $userId = (string) Str::uuid();
@@ -236,7 +279,9 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $response = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
-            'template_version_id' => $version->id,
+            'template_version_id' => $version,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers);
 
         $response->assertCreated()
@@ -247,15 +292,22 @@ class DocumentsModuleCreationApiTest extends TestCase
             ->assertJsonPath('data.study_type_id', 'TYPE-1')
             ->assertJsonPath('data.study_id', 'STUDY-1');
 
+        $docId = (string) $response->json('data.id');
         $this->assertDatabaseHas('documents', [
-            'id' => $response->json('data.id'),
-            'created_by' => $userId,
-            'owner_id' => $userId,
-            'template_version_id' => $version->id,
-            'study_type_id' => 'TYPE-1',
-            'module_id' => 'MOD-1',
-            'status' => 'draft',
+            'id' => $docId,
+            'template_version_id' => $version,
         ]);
+
+        $head = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $docId)
+            ->where('version_number', 0)
+            ->firstOrFail();
+        $this->assertSame('draft', $head->status);
+        $this->assertSame($userId, (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.created_by'));
+        $this->assertSame($userId, (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.owner_id'));
+        $this->assertSame('TYPE-1', (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.study_type_id'));
+        $this->assertSame('MOD-1', (string) data_get($head->snapshot_data, DocumentHeadSnapshot::JSON_DOCUMENT_KEY.'.module_id'));
     }
 
     public function test_create_from_module_requires_template_version_when_multiple_options_exist(): void
@@ -281,6 +333,8 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['template_version_id']);
@@ -302,7 +356,9 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $first = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
-            'template_version_id' => $version->id,
+            'template_version_id' => $version,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)->assertCreated();
 
         // Forzamos antigüedad para validar orden sin depender del reloj del sistema.
@@ -312,7 +368,9 @@ class DocumentsModuleCreationApiTest extends TestCase
 
         $second = $this->postJson('/api/v1/documents/create-from-module', [
             'module_id' => 'MOD-1',
-            'template_version_id' => $version->id,
+            'template_version_id' => $version,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
         ], $headers)->assertCreated();
 
         $list = $this->getJson('/api/v1/documents', $headers)

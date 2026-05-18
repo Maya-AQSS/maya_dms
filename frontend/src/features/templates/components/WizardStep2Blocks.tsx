@@ -1,139 +1,42 @@
-import { useEffect, useState, useRef, lazy, Suspense, forwardRef, useImperativeHandle } from 'react';
-import { useDarkMode } from '../../../hooks/useDarkMode';
-import { ErrorBoundary } from '../../../components/ErrorBoundary';
-
-const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel'));
+import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense, lazy } from 'react';
+import { useDarkMode } from '@maya/shared-layout-react';
 import {
   DndContext,
   closestCenter,
-  type DragEndEvent,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from '@dnd-kit/core';
 import {
   SortableContext,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, ConfirmDialog, FieldLabel, TextInput } from '../../../ui';
+
+import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, TextInput } from '@maya/shared-ui-react';
+import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
-import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
-import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
-import { BlockContentHtml } from './BlockContentHtml';
 import type { Template } from '../../../types/templates';
-import {
-  type BlockUiState,
-  BLOCK_UI_STATE_CONFIG,
-  blockToUiState,
-} from '../blockUiState';
+import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
+import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
+import { useAutoSave } from '../../../hooks/useAutoSave';
+import { apiFetchJson } from '../../../api/http';
+import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
+import { getCommentsForBlock } from '../../../utils/blockComments';
 
-// ── Types ────────────────────────────────────────────────────────────────────
+const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
 
-type PanelMode = 'empty' | 'summary' | 'edit' | 'create' | 'multi';
+type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';
-type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-type BlockItemState =
-  | 'default'
-  | 'selected'
-  | 'multi-queued'
-  | 'multi-current'
-  | 'multi-saved';
+// ── Icons ────────────────────────────────────────────────────────────────────
 
-// ── Sortable block item ───────────────────────────────────────────────────────
-
-function SortableBlockItem({
-  block,
-  itemState,
-  onClick,
-  onDoubleClick,
-  hasReviewComments,
-}: {
-  block: TemplateBlock;
-  itemState: BlockItemState;
-  onClick: (e: React.MouseEvent) => void;
-  onDoubleClick: (e: React.MouseEvent) => void;
-  hasReviewComments?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: block.id,
-  });
-
-  const style: React.CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 20 : 1,
-    position: 'relative',
-    opacity: isDragging ? 0.6 : itemState === 'multi-saved' ? 0.65 : 1,
-  };
-
-  const uiState = blockToUiState(block);
-  const cfg = BLOCK_UI_STATE_CONFIG[uiState];
-
-  const containerCls =
-    itemState === 'selected' || itemState === 'multi-current'
-      ? 'bg-odoo-purple/10 border-odoo-purple/30 shadow-sm'
-      : itemState === 'multi-queued'
-        ? 'bg-odoo-purple/5 border-odoo-purple/20'
-        : itemState === 'multi-saved'
-          ? 'bg-success/5 border-success/20'
-          : 'bg-white dark:bg-ui-dark-card border-ui-border/50 hover:bg-ui-body hover:border-ui-border dark:hover:bg-ui-dark-bg dark:border-ui-dark-border/50';
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`group w-full rounded px-3 py-2 flex items-center gap-2 transition-all min-h-11 border ${containerCls}`}
-    >
-      {itemState === 'multi-saved' && (
-        <span className="shrink-0 w-2 h-2 rounded-full bg-success" />
-      )}
-      {(itemState === 'multi-queued' || itemState === 'multi-current') && (
-        <span
-          className={`shrink-0 w-2 h-2 rounded-full ${itemState === 'multi-current' ? 'bg-odoo-purple' : 'bg-odoo-purple/40'}`}
-        />
-      )}
-
-      <button
-        type="button"
-        className="shrink-0 w-6 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary transition-colors focus:outline-none"
-        {...attributes}
-        {...listeners}
-      >
-        ⠿
-      </button>
-
-      <button
-        type="button"
-        onClick={onClick}
-        onDoubleClick={onDoubleClick}
-        className="flex-1 text-left min-w-0 flex items-center gap-2 focus:outline-none select-none"
-      >
-        <span className="flex-1 min-w-0 text-xs font-medium text-text-primary dark:text-text-dark-primary truncate">
-          {block.title || 'Bloque sin nombre'}
-        </span>
-        {hasReviewComments && (
-          <span className="shrink-0 w-5 h-5 bg-amber-500 text-white rounded-full flex items-center justify-center text-[10px] font-bold shadow-sm animate-pulse">
-            !
-          </span>
-        )}
-        {itemState === 'multi-saved' ? (
-          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-success/10 text-success border border-success/20">
-            ✓
-          </span>
-        ) : (
-          <span className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${cfg.badgeCls}`}>
-            {cfg.label}
-          </span>
-        )}
-      </button>
-    </div>
-  );
-}
-
-// ── BlockUiStateToggle ────────────────────────────────────────────────────────
+// ── Sub-components ───────────────────────────────────────────────────────────
 
 function BlockUiStateToggle({
   value,
@@ -145,19 +48,18 @@ function BlockUiStateToggle({
   disabled?: boolean;
 }) {
   return (
-    <div className="flex flex-wrap gap-2">
-      {(['optional', 'editable', 'modifiable', 'locked'] as BlockUiState[]).map((s) => (
+    <div className="flex flex-wrap gap-1.5">
+      {(['editable', 'modifiable', 'locked', 'optional'] as BlockUiState[]).map((s) => (
         <button
           key={s}
           type="button"
           disabled={disabled}
           onClick={() => onChange(s)}
           className={[
-            'px-3 py-1.5 rounded text-xs font-medium transition-all border min-h-9',
-            'focus:outline-none focus-visible:ring-2 focus-visible:ring-odoo-purple/35',
+            'px-2.5 py-1 rounded text-xs font-bold uppercase tracking-widest transition-all border',
             value === s
-              ? 'border-odoo-purple bg-odoo-purple text-text-inverse dark:border-odoo-dark-purple dark:bg-odoo-dark-purple'
-              : 'border-ui-border dark:border-ui-dark-border text-text-secondary dark:text-text-dark-secondary hover:border-odoo-purple/50',
+              ? 'border-odoo-purple bg-odoo-purple text-text-inverse'
+              : 'border-ui-border dark:border-ui-dark-border text-text-secondary hover:border-odoo-purple/50',
             'disabled:opacity-50 disabled:pointer-events-none',
           ].join(' ')}
         >
@@ -168,864 +70,700 @@ function BlockUiStateToggle({
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+function SortableBlockItem({
+  block,
+  itemState,
+  onClick,
+  hasReviewComments,
+}: {
+  block: TemplateBlock;
+  itemState: 'default' | 'selected' | 'multi-queued' | 'multi-current' | 'multi-saved';
+  onClick: () => void;
+  hasReviewComments?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
-function descriptionToBlockNote(desc: string): unknown[] | undefined {
-  if (!desc.trim()) return undefined;
-  try {
-    const parsed: unknown = JSON.parse(desc);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    if (parsed && typeof parsed === 'object') {
-      const o = parsed as Record<string, unknown>;
-      if (o.type === 'doc' && Array.isArray(o.content) && (o.content as unknown[]).length > 0) {
-        return o.content as unknown[];
-      }
-    }
-  } catch { /* fallthrough to plain text */ }
-  return [{ type: 'paragraph', content: [{ type: 'text', text: desc.trim() }] }];
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 20 : 1,
+    position: 'relative',
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const isLocked = blockToUiState(block) === 'locked';
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <BlockListItem
+        title={block.title || ''}
+        variant={itemState}
+        locked={isLocked}
+        hasReviewComments={hasReviewComments}
+        onClick={onClick}
+        dragHandle={
+          <button
+            type="button"
+            {...attributes}
+            {...listeners}
+            className="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary focus:outline-none"
+            onClick={(e) => e.stopPropagation()}
+            aria-label="Reordenar bloque"
+          >
+            ⠿
+          </button>
+        }
+      />
+    </div>
+  );
 }
 
-function normalizeDescriptionForDisplay(desc: unknown): unknown[] {
-  if (!desc) return [];
-  if (typeof desc === 'string') {
-    if (!desc.trim()) return [];
-    try {
-      const parsed: unknown = JSON.parse(desc);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      if (parsed && typeof parsed === 'object') {
-        const o = parsed as Record<string, unknown>;
-        if (o.type === 'doc' && Array.isArray(o.content)) return o.content as unknown[];
-      }
-    } catch { /* fallthrough */ }
-    return [{ type: 'paragraph', content: [{ type: 'text', text: desc.trim() }] }];
-  }
-  if (Array.isArray(desc) && desc.length > 0) return desc;
-  return [];
-}
+// ── Main Component ───────────────────────────────────────────────────────────
 
-// ── Main component ────────────────────────────────────────────────────────────
-
-type Props = {
+interface WizardStep2BlocksProps {
   template: Template;
-  reviewComments?: any[];
-  onResolveComment?: (commentId: string) => Promise<void>;
-};
+  isDark?: boolean;
+  onBlocksCountChange?: (count: number) => void;
+  onBlocksLoadingChange?: (loading: boolean) => void;
+  onBlocksChange?: (blocks: TemplateBlock[]) => void;
+  onContinue?: () => void;
+  onInvalidBlocksChange?: (hasInvalid: boolean) => void;
+  onCommentAdded?: (comment: BlockComment) => void;
+}
 
 export type WizardStep2BlocksHandle = {
   saveIfPending: () => Promise<void>;
+  discardInvalidBlocks: () => Promise<TemplateBlock[]>;
 };
 
-export const WizardStep2Blocks = forwardRef<WizardStep2BlocksHandle, Props>(
-function WizardStep2Blocks({ template, reviewComments = [], onResolveComment }, ref) {
-  const { isDark } = useDarkMode();
-  const { blocks, createBlock, updateBlock, deleteBlock, reorderBlocks } =
-    useTemplateBlocks(template.id);
+export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, WizardStep2BlocksProps>(({
+  template,
+  isDark = false,
+  onBlocksCountChange,
+  onBlocksLoadingChange,
+  onBlocksChange,
+  onContinue,
+  onInvalidBlocksChange,
+  onCommentAdded,
+}, ref) => {
+  const commentsQuery = useTemplateCommentsQuery(template.id);
+  const reviewComments = commentsQuery.data?.data ?? [];
 
-  const sensors = useSensors(useSensor(PointerSensor));
+  const {
+    blocks,
+    loading,
+    createBlock,
+    updateBlock,
+    deleteBlock,
+    reorderBlocks
+  } = useTemplateBlocks(template.id);
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const newIndex = blocks.findIndex((b: TemplateBlock) => b.id === over.id);
-    if (newIndex < 0) return;
-    void reorderBlocks(active.id.toString(), newIndex);
-  };
+  const { isDark: globalIsDark } = useDarkMode();
+  const effectiveIsDark = isDark || globalIsDark;
+
+  useEffect(() => {
+    onBlocksLoadingChange?.(loading);
+  }, [loading, onBlocksLoadingChange]);
+
+  useEffect(() => {
+    if (!loading) {
+      onBlocksCountChange?.(blocks.length);
+      onBlocksChange?.(blocks);
+    }
+  }, [blocks, loading, onBlocksCountChange, onBlocksChange]);
+
+  const hasInvalidBlocks = !loading && blocks.some(b => !b.title?.trim());
+
+  useEffect(() => {
+    onInvalidBlocksChange?.(hasInvalidBlocks);
+  }, [hasInvalidBlocks, onInvalidBlocksChange]);
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => { if (hasInvalidBlocks) e.preventDefault(); };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasInvalidBlocks]);
+
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+
+  const handleEditorFullscreenChange = useCallback((v: boolean) => {
+    setIsEditorFullscreen(v);
+    document.documentElement.classList.toggle('editor-fullscreen', v);
+  }, []);
+
+  useEffect(() => {
+    return () => document.documentElement.classList.remove('editor-fullscreen');
+  }, []);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
+  const [showCommentPanel, setShowCommentPanel] = useState(true);
 
-  const [multiIndex, setMultiIndex] = useState(0);
-  const [multiSaved, setMultiSaved] = useState<Set<string>>(new Set());
+  // const [multiIndex, setMultiIndex] = useState(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    return () => {
-      if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-    };
-  }, []);
 
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formContent, setFormContent] = useState('');
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
+  const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [tabIsDirty, setTabIsDirty] = useState(false);
-  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Autosave: 600ms after last form change in edit mode
-  useEffect(() => {
-    if (panelMode !== 'edit' || !activeSingleId || !tabIsDirty) return;
-    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
-    autosaveTimerRef.current = setTimeout(() => { void saveCurrentTab(); }, 600);
-    return () => { if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]);
 
   useEffect(() => {
-    const tabs: TabId[] = ['properties', 'content', 'description'];
-    const handleKey = (e: KeyboardEvent) => {
-      if (!panelRef.current?.contains(document.activeElement)) return;
-      if (panelMode !== 'edit' && panelMode !== 'create') return;
-      const idx = tabs.indexOf(activeTab);
-      if (e.key === 'Home') {
-        e.preventDefault();
-        if (idx > 0) void handleTabChange(tabs[idx - 1]!);
-      }
-      if (e.key === 'End') {
-        e.preventDefault();
-        if (idx < tabs.length - 1) void handleTabChange(tabs[idx + 1]!);
-      }
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab, activeSingleId, panelMode, tabIsDirty]);
+    if (activeSingleId && !formName.trim()) {
+      setShowCommentPanel(false);
+    }
+  }, [activeSingleId, formName]);
+  // Reply state is managed inside BlockCommentsCard; we only keep the API handler here.
+  // Ref to always have latest activeSingleId in the autosave closure
+  const activeSingleIdRef = useRef<string | null>(null);
+  activeSingleIdRef.current = activeSingleId;
 
-  // Derived
-  const orderedSelection = blocks.filter((b: TemplateBlock) => selectedBlockIds.includes(b.id)).map((b: TemplateBlock) => b.id);
-  const currentMultiId = orderedSelection[multiIndex] ?? null;
-  const currentMultiBlock = currentMultiId ? (blocks.find((b) => b.id === currentMultiId) ?? null) : null;
   const selectedBlock = activeSingleId ? (blocks.find((b) => b.id === activeSingleId) ?? null) : null;
-  const allBlocksSelected = blocks.length > 0 && selectedBlockIds.length === blocks.length;
+  const selectedBlockIndex = selectedBlock ? blocks.findIndex((b) => b.id === selectedBlock.id) : -1;
 
-  // ── Helpers ──────────────────────────────────────────────────────────────────
+  const blockComments: BlockComment[] = activeSingleId
+    ? reviewComments.filter((c) => c.blockable_id === activeSingleId)
+    : [];
+
+  useEffect(() => {
+    if (activeTab === 'comments') setActiveTab('properties');
+  }, [activeTab]);
 
   const loadFormFromBlock = (block: TemplateBlock) => {
     setFormName(block.title ?? '');
-    setFormDesc(block.description ? JSON.stringify(block.description) : '');
-    setFormContent(block.default_content ? JSON.stringify(block.default_content) : '');
+    setNameError('');
+    setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
+    setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
     setFormUiState(blockToUiState(block));
-    setActionError(null);
-  };
-
-  const resetForm = () => {
-    setFormName('');
-    setFormDesc('');
-    setFormContent('');
-    setFormUiState('optional');
-    setActionError(null);
-    setDeleteModal(false);
-    setActiveTab('properties');
     setTabIsDirty(false);
-    setSaveStatus('idle');
   };
 
-  // ── Tab auto-save ─────────────────────────────────────────────────────────────
+  // ── useAutoSave (debounce 1500ms) — compartido en edit y multi ───────────────
+  const validateBlockName = (name: string): string => {
+    if (!name.trim()) return 'El nombre del bloque es obligatorio';
+    if (name.trim().toLowerCase() === 'bloque sin nombre') return '"Bloque sin nombre" no es un nombre válido';
+    return '';
+  };
 
-  const saveCurrentTab = async () => {
-    if (!tabIsDirty || !activeSingleId) return;
-    setSaveStatus('saving');
-    try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      const parsedContent = formContent ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formContent)); } catch { return null; } })() : null;
-      const parsedDesc = formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null;
-      await updateBlock(activeSingleId, {
-        title: formName.trim() || undefined,
-        description: parsedDesc,
-        default_content: parsedContent,
-        block_state,
-        mandatory,
-      });
-      setTabIsDirty(false);
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
-      setSaveStatus('error');
+  const doSave = useCallback(async () => {
+    const blockId = activeSingleIdRef.current;
+    if (!blockId) return;
+    const nameErr = validateBlockName(formName);
+    if (nameErr) {
+      setNameError(nameErr);
+      return;
     }
-  };
+    setNameError('');
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
+    let parsedContent: unknown = null;
+    let parsedDesc: unknown = null;
+    try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
+    try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
+    // Normalize whitespace-only BlockNote content to null so it is stored as empty
+    // and the UI shows "Este bloque no tiene contenido." instead of blank text nodes.
+    if (Array.isArray(parsedContent) && parsedContent.length > 0) {
+      type BlockNoteNode = { content?: Array<{ text?: unknown }> };
+      const isBlank = (parsedContent as BlockNoteNode[]).every((b) =>
+        !Array.isArray(b.content) ||
+        b.content.length === 0 ||
+        b.content.every((c) => typeof c.text !== 'string' || !c.text.trim()),
+      );
+      if (isBlank) parsedContent = null;
+    }
+    await updateBlock(blockId, {
+      title: formName.trim(),
+      description: parsedDesc,
+      default_content: parsedContent,
+      block_state,
+      mandatory,
+    });
+    setTabIsDirty(false);
+  }, [formName, formDesc, formContent, formUiState, updateBlock]);
 
-  const handleTabChange = async (newTab: TabId) => {
-    if (newTab === activeTab) return;
-    await saveCurrentTab();
-    setActiveTab(newTab);
-  };
+  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
-  // ── Click handlers ────────────────────────────────────────────────────────────
+  // Trigger autosave whenever form changes and there are dirty changes in edit or multi
+  useEffect(() => {
+    if ((panelMode !== 'edit' && panelMode !== 'multi') || !activeSingleId || !tabIsDirty) return;
+    triggerSave();
+  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Convenience wrapper used by saveIfPending and manual saves
+  const saveCurrentTab = useCallback(async () => {
+    if (!tabIsDirty || !activeSingleId) return;
+    await forceSave();
+  }, [tabIsDirty, activeSingleId, forceSave]);
 
   const handleBlockClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-
     clickTimerRef.current = setTimeout(async () => {
+      // Abort navigation if the current block has an invalid name.
+      if (activeSingleId && blockId !== activeSingleId) {
+        const nameErr = validateBlockName(formName);
+        if (nameErr) {
+          setNameError(nameErr);
+          setActiveTab('properties');
+          return;
+        }
+      }
       if (tabIsDirty && activeSingleId) await saveCurrentTab();
-      const block = blocks.find((b: TemplateBlock) => b.id === blockId);
+      const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
       setSelectedBlockIds([blockId]);
-      setMultiSaved(new Set());
-      setActionError(null);
-      setDeleteModal(false);
-      openEdit(block);
+      setActiveSingleId(blockId);
+      setPanelMode('edit');
+      setShowCommentPanel(true);
+      loadFormFromBlock(block);
+      setActiveTab('properties');
     }, 200);
   };
 
-  const handleBlockDoubleClick = (blockId: string) => {
-    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-
-    setSelectedBlockIds((prev: string[]) => {
-      const alreadySelected = prev.includes(blockId);
-      const newIds = alreadySelected ? prev.filter((id: string) => id !== blockId) : [...prev, blockId];
-
-      if (newIds.length === 0) {
-        setPanelMode('empty');
-        setActiveSingleId(null);
-      } else if (newIds.length === 1) {
-        const block = blocks.find((b: TemplateBlock) => b.id === newIds[0]);
-        if (block) openEdit(block);
-      } else {
-        const ordered = blocks.filter((b: TemplateBlock) => newIds.includes(b.id)).map((b: TemplateBlock) => b.id);
-        setMultiIndex(0);
-        setMultiSaved(new Set());
-        const first = blocks.find((b) => b.id === ordered[0]);
-        if (first) loadFormFromBlock(first);
-        setPanelMode('multi');
-      }
-
-      return newIds;
-    });
-    setActionError(null);
-    setDeleteModal(false);
-  };
-
   const handleToggleSelectAll = () => {
-    if (allBlocksSelected) {
+    if (selectedBlockIds.length === blocks.length && blocks.length > 0) {
       setSelectedBlockIds([]);
-      setPanelMode('empty');
       setActiveSingleId(null);
+      setPanelMode('empty');
     } else {
-      const allIds = blocks.map((b: TemplateBlock) => b.id);
-      setSelectedBlockIds(allIds);
-      if (allIds.length === 1) {
-        setActiveSingleId(allIds[0]);
-        setPanelMode('summary');
-      } else if (allIds.length >= 2) {
-        setMultiIndex(0);
-        setMultiSaved(new Set());
-        if (blocks[0]) loadFormFromBlock(blocks[0]);
-        setPanelMode('multi');
+      setSelectedBlockIds(blocks.map(b => b.id));
+      // setMultiIndex(0);
+      setPanelMode('multi');
+      if (blocks[0]) {
+        setActiveSingleId(blocks[0].id);
+        loadFormFromBlock(blocks[0]);
       }
     }
   };
 
-  // ── Single-block CRUD ────────────────────────────────────────────────────────
-
-  const openCreate = async () => {
-    if (busy) return;
-    resetForm();
-    setSelectedBlockIds([]);
-    setActiveSingleId(null);
-    setActiveTab('properties');
-    setPanelMode('create');
-  };
-
-  const openEdit = (block: TemplateBlock) => {
-    loadFormFromBlock(block);
-    setActiveTab('properties');
-    setTabIsDirty(false);
-    setSaveStatus('idle');
-    setDeleteModal(false);
-    setPanelMode('edit');
-    setActiveSingleId(block.id);
-  };
-
-  const handleAddBlock = async (): Promise<boolean> => {
-    if (!formName.trim()) return false;
-    setBusy(true);
-    setActionError(null);
-    try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      const parsedContent = formContent ? (() => { try { return JSON.parse(formContent); } catch { return null; } })() : null;
-      const parsedDesc = formDesc ? (() => { try { return repairBlockNoteBlocks(JSON.parse(formDesc)); } catch { return null; } })() : null;
-      const newBlock = await createBlock({
-        type: 'paragraph',
-        title: formName.trim(),
-        description: parsedDesc,
-        default_content: parsedContent ? repairBlockNoteBlocks(parsedContent) : null,
-        block_state,
-        mandatory,
-      });
-      resetForm();
-      openEdit(newBlock);
-      return true;
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Error al crear el bloque');
-      return false;
-    } finally {
-      setBusy(false);
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      const newIndex = blocks.findIndex((i) => i.id === over.id);
+      void reorderBlocks(active.id as string, newIndex);
     }
   };
 
   useImperativeHandle(ref, () => ({
     saveIfPending: async () => {
-      if (panelMode === 'create' && formName.trim()) {
-        const ok = await handleAddBlock();
-        if (!ok) throw new Error('block-save-failed');
+      if (tabIsDirty) await forceSave();
+    },
+    discardInvalidBlocks: async () => {
+      const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
+      for (const id of invalidIds) await deleteBlock(id);
+      if (activeSingleId && invalidIds.includes(activeSingleId)) {
+        setActiveSingleId(null);
+        setSelectedBlockIds([]);
+        setPanelMode('empty');
       }
+      return blocks.filter(b => !!b.title?.trim());
     },
   }));
 
-  const handleDelete = async () => {
-    if (!activeSingleId) return;
-    setBusy(true);
-    try {
-      const remaining = blocks.filter((b: TemplateBlock) => b.id !== activeSingleId);
-      await deleteBlock(activeSingleId);
-      setDeleteModal(false);
-      setTabIsDirty(false);
-      setSaveStatus('idle');
-      if (remaining.length > 0) {
-        const first = remaining[0]!;
-        setActiveSingleId(first.id);
-        setSelectedBlockIds([first.id]);
-        loadFormFromBlock(first);
+  const handleAddBlock = async () => {
+    // Block creation if the current block still has an invalid name.
+    if (activeSingleId) {
+      const nameErr = validateBlockName(formName);
+      if (nameErr) {
+        setNameError(nameErr);
         setActiveTab('properties');
-        setPanelMode('summary');
-      } else {
-        setActiveSingleId(null);
-        setSelectedBlockIds([]);
-        setPanelMode('empty');
+        return;
       }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Error al eliminar el bloque');
-    } finally {
-      setBusy(false);
     }
-  };
-
-  // ── Multi-edit handlers ──────────────────────────────────────────────────────
-
-  const handleMultiSaveAndNext = async () => {
-    if (!formName.trim() || !currentMultiId) return;
     setBusy(true);
-    setActionError(null);
     try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState as BlockUiState].payload;
-      await updateBlock(currentMultiId, {
-        title: formName.trim(),
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
+      const newBlock = await createBlock({
+        title: null,
+        type: 'paragraph',
         block_state,
         mandatory,
       });
-      setMultiSaved((prev: Set<string>) => new Set([...prev, currentMultiId]));
-
-      const nextIdx = multiIndex + 1;
-      if (nextIdx < orderedSelection.length) {
-        setMultiIndex(nextIdx);
-        const nextBlock = blocks.find((b: TemplateBlock) => b.id === orderedSelection[nextIdx]);
-        if (nextBlock) loadFormFromBlock(nextBlock);
-      } else {
-        setSelectedBlockIds([]);
-        setMultiSaved(new Set());
-        setPanelMode('empty');
-        setActiveSingleId(null);
-      }
-    } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'Error al guardar el bloque');
+      setSelectedBlockIds([newBlock.id]);
+      setActiveSingleId(newBlock.id);
+      setPanelMode('edit');
+      loadFormFromBlock(newBlock);
+      setActiveTab('properties');
+      setShowCommentPanel(false);
     } finally {
       setBusy(false);
     }
   };
 
-  const handleMultiNavigate = (newIdx: number) => {
-    if (newIdx < 0 || newIdx >= orderedSelection.length) return;
-    setMultiIndex(newIdx);
-    const target = blocks.find((b: TemplateBlock) => b.id === orderedSelection[newIdx]);
-    if (target) loadFormFromBlock(target);
-    setActionError(null);
+  const handleDelete = async () => {
+    setBusy(true);
+    try {
+      if (panelMode === 'multi' && selectedBlockIds.length > 0) {
+        // Delete all selected blocks
+        for (const id of selectedBlockIds) {
+          await deleteBlock(id);
+        }
+        setSelectedBlockIds([]);
+        setActiveSingleId(null);
+        // setMultiIndex(0);
+      } else if (activeSingleId) {
+        await deleteBlock(activeSingleId);
+        setActiveSingleId(null);
+        setSelectedBlockIds([]);
+      }
+      setPanelMode('empty');
+      setDeleteModal(false);
+    } finally {
+      setBusy(false);
+    }
   };
 
-  const handleMultiCancelAll = () => {
-    setSelectedBlockIds([]);
-    setMultiSaved(new Set());
+  const handleDuplicate = async () => {
+    setBusy(true);
+    try {
+      const ids = panelMode === 'multi' ? selectedBlockIds : (activeSingleId ? [activeSingleId] : []);
+      for (const id of ids) {
+        const source = blocks.find((b) => b.id === id);
+        if (!source) continue;
+        const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[blockToUiState(source)].payload;
+        await createBlock({
+          title: `${source.title ?? 'Bloque'} (copia)`,
+          type: source.type,
+          block_state,
+          mandatory,
+          default_content: source.default_content,
+          description: source.description,
+        });
+      }
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (tabIsDirty && activeSingleId) {
+      const original = blocks.find((b) => b.id === activeSingleId);
+      if (original) loadFormFromBlock(original);
+    }
     setPanelMode('empty');
     setActiveSingleId(null);
-    resetForm();
+    setSelectedBlockIds([]);
+    // setMultiIndex(0);
   };
 
-  // ── Render ───────────────────────────────────────────────────────────────────
+  const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
+    if (!activeSingleId) return;
+    const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
+      method: 'POST',
+      body: { body, parent_id: parentId, blockable_id: activeSingleId },
+    });
+    onCommentAdded?.(res.data);
+  }, [activeSingleId, template.id, onCommentAdded]);
+
+  const renderSaveStatus = () => {
+    if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
+    if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ Guardado</span>;
+    if (saveStatus === 'error') return <span className="text-xs text-danger-dark">Error al guardar</span>;
+    return null;
+  };
 
   return (
-    <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-      {/* Columna Izquierda — 25% */}
-      <div className="md:w-1/4 min-w-0 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
-        <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border bg-ui-card/50 dark:bg-ui-dark-card/50 flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-            BLOQUES ({blocks.length})
-          </span>
-          <Button type="button" variant="ghost" size="xs" onClick={handleToggleSelectAll}>
-            {allBlocksSelected ? 'Deseleccionar todos' : 'Seleccionar todos'}
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 min-h-0">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={blocks.map((b: TemplateBlock) => b.id)} strategy={verticalListSortingStrategy}>
-              <div className="space-y-2">
-                {blocks.map((block) => {
-                  let itemState: BlockItemState = 'default';
-                  if (panelMode === 'multi') {
-                    if (multiSaved.has(block.id)) itemState = 'multi-saved';
-                    else if (block.id === currentMultiId) itemState = 'multi-current';
-                    else if (selectedBlockIds.includes(block.id)) itemState = 'multi-queued';
-                  } else if (selectedBlockIds.includes(block.id)) {
-                    itemState = 'selected';
-                  }
-                  return (
-                    <SortableBlockItem
-                      key={block.id}
-                      block={block}
-                      itemState={itemState}
-                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); handleBlockClick(block.id); }}
-                      onDoubleClick={(e: React.MouseEvent) => { e.stopPropagation(); handleBlockDoubleClick(block.id); }}
-                      hasReviewComments={reviewComments.some(c => c.template_block_id === block.id && !c.resolved)}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </div>
-
-        <div className="shrink-0 p-4 border-t border-ui-border dark:border-ui-dark-border">
-          <button
-            type="button"
-            onClick={openCreate}
-            className="w-full text-center rounded-lg px-3 py-3 flex items-center justify-center border-2 border-dashed border-ui-border hover:border-odoo-purple/50 hover:text-odoo-purple transition-all text-text-muted"
-          >
-            <span className="text-sm font-medium">+ Añadir bloque</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Columna Derecha — 75% */}
-      <div className="flex-1 min-w-0 flex flex-col overflow-hidden bg-ui-body/30 dark:bg-ui-dark-bg">
-
-        {/* empty */}
-        {panelMode === 'empty' && (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-            <svg className="w-10 h-10 text-text-muted mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
-            </svg>
-            <p className="text-sm font-bold text-text-primary">Selecciona un bloque</p>
-            <p className="text-xs text-text-muted mt-1">
-              Clic para ver el resumen. Ctrl/⌘ + clic para selección múltiple.
-            </p>
-          </div>
-        )}
-
-        {/* summary */}
-        {panelMode === 'summary' && selectedBlock && (
-          <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
-            <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0">
-              <h3 className="text-sm font-bold text-text-primary truncate pr-4">{selectedBlock.title}</h3>
-              <div className="flex gap-2">
-                <Button variant="outline" size="xs" onClick={() => openEdit(selectedBlock)}>Editar</Button>
-                <Button variant="outline" size="xs" className="text-danger" onClick={() => setDeleteModal(true)}>Eliminar</Button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              <dl className="grid grid-cols-1 gap-6">
-                <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Nombre</dt>
-                  <dd className="mt-1 text-sm font-medium">{selectedBlock.title}</dd>
+    <div className={[
+      isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 min-h-0 flex flex-col md:flex-row relative overflow-visible',
+      'transition-all duration-300'
+    ].join(' ')}>
+      {!isEditorFullscreen && (
+        <div className="relative shrink-0 z-30 flex flex-col overflow-visible">
+          <div className={[
+            'h-full flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card transition-all duration-300 overflow-hidden',
+            isSidebarCollapsed ? 'w-0' : 'w-64 md:w-72'
+          ].join(' ')}>
+            {!isSidebarCollapsed && (
+              <div className="flex flex-col h-full overflow-hidden animate-in fade-in duration-300">
+                <div className="px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0">
+                  <span className="text-xs font-black uppercase text-text-secondary tracking-widest truncate">Bloques ({blocks.length})</span>
+                  <Button variant="ghost" size="xs" onClick={handleToggleSelectAll} className="shrink-0 ml-2">
+                    {selectedBlockIds.length === blocks.length && blocks.length > 0 ? 'Deseleccionar' : 'Todos'}
+                  </Button>
                 </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Descripción</dt>
-                  <dd className="mt-1 text-sm text-text-secondary">
-                    {(() => {
-                      const desc = selectedBlock.description;
-                      if (!desc) return '—';
-                      const blocks = normalizeDescriptionForDisplay(desc);
-                      return blocks.length > 0 ? <BlockContentHtml content={blocks} /> : '—';
-                    })()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Estado</dt>
-                  <dd className="mt-2">
-                    {(() => {
-                      const cfg = BLOCK_UI_STATE_CONFIG[blockToUiState(selectedBlock)];
-                      return (
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${cfg.badgeCls}`}>
-                          {cfg.label}
-                        </span>
-                      );
-                    })()}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-[10px] font-bold uppercase text-text-muted">Orden</dt>
-                  <dd className="mt-1 text-sm">
-                    {blocks.findIndex((b: TemplateBlock) => b.id === selectedBlock.id) + 1} de {blocks.length}
-                  </dd>
-                </div>
-              </dl>
-              <p className="text-xs text-text-muted italic pt-4 border-t border-ui-border dark:border-ui-dark-border">
-                Pulsa «Editar» para modificar o «Eliminar» para borrar permanentemente.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* edit / create — tabbed panel */}
-        {(panelMode === 'create' || panelMode === 'edit') && (
-          <div ref={panelRef} className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
-            {/* Panel header */}
-            <div className="px-5 pt-3 border-b border-ui-border dark:border-ui-dark-border shrink-0">
-              <div className="flex items-center justify-between pb-1">
-                <h3 className="text-sm font-bold text-text-primary truncate">
-                  {panelMode === 'create' ? 'Nuevo bloque' : (selectedBlock?.title || 'Bloque sin nombre')}
-                </h3>
-                <div className="flex items-center gap-3 shrink-0">
-                  {panelMode === 'edit' && (
-                    <>
-                      {saveStatus === 'saving' && (
-                        <span className="text-[10px] text-text-muted">Guardando…</span>
-                      )}
-                      {saveStatus === 'saved' && (
-                        <span className="text-[10px] text-success font-medium">✓ Guardado</span>
-                      )}
-                      {saveStatus === 'error' && (
-                        <span className="text-[10px] text-danger-dark font-medium">Error al guardar</span>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="xs"
-                        className="text-danger"
-                        onClick={() => setDeleteModal(true)}
-                      >
-                        {labels[tab]}
-                      </Button>
-                    </>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                  {loading ? (
+                    <div className="text-xs text-text-muted p-4">Cargando bloques...</div>
+                  ) : (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                      <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                        {blocks.map((block) => (
+                          <SortableBlockItem
+                            key={block.id}
+                            block={block}
+                            itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
+                            onClick={() => handleBlockClick(block.id)}
+                            hasReviewComments={reviewComments.some(c => c.blockable_id === block.id)}
+                          />
+                        ))}
+                      </SortableContext>
+                    </DndContext>
                   )}
                 </div>
-              </div>
-
-              {/* Tab content */}
-              <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'description' || activeTab === 'content' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
-                {activeTab === 'properties' && (
-                  <div className="space-y-4">
-                    <div>
-                      <FieldLabel required>Nombre del bloque</FieldLabel>
-                      <TextInput
-                        type="text"
-                        fieldSize="comfortable"
-                        value={formName}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }}
-                        placeholder="Ej. Introducción"
-                      />
-                    </div>
-                    <div>
-                      <FieldLabel required>Estado del bloque</FieldLabel>
-                      <div className="mt-1">
-                        <BlockUiStateToggle
-                          value={formUiState}
-                          onChange={(s) => { setFormUiState(s); setTabIsDirty(true); }}
-                          disabled={busy}
-                        />
-                      </div>
-                    </div>
-                    {panelMode === 'edit' && (
-                      <p className="text-[10px] text-text-muted italic">
-                        Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'content' && (
-                  <div className="flex-1 flex flex-col min-h-0">
-                    <div className="flex-1 overflow-hidden">
-                      <Suspense fallback={<div className="p-6 text-xs text-text-muted">Cargando editor…</div>}>
-                        <BlockNoteEditorPanel
-                          initialContent={formContent}
-                          editable={formUiState !== 'locked'}
-                          isDark={isDark}
-                          onChange={(json) => { setFormContent(json as string); setTabIsDirty(true); }}
-                        />
-                      </Suspense>
-                    </div>
-                  </div>
-                )}
-
-                {activeTab === 'description' && (
-                  <div className="flex-1 flex flex-col min-h-0 p-6">
-                    <FieldLabel>Descripción (interna para el docente)</FieldLabel>
-                    <TextArea
-                      fieldSize="comfortable"
-                      className="flex-1 resize-none"
-                      value={formDesc}
-                      onChange={(e) => { setFormDesc(e.target.value); setTabIsDirty(true); }}
-                      placeholder="Escribe aquí notas sobre el propósito de este bloque…"
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Tab content */}
-            <div className={`flex-1 flex flex-col min-h-0 ${activeTab === 'content' || activeTab === 'description' ? 'overflow-hidden' : 'overflow-y-auto p-6'}`}>
-              {activeTab === 'properties' && (
-                <div className="space-y-4">
-                  <div>
-                    <FieldLabel required>Nombre del bloque</FieldLabel>
-                    <TextInput
-                      type="text"
-                      fieldSize="comfortable"
-                      value={formName}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setFormName(e.target.value); setTabIsDirty(true); }}
-                      placeholder="Ej. Introducción"
-                    />
-                  </div>
-                  <div>
-                    <FieldLabel required>Estado del bloque</FieldLabel>
-                    <div className="mt-1">
-                      <BlockUiStateToggle
-                        value={formUiState}
-                        onChange={(s) => { setFormUiState(s); setTabIsDirty(true); }}
-                        disabled={busy}
-                      />
-                    </div>
-                  </div>
-                  {panelMode === 'edit' && (
-                    <p className="text-[10px] text-text-muted italic">
-                      Se guarda automáticamente tras 600 ms de inactividad o al cambiar de pestaña.
-                    </p>
-                  )}
+                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                  <Button
+                    variant="outline"
+                    className="w-full border-dashed"
+                    onClick={() => void handleAddBlock()}
+                    disabled={busy}
+                  >
+                    + Añadir bloque
+                  </Button>
                 </div>
-              )}
-
-              {activeTab === 'content' && (
-                <ErrorBoundary fallback={<div className="text-xs text-danger-dark dark:text-danger p-4">Error al cargar el editor de contenido.</div>}>
-                  <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
-                    <BlockNoteEditorPanel
-                      key={(activeSingleId ?? 'new') + '-content'}
-                      initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                      editable
-                      isDark={isDark}
-                      onChange={(content: unknown) => { setFormContent(JSON.stringify(content)); setTabIsDirty(true); }}
-                    />
-                  </Suspense>
-                </ErrorBoundary>
-              )}
-
-              {activeTab === 'description' && (
-                <ErrorBoundary fallback={<div className="text-xs text-danger-dark dark:text-danger p-4">Error al cargar el editor de descripción.</div>}>
-                  <Suspense fallback={<div className="text-xs text-text-muted p-4">Cargando editor…</div>}>
-                    <BlockNoteEditorPanel
-                      key={(activeSingleId ?? 'new') + '-description'}
-                      initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                      editable
-                      isDark={isDark}
-                      onChange={(content: unknown) => { setFormDesc(JSON.stringify(content)); setTabIsDirty(true); }}
-                    />
-                  </Suspense>
-                </ErrorBoundary>
-              )}
-
-              {activeTab === 'comments' && (
-                <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-ui-body/30 dark:bg-ui-dark-bg/30">
-                  {(() => {
-                    const blockComments = reviewComments.filter(c => c.template_block_id === activeSingleId);
-                    if (blockComments.length === 0) {
-                      return (
-                        <div className="flex flex-col items-center justify-center h-40 text-center opacity-40">
-                          <span className="text-3xl mb-2">💬</span>
-                          <p className="text-xs">No hay comentarios en este bloque.</p>
-                        </div>
-                      );
-                    }
-                    return blockComments.map(c => (
-                      <div key={c.id} className={[
-                        'bg-white dark:bg-ui-dark-card p-5 rounded-xl border shadow-sm transition-all duration-300',
-                        c.resolved
-                          ? 'opacity-60 border-ui-border dark:border-ui-dark-border grayscale-[0.5]'
-                          : 'border-amber-200 dark:border-amber-800/50 hover:shadow-md hover:border-amber-300'
-                      ].join(' ')}>
-                        <div className="flex justify-between items-start gap-3 mb-3">
-                          <div className="flex items-center gap-2">
-                            <div className={[
-                              'w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black',
-                              c.resolved ? 'bg-success/20 text-success' : 'bg-odoo-purple/10 text-odoo-purple'
-                            ].join(' ')}>
-                              {c.author?.name ? c.author.name.charAt(0).toUpperCase() : '?'}
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold text-text-primary dark:text-text-dark-primary leading-none">
-                                {c.author?.name || 'Validador'}
-                              </p>
-                              <p className="text-[9px] text-text-muted mt-0.5">
-                                {c.resolved ? 'Resuelto' : 'Pendiente de corregir'}
-                              </p>
-                            </div>
-                          </div>
-                          <span className="text-[9px] text-text-muted font-medium bg-ui-body dark:bg-ui-dark-bg px-2 py-0.5 rounded border border-ui-border dark:border-ui-dark-border">
-                            {new Date(c.created_at).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <div className="pl-8">
-                          <p className="text-xs text-text-primary dark:text-text-dark-primary leading-relaxed mb-4">
-                            {c.body}
-                          </p>
-                          {!c.resolved && onResolveComment && (
-                            <div className="flex justify-end">
-                              <Button
-                                variant="outline"
-                                size="xs"
-                                className="text-[9px] font-black uppercase tracking-widest text-success border-success/30 hover:bg-success hover:text-white transition-all shadow-sm"
-                                onClick={() => void onResolveComment(c.id)}
-                              >
-                                ✓ Marcar como corregido
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              )}
-
-              {actionError && (
-                <p className="text-xs text-danger-dark animate-in fade-in mt-4 px-6">{actionError}</p>
-              )}
-            </div>
-
-            {/* Footer: only for create mode */}
-            {panelMode === 'create' && (
-              <div className="shrink-0 px-6 py-4 border-t border-ui-border dark:border-ui-dark-border flex gap-3">
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="md"
-                  className="flex-1"
-                  loading={busy}
-                  onClick={() => void handleAddBlock()}
-                  disabled={!formName.trim()}
-                >
-                  Guardar bloque
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  disabled={busy}
-                  onClick={() => setPanelMode('empty')}
-                >
-                  Cancelar
-                </Button>
               </div>
             )}
           </div>
+          <button
+            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            className={[
+              'absolute top-4 -right-3 z-50 w-6 h-6 rounded-full border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card flex items-center justify-center text-text-muted hover:text-odoo-purple transition-all shadow-sm',
+              isSidebarCollapsed ? 'rotate-180' : ''
+            ].join(' ')}
+            title={isSidebarCollapsed ? 'Expandir' : 'Colapsar'}
+          >
+            <svg className="w-3.5 h-3.5 transition-transform duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Main Panel */}
+
+      {/* Main Panel */}
+      <div className="flex-1 min-w-0 min-h-0 flex flex-col bg-ui-body/30 dark:bg-ui-dark-bg overflow-visible">
+        {panelMode === 'empty' && (
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center opacity-40">
+            <p className="text-sm font-bold uppercase tracking-widest">Selecciona un bloque para editar</p>
+          </div>
         )}
 
-        {/* multi */}
-        {panelMode === 'multi' && currentMultiBlock && (
-          <div className="flex-1 flex flex-col overflow-hidden animate-in slide-in-from-right-4">
-            <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border bg-odoo-purple/5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <span className="shrink-0 w-6 h-6 rounded-full bg-odoo-purple text-white text-[10px] font-bold flex items-center justify-center">
-                  {multiIndex + 1}
-                </span>
-                <h3 className="text-sm font-bold text-odoo-purple truncate">
-                  Edición múltiple ({multiIndex + 1} de {orderedSelection.length})
+        {(panelMode === 'edit' || panelMode === 'multi') && selectedBlock && (
+          <div className="flex-1 flex flex-col overflow-hidden animate-in fade-in">
+            {/* Compact fullscreen header — replaces regular header + tabs when fullscreen */}
+            {isEditorFullscreen && (
+              <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
+                <button
+                  type="button"
+                  aria-label="Salir de pantalla completa"
+                  title="Salir de pantalla completa (Esc)"
+                  onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}
+                  className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" />
+                    <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
+                  </svg>
+                </button>
+                <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">
+                  Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
                 </h3>
+                {renderSaveStatus()}
+                {onContinue && (
+                  <Button variant="primary" size="xs" onClick={onContinue} className="shrink-0">
+                    Guardar y continuar →
+                  </Button>
+                )}
               </div>
-              <button type="button" onClick={handleMultiCancelAll} className="text-text-muted hover:text-danger text-xs transition-colors">
-                Cancelar todo
-              </button>
-            </div>
+            )}
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Navigation */}
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleMultiNavigate(multiIndex - 1)}
-                  disabled={multiIndex === 0}
-                  className="w-7 h-7 rounded-full border border-ui-border flex items-center justify-center text-xs text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple disabled:opacity-30 disabled:pointer-events-none transition-all"
-                >
-                  ←
-                </button>
-                <span className="text-xs font-bold text-text-primary tabular-nums">
-                  {multiIndex + 1} / {orderedSelection.length}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleMultiNavigate(multiIndex + 1)}
-                  disabled={multiIndex === orderedSelection.length - 1}
-                  className="w-7 h-7 rounded-full border border-ui-border flex items-center justify-center text-xs text-text-secondary hover:border-odoo-purple/50 hover:text-odoo-purple disabled:opacity-30 disabled:pointer-events-none transition-all"
-                >
-                  →
-                </button>
-                <div className="flex-1 h-1.5 bg-ui-border rounded-full overflow-hidden ml-1">
-                  <div
-                    className="h-full bg-odoo-purple rounded-full transition-all duration-200"
-                    style={{ width: `${((multiIndex + 1) / orderedSelection.length) * 100}%` }}
-                  />
+            {/* Regular header — hidden in fullscreen */}
+            {!isEditorFullscreen && (
+              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
+                <div className="flex items-center gap-3 min-w-0">
+                  <h3 className="text-sm font-bold truncate uppercase tracking-widest">
+                    Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
+                  </h3>
+                  {renderSaveStatus()}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {!showCommentPanel && selectedBlock?.title && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={() => setShowCommentPanel(true)}
+                      className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                    >
+                      Comentarios ({getCommentsForBlock(activeSingleId, reviewComments).length})
+                    </Button>
+                  )}
+                  <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
+                  <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
+                  <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
                 </div>
               </div>
+            )}
 
-              {/* Form */}
-              <div className="p-4 bg-white dark:bg-ui-dark-card border border-odoo-purple/20 rounded-lg shadow-sm space-y-4">
-                <div>
-                  <FieldLabel required>Nombre del bloque</FieldLabel>
-                  <TextInput
-                    type="text"
-                    fieldSize="comfortable"
-                    value={formName}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormName(e.target.value)}
-                    placeholder="Ej. Introducción"
-                  />
-                </div>
-                <div>
-                  <FieldLabel required>Estado del bloque</FieldLabel>
-                  <div className="mt-1">
-                    <BlockUiStateToggle value={formUiState} onChange={setFormUiState} disabled={busy} />
+            {/* Tabs — hidden in fullscreen */}
+            {!isEditorFullscreen && (
+              <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+                {(['properties', 'content', 'description'] as TabId[]).map(tab => {
+                  const isTabDisabled = (tab === 'content' || tab === 'description') && validateBlockName(formName) !== '';
+
+                  return (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                      if (!isTabDisabled) {
+                        setActiveTab(tab);
+                      }
+                    }}
+                      disabled={isTabDisabled}
+                      title={isTabDisabled ? (validateBlockName(formName) || 'Asigna un nombre válido al bloque para habilitar esta pestaña') : ''}
+                      className={`px-4 py-2 text-xs font-bold uppercase tracking-widest border-b-2 transition-colors flex items-center gap-1.5 ${
+                        activeTab === tab ? 'border-odoo-purple text-odoo-purple' : 'border-transparent text-text-muted hover:text-text-primary'
+                      } ${isTabDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
+                    >
+                      {tab === 'properties' ? 'Propiedades' : tab === 'content' ? 'Contenido' : 'Descripción'}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+              {activeTab === 'properties' && !isEditorFullscreen && (
+                <div className="flex-1 overflow-y-auto p-6">
+                  <div className="w-full bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                    <div className="p-6 space-y-4">
+                      <div>
+                        <FieldLabel required>Nombre del bloque</FieldLabel>
+                        <TextInput
+                          value={formName}
+                          placeholder="Nuevo bloque"
+                          error={!!nameError}
+                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            setFormName(e.target.value);
+                            setNameError(validateBlockName(e.target.value));
+                            setTabIsDirty(true);
+                          }}
+                          onBlur={() => setNameError(validateBlockName(formName))}
+                        />
+                        {nameError && <p className="mt-1 text-xs text-danger">{nameError}</p>}
+                      </div>
+                      <div>
+                        <FieldLabel>Estado</FieldLabel>
+                        <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
+                      </div>
+                      <p className="text-xs text-text-muted italic">
+                        Se guarda automáticamente tras 1500 ms de inactividad o al cambiar de pestaña.
+                      </p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="md"
-                    className="flex-1"
-                    loading={busy}
-                    onClick={() => void handleMultiSaveAndNext()}
-                    disabled={!formName.trim()}
-                  >
-                    {multiIndex === orderedSelection.length - 1 ? 'Finalizar y guardar' : 'Guardar y siguiente bloque'}
-                  </Button>
-                  <Button type="button" variant="outline" size="md" disabled={busy} onClick={handleMultiCancelAll}>
-                    Cancelar
-                  </Button>
-                </div>
-                {actionError && <p className="text-xs text-danger-dark animate-in fade-in">{actionError}</p>}
-              </div>
+              )}
+              {activeTab === 'content' && (
+                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
+                  <div className="flex-1 min-h-0 p-6 flex flex-col">
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
+                        <div className="text-4xl mb-4">📝</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de contenido.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0 flex flex-col gap-2">
+                        {formUiState === 'modifiable' && !formContent && (
+                          <p className="text-xs font-bold text-warning-dark bg-warning-light/40 border border-warning/30 rounded-lg px-3 py-2 shrink-0">
+                            Los bloques modificables deben tener contenido predeterminado (obligatorio).
+                          </p>
+                        )}
+                        {formUiState === 'editable' && !formContent && (
+                          <p className="text-xs font-medium text-info-dark bg-info/5 border border-info/20 rounded-lg px-3 py-2 shrink-0">
+                            Se recomienda añadir contenido predeterminado para los bloques editables.
+                          </p>
+                        )}
+                        <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                          <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                            <BlockNoteEditorPanel
+                              key={`content-${activeSingleId ?? 'none'}`}
+                              initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                              onChange={json => {
+                                setFormContent(JSON.stringify(json));
+                                setTabIsDirty(true);
+                              }}
+                              editable={true}
+                              isDark={effectiveIsDark}
+                              onFullscreenChange={handleEditorFullscreenChange}
+                            />
+                          </Suspense>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </ErrorBoundary>
+              )}
+              {activeTab === 'description' && (
+                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de descripción.</div>}>
+                  <div className="flex-1 min-h-0 p-6 flex flex-col">
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
+                        <div className="text-4xl mb-4">📝</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para habilitar el editor de descripción.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                        <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                          <BlockNoteEditorPanel
+                            key={`description-${activeSingleId ?? 'none'}`}
+                            initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
+                            onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
+                            editable={true}
+                            isDark={effectiveIsDark}
+                            onFullscreenChange={handleEditorFullscreenChange}
+                          />
+                        </Suspense>
+                      </div>
+                    )}
+                  </div>
+                </ErrorBoundary>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* Delete confirmation modal */}
+      {/* Right: comment panel — creator-edit mode, available even if no comments */}
+      {showCommentPanel && !isEditorFullscreen && panelMode === 'edit' && selectedBlock && formName.trim() && (
+        <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
+          <BlockCommentsCard
+            mode="creator-edit"
+            blockSortOrder={selectedBlockIndex >= 0 ? selectedBlockIndex + 1 : '?'}
+            blockComments={blockComments}
+            allComments={reviewComments}
+            onSendMessage={handleSendMessage}
+            onClose={() => setShowCommentPanel(false)}
+            canAddComments={template.status !== 'published'}
+          />
+        </div>
+      )}
+
       <ConfirmDialog
         open={deleteModal}
         title="¿Eliminar bloque?"
-        description={
-          <>
-            Estás a punto de eliminar el bloque «<span className="font-bold text-text-primary dark:text-text-dark-primary">{selectedBlock?.title}</span>».
-            Esta acción no se puede deshacer y el contenido se perderá permanentemente.
-          </>
-        }
-        confirmLabel="Eliminar definitivamente"
+        description={panelMode === 'multi' ? `¿Seguro que quieres eliminar ${selectedBlockIds.length} bloques?` : 'Esta acción no se puede deshacer.'}
+        confirmLabel="Eliminar"
         variant="danger"
-        loading={busy}
-        onCancel={() => setDeleteModal(false)}
         onConfirm={handleDelete}
+        onCancel={() => setDeleteModal(false)}
+        loading={busy}
       />
     </div>
   );
 });
+
+WizardStep2Blocks.displayName = 'WizardStep2Blocks';

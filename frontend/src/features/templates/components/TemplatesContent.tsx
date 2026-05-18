@@ -1,22 +1,56 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  Button,
+  DataTable,
+  DatePicker,
+  FieldLabel,
+  FilterField,
+  PageTitle,
+  Pagination,
+  Select,
+  TextInput,
+  useTablePreferences,
+  statusBadgeClass,
+  visibilityBadgeClass,
+  type ColumnDef,
+} from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
-import { STATUS_OPTIONS, VISIBILITY_OPTIONS } from '../constants';
-import { Button, FieldLabel, Select, TextInput } from '../../../ui';
+import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
+import { STATUS_OPTIONS } from '../constants';
 import { TemplateCard } from './TemplateCard';
 import { TemplateHierarchyFields } from './TemplateHierarchyFields';
-import { useNavigate } from 'react-router-dom';
+import { useUserProfile } from '../../../features/user-profile';
+import { useHierarchy } from '../../../features/hierarchy';
+import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
+import type { Template, TemplateStatus } from '../../../types/templates';
+import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
+import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
+import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 
-const HIERARCHY_VIS = new Set(['study_type', 'study', 'module']);
+const STATUS_LABEL: Record<TemplateStatus, string> = {
+  draft: 'Borrador',
+  in_review: 'En revisión',
+  published: 'Publicada',
+  archived: 'Archivada',
+  rejected: 'Rechazada',
+};
 
+// Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
 
 /**
  * Gestión de plantillas normativas: datos vía {@link useTemplates}.
  */
 export function TemplatesContent() {
   const navigate = useNavigate();
+  const { profile } = useUserProfile();
+  const { hierarchy } = useHierarchy();
+  const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
+    storageKey: 'maya:dms:templates-content',
+  });
+  const { templateIds: favoriteTemplateIds } = useFavoritesIds();
   const {
-    templates,
-    meta,
+    catalogSorted,
     filters,
     loading,
     listError,
@@ -29,10 +63,52 @@ export function TemplatesContent() {
     goToPage,
     deleteTemplate,
     cloneTemplate,
-  } = useTemplates();
+  } = useTemplates(undefined, sortBy);
 
   const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [academicContextInput, setAcademicContextInput] = useState('');
+  const [academicContextFilter, setAcademicContextFilter] = useState('');
+  const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const listPage = filters.page ?? 1;
+  const listPerPage = filters.per_page ?? pageSize;
+
+  const clientFilteredCatalog = useMemo(() => {
+    if (!academicContextFilter.trim()) return catalogSorted;
+    return catalogSorted.filter((t) =>
+      listRowSearchMatches(
+        hierarchy,
+        {
+          visibility_level: t.visibility_level,
+          study_type_id: t.study_type_id,
+          study_id: t.study_id,
+          module_id: t.module_id,
+          team_id: t.team_id,
+          team: t.team,
+        },
+        academicContextFilter,
+      ),
+    );
+  }, [catalogSorted, academicContextFilter, hierarchy]);
+
+  useEffect(() => {
+    const last = Math.max(1, Math.ceil(clientFilteredCatalog.length / Math.max(1, listPerPage)));
+    if (listPage > last) {
+      applyFilters({ page: last });
+    }
+  }, [clientFilteredCatalog.length, listPage, listPerPage, applyFilters]);
+
+  const pagedSource = useMemo(
+    () => sliceTemplatesPage(clientFilteredCatalog, listPage, listPerPage),
+    [clientFilteredCatalog, listPage, listPerPage],
+  );
+
+  const listMeta = useMemo(
+    () => buildTemplatesListMeta(clientFilteredCatalog.length, listPage, listPerPage),
+    [clientFilteredCatalog.length, listPage, listPerPage],
+  );
 
   const handleAuthorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -43,9 +119,17 @@ export function TemplatesContent() {
     }, 400);
   };
 
+  const handleAcademicContextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setAcademicContextInput(value);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
+    academicContextDebounceRef.current = setTimeout(() => {
+      setAcademicContextFilter(value);
+    }, 400);
+  };
+
   const filterUi = useMemo(
     () => ({
-      visibility: filters.visibility_level ?? '',
       status: filters.status ?? '',
       studyTypeId: filters.study_type_id ?? '',
       studyId: filters.study_id ?? '',
@@ -57,9 +141,23 @@ export function TemplatesContent() {
     [filters],
   );
 
+  const filtersActiveCount = [
+    academicContextFilter,
+    filterUi.status,
+    filterUi.studyTypeId,
+    filterUi.studyId,
+    filterUi.moduleId,
+    filterUi.teamId,
+    filterUi.authorName,
+    filterUi.deliveryDeadline,
+  ].filter((v) => v && v !== '').length;
+
   const clearFilters = () => {
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
+    if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     setAuthorInput('');
+    setAcademicContextInput('');
+    setAcademicContextFilter('');
     applyFilters({
       visibility_level: undefined,
       status: undefined,
@@ -72,43 +170,164 @@ export function TemplatesContent() {
     });
   };
 
-  const showTeamFilter = filterUi.visibility === 'team';
-  const showHierarchyFilter = HIERARCHY_VIS.has(filterUi.visibility);
-  const showConditionalFilters = showTeamFilter || showHierarchyFilter;
+  const displayTemplates = useMemo(() => {
+    /** Con filtro de estado ≠ publicada, no mostrar la fila sintética de última publicada (siempre `published`). */
+    const includePublishedFallbackRow = !filters.status || filters.status === 'published';
+
+    const out: Template[] = [];
+    for (const t of pagedSource) {
+      const hasPublishedFallback =
+        t.status !== 'published' &&
+        !!t.latest_published_version_id;
+      const isAssignedReviewer =
+        t.status === 'in_review' &&
+        !!profile?.id &&
+        (t.reviewers?.some((r) => r.user_id === profile.id) ?? false);
+      const canSeeLive = (!!profile?.id && t.created_by === profile.id) || isAssignedReviewer;
+
+      if (!hasPublishedFallback) {
+        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+        continue;
+      }
+
+      const publishedFallback: Template = {
+        ...t,
+        name: t.latest_published_name ?? t.name,
+        status: 'published',
+        version: t.latest_published_version_number ?? t.version,
+        list_variant: 'published_fallback',
+        list_row_id: `${t.id}:published`,
+      };
+
+      if (canSeeLive) {
+        out.push({ ...t, list_variant: 'live', list_row_id: `${t.id}:live` });
+      }
+      if (includePublishedFallbackRow) {
+        out.push(publishedFallback);
+      }
+    }
+    if (filters.delivery_deadline) {
+      return out.filter((row) => row.status !== 'published');
+    }
+    return out;
+  }, [pagedSource, profile?.id, filters.delivery_deadline, filters.status]);
+
+  const handleRowClick = (t: Template) => {
+    if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
+      navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`);
+      return;
+    }
+    const isReviewer =
+      t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
+    navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`);
+  };
+
+  const columns: ColumnDef<Template>[] = useMemo(
+    () => [
+      {
+        id: 'name',
+        header: 'Nombre',
+        sortable: true,
+        alwaysVisible: true,
+        cell: (t) => (
+          <span className="flex items-center gap-2 min-w-0">
+            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
+            <span className="truncate font-medium">{t.name}</span>
+            {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
+              <span
+                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                title="Esta plantilla tiene bloques con comentarios de revisión pendientes."
+              >
+                ⚠ Revisión
+              </span>
+            )}
+          </span>
+        ),
+      },
+      {
+        id: 'visibility_level',
+        header: 'Visibilidad',
+        cell: (t) => {
+          const caption = formatListRowVisibilityCaption(hierarchy, {
+            visibility_level: t.visibility_level,
+            study_type_id: t.study_type_id,
+            study_id: t.study_id,
+            module_id: t.module_id,
+            team_id: t.team_id,
+            team: t.team,
+          });
+          return (
+            <span
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}
+              title={caption}
+            >
+              <span className="truncate">{caption}</span>
+            </span>
+          );
+        },
+      },
+      {
+        id: 'author_name',
+        header: 'Autor',
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {t.author_name ?? '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Estado',
+        cell: (t) => {
+          const status = t.status as TemplateStatus;
+          return (
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
+              {STATUS_LABEL[status] ?? status}
+            </span>
+          );
+        },
+      },
+      {
+        id: 'delivery_deadline',
+        header: 'Fecha de validación',
+        sortable: true,
+        cell: (t) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
+          </span>
+        ),
+      },
+    ],
+    [profile, favoriteTemplateIds, hierarchy],
+  );
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-            Plantillas normativas
-          </h2>
-          <p className="text-xs text-text-muted dark:text-text-dark-muted mt-1">
-            Listado según tu visibilidad en la API (máx. 20 por página). La visibilidad compartida en alta/edición
-            requiere roles de coordinación.
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => void refetch()}
-            disabled={loading}
-          >
-            Actualizar
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/templates/new')}
-          >
-            Nueva Plantilla
-          </Button>
-        </div>
-
-      </div>
+      <PageTitle
+        title="Plantillas"
+        subtitle="Listado según tu visibilidad en la API. La visibilidad compartida en alta/edición requiere roles de coordinación."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void refetch()}
+              disabled={loading}
+            >
+              Actualizar
+            </Button>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/templates/new')}
+            >
+              Nueva Plantilla
+            </Button>
+          </>
+        }
+      />
 
       {listError && (
         <div className="rounded-lg border border-warning/40 bg-warning-light/40 dark:bg-warning-dark/10 px-4 py-3 text-sm text-warning-dark dark:text-warning-light">
@@ -134,128 +353,41 @@ export function TemplatesContent() {
         </div>
       )}
 
-      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-text-secondary dark:text-text-dark-secondary">
-            Filtros
-          </h3>
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            onClick={clearFilters}
-          >
-            Limpiar filtros
-          </Button>
-        </div>
-
-        {showConditionalFilters ? (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              <div className="space-y-3">
-                <div>
-                  <FieldLabel>Visibilidad</FieldLabel>
-                  <Select
-                    fieldSize="sm"
-                    value={filterUi.visibility}
-                    onChange={(e) =>
-                      applyFilters({
-                        visibility_level: e.target.value || undefined,
-                        study_type_id: undefined,
-                        study_id: undefined,
-                        module_id: undefined,
-                        team_id: undefined,
-                      })
-                    }
-                  >
-                    <option value="">Todas</option>
-                    {VISIBILITY_OPTIONS.map((o) => (
-                      <option key={o.value} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-                <div>
-                  <FieldLabel>Estado</FieldLabel>
-                  <Select
-                    fieldSize="sm"
-                    value={filterUi.status}
-                    onChange={(e) => applyFilters({ status: e.target.value || undefined })}
-                  >
-                    {STATUS_OPTIONS.map((o) => (
-                      <option key={o.value || 'all'} value={o.value}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-              <TemplateHierarchyFields
-                values={{
-                  study_type_id: filterUi.studyTypeId,
-                  study_id: filterUi.studyId,
-                  module_id: filterUi.moduleId,
-                  team_id: filterUi.teamId,
-                }}
-                onFieldChange={(key, value) =>
-                  applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
-                }
-                gridClassName="grid grid-cols-1 sm:grid-cols-2 gap-3"
-                filterMode={true}
-                maxLevel={showHierarchyFilter ? (filterUi.visibility as 'study_type' | 'study' | 'module') : null}
-                showTeam={showTeamFilter}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-ui-border/50 dark:border-ui-dark-border/50">
-              <div>
-                <FieldLabel>Autor</FieldLabel>
-                <TextInput
-                  fieldSize="sm"
-                  placeholder="Buscar por autor..."
-                  value={authorInput}
-                  onChange={handleAuthorChange}
-                />
-              </div>
-              <div>
-                <FieldLabel>Fecha límite</FieldLabel>
-                <TextInput
-                  fieldSize="sm"
-                  type="date"
-                  value={filterUi.deliveryDeadline}
-                  onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <div>
-              <FieldLabel>Visibilidad</FieldLabel>
-              <Select
+      <DataTable<Template>
+        columns={columns}
+        rows={displayTemplates}
+        loading={loading && catalogSorted.length === 0}
+        rowKey={(t) => t.list_row_id ?? t.id}
+        hiddenColumnIds={hiddenIds}
+        onToggleHiddenColumn={toggleHidden}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        pageSize={pageSize}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          applyFilters({ per_page: size });
+        }}
+        defaultView="cards"
+        emptyMessage="No hay plantillas visibles con los filtros actuales."
+        onRowClick={handleRowClick}
+        cardRender={(t) => (
+          <TemplateCard template={t} onDelete={deleteTemplate} onClone={cloneTemplate} />
+        )}
+        filtersActiveCount={filtersActiveCount}
+        onClearFilters={clearFilters}
+        filtersStorageKey="maya:dms:templates-content"
+        filtersPanel={
+          <>
+            <FilterField label="Visibilidad">
+              <TextInput
                 fieldSize="sm"
-                value={filterUi.visibility}
-                onChange={(e) =>
-                  applyFilters({
-                    visibility_level: e.target.value || undefined,
-                    study_type_id: undefined,
-                    study_id: undefined,
-                    module_id: undefined,
-                    team_id: undefined,
-                  })
-                }
-              >
-                <option value="">Todas</option>
-                {VISIBILITY_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <div>
-              <FieldLabel>Estado</FieldLabel>
+                type="search"
+                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
+                value={academicContextInput}
+                onChange={handleAcademicContextChange}
+              />
+            </FilterField>
+            <FilterField label="Estado">
               <Select
                 fieldSize="sm"
                 value={filterUi.status}
@@ -267,80 +399,57 @@ export function TemplatesContent() {
                   </option>
                 ))}
               </Select>
-            </div>
-            <div>
-              <FieldLabel>Autor</FieldLabel>
+            </FilterField>
+            <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
                 placeholder="Nombre del autor..."
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
-            </div>
-            <div>
-              <FieldLabel>Fecha límite</FieldLabel>
-              <TextInput
-                fieldSize="sm"
-                type="date"
-                value={filterUi.deliveryDeadline}
-                onChange={(e) => applyFilters({ delivery_deadline: e.target.value || undefined })}
+            </FilterField>
+            <FilterField label="Fecha de validación (hasta)">
+              <DatePicker
+                value={filterUi.deliveryDeadline || null}
+                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
+                placeholder="Cualquier plazo…"
+                ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
+              />
+            </FilterField>
+            <div className="col-span-full pt-2 border-t border-ui-border/50 dark:border-ui-dark-border/50">
+              <FieldLabel>Vinculación</FieldLabel>
+              <TemplateHierarchyFields
+                values={{
+                  study_type_id: filterUi.studyTypeId,
+                  study_id: filterUi.studyId,
+                  module_id: filterUi.moduleId,
+                  team_id: filterUi.teamId,
+                }}
+                onFieldChange={(key, value) =>
+                  applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
+                }
+                gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
+                filterMode={true}
+                maxLevel={undefined}
+                showTeam={true}
               />
             </div>
-          </div>
-        )}
-      </div>
+          </>
+        }
+      />
 
-      {loading && templates.length === 0 ? (
-        <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando plantillas…</p>
-      ) : null}
-
-      {!loading && templates.length === 0 && !listError ? (
-        <div className="text-center py-8 space-y-2 max-w-lg mx-auto">
-          <p className="text-sm text-text-muted dark:text-text-dark-muted">
-            No hay plantillas visibles con los filtros actuales.
-          </p>
-        </div>
-      ) : null}
-
-      {meta ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-text-muted dark:text-text-dark-muted">
-          <span>
-            Página {meta.current_page} de {meta.last_page} — {meta.total} plantillas
-          </span>
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled={loading || meta.current_page <= 1}
-              onClick={() => goToPage(meta.current_page - 1)}
-            >
-              Anterior
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled={loading || meta.current_page >= meta.last_page}
-              onClick={() => goToPage(meta.current_page + 1)}
-            >
-              Siguiente
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <div className="space-y-4">
-        {templates.map((t) => (
-          <TemplateCard
-            key={t.id}
-            template={t}
-            onDelete={deleteTemplate}
-            onClone={cloneTemplate}
-          />
-        ))}
-      </div>
+      {listMeta && (
+        <Pagination
+          currentPage={listMeta.current_page}
+          totalPages={listMeta.last_page}
+          onChange={goToPage}
+          info={
+            listMeta.total > 0
+              ? `${(listMeta.current_page - 1) * listMeta.per_page + 1}–${Math.min(listMeta.current_page * listMeta.per_page, listMeta.total)} de ${listMeta.total} plantillas`
+              : undefined
+          }
+        />
+      )}
     </div>
-
   );
 }

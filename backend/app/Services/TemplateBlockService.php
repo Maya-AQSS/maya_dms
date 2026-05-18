@@ -1,60 +1,78 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\DTOs\TemplateBlocks\BulkUpdateTemplateBlocksDto;
+use App\DTOs\TemplateBlocks\TemplateBlockDto;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
-use App\Models\Template;
+use App\Events\TemplateBlockCreated;
+use App\Events\TemplateBlockDeleted;
+use App\Events\TemplateBlocksReordered;
+use App\Events\TemplateBlockStateChanged;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
-use App\Services\Contracts\AuditLogServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TemplateBlockService implements TemplateBlockServiceInterface
 {
     public function __construct(
         private readonly TemplateBlockRepositoryInterface $blockRepository,
-        private readonly TemplateRepositoryInterface      $templateRepository,
-        private readonly AuditLogServiceInterface         $auditLogService,
+        private readonly TemplateRepositoryInterface $templateRepository,
     ) {}
 
     /**
-     * Lista todos los bloques de una plantilla.
-     * 
-     * @return Collection<int, TemplateBlock>
+     * @return list<TemplateBlockDto>
      */
-    public function listForTemplate(string $templateId): Collection
+    public function listForTemplate(string $templateId): array
     {
-        // Validate the template exists (also applies global scopes / visibility)
-        $this->templateRepository->findOrFail($templateId);
+        // Existencia sin scope de catálogo: la visibilidad la marca el controlador con policy tras cargar.
+        $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
 
-        return $this->blockRepository->allForTemplate($templateId);
+        return $this->blockRepository
+            ->allForTemplate($templateId)
+            ->map(static fn (TemplateBlock $block): TemplateBlockDto => TemplateBlockDto::fromModel($block))
+            ->values()
+            ->all();
     }
 
-    /**
-     * Busca un bloque por ID. Lanza excepción si no existe.
-     * 
-     * @param  string  $id
-     * @return TemplateBlock
-     */
-    public function findOrFail(string $id): TemplateBlock
+    public function findOrFail(string $id): TemplateBlockDto
+    {
+        return TemplateBlockDto::fromModel($this->blockRepository->findOrFail($id));
+    }
+
+    public function findModelOrFail(string $id): TemplateBlock
     {
         return $this->blockRepository->findOrFail($id);
     }
 
     /**
-     * Carga todos los bloques por ID (IDs únicos). Lanza validación si falta alguno.
+     * @param  list<string>  $ids
+     * @return list<TemplateBlockDto>
+     */
+    public function findBlocksByIdsOrFail(array $ids): array
+    {
+        return $this
+            ->findModelsByIdsOrFail($ids)
+            ->map(static fn (TemplateBlock $block): TemplateBlockDto => TemplateBlockDto::fromModel($block))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Variante interna que devuelve los Models. Necesario para casos como
+     * {@see bulkUpdate()} donde se necesita capturar el estado previo
+     * (block_state) antes de la mutación masiva sin pagar la conversión a DTO
+     * dos veces.
      *
      * @param  list<string>  $ids
      * @return Collection<int, TemplateBlock>
      */
-    public function findBlocksByIdsOrFail(array $ids): Collection
+    private function findModelsByIdsOrFail(array $ids): Collection
     {
         $unique = array_values(array_unique($ids));
 
@@ -78,7 +96,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
     /**
      * @param  list<string>  $orderedBlockIds
      */
-    public function reorderForTemplate(string $templateId, array $orderedBlockIds): void
+    public function reorderForTemplate(string $templateId, array $orderedBlockIds, string $userId): void
     {
         if ($orderedBlockIds === []) {
             throw ValidationException::withMessages([
@@ -92,8 +110,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             ]);
         }
 
-        $template = $this->templateRepository->findOrFail($templateId);
-        $this->assertUserMayUpdateTemplate($template);
+        $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
 
         $currentBlocks = $this->blockRepository->allForTemplate($templateId);
         $currentIds = $currentBlocks->pluck('id')->map(static fn ($id): string => (string) $id)->all();
@@ -114,54 +131,27 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             ]);
         }
 
-        DB::transaction(function () use ($templateId, $orderedBlockIds): void {
-            $this->blockRepository->reorderForTemplate($templateId, $orderedBlockIds);
-        });
+        $this->blockRepository->reorderForTemplate($templateId, $orderedBlockIds);
+
+        TemplateBlocksReordered::dispatch($templateId, $orderedBlockIds, $userId);
     }
 
     /**
-     * Crea un nuevo bloque para una plantilla.
-     * 
-     * @param  string  $templateId
-     * @param  string  $userId
      * @param  array<string, mixed>  $attributes
-     * @return TemplateBlock
      */
-    public function create(string $templateId, array $attributes, string $userId): TemplateBlock
+    public function create(string $templateId, array $attributes, string $userId): TemplateBlockDto
     {
-        $template = $this->templateRepository->findOrFail($templateId);
-        $this->assertUserMayUpdateTemplate($template);
+        $template = $this->templateRepository->findOrFailWithoutCatalogScope($templateId);
         $block = $this->blockRepository->create($template, $attributes);
 
-        $this->auditLogService->record(
-            entityType:    'template',
-            entityId:      $templateId,
-            action:        'block_created',
-            userId:        $userId,
-            blockId:       $block->getKey(),
-            previousValue: null,
-            newValue:      [
-                'block_state' => $block->block_state,
-            ],
-        );
+        TemplateBlockCreated::dispatch($templateId, $block, $userId);
 
-        return $block;
+        return TemplateBlockDto::fromModel($block);
     }
 
-    /**
-     * Actualiza un bloque existente de una plantilla.
-     * 
-     * @param  string  $blockId
-     * @param  UpdateTemplateBlockDto  $dto
-     * @param  string  $userId
-     * @return TemplateBlock
-     */
-    public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlock
+    public function update(string $blockId, UpdateTemplateBlockDto $dto, string $userId): TemplateBlockDto
     {
         $block = $this->blockRepository->findOrFail($blockId);
-        $this->assertUserMayUpdateTemplate(
-            $this->templateRepository->findOrFail($block->template_id),
-        );
 
         $attributes = [];
         if ($dto->set_title) {
@@ -181,7 +171,7 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         }
 
         if ($attributes === []) {
-            return $block;
+            return TemplateBlockDto::fromModel($block);
         }
 
         // Audit only when there is an actual block_state transition.
@@ -197,70 +187,43 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         $updated = $this->blockRepository->update($block, $attributes);
 
         if ($stateOrMandatoryChanged) {
-            $this->auditLogService->record(
-                entityType:    'template',
-                entityId:      $updated->template_id,
-                action:        'block_state_changed',
-                userId:        $userId,
-                blockId:       $blockId,
-                previousValue: $previous,
-                newValue:      [
-                    'block_state' => $updated->block_state,
-                ],
+            TemplateBlockStateChanged::dispatch(
+                (string) $updated->template_id,
+                $blockId,
+                (string) $previous['block_state'],
+                (string) $updated->block_state,
+                $userId,
             );
         }
 
-        return $updated;
+        return TemplateBlockDto::fromModel($updated);
     }
 
-    /**
-     * Elimina un bloque de una plantilla.
-     * 
-     * @param  string  $blockId
-     * @param  string  $userId
-     * @return void
-     */
     public function delete(string $blockId, string $userId): void
     {
         $block = $this->blockRepository->findOrFail($blockId);
-        $this->assertUserMayUpdateTemplate(
-            $this->templateRepository->findOrFail($block->template_id),
-        );
 
-        $this->auditLogService->record(
-            entityType:    'template',
-            entityId:      $block->template_id,
-            action:        'block_deleted',
-            userId:        $userId,
-            blockId:       $blockId,
-            previousValue: [
-                'block_state' => $block->block_state,
-            ],
-            newValue: null,
+        TemplateBlockDeleted::dispatch(
+            (string) $block->template_id,
+            $blockId,
+            (string) $block->block_state,
+            $userId,
         );
 
         $this->blockRepository->delete($block);
     }
 
     /**
-     * Actualiza múltiples bloques de una plantilla.
-     * 
-     * @param  BulkUpdateTemplateBlocksDto  $dto
-     * @param  string  $userId
-     * @return Collection<int, TemplateBlock>
+     * @return list<TemplateBlockDto>
      */
-    public function bulkUpdate(BulkUpdateTemplateBlocksDto $dto, string $userId): Collection
+    public function bulkUpdate(BulkUpdateTemplateBlocksDto $dto, string $userId): array
     {
         $uniqueIds = array_values(array_unique($dto->ids));
 
-        // Capture previous states before the bulk update to identify actual changes
-        $before = $this->findBlocksByIdsOrFail($uniqueIds)->keyBy('id');
-
-        foreach ($before->pluck('template_id')->unique() as $templateId) {
-            $this->assertUserMayUpdateTemplate(
-                $this->templateRepository->findOrFail((string) $templateId),
-            );
-        }
+        // Capture previous states before the bulk update to identify actual changes.
+        // Uso findModelsByIdsOrFail() porque necesito acceso al block_state previo
+        // para detectar transición real antes de auditar.
+        $before = $this->findModelsByIdsOrFail($uniqueIds)->keyBy('id');
 
         $attributes = [];
         if ($dto->set_block_state) {
@@ -276,33 +239,19 @@ class TemplateBlockService implements TemplateBlockServiceInterface
             $changedState = $dto->set_block_state && $prev && $prev->block_state !== $block->block_state;
 
             if ($changedState) {
-                $this->auditLogService->record(
-                    entityType:    'template',
-                    entityId:      $block->template_id,
-                    action:        'block_state_changed',
-                    userId:        $userId,
-                    blockId:       $block->getKey(),
-                    previousValue: [
-                        'block_state' => $prev->block_state,
-                        ],
-                    newValue: [
-                        'block_state' => $block->block_state,
-                            ],
+                TemplateBlockStateChanged::dispatch(
+                    (string) $block->template_id,
+                    (string) $block->getKey(),
+                    (string) $prev->block_state,
+                    (string) $block->block_state,
+                    $userId,
                 );
             }
         }
 
-        return $updated;
-    }
-
-    /**
-     * Verifica si el usuario tiene permiso para actualizar una plantilla.
-     * 
-     * @param  Template  $template
-     * @return void
-     */
-    private function assertUserMayUpdateTemplate(Template $template): void
-    {
-        Gate::forUser(Auth::user())->authorize('update', $template);
+        return $updated
+            ->map(static fn (TemplateBlock $block): TemplateBlockDto => TemplateBlockDto::fromModel($block))
+            ->values()
+            ->all();
     }
 }

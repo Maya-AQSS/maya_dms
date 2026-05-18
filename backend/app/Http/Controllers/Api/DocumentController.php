@@ -1,26 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Documents\DocumentDto;
+use App\Http\Concerns\AttachesDocumentCanCloneMeta;
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
-use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
-use App\Http\Requests\Documents\DelegateDocumentRequest;
-use App\Http\Requests\Documents\PublishDocumentRequest;
+use App\Http\Requests\Documents\CloneDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
+use App\Models\Document;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\DocumentReviewService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
+/**
+ * CRUD canónico de Document (index/store/show/update/destroy/clone).
+ * Las transiciones de estado viven en {@see DocumentStateController} y
+ * las opciones/lookups en {@see DocumentOptionsController}. Split de B9.
+ */
 class DocumentController extends Controller
 {
+    use AttachesDocumentCanCloneMeta;
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
         private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
+        protected readonly DocumentReviewService $documentReviewService,
     ) {}
 
     /**
@@ -29,14 +42,21 @@ class DocumentController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
-        $documents = $this->documentService->listOrderedByCreatedAtDesc();
+        $processId = $request->query('process_id');
+        $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
+
+        $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
+        $this->documentService->attachLatestPublishedVersionMeta($documents);
+        $this->documentService->attachTemplateVersionNumbers($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
             $viewerId,
         );
 
-        return DocumentResource::collection($documents);
+        return DocumentResource::collection(
+            $documents->map(static fn (Document $doc) => DocumentDto::fromModel($doc)),
+        );
     }
 
     /**
@@ -46,81 +66,38 @@ class DocumentController extends Controller
     {
         $userId = (string) $request->user()->getAuthIdentifier();
         $document = $this->documentService->create($request->toDto($userId, $userId));
+        $this->attachCanCloneMeta($document, $request);
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($document))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ], 201);
     }
 
     /**
-     * Opciones para crear una programación desde la vista de módulo.
+     * Clonar documento en borrador con sufijo "(copia)"; si hubo publicaciones, según último snapshot publicado.
      */
-    public function creationOptions(DocumentCreationOptionsRequest $request): JsonResponse
+    public function clone(CloneDocumentRequest $request, string $document): JsonResponse
     {
-        $options = $this->documentService->creationOptionsForModule($request->validated('module_id'));
-        $count = count($options);
+        $source = $this->documentService->findModelOrFail($document);
+        $this->assertOptionalProcessContextMatches((string) $source->process_id);
 
-        if ($count === 0) {
-            return response()->json([
-                'data' => [
-                    'can_create' => false,
-                    'mode' => 'none',
-                    'message' => 'No hay plantillas publicadas disponibles para este módulo.',
-                    'options' => [],
-                ],
-            ]);
-        }
-
-        return response()->json([
-            'data' => [
-                'can_create' => true,
-                'mode' => $count === 1 ? 'auto' : 'select',
-                'message' => null,
-                'options' => $options,
-            ],
-        ]);
-    }
-
-    /**
-     * Crear una programación desde módulo con selección opcional de versión de plantilla.
-     */
-    public function createFromModule(DocumentCreateFromModuleRequest $request): JsonResponse
-    {
         $userId = (string) $request->user()->getAuthIdentifier();
-        $document = $this->documentService->createFromModule(
-            $request->validated('module_id'),
-            $userId,
-            $request->validated('template_version_id') ?? null,
-        );
-        $this->apiTeamEmbedService->embedOnDocument($document, $userId);
-        $blocks = $this->documentService->blocksForDisplay($document);
+        $copy = $this->documentService->clone($document, $userId);
+        $this->attachCanCloneMeta($copy, $request);
+        $this->apiTeamEmbedService->embedOnDocument($copy, $userId);
+        $blocks = $this->documentService->blocksForDisplay($copy);
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($document))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($copy)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ], 201);
-    }
-
-    /**
-     * GET /api/v1/documents/{document}/template-version-status
-     *
-     * Indica si existe una versión de plantilla publicada más reciente que la anclada al documento.
-     */
-    public function templateVersionStatus(Request $request, string $id): JsonResponse
-    {
-        $document = $this->documentService->findOrFail($id);
-        $this->authorize('view', $document);
-
-        return response()->json([
-            'data' => $this->documentService->templateVersionStatus($document->id),
-        ]);
     }
 
     /**
@@ -129,9 +106,17 @@ class DocumentController extends Controller
     public function show(Request $request, string $id): JsonResponse
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('view', $document);
+
+        $document->setAttribute(
+            'has_review_comments',
+            $document->comments()->exists(),
+        );
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
+        $document->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument(
             $document,
             $viewerId,
@@ -140,7 +125,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource($document))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ]);
@@ -151,16 +136,18 @@ class DocumentController extends Controller
      */
     public function update(UpdateDocumentRequest $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('update', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
-        $updated = $this->documentService->update($id, $request->validated());
+        $updated = $this->documentService->update($id, $request->toDto()->toArray());
+        $this->attachCanCloneMeta($updated, $request);
         $this->apiTeamEmbedService->embedOnDocument(
             $updated,
             (string) $request->user()->getAuthIdentifier(),
         );
 
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
+        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
     }
 
     /**
@@ -168,75 +155,13 @@ class DocumentController extends Controller
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
-        $document = $this->documentService->findOrFail($id);
+        $document = $this->documentService->findModelOrFail($id);
         $this->authorize('delete', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
-        $this->documentService->delete($id);
+        $actorId = (string) $request->user()->getAuthIdentifier();
+        $this->documentService->delete($id, $actorId);
 
         return response()->json([], 204);
-    }
-
-    /**
-     * Enviar documento a revisión.
-     */
-    public function submit(Request $request, string $id): JsonResponse
-    {
-        $document = $this->documentService->findOrFail($id);
-        $this->authorize('submit', $document);
-
-        $actorId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->submitToReview($document->id, $actorId);
-
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
-    }
-
-    /**
-     * Publicar documento.
-     */
-    public function publish(PublishDocumentRequest $request, string $id): JsonResponse
-    {
-        $document = $this->documentService->findOrFail($id);
-        $this->authorize('review', $document);
-
-        $actorId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->publishDocument(
-            $document->id,
-            $actorId,
-            $request->validated('changelog'),
-        );
-
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
-    }
-
-    /**
-     * Rechazar documento y vuelta a borrador.
-     */
-    public function reject(Request $request, string $id): JsonResponse
-    {
-        $document = $this->documentService->findOrFail($id);
-        $this->authorize('review', $document);
-
-        $actorId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->rejectDocument($document->id, $actorId);
-
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
-    }
-
-    /**
-     * Delegar documento a otro usuario.
-     */
-    public function delegate(DelegateDocumentRequest $request, string $id): JsonResponse
-    {
-        $document = $this->documentService->findOrFail($id);
-        $this->authorize('view', $document);
-
-        $actorId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->delegateOwner(
-            $id,
-            (string) $request->validated('new_owner_id'),
-            $actorId,
-        );
-
-        return response()->json(['data' => (new DocumentResource($updated))->toArray($request)]);
     }
 }

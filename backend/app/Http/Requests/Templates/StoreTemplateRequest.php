@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Templates;
 
 use App\DTOs\Templates\CreateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class StoreTemplateRequest extends FormRequest
@@ -22,22 +25,61 @@ class StoreTemplateRequest extends FormRequest
 
     /**
      * Reglas de validación para la creación de una plantilla.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
-            'name'              => ['required', 'string', 'max:255'],
-            'description'       => ['nullable', 'string'],
-            'visibility_level'  => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
-            'delivery_deadline' => ['nullable', 'date'],
-            'study_type_id'     => ['nullable', 'string', 'max:255', 'required_if:visibility_level,study_type'],
-            'study_id'          => ['nullable', 'string', 'max:255', 'required_if:visibility_level,study'],
-            'module_id'         => ['nullable', 'string', 'max:255', 'required_if:visibility_level,module'],
-            'team_id'           => ['nullable', 'uuid', 'exists:teams,id', 'required_if:visibility_level,team'],
-            'review_stages'     => ['sometimes', 'integer', 'min:0'],
-            'review_mode'       => ['sometimes', 'string', 'in:sequential,parallel'],
+            'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'visibility_level' => ['sometimes', Rule::enum(TemplateVisibilityLevel::class)],
+            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
+            'study_type_id' => [
+                'nullable', 'string', 'max:255',
+                'required_if:visibility_level,study_type',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value !== null && ! in_array($value, $this->user()->studyTypeIds, true)) {
+                        $fail('El tipo de estudio indicado no pertenece a tu contexto académico.');
+                    }
+                },
+            ],
+            'study_id' => [
+                'nullable', 'string', 'max:255',
+                'required_if:visibility_level,study',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value !== null && ! in_array($value, $this->user()->studyIds, true)) {
+                        $fail('El estudio indicado no pertenece a tu contexto académico.');
+                    }
+                },
+            ],
+            'module_id' => [
+                'nullable', 'string', 'max:255',
+                'required_if:visibility_level,module',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value !== null && ! in_array($value, $this->user()->moduleIds, true)) {
+                        $fail('El módulo indicado no pertenece a tu contexto académico.');
+                    }
+                },
+            ],
+            'team_id' => [
+                'nullable', 'uuid', 'exists:teams,id',
+                'required_if:visibility_level,team',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value !== null) {
+                        $isMember = DB::table('team_members')
+                            ->where('team_id', $value)
+                            ->where('user_id', $this->user()->getAuthIdentifier())
+                            ->exists();
+                        if (! $isMember) {
+                            $fail('No eres miembro del equipo indicado.');
+                        }
+                    }
+                },
+            ],
+            'review_stages' => ['sometimes', 'integer', 'min:0'],
+            'review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
+            'process_id' => ['required', 'uuid', 'exists:processes,id'],
         ];
     }
 
@@ -59,6 +101,7 @@ class StoreTemplateRequest extends FormRequest
             teamId: $v['team_id'] ?? null,
             reviewStages: (int) ($v['review_stages'] ?? 0),
             reviewMode: $v['review_mode'] ?? 'parallel',
+            processId: $v['process_id'],
         );
     }
 }

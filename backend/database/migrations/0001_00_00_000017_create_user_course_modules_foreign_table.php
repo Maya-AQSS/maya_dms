@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\PostgresFdwMigration;
+use Maya\Platform\Database\PostgresFdwMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 

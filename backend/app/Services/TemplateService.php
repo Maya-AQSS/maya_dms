@@ -1,21 +1,27 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
+use App\DTOs\Templates\SyncUsersDto;
+use App\DTOs\Templates\TemplateDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
-use App\Events\TemplateStateChanged;
+use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
 
@@ -24,16 +30,48 @@ class TemplateService implements TemplateServiceInterface
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplateVersionRepositoryInterface $templateVersionRepository,
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+        private readonly TemplateBlockRepositoryInterface $templateBlockRepository,
+        private readonly TemplatePublishingService $templatePublishingService,
+        private readonly TemplateReviewService $templateReviewService,
+        private readonly TemplateReviewerAssignmentService $templateReviewerAssignmentService,
+        private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
+        private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
     ) {}
 
     /**
-     * Localiza una plantilla por su ID.
+     * Canónico: devuelve el DTO de la plantilla.
      */
-    public function findOrFail(string $id): Template
+    public function findOrFail(string $id): TemplateDto
+    {
+        return TemplateDto::fromModel($this->templateRepository->findOrFail($id));
+    }
+
+    /**
+     * Variante de uso interno: devuelve el Model. Necesario para attachs
+     * (`can_clone`, `review_mode`, etc.), policies y encadenado con otros
+     * métodos del Service que reciben Model.
+     */
+    public function findModelOrFail(string $id): Template
     {
         return $this->templateRepository->findOrFail($id);
     }
 
+    /**
+     * Carga múltiples plantillas por sus IDs aplicando el global scope de visibilidad.
+     * El resultado está indexado por ID.
+     *
+     * @param  list<string>  $ids
+     * @return \Illuminate\Database\Eloquent\Collection<string, Template>
+     */
+    public function findManyByIds(array $ids): \Illuminate\Database\Eloquent\Collection
+    {
+        return $this->templateRepository->findManyByIds($ids);
+    }
+
+    /**
+     * Localiza una plantilla por su ID sin el global scope de catálogo `user_access`.
+     */
     public function findOrFailWithoutCatalogScope(string $id): Template
     {
         return $this->templateRepository->findOrFailWithoutCatalogScope($id);
@@ -42,23 +80,21 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Localiza una versión de plantilla por su ID.
      */
-    public function findVersionOrFail(string $versionId): TemplateVersion
+    public function findVersionOrFail(string $versionId): EntityVersion
     {
         return $this->templateVersionRepository->findOrFail($versionId);
     }
 
     /**
-     * Transiciona la plantilla a un nuevo estado y emite el evento de dominio TemplateStateChanged.
+     * Localiza una versión polimórfica por su ID.
      */
-    public function transition(string $templateId, string $newStatus, string $actorId): Template
+    public function findEntityVersionOrFail(string $versionId): EntityVersion
     {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        return $this->updateTemplateStatusWithEvent($template, $newStatus, $actorId);
+        return $this->entityVersionRepository->findOrFail($versionId);
     }
 
     /**
-     * Envia el borrador a revisión (autor o quien puede editar la plantilla).
+     * Envía el borrador a revisión. Solo el creador de la plantilla puede ejecutar esta acción.
      *
      * - Sin revisores asignados → publica automáticamente.
      * - Con revisores → resetea sus estados a `pending` (necesario para rondas
@@ -67,21 +103,7 @@ class TemplateService implements TemplateServiceInterface
      */
     public function submitForReview(string $templateId, string $actorId): Template
     {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        if ($template->status !== 'draft') {
-            throw ValidationException::withMessages([
-                'status' => ['Solo las plantillas en borrador pueden enviarse a revisión.'],
-            ]);
-        }
-
-        if ($template->reviewers()->doesntExist()) {
-            return $this->publishWithSnapshot($templateId, null, $actorId);
-        }
-
-        $template->reviewers()->update(['status' => 'pending']);
-
-        return $this->updateTemplateStatusWithEvent($template, 'in_review', $actorId);
+        return $this->templateReviewService->submitForReview($templateId, $actorId);
     }
 
     /**
@@ -93,19 +115,7 @@ class TemplateService implements TemplateServiceInterface
      */
     public function rejectReview(string $templateId, string $actorId): Template
     {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        if ($template->status !== 'in_review') {
-            throw ValidationException::withMessages([
-                'status' => ['Solo se puede rechazar una plantilla en revisión.'],
-            ]);
-        }
-
-        $template->reviewers()
-            ->where('user_id', $actorId)
-            ->update(['status' => 'rejected']);
-
-        return $this->updateTemplateStatusWithEvent($template, 'draft', $actorId);
+        return $this->templateReviewService->rejectReview($templateId, $actorId);
     }
 
     /**
@@ -117,58 +127,7 @@ class TemplateService implements TemplateServiceInterface
      */
     public function approveReview(string $templateId, string $actorId): Template
     {
-        return DB::transaction(function () use ($templateId, $actorId) {
-            $template = Template::query()->whereKey($templateId)->lockForUpdate()->firstOrFail();
-
-            if ($template->status !== 'in_review') {
-                throw ValidationException::withMessages([
-                    'status' => ['Solo se puede aprobar una plantilla en revisión.'],
-                ]);
-            }
-
-            $reviewer = $template->reviewers()
-                ->where('user_id', $actorId)
-                ->first();
-
-            if (! $reviewer) {
-                throw ValidationException::withMessages([
-                    'user' => ['No estás asignado como revisor de esta plantilla.'],
-                ]);
-            }
-
-            if ($reviewer->status === 'approved') {
-                throw ValidationException::withMessages([
-                    'status' => ['Ya has aprobado esta plantilla.'],
-                ]);
-            }
-
-            if ($template->review_mode === 'sequential') {
-                $pendingPreviousStage = $template->reviewers()
-                    ->where('stage', '<', $reviewer->stage)
-                    ->where('status', '!=', 'approved')
-                    ->exists();
-
-                if ($pendingPreviousStage) {
-                    throw ValidationException::withMessages([
-                        'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
-                    ]);
-                }
-            }
-
-            $template->reviewers()
-                ->where('user_id', $actorId)
-                ->update(['status' => 'approved']);
-
-            $allApproved = $template->reviewers()
-                ->where('status', '!=', 'approved')
-                ->doesntExist();
-
-            if ($allApproved) {
-                return $this->publishWithSnapshot($templateId, 'Aprobado por todos los revisores.', $actorId);
-            }
-
-            return $template->fresh();
-        });
+        return $this->templateReviewService->approveReview($templateId, $actorId);
     }
 
     /**
@@ -176,82 +135,29 @@ class TemplateService implements TemplateServiceInterface
      */
     public function publishWithSnapshot(string $templateId, ?string $changelog, string $actorId): Template
     {
-        return DB::transaction(function () use ($templateId, $changelog, $actorId) {
-            /** @var Template $template */
-            $template = Template::query()->whereKey($templateId)->lockForUpdate()->firstOrFail();
-
-            if (! in_array($template->status, ['draft', 'in_review'], true)) {
-                throw ValidationException::withMessages([
-                    'status' => ['Solo se puede publicar una plantilla en borrador o en revisión.'],
-                ]);
-            }
-
-            $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
-
-            $blocksSnapshot = $template->blocks->map(fn ($b) => [
-                'id' => $b->id,
-                'title' => $b->title,
-                'description' => $b->description,
-                'default_content' => $b->default_content,
-                'block_state' => $b->block_state,
-                'sort_order' => $b->sort_order,
-            ])->values()->all();
-
-            $next = $this->templateVersionRepository->nextVersionNumber($templateId);
-            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
-            $resolvedChangelog = $trimmedChangelog;
-
-            if ($resolvedChangelog === '') {
-                if ($next === 1) {
-                    $resolvedChangelog = 'Versión inicial';
-                } else {
-                    throw ValidationException::withMessages([
-                        'changelog' => ['El changelog es obligatorio al publicar una plantilla.'],
-                    ]);
-                }
-            }
-
-            $this->templateVersionRepository->createSnapshot(
-                $templateId,
-                $next,
-                $blocksSnapshot,
-                $resolvedChangelog,
-                $actorId,
-            );
-
-            $oldStatus = $template->status;
-            $updated = $this->templateRepository->update($template, [
-                'status' => 'published',
-                'version' => $next,
-            ]);
-
-            event(new TemplateStateChanged(
-                template: $updated,
-                oldStatus: $oldStatus,
-                newStatus: 'published',
-                actorId: $actorId,
-            ));
-
-            return $updated;
-        });
+        return $this->templatePublishingService->publishWithSnapshot($templateId, $changelog, $actorId);
     }
 
     /**
      * Lista todas las versiones publicadas de una plantilla ordenadas por número de versión.
      *
-     * @return Collection<int, TemplateVersion>
+     * @return Collection<int, EntityVersion>
      */
     public function listPublishedVersions(string $templateId): Collection
     {
-        return $this->templateVersionRepository->listForTemplateOrdered($templateId);
+        return $this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId);
     }
 
     /**
-     * Listado paginado con filtros (20 ítems por defecto en request).
+     * Listado con filtros (sin paginación en servidor; el front pagina en cliente).
+     * Enriquece cada plantilla con metadatos de la última versión publicada para el API.
      */
-    public function paginateFiltered(FilterTemplatesDto $filters, int $perPage = 20): LengthAwarePaginator
+    public function listFiltered(FilterTemplatesDto $filters): Collection
     {
-        return $this->templateRepository->paginateFiltered($filters, $perPage);
+        $templates = $this->templateRepository->listFiltered($filters);
+        $this->templateRepository->attachLatestPublishedVersionMeta($templates);
+
+        return $templates;
     }
 
     /**
@@ -263,8 +169,14 @@ class TemplateService implements TemplateServiceInterface
         if ($userId === null) {
             throw new RuntimeException('Cannot create template without authenticated user.');
         }
+        $this->assertTemplateMetadataInvariants(
+            $dto->name,
+            $dto->deliveryDeadline,
+            $dto->visibilityLevel,
+        );
 
         return $this->templateRepository->create([
+            'process_id' => $dto->processId,
             'name' => $dto->name,
             'description' => $dto->description,
             'visibility_level' => $dto->visibilityLevel,
@@ -275,7 +187,6 @@ class TemplateService implements TemplateServiceInterface
             'team_id' => $dto->teamId,
             'created_by' => (string) $userId,
             'status' => 'draft',
-            'version' => 1,
             'review_stages' => $dto->reviewStages,
             'review_mode' => $dto->reviewMode,
         ]);
@@ -283,17 +194,10 @@ class TemplateService implements TemplateServiceInterface
 
     /**
      * Actualiza una plantilla con los atributos dados.
+     * Recibe el modelo ya resuelto para evitar una query redundante.
      */
-    public function update(string $templateId, UpdateTemplateDto $dto): Template
+    public function update(Template $template, UpdateTemplateDto $dto): Template
     {
-        $template = $this->templateRepository->findOrFail($templateId);
-
-        if ($dto->setStatus && $dto->status === 'published') {
-            throw ValidationException::withMessages([
-                'status' => ['La publicación se realiza con POST /api/v1/templates/{id}/publish e incluye changelog obligatorio.'],
-            ]);
-        }
-
         $attributes = [];
 
         if ($dto->setName) {
@@ -320,158 +224,763 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setTeamId) {
             $attributes['team_id'] = $dto->teamId;
         }
-        if ($dto->setStatus) {
-            $attributes['status'] = $dto->status;
-        }
         if ($dto->setReviewStages) {
             $attributes['review_stages'] = $dto->reviewStages;
         }
         if ($dto->setReviewMode) {
             $attributes['review_mode'] = $dto->reviewMode;
         }
+        $this->assertTemplateMetadataInvariants(
+            (string) ($attributes['name'] ?? $template->name),
+            $attributes['delivery_deadline'] ?? $template->delivery_deadline,
+            $attributes['visibility_level'] ?? $template->visibility_level,
+        );
 
         return $this->templateRepository->update($template, $attributes);
     }
 
     /**
-     * Elimina una plantilla físicamente (no se archiva).
+     * Elimina una plantilla de forma recuperable.
      *
-     * @return bool true si se eliminó físicamente; false si solo se archivó (hay documentos asociados).
+     * - Con documentos asociados: transiciona a `archived` (soft delete semántico;
+     *   los documentos siguen vivos). Se puede recuperar cambiando el estado.
+     * - Sin documentos: soft delete con deleted_at. Se puede recuperar con restore.
+     *
+     * @return bool true si se eliminó por soft delete (sin documentos); false si se archivó (con documentos).
      */
     public function destroy(string $templateId, string $actorId): bool
     {
         $template = $this->templateRepository->findOrFail($templateId);
 
+        $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+        if ($latestPublished !== null) {
+            $template->loadMissing('headVersion');
+            $head = $template->headVersion;
+
+            if ($head !== null && (int) $head->version_number === 0 && in_array((string) $head->status, ['draft', 'in_review'], true)) {
+                // Published version exists + working draft → discard draft, restore published.
+                $this->destroyVersion($templateId, (string) $head->id, $actorId);
+
+                return false;
+            }
+
+            throw ValidationException::withMessages([
+                'template' => ['No se puede eliminar una plantilla publicada sin versión de trabajo activa.'],
+            ]);
+        }
+
         if ($this->templateRepository->templateHasDocuments($templateId)) {
             if ($template->status !== 'archived') {
-                $this->updateTemplateStatusWithEvent($template, 'archived', $actorId);
+                $this->templatePublishingService->transitionStatus($template, 'archived', $actorId);
             }
 
             return false;
         }
 
-        $template->forceDelete();
+        $template->delete();
 
         return true;
     }
 
     /**
-     * Clona una plantilla origen hacia una nueva destino.
+     * Clona una plantilla origen hacia una nueva en borrador.
+     *
+     * Si existe versión publicada en {@see EntityVersion}, la copia se materializa desde ese
+     * snapshot; si no, desde bloques y revisores vivos.
      */
     public function clone(string $sourceTemplateId, string $actorId): Template
     {
         $source = $this->templateRepository->findOrFail($sourceTemplateId);
-        $source->loadMissing('blocks');
+        $this->assertTemplateMetadataInvariants(
+            (string) $source->name,
+            $source->delivery_deadline,
+            $source->visibility_level,
+        );
 
-        $target = $this->templateRepository->create([
-            'name' => $source->name.' (copia)',
-            'description' => $source->description,
-            'visibility_level' => $source->visibility_level instanceof TemplateVisibilityLevel
-                ? $source->visibility_level->value
-                : $source->visibility_level,
-            'delivery_deadline' => $source->delivery_deadline,
-            'study_type_id' => $source->study_type_id,
-            'study_id' => $source->study_id,
-            'module_id' => $source->module_id,
-            'team_id' => $source->team_id,
-            'created_by' => $actorId,
-            'status' => 'draft',
-            'version' => ((int) $source->version) + 1,
-            'review_stages' => $source->review_stages,
-            'review_mode' => $source->review_mode,
-        ]);
+        $published = $this->resolveLatestPublishedTemplateSnapshotForClone((string) $source->id);
+        if ($published !== null) {
+            return $this->cloneTemplateFromPublishedSnapshot($source, $published, $actorId);
+        }
 
-        $this->templateRepository->replicateBlocks($source, $target);
-
-        return $this->templateRepository->findOrFail($target->getKey());
+        return $this->cloneTemplateFromLiveSource($source, $actorId);
     }
 
     /**
-     * SoD plantilla: el creador no puede asignarse como revisor (alineado con {@see \App\Policies\TemplatePolicy::review}).
-     *
-     * @param  list<string>  $userIds
+     * Transición explícita publicada → borrador para preparar la siguiente versión publicada.
      */
-    private function assertTemplateCreatorNotAmongReviewerUserIds(Template $template, array $userIds, string $message): void
+    public function startNewRevisionCycle(string $templateId, string $actorId): Template
     {
-        $creatorId = (string) ($template->created_by ?? '');
-        if ($creatorId === '') {
+        $template = $this->templateRepository->findOrFail($templateId);
+
+        if ($template->status !== 'published') {
+            throw ValidationException::withMessages([
+                'status' => ['Solo una plantilla publicada puede pasar a borrador para una nueva versión.'],
+            ]);
+        }
+        $this->assertTemplateMetadataInvariants(
+            (string) $template->name,
+            $template->delivery_deadline,
+            $template->visibility_level,
+        );
+
+        return $this->templatePublishingService->transitionStatus(
+            $template,
+            'draft',
+            $actorId,
+            ['created_by' => $actorId],
+        );
+    }
+
+    /**
+     * Descarta la versión de trabajo actual (head mutable) y restaura snapshot/revisores de la última publicación.
+     */
+    public function destroyVersion(string $templateId, string $versionId, string $actorId): Template
+    {
+        return $this->templateRepository->transaction(function () use ($templateId, $versionId) {
+            $template = $this->templateRepository->findOrFail($templateId);
+            $template->loadMissing('headVersion');
+            $head = $template->headVersion;
+
+            if ($head === null || (string) $head->id !== $versionId || (int) $head->version_number !== 0) {
+                throw ValidationException::withMessages([
+                    'version' => ['Solo se puede descartar la versión de trabajo actual de la plantilla.'],
+                ]);
+            }
+
+            if (! in_array((string) $head->status, ['draft', 'in_review'], true)) {
+                throw ValidationException::withMessages([
+                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review).'],
+                ]);
+            }
+
+            $latestPublished = $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+            if ($latestPublished === null || ! is_array($latestPublished->snapshot_data)) {
+                throw ValidationException::withMessages([
+                    'version' => ['No existe una versión publicada a la que restaurar.'],
+                ]);
+            }
+
+            $publishedSnapshot = $latestPublished->snapshot_data;
+            $publishedTemplate = isset($publishedSnapshot['template']) && is_array($publishedSnapshot['template'])
+                ? $publishedSnapshot['template']
+                : [];
+
+            $head->snapshot_data = $publishedSnapshot;
+            $head->status = 'published';
+            $head->updated_at = now();
+            $head->save();
+
+            $this->restoreTemplateBlocksFromPublishedSnapshot($template, $publishedSnapshot);
+            $this->restoreReviewersFromPublishedSnapshotIfPresent($template, $publishedSnapshot);
+
+            // Refresca campos delegados críticos para consistencia con el snapshot restaurado.
+            $currentCreatorId = (string) $template->created_by;
+            $template = $this->templateRepository->update($template, [
+                'status' => 'published',
+                'created_by' => isset($publishedTemplate['created_by']) && is_string($publishedTemplate['created_by'])
+                    ? $publishedTemplate['created_by']
+                    : $currentCreatorId,
+            ]);
+
+            return $template->loadMissing(['reviewers', 'documentReviewers']);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $publishedSnapshot
+     */
+    private function restoreTemplateBlocksFromPublishedSnapshot(Template $template, array $publishedSnapshot): void
+    {
+        $blocks = isset($publishedSnapshot['blocks']) && is_array($publishedSnapshot['blocks'])
+            ? $publishedSnapshot['blocks']
+            : [];
+        $templateId = (string) $template->getKey();
+        $publishedBlockIds = [];
+
+        foreach ($blocks as $index => $block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $snapshotId = isset($block['id']) && is_string($block['id']) && $block['id'] !== ''
+                ? $block['id']
+                : null;
+            $blockId = $snapshotId ?? (string) Str::uuid();
+            $publishedBlockIds[] = $blockId;
+
+            $rawTitle = $block['title'] ?? null;
+            $title = match (true) {
+                $rawTitle === null => null,
+                is_string($rawTitle) => $rawTitle,
+                is_scalar($rawTitle) => (string) $rawTitle,
+                default => null,
+            };
+
+            $values = [
+                'template_id' => $templateId,
+                'title' => $title,
+                'description' => array_key_exists('description', $block) ? $block['description'] : null,
+                'default_content' => array_key_exists('default_content', $block) ? $block['default_content'] : null,
+                'block_state' => isset($block['block_state']) && is_string($block['block_state'])
+                    ? $block['block_state']
+                    : 'editable',
+                'sort_order' => isset($block['sort_order']) ? (int) $block['sort_order'] : (int) $index,
+            ];
+
+            $this->templateBlockRepository->upsertByIdForTemplate($blockId, $values);
+        }
+
+        $blockIdsInUseByDocuments = $this->documentBlockRepository
+            ->findTemplateBlockIdsInUseByTemplate($templateId);
+
+        $protectedIds = array_values(array_unique(array_merge($publishedBlockIds, $blockIdsInUseByDocuments)));
+
+        $this->templateBlockRepository->deleteForTemplateExcept($templateId, $protectedIds);
+    }
+
+    /**
+     * @param  array<string, mixed>  $publishedSnapshot
+     */
+    private function restoreReviewersFromPublishedSnapshotIfPresent(Template $template, array $publishedSnapshot): void
+    {
+        if (! array_key_exists('reviewers', $publishedSnapshot) || ! is_array($publishedSnapshot['reviewers'])) {
             return;
         }
 
-        foreach ($userIds as $userId) {
-            if ((string) $userId === $creatorId) {
-                throw ValidationException::withMessages([
-                    'user_ids' => [$message],
-                ]);
+        $reviewersSection = $publishedSnapshot['reviewers'];
+        $templateReviewers = isset($reviewersSection['template_reviewers']) && is_array($reviewersSection['template_reviewers'])
+            ? $reviewersSection['template_reviewers']
+            : [];
+        $documentReviewers = isset($reviewersSection['document_reviewers']) && is_array($reviewersSection['document_reviewers'])
+            ? $reviewersSection['document_reviewers']
+            : [];
+
+        $template->reviewers()->withTrashed()->forceDelete();
+        foreach ($templateReviewers as $row) {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                continue;
             }
+            $template->reviewers()->create([
+                'user_id' => $row['user_id'],
+                'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
+                'status' => 'pending',
+            ]);
+        }
+
+        $template->documentReviewers()->delete();
+        foreach ($documentReviewers as $row) {
+            if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                continue;
+            }
+            $template->documentReviewers()->create([
+                'user_id' => $row['user_id'],
+            ]);
         }
     }
 
     /**
-     * Actualiza el estado de la plantilla y emite el evento de dominio TemplateStateChanged.
+     * @param  array{
+     *     kind: 'entity'|'legacy',
+     *     template_meta: array<string, mixed>,
+     *     blocks: array<int, array<string, mixed>>,
+     *     reviewers_from_snapshot: bool,
+     *     template_reviewers: list<array<string, mixed>>,
+     *     document_reviewers: list<array<string, mixed>>
+     * }  $published
      */
-    private function updateTemplateStatusWithEvent(Template $template, string $newStatus, string $actorId): Template
+    private function cloneTemplateFromPublishedSnapshot(Template $source, array $published, string $actorId): Template
     {
-        $oldStatus = $template->status;
-        $updated = $this->templateRepository->update($template, ['status' => $newStatus]);
-        event(new TemplateStateChanged(
-            template: $updated,
-            oldStatus: $oldStatus,
-            newStatus: $newStatus,
-            actorId: $actorId,
-        ));
+        return $this->templateRepository->transaction(function () use ($source, $published, $actorId) {
+            $kind = $published['kind'];
+            $templateMeta = $published['template_meta'];
 
-        return $updated;
+            $nameBase = $this->cloneTemplateNameBase($kind, $templateMeta, $source);
+            $cloneVisibility = $this->normalizeTemplateVisibilityLevelForClone($kind, $templateMeta, $source);
+            $cloneDeliveryDeadline = $this->cloneTemplateDeliveryDeadline($kind, $templateMeta, $source);
+            $cloneName = $nameBase.' (copia)';
+            $this->assertTemplateMetadataInvariants(
+                $cloneName,
+                $cloneDeliveryDeadline,
+                $cloneVisibility,
+            );
+
+            $target = $this->templateRepository->create([
+                'process_id' => $source->process_id,
+                'name' => $cloneName,
+                'description' => $this->cloneTemplateDescription($kind, $templateMeta, $source),
+                'visibility_level' => $cloneVisibility,
+                'delivery_deadline' => $cloneDeliveryDeadline,
+                'study_type_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_type_id'),
+                'study_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'study_id'),
+                'module_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'module_id'),
+                'team_id' => $this->cloneTemplateNullableFk($kind, $templateMeta, $source, 'team_id'),
+                'created_by' => $actorId,
+                'status' => 'draft',
+                'review_stages' => $this->cloneTemplateReviewStages($kind, $templateMeta, $source),
+                'review_mode' => $this->cloneTemplateReviewMode($kind, $templateMeta, $source),
+            ]);
+
+            $this->templateRepository->insertBlocksFromPublishedSnapshot((string) $target->getKey(), $published['blocks']);
+
+            if ($published['reviewers_from_snapshot'] ?? false) {
+                foreach ($published['template_reviewers'] as $row) {
+                    if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                        continue;
+                    }
+                    $target->reviewers()->create([
+                        'user_id' => $row['user_id'],
+                        'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
+                        'status' => 'pending',
+                    ]);
+                }
+                foreach ($published['document_reviewers'] as $row) {
+                    if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
+                        continue;
+                    }
+                    $target->documentReviewers()->create([
+                        'user_id' => $row['user_id'],
+                    ]);
+                }
+            } else {
+                $source->loadMissing(['reviewers', 'documentReviewers']);
+                foreach ($source->reviewers as $reviewer) {
+                    $target->reviewers()->create([
+                        'user_id' => $reviewer->user_id,
+                        'stage' => $reviewer->stage,
+                        'status' => 'pending',
+                    ]);
+                }
+                foreach ($source->documentReviewers as $docReviewer) {
+                    $target->documentReviewers()->create([
+                        'user_id' => $docReviewer->user_id,
+                    ]);
+                }
+            }
+
+            return $this->templateRepository->findOrFail($target->getKey());
+        });
+    }
+
+    private function cloneTemplateFromLiveSource(Template $source, string $actorId): Template
+    {
+        return $this->templateRepository->transaction(function () use ($source, $actorId) {
+            $source->loadMissing(['blocks', 'reviewers', 'documentReviewers']);
+            $cloneVisibility = $source->visibility_level instanceof TemplateVisibilityLevel
+                ? $source->visibility_level->value
+                : $source->visibility_level;
+            $cloneName = $source->name.' (copia)';
+            $this->assertTemplateMetadataInvariants(
+                $cloneName,
+                $source->delivery_deadline,
+                $cloneVisibility,
+            );
+
+            $target = $this->templateRepository->create([
+                'process_id' => $source->process_id,
+                'name' => $cloneName,
+                'description' => $source->description,
+                'visibility_level' => $cloneVisibility,
+                'delivery_deadline' => $source->delivery_deadline,
+                'study_type_id' => $source->study_type_id,
+                'study_id' => $source->study_id,
+                'module_id' => $source->module_id,
+                'team_id' => $source->team_id,
+                'created_by' => $actorId,
+                'status' => 'draft',
+                'review_stages' => $source->review_stages,
+                'review_mode' => $source->review_mode,
+            ]);
+
+            $this->templateRepository->replicateBlocks($source, $target);
+
+            foreach ($source->reviewers as $reviewer) {
+                $target->reviewers()->create([
+                    'user_id' => $reviewer->user_id,
+                    'stage' => $reviewer->stage,
+                ]);
+            }
+
+            foreach ($source->documentReviewers as $docReviewer) {
+                $target->documentReviewers()->create([
+                    'user_id' => $docReviewer->user_id,
+                ]);
+            }
+
+            return $this->templateRepository->findOrFail($target->getKey());
+        });
+    }
+
+    /**
+     * Resuelve la última versión publicada con metadatos si el ganador por meta no produce snapshot usable.
+     *
+     * @return ?array{
+     *     kind: 'entity'|'legacy',
+     *     template_meta: array<string, mixed>,
+     *     blocks: array<int, array<string, mixed>>,
+     *     reviewers_from_snapshot: bool,
+     *     template_reviewers: list<array<string, mixed>>,
+     *     document_reviewers: list<array<string, mixed>>
+     * }
+     */
+    private function resolveLatestPublishedTemplateSnapshotForClone(string $templateId): ?array
+    {
+        $winner = $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Template::class, $templateId);
+        if ($winner === null) {
+            return $this->resolveFallbackPublishedTemplateSnapshot($templateId);
+        }
+
+        $versionNumber = $winner['version_number'];
+
+        $entityRow = $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+            Template::class,
+            $templateId,
+            $versionNumber,
+        );
+
+        if ($entityRow !== null && is_array($entityRow->snapshot_data)) {
+            $payload = $this->buildEntityClonePayloadFromSnapshotData($entityRow->snapshot_data);
+            if ($payload !== null) {
+                return $payload;
+            }
+        }
+
+        return $this->resolveFallbackPublishedTemplateSnapshot($templateId);
+    }
+
+    /**
+     * Última versión publicada con bloques materializables si el ganador por meta no produce snapshot usable.
+     *
+     * @return ?array{
+     *     kind: 'entity'|'legacy',
+     *     template_meta: array<string, mixed>,
+     *     blocks: array<int, array<string, mixed>>,
+     *     reviewers_from_snapshot: bool,
+     *     template_reviewers: list<array<string, mixed>>,
+     *     document_reviewers: list<array<string, mixed>>
+     * }
+     */
+    private function resolveFallbackPublishedTemplateSnapshot(string $templateId): ?array
+    {
+        foreach ($this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId)->sortByDesc('version_number') as $ev) {
+            if (! is_array($ev->snapshot_data)) {
+                continue;
+            }
+            $payload = $this->buildEntityClonePayloadFromSnapshotData($ev->snapshot_data);
+            if ($payload !== null) {
+                return $payload;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Construye el payload de clonación de la plantilla.
+     *
+     * @param  array<string, mixed>  $data
+     * @return ?array{
+     *     kind: 'entity',
+     *     template_meta: array<string, mixed>,
+     *     blocks: array<int, array<string, mixed>>,
+     *     reviewers_from_snapshot: bool,
+     *     template_reviewers: list<array<string, mixed>>,
+     *     document_reviewers: list<array<string, mixed>>
+     * }
+     */
+    private function buildEntityClonePayloadFromSnapshotData(array $data): ?array
+    {
+        $blocks = isset($data['blocks']) && is_array($data['blocks']) ? $data['blocks'] : [];
+        if ($blocks === []) {
+            return null;
+        }
+
+        $hasReviewersSection = isset($data['reviewers']) && is_array($data['reviewers']);
+        $rp = $hasReviewersSection ? $data['reviewers'] : [];
+
+        return [
+            'kind' => 'entity',
+            'template_meta' => isset($data['template']) && is_array($data['template']) ? $data['template'] : [],
+            'blocks' => $blocks,
+            'reviewers_from_snapshot' => $hasReviewersSection,
+            'template_reviewers' => $hasReviewersSection && isset($rp['template_reviewers']) && is_array($rp['template_reviewers'])
+                ? $rp['template_reviewers']
+                : [],
+            'document_reviewers' => $hasReviewersSection && isset($rp['document_reviewers']) && is_array($rp['document_reviewers'])
+                ? $rp['document_reviewers']
+                : [],
+        ];
+    }
+
+    /**
+     * Clona el nombre base de la plantilla.
+     *
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateNameBase(string $kind, array $templateMeta, Template $source): string
+    {
+        if ($kind === 'entity' && isset($templateMeta['name']) && is_string($templateMeta['name']) && $templateMeta['name'] !== '') {
+            return $templateMeta['name'];
+        }
+
+        return (string) $source->name;
+    }
+
+    /**
+     * Clona el nombre base de la plantilla.
+     *
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateDescription(string $kind, array $templateMeta, Template $source): ?string
+    {
+        if ($kind === 'entity' && array_key_exists('description', $templateMeta)) {
+            return $templateMeta['description'] !== null ? (string) $templateMeta['description'] : null;
+        }
+
+        return $source->description;
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateDeliveryDeadline(string $kind, array $templateMeta, Template $source): mixed
+    {
+        if ($kind === 'entity' && array_key_exists('delivery_deadline', $templateMeta)) {
+            return $templateMeta['delivery_deadline'];
+        }
+
+        return $source->delivery_deadline;
+    }
+
+    /**
+     * Clona el valor de un FK de la plantilla.
+     *
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateNullableFk(string $kind, array $templateMeta, Template $source, string $key): mixed
+    {
+        if ($kind === 'entity' && array_key_exists($key, $templateMeta)) {
+            return $templateMeta[$key];
+        }
+
+        return $source->{$key};
+    }
+
+    /**
+     * Normaliza el nivel de visibilidad de la plantilla.
+     *
+     * @param  TemplateVisibilityLevel|string  $level
+     */
+    private function normalizeTemplateVisibilityLevelForClone(string $kind, array $templateMeta, Template $source): string
+    {
+        if ($kind === 'entity' && array_key_exists('visibility_level', $templateMeta)) {
+            return $this->normalizeTemplateVisibilityLevelValue($templateMeta['visibility_level']);
+        }
+
+        return $this->normalizeTemplateVisibilityLevelValue($source->visibility_level);
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateReviewStages(string $kind, array $templateMeta, Template $source): int
+    {
+        if ($kind === 'entity' && array_key_exists('review_stages', $templateMeta)) {
+            return (int) $templateMeta['review_stages'];
+        }
+
+        return (int) $source->review_stages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateReviewMode(string $kind, array $templateMeta, Template $source): string
+    {
+        if (
+            $kind === 'entity'
+            && isset($templateMeta['review_mode'])
+            && is_string($templateMeta['review_mode'])
+            && in_array($templateMeta['review_mode'], ['sequential', 'parallel'], true)
+        ) {
+            return $templateMeta['review_mode'];
+        }
+
+        return (string) $source->review_mode;
+    }
+
+    private function normalizeTemplateVisibilityLevelValue(mixed $level): string
+    {
+        if ($level instanceof TemplateVisibilityLevel) {
+            return $level->value;
+        }
+        if (is_string($level) && $level !== '') {
+            return $level;
+        }
+
+        return TemplateVisibilityLevel::Personal->value;
+    }
+
+    /**
+     * Aserta las invariantes de los metadatos de la plantilla.
+     * Lanza excepción si alguna invariante no se cumple.
+     *
+     * @param  Carbon|string|null  $deliveryDeadline
+     * @param  TemplateVisibilityLevel|string  $visibilityLevel
+     */
+    private function assertTemplateMetadataInvariants(string $name, mixed $deliveryDeadline, mixed $visibilityLevel): void
+    {
+        if (trim($name) === '') {
+            throw ValidationException::withMessages([
+                'name' => ['El nombre de la plantilla es obligatorio.'],
+            ]);
+        }
+
+        if ($deliveryDeadline === null || (is_string($deliveryDeadline) && trim($deliveryDeadline) === '')) {
+            throw ValidationException::withMessages([
+                'delivery_deadline' => ['La fecha de entrega de la plantilla es obligatoria.'],
+            ]);
+        }
+
+        $normalizedVisibility = $visibilityLevel instanceof TemplateVisibilityLevel
+            ? $visibilityLevel->value
+            : (is_string($visibilityLevel) ? trim($visibilityLevel) : '');
+        if ($normalizedVisibility === '') {
+            throw ValidationException::withMessages([
+                'visibility_level' => ['La visibilidad de la plantilla es obligatoria.'],
+            ]);
+        }
+    }
+
+    /**
+     * Normaliza los atributos de actualización contra el scope de la plantilla.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeUpdateAttributesAgainstTemplateScope(Template $template, array $attributes): array
+    {
+        $normalized = $attributes;
+        $visibility = $this->normalizeTemplateVisibilityLevelValue($template->visibility_level);
+
+        $templateStudyTypeId = is_string($template->study_type_id) && $template->study_type_id !== '' ? $template->study_type_id : null;
+        $templateStudyId = is_string($template->study_id) && $template->study_id !== '' ? $template->study_id : null;
+        $templateModuleId = is_string($template->module_id) && $template->module_id !== '' ? $template->module_id : null;
+
+        $studyTypeId = array_key_exists('study_type_id', $attributes) ? $attributes['study_type_id'] : $template->study_type_id;
+        $studyId = array_key_exists('study_id', $attributes) ? $attributes['study_id'] : $template->study_id;
+        $moduleId = array_key_exists('module_id', $attributes) ? $attributes['module_id'] : $template->module_id;
+
+        if ($visibility === TemplateVisibilityLevel::Personal->value || $visibility === TemplateVisibilityLevel::Team->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['module_id'] = $templateModuleId;
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Module->value) {
+            if ($templateModuleId !== null && $moduleId !== null && $moduleId !== $templateModuleId) {
+                throw ValidationException::withMessages([
+                    'module_id' => ['La plantilla debe mantenerse en el mismo módulo.'],
+                ]);
+            }
+
+            $normalized['module_id'] = $templateModuleId;
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Study->value) {
+            if ($templateStudyId !== null && $studyId !== null && $studyId !== $templateStudyId) {
+                throw ValidationException::withMessages([
+                    'study_id' => ['La plantilla debe mantenerse en el mismo estudio.'],
+                ]);
+            }
+
+            $normalized['study_id'] = $templateStudyId;
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
+                if ($moduleStudyId === null || $moduleStudyId !== $templateStudyId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer al mismo estudio de la plantilla.'],
+                    ]);
+                }
+                $normalized['module_id'] = $moduleId;
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::StudyType->value) {
+            $normalized['study_type_id'] = $templateStudyTypeId;
+
+            if (is_string($moduleId) && $moduleId !== '') {
+                $module = $this->academicHierarchyRepository->findStudyAndTypeByModuleId($moduleId);
+
+                if ($module === null || $module['study_type_id'] !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'module_id' => ['El módulo debe pertenecer a un estudio del mismo tipo que la plantilla.'],
+                    ]);
+                }
+
+                if (is_string($studyId) && $studyId !== '' && $studyId !== $module['study_id']) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                    ]);
+                }
+
+                $normalized['module_id'] = $moduleId;
+                $normalized['study_id'] = $module['study_id'];
+
+                return $normalized;
+            }
+
+            if (is_string($studyId) && $studyId !== '') {
+                $studyTypeFromStudy = $this->academicHierarchyRepository->findStudyTypeIdByStudyId($studyId);
+                if ($studyTypeFromStudy === null || $studyTypeFromStudy !== $templateStudyTypeId) {
+                    throw ValidationException::withMessages([
+                        'study_id' => ['El estudio debe pertenecer al mismo tipo de estudio de la plantilla.'],
+                    ]);
+                }
+            }
+
+            return $normalized;
+        }
+
+        if ($visibility === TemplateVisibilityLevel::Global->value && is_string($moduleId) && $moduleId !== '') {
+            $moduleStudyId = $this->academicHierarchyRepository->findStudyIdByModuleId($moduleId);
+            if ($moduleStudyId === null) {
+                throw ValidationException::withMessages([
+                    'module_id' => ['El módulo seleccionado no existe.'],
+                ]);
+            }
+            if (is_string($studyId) && $studyId !== '' && $studyId !== $moduleStudyId) {
+                throw ValidationException::withMessages([
+                    'study_id' => ['El estudio indicado no corresponde con el módulo seleccionado.'],
+                ]);
+            }
+        }
+
+        return $normalized;
     }
 
     /**
      * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncReviewers(string $templateId, array $userIds): void
+    public function syncReviewers(string $templateId, SyncUsersDto $dto): void
     {
-        DB::transaction(function () use ($templateId, $userIds) {
-            $template = $this->templateRepository->findOrFail($templateId);
-
-            $this->assertTemplateCreatorNotAmongReviewerUserIds(
-                $template,
-                $userIds,
-                'El creador de la plantilla no puede figurar como revisor normativo de la misma.',
-            );
-
-            // TemplateReviewer uses SoftDeletes; forceDelete removes rows physically
-            // so the unique constraint (template_id, user_id) is not violated on re-insert.
-            $template->reviewers()->withTrashed()->forceDelete();
-
-            foreach ($userIds as $index => $userId) {
-                $template->reviewers()->create([
-                    'user_id' => $userId,
-                    'stage'   => $index + 1,
-                ]);
-            }
-        });
+        $this->templateReviewerAssignmentService->syncReviewers($templateId, $dto);
     }
 
     /**
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
      */
-    public function syncDocumentReviewers(string $templateId, array $userIds): void
+    public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void
     {
-        DB::transaction(function () use ($templateId, $userIds) {
-            $template = $this->templateRepository->findOrFail($templateId);
-
-            $this->assertTemplateCreatorNotAmongReviewerUserIds(
-                $template,
-                $userIds,
-                'El creador de la plantilla no puede figurar como validador de documentos derivados de la misma.',
-            );
-
-            $template->documentReviewers()->delete();
-
-            foreach ($userIds as $userId) {
-                $template->documentReviewers()->create([
-                    'user_id' => $userId,
-                ]);
-            }
-        });
+        $this->templateReviewerAssignmentService->syncDocumentReviewers($templateId, $dto);
     }
 }

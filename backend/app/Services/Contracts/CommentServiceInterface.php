@@ -1,28 +1,56 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Contracts;
 
+use App\DTOs\Comments\CommentDto;
 use App\Models\Comment;
+use Maya\Http\Pagination\PaginatedDto;
 
 interface CommentServiceInterface
 {
     /**
-     * Localiza un comentario por su ID o lanza ModelNotFoundException.
+     * Devuelve el DTO de un comentario. Lanza ModelNotFoundException si no existe.
      */
-    public function findOrFail(string $id): Comment;
+    public function findOrFail(string $id): CommentDto;
 
     /**
-     * Lista comentarios de una plantilla.
+     * Devuelve el modelo Eloquent del comentario. Variante de uso interno
+     * cuando el caller necesita el Model para la policy (`authorize('delete', $model)`).
+     * Resto de consumidores deben usar `findOrFail()`.
      */
-    public function listForTemplate(string $templateId): \Illuminate\Support\Collection;
+    public function findModelOrFail(string $id): Comment;
 
     /**
-     * Crea un comentario para una plantilla.
+     * Lista los comentarios paginados para un recurso.
+     *
+     * @return PaginatedDto<CommentDto>
      */
-    public function createForTemplate(string $templateId, string $authorId, array $data): Comment;
+    public function listForResource(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        int $perPage,
+    ): PaginatedDto;
 
     /**
-     * Marca un comentario como resuelto.
+     * Crea un comentario para un recurso.
      */
-    public function resolve(string $id, string $userId): Comment;
+    public function createForResource(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        ?string $blockableType,
+        ?string $blockableId,
+        ?string $parentId,
+        string $authorId,
+        string $body,
+    ): CommentDto;
+
+    /**
+     * Elimina un comentario. Recibe el Model Eloquent (las policies del Controller
+     * ya lo cargan vía `findModelOrFail()` o el route binding).
+     */
+    public function delete(Comment $comment): void;
 }

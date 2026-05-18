@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\BlockVersion;
@@ -8,60 +10,180 @@ use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\DocumentVersion;
+use App\Models\EntityVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use JsonException;
+use RuntimeException;
 
 class DocumentRepository implements DocumentRepositoryInterface
 {
     /**
-     * Busca un documento por su ID o lanza ModelNotFoundException.
+     * Busca un documento por su ID aplicando el scope `user_access`, o lanza ModelNotFoundException.
      *
-     * El alcance global `user_access` incluye revisores en `document_reviews`; si por cualquier
-     * desajuste el documento no entra en la consulta acotada, se comprueba una asignación pendiente
-     * explícita y se carga sin ese alcance (misma condición que usa la bandeja del dashboard).
+     * La visibilidad la gestiona íntegramente el scope global del modelo:
+     * propietario, compartido, revisor en ciclo activo o catálogo publicado con contexto académico.
      */
     public function findOrFail(string $id): Document
     {
-        $scoped = Document::query()->with(['templateVersion'])->whereKey($id)->first();
-        if ($scoped !== null) {
-            return $scoped;
+        return Document::query()
+            ->with(['templateVersion', 'headVersion'])
+            ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
+            ->whereKey($id)
+            ->firstOrFail();
+    }
+
+    public function findOrFailForRefreshAfterMutation(string $id): Document
+    {
+        return Document::query()
+            ->withoutGlobalScope('user_access')
+            ->with(['templateVersion', 'headVersion'])
+            ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
+            ->whereKey($id)
+            ->firstOrFail();
+    }
+
+    /**
+     * Borrado lógico de documento.
+     */
+    public function delete(Document $document): void
+    {
+        $document->delete();
+    }
+
+    /**
+     * Actualiza metadatos editables del documento.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateDocumentMetadata(Document $document, array $attributes): Document
+    {
+        $deliveryDeadline = array_key_exists('delivery_deadline', $attributes)
+            ? $attributes['delivery_deadline']
+            : $document->delivery_deadline;
+
+        return $this->mergeHeadWorkingCopy($document, [
+            'title' => $attributes['title'] ?? $document->title,
+            'delivery_deadline' => $deliveryDeadline,
+            'study_type_id' => $attributes['study_type_id'] ?? $document->study_type_id,
+            'study_id' => $attributes['study_id'] ?? $document->study_id,
+            'module_id' => $attributes['module_id'] ?? $document->module_id,
+        ]);
+    }
+
+    /**
+     * Actualiza owner del documento.
+     */
+    public function updateOwner(Document $document, string $newOwnerId): Document
+    {
+        return $this->mergeHeadWorkingCopy($document, ['owner_id' => $newOwnerId]);
+    }
+
+    public function mergeHeadWorkingCopy(Document $document, array $updates): Document
+    {
+        $delegatedFlip = array_flip(DocumentHeadSnapshot::DELEGATED_ATTRIBUTES);
+        $headUpdates = array_intersect_key($updates, $delegatedFlip);
+        if ($headUpdates === []) {
+            return $document->fresh(['headVersion']);
         }
 
-        if (auth()->check()) {
-            $uid = (string) auth()->user()->getAuthIdentifier();
-            if ($uid !== '') {
-                $assigned = DocumentReview::query()
-                    ->where('document_id', $id)
-                    ->where('reviewer_id', $uid)
-                    ->where('status', 'pending')
-                    ->exists();
-
-                if ($assigned) {
-                    return Document::withoutGlobalScopes(['user_access'])
-                        ->with(['templateVersion'])
-                        ->whereKey($id)
-                        ->firstOrFail();
-                }
-            }
+        $document->loadMissing('headVersion');
+        $ev = $document->headVersion;
+        if ($ev === null) {
+            throw new RuntimeException('Documento sin versión cabezal en entity_versions.');
         }
 
-        return Document::query()->with(['templateVersion'])->whereKey($id)->firstOrFail();
+        $normalized = $this->normalizeHeadSnapshotUpdates($headUpdates);
+        $ev->snapshot_data = DocumentHeadSnapshot::mergeDocumentKey($ev->snapshot_data ?? [], $normalized);
+        if (array_key_exists('status', $headUpdates)) {
+            $ev->status = (string) $headUpdates['status'];
+        }
+        $ev->save();
+
+        return $document->fresh(['headVersion']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $updates
+     * @return array<string, mixed>
+     */
+    private function normalizeHeadSnapshotUpdates(array $updates): array
+    {
+        $out = [];
+        foreach ($updates as $k => $v) {
+            $out[$k] = match ($k) {
+                'delivery_deadline' => TemplateHeadSnapshot::normalizeDeadlineForSnapshot($v),
+                default => $v,
+            };
+        }
+
+        return $out;
     }
 
     /**
      * Crea el documento y sus bloques iniciales en una transacción.
      *
      * @param  array<string, mixed>  $documentAttributes
-     * @param  list<array{template_block_id: string, content: mixed, sort_order: int}>  $blockRows
+     * @param  list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}>  $blockRows
      */
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document
     {
         return DB::transaction(function () use ($documentAttributes, $blockRows) {
-            $document = Document::query()->create($documentAttributes);
+            $delegatedFlip = array_flip(DocumentHeadSnapshot::DELEGATED_ATTRIBUTES);
+            $delegated = array_intersect_key($documentAttributes, $delegatedFlip);
+            $anchor = array_diff_key($documentAttributes, $delegatedFlip);
+
+            $document = new Document;
+            if (! empty($anchor['id'])) {
+                $document->setAttribute('id', $anchor['id']);
+            }
+            $document->process_id = $anchor['process_id'];
+            $document->template_id = $anchor['template_id'];
+            $document->template_version_id = $anchor['template_version_id'] ?? null;
+            $document->save();
+
+            $row = array_merge($delegated, [
+                'id' => $document->getKey(),
+                'process_id' => $document->process_id,
+                'template_id' => $document->template_id,
+                'status' => $delegated['status'] ?? 'draft',
+            ]);
+
+            $snapshot = DocumentHeadSnapshot::buildPayloadFromLegacyRow(
+                $row,
+                $document->getKey(),
+                (string) $document->process_id,
+                (string) $document->template_id,
+            );
+
+            $now = now();
+            $headId = (string) Str::uuid();
+
+            DB::table('entity_versions')->insert([
+                'id' => $headId,
+                'versionable_type' => Document::class,
+                'versionable_id' => $document->getKey(),
+                'version_number' => 0,
+                'base_version_id' => null,
+                'change_set' => null,
+                'status' => (string) ($delegated['status'] ?? 'draft'),
+                'created_by' => (string) ($delegated['created_by'] ?? ''),
+                'published_by' => null,
+                'published_at' => null,
+                'changelog' => null,
+                'snapshot_data' => json_encode($snapshot, JSON_THROW_ON_ERROR),
+                'is_snapshot_immutable' => false,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ]);
+
+            $document->head_entity_version_id = $headId;
+            $document->save();
 
             if ($blockRows !== []) {
                 $now = now();
@@ -70,7 +192,8 @@ class DocumentRepository implements DocumentRepositoryInterface
                     'document_id' => $document->getKey(),
                     'template_block_id' => $row['template_block_id'],
                     'content' => $this->encodeDocumentBlockContentForInsert($row['content']),
-                    'is_filled' => false,
+                    'is_filled' => array_key_exists('is_filled', $row) ? (bool) $row['is_filled'] : false,
+                    'last_edited_by' => array_key_exists('last_edited_by', $row) ? $row['last_edited_by'] : null,
                     'sort_order' => $row['sort_order'],
                     'created_at' => $now,
                     'updated_at' => $now,
@@ -79,7 +202,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                 DocumentBlock::query()->insert($rowsToInsert);
             }
 
-            return $document->fresh(['blocks']);
+            return $document->fresh(['blocks', 'headVersion']);
         });
     }
 
@@ -125,11 +248,22 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
-     * Elimina todas las revisiones de un documento.
+     * Elimina todas las revisiones de un documento (uso en submitToReview para ciclo limpio).
      */
     public function deleteReviewsForDocument(string $documentId): void
     {
         DocumentReview::query()->where('document_id', $documentId)->delete();
+    }
+
+    /**
+     * Elimina solo las revisiones pendientes, conservando las rechazadas como historial.
+     */
+    public function deletePendingReviewsForDocument(string $documentId): void
+    {
+        DocumentReview::query()
+            ->where('document_id', $documentId)
+            ->where('status', 'pending')
+            ->delete();
     }
 
     /**
@@ -171,6 +305,13 @@ class DocumentRepository implements DocumentRepositoryInterface
         return $min !== null ? (int) $min : null;
     }
 
+    public function firstReviewCreatedAt(string $documentId): mixed
+    {
+        return DocumentReview::query()
+            ->where('document_id', $documentId)
+            ->min('created_at');
+    }
+
     /**
      * Guarda una revisión del documento.
      */
@@ -182,12 +323,25 @@ class DocumentRepository implements DocumentRepositoryInterface
     /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
      */
-    public function listOrderedByCreatedAtDesc(): Collection
+    public function listOrderedByCreatedAtDesc(?string $processId = null): Collection
     {
-        return Document::query()
+        $query = Document::withoutGlobalScopes(['join_head_document_entity_version'])
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
+            ->select(['documents.*', 'owner_user.name as owner_name'])
+            ->leftJoin('users as owner_user', function ($join) {
+                $join->whereRaw(
+                    'owner_user.id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id')
+                );
+            })
+            ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
             ->with(['template', 'templateVersion'])
-            ->orderByDesc('created_at')
-            ->get();
+            ->orderByDesc('documents.created_at');
+
+        if ($processId !== null) {
+            $query->where('documents.process_id', $processId);
+        }
+
+        return $query->get();
     }
 
     /**
@@ -205,36 +359,50 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('status', 'pending')
             ->groupBy('document_id');
 
-        $rows = DB::table('document_reviews as dr')
+        $query = DB::table('document_reviews as dr')
             ->join('documents as d', 'd.id', '=', 'dr.document_id')
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'd.head_entity_version_id')
             ->join('templates as t', 't.id', '=', 'd.template_id')
-            ->leftJoin('users as owner_user', 'owner_user.id', '=', 'd.owner_id')
+            ->join('entity_versions as template_head_ev', 'template_head_ev.id', '=', 't.head_entity_version_id')
+            ->leftJoin('users as owner_user', function ($join) {
+                $join->whereRaw(
+                    'owner_user.id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id')
+                );
+            })
             ->leftJoinSub($minPendingByDocument, 'ps', function ($join) {
                 $join->on('ps.document_id', '=', 'd.id');
             })
             ->where('dr.reviewer_id', $userId)
             ->where('dr.status', 'pending')
-            ->where('d.status', 'in_review')
+            ->where('document_head_ev.snapshot_data->document->status', 'in_review')
             ->where(function ($q) {
-                $q->whereNull('t.review_mode')
-                    ->orWhere('t.review_mode', 'parallel')
+                $q->whereNull('template_head_ev.snapshot_data->template->review_mode')
+                    ->orWhere('template_head_ev.snapshot_data->template->review_mode', 'parallel')
                     ->orWhere(function ($q2) {
-                        $q2->where('t.review_mode', 'sequential')
+                        $q2->where('template_head_ev.snapshot_data->template->review_mode', 'sequential')
                             ->whereColumn('dr.stage', 'ps.min_stage');
                     });
-            })
-            ->orderByRaw('CASE WHEN d.delivery_deadline IS NULL THEN 1 ELSE 0 END ASC')
-            ->orderBy('d.delivery_deadline', 'asc')
+            });
+
+        $query->where(function ($w) use ($userId) {
+            Document::applyAcademicOverlapForTableAlias($w, $userId, 'd');
+        });
+
+        $rows = $query
+            ->orderByRaw(
+                'CASE WHEN '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'delivery_deadline').' IS NULL THEN 1 ELSE 0 END ASC'
+            )
+            ->orderByRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'delivery_deadline').' ASC')
             ->orderByDesc('d.updated_at')
             ->get([
                 'd.id as document_id',
-                'd.title',
-                'd.owner_id',
-                'd.delivery_deadline',
-                'd.status',
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'title').' as title'),
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' as owner_id'),
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'delivery_deadline').' as delivery_deadline'),
+                DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status').' as status'),
                 'dr.id as review_id',
                 'dr.stage',
-                't.review_mode',
+                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'review_mode').' as review_mode'),
                 'owner_user.name as owner_name',
             ]);
 
@@ -273,10 +441,11 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function isAuthorOrReviewer(string $documentId, string $userId): bool
     {
         $isAuthor = DB::table('documents')
-            ->where('id', $documentId)
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
+            ->where('documents.id', $documentId)
             ->where(fn ($q) => $q
-                ->where('owner_id', $userId)
-                ->orWhere('created_by', $userId)
+                ->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id').' = ?', [$userId])
+                ->orWhereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'created_by').' = ?', [$userId])
             )
             ->exists();
 
@@ -291,9 +460,19 @@ class DocumentRepository implements DocumentRepositoryInterface
     }
 
     /**
-     * Mayor número de versión de snapshot guardado para el documento.
+     * Mayor número de versión según {@see EntityVersion} (fuente canónica).
      */
     public function maxDocumentVersionNumber(string $documentId): int
+    {
+        $max = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
+            ->max('version_number');
+
+        return $max !== null ? (int) $max : 0;
+    }
+
+    public function maxDocumentVersionHistoryNumber(string $documentId): int
     {
         $max = DocumentVersion::query()
             ->where('document_id', $documentId)
@@ -312,10 +491,11 @@ class DocumentRepository implements DocumentRepositoryInterface
         int $versionNumber,
         string $triggerEvent,
         string $triggeredBy,
-        array $snapshotData,
+        ?array $snapshotData,
         ?string $notes = null,
+        ?string $entityVersionId = null,
     ): void {
-        DocumentVersion::forceCreate([
+        $attributes = [
             'id' => (string) Str::uuid(),
             'document_id' => $documentId,
             'version_number' => $versionNumber,
@@ -325,7 +505,13 @@ class DocumentRepository implements DocumentRepositoryInterface
             'notes' => $notes,
             'is_immutable' => true,
             'created_at' => now(),
-        ]);
+        ];
+
+        if ($entityVersionId !== null) {
+            $attributes['entity_version_id'] = $entityVersionId;
+        }
+
+        DocumentVersion::forceCreate($attributes);
     }
 
     /**
@@ -337,6 +523,54 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('document_id', $documentId)
             ->where('id', $versionId)
             ->firstOrFail();
+    }
+
+    /**
+     * Última versión de snapshot del documento por número de versión.
+     */
+    public function findLatestDocumentVersionOrFail(string $documentId): DocumentVersion
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->orderByDesc('version_number')
+            ->firstOrFail();
+    }
+
+    public function findLatestPublishedDocumentVersion(string $documentId): ?DocumentVersion
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->where('trigger_event', 'published')
+            ->orderByDesc('version_number')
+            ->first();
+    }
+
+    /**
+     * Contexto académico de módulo para creación documental.
+     *
+     * @return array{module_id: string, study_id: string, study_type_id: ?string}|null
+     */
+    public function findModuleContext(string $moduleId): ?array
+    {
+        $row = DB::table('course_modules as cm')
+            ->leftJoin('studies as s', 's.id', '=', 'cm.study_id')
+            ->where('cm.id', $moduleId)
+            ->select([
+                'cm.id as module_id',
+                'cm.study_id',
+                's.study_type_id',
+            ])
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'module_id' => (string) $row->module_id,
+            'study_id' => (string) $row->study_id,
+            'study_type_id' => $row->study_type_id !== null ? (string) $row->study_type_id : null,
+        ];
     }
 
     /**
@@ -460,5 +694,13 @@ class DocumentRepository implements DocumentRepositoryInterface
         }
 
         return json_encode($content, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Ejecuta una operación dentro de transacción.
+     */
+    public function transaction(callable $callback): mixed
+    {
+        return DB::transaction($callback);
     }
 }

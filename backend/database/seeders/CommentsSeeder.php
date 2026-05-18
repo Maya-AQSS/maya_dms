@@ -24,7 +24,6 @@ class CommentsSeeder extends Seeder
 
         $rows = array_map(static function (array $row) use ($now): array {
             $row['created_at'] ??= $now;
-            $row['updated_at'] ??= $now;
             $row['deleted_at'] ??= null;
 
             return $row;

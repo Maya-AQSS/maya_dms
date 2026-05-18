@@ -1,12 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\TemplateBlocks;
 
+use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Enums\BlockState;
+use App\Http\Concerns\SanitizesBlockContent;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTemplateBlockRequest extends FormRequest
 {
+    use SanitizesBlockContent;
+
     public function authorize(): bool
     {
         return true;
@@ -15,76 +21,38 @@ class UpdateTemplateBlockRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'           => ['sometimes', 'nullable', 'string', 'max:255'],
-            'default_content' => ['sometimes', 'nullable', 'array'],
-            'description'     => ['sometimes', 'nullable', 'array'],
-            'block_state'     => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
-            'sort_order'      => ['sometimes', 'integer', 'min:0'],
-        ];
-    }
-
-    protected function prepareForValidation(): void
-    {
-        $payload = [];
-
-        if ($this->exists('title')) {
-            $title = trim((string) $this->input('title'));
-            $payload['title'] = $title === '' ? null : $title;
-        }
-
-        if ($this->exists('description')) {
-            $normalized = $this->sanitizeRichContent($this->input('description'));
-            $payload['description'] = (is_array($normalized) || is_string($normalized)) ? $normalized : null;
-        }
-
-        if ($this->exists('default_content')) {
-            $normalized = $this->sanitizeRichContent($this->input('default_content'));
-            $payload['default_content'] = is_array($normalized) ? $normalized : null;
-        }
-
-        if ($payload !== []) {
-            $this->merge($payload);
-        }
-    }
-
-    public function messages(): array
-    {
-        return [
-            'block_state.in' => 'El estado del bloque debe ser uno de: '.implode(', ', BlockState::values()).'. Valor recibido: :input.',
-        ];
-    }
-
-    private function sanitizeRichContent(mixed $value, ?string $parentKey = null): mixed
-    {
-        if (is_string($value)) {
-            $normalized = trim($value);
-            return $normalized === '' ? null : $normalized;
-        }
-
-        if (! is_array($value)) {
-            return $value;
-        }
-
-        if (array_is_list($value)) {
-            $sanitized = [];
-            foreach ($value as $item) {
-                $next = $this->sanitizeRichContent($item);
-                if ($next !== null) {
-                    $sanitized[] = $next;
+            'title' => ['sometimes', 'required', 'string', 'min:1', 'max:255', function ($attr, $value, $fail) {
+                if (mb_strtolower(trim((string) $value)) === 'bloque sin nombre') {
+                    $fail('"Bloque sin nombre" no es un nombre válido para un bloque.');
                 }
-            }
-            return $sanitized;
-        }
+            }],
+            'default_content' => ['sometimes', 'nullable', 'array'],
+            'description' => ['sometimes', 'nullable', 'array'],
+            'block_state' => ['sometimes', 'string', 'in:'.implode(',', BlockState::values())],
+            'sort_order' => ['sometimes', 'integer', 'min:0'],
+        ];
+    }
 
-        $out = [];
-        foreach ($value as $key => $nested) {
-            $next = $this->sanitizeRichContent($nested, (string) $key);
-            if ($next !== null) {
-                $out[(string) $key] = $next;
-            }
-        }
+    /**
+     * Empaqueta los campos validados en el DTO que consume `TemplateBlockService::update`.
+     * Cada `set_*` indica si el cliente envió ese atributo (presencia ≠ valor).
+     */
+    public function toDto(): UpdateTemplateBlockDto
+    {
+        /** @var array<string, mixed> $validated */
+        $validated = $this->validated();
 
-        // Preserve nodes even if they don't have nested meaningful content (like empty paragraphs)
-        return $out;
+        return new UpdateTemplateBlockDto(
+            title: $validated['title'] ?? null,
+            set_title: $this->has('title'),
+            default_content: $validated['default_content'] ?? null,
+            set_default_content: $this->has('default_content'),
+            sort_order: $validated['sort_order'] ?? null,
+            set_sort_order: $this->has('sort_order'),
+            block_state: $validated['block_state'] ?? null,
+            set_block_state: $this->has('block_state'),
+            description: $validated['description'] ?? null,
+            set_description: $this->has('description'),
+        );
     }
 }

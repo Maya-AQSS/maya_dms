@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
@@ -17,8 +19,8 @@ class UserController extends Controller
     /**
      * GET /api/v1/users?search={term}&per_page={n}&exclude_user_id={uuid?}
      *
-     * Búsqueda case-insensitive por nombre, email y departamento.
-     * Devuelve { data: [...] } con el campo `role` mapeado desde `department`.
+     * Búsqueda case-insensitive por nombre y email.
+     * Devuelve { data: [...] }; el campo `role` queda reservado (null) en este directorio.
      *
      * Devuelve array vacío si el término tiene menos de 2 caracteres.
      *
@@ -31,7 +33,7 @@ class UserController extends Controller
             abort(403, 'No tienes permiso para buscar usuarios.');
         }
 
-        $search  = trim((string) $request->get('search', ''));
+        $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
 
@@ -58,11 +60,11 @@ class UserController extends Controller
     public function reviewerCandidates(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('users.search')) {
-            abort(403, 'No tienes permiso para buscar usuarios.');
+        if (! $user instanceof JwtUser || ! $user->hasPermission('templates.read')) {
+            abort(403, 'No tienes permiso para buscar validadores de plantilla.');
         }
 
-        $search  = trim((string) $request->get('search', ''));
+        $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
 
@@ -85,11 +87,11 @@ class UserController extends Controller
     public function documentReviewerCandidates(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('users.search')) {
-            abort(403, 'No tienes permiso para buscar usuarios.');
+        if (! $user instanceof JwtUser || ! $user->hasPermission('documents.read')) {
+            abort(403, 'No tienes permiso para buscar validadores de documento.');
         }
 
-        $search  = trim((string) $request->get('search', ''));
+        $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
 

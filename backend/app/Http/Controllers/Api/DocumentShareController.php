@@ -1,19 +1,25 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\StoreDocumentShareRequest;
+use App\Policies\DocumentPolicy;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
 /**
- * Compartición: alta/revocación gestionada solo por el titular ({@see \App\Policies\DocumentPolicy::share}).
+ * Compartición: alta/revocación gestionada solo por el titular ({@see DocumentPolicy::share}).
  */
 class DocumentShareController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
     ) {}
@@ -25,8 +31,9 @@ class DocumentShareController extends Controller
      */
     public function store(StoreDocumentShareRequest $request, string $document): JsonResponse
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('share', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
         $data = $this->documentService->upsertDocumentShare(
@@ -46,8 +53,9 @@ class DocumentShareController extends Controller
      */
     public function destroy(Request $request, string $document, string $userId): Response
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('share', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $this->documentService->removeDocumentShare(
             $doc->id,

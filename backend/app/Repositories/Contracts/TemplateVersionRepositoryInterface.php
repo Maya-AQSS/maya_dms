@@ -1,55 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Contracts;
 
-use App\Models\TemplateVersion;
+use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
 
+/**
+ * Consultas de publicaciones de plantilla en {@see EntityVersion} (morph Template).
+ */
 interface TemplateVersionRepositoryInterface
 {
-    public function findOrFail(string $id): TemplateVersion;
+    public function findOrFail(string $id): EntityVersion;
+
+    public function findOptional(string $id): ?EntityVersion;
+
+    public function findLatestPublishedForTemplate(string $templateId): ?EntityVersion;
+
+    public function findByTemplateIdAndVersionNumber(string $templateId, int $versionNumber): ?EntityVersion;
 
     /**
-     * Última versión publicada de la plantilla (mayor {@see TemplateVersion::$version_number}), o null.
-     */
-    public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion;
-
-    /**
-     * Metadatos de una versión publicada por id (sin cargar blocks_snapshot).
-     *
      * @return array{id: string, version_number: int, changelog: string}|null
      */
     public function findPublishedMetaById(string $versionId): ?array;
 
     /**
-     * Metadatos de la versión publicada más reciente de la plantilla (sin blocks_snapshot).
-     *
      * @return array{id: string, version_number: int, changelog: string}|null
      */
     public function findLatestPublishedMetaForTemplate(string $templateId): ?array;
 
     /**
-     * Lista todas las versiones de una plantilla ordenadas por número de versión.
-     *
-     * @return Collection<int, TemplateVersion>
+     * @return Collection<int, EntityVersion>
      */
     public function listForTemplateOrdered(string $templateId): Collection;
 
-    /**
-     * Obtiene el próximo número de versión para una plantilla.
-     */
     public function nextVersionNumber(string $templateId): int;
-
-    /**
-     * Crea un snapshot de una plantilla.
-     *
-     * @param  array<int, array<string, mixed>>  $blocksSnapshot
-     */
-    public function createSnapshot(
-        string $templateId,
-        int $versionNumber,
-        array $blocksSnapshot,
-        string $changelog,
-        string $publishedBy,
-    ): TemplateVersion;
 }

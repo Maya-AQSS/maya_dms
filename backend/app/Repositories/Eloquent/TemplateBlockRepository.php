@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\Template;
@@ -45,13 +47,13 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
             ->max('sort_order') ?? -1;
 
         return TemplateBlock::forceCreate([
-            'id'              => (string) Str::uuid(),
-            'template_id'     => $template->getKey(),
-            'title'           => $attributes['title'] ?? null,
+            'id' => (string) Str::uuid(),
+            'template_id' => $template->getKey(),
+            'title' => $attributes['title'] ?? null,
             'default_content' => $attributes['default_content'] ?? null,
-            'description'     => $attributes['description'] ?? null,
-            'block_state'     => $attributes['block_state'] ?? 'editable',
-            'sort_order'      => $attributes['sort_order'] ?? ($maxOrder + 1),
+            'description' => $attributes['description'] ?? null,
+            'block_state' => $attributes['block_state'] ?? 'editable',
+            'sort_order' => $attributes['sort_order'] ?? ($maxOrder + 1),
         ]);
     }
 
@@ -72,6 +74,27 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
         $block->delete();
     }
 
+    public function upsertByIdForTemplate(string $blockId, array $values): void
+    {
+        $updated = TemplateBlock::query()->whereKey($blockId)->update($values);
+        if ($updated === 0) {
+            TemplateBlock::query()->forceCreate([
+                'id' => $blockId,
+                ...$values,
+            ]);
+        }
+    }
+
+    public function deleteForTemplateExcept(string $templateId, array $protectedIds): int
+    {
+        $query = TemplateBlock::query()->where('template_id', $templateId);
+        if ($protectedIds !== []) {
+            $query->whereNotIn('id', $protectedIds);
+        }
+
+        return $query->delete();
+    }
+
     /**
      * @param  list<string>  $ids
      * @param  array<string, mixed>  $attributes
@@ -87,7 +110,12 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
             TemplateBlock::whereIn('id', $ids)->update($attributes);
         });
 
-        return TemplateBlock::whereIn('id', $ids)->get();
+        $blocks = TemplateBlock::whereIn('id', $ids)->get();
+
+        // Reorder to preserve contract: result in same order as $ids.
+        $position = array_flip($ids);
+
+        return $blocks->sortBy(fn ($b) => $position[(string) $b->getKey()] ?? PHP_INT_MAX)->values();
     }
 
     /**
@@ -95,11 +123,13 @@ class TemplateBlockRepository implements TemplateBlockRepositoryInterface
      */
     public function reorderForTemplate(string $templateId, array $orderedIds): void
     {
-        foreach ($orderedIds as $index => $blockId) {
-            TemplateBlock::query()
-                ->where('id', $blockId)
-                ->where('template_id', $templateId)
-                ->update(['sort_order' => $index + 1]);
-        }
+        DB::transaction(function () use ($templateId, $orderedIds): void {
+            foreach ($orderedIds as $index => $blockId) {
+                TemplateBlock::query()
+                    ->where('id', $blockId)
+                    ->where('template_id', $templateId)
+                    ->update(['sort_order' => $index + 1]);
+            }
+        });
     }
 }

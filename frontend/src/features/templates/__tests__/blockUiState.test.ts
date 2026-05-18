@@ -23,6 +23,23 @@ describe('blockUiState logic', () => {
       const block: Partial<TemplateBlock> = { block_state: 'editable' };
       expect(blockToUiState(block as TemplateBlock)).toBe('editable');
     });
+
+    it('prioritizes "locked" over "optional" (mandatory=false)', () => {
+      // Backend rechaza con 403 cualquier edición de un bloque locked,
+      // sin importar mandatory. La UI debe reflejarlo.
+      const block: Partial<TemplateBlock> = { block_state: 'locked', mandatory: false };
+      expect(blockToUiState(block as TemplateBlock)).toBe('locked');
+    });
+
+    it('returns "editable" regardless of mandatory — block_state is authoritative', () => {
+      const block: Partial<TemplateBlock> = { block_state: 'editable', mandatory: false };
+      expect(blockToUiState(block as TemplateBlock)).toBe('editable');
+    });
+
+    it('returns "modifiable" regardless of mandatory', () => {
+      const block: Partial<TemplateBlock> = { block_state: 'modifiable', mandatory: false };
+      expect(blockToUiState(block as TemplateBlock)).toBe('modifiable');
+    });
   });
 
   describe('BLOCK_UI_STATE_CONFIG', () => {

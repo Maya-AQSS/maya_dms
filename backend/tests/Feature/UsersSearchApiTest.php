@@ -7,7 +7,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Lcobucci\JWT\Signer\Key\InMemory;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
@@ -55,7 +54,7 @@ class UsersSearchApiTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $token = $this->buildJwtForSub(
             $privatePem,
@@ -86,7 +85,6 @@ class UsersSearchApiTest extends TestCase
             'id' => 'usr_search_target',
             'name' => 'Abigail Search',
             'email' => 'abigail.search@maya.test',
-            'department' => 'Profesorado',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -99,13 +97,13 @@ class UsersSearchApiTest extends TestCase
         $this->assertNotEmpty($data);
     }
 
-    public function test_document_reviewer_candidates_returns_403_without_users_search_permission(): void
+    public function test_document_reviewer_candidates_returns_403_without_documents_read_permission(): void
     {
         $userId = (string) Str::uuid();
 
         $response = $this->getJson(
             '/api/v1/users/document-reviewer-candidates',
-            $this->authHeaders($userId, ['documents.create']),
+            $this->authHeaders($userId, ['documents.create']), // Lacks documents.read
         );
 
         $response->assertForbidden();
@@ -120,7 +118,6 @@ class UsersSearchApiTest extends TestCase
             'id' => $reviewerId,
             'name' => 'Doc Reviewer Candidate',
             'email' => 'doc.reviewer.candidate@maya.test',
-            'department' => 'Secretaría',
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -136,7 +133,7 @@ class UsersSearchApiTest extends TestCase
 
         $response = $this->getJson(
             '/api/v1/users/document-reviewer-candidates?search=doc',
-            $this->authHeaders($callerId, ['users.search']),
+            $this->authHeaders($callerId, ['documents.read']),
         );
 
         $response->assertOk();
@@ -157,7 +154,6 @@ class UsersSearchApiTest extends TestCase
                 'id' => $rid,
                 'name' => 'Reviewer '.$rid,
                 'email' => 'r-'.$rid.'@maya.test',
-                'department' => 'QA',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -171,7 +167,7 @@ class UsersSearchApiTest extends TestCase
         }
 
         $url = '/api/v1/users/document-reviewer-candidates?search=Reviewer&exclude_user_id='.urlencode($reviewerA);
-        $response = $this->getJson($url, $this->authHeaders($callerId, ['users.search']));
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['documents.read']));
 
         $response->assertOk();
         $ids = array_column($response->json('data'), 'id');
@@ -190,7 +186,6 @@ class UsersSearchApiTest extends TestCase
                 'id' => $rid,
                 'name' => 'Tpl Reviewer '.$rid,
                 'email' => 't-'.$rid.'@maya.test',
-                'department' => 'QA',
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -204,7 +199,7 @@ class UsersSearchApiTest extends TestCase
         }
 
         $url = '/api/v1/users/reviewer-candidates?search=Tpl&exclude_user_id='.urlencode($reviewerA);
-        $response = $this->getJson($url, $this->authHeaders($callerId, ['users.search']));
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['templates.read']));
 
         $response->assertOk();
         $ids = array_column($response->json('data'), 'id');

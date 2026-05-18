@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services\Contracts;
 
 interface UserProfileServiceInterface
@@ -7,8 +9,8 @@ interface UserProfileServiceInterface
     /**
      * Devuelve el perfil del usuario autenticado.
      *
-     * @param string $userId     Claim sub del JWT.
-     * @param array  $jwtProfile Datos mínimos del JWT para fallback.
+     * @param  string  $userId  Claim sub del JWT.
+     * @param  array  $jwtProfile  Datos mínimos del JWT para fallback.
      */
     public function getProfile(string $userId, array $jwtProfile): array;
 

@@ -1,13 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DocumentBlock extends Model
 {
+    use SoftDeletes;
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -26,11 +32,20 @@ class DocumentBlock extends Model
     protected function casts(): array
     {
         return [
-            'content'    => 'array',
-            'is_filled'  => 'boolean',
-            'locked_at'  => 'datetime',
+            'content' => 'array',
+            'is_filled' => 'boolean',
+            'locked_at' => 'datetime',
             'sort_order' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (DocumentBlock $block): void {
+            Comment::where('blockable_type', static::class)
+                ->where('blockable_id', $block->id)
+                ->delete();
+        });
     }
 
     public function document(): BelongsTo
@@ -48,8 +63,8 @@ class DocumentBlock extends Model
         return $this->hasMany(BlockVersion::class);
     }
 
-    public function comments(): HasMany
+    public function comments(): MorphMany
     {
-        return $this->hasMany(Comment::class);
+        return $this->morphMany(Comment::class, 'blockable');
     }
 }

@@ -2,14 +2,20 @@
 
 namespace Tests\Unit\Policies;
 
+use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
 use App\Models\DocumentShare;
 use App\Models\JwtUser;
+use App\Models\Template;
 use App\Policies\DocumentPolicy;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class DocumentPolicyTest extends TestCase
 {
+    use RefreshDatabase;
+
     private DocumentPolicy $policy;
 
     protected function setUp(): void
@@ -19,9 +25,9 @@ class DocumentPolicyTest extends TestCase
     }
 
     /**
-     * SoD: creador/titular no pueden actuar como revisor del mismo documento.
+     * Sin el permiso documents.review, nadie puede revisar (ni terceros, ni creador, ni titular).
      */
-    public function test_creator_owner_cannot_review(): void
+    public function test_review_denied_without_documents_review_permission(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
         $user   = $this->makeJwtUser($userId);
@@ -30,14 +36,16 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->review($user, $doc));
     }
 
-    public function test_delegate_owner_cannot_review_when_not_creator(): void
+    /**
+     * Con el permiso documents.review, el creador/titular también puede revisar (sin SoD).
+     */
+    public function test_creator_owner_can_review_with_permission(): void
     {
-        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-        $user      = $this->makeJwtUser($ownerId);
-        $doc       = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user   = $this->makeJwtUser($userId, ['documents.review']);
+        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId);
 
-        $this->assertFalse($this->policy->review($user, $doc));
+        $this->assertTrue($this->policy->review($user, $doc));
     }
 
     /**
@@ -81,7 +89,7 @@ class DocumentPolicyTest extends TestCase
         $doc        = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
 
         $this->assertFalse($this->policy->submit($user, $doc));
-        $this->assertTrue($this->policy->review($user, $doc));
+        $this->assertFalse($this->policy->review($user, $doc));
     }
 
     public function test_update_allows_creator_or_owner_without_global_permission(): void
@@ -160,18 +168,164 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->share($creator, $doc));
     }
 
-    public function test_delete_requires_documents_delete_permission(): void
+    public function test_delete_allows_owner_without_global_permission(): void
     {
-        $user = $this->makeJwtUser('99999999-9999-9999-9999-999999999999');
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $user    = $this->makeJwtUser($ownerId);
+        $doc     = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: $ownerId,
+        );
+
+        $this->assertTrue($this->policy->delete($user, $doc));
+    }
+
+    public function test_delete_allows_creator_without_global_permission(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user      = $this->makeJwtUser($creatorId);
+        $doc       = $this->makeDocument(
+            createdBy: $creatorId,
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+
+        $this->assertTrue($this->policy->delete($user, $doc));
+    }
+
+    public function test_delete_allows_stranger_with_documents_delete_permission(): void
+    {
+        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['documents.delete']);
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        );
+
+        $this->assertTrue($this->policy->delete($user, $doc));
+    }
+
+    public function test_delete_denies_stranger_without_documents_delete_permission(): void
+    {
+        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc');
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
         );
 
         $this->assertFalse($this->policy->delete($user, $doc));
+    }
 
-        $withPerm = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', ['documents.delete']);
-        $this->assertTrue($this->policy->delete($withPerm, $doc));
+    /**
+     * Solo el titular puede publicar explícitamente un documento.
+     */
+    public function test_publish_allowed_only_for_owner(): void
+    {
+        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        $owner   = $this->makeJwtUser($ownerId);
+        $creator = $this->makeJwtUser($creatorId);
+        $doc     = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+
+        $this->assertTrue($this->policy->publish($owner, $doc));
+        $this->assertFalse($this->policy->publish($creator, $doc));
+    }
+
+    /**
+     * Clonar exige documents.create y capacidad de update sobre el documento origen.
+     */
+    public function test_clone_denied_without_documents_create(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($userId, ['documents.update']);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId);
+
+        $this->assertFalse($this->policy->clone($user, $doc));
+    }
+
+    public function test_clone_denied_when_update_denied(): void
+    {
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $user = $this->makeJwtUser($strangerId, ['documents.create']);
+        $doc = $this->makeDocument(createdBy: $ownerId, ownerId: $ownerId);
+
+        $this->assertFalse($this->policy->clone($user, $doc));
+    }
+
+    public function test_clone_allowed_for_owner_with_documents_create(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($userId, ['documents.create']);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'published');
+
+        $this->assertTrue($this->policy->clone($user, $doc));
+    }
+
+    public function test_clone_denied_for_non_published_document(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($userId, ['documents.create']);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'draft');
+
+        $this->assertFalse($this->policy->clone($user, $doc));
+    }
+
+    /**
+     * Solo el titular puede delegar la titularidad.
+     */
+    public function test_delegate_allowed_only_for_owner(): void
+    {
+        $ownerId   = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+
+        $owner   = $this->makeJwtUser($ownerId);
+        $creator = $this->makeJwtUser($creatorId);
+        $doc     = $this->makeDocument(createdBy: $creatorId, ownerId: $ownerId);
+
+        $this->assertTrue($this->policy->delegate($owner, $doc));
+        $this->assertFalse($this->policy->delegate($creator, $doc));
+    }
+
+    public function test_start_revision_denied_when_not_published(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user   = $this->makeJwtUser($userId);
+        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'draft');
+
+        $this->assertFalse($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_start_revision_allows_owner_when_published_and_can_update(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user   = $this->makeJwtUser($userId);
+        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'published');
+
+        $this->assertTrue($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_start_revision_allows_documents_update_when_published_and_can_update(): void
+    {
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['documents.update']);
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'published',
+        );
+
+        $this->assertTrue($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_start_revision_denied_when_published_but_update_denied(): void
+    {
+        $user = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff');
+        $doc  = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->startRevision($user, $doc));
     }
 
     /**
@@ -189,15 +343,41 @@ class DocumentPolicyTest extends TestCase
         ]);
     }
 
-    private function makeDocument(string $createdBy, string $ownerId): Document
+    private function makeDocument(string $createdBy, string $ownerId, string $status = 'draft'): Document
     {
-        $doc = new Document;
-        $doc->forceFill([
+        $templateId = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $templateId,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla doc policy',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
             'created_by' => $createdBy,
-            'owner_id'   => $ownerId,
-            'status'     => 'draft',
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
         ]);
 
-        return $doc;
+        $document = Document::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'template_id' => $templateId,
+            'title' => 'Documento unit policy',
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'delivery_deadline' => null,
+            'created_by' => $createdBy,
+            'owner_id' => $ownerId,
+            'status' => $status,
+        ]);
+        $document->refresh();
+
+        return $document;
     }
 }

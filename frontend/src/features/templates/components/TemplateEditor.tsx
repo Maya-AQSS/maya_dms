@@ -3,9 +3,12 @@ import React, {
   useEffect,
   useRef,
   useState,
+  Suspense,
+  lazy,
 } from 'react';
-import { ErrorBoundary } from '../../../components/ErrorBoundary';
 import { useNavigate } from 'react-router-dom';
+import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useDarkMode } from '@maya/shared-layout-react';
 import {
   DndContext,
   closestCenter,
@@ -20,7 +23,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, FieldLabel, TextInput } from '../../../ui';
+import { Button, ErrorBoundary, FieldLabel, TextInput } from '@maya/shared-ui-react';
 import type { Template } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -29,6 +32,9 @@ import {
   BLOCK_UI_STATE_CONFIG,
   blockToUiState,
 } from '../blockUiState';
+const BlockNoteEditorPanel = lazy(() =>
+  import('./BlockNoteEditorPanel').then((m) => ({ default: m.BlockNoteEditorPanel })),
+);
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 
@@ -145,7 +151,7 @@ function SortableOutlineItem({
           {block.title || 'Bloque sin nombre'}
         </span>
         <span
-          className={`shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${cfg.badgeCls}`}
+          className={`shrink-0 px-1.5 py-0.5 rounded text-xs font-bold uppercase tracking-tight ${cfg.badgeCls}`}
         >
           {cfg.label}
         </span>
@@ -162,6 +168,7 @@ export function TemplateEditor({ template }: Props) {
   const navigate = useNavigate();
   const { blocks, loading, createBlock, updateBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
+  const { isDark } = useDarkMode();
   const sensors = useSensors(useSensor(PointerSensor));
 
   // Right panel mode
@@ -175,17 +182,12 @@ export function TemplateEditor({ template }: Props) {
 
   // Autosave state
   const [isDirty, setIsDirty] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // saveStatus and savedTimerRef are now managed by useAutoSave hook
 
   // Properties section visibility
   const [propertiesCollapsed, setPropertiesCollapsed] = useState(false);
 
-  // New block form
-  const [newBlockName, setNewBlockName] = useState('');
-  const [newBlockUiState, setNewBlockUiState] = useState<BlockUiState>('editable');
   const [creatingBlock, setCreatingBlock] = useState(false);
-  const [createError, setCreateError] = useState<string | null>(null);
 
   // ── Auto-select first block after load ───────────────────────────────────────
   useEffect(() => {
@@ -198,43 +200,35 @@ export function TemplateEditor({ template }: Props) {
       setLocalUiState(blockToUiState(first));
       setLocalContent(first.default_content);
       setIsDirty(false);
-      setSaveStatus('idle');
     } else if (blocks.length === 0) {
       setRightMode('create');
     }
   }, [loading, blocks.length, activeBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── saveCurrentBlock ─────────────────────────────────────────────────────────
-  // Always use a ref so autosave interval always calls the latest closure
-  const saveCurrentBlockFn = useCallback(async () => {
+  // ── Autosave: migrate to useAutoSave hook (1500ms debounce) ─────────────────
+  const doSave = useCallback(async () => {
     if (!isDirty || !activeBlockId) return;
-    setSaveStatus('saving');
-    try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[localUiState].payload;
-      await updateBlock(activeBlockId, {
-        title: localTitle.trim() || null,
-        block_state,
-        mandatory,
-        default_content: localContent,
-      });
-      setIsDirty(false);
-      setSaveStatus('saved');
-      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
-      savedTimerRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
-      setSaveStatus('error');
-    }
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[localUiState].payload;
+    await updateBlock(activeBlockId, {
+      title: localTitle.trim() || null,
+      block_state,
+      mandatory,
+      default_content: localContent,
+    });
+    setIsDirty(false);
   }, [isDirty, activeBlockId, localTitle, localUiState, localContent, updateBlock]);
 
-  const saveRef = useRef(saveCurrentBlockFn);
-  useEffect(() => { saveRef.current = saveCurrentBlockFn; }, [saveCurrentBlockFn]);
+  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
-  // ── Autosave every 30s when dirty ────────────────────────────────────────────
+  // Trigger debounced save whenever local state is dirty
   useEffect(() => {
     if (!isDirty || rightMode !== 'block' || !activeBlockId) return;
-    const interval = setInterval(() => void saveRef.current(), 30_000);
-    return () => clearInterval(interval);
-  }, [isDirty, rightMode, activeBlockId]);
+    triggerSave();
+  }, [localTitle, localUiState, localContent, isDirty, rightMode, activeBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep saveRef for navigateToBlock (force-save before switching)
+  const saveRef = useRef(forceSave);
+  useEffect(() => { saveRef.current = forceSave; }, [forceSave]);
 
   // ── Navigate to a block (saves current if dirty) ─────────────────────────────
   const navigateToBlock = useCallback(
@@ -255,35 +249,30 @@ export function TemplateEditor({ template }: Props) {
       setLocalUiState(blockToUiState(block));
       setLocalContent(block.default_content);
       setIsDirty(false);
-      setSaveStatus('idle');
     },
     [activeBlockId, rightMode, isDirty, blocks],
   );
 
   // ── Create block ─────────────────────────────────────────────────────────────
   const handleCreateBlock = async () => {
-    if (!newBlockName.trim()) return;
     setCreatingBlock(true);
-    setCreateError(null);
     try {
-      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[newBlockUiState].payload;
+      if (isDirty && activeBlockId) await saveRef.current();
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
       const block = await createBlock({
         type: 'paragraph',
-        title: newBlockName.trim(),
+        title: 'Nuevo bloque',
         block_state,
         mandatory,
       });
-      setNewBlockName('');
-      setNewBlockUiState('editable');
       setActiveBlockId(block.id);
       setRightMode('block');
       setLocalTitle(block.title ?? '');
       setLocalUiState(blockToUiState(block));
       setLocalContent(block.default_content);
       setIsDirty(false);
-      setSaveStatus('idle');
     } catch (e) {
-      setCreateError(e instanceof Error ? e.message : 'Error al crear el bloque');
+      console.error('Error al crear el bloque:', e);
     } finally {
       setCreatingBlock(false);
     }
@@ -301,7 +290,6 @@ export function TemplateEditor({ template }: Props) {
   // ── Dirty helpers (called from UI handlers) ───────────────────────────────────
   const markDirty = () => {
     setIsDirty(true);
-    setSaveStatus('idle');
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────────
@@ -345,96 +333,28 @@ export function TemplateEditor({ template }: Props) {
       );
     }
 
-    if (rightMode === 'create') {
+    if (rightMode === 'create' || !activeBlock) {
       return (
-        <div className="flex-1 overflow-y-auto p-6 flex flex-col items-center justify-center">
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-ui-body dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border mb-4">
-              <svg
-                className="w-6 h-6 text-text-muted"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-            </div>
-            {blocks.length === 0 ? (
-              <>
-                <h3 className="text-sm font-bold text-text-primary dark:text-text-dark-primary">
-                  Esta plantilla aún no tiene bloques
-                </h3>
-                <p className="text-xs text-text-muted mt-1 max-w-sm mx-auto">
-                  Añade el primer bloque para definir la estructura del documento.
-                </p>
-              </>
-            ) : (
-              <>
-                <h3 className="text-sm font-bold text-text-primary dark:text-text-dark-primary">
-                  Nuevo bloque
-                </h3>
-                <p className="text-xs text-text-muted mt-1">
-                  Completa el formulario para añadir un bloque a la plantilla.
-                </p>
-              </>
-            )}
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border flex items-center justify-center mb-4 text-text-muted">
+            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
+            </svg>
           </div>
-
-          <div className="w-full max-w-sm bg-white dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card p-6 space-y-4">
-            <div>
-              <FieldLabel required>Nombre</FieldLabel>
-              <TextInput
-                type="text"
-                fieldSize="comfortable"
-                value={newBlockName}
-                onChange={(e) => setNewBlockName(e.target.value)}
-                placeholder="Ej: Introducción"
-              />
-            </div>
-            <div>
-              <FieldLabel required>Estado</FieldLabel>
-              <div className="mt-1">
-                <BlockUiStateToggle
-                  value={newBlockUiState}
-                  onChange={setNewBlockUiState}
-                />
-              </div>
-            </div>
-            <div className="flex gap-2 pt-1">
-              <Button
-                type="button"
-                variant="primary"
-                size="md"
-                className="flex-1"
-                loading={creatingBlock}
-                disabled={!newBlockName.trim()}
-                onClick={() => void handleCreateBlock()}
-              >
-                Añadir bloque
-              </Button>
-              {blocks.length > 0 && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={() => {
-                    const target = activeBlockId ?? blocks[0]?.id;
-                    if (target) void navigateToBlock(target);
-                  }}
-                >
-                  Cancelar
-                </Button>
-              )}
-            </div>
-            {createError && (
-              <p className="text-xs text-danger-dark animate-in fade-in">{createError}</p>
-            )}
-          </div>
+          <h3 className="text-sm font-bold text-text-primary dark:text-text-dark-primary">
+            No hay ningún bloque seleccionado
+          </h3>
+          <p className="text-xs text-text-muted mt-1 max-w-xs">
+            Selecciona un bloque de la lista de la izquierda para editarlo o añade uno nuevo.
+          </p>
+          <Button
+            variant="primary"
+            className="mt-6"
+            onClick={handleCreateBlock}
+            loading={creatingBlock}
+          >
+            Añadir primer bloque
+          </Button>
         </div>
       );
     }
@@ -456,19 +376,20 @@ export function TemplateEditor({ template }: Props) {
           </span>
           {activeUiCfg && (
             <span
-              className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tight ${activeUiCfg.badgeCls}`}
+              className={`shrink-0 px-2 py-0.5 rounded text-xs font-bold uppercase tracking-tight ${activeUiCfg.badgeCls}`}
             >
               {activeUiCfg.label}
             </span>
           )}
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setPropertiesCollapsed((v) => !v)}
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors text-text-muted text-xs"
             aria-label={propertiesCollapsed ? 'Expandir propiedades' : 'Colapsar propiedades'}
+            className="shrink-0 !w-6 !h-6 !p-0 !rounded"
           >
             {propertiesCollapsed ? '▾' : '▴'}
-          </button>
+          </Button>
         </div>
 
         {/* right-properties (colapsable) */}
@@ -514,13 +435,25 @@ export function TemplateEditor({ template }: Props) {
             </div>
           }
         >
-          <div
-            className="flex-1 flex items-center justify-center rounded-lg border-2 border-dashed border-ui-border dark:border-ui-dark-border bg-ui-body/50 dark:bg-ui-dark-bg/50 mx-4 my-4"
-            style={{ minHeight: '200px' }}
-          >
-            <p className="text-sm text-text-muted text-center px-6">
-              Editor de contenido — próximamente disponible.
-            </p>
+          <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0">
+            <Suspense
+              fallback={
+                <div className="flex-1 flex items-center justify-center p-6 text-sm text-text-muted">
+                  Cargando editor...
+                </div>
+              }
+            >
+              <BlockNoteEditorPanel
+                key={activeBlockId}
+                initialContent={localContent as any}
+                onChange={(content) => {
+                  setLocalContent(content);
+                  markDirty();
+                }}
+                editable={true} // Siempre editable en la plantilla
+                isDark={isDark}
+              />
+            </Suspense>
           </div>
         </ErrorBoundary>
       </div>
@@ -533,14 +466,15 @@ export function TemplateEditor({ template }: Props) {
     <div className="flex flex-col h-full bg-ui-body dark:bg-ui-dark-bg">
       {/* Wizard topbar */}
       <div className="shrink-0 flex items-center gap-3 px-4 py-3 bg-white dark:bg-ui-dark-card border-b border-ui-border dark:border-ui-dark-border shadow-sm z-10">
-        <button
-          type="button"
-          onClick={() => navigate('/templates')}
-          className="w-9 h-9 rounded-full text-text-secondary hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-all flex items-center justify-center border border-transparent hover:border-ui-border active:scale-95"
+        <Button
+          variant="ghost"
+          size="xs"
+          onClick={() => navigate('/procesos')}
           aria-label="Volver a Plantillas"
+          className="!w-9 !h-9 !p-0 !rounded-full active:scale-95"
         >
           ←
-        </button>
+        </Button>
         <span className="text-sm text-text-secondary">
           Plantillas /{' '}
           <span className="font-bold text-text-primary dark:text-text-dark-primary">
@@ -555,18 +489,14 @@ export function TemplateEditor({ template }: Props) {
         <div className="w-72 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card overflow-hidden">
           {/* left-header */}
           <div className="shrink-0 px-4 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between">
-            <span className="text-[10px] font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+            <span className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
               Bloques ({blocks.length})
             </span>
             <Button
               type="button"
               variant="primary"
               size="xs"
-              onClick={async () => {
-                if (isDirty && activeBlockId) await saveRef.current();
-                setRightMode('create');
-                setActiveBlockId(null);
-              }}
+              onClick={handleCreateBlock}
             >
               + Nuevo bloque
             </Button>
@@ -625,7 +555,7 @@ export function TemplateEditor({ template }: Props) {
             loading={saveStatus === 'saving'}
             disabled={!isDirty}
             onClick={() => void saveRef.current()}
-            className="text-[10px] font-black uppercase tracking-widest rounded-full"
+            className="text-xs font-black uppercase tracking-widest rounded-full"
           >
             Guardar ahora
           </Button>

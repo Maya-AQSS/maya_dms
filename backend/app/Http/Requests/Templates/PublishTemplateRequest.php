@@ -1,29 +1,29 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Templates;
 
+use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 class PublishTemplateRequest extends FormRequest
 {
+    private ?Template $resolvedTemplate = null;
+
     /**
-     * Verifica si el usuario puede publicar la plantilla.
+     * Delega la autorización en TemplatePolicy::publish(), que aplica la regla de
+     * Segregación de Funciones: el creador solo puede publicar si no hay revisores
+     * asignados; en caso contrario, solo el revisor asignado puede hacerlo.
+     *
+     * El controlador repite la comprobación con $this->authorize('publish', $model)
+     * para mantener la guardia en capa de negocio.
      */
     public function authorize(): bool
     {
-        $template = Template::query()->findOrFail($this->route('template'));
-        $user = $this->user();
-
-        // Creator can publish their own template directly (no-reviewer workflow)
-        if ($user->getAuthIdentifier() === $template->created_by) {
-            return true;
-        }
-
-        // Non-creator: SoD applies (reviewer publishes after review)
-        return $user->can('review', $template);
+        return $this->user()->can('publish', $this->resolveTemplate());
     }
 
     /**
@@ -39,18 +39,24 @@ class PublishTemplateRequest extends FormRequest
     /**
      * Reglas de validación para la publicación de una plantilla.
      *
+     * El changelog es obligatorio a partir de la segunda versión publicada (cuando ya existe
+     * al menos una fila publicada en entity_versions). La primera publicación puede omitir changelog;
+     * el servicio usa entonces un texto por defecto genérico.
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        $template = Template::query()->findOrFail($this->route('template'));
-        $hasPublishedVersions = TemplateVersion::query()
-            ->where('template_id', $template->id)
+        $template = $this->resolveTemplate();
+        $hasPublishedVersions = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $template->id)
+            ->where('status', 'published')
             ->exists();
 
         return [
             'changelog' => [
-                Rule::requiredIf($template->status === 'in_review' && $hasPublishedVersions),
+                Rule::requiredIf($hasPublishedVersions),
                 'nullable',
                 'string',
                 'min:1',
@@ -69,5 +75,17 @@ class PublishTemplateRequest extends FormRequest
             'changelog.required' => 'El changelog es obligatorio al publicar una plantilla.',
             'changelog.min' => 'El changelog es obligatorio al publicar una plantilla.',
         ];
+    }
+
+    /**
+     * Resuelve la plantilla.
+     */
+    private function resolveTemplate(): Template
+    {
+        if ($this->resolvedTemplate === null) {
+            $this->resolvedTemplate = Template::query()->findOrFail($this->route('template'));
+        }
+
+        return $this->resolvedTemplate;
     }
 }

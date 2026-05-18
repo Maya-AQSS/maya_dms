@@ -1,0 +1,132 @@
+name: Tests
+
+on:
+  push:
+    # `refactor/**` se incluye explícitamente para que las ramas de refactor
+    # verifiquen tests en cada push sin necesidad de PR.
+    branches: [main, develop, 'refactor/**']
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend:
+    name: Backend (Pest + PostgreSQL)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: maya
+          POSTGRES_PASSWORD: secret
+          POSTGRES_DB: maya_dms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U maya"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: maya_dms_test
+      DB_USERNAME: maya
+      DB_PASSWORD: secret
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # Los packages compartidos viven en Maya-AQSS/maya_infra. composer.json los
+      # referencia vía `path: ../../maya_infra/packages/*`. Requiere el secret
+      # `MAYA_INFRA_TOKEN` (PAT con Contents:read sobre maya_infra).
+      - name: Checkout maya_infra (shared packages)
+        uses: actions/checkout@v4
+        with:
+          repository: Maya-AQSS/maya_infra
+          ref: refactor/globalExpertsv2
+          path: .maya_infra_checkout
+          token: ${{ secrets.MAYA_INFRA_TOKEN }}
+
+      - name: Relocate maya_infra to sibling path
+        run: mv "$GITHUB_WORKSPACE/.maya_infra_checkout" "$GITHUB_WORKSPACE/../maya_infra"
+        working-directory: .
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo, pdo_pgsql, mbstring, json
+          coverage: pcov
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist --optimize-autoloader --dev
+
+      - name: Run tests
+        run: ./vendor/bin/pest --no-coverage --colors=never
+
+      # Coverage no bloqueante: mostramos métricas en el log para hacer seguimiento
+      # progresivo del 80% objetivo. Cuando la cobertura real lo alcance, eliminar
+      # `continue-on-error` y añadir `--min=80` para que sea bloqueante.
+      - name: Coverage report (non-blocking)
+        if: always()
+        continue-on-error: true
+        run: ./vendor/bin/pest --coverage --coverage-text --colors=never
+
+  frontend:
+    name: Frontend (Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Checkout maya_infra (shared packages)
+        uses: actions/checkout@v4
+        with:
+          repository: Maya-AQSS/maya_infra
+          ref: refactor/globalExpertsv2
+          path: .maya_infra_checkout
+          token: ${{ secrets.MAYA_INFRA_TOKEN }}
+
+      - name: Relocate maya_infra to sibling path
+        run: mv "$GITHUB_WORKSPACE/.maya_infra_checkout" "$GITHUB_WORKSPACE/../maya_infra"
+        working-directory: .
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          # cache: "npm" deshabilitado mientras package-lock.json no esté en git.
+
+      - name: Install npm dependencies
+        # `npm install` (no `npm ci`) porque package-lock.json no está versionado
+        # en este repo. Cambiar a `npm ci` cuando el lockfile esté en git.
+        run: npm install --no-audit --no-fund
+
+      - name: Run vitest
+        run: node_modules/.bin/vitest run --no-coverage
+
+      # Coverage no bloqueante: imprime métricas en el log para seguimiento del
+      # 80% objetivo. Cuando la cobertura medida lo alcance, eliminar
+      # `continue-on-error` y añadir `--coverage.thresholds.lines=80` al comando.
+      - name: Coverage report (non-blocking)
+        if: always()
+        continue-on-error: true
+        run: node_modules/.bin/vitest run --coverage --reporter=verbose

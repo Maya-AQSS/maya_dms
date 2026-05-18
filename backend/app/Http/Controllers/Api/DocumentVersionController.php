@@ -1,13 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers\Api;
 
+use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DocumentVersionResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class DocumentVersionController extends Controller
 {
+    use ValidatesOptionalProcessContext;
+
     public function __construct(
         private readonly DocumentServiceInterface $documentService,
     ) {}
@@ -17,14 +24,15 @@ class DocumentVersionController extends Controller
      *
      * Metadatos de versiones (sin incluir el snapshot completo en el listado).
      */
-    public function index(string $document): JsonResponse
+    public function index(string $document): AnonymousResourceCollection
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('view', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $rows = $this->documentService->listDocumentVersions($doc->id);
-
-        return response()->json(['data' => $rows]);
+        return DocumentVersionResource::collection(
+            $this->documentService->listDocumentVersions($doc->id),
+        );
     }
 
     /**
@@ -34,22 +42,12 @@ class DocumentVersionController extends Controller
      */
     public function show(string $document, string $version): JsonResponse
     {
-        $doc = $this->documentService->findOrFail($document);
+        $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('view', $doc);
+        $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $v = $this->documentService->findDocumentVersionOrFail($document, $version);
+        $detail = $this->documentService->findDocumentVersionDetailOrFail($document, $version);
 
-        return response()->json([
-            'data' => [
-                'id' => $v->id,
-                'document_id' => $v->document_id,
-                'version_number' => $v->version_number,
-                'trigger_event' => $v->trigger_event,
-                'triggered_by' => $v->triggered_by,
-                'changelog' => $v->notes,
-                'snapshot_data' => $v->snapshot_data,
-                'created_at' => $v->created_at?->toIso8601String(),
-            ],
-        ]);
+        return (new DocumentVersionResource($detail))->response();
     }
 }

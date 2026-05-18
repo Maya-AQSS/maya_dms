@@ -12,6 +12,7 @@ export type { Template, TemplateListFilters, TemplatesListResponse } from '../ty
 
 export type CreateTemplatePayload = {
   name: string;
+  process_id: string;
   description?: string | null;
   visibility_level?: TemplateVisibilityLevel;
   delivery_deadline?: string | null;
@@ -39,16 +40,14 @@ export type UpdateTemplatePayload = {
 
 function buildListQuery(filters: TemplateListFilters): string {
   const q = new URLSearchParams();
-  const perPage = filters.per_page ?? 20;
-  q.set('per_page', String(Math.min(Math.max(perPage, 1), 20)));
-  if (filters.page != null && filters.page > 0) {
-    q.set('page', String(filters.page));
-  }
   if (filters.visibility_level) {
     q.set('visibility_level', filters.visibility_level);
   }
   if (filters.status) {
     q.set('status', filters.status);
+  }
+  if (filters.usable_for_documents) {
+    q.set('usable_for_documents', '1');
   }
   if (filters.study_type_id) {
     q.set('study_type_id', filters.study_type_id);
@@ -67,6 +66,12 @@ function buildListQuery(filters: TemplateListFilters): string {
   }
   if (filters.delivery_deadline) {
     q.set('delivery_deadline', filters.delivery_deadline);
+  }
+  if (filters.published_on) {
+    q.set('published_on', filters.published_on);
+  }
+  if (filters.process_id) {
+    q.set('process_id', filters.process_id);
   }
   const s = q.toString();
   return s ? `?${s}` : '';
@@ -97,9 +102,18 @@ export type TemplateVersionDetail = {
   id: string;
   template_id: string;
   version_number: number;
+  template_snapshot?: {
+    name?: string;
+    created_by?: string;
+    visibility_level?: string;
+    delivery_deadline?: string | null;
+    updated_at?: string | null;
+  } | null;
   blocks_snapshot: TemplateVersionSnapshotBlock[];
   changelog: string | null;
   published_by: string | null;
+  published_by_name?: string | null;
+  author_name?: string | null;
   published_at: string | null;
   created_at?: string;
   updated_at?: string;
@@ -109,6 +123,25 @@ export type TemplateVersionDetail = {
 export async function fetchTemplateVersion(versionId: string): Promise<TemplateVersionDetail> {
   const body = await apiGetJson<{ data: TemplateVersionDetail }>(
     `template-versions/${encodeURIComponent(versionId)}`,
+  );
+  return body.data;
+}
+
+export type TemplateVersionSummary = {
+  id: string;
+  template_id: string;
+  version_number: number;
+  published_at: string | null;
+  published_by: string | null;
+  published_by_name?: string | null;
+  author_name?: string | null;
+  changelog: string | null;
+};
+
+/** GET /api/v1/templates/{id}/versions — listado de versiones publicadas (sin bloques). */
+export async function fetchTemplateVersionSummaries(templateId: string): Promise<TemplateVersionSummary[]> {
+  const body = await apiGetJson<{ data: TemplateVersionSummary[] }>(
+    `templates/${encodeURIComponent(templateId)}/versions`,
   );
   return body.data;
 }
@@ -146,9 +179,31 @@ export async function cloneTemplate(id: string): Promise<{ data: Template }> {
   return apiFetchJson<{ data: Template }>(`templates/${id}/clone`, { method: 'POST', body: {} });
 }
 
+/** POST /api/v1/templates/{id}/new-version — publicada → borrador (misma plantilla). */
+export async function startTemplateNewVersion(id: string): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/new-version`, { method: 'POST', body: {} });
+}
+
+/** DELETE /api/v1/templates/{id}/versions/{versionId} — descarta borrador/en revisión y restaura última publicada. */
+export async function discardTemplateWorkingVersion(
+  templateId: string,
+  versionId: string,
+): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(
+    `templates/${encodeURIComponent(templateId)}/versions/${encodeURIComponent(versionId)}`,
+    { method: 'DELETE' },
+  );
+}
+
 /** POST /api/v1/templates/{id}/publish */
-export async function publishTemplate(id: string): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, { method: 'POST', body: {} });
+export async function publishTemplate(
+  id: string,
+  changelog?: string | null,
+): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/publish`, {
+    method: 'POST',
+    body: { changelog: changelog ?? null },
+  });
 }
 
 /** POST /api/v1/templates/{id}/submit-review */
@@ -193,10 +248,3 @@ export async function rejectTemplateReview(id: string): Promise<{ data: Template
   });
 }
 
-/** PATCH /api/v1/comments/{id}/resolve */
-export async function resolveComment(commentId: string): Promise<{ data: any }> {
-  return apiFetchJson<{ data: any }>(`comments/${commentId}/resolve`, {
-    method: 'PATCH',
-    body: {},
-  });
-}

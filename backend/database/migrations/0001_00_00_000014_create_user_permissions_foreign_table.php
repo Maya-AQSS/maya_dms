@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\PostgresFdwMigration;
+use Maya\Platform\Database\PostgresFdwMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -128,6 +128,9 @@ return new class extends Migration
 
     /**
      * Fuente local escribible en `local` (mocks / seeds); la vista `user_permissions` lee vía FDW.
+     *
+     * No FK a permissions.code: en local/prod permissions es una VIEW FDW (read-only)
+     * y PostgreSQL no admite FOREIGN KEY contra vistas.
      */
     private function createLocalUserPermissionsSourceTable(): void
     {
@@ -135,7 +138,7 @@ return new class extends Migration
             CREATE TABLE IF NOT EXISTS user_permissions_source (
                 id                VARCHAR(255) PRIMARY KEY,
                 user_id           VARCHAR(255) NOT NULL,
-                permission_code   VARCHAR(191) NOT NULL REFERENCES permissions(code) ON DELETE CASCADE,
+                permission_code   VARCHAR(191) NOT NULL,
                 created_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at        TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE (user_id, permission_code)

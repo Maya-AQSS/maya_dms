@@ -1,10 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Services;
 
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 
+/**
+ * Orquesta búsquedas de directorio; candidatos a validador = filas en `user_permissions` con el permiso de revisión pedido.
+ */
 class UserDirectoryService implements UserDirectoryServiceInterface
 {
     public function __construct(
@@ -12,36 +17,18 @@ class UserDirectoryService implements UserDirectoryServiceInterface
     ) {}
 
     /**
-     * Busca usuarios por nombre, email o departamento.
-     * 
-     * @param string $search
-     * @param int $limit
-     * @return array
+     * Busca usuarios por nombre o email.
      */
     public function searchUsers(string $search, int $limit, ?string $excludeUserId = null): array
     {
         return $this->repository->searchUsers($search, $limit, $excludeUserId);
     }
 
-    /**
-     * Busca candidatos a revisor con permiso templates.review.
-     * 
-     * @param string $search
-     * @param int $limit
-     * @return array
-     */
     public function searchTemplateReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
         return $this->repository->searchTemplateReviewerCandidates($search, $limit, $excludeUserId);
     }
 
-    /**
-     * Busca candidatos a revisor con permiso documents.review.
-     * 
-     * @param string $search
-     * @param int $limit
-     * @return array
-     */
     public function searchDocumentReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
         return $this->repository->searchDocumentReviewerCandidates($search, $limit, $excludeUserId);

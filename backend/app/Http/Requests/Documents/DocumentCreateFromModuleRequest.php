@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Documents;
 
 use App\Models\JwtUser;
@@ -21,7 +23,9 @@ class DocumentCreateFromModuleRequest extends FormRequest
     {
         return [
             'module_id' => ['required', 'string'],
+            'process_id' => ['required', 'uuid', 'exists:processes,id'],
             'template_version_id' => ['sometimes', 'nullable', 'uuid'],
+            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
         ];
     }
 }

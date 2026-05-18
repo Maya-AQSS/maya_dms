@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FieldLabel, Select } from '../../../ui';
+import { FieldLabel, Select } from '@maya/shared-ui-react';
 import { useHierarchy } from '../../hierarchy';
 import { fetchMe, type UserTeam } from '../../../api/users';
 

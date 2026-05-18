@@ -1,126 +1,96 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
-use App\Models\TemplateVersion;
+use App\Models\EntityVersion;
+use App\Models\Template;
+use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class TemplateVersionRepository implements TemplateVersionRepositoryInterface
 {
-    /**
-     * Localiza una versión de plantilla por su ID.
-     */
-    public function findOrFail(string $id): TemplateVersion
+    public function __construct(
+        private readonly EntityVersionRepositoryInterface $entityVersionRepository,
+    ) {}
+
+    public function findOrFail(string $id): EntityVersion
     {
-        return TemplateVersion::query()->findOrFail($id);
+        $ev = $this->entityVersionRepository->findOrFail($id);
+        $this->assertPublishedTemplateSnapshot($ev);
+
+        return $ev;
     }
 
-    /**
-     * Última versión publicada de la plantilla (mayor {@see TemplateVersion::$version_number}), o null.
-     */
-    public function findLatestPublishedForTemplate(string $templateId): ?TemplateVersion
+    public function findOptional(string $id): ?EntityVersion
     {
-        return TemplateVersion::query()
-            ->where('template_id', $templateId)
-            ->orderByDesc('version_number')
-            ->first();
+        $ev = EntityVersion::query()->whereKey($id)->first();
+        if ($ev === null) {
+            return null;
+        }
+
+        if ($ev->versionable_type !== Template::class || $ev->status !== 'published') {
+            return null;
+        }
+
+        return $ev;
     }
 
-    /**
-     * Metadatos de una versión por id (consulta ligera, sin JSON de bloques).
-     *
-     * @return array{id: string, version_number: int, changelog: string}|null
-     */
+    public function findLatestPublishedForTemplate(string $templateId): ?EntityVersion
+    {
+        return $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+    }
+
+    public function findByTemplateIdAndVersionNumber(string $templateId, int $versionNumber): ?EntityVersion
+    {
+        return $this->entityVersionRepository->findPublishedForEntityVersionNumber(
+            Template::class,
+            $templateId,
+            $versionNumber,
+        );
+    }
+
     public function findPublishedMetaById(string $versionId): ?array
     {
-        $row = DB::table('template_versions')
-            ->where('id', $versionId)
-            ->select(['id', 'version_number', 'changelog'])
+        $ev = EntityVersion::query()
+            ->whereKey($versionId)
+            ->where('versionable_type', Template::class)
+            ->where('status', 'published')
             ->first();
 
-        if ($row === null) {
+        if ($ev === null) {
             return null;
         }
 
         return [
-            'id' => (string) $row->id,
-            'version_number' => (int) $row->version_number,
-            'changelog' => (string) $row->changelog,
+            'id' => (string) $ev->id,
+            'version_number' => (int) $ev->version_number,
+            'changelog' => (string) ($ev->changelog ?? ''),
         ];
     }
 
-    /**
-     * Metadatos de la versión publicada más reciente (consulta ligera).
-     *
-     * @return array{id: string, version_number: int, changelog: string}|null
-     */
     public function findLatestPublishedMetaForTemplate(string $templateId): ?array
     {
-        $row = DB::table('template_versions')
-            ->where('template_id', $templateId)
-            ->orderByDesc('version_number')
-            ->select(['id', 'version_number', 'changelog'])
-            ->first();
-
-        if ($row === null) {
-            return null;
-        }
-
-        return [
-            'id' => (string) $row->id,
-            'version_number' => (int) $row->version_number,
-            'changelog' => (string) $row->changelog,
-        ];
+        return $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Template::class, $templateId);
     }
 
-    /**
-     * Lista todas las versiones de una plantilla ordenadas por número de versión.
-     */
     public function listForTemplateOrdered(string $templateId): Collection
     {
-        return TemplateVersion::query()
-            ->where('template_id', $templateId)
-            ->orderBy('version_number')
-            ->get();
+        return $this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId);
     }
 
-    /**
-     * Obtiene el próximo número de versión para una plantilla.
-     */
     public function nextVersionNumber(string $templateId): int
     {
-        $max = TemplateVersion::query()
-            ->where('template_id', $templateId)
-            ->max('version_number');
-
-        return (int) $max + 1;
+        return $this->entityVersionRepository->nextVersionNumber(Template::class, $templateId);
     }
 
-    /**
-     * Crea un snapshot de una plantilla.
-     */
-    public function createSnapshot(
-        string $templateId,
-        int $versionNumber,
-        array $blocksSnapshot,
-        string $changelog,
-        string $publishedBy,
-    ): TemplateVersion {
-        $now = now();
-
-        return TemplateVersion::query()->forceCreate([
-            'id' => (string) Str::uuid(),
-            'template_id' => $templateId,
-            'version_number' => $versionNumber,
-            'blocks_snapshot' => $blocksSnapshot,
-            'changelog' => $changelog,
-            'published_by' => $publishedBy,
-            'published_at' => $now,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ]);
+    private function assertPublishedTemplateSnapshot(EntityVersion $ev): void
+    {
+        if ($ev->versionable_type !== Template::class || $ev->status !== 'published') {
+            throw (new ModelNotFoundException)->setModel(EntityVersion::class, [$ev->id]);
+        }
     }
 }

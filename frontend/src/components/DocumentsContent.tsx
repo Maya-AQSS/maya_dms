@@ -1,5 +1,14 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import {
+  Button,
+  DataTable,
+  PageTitle,
+  Pagination,
+  paginate,
+  useTablePreferences,
+  type ColumnDef,
+} from '@maya/shared-ui-react';
 import { CascadeFilters } from './CascadeFilters';
 import {
   useDocuments,
@@ -16,9 +25,9 @@ import { fetchTemplateVersion, type TemplateVersionSnapshotBlock } from '../api/
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { useUserProfile } from '../features/user-profile';
-import type { DocumentStatus } from '../types/documents';
+import type { Document, DocumentStatus } from '../types/documents';
+import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
-import { Button } from '../ui';
 
 function snapshotBlockStateLabel(raw: string | undefined): string {
   if (raw != null && raw in BLOCK_STATE_LABELS) {
@@ -35,6 +44,7 @@ const STATUS_LABELS: Record<DocumentStatus, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
   published: 'Publicado',
+  rejected: 'Rechazado',
 };
 
 const STATUS_CLASS: Record<DocumentStatus, string> = {
@@ -44,6 +54,8 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
     'bg-warning-light text-warning-dark dark:bg-warning-dark/20 dark:text-warning-light',
   draft:
     'bg-ui-border dark:bg-ui-dark-border text-text-secondary dark:text-text-dark-secondary',
+  rejected:
+    'bg-danger-light text-danger-dark dark:bg-danger-dark/20 dark:text-danger-light',
 };
 
 /**
@@ -69,12 +81,61 @@ export function DocumentsContent() {
   const [previewBlocks, setPreviewBlocks] = useState<TemplateVersionSnapshotBlock[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const {
+    hiddenIds: hiddenColumnIds,
+    toggleHidden: toggleColumn,
+    sortBy,
+    setSortBy,
+    pageSize,
+    setPageSize,
+  } = useTablePreferences({ storageKey: 'maya:dms:documents-table' });
   const [, startTransition] = useTransition();
+  const [page, setPage] = useState(1);
 
   const { documents, loading, error, reload } = useDocuments();
   const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
-  const filtered = useFilteredDocuments(documents, activeFilters, hierarchy);
+  const displayDocuments = useMemo(() => {
+    const out: Document[] = [];
+    for (const d of documents) {
+      const hasPublishedFallback =
+        d.status !== 'published' &&
+        !!d.latest_published_version_id;
+      const isAssignedReviewer =
+        d.status === 'in_review' &&
+        hasPermission('documents.review');
+      const canSeeLive =
+        (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
+        d.share_permission === 'edit' ||
+        isAssignedReviewer;
+
+      if (!hasPublishedFallback) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+        continue;
+      }
+
+      const publishedFallback: Document = {
+        ...d,
+        title: d.latest_published_title ?? d.title,
+        status: 'published',
+        current_version: d.latest_published_version_number ?? d.current_version,
+        list_variant: 'published_fallback',
+        list_row_id: `${d.id}:published`,
+      };
+
+      if (canSeeLive) {
+        out.push({ ...d, list_variant: 'live', list_row_id: `${d.id}:live` });
+      }
+      out.push(publishedFallback);
+    }
+    return out;
+  }, [documents, hasPermission, profile?.id]);
+
+  const filtered = useFilteredDocuments(displayDocuments, activeFilters, hierarchy);
+  const filtersActiveCount =
+    (activeFilters.studyTypeId ? 1 : 0) +
+    (activeFilters.studyId ? 1 : 0) +
+    (activeFilters.moduleId ? 1 : 0);
   const selectedModuleId = activeFilters.moduleId;
   const isSelectingTemplate = showSelector && creationMode === 'select';
 
@@ -163,20 +224,29 @@ export function DocumentsContent() {
   }, [location.state, location.pathname, navigate, reload]);
 
   const handleClear = () =>
-    startTransition(() =>
-      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' })
-    );
+    startTransition(() => {
+      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' });
+      setPage(1);
+    });
 
   const handleChange = (filters: CascadeDocumentFilters) =>
-    startTransition(() => setActiveFilters(filters));
+    startTransition(() => {
+      setActiveFilters(filters);
+      setPage(1);
+    });
 
-  const handleCreateFromModule = async (templateVersionId?: string) => {
+  const handleCreateFromModule = async (templateVersionId?: string, processId?: string) => {
     if (!selectedModuleId) return;
+    if (!processId) {
+      setCreationError('No se pudo resolver el proceso de la plantilla seleccionada.');
+      return;
+    }
     setCreatingDocument(true);
     setCreationError(null);
     try {
       const created = await createDocumentFromModule({
         module_id: selectedModuleId,
+        process_id: processId,
         ...(templateVersionId ? { template_version_id: templateVersionId } : {}),
       });
       navigate(`/documents/${created.id}/editor`);
@@ -221,25 +291,162 @@ export function DocumentsContent() {
     setPreviewLoading(false);
   };
 
+  const columns = useMemo<ColumnDef<Document>[]>(
+    () => [
+      {
+        id: 'title',
+        header: 'Título',
+        sortable: true,
+        alwaysVisible: true,
+        cell: (d: Document) => (
+          <span className="flex items-center gap-2 min-w-0">
+            <span className="font-medium text-text-primary dark:text-text-dark-primary truncate">
+              {d.title}
+            </span>
+            {d.has_review_comments && d.status === 'draft' && profile && (d.owner_id === profile.id || d.created_by === profile.id) && (
+              <span
+                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                title="Este documento fue rechazado en revisión."
+              >
+                ⚠ Revisión
+              </span>
+            )}
+          </span>
+        ),
+      },
+      {
+        id: 'version',
+        header: 'Versión',
+        sortable: true,
+        align: 'left',
+        cell: (d: Document) => (
+          <span className="text-xs text-text-muted dark:text-text-dark-muted">
+            v{d.current_version}
+          </span>
+        ),
+      },
+      {
+        id: 'status',
+        header: 'Estado',
+        sortable: true,
+        align: 'left',
+        cell: (d: Document) => (
+          <span
+            className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[d.status]}`}
+          >
+            {STATUS_LABELS[d.status]}
+          </span>
+        ),
+      },
+      {
+        id: 'delivery_deadline',
+        header: 'Fecha',
+        sortable: true,
+        align: 'left',
+        cell: (d: Document) => (
+          <span className="text-xs text-text-muted dark:text-text-dark-muted">
+            {d.delivery_deadline ? formatCalendarDateForBrowser(d.delivery_deadline) : '—'}
+          </span>
+        ),
+      },
+      {
+        id: 'actions',
+        header: '',
+        align: 'right',
+        alwaysVisible: true,
+        visibilityLabel: 'Acciones',
+        cell: (d: Document) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            onClick={(e: React.MouseEvent) => {
+              e.stopPropagation();
+              if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
+                navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
+                return;
+              }
+              navigate(`/documents/${d.id}`);
+            }}
+          >
+            Abrir
+          </Button>
+        ),
+      },
+    ],
+    [navigate, profile],
+  );
+
+  const sortedFiltered = useMemo(() => {
+    if (!sortBy) return filtered;
+    const dir = sortBy.direction === 'asc' ? 1 : -1;
+    const cmp = (a: Document, b: Document): number => {
+      switch (sortBy.columnId) {
+        case 'title':
+          return (a.title ?? '').localeCompare(b.title ?? '') * dir;
+        case 'version':
+          return ((a.current_version ?? 0) - (b.current_version ?? 0)) * dir;
+        case 'status':
+          return (a.status ?? '').localeCompare(b.status ?? '') * dir;
+        case 'delivery_deadline':
+          return (a.delivery_deadline ?? '').localeCompare(b.delivery_deadline ?? '') * dir;
+        default:
+          return 0;
+      }
+    };
+    return [...filtered].sort(cmp);
+  }, [filtered, sortBy]);
+
+  const { pageItems: pageRows, meta } = useMemo(
+    () => paginate(sortedFiltered, { pageSize, currentPage: page }),
+    [sortedFiltered, page, pageSize],
+  );
+
   const handleNewProgrammingClick = async () => {
     if (!selectedModuleId || loadingCreationOptions || creatingDocument) return;
     if (creationMode === 'none') return;
     if (creationMode === 'auto') {
-      const versionId = creationOptions[0]?.template_version_id;
-      await handleCreateFromModule(versionId);
+      const templateId = creationOptions[0]?.template_id;
+      const templateVersionId = creationOptions[0]?.template_version_id;
+      navigate(`/documentos/nuevo/${templateId}/wizard`, {
+        state: {
+          moduleId: selectedModuleId,
+          templateVersionId: templateVersionId ?? null,
+        }
+      });
       return;
     }
-    setShowSelector(true);
+    navigate('/documentos/nuevo', {
+      state: { moduleId: selectedModuleId }
+    });
   };
 
   return (
     <div className="p-6">
+      <PageTitle
+        title="Documentos"
+        actions={
+          <Button
+            type="button"
+            size="sm"
+            loading={creatingDocument}
+            disabled={newProgrammingDisabledReason !== null || isSelectingTemplate}
+            onClick={() => void handleNewProgrammingClick()}
+            title={
+              isSelectingTemplate
+                ? 'Ya estás eligiendo una plantilla.'
+                : newProgrammingDisabledReason ?? undefined
+            }
+          >
+            Nueva Programación
+          </Button>
+        }
+      />
       {showSelectModuleHint && (
         <p className="mb-3 text-xs text-text-muted dark:text-text-dark-muted">
           Selecciona un módulo para crear una nueva programación.
         </p>
       )}
-      <CascadeFilters onClear={handleClear} onFilterChange={handleChange} />
 
       {showSubmittedForReviewBanner && (
         <div
@@ -262,33 +469,6 @@ export function DocumentsContent() {
       )}
 
       <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
-        <div className="px-5 py-3 border-b border-ui-border-l dark:border-ui-dark-border-l flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-            Programaciones Didácticas
-          </h2>
-          <div className="flex items-center gap-3">
-            {!loading && (
-              <span className="text-xs text-text-muted dark:text-text-dark-muted">
-                {filtered.length} {filtered.length === 1 ? 'documento' : 'documentos'}
-              </span>
-            )}
-            <Button
-              type="button"
-              size="sm"
-              loading={creatingDocument}
-              disabled={newProgrammingDisabledReason !== null || isSelectingTemplate}
-              onClick={() => void handleNewProgrammingClick()}
-              title={
-                isSelectingTemplate
-                  ? 'Ya estás eligiendo una plantilla.'
-                  : newProgrammingDisabledReason ?? undefined
-              }
-            >
-              Nueva Programación
-            </Button>
-          </div>
-        </div>
-
         {newProgrammingDisabledReason && !showSelectModuleHint && (
           <p className="px-5 py-2 text-xs text-text-muted dark:text-text-dark-muted border-b border-ui-border-l dark:border-ui-dark-border-l">
             {newProgrammingDisabledReason}
@@ -317,6 +497,10 @@ export function DocumentsContent() {
                       >
                         <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary block">
                           {option.name}
+                        </span>
+                        <span className="text-[11px] text-text-muted dark:text-text-dark-muted mt-1 block">
+                          Visibilidad: {option.visibility_level ?? '—'}
+                          {option.team_name ? ` · Equipo: ${option.team_name}` : ''}
                         </span>
                         {option.description ? (
                           <span className="text-xs text-text-muted dark:text-text-dark-muted mt-1 block line-clamp-2">
@@ -373,7 +557,7 @@ export function DocumentsContent() {
                                   {block.title}
                                 </h4>
                               ) : null}
-                              <span className="text-[10px] font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
+                              <span className="text-xs font-medium uppercase tracking-wide px-1.5 py-0.5 rounded bg-ui-border/60 dark:bg-ui-dark-border text-text-muted dark:text-text-dark-muted">
                                 {snapshotBlockStateLabel(block.block_state)}
                               </span>
                             </div>
@@ -403,7 +587,7 @@ export function DocumentsContent() {
                     type="button"
                     loading={creatingDocument}
                     disabled={previewLoading || !!previewError || !previewOption}
-                    onClick={() => void handleCreateFromModule(previewOption.template_version_id)}
+                    onClick={() => void handleCreateFromModule(previewOption.template_version_id, previewOption.process_id)}
                   >
                     Usar esta plantilla
                   </Button>
@@ -414,44 +598,67 @@ export function DocumentsContent() {
         )}
 
         {!(showSelector && creationMode === 'select') && (
-          <div className="divide-y divide-ui-border-l dark:divide-ui-dark-border-l">
-            {loading && (
-              <p className="px-5 py-4 text-sm text-text-muted dark:text-text-dark-muted">
-                Cargando documentos…
-              </p>
-            )}
+          <div>
             {error && (
               <p className="px-5 py-4 text-sm text-warning-dark dark:text-warning-light">
                 Error al cargar documentos: {error.message}
               </p>
             )}
-            {!loading && !error && filtered.length === 0 && (
-              <p className="px-5 py-8 text-sm text-center text-text-muted dark:text-text-dark-muted">
-                No hay programaciones didácticas con los filtros actuales.
-              </p>
+            {!error && (
+              <>
+                <DataTable<Document>
+                  title="Programaciones Didácticas"
+                  description={
+                    <span>
+                      {filtered.length}{' '}
+                      {filtered.length === 1 ? 'documento' : 'documentos'}
+                    </span>
+                  }
+                  columns={columns}
+                  rows={pageRows}
+                  rowKey={(d) => d.list_row_id ?? d.id}
+                  loading={loading}
+                  pageSize={pageSize}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size)
+                    setPage(1)
+                  }}
+                  hiddenColumnIds={hiddenColumnIds}
+                  onToggleHiddenColumn={toggleColumn}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                  onRowClick={(d) => {
+                    if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
+                      navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
+                      return;
+                    }
+                    navigate(`/documents/${d.id}`);
+                  }}
+                  emptyMessage="No hay programaciones didácticas con los filtros actuales."
+                  className="rounded-none border-0 shadow-none"
+                  filtersStorageKey="maya:dms:documents-table"
+                  filtersPanel={
+                    <CascadeFilters
+                      value={activeFilters}
+                      onFilterChange={handleChange}
+                    />
+                  }
+                  filtersActiveCount={filtersActiveCount}
+                  onClearFilters={handleClear}
+                  filtersDefaultOpen={false}
+                />
+                {meta.totalPages > 1 && (
+                  <div className="px-5 py-3 border-t border-ui-border-l dark:border-ui-dark-border-l">
+                    <Pagination
+                      currentPage={meta.currentPage}
+                      totalPages={meta.totalPages}
+                      onChange={setPage}
+                      info={`${meta.totalItems} documentos`}
+                    />
+                  </div>
+                )}
+              </>
             )}
-            {filtered.map((doc) => (
-              <button
-                key={doc.id}
-                type="button"
-                onClick={() => navigate(`/documents/${doc.id}`)}
-                className="w-full text-left px-5 py-3 flex items-center justify-between gap-4 hover:bg-ui-body dark:hover:bg-ui-dark-bg transition-colors cursor-pointer"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-primary dark:text-text-dark-primary truncate">
-                    {doc.title}
-                  </p>
-                  <p className="text-xs text-text-muted dark:text-text-dark-muted mt-0.5">
-                    v{doc.current_version}
-                  </p>
-                </div>
-                <span
-                  className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_CLASS[doc.status]}`}
-                >
-                  {STATUS_LABELS[doc.status]}
-                </span>
-              </button>
-            ))}
           </div>
         )}
       </div>

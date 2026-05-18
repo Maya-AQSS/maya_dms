@@ -1,11 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Contracts;
 
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
+use App\Support\DocumentHeadSnapshot;
 use Illuminate\Support\Collection;
 
 interface DocumentRepositoryInterface
@@ -16,10 +19,42 @@ interface DocumentRepositoryInterface
     public function findOrFail(string $id): Document;
 
     /**
+     * Recarga el documento sin el scope `user_access` (cabezal unido).
+     *
+     * Tras mutar el cabezal, el actor puede dejar de cumplir visibilidad (p. ej. revisor tras rechazo → borrador).
+     * Solo usar cuando el id ya pasó autorización en la misma operación.
+     */
+    public function findOrFailForRefreshAfterMutation(string $id): Document;
+
+    /**
+     * Borrado lógico de documento.
+     */
+    public function delete(Document $document): void;
+
+    /**
+     * Actualiza metadatos editables del documento.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateDocumentMetadata(Document $document, array $attributes): Document;
+
+    /**
+     * Actualiza owner del documento.
+     */
+    public function updateOwner(Document $document, string $newOwnerId): Document;
+
+    /**
+     * Fusiona atributos delegados en la versión cabezal y sincroniza {@see EntityVersion::status} si viene `status`.
+     *
+     * @param  array<string, mixed>  $updates  Claves de {@see DocumentHeadSnapshot::DELEGATED_ATTRIBUTES}.
+     */
+    public function mergeHeadWorkingCopy(Document $document, array $updates): Document;
+
+    /**
      * Crea el documento y sus bloques iniciales en una transacción.
      *
      * @param  array<string, mixed>  $documentAttributes
-     * @param  list<array{template_block_id: string, content: mixed, sort_order: int}>  $blockRows
+     * @param  list<array{template_block_id: string, content: mixed, sort_order: int, is_filled?: bool, last_edited_by?: ?string}>  $blockRows
      */
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document;
 
@@ -52,13 +87,18 @@ interface DocumentRepositoryInterface
     public function findReviewInDocument(string $reviewId, string $documentId): ?DocumentReview;
 
     /**
-     * Elimina las revisiones del documento.
+     * Elimina todas las revisiones del documento (uso en submitToReview para ciclo limpio).
      */
     public function deleteReviewsForDocument(string $documentId): void;
 
     /**
+     * Elimina solo las revisiones pendientes, conservando las rechazadas como historial.
+     */
+    public function deletePendingReviewsForDocument(string $documentId): void;
+
+    /**
      * Crea las revisiones pendientes del documento.
-     * 
+     *
      * @param  list<array{reviewer_id: string, stage: int}>  $rows
      */
     public function createPendingReviews(string $documentId, array $rows): void;
@@ -74,6 +114,13 @@ interface DocumentRepositoryInterface
     public function minPendingReviewStageForDocument(string $documentId): ?int;
 
     /**
+     * `created_at` de la primera revisión del documento (la más antigua), o null
+     * si no hay ninguna revisión. Tipo concreto depende del driver: string ISO o
+     * Carbon-compatible. El caller debe normalizar.
+     */
+    public function firstReviewCreatedAt(string $documentId): mixed;
+
+    /**
      * Guarda una revisión del documento.
      */
     public function saveReview(DocumentReview $review): void;
@@ -83,7 +130,7 @@ interface DocumentRepositoryInterface
      *
      * @return Collection<int, Document>
      */
-    public function listOrderedByCreatedAtDesc(): Collection;
+    public function listOrderedByCreatedAtDesc(?string $processId = null): Collection;
 
     /**
      * Bandeja de validación de documentos pendiente para un revisor (documento en revisión y fila
@@ -95,28 +142,51 @@ interface DocumentRepositoryInterface
     public function listPendingDocumentReviewInboxForUser(string $userId): Collection;
 
     /**
-     * Mayor número de versión de snapshot guardado para el documento (0 si no hay ninguna).
+     * Mayor número de versión de snapshot publicado en entity_versions (0 si no hay ninguna).
      */
     public function maxDocumentVersionNumber(string $documentId): int;
 
     /**
+     * Mayor número de versión en document_versions (incluye submitted, published, rejected). 0 si no hay ninguna.
+     */
+    public function maxDocumentVersionHistoryNumber(string $documentId): int;
+
+    /**
      * Inserta un registro append-only en document_versions.
      *
-     * @param  array<string, mixed>  $snapshotData
+     * @param  array<string, mixed>|null  $snapshotData  Null si el snapshot canónico está solo en entity_versions.
      */
     public function insertDocumentVersion(
         string $documentId,
         int $versionNumber,
         string $triggerEvent,
         string $triggeredBy,
-        array $snapshotData,
+        ?array $snapshotData,
         ?string $notes = null,
+        ?string $entityVersionId = null,
     ): void;
 
     /**
      * Localiza una fila de document_versions por id dentro del documento.
      */
     public function findDocumentVersionInDocumentOrFail(string $documentId, string $versionId): DocumentVersion;
+
+    /**
+     * Última versión de snapshot del documento por número de versión.
+     */
+    public function findLatestDocumentVersionOrFail(string $documentId): DocumentVersion;
+
+    /**
+     * Última fila de {@see DocumentVersion} con trigger_event «published».
+     */
+    public function findLatestPublishedDocumentVersion(string $documentId): ?DocumentVersion;
+
+    /**
+     * Contexto académico de módulo para creación documental.
+     *
+     * @return array{module_id: string, study_id: string, study_type_id: ?string}|null
+     */
+    public function findModuleContext(string $moduleId): ?array;
 
     /**
      * Crea o actualiza un compartido (document_id, user_id) único.
@@ -160,4 +230,9 @@ interface DocumentRepositoryInterface
         ?array $diff,
         string $editedBy,
     ): void;
+
+    /**
+     * Ejecuta una operación dentro de transacción.
+     */
+    public function transaction(callable $callback): mixed;
 }

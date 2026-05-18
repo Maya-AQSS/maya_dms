@@ -17,6 +17,12 @@
             <directory>app</directory>
         </include>
     </source>
+    <coverage>
+        <report>
+            <text outputFile="coverage.txt" showOnlySummary="true"/>
+            <html outputDirectory="coverage-html"/>
+        </report>
+    </coverage>
     <php>
         <!-- force: el compose inyecta pgsql y APP_ENV=local; sin esto RefreshDatabase hace migrate:fresh sobre maya_dms_db y borra los seeds que ves en el navegador. -->
         <env name="APP_ENV" value="testing" force="true"/>
@@ -24,8 +30,14 @@
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
-        <env name="DB_CONNECTION" value="sqlite" force="true"/>
-        <env name="DB_DATABASE" value=":memory:" force="true"/>
+        <!-- DMS usa SQL específico de Postgres (GREATEST, json_extract) en repos.
+             Los tests deben correr contra Postgres real, no SQLite. -->
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_HOST" value="maya_infra_postgres" force="true"/>
+        <env name="DB_PORT" value="5432" force="true"/>
+        <env name="DB_DATABASE" value="maya_dms_test" force="true"/>
+        <env name="DB_USERNAME" value="maya" force="true"/>
+        <env name="DB_PASSWORD" value="secret" force="true"/>
         <env name="DB_URL" value="" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
@@ -33,5 +45,6 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="LOG_CHANNEL" value="null" force="true"/>
     </php>
 </phpunit>

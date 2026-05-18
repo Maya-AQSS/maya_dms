@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\DTOs\Templates;
 
 readonly class CreateTemplateDto
@@ -15,5 +17,6 @@ readonly class CreateTemplateDto
         public ?string $teamId,
         public int $reviewStages,
         public string $reviewMode,
+        public string $processId,
     ) {}
 }

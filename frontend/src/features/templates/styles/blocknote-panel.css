@@ -1,0 +1,51 @@
+/* Toolbar: wrap on narrow widths, no horizontal scroll arrows */
+.maya-bn-panel .bn-toolbar,
+.maya-bn-panel .bn-ak-toolbar,
+.maya-bn-panel [role="toolbar"] {
+  flex-wrap: wrap !important;
+  overflow: visible !important;
+  max-width: 100% !important;
+  gap: 2px;
+}
+.maya-bn-panel .bn-ak-toolbar > .ariakit-toolbar-scroll-button,
+.maya-bn-panel .bn-ak-toolbar > [class*="scroll-button"],
+.maya-bn-panel [class*="ScrollArrow"] {
+  display: none !important;
+}
+/* DOM real: .bn-root y .bn-container son el mismo elemento (al igual
+   que .ProseMirror y .bn-editor). bn-root usa min-height:100% para
+   llenar el wrapper cuando el contenido es corto, pero puede crecer y
+   hacer scroll cuando el contenido excede; ProseMirror toma el resto
+   del alto con flex:1. */
+.maya-bn-panel .bn-root {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  cursor: text;
+  box-sizing: border-box;
+}
+.maya-bn-panel .ProseMirror {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* Bring editor typography up to the rest of the app (was a touch smaller). */
+.maya-bn-panel .ProseMirror,
+.maya-bn-panel .bn-block-content {
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+/* HEAD styles integrated */
+.bn-container, .bn-editor {
+  background-color: transparent !important;
+}
+.bn-editor {
+  padding-inline: 42px !important;
+}
+.dark .bn-editor {
+  color: var(--color-text-dark-primary) !important;
+}
+/* Fullscreen: layout managed by parent component (block list / tree hidden, AppLayout
+   sidebar hidden via html.editor-fullscreen). The panel itself stays in flex flow. */
+.maya-bn-panel--fullscreen {
+  /* intentionally no position override */
+}

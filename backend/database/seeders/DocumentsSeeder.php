@@ -2,13 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Repositories\Contracts\DocumentRepositoryInterface;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 class DocumentsSeeder extends Seeder
 {
+    private const DEFAULT_PROCESS_ID = '33333333-3333-3333-3333-333333333301';
+
     public function run(): void
     {
         if (! Schema::hasTable('documents')) {
@@ -20,17 +22,18 @@ class DocumentsSeeder extends Seeder
             return;
         }
 
-        $now = Carbon::now();
+        $repo = app(DocumentRepositoryInterface::class);
 
-        $rows = array_map(static function (array $row) use ($now): array {
-            $row['created_at'] ??= $now;
-            $row['updated_at'] ??= $now;
-            $row['deleted_at'] ??= null;
+        foreach ($rows as $row) {
+            $row['process_id'] ??= self::DEFAULT_PROCESS_ID;
+            $id = $row['id'] ?? null;
+            if (is_string($id) && $id !== '' && DB::table('documents')->where('id', $id)->exists()) {
+                continue;
+            }
 
-            return $row;
-        }, $rows);
-
-        DB::table('documents')->insertOrIgnore($rows);
+            $payload = array_diff_key($row, array_flip(['created_at', 'updated_at', 'deleted_at']));
+            $repo->createDocumentWithBlocks($payload, []);
+        }
     }
 
     /**

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DocumentsContent } from './DocumentsContent';
@@ -19,6 +19,7 @@ vi.mock('../api/users', () => ({
       team_ids: [],
       permissions: ['documents.create', 'documents.read'],
       teams: [],
+      locale: 'es',
       source: 'fdw' as const,
     },
   }),
@@ -71,12 +72,36 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-function renderWithProfile(ui: ReactElement) {
-  return render(
-    <MemoryRouter>
-      <UserProfileProvider>{ui}</UserProfileProvider>
-    </MemoryRouter>,
-  );
+async function renderWithProfile(ui: ReactElement) {
+  let renderResult: ReturnType<typeof render> | null = null;
+  await act(async () => {
+    renderResult = render(
+      <MemoryRouter>
+        <UserProfileProvider>{ui}</UserProfileProvider>
+      </MemoryRouter>,
+    );
+  });
+  return renderResult!;
+}
+
+/** Evita clics mientras `fetchMe` del perfil sigue en curso (botón con title de carga). */
+async function waitForUserProfileReady() {
+  await waitFor(() => {
+    const btn = screen.getByRole('button', { name: 'Nueva Programación' });
+    expect(btn.getAttribute('title')).not.toBe('Cargando perfil de usuario…');
+  });
+}
+
+/** Abre el panel de filtros si hace falta (DataTable cachea `filtersOpen` en memoria por `filtersStorageKey`). */
+async function openFiltersAndSelectModule() {
+  const filtrosBtn = screen.getAllByRole('button', { name: /Filtros/i })[0]!;
+  if (filtrosBtn.getAttribute('aria-expanded') !== 'true') {
+    fireEvent.click(filtrosBtn);
+  }
+  await waitFor(() => {
+    expect(screen.getByRole('button', { name: 'seleccionar-modulo' })).toBeTruthy();
+  });
+  fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
 }
 
 const baseDocument = {
@@ -114,6 +139,7 @@ describe('DocumentsContent creation flow', () => {
         team_ids: [],
         permissions: ['documents.create', 'documents.read'],
         teams: [],
+        locale: 'es',
         source: 'fdw',
       },
     });
@@ -140,10 +166,11 @@ describe('DocumentsContent creation flow', () => {
         team_ids: [],
         permissions: ['documents.read'],
         teams: [],
+        locale: 'es',
         source: 'fdw',
       },
     });
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
 
     await waitFor(() => {
       expect(screen.getByText(/documents\.create/i)).toBeTruthy();
@@ -153,7 +180,7 @@ describe('DocumentsContent creation flow', () => {
   });
 
   it('deshabilita nueva programación sin módulo seleccionado', async () => {
-    renderWithProfile(<DocumentsContent />);
+    await renderWithProfile(<DocumentsContent />);
 
     await waitFor(() => {
       expect(
@@ -172,8 +199,9 @@ describe('DocumentsContent creation flow', () => {
       options: [],
     });
 
-    renderWithProfile(<DocumentsContent />);
-    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+    await renderWithProfile(<DocumentsContent />);
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(mockFetchDocumentCreationOptions).toHaveBeenCalledWith('m1'),
@@ -207,8 +235,9 @@ describe('DocumentsContent creation flow', () => {
     });
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-new' });
 
-    renderWithProfile(<DocumentsContent />);
-    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+    await renderWithProfile(<DocumentsContent />);
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
@@ -216,13 +245,10 @@ describe('DocumentsContent creation flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
     await waitFor(() =>
-      expect(mockCreateDocumentFromModule).toHaveBeenCalledWith({
-        module_id: 'm1',
-        template_version_id: 'ver-1',
+      expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo/tpl-1/wizard', {
+        state: { moduleId: 'm1', templateVersionId: 'ver-1' },
       }),
     );
-    expect(reload).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-new/editor');
   });
 
   it('muestra listado, previsualiza y crea con la plantilla elegida en modo select', async () => {
@@ -273,37 +299,20 @@ describe('DocumentsContent creation flow', () => {
     });
     mockCreateDocumentFromModule.mockResolvedValue({ ...baseDocument, id: 'doc-sel' });
 
-    renderWithProfile(<DocumentsContent />);
-    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+    await renderWithProfile(<DocumentsContent />);
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
 
-    expect(
-      screen.getByText('Elige una plantilla para verla en previsualización'),
-    ).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', true);
-
-    fireEvent.click(screen.getByRole('button', { name: /Plantilla B/i }));
-
-    await waitFor(() => expect(mockFetchTemplateVersion).toHaveBeenCalledWith('ver-2'));
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Usar esta plantilla' })).toHaveProperty('disabled', false);
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Usar esta plantilla' }));
-
     await waitFor(() =>
-      expect(mockCreateDocumentFromModule).toHaveBeenCalledWith({
-        module_id: 'm1',
-        template_version_id: 'ver-2',
+      expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
+        state: { moduleId: 'm1' },
       }),
     );
-    expect(reload).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/documents/doc-sel/editor');
   });
 
   it('vuelve al listado desde la previsualización con Elegir otra plantilla', async () => {
@@ -336,23 +345,17 @@ describe('DocumentsContent creation flow', () => {
       published_at: null,
     });
 
-    renderWithProfile(<DocumentsContent />);
-    fireEvent.click(screen.getByRole('button', { name: 'seleccionar-modulo' }));
+    await renderWithProfile(<DocumentsContent />);
+    await waitForUserProfileReady();
+    await openFiltersAndSelectModule();
 
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Nueva Programación' })).toHaveProperty('disabled', false),
     );
     fireEvent.click(screen.getByRole('button', { name: 'Nueva Programación' }));
-    fireEvent.click(screen.getByRole('button', { name: /Plantilla A/i }));
-
-    await waitFor(() => expect(mockFetchTemplateVersion).toHaveBeenCalled());
-
-    fireEvent.click(screen.getByRole('button', { name: 'Elegir otra plantilla' }));
-
-    await waitFor(() => {
-      expect(screen.getByText('Elige una plantilla para verla en previsualización')).toBeTruthy();
+    expect(mockNavigate).toHaveBeenCalledWith('/documentos/nuevo', {
+      state: { moduleId: 'm1' },
     });
-    expect(screen.getByRole('button', { name: /Plantilla B/i })).toBeTruthy();
   });
 });
 

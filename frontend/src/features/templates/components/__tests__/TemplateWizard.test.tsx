@@ -1,8 +1,16 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { TemplateWizard } from '../TemplateWizard';
-import { createTemplate, updateTemplate, syncTemplateValidators, publishTemplate } from '../../../../api/templates';
+import {
+  createTemplate,
+  updateTemplate,
+  syncTemplateValidators,
+  publishTemplate,
+  fetchTemplateVersionSummaries,
+} from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
+import { fetchMe } from '../../../../api/users';
 import { MemoryRouter } from 'react-router-dom';
 import { UserProfileProvider } from '../../../../features/user-profile';
 
@@ -23,6 +31,7 @@ vi.mock('../../../../api/users', () => ({
       team_ids: [],
       permissions: ['templates.create', 'templates.read', 'users.search'],
       teams: [],
+      locale: 'es',
       source: 'fdw' as const,
     },
   }),
@@ -34,11 +43,38 @@ vi.mock('../../../../features/hierarchy', () => ({
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+vi.mock('@maya/shared-ui-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@maya/shared-ui-react')>();
+  return {
+    ...actual,
+    DatePicker: ({
+      value,
+      onChange,
+      ariaLabel,
+      disabled,
+    }: {
+      value: string | null | undefined;
+      onChange: (date: string | null) => void;
+      ariaLabel?: string;
+      disabled?: boolean;
+    }) => (
+      <input
+        type="date"
+        aria-label={ariaLabel}
+        disabled={disabled}
+        value={value ?? ''}
+        onChange={(e) => onChange(e.target.value ? e.target.value : null)}
+      />
+    ),
+  };
+});
+
 // Mock dnd-kit globally for the wizard
 vi.mock('@dnd-kit/core', () => ({
   DndContext: ({ children }: any) => <div>{children}</div>,
   closestCenter: vi.fn(),
   PointerSensor: vi.fn(),
+  KeyboardSensor: vi.fn(),
   useSensor: vi.fn(),
   useSensors: vi.fn(() => []),
 }));
@@ -46,6 +82,7 @@ vi.mock('@dnd-kit/core', () => ({
 vi.mock('@dnd-kit/sortable', () => ({
   SortableContext: ({ children }: any) => <div>{children}</div>,
   verticalListSortingStrategy: {},
+  sortableKeyboardCoordinates: vi.fn(),
   arrayMove: (arr: any) => arr,
   useSortable: () => ({
     attributes: {},
@@ -63,6 +100,11 @@ vi.mock('react-router-dom', async () => {
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useBlocker: () => ({
+      state: 'unblocked',
+      proceed: vi.fn(),
+      reset: vi.fn(),
+    }),
   };
 });
 
@@ -72,7 +114,7 @@ describe('TemplateWizard Integration', () => {
     name: 'Existing',
     description: null,
     visibility_level: 'personal',
-    delivery_deadline: null,
+    delivery_deadline: '2099-01-01T00:00:00Z',
     study_type_id: null,
     study_id: null,
     module_id: null,
@@ -96,37 +138,66 @@ describe('TemplateWizard Integration', () => {
     }));
     (syncTemplateValidators as any).mockResolvedValue({ data: [] });
     (publishTemplate as any).mockResolvedValue({ data: { success: true } });
+    (fetchTemplateVersionSummaries as any).mockResolvedValue([]);
   });
 
-  const renderWizard = (props = {}) => {
-    return render(
-      <MemoryRouter>
-        <UserProfileProvider>
-          <TemplateWizard {...props} />
-        </UserProfileProvider>
-      </MemoryRouter>,
-    );
+  const renderWizard = async (props = {}) => {
+    let renderResult: ReturnType<typeof render> | null = null;
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    await act(async () => {
+      renderResult = render(
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter>
+            <UserProfileProvider>
+              <TemplateWizard {...props} />
+            </UserProfileProvider>
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+    });
+    return renderResult!;
   };
 
   it('completes full "Create" flow from Step 1 to Step 4', async () => {
     const mockNewTemplate = fullTemplate({ id: 't123', name: 'New Template' });
     (createTemplate as any).mockResolvedValue({ data: mockNewTemplate });
-    (fetchBlocks as any).mockResolvedValue({ data: [{ id: 'b1', title: 'Block 1', mandatory: true, block_state: 'locked' }] });
+    (fetchBlocks as any).mockResolvedValue({
+      data: [{
+        id: 'b1',
+        title: 'Block 1',
+        mandatory: true,
+        block_state: 'editable',
+        default_content: { text: 'content' },
+      }],
+    });
 
-    renderWizard();
+    await renderWizard({ processId: 'proc-test-1' });
+
+    await waitFor(() => {
+      expect(vi.mocked(fetchMe)).toHaveBeenCalled();
+    });
 
     // Step 1: Properties
     expect(screen.getByText('Nueva plantilla')).toBeTruthy();
     
     const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
     fireEvent.change(nameInput, { target: { value: 'New Template' } });
-    
+
+    const deadlineInput = screen.getByLabelText(/Plazo de entrega/i);
+    fireEvent.change(deadlineInput, { target: { value: '2099-01-01' } });
+
+    await waitFor(() => {
+      expect((deadlineInput as HTMLInputElement).value).toBe('2099-01-01');
+    });
+
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
 
     await waitFor(() => {
       expect(createTemplate).toHaveBeenCalled();
-      expect(screen.getByText('Editando «New Template»')).toBeTruthy();
+      expect(screen.getByRole('heading', { name: 'New Template' })).toBeTruthy();
       expect(screen.getByText(/Bloques \(/i)).toBeTruthy(); // Transitioned to Step 2
     }, { timeout: 10000 });
 
@@ -149,21 +220,28 @@ describe('TemplateWizard Integration', () => {
       expect(screen.getByText('Revisión final')).toBeTruthy(); // Transitioned to Step 4 (Resumen)
     }, { timeout: 10000 });
 
-    // Step 4: Summary -> Finish
+    // Step 4: Summary -> Finish (esperar a que la bandeja de bloques del resumen cargue; sin esto
+    // «Publicar plantilla» sigue disabled por blocksLoading/blocksCount y el clic no navega)
+    await waitFor(() => {
+      const publishBtn = screen.getByRole('button', { name: /Publicar plantilla/ }) as HTMLButtonElement;
+      expect(publishBtn.disabled).toBe(false);
+    }, { timeout: 10000 });
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
-      expect(mockNavigate).toHaveBeenCalledWith('/templates');
+      expect(mockNavigate).toHaveBeenCalledWith('/procesos/proc-test-1');
     }, { timeout: 10000 });
   }, 15000);
 
   it('handles Step 1 validation errors', async () => {
-    renderWizard();
-    
+    await renderWizard();
+
     const continueBtn = screen.getByRole('button', { name: /Guardar y continuar →/ });
     fireEvent.click(continueBtn);
 
-    expect(screen.getByText('El nombre es obligatorio.')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('El nombre es obligatorio.')).toBeTruthy();
+    });
     expect(createTemplate).not.toHaveBeenCalled();
   });
 
@@ -182,7 +260,7 @@ describe('TemplateWizard Integration', () => {
       }],
     });
 
-    renderWizard({ template: mockTemplate });
+    await renderWizard({ template: mockTemplate });
     
     // We start at Step 1, but let's go to Step 2
     fireEvent.change(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0], { target: { value: 'Modified' } });
@@ -199,14 +277,21 @@ describe('TemplateWizard Integration', () => {
   });
 
   it('shows leave guard when dirty', async () => {
-    renderWizard();
-    
-    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
-    fireEvent.change(nameInput, { target: { value: 'Some change' } });
+    await renderWizard();
 
-    // Try to go back to templates list via back arrow
+    const nameInput = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i)[0];
+    fireEvent.input(nameInput, { target: { value: 'Some change' } });
+
+    // Wait for RHF to flush the dirty flag before triggering the leave action
+    await waitFor(() => {
+      expect((nameInput as HTMLInputElement).value).toBe('Some change');
+    });
+
     fireEvent.click(screen.getByLabelText('Volver'));
 
-    expect(screen.getByText(/Tienes cambios sin guardar/i)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(/Tienes cambios sin guardar/i)).toBeTruthy();
+    });
   });
+
 });

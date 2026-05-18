@@ -1,9 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Repositories\Eloquent;
 
 use App\Models\UserFdw;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -21,7 +24,7 @@ class UserProfileRepository implements UserProfileRepositoryInterface
      * Obtiene el perfil del usuario desde la vista FDW.
      * SIEMPRE filtra por user_id — nunca ejecuta SELECT sin filtro.
      *
-     * @throws \Illuminate\Database\QueryException Si FDW no responde en STATEMENT_TIMEOUT_MS.
+     * @throws QueryException Si FDW no responde en STATEMENT_TIMEOUT_MS.
      */
     public function findById(string $userId): ?array
     {
@@ -37,10 +40,9 @@ class UserProfileRepository implements UserProfileRepositoryInterface
             }
 
             return [
-                'id'         => $user->id,
-                'email'      => $user->email,
-                'name'       => $user->name,
-                'department' => $user->department,
+                'id' => $user->id,
+                'email' => $user->email,
+                'name' => $user->name,
             ];
         });
     }
@@ -99,8 +101,16 @@ class UserProfileRepository implements UserProfileRepositoryInterface
      */
     public function findTeamsByUserId(string $userId): array
     {
-        return DB::table('team_members')
-            ->join('teams', 'teams.id', '=', 'team_members.team_id')
+        $query = DB::table('team_members');
+
+        // teams.id = VARCHAR (vista FDW); team_members.team_id = UUID en mocks → comparar como texto.
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            $query->join('teams', DB::raw('teams.id::text'), '=', DB::raw('team_members.team_id::text'));
+        } else {
+            $query->join('teams', 'teams.id', '=', 'team_members.team_id');
+        }
+
+        return $query
             ->where('team_members.user_id', '=', $userId)
             ->whereNull('teams.deleted_at')
             ->select([

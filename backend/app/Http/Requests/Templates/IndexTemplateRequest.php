@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Templates;
 
 use App\DTOs\Templates\FilterTemplatesDto;
@@ -23,30 +25,24 @@ class IndexTemplateRequest extends FormRequest
 
     /**
      * Reglas de validación para el listado de plantillas.
-     * 
+     *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
         return [
             'visibility_level' => ['sometimes', 'nullable', Rule::enum(TemplateVisibilityLevel::class)],
-            'status'           => ['sometimes', 'nullable', 'string', 'in:draft,in_review,published,archived'],
-            'study_type_id'    => ['sometimes', 'nullable', 'string', 'max:255'],
-            'study_id'         => ['sometimes', 'nullable', 'string', 'max:255'],
-            'module_id'        => ['sometimes', 'nullable', 'string', 'max:255'],
-            'team_id'          => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
-            'author_name'      => ['sometimes', 'nullable', 'string', 'max:255'],
+            'status' => ['sometimes', 'nullable', 'string', 'in:draft,in_review,published,archived'],
+            'usable_for_documents' => ['sometimes', 'boolean'],
+            'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'team_id' => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
+            'author_name' => ['sometimes', 'nullable', 'string', 'max:255'],
             'delivery_deadline' => ['sometimes', 'nullable', 'date'],
-            'per_page'         => ['sometimes', 'integer', 'min:1', 'max:20'],
+            'published_on' => ['sometimes', 'nullable', 'date'],
+            'process_id' => ['sometimes', 'nullable', 'uuid', 'exists:processes,id'],
         ];
-    }
-
-    /**
-     * Obtiene el número máximo de plantillas por página.
-     */
-    public function perPage(): int
-    {
-        return min(max((int) $this->query('per_page', 20), 1), 20);
     }
 
     /**
@@ -59,12 +55,15 @@ class IndexTemplateRequest extends FormRequest
         return new FilterTemplatesDto(
             visibilityLevel: $v['visibility_level'] ?? null,
             status: $v['status'] ?? null,
+            usableForDocuments: (bool) ($v['usable_for_documents'] ?? false),
             studyTypeId: $v['study_type_id'] ?? null,
             studyId: $v['study_id'] ?? null,
             moduleId: $v['module_id'] ?? null,
             teamId: $v['team_id'] ?? null,
             authorName: $v['author_name'] ?? null,
             deliveryDeadline: $v['delivery_deadline'] ?? null,
+            publishedOn: $v['published_on'] ?? null,
+            processId: $v['process_id'] ?? null,
         );
     }
 }

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "37d7cae953764485221ddfd59f61abd0",
+    "content-hash": "806254c6bf0bbfd1fd58ad5e4c7a79c3",
     "packages": [
         {
             "name": "brick/math",
@@ -2359,14 +2359,21 @@
             "dist": {
                 "type": "path",
                 "url": "../../maya_infra/packages/maya-shared-auth-laravel",
-                "reference": "54dac3aa6539be40a641d7a0a7ea568f05b1b004"
+                "reference": "c4be42e1cc0e043ca14d2d96646b1860e0264766"
             },
             "require": {
                 "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/http": "^11.0 || ^12.0 || ^13.0",
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
                 "lcobucci/jwt": "^5.0",
-                "php": "^8.4"
+                "php": "^8.4",
+                "phpseclib/phpseclib": "^3.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
             },
             "type": "library",
             "extra": {
@@ -2381,10 +2388,52 @@
                     "Maya\\Auth\\": "src/"
                 }
             },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
+            },
             "license": [
                 "MIT"
             ],
             "description": "Shared JWT Authentication logic for MAyA Laravel microservices.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "maya/shared-http-laravel",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../maya_infra/packages/maya-shared-http-laravel",
+                "reference": "568637370d72ab3212ac530255c4ea68c299d0b4"
+            },
+            "require": {
+                "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Http\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Shared HTTP utilities for MAyA Laravel microservices: response envelope, health checks, base resources.",
             "transport-options": {
                 "relative": true
             }
@@ -2395,7 +2444,7 @@
             "dist": {
                 "type": "path",
                 "url": "../../maya_infra/packages/maya-shared-messaging-laravel",
-                "reference": "3d23ee07f7f5c8cd1d5f2d59dcad1c7d1c9c040b"
+                "reference": "9fb825014abe2eca88a7694d1376e3637b60aed7"
             },
             "require": {
                 "illuminate/log": "^11.0 || ^12.0 || ^13.0",
@@ -2405,6 +2454,12 @@
                 "php": "^8.4",
                 "php-amqplib/php-amqplib": "^3.5",
                 "ramsey/uuid": "^4.7"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
             },
             "type": "library",
             "extra": {
@@ -2419,10 +2474,87 @@
                     "Maya\\Messaging\\": "src/"
                 }
             },
+            "autoload-dev": {
+                "psr-4": {
+                    "Tests\\": "tests/"
+                }
+            },
+            "scripts": {
+                "test": [
+                    "pest --colors=always"
+                ],
+                "test-coverage": [
+                    "pest --coverage --min=80"
+                ]
+            },
             "license": [
                 "MIT"
             ],
             "description": "Shared RabbitMQ messaging layer for MAyA Laravel microservices: log publisher, notification publisher, alert publisher, and Monolog rabbit handler.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "maya/shared-platform-laravel",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../maya_infra/packages/maya-shared-platform-laravel",
+                "reference": "4be2ebdd2c9b80dbb480629a332e93b83ec7b849"
+            },
+            "require": {
+                "illuminate/database": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Platform\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Platform-level utilities shared by Maya Laravel microservices: PostgreSQL FDW migration helpers and other infrastructure primitives that are not specific to a single domain.",
+            "transport-options": {
+                "relative": true
+            }
+        },
+        {
+            "name": "maya/shared-profile-laravel",
+            "version": "dev-main",
+            "dist": {
+                "type": "path",
+                "url": "../../maya_infra/packages/maya-shared-profile-laravel",
+                "reference": "9baf3de7c35fe14cb27b3958778f3e55281e481b"
+            },
+            "require": {
+                "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/validation": "^11.0 || ^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Maya\\Profile\\Providers\\SharedProfileServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Profile\\": "src/"
+                }
+            },
+            "license": [
+                "MIT"
+            ],
+            "description": "Shared user profile endpoints (GET /me, PUT /me/locale) for Maya Laravel microservices. Provides Controller, FormRequest, Service, Repository contracts, DTO and Resource. Apps extend behaviour via UserProfileResolverInterface and LocaleWriterInterface.",
             "transport-options": {
                 "relative": true
             }
@@ -10610,7 +10742,10 @@
     "minimum-stability": "dev",
     "stability-flags": {
         "maya/shared-auth-laravel": 20,
+        "maya/shared-http-laravel": 20,
         "maya/shared-messaging-laravel": 20,
+        "maya/shared-platform-laravel": 20,
+        "maya/shared-profile-laravel": 20,
         "vladimir-yuldashev/laravel-queue-rabbitmq": 20
     },
     "prefer-stable": true,

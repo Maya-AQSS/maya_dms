@@ -28,7 +28,7 @@ class JwtValidationTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $middleware = app(JwtMiddleware::class);
         $method     = (new \ReflectionClass(JwtMiddleware::class))
@@ -79,7 +79,7 @@ class JwtValidationTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         $middleware = app(JwtMiddleware::class);
         $method     = (new \ReflectionClass(JwtMiddleware::class))
@@ -165,7 +165,7 @@ class JwtValidationTest extends TestCase
 
         $this->mock(JwksServiceInterface::class)
             ->shouldReceive('getPublicKey')
-            ->andReturn(InMemory::plainText($publicPem));
+            ->andReturn($publicPem);
 
         config([
             'auth.jwt_issuer'   => 'test-issuer',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -32,10 +34,10 @@ class BlockVersion extends Model
     protected function casts(): array
     {
         return [
-            'content'        => 'array',
-            'diff'           => 'array',
+            'content' => 'array',
+            'diff' => 'array',
             'version_number' => 'integer',
-            'created_at'     => 'datetime',
+            'created_at' => 'datetime',
         ];
     }
 

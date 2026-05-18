@@ -10,7 +10,7 @@ return new class extends Migration
     /**
      * Versionado append-only de bloques.
      * NUNCA se actualiza un registro existente: solo INSERT.
-     * En PostgreSQL se reutiliza la función forbid_append_only_mutation() creada en create_template_versions.
+     * En PostgreSQL se reutiliza la función forbid_append_only_mutation() (migración append-only inicial).
      *
      * El diff entre versiones consecutivas se calcula en la capa de aplicación
      * y se muestra en el drawer de revisión.

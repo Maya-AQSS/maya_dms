@@ -1,6 +1,6 @@
 <?php
 
-use App\Support\PostgresFdwMigration;
+use Maya\Platform\Database\PostgresFdwMigration;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
@@ -20,9 +20,10 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Servidor FDW creado en la migración de usuarios; aquí solo se declaran foreign tables adicionales.
+     * Servidor FDW creado por la migración de usuarios (odoo_server → Odoo);
+     * aquí solo se declaran foreign tables adicionales para jerarquía académica.
      */
-    private const FDW_SERVER = 'users_server';
+    private const FDW_SERVER = 'odoo_server';
 
     /**
      * Vistas consumidas por la aplicación (mismo nombre que el catálogo lógico).
@@ -121,9 +122,9 @@ return new class extends Migration
         } else {
             $schema = config('database.fdw.users.schema', 'public');
             $tables = [
-                'study_types' => config('database.fdw.study_types.table', 'v_study_types'),
-                'studies' => config('database.fdw.studies.table', 'v_studies'),
-                'course_modules' => config('database.fdw.course_modules.table', 'v_course_modules'),
+                'study_types' => config('database.fdw.study_types.table', 'v_dms_study_types'),
+                'studies' => config('database.fdw.studies.table', 'v_dms_studies'),
+                'course_modules' => config('database.fdw.course_modules.table', 'v_dms_course_modules'),
             ];
         }
 

@@ -12,6 +12,7 @@ describe('WizardStep4Summary', () => {
     id: 'tpl-1',
     name: 'Test Template',
     description: 'This is a description',
+    process_id: null,
     visibility_level: 'study_type',
     delivery_deadline: null,
     study_type_id: 'st1',

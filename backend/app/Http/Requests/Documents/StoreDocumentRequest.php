@@ -1,12 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
-use App\Models\TemplateVersion;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class StoreDocumentRequest extends FormRequest
 {
@@ -28,11 +32,12 @@ class StoreDocumentRequest extends FormRequest
         if ($this->filled('template_id')) {
             $template = Template::query()->find($this->input('template_id'));
         } elseif ($this->filled('template_version_id')) {
-            $templateId = TemplateVersion::query()
+            $ev = EntityVersion::query()
                 ->whereKey($this->input('template_version_id'))
-                ->value('template_id');
-            if (is_string($templateId)) {
-                $template = Template::query()->find($templateId);
+                ->where('versionable_type', Template::class)
+                ->first();
+            if ($ev !== null) {
+                $template = Template::query()->find($ev->versionable_id);
             }
         }
 
@@ -52,12 +57,55 @@ class StoreDocumentRequest extends FormRequest
             'study_type_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'study_id' => ['sometimes', 'nullable', 'string', 'max:255'],
             'module_id' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'team_id' => ['sometimes', 'nullable', 'uuid', 'exists:teams,id'],
+            'delivery_deadline' => ['required', 'date', 'after_or_equal:today'],
+            'process_id' => ['required', 'uuid', 'exists:processes,id'],
             'template_version_id' => [
                 'required_without:template_id',
                 'uuid',
-                'exists:template_versions,id',
+                Rule::exists('entity_versions', 'id')->where(
+                    static fn ($q) => $q->where('versionable_type', Template::class)->where('status', 'published'),
+                ),
             ],
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v): void {
+            if ($v->errors()->isNotEmpty()) {
+                return;
+            }
+
+            $processId = $this->input('process_id');
+            if (! is_string($processId)) {
+                return;
+            }
+
+            $template = null;
+            if ($this->filled('template_id')) {
+                $template = Template::query()->find($this->input('template_id'));
+            } elseif ($this->filled('template_version_id')) {
+                $ev = EntityVersion::query()
+                    ->whereKey($this->input('template_version_id'))
+                    ->where('versionable_type', Template::class)
+                    ->first();
+                if ($ev !== null) {
+                    $template = Template::query()->find($ev->versionable_id);
+                }
+            }
+
+            if ($template === null) {
+                return;
+            }
+
+            if ((string) $template->process_id !== $processId) {
+                $v->errors()->add(
+                    'process_id',
+                    'El proceso no corresponde a la plantilla seleccionada.',
+                );
+            }
+        });
     }
 
     /**
@@ -69,9 +117,10 @@ class StoreDocumentRequest extends FormRequest
         $templateId = $this->validated('template_id');
 
         if (! is_string($templateId) && is_string($templateVersionId)) {
-            $templateId = (string) TemplateVersion::query()
+            $templateId = (string) (EntityVersion::query()
                 ->whereKey($templateVersionId)
-                ->value('template_id');
+                ->where('versionable_type', Template::class)
+                ->value('versionable_id') ?? '');
         }
 
         return new CreateDocumentDto(
@@ -79,9 +128,12 @@ class StoreDocumentRequest extends FormRequest
             title: $this->validated('title'),
             createdBy: $createdBy,
             ownerId: $ownerId,
+            processId: $this->validated('process_id'),
             studyTypeId: $this->validated('study_type_id') ?? null,
             studyId: $this->validated('study_id') ?? null,
             moduleId: $this->validated('module_id') ?? null,
+            teamId: $this->validated('team_id') ?? null,
+            deliveryDeadline: $this->validated('delivery_deadline'),
             templateVersionId: $templateVersionId ?? null,
         );
     }

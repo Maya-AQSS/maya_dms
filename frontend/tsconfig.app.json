@@ -1,17 +1,32 @@
 {
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
     "target": "ES2023",
     "useDefineForClassFields": true,
     "lib": ["ES2023", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "types": ["vite/client"],
-    "skipLibCheck": true,
-    "ignoreDeprecations": "6.0",
+    "types": ["vite/client", "react"],
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "skipLibCheck": true,
+    "rootDirs": [".", "../../maya_infra"],
     "paths": {
+      "react": ["node_modules/@types/react"],
+      "react-dom": ["node_modules/@types/react-dom"],
+      "react/jsx-runtime": ["node_modules/@types/react/jsx-runtime"],
+      "axios": ["node_modules/axios"],
+      "keycloak-js": ["node_modules/keycloak-js/lib/keycloak.d.ts"],
+      "react-router-dom": ["node_modules/react-router-dom"],
+      "i18next": ["node_modules/i18next"],
+      "react-i18next": ["node_modules/react-i18next"],
+      "i18next-browser-languagedetector": ["node_modules/i18next-browser-languagedetector"],
+      "react-grid-layout": ["node_modules/@types/react-grid-layout/index.d.ts"],
       "@maya/shared-auth-react": [
         "../../maya_infra/packages/maya-shared-auth-react/src/index.ts"
+      ],
+      "@maya/shared-dashboard-react": [
+        "../../maya_infra/packages/maya-shared-dashboard-react/src/index.ts"
       ],
       "@maya/shared-i18n-react": [
         "../../maya_infra/packages/maya-shared-i18n-react/src/index.ts"
@@ -21,6 +36,9 @@
       ],
       "@maya/shared-sidebar-react": [
         "../../maya_infra/packages/maya-shared-sidebar-react/src/index.ts"
+      ],
+      "@maya/shared-ui-react": [
+        "../../maya_infra/packages/maya-shared-ui-react/src/index.ts"
       ]
     },
     
@@ -36,9 +54,7 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedSideEffectImports": true
+    "noFallthroughCasesInSwitch": true
   },
   "include": ["src"]
 }

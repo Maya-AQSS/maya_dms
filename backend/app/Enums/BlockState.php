@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Enums;
 
 enum BlockState: string
 {
-    case Optional   = 'optional';
-    case Editable   = 'editable';
+    case Optional = 'optional';
+    case Editable = 'editable';
     case Modifiable = 'modifiable';
-    case Locked     = 'locked';
+    case Locked = 'locked';
 
     /** @return list<string> */
     public static function values(): array
