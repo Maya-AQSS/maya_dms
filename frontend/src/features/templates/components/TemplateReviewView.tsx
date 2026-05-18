@@ -53,18 +53,22 @@ function extractBlockText(block: unknown): string {
   return prefix + inline;
 }
 
+function normalizeText(s: string): string {
+  return s.trim().replace(/\s+/g, ' ');
+}
+
 function extractTextLines(content: unknown): string[] {
   const blocks = normalizeBlockContentForEditor(content);
   if (!Array.isArray(blocks)) return [];
   const lines: string[] = [];
   for (const block of blocks) {
-    const text = extractBlockText(block);
-    if (text.trim()) lines.push(text);
+    const text = normalizeText(extractBlockText(block));
+    if (text) lines.push(text);
     const b = block as Record<string, unknown>;
     const children = Array.isArray(b.children) ? b.children : [];
     for (const child of children) {
-      const ct = extractBlockText(child);
-      if (ct.trim()) lines.push('  ' + ct);
+      const ct = normalizeText(extractBlockText(child));
+      if (ct) lines.push('  ' + ct);
     }
   }
   return lines;
@@ -191,10 +195,10 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
       .filter((e): e is CycleEntry => e !== null);
   }, [history, blockId]);
 
-  const entries = useMemo(
-    () => (ascending ? entriesChron : [...entriesChron].reverse()),
-    [entriesChron, ascending],
-  );
+  const entries = useMemo(() => {
+    const sorted = ascending ? entriesChron : [...entriesChron].reverse();
+    return sorted.filter((e: CycleEntry) => (tab === 'content' ? e.diffContent.length > 0 : e.diffDescription.length > 0));
+  }, [entriesChron, ascending, tab]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
