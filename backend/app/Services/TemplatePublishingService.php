@@ -111,11 +111,6 @@ class TemplatePublishingService
                 fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
                     && $isEmptyContent($b)
             );
-            if ($emptyEditableBlock !== null) {
-                throw ValidationException::withMessages([
-                    'blocks' => ['Los bloques editables y modificables no pueden estar vacíos.'],
-                ]);
-            }
 
             $emptyLockedBlock = $template->blocks->first(
                 fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b)
