@@ -27,6 +27,7 @@ import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
+import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock } from '../utils/blockComments';
 
@@ -400,6 +401,12 @@ export function TemplatePreviewPage() {
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
             v{template.version}
           </span>
+          {template.status === 'in_review' && (template.reviewers?.length ?? 0) > 0 && (
+            <SequentialValidatorBadge
+              reviewMode={template.review_mode}
+              reviewers={(template.reviewers ?? []).map((r) => ({ stage: r.stage ?? 0, status: r.status, name: r.user_name }))}
+            />
+          )}
         </>
       )}
       {selectionMode ? (

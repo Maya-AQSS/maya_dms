@@ -39,6 +39,7 @@ import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock } from '../utils/blockComments';
+import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
 // Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
@@ -618,6 +619,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           </span>
         </>
       )}
+      {!isValidateMode && !isHistoricalSnapshot && detail.status === 'in_review' && allReviews.length > 0 && (
+        <SequentialValidatorBadge
+          reviewMode={detail.review_mode}
+          reviewers={allReviews.map((r) => ({ stage: r.stage, status: r.status, name: r.reviewer_name }))}
+        />
+      )}
       {documentId && !isHistoricalSnapshot ? <FavoriteButton entityType="document" entityId={documentId} /> : null}
       {showVersionHistory ? (
         <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
@@ -798,6 +805,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           }
           actions={
             <div className="flex items-center gap-2">
+              <SequentialValidatorBadge
+                reviewMode={detail?.review_mode}
+                reviewers={allReviews.map((r) => ({ stage: r.stage, status: r.status, name: r.reviewer_name }))}
+              />
               {actionableReviewId ? (
                 <>
                   <Button

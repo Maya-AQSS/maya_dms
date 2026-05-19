@@ -166,6 +166,7 @@ export type DocumentReview = {
   id: string;
   document_id: string;
   reviewer_id: string;
+  reviewer_name?: string | null;
   stage: number;
   status: string;
   rejection_reason?: string | null;
