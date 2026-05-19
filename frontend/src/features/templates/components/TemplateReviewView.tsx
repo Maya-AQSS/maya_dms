@@ -8,7 +8,6 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
-import { useAuth } from '@maya/shared-auth-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
@@ -306,7 +305,6 @@ export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
-  const { user } = useAuth();
   const { profile } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id);
   const queryClient = useQueryClient();
@@ -324,8 +322,7 @@ export function TemplateReviewView({ template }: Props) {
 
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  const currentUserId = user?.sub ?? (user as { id?: string } | null | undefined)?.id;
-  const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
+  const myReview = template.reviewers?.find(r => String(r.user_id) === String(profile?.id));
   const isReviewer = !!myReview;
   const isCreator = !!profile?.id && template.created_by === profile.id;
 
@@ -398,7 +395,7 @@ export function TemplateReviewView({ template }: Props) {
 
   const handleRejectClick = () => {
     const myComments = comments.filter(
-      c => String(c.author_id) === String(currentUserId),
+      c => String(c.author_id) === String(profile?.id),
     );
     if (myComments.length === 0) setShowNoCommentsWarning(true);
     else setShowRejectModal(true);
