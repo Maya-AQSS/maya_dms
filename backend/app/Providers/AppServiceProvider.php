@@ -137,6 +137,7 @@ class AppServiceProvider extends ServiceProvider
         // `maya/shared-profile-laravel`). dms consume la vista resuelta de
         // permisos vía FDW (`v_dms_user_permissions` en maya_authorization)
         // — eliminada la tabla local `user_permissions`.
+        $this->loadMigrationsFrom(ProfileMigrations::users());
         $this->loadMigrationsFrom(ProfileMigrations::academicAssignments());
         $this->loadMigrationsFrom(ProfileMigrations::teams());
         $this->loadMigrationsFrom(ProfileMigrations::userPermissions());
