@@ -46,9 +46,11 @@ class TeamsSeeder extends Seeder
 
     /**
      * Tabla donde se pueden insertar filas del catálogo de equipos (mocks).
-     * - Local FDW: `teams_source`.
-     * - Testing: `teams` (tabla física).
-     * - Producción con solo vista `teams`: null (catálogo remoto, sin mocks desde aquí).
+     * - Testing: `teams` (tabla física UUID, factories ok).
+     * - Local/staging/prod: `teams` es VIEW pass-through sobre FDW Odoo →
+     *   no se inserta (los datos reales vienen de Odoo `v_dms_teams`).
+     * - Retro-compatible con `teams_source` si alguna instalación legacy
+     *   aún la usa.
      */
     private function writableTeamsCatalogTable(): ?string
     {
@@ -89,9 +91,8 @@ class TeamsSeeder extends Seeder
 
     /**
      * Tabla donde se pueden insertar membresías mock.
-     * - Local FDW: `team_members_source`.
-     * - Testing: `team_members` (tabla física).
-     * - Producción con solo vista `team_members`: null (datos remotos, sin mocks desde aquí).
+     * - Testing: `team_members` (tabla física UUID).
+     * - Local/staging/prod: `team_members` es VIEW FDW → no-op (datos remotos).
      */
     private function writableTeamMembersTable(): ?string
     {
