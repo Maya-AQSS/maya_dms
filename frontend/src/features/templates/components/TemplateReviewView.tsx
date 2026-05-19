@@ -326,8 +326,18 @@ export function TemplateReviewView({ template }: Props) {
   const isReviewer = !!myReview;
   const isCreator = !!profile?.id && template.created_by === profile.id;
 
+  const previousStagesPending =
+    template.review_mode === 'sequential' &&
+    myReview != null &&
+    (template.reviewers ?? []).some(
+      (r) => r.stage < myReview.stage && r.status !== 'approved',
+    );
+
   const isActiveValidator =
-    isReviewer && template.status === 'in_review' && myReview?.status === 'pending';
+    isReviewer &&
+    template.status === 'in_review' &&
+    myReview?.status === 'pending' &&
+    !previousStagesPending;
 
   const commentMode: CommentMode = (() => {
     if (isReviewer && template.status === 'in_review') return 'validator';
@@ -445,6 +455,12 @@ export function TemplateReviewView({ template }: Props) {
                 Validar y Aprobar
               </Button>
             </>
+          ) : previousStagesPending ? (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
+              <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
+                Esperando etapas anteriores
+              </span>
+            </div>
           ) : myReview?.status === 'approved' ? (
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
               <span className="text-success-dark text-xs font-black uppercase tracking-widest">

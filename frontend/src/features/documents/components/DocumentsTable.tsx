@@ -374,6 +374,17 @@ export function DocumentsTable({ processId }: Props = {}) {
             });
             return;
           }
+          const isReviewerForDoc =
+            doc.status === 'in_review' &&
+            hasPermission('documents.review') &&
+            profile?.id !== doc.created_by &&
+            profile?.id !== doc.owner_id;
+          if (isReviewerForDoc) {
+            navigate(`/documents/${doc.id}/validate`, {
+              state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
+            });
+            return;
+          }
           navigate(`/documents/${doc.id}`, {
             state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
           });
