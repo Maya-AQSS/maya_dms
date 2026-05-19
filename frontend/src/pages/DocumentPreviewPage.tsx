@@ -154,6 +154,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
   const [actionableReviewId, setActionableReviewId] = useState<string | null>(null);
+  const [allReviews, setAllReviews] = useState<DocumentReview[]>([]);
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
@@ -280,6 +281,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
   const isPublished = detail?.status === 'published';
+  const isDocumentReviewer = allReviews.some((r) => r.reviewer_id === profile?.id);
   const changedBlocks = useMemo(
     () => (detail ? computeChangedBlocks(detail.blocks) : []),
     [detail],
@@ -320,14 +322,18 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       setValidationReviewLoading(false);
       setValidationSetupError(null);
       setActionableReviewId(null);
+    }
+    if (!detail || detail.status !== 'in_review') {
+      setAllReviews([]);
       return;
     }
-    if (!detail || detail.status !== 'in_review') return;
 
     let cancelled = false;
-    setValidationReviewLoading(true);
-    setValidationSetupError(null);
-    setActionableReviewId(null);
+    if (isValidateMode) {
+      setValidationReviewLoading(true);
+      setValidationSetupError(null);
+      setActionableReviewId(null);
+    }
 
     void (async () => {
       try {
@@ -336,26 +342,31 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           fetchMe(),
         ]);
         if (cancelled) return;
-        const reviewMode = detail.review_mode === 'sequential' ? 'sequential' : 'parallel';
-        const actionable = pickActionableDocumentReview(reviews, meRes.data.id, reviewMode);
-        if (!actionable) {
-          setValidationSetupError(
-            'No tienes una revisión pendiente que puedas tramitar para este documento.',
-          );
-          setActionableReviewId(null);
-        } else {
-          setActionableReviewId(actionable.id);
-          setValidationSetupError(null);
+        setAllReviews(reviews);
+        if (isValidateMode) {
+          const reviewMode = detail.review_mode === 'sequential' ? 'sequential' : 'parallel';
+          const actionable = pickActionableDocumentReview(reviews, meRes.data.id, reviewMode);
+          if (!actionable) {
+            setValidationSetupError(
+              'No tienes una revisión pendiente que puedas tramitar para este documento.',
+            );
+            setActionableReviewId(null);
+          } else {
+            setActionableReviewId(actionable.id);
+            setValidationSetupError(null);
+          }
         }
       } catch (e) {
         if (!cancelled) {
-          setValidationSetupError(
-            e instanceof Error ? e.message : 'No se pudo cargar la información de validación.',
-          );
+          if (isValidateMode) {
+            setValidationSetupError(
+              e instanceof Error ? e.message : 'No se pudo cargar la información de validación.',
+            );
+          }
           setActionableReviewId(null);
         }
       } finally {
-        if (!cancelled) setValidationReviewLoading(false);
+        if (!cancelled && isValidateMode) setValidationReviewLoading(false);
       }
     })();
 
@@ -381,7 +392,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   // Document comments — used for validate-mode panel and preview-mode review banner.
   const validateCommentsEnabled = isValidateMode && !!documentId && !!detail;
   const previewCommentsEnabled =
-    !isValidateMode && !!documentId && !!detail?.has_review_comments;
+    !isValidateMode && !!documentId && !!detail;
   const documentCommentsQuery = useDocumentCommentsQuery(documentId ?? '', {
     enabled: validateCommentsEnabled || previewCommentsEnabled,
   });
@@ -811,7 +822,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         allComments={validateComments}
                         onSendMessage={handleValidateSendMessage}
                         commentLoading={validateCommentLoading}
-                        canAddComments={!!actionableReviewId}
+                        canAddComments={isDocumentReviewer && !isPublished}
                         headerRef={validateViewHeaderRef}
                         onClose={() => setValidateActiveView(null)}
                       />
@@ -1036,7 +1047,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
           const isCreator = profile?.id && detail?.created_by === profile.id;
           const isOwner = profile?.id && detail?.owner_id === profile.id;
-          const commentMode = (isCreator || isOwner) ? 'creator-edit' : 'creator-readonly';
+          const commentMode = (isCreator || isOwner) ? 'creator-edit' : isDocumentReviewer ? 'validator' : 'creator-readonly';
 
           if (selectedReviewView.mode === 'comments') {
             return (
