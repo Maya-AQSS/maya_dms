@@ -10,19 +10,13 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Ejecuta los seeders de la aplicación.
+     * Solo seeders sobre tablas físicas propias de DMS.
+     * Identidad (users, teams, jerarquía académica) y permisos provienen
+     * de FDW (authorization + Odoo) — read-only, no se seedean aquí.
      */
     public function run(): void
     {
-        // Users vienen de un origen externo (FDW en local/prod).
-        // Este seeder solo prepara catálogo mock para local/testing.
         $this->call([
-            UsersSourceSeeder::class,
-            PermissionsSeeder::class,
-            UserPermissionsSeeder::class,
-            AcademicHierarchySeeder::class,
-            UserHierarchySeeder::class,
-            TeamsSeeder::class,
             ProcessesSeeder::class,
             TemplatesSeeder::class,
             TemplateReviewersSeeder::class,
