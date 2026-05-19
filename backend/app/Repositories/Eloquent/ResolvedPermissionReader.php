@@ -7,7 +7,9 @@ namespace App\Repositories\Eloquent;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
+use Throwable;
 
 /**
  * Lectura de permisos resueltos del usuario sobre la vista
@@ -48,13 +50,24 @@ class ResolvedPermissionReader implements ResolvedPermissionReaderInterface
             return [];
         }
 
-        $slugs = DB::table(self::VIEW_NAME)
-            ->where('user_id', '=', $userId)
-            ->orderBy('permission_slug')
-            ->pluck('permission_slug')
-            ->unique()
-            ->values()
-            ->all();
+        // FDW puede fallar (auth DB inaccesible, mapping mal configurado, …).
+        // Degradación silenciosa: log + permisos vacíos en lugar de 500 en /me.
+        try {
+            $slugs = DB::table(self::VIEW_NAME)
+                ->where('user_id', '=', $userId)
+                ->orderBy('permission_slug')
+                ->pluck('permission_slug')
+                ->unique()
+                ->values()
+                ->all();
+        } catch (Throwable $e) {
+            Log::warning('user_resolved_permissions read failed; returning empty', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
 
         if ($slugs !== []) {
             Cache::put($cacheKey, $slugs, self::CACHE_TTL_SECONDS);
