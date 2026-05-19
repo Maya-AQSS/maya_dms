@@ -34,6 +34,7 @@ import type { BlockComment } from '../features/templates/components/BlockComment
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
 import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
+import { DocumentBlockHistoryPanel } from '../features/documents/components/DocumentBlockHistoryPanel';
 import { apiFetchJson } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
@@ -134,6 +135,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
+  const [historyBlockId, setHistoryBlockId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [versionSnapshot, setVersionSnapshot] = useState<{
     versionNumber: number;
@@ -154,6 +156,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
   const [actionableReviewId, setActionableReviewId] = useState<string | null>(null);
+  const [allReviews, setAllReviews] = useState<DocumentReview[]>([]);
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
@@ -280,6 +283,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
   const isPublished = detail?.status === 'published';
+  const isDocumentReviewer = allReviews.some((r) => r.reviewer_id === profile?.id);
+  const myDocumentReview = allReviews.find((r) => r.reviewer_id === profile?.id) ?? null;
   const changedBlocks = useMemo(
     () => (detail ? computeChangedBlocks(detail.blocks) : []),
     [detail],
@@ -320,14 +325,18 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       setValidationReviewLoading(false);
       setValidationSetupError(null);
       setActionableReviewId(null);
+    }
+    if (!detail || detail.status !== 'in_review') {
+      setAllReviews([]);
       return;
     }
-    if (!detail || detail.status !== 'in_review') return;
 
     let cancelled = false;
-    setValidationReviewLoading(true);
-    setValidationSetupError(null);
-    setActionableReviewId(null);
+    if (isValidateMode) {
+      setValidationReviewLoading(true);
+      setValidationSetupError(null);
+      setActionableReviewId(null);
+    }
 
     void (async () => {
       try {
@@ -336,26 +345,31 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           fetchMe(),
         ]);
         if (cancelled) return;
-        const reviewMode = detail.review_mode === 'sequential' ? 'sequential' : 'parallel';
-        const actionable = pickActionableDocumentReview(reviews, meRes.data.id, reviewMode);
-        if (!actionable) {
-          setValidationSetupError(
-            'No tienes una revisión pendiente que puedas tramitar para este documento.',
-          );
-          setActionableReviewId(null);
-        } else {
-          setActionableReviewId(actionable.id);
-          setValidationSetupError(null);
+        setAllReviews(reviews);
+        if (isValidateMode) {
+          const reviewMode = detail.review_mode === 'sequential' ? 'sequential' : 'parallel';
+          const actionable = pickActionableDocumentReview(reviews, meRes.data.id, reviewMode);
+          if (!actionable) {
+            setValidationSetupError(
+              'No tienes una revisión pendiente que puedas tramitar para este documento.',
+            );
+            setActionableReviewId(null);
+          } else {
+            setActionableReviewId(actionable.id);
+            setValidationSetupError(null);
+          }
         }
       } catch (e) {
         if (!cancelled) {
-          setValidationSetupError(
-            e instanceof Error ? e.message : 'No se pudo cargar la información de validación.',
-          );
+          if (isValidateMode) {
+            setValidationSetupError(
+              e instanceof Error ? e.message : 'No se pudo cargar la información de validación.',
+            );
+          }
           setActionableReviewId(null);
         }
       } finally {
-        if (!cancelled) setValidationReviewLoading(false);
+        if (!cancelled && isValidateMode) setValidationReviewLoading(false);
       }
     })();
 
@@ -381,7 +395,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   // Document comments — used for validate-mode panel and preview-mode review banner.
   const validateCommentsEnabled = isValidateMode && !!documentId && !!detail;
   const previewCommentsEnabled =
-    !isValidateMode && !!documentId && !!detail?.has_review_comments;
+    !isValidateMode && !!documentId && !!detail;
   const documentCommentsQuery = useDocumentCommentsQuery(documentId ?? '', {
     enabled: validateCommentsEnabled || previewCommentsEnabled,
   });
@@ -755,6 +769,14 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     const validateBlockComments = validateSelectedBlock
       ? getCommentsForBlock(validateSelectedBlock.document_block_id, validateComments)
       : [];
+    const historySelectedBlock = historyBlockId
+      ? (validateBlocks.find(b => b.template_block_id === historyBlockId) ?? null)
+      : null;
+    const historyDocBlockId = historySelectedBlock?.document_block_id ?? null;
+    const historyBlockNumber = historySelectedBlock
+      ? validateBlocks.indexOf(historySelectedBlock) + 1
+      : '?';
+    const hasReviewHistory = (detail?.review_history?.length ?? 0) > 0;
 
     return (
       <>
@@ -776,32 +798,52 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           }
           actions={
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outlineWarning"
-                size="sm"
-                disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => { setValidationModalError(null); setValidateConfirm('reject'); }}
-                className="text-xs font-black uppercase tracking-wider"
-              >
-                Rechazar validación
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                size="sm"
-                disabled={!actionableReviewId || validationReviewLoading}
-                onClick={() => { setValidationModalError(null); setValidateConfirm('approve'); }}
-                className="text-xs font-black uppercase tracking-wider px-6"
-              >
-                Validar y aprobar
-              </Button>
+              {actionableReviewId ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outlineWarning"
+                    size="sm"
+                    disabled={validationReviewLoading}
+                    onClick={() => { setValidationModalError(null); setValidateConfirm('reject'); }}
+                    className="text-xs font-black uppercase tracking-wider"
+                  >
+                    Rechazar validación
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="sm"
+                    disabled={validationReviewLoading}
+                    onClick={() => { setValidationModalError(null); setValidateConfirm('approve'); }}
+                    className="text-xs font-black uppercase tracking-wider px-6"
+                  >
+                    Validar y aprobar
+                  </Button>
+                </>
+              ) : myDocumentReview?.status === 'approved' ? (
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
+                  <span className="text-success-dark text-xs font-black uppercase tracking-widest">
+                    ✓ Aprobaste esta programación
+                  </span>
+                </div>
+              ) : myDocumentReview?.status === 'rejected' ? (
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-warning/10 border border-warning/20">
+                  <span className="text-warning-dark dark:text-warning-light text-xs font-black uppercase tracking-widest">
+                    ✗ Rechazaste esta programación
+                  </span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
+                  <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
+                    Vista de seguimiento
+                  </span>
+                </div>
+              )}
             </div>
           }
           sidebar={
-            diffBlockId !== null && !validateActiveView
-              ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
-              : validateActiveView && validateSelectedBlock
+            validateActiveView && validateSelectedBlock
                 ? (
                     validateActiveView.mode === 'comments' ? (
                       <BlockCommentsCard
@@ -811,7 +853,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         allComments={validateComments}
                         onSendMessage={handleValidateSendMessage}
                         commentLoading={validateCommentLoading}
-                        canAddComments={!!actionableReviewId}
+                        canAddComments={isDocumentReviewer && !isPublished}
                         headerRef={validateViewHeaderRef}
                         onClose={() => setValidateActiveView(null)}
                       />
@@ -833,10 +875,21 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                       </div>
                     )
                   )
-                : undefined
+              : historyBlockId !== null && historyDocBlockId
+                ? (
+                    <DocumentBlockHistoryPanel
+                      blockId={historyDocBlockId}
+                      blockNumber={historyBlockNumber}
+                      history={detail?.review_history ?? []}
+                      onClose={() => setHistoryBlockId(null)}
+                    />
+                  )
+                : diffBlockId !== null
+                  ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
+                  : undefined
           }
         >
-          {validationSetupError && !validationReviewLoading && (
+          {validationSetupError && !validationReviewLoading && !myDocumentReview?.status && (
             <div className="p-3 mb-4 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
               ⚠ {validationSetupError}
             </div>
@@ -914,7 +967,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               <button
                                 type="button"
                                 aria-label={`Ver cambios del bloque ${block.sort_order}`}
-                                onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setDiffBlockId(prev => prev === blockId ? null : blockId); }}
+                                onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setHistoryBlockId(null); setDiffBlockId(prev => prev === blockId ? null : blockId); }}
                                 className={[btnBase, diffBlockId === blockId ? btnActive : btnIdle].join(' ')}
                                 title="Ver cambios de este bloque"
                               >
@@ -922,6 +975,21 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                 </svg>
                                 <span>Ver cambios</span>
+                              </button>
+                            )}
+                            {/* History button */}
+                            {hasReviewHistory && !!block.document_block_id && (
+                              <button
+                                type="button"
+                                aria-label={`Ver historial de cambios del bloque ${block.sort_order}`}
+                                onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setDiffBlockId(null); setHistoryBlockId(prev => prev === blockId ? null : blockId); }}
+                                className={[btnBase, historyBlockId === blockId ? btnActive : btnIdle].join(' ')}
+                                title="Ver historial de cambios de este bloque"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+                                </svg>
+                                <span>Historial</span>
                               </button>
                             )}
                             {/* Info button */}
@@ -1036,7 +1104,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
           const isCreator = profile?.id && detail?.created_by === profile.id;
           const isOwner = profile?.id && detail?.owner_id === profile.id;
-          const commentMode = (isCreator || isOwner) ? 'creator-edit' : 'creator-readonly';
+          const commentMode = (isCreator || isOwner) ? 'creator-edit' : isDocumentReviewer ? 'validator' : 'creator-readonly';
 
           if (selectedReviewView.mode === 'comments') {
             return (

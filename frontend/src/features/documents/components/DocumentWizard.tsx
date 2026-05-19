@@ -56,6 +56,7 @@ import {
 } from '@maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
+import { getCommentsForBlock } from '../../../utils/blockComments';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then(
@@ -257,7 +258,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   }, [documentId]);
 
   const documentCommentsQuery = useDocumentCommentsQuery(documentId ?? '', {
-    enabled: !!documentId && !!detail?.has_review_comments,
+    enabled: !!documentId && !!detail,
   });
   const reviewComments: BlockComment[] = documentCommentsQuery.data?.data ?? [];
 
@@ -1474,8 +1475,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    {!showDocumentCommentPanel && activeBlock.document_block_id &&
-                      reviewComments.some(c => c.blockable_id === activeBlock.document_block_id) && (
+                    {!showDocumentCommentPanel && activeBlock.document_block_id && (
                       <Button
                         type="button"
                         size="xs"
@@ -1483,7 +1483,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
                         onClick={() => setShowDocumentCommentPanel(true)}
                       >
-                        Comentarios
+                        Comentarios ({getCommentsForBlock(activeBlock.document_block_id, reviewComments).length})
                       </Button>
                     )}
                     {canDeleteOptionalBlock && (
@@ -1584,28 +1584,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           </div>
 
           {/* Right: creator-edit comment panel for active block */}
-          {showDocumentCommentPanel && activeBlock && activeBlock.document_block_id && !isEditorFullscreen && (() => {
-            const blockComments = reviewComments.filter(c => c.blockable_id === activeBlock.document_block_id && !c.parent_id);
-            const allBlockComments = reviewComments.filter(c => {
-              if (c.blockable_id === activeBlock.document_block_id && !c.parent_id) return true;
-              const rootIds = blockComments.map(r => r.id);
-              return c.parent_id != null && rootIds.includes(c.parent_id);
-            });
-            if (blockComments.length === 0) return null;
-            return (
-              <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
-                <BlockCommentsCard
-                  mode="creator-edit"
-                  blockSortOrder={activeBlock.sort_order ?? '?'}
-                  blockComments={allBlockComments}
-                  allComments={reviewComments}
-                  onSendMessage={handleDocumentCommentSend}
-                  onClose={() => setShowDocumentCommentPanel(false)}
-                  canAddComments={detail?.status !== 'published'}
-                />
-              </div>
-            );
-          })()}
+          {showDocumentCommentPanel && activeBlock && activeBlock.document_block_id && !isEditorFullscreen && (
+            <div className="hidden md:flex md:w-[35%] shrink-0 border-l border-ui-border dark:border-ui-dark-border flex-col p-4 h-full min-h-0">
+              <BlockCommentsCard
+                mode="creator-edit"
+                blockSortOrder={activeBlock.sort_order ?? '?'}
+                blockComments={getCommentsForBlock(activeBlock.document_block_id, reviewComments)}
+                allComments={reviewComments}
+                onSendMessage={handleDocumentCommentSend}
+                onClose={() => setShowDocumentCommentPanel(false)}
+                canAddComments={detail?.status !== 'published'}
+              />
+            </div>
+          )}
         </div>
       )}
 

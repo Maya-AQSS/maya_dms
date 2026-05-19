@@ -160,6 +160,11 @@ class TemplateService implements TemplateServiceInterface
         return $templates;
     }
 
+    public function attachLatestPublishedVersionMeta(Collection $templates): void
+    {
+        $this->templateRepository->attachLatestPublishedVersionMeta($templates);
+    }
+
     /**
      * Crea una plantilla con los atributos dados.
      */

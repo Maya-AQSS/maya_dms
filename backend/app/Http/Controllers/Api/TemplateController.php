@@ -89,6 +89,7 @@ class TemplateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
         $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator', 'headVersion']);
         $this->attachCanCloneMeta($model, $request);
+        $this->templateService->attachLatestPublishedVersionMeta(collect([$model]));
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,

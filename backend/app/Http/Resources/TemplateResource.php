@@ -48,6 +48,8 @@ class TemplateResource extends JsonResource
             'working_version_id' => $dto->workingVersionId,
             'latest_published_name' => $dto->latestPublishedName,
             'latest_published_at' => $dto->latestPublishedAt,
+            'blocks_at_previous_submission' => $dto->blocksAtPreviousSubmission,
+            'review_history' => $dto->reviewHistory,
         ];
 
         if ($dto->reviewersLoaded) {

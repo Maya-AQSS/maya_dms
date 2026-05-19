@@ -30,18 +30,22 @@ function extractBlockText(block: unknown): string {
   return prefix + inline;
 }
 
+function normalizeText(s: string): string {
+  return s.trim().replace(/\s+/g, ' ');
+}
+
 function extractTextLines(content: unknown): string[] {
   const blocks = normalizeBlockContentForEditor(content);
   if (!Array.isArray(blocks)) return [];
   const lines: string[] = [];
   for (const block of blocks) {
-    const text = extractBlockText(block);
-    if (text.trim()) lines.push(text);
+    const text = normalizeText(extractBlockText(block));
+    if (text) lines.push(text);
     const b = block as Record<string, unknown>;
     const children = Array.isArray(b.children) ? b.children : [];
     for (const child of children) {
-      const ct = extractBlockText(child);
-      if (ct.trim()) lines.push('  ' + ct);
+      const ct = normalizeText(extractBlockText(child));
+      if (ct) lines.push('  ' + ct);
     }
   }
   return lines;
@@ -99,8 +103,6 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
   const [focusedIdx, setFocusedIdx] = useState(0);
   const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  const total = changedBlocks.length;
-
   useEffect(() => {
     blockRefs.current[focusedIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [focusedIdx]);
@@ -120,6 +122,16 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
       }),
     [changedBlocks],
   );
+
+  const filteredPairs = useMemo(
+    (): { block: DocumentDisplayBlock; lines: DiffLine[] }[] =>
+      changedBlocks
+        .map((block, idx) => ({ block, lines: diffLines[idx] ?? [] }))
+        .filter(({ lines }) => lines.length > 0),
+    [changedBlocks, diffLines],
+  );
+
+  const total = filteredPairs.length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -171,8 +183,7 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
           </p>
         ) : (
           <div className="divide-y divide-ui-border dark:divide-ui-dark-border">
-            {changedBlocks.map((block, idx) => {
-              const lines = diffLines[idx];
+            {filteredPairs.map(({ block, lines }, idx) => {
               const isFocused = idx === focusedIdx;
               return (
                 <div
@@ -198,27 +209,21 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
                   </div>
                   {/* Diff lines */}
                   <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-[11px] font-mono">
-                    {lines.length === 0 ? (
-                      <p className="px-2 py-1 text-text-muted italic text-[11px]">
-                        Sin cambios de texto detectados.
-                      </p>
-                    ) : (
-                      lines.map((line, li) => (
-                        <div
-                          key={li}
-                          className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
-                            line.type === 'removed'
-                              ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
-                              : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
-                          }`}
-                        >
-                          <span className="mr-2 select-none font-bold opacity-70">
-                            {line.type === 'removed' ? '−' : '+'}
-                          </span>
-                          {line.text}
-                        </div>
-                      ))
-                    )}
+                    {lines.map((line, li) => (
+                      <div
+                        key={li}
+                        className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
+                          line.type === 'removed'
+                            ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
+                            : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
+                        }`}
+                      >
+                        <span className="mr-2 select-none font-bold opacity-70">
+                          {line.type === 'removed' ? '−' : '+'}
+                        </span>
+                        {line.text}
+                      </div>
+                    ))}
                   </div>
                 </div>
               );
