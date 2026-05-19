@@ -69,11 +69,18 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
     }
   };
 
-  const isAssignedReviewer =
-    t.status === 'in_review' &&
-    !!profile?.id &&
-    (t.reviewers?.some((r) => r.user_id === profile.id) ?? false);
-  const canValidate = isAssignedReviewer;
+  const myReviewerRow = t.status === 'in_review' && profile?.id
+    ? (t.reviewers?.find((r) => r.user_id === profile.id) ?? null)
+    : null;
+  const isAssignedReviewer = myReviewerRow !== null;
+  const isBlockedBySequentialOrder =
+    isAssignedReviewer &&
+    t.review_mode === 'sequential' &&
+    myReviewerRow !== null &&
+    (t.reviewers ?? []).some(
+      (r) => r.stage < myReviewerRow.stage && r.status !== 'approved',
+    );
+  const canValidate = isAssignedReviewer && !isBlockedBySequentialOrder;
   const isRejected = t.status === 'rejected';
 
   return (

@@ -1020,7 +1020,8 @@ class DocumentService implements DocumentServiceInterface
                 $this->entityVersionRepository->update($headVersion, ['change_set' => $cycles]);
             }
 
-            $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
+            $reviewMode = $this->resolveReviewModeFromDocument($document);
+            $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, ['review_mode' => $reviewMode]);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 
             return $document;
@@ -1098,6 +1099,26 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $candidates;
+    }
+
+    private function resolveReviewModeFromDocument(Document $document): string
+    {
+        $versionId = is_string($document->template_version_id) ? trim($document->template_version_id) : '';
+        if ($versionId !== '') {
+            $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $versionId, Template::class, (string) $document->template_id,
+            );
+            $mode = is_array($entityVersion?->snapshot_data)
+                ? data_get($entityVersion->snapshot_data, 'template.review_mode')
+                : null;
+            if (is_string($mode) && in_array($mode, ['sequential', 'parallel'], true)) {
+                return $mode;
+            }
+        }
+
+        $document->loadMissing('template');
+
+        return (string) ($document->template?->review_mode ?? 'parallel');
     }
 
     /**

@@ -30,6 +30,7 @@ final class DocumentHeadSnapshot
         'created_by',
         'owner_id',
         'status',
+        'review_mode',
     ];
 
     /**
