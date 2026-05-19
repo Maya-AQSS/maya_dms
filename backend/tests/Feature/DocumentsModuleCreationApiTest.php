@@ -40,14 +40,10 @@ class DocumentsModuleCreationApiTest extends TestCase
      */
     private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'templates.read', 'users.search']): void
     {
-        $now = now();
         foreach ($codes as $code) {
-            DB::table('user_permissions')->insert([
-                'id' => (string) Str::uuid(),
+            DB::table('user_resolved_permissions')->insertOrIgnore([
                 'user_id' => $userId,
-                'permission_code' => $code,
-                'created_at' => $now,
-                'updated_at' => $now,
+                'permission_slug' => $code,
             ]);
         }
     }

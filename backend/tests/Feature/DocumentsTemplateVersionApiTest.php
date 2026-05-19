@@ -205,13 +205,10 @@ class DocumentsTemplateVersionApiTest extends TestCase
     {
         $now = now();
         foreach ($codes as $code) {
-            DB::table('user_permissions')->insert([
-                'id' => (string) Str::uuid(),
-                'user_id' => $userId,
-                'permission_code' => $code,
-                'created_at' => $now,
-                'updated_at' => $now,
-            ]);
+            DB::table('user_resolved_permissions')->insertOrIgnore([
+            'user_id' => $userId,
+            'permission_slug' => $code,
+        ]);
         }
     }
 

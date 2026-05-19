@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Observers\TemplateObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Concerns\HasCommentingStatus;
 use App\Policies\TemplatePolicy;
@@ -23,6 +26,7 @@ use Illuminate\Support\Str;
 /**
  * Ancla en proceso; metadatos de nombre, visibilidad, revisión, etc. en la versión cabezal ({@see EntityVersion}, número 0).
  */
+#[ObservedBy(TemplateObserver::class)]
 class Template extends Model
 {
     use HasCommentingStatus, HasUuids, SoftDeletes;

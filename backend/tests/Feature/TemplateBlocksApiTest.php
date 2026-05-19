@@ -36,12 +36,9 @@ class TemplateBlocksApiTest extends TestCase
 
     private function grantTemplatesReadOnly(string $userId): void
     {
-        DB::table('user_permissions')->insert([
-            'id' => (string) Str::uuid(),
+        DB::table('user_resolved_permissions')->insertOrIgnore([
             'user_id' => $userId,
-            'permission_code' => 'templates.read',
-            'created_at' => now(),
-            'updated_at' => now(),
+            'permission_slug' => 'templates.read',
         ]);
     }
 
@@ -128,12 +125,15 @@ class TemplateBlocksApiTest extends TestCase
         $userId = (string) Str::uuid();
         [, $blockId] = $this->seedTemplateAndBlock($userId);
 
-        $capturedArgs = null;
+        $allCalls = [];
         $auditPublisher = $this->mock(AuditPublisher::class);
+        // El observer CRUD genérico (TemplateBlockObserver) también publica
+        // un evento `updated`; aceptamos múltiples llamadas y verificamos
+        // que entre ellas exista el evento de dominio `block_state_changed`.
         $auditPublisher->shouldReceive('publish')
-            ->once()
-            ->withArgs(function () use (&$capturedArgs): bool {
-                $capturedArgs = func_get_args();
+            ->atLeast()->once()
+            ->withArgs(function () use (&$allCalls): bool {
+                $allCalls[] = func_get_args();
                 return true;
             });
 
@@ -142,15 +142,17 @@ class TemplateBlocksApiTest extends TestCase
             'block_state' => 'locked',
         ], $headers)->assertOk();
 
-        $this->assertNotNull($capturedArgs);
         // positional: applicationSlug, entityType, entityId, action, userId, blockId, previousValue, newValue
-        $this->assertSame('maya-dms', $capturedArgs[0]);
-        $this->assertSame('template', $capturedArgs[1]);
-        $this->assertSame('block_state_changed', $capturedArgs[3]);
-        $this->assertSame($userId, $capturedArgs[4]);
-        $this->assertSame($blockId, $capturedArgs[5]);
-        $this->assertSame('editable', ($capturedArgs[6] ?? [])['block_state'] ?? null);
-        $this->assertSame('locked', ($capturedArgs[7] ?? [])['block_state'] ?? null);
+        $stateChange = collect($allCalls)
+            ->first(fn (array $args): bool => ($args[3] ?? null) === 'block_state_changed');
+
+        $this->assertNotNull($stateChange, 'block_state_changed event was not published');
+        $this->assertSame('maya-dms', $stateChange[0]);
+        $this->assertSame('template', $stateChange[1]);
+        $this->assertSame($userId, $stateChange[4]);
+        $this->assertSame($blockId, $stateChange[5]);
+        $this->assertSame('editable', ($stateChange[6] ?? [])['block_state'] ?? null);
+        $this->assertSame('locked', ($stateChange[7] ?? [])['block_state'] ?? null);
     }
 
     public function test_user_with_only_templates_read_cannot_mutate_blocks_on_foreign_template(): void

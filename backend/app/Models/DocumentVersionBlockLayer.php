@@ -4,12 +4,16 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Observers\DocumentVersionBlockLayerObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 /**
  * Tabla pivote versión de documento↔bloque con payload incremental (PK compuesta, sin columna `id`).
  */
+#[ObservedBy(DocumentVersionBlockLayerObserver::class)]
 class DocumentVersionBlockLayer extends Pivot
 {
     public $incrementing = false;

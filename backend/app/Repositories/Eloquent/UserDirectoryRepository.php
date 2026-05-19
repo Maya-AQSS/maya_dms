@@ -8,10 +8,10 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Directorio de usuarios sobre la vista/tabla `users` y `user_permissions`.
+ * Directorio de usuarios sobre la vista/tabla `users` y `user_resolved_permissions`.
  *
  * Los candidatos a validador de plantilla o de documento son siempre usuarios que tienen
- * el permiso correspondiente en `user_permissions`: {@see self::PERMISSION_TEMPLATE_REVIEW}
+ * el permiso correspondiente en `user_resolved_permissions`: {@see self::PERMISSION_TEMPLATE_REVIEW}
  * o {@see self::PERMISSION_DOCUMENT_REVIEW} (no se infiere el rol por otro criterio).
  */
 class UserDirectoryRepository implements UserDirectoryRepositoryInterface
@@ -52,7 +52,7 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
     }
 
     /**
-     * Usuarios que pueden validar plantillas: tienen {@see self::PERMISSION_TEMPLATE_REVIEW} en `user_permissions`.
+     * Usuarios que pueden validar plantillas: tienen {@see self::PERMISSION_TEMPLATE_REVIEW} en `user_resolved_permissions`.
      */
     public function searchTemplateReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
@@ -60,7 +60,7 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
     }
 
     /**
-     * Usuarios que pueden validar documentos: tienen {@see self::PERMISSION_DOCUMENT_REVIEW} en `user_permissions`.
+     * Usuarios que pueden validar documentos: tienen {@see self::PERMISSION_DOCUMENT_REVIEW} en `user_resolved_permissions`.
      */
     public function searchDocumentReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
     {
@@ -68,20 +68,22 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
     }
 
     /**
-     * Candidatos a validador filtrados por un único código de permiso de revisión ya presente en `user_permissions`.
+     * Candidatos a validador filtrados por un único slug de permiso de revisión
+     * resuelto en `user_resolved_permissions` (vista FDW federada con
+     * maya_authorization).
      *
-     * @param  string  $permissionCode  p. ej. {@see self::PERMISSION_TEMPLATE_REVIEW} o {@see self::PERMISSION_DOCUMENT_REVIEW}
+     * @param  string  $permissionSlug  p. ej. {@see self::PERMISSION_TEMPLATE_REVIEW} o {@see self::PERMISSION_DOCUMENT_REVIEW}
      * @return list<array{id: string, name: ?string, email: ?string, role: ?string}> `role` reservado para la API (sin datos en `users` FDW)
      */
     private function searchReviewerCandidatesByPermission(
-        string $permissionCode,
+        string $permissionSlug,
         string $search,
         int $limit,
         ?string $excludeUserId = null,
     ): array {
         $query = DB::table('users')
-            ->join('user_permissions', 'users.id', '=', 'user_permissions.user_id')
-            ->where('user_permissions.permission_code', $permissionCode);
+            ->join('user_resolved_permissions', 'users.id', '=', 'user_resolved_permissions.user_id')
+            ->where('user_resolved_permissions.permission_slug', $permissionSlug);
 
         if ($excludeUserId !== null && $excludeUserId !== '') {
             $query->where('users.id', '!=', $excludeUserId);

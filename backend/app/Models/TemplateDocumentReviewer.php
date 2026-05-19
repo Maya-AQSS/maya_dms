@@ -13,6 +13,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * PK compuesta (template_id, user_id) — no hay identidad propia por fila.
  * Esta tabla define quiénes pueden ser elegidos como revisores al crear un
  * documento desde la plantilla.
+ *
+ * NOTA: NO se ata observer aquí — Eloquent no soporta nativamente PK
+ * compuestas y los events.created/updated rompen el flow. Tabla M2N de
+ * pivote sin identidad propia → la auditoría relevante se cubre con el
+ * observer de Template (que orquesta los reviewers via TemplateService).
  */
 class TemplateDocumentReviewer extends Model
 {

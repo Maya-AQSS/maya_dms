@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Observers\CommentObserver;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,6 +19,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+#[ObservedBy(CommentObserver::class)]
 class Comment extends Model
 {
     use HasUuids, SoftDeletes;
