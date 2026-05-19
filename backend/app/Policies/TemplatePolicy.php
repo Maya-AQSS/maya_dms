@@ -225,6 +225,21 @@ class TemplatePolicy
     }
 
     /**
+     * Descarta la versión de trabajo (draft/in_review) y restaura la última publicación.
+     * Solo el creador o quien tenga `templates.update` puede descartar.
+     */
+    public function discard(JwtUser $user, Template $template): bool
+    {
+        if (! in_array($template->status, ['draft', 'in_review', 'rejected'], true)) {
+            return false;
+        }
+
+        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+
+        return $isCreator || $user->hasPermission('templates.update');
+    }
+
+    /**
      * Publicada → borrador para preparar una nueva versión (misma plantilla).
      *
      * Misma idea que {@see self::update} en estado `published`: hace falta poder ver la plantilla

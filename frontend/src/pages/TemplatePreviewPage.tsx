@@ -11,7 +11,7 @@ import {
   fetchTemplateVersion,
 } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
-import { apiFetchJson } from '../api/http';
+import { apiFetchJson, ApiHttpError } from '../api/http';
 import { useTemplateVersionSummariesQuery } from '../features/templates/hooks/useTemplateVersionSummaries';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -130,6 +130,10 @@ export function TemplatePreviewPage() {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
+  const [draftBlockedBy, setDraftBlockedBy] = useState<string | null>(null);
+  const [showNewVersionConfirm, setShowNewVersionConfirm] = useState(false);
+  const [newVersionLoading, setNewVersionLoading] = useState(false);
+  const [newVersionError, setNewVersionError] = useState<string | null>(null);
   // processLabel derived from useProcessesQuery + template.process_id below.
   const { hierarchy } = useHierarchy();
   const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
@@ -335,16 +339,22 @@ export function TemplatePreviewPage() {
 
   const handleStartNewVersion = async () => {
     if (!id) return;
-    setActionLoading(true);
-    setActionError(null);
+    setNewVersionLoading(true);
+    setNewVersionError(null);
     try {
       const res = await startTemplateNewVersion(id);
       setTemplate(res.data);
+      setShowNewVersionConfirm(false);
       navigate(`/templates/${id}/edit`);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
+      if (e instanceof ApiHttpError && e.status === 409) {
+        setShowNewVersionConfirm(false);
+        setDraftBlockedBy(e.message);
+        return;
+      }
+      setNewVersionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
     } finally {
-      setActionLoading(false);
+      setNewVersionLoading(false);
     }
   };
 
@@ -461,7 +471,7 @@ export function TemplatePreviewPage() {
             </Button>
           )}
           {canStartNewVersion && (
-            <Button type="button" variant="outline" size="sm" loading={actionLoading} onClick={() => void handleStartNewVersion()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowNewVersionConfirm(true)}>
               Nueva versión
             </Button>
           )}
@@ -672,6 +682,29 @@ export function TemplatePreviewPage() {
           onClose={() => setShowHistory(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={showNewVersionConfirm}
+        title="¿Crear nueva versión?"
+        description="Se creará un nuevo borrador editable a partir de la plantilla publicada actual. Podrás modificarla y volver a enviarla a validar."
+        confirmLabel="Crear nueva versión"
+        cancelLabel="Cancelar"
+        loading={newVersionLoading}
+        error={newVersionError}
+        onConfirm={() => void handleStartNewVersion()}
+        onCancel={() => { setShowNewVersionConfirm(false); setNewVersionError(null); }}
+      />
+
+      <ConfirmDialog
+        open={draftBlockedBy !== null}
+        variant="teal"
+        title="Ya existe una versión en borrador"
+        icon="🔒"
+        description={draftBlockedBy ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setDraftBlockedBy(null)}
+        onCancel={() => setDraftBlockedBy(null)}
+      />
 
       <ConfirmDialog
         open={showDeleteModal}

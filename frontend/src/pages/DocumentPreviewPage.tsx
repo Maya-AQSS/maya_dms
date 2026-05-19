@@ -35,7 +35,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
 import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
 import { DocumentBlockHistoryPanel } from '../features/documents/components/DocumentBlockHistoryPanel';
-import { apiFetchJson } from '../api/http';
+import { apiFetchJson, ApiHttpError } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock } from '../utils/blockComments';
@@ -153,6 +153,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
+  const [draftBlockedBy, setDraftBlockedBy] = useState<string | null>(null);
+  const [showNewVersionConfirm, setShowNewVersionConfirm] = useState(false);
+  const [newVersionLoading, setNewVersionLoading] = useState(false);
+  const [newVersionError, setNewVersionError] = useState<string | null>(null);
   const [autoPublishBanner, setAutoPublishBanner] = useState(false);
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
@@ -524,16 +528,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const handleStartNewVersion = async () => {
     if (!documentId) return;
-    setActionLoading(true);
-    setActionError(null);
+    setNewVersionLoading(true);
+    setNewVersionError(null);
     try {
       const data = await startDocumentNewVersion(documentId);
       setDetail(data);
+      setShowNewVersionConfirm(false);
       navigate(`/documents/${documentId}/editor`, { state: { step: 'properties' } });
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
+      if (e instanceof ApiHttpError && e.status === 409) {
+        setShowNewVersionConfirm(false);
+        setDraftBlockedBy(e.message);
+        return;
+      }
+      setNewVersionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
     } finally {
-      setActionLoading(false);
+      setNewVersionLoading(false);
     }
   };
 
@@ -682,8 +692,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           type="button"
           variant="outline"
           size="sm"
-          loading={actionLoading}
-          onClick={() => void handleStartNewVersion()}
+          onClick={() => setShowNewVersionConfirm(true)}
         >
           Nueva versión
         </Button>
@@ -1307,6 +1316,29 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         error={deleteError}
         onConfirm={() => void handleDelete()}
         onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+      />
+
+      <ConfirmDialog
+        open={showNewVersionConfirm}
+        title="¿Crear nueva versión?"
+        description="Se creará un nuevo borrador editable a partir del documento publicado actual. Podrás modificarlo y volver a enviarlo a validar."
+        confirmLabel="Crear nueva versión"
+        cancelLabel="Cancelar"
+        loading={newVersionLoading}
+        error={newVersionError}
+        onConfirm={() => void handleStartNewVersion()}
+        onCancel={() => { setShowNewVersionConfirm(false); setNewVersionError(null); }}
+      />
+
+      <ConfirmDialog
+        open={draftBlockedBy !== null}
+        variant="teal"
+        title="Ya existe una versión en borrador"
+        icon="🔒"
+        description={draftBlockedBy ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setDraftBlockedBy(null)}
+        onCancel={() => setDraftBlockedBy(null)}
       />
 
       <ConfirmDialog

@@ -12,6 +12,7 @@ use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Resources\DocumentResource;
+use App\Models\User;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
@@ -77,6 +78,15 @@ class DocumentStateController extends Controller
     {
         $model = $this->documentService->findModelOrFail($document);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        if ($model->status !== 'published') {
+            $editorName = User::query()->where('id', $model->owner_id)->value('name') ?? 'otro usuario';
+
+            return response()->json([
+                'message' => "{$editorName} ya está editando este documento.",
+                'draft_author' => $editorName,
+            ], 409);
+        }
 
         $userId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);
