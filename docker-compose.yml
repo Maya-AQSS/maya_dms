@@ -44,7 +44,7 @@ services:
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
       RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
       QUEUE_CONNECTION: rabbitmq
-      MAYA_MESSAGING_APP: maya_dms
+      MAYA_MESSAGING_APP: maya-dms
       LOG_STACK: "daily,rabbit"
       LOG_RABBIT_LEVEL: warning
       # ─── Reverb ───────────────────────────────────────────────
@@ -105,7 +105,7 @@ services:
       RABBITMQ_USER: ${RABBITMQ_USER:-admin}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-admin}
       RABBITMQ_VHOST: ${RABBITMQ_VHOST:-/}
-      MAYA_MESSAGING_APP: maya_dms
+      MAYA_MESSAGING_APP: maya-dms
       LOG_STACK: "daily"
       LOG_LEVEL: info
       WORKER_LABEL: "[queue-worker]"
