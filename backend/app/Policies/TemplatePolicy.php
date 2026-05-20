@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Support\DocumentHeadSnapshot;
@@ -70,10 +71,6 @@ class TemplatePolicy
             return true;
         }
 
-        if (! $user->hasPermission('templates.read') && ! $user->hasPermission('documents.create')) {
-            return false;
-        }
-
         $templateId = $template->getKey();
         // Un modelo sin ID es una instancia transitoria (no persistida). En ese caso no hay
         // datos que proteger, por lo que se permite la vista si el permiso está presente.
@@ -82,6 +79,8 @@ class TemplatePolicy
             return true;
         }
 
+        // Revisor asignado: puede ver siempre, independientemente de permisos genéricos.
+        // Esto cubre también el caso borrador donde el scope user_access no incluye al revisor.
         if (DB::table('template_reviewers')
             ->where('template_id', $templateId)
             ->where('user_id', $userId)
@@ -89,7 +88,22 @@ class TemplatePolicy
             return true;
         }
 
+        if (! $user->hasPermission('templates.read') && ! $user->hasPermission('documents.create')) {
+            return false;
+        }
+
         if (Template::query()->whereKey($templateId)->exists()) {
+            return true;
+        }
+
+        // Non-creator can view even when the head is in draft/in_review/rejected, as long as a published
+        // snapshot exists. The controller will serve that published snapshot instead of draft data.
+        if (EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', (string) $templateId)
+            ->where('version_number', '>', 0)
+            ->where('status', 'published')
+            ->exists()) {
             return true;
         }
 
@@ -225,8 +239,8 @@ class TemplatePolicy
     }
 
     /**
-     * Descarta la versión de trabajo (draft/in_review) y restaura la última publicación.
-     * Solo el creador o quien tenga `templates.update` puede descartar.
+     * Descarta la versión de trabajo (draft/in_review/rejected) y restaura la última publicación.
+     * Solo el creador puede descartar — ni revisores ni usuarios con permisos globales.
      */
     public function discard(JwtUser $user, Template $template): bool
     {
@@ -234,9 +248,7 @@ class TemplatePolicy
             return false;
         }
 
-        $isCreator = $user->getAuthIdentifier() === $template->created_by;
-
-        return $isCreator || $user->hasPermission('templates.update');
+        return $user->getAuthIdentifier() === $template->created_by;
     }
 
     /**

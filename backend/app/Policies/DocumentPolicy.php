@@ -172,11 +172,7 @@ class DocumentPolicy
 
         $id = $user->getAuthIdentifier();
 
-        if ($id === $document->created_by || $id === $document->owner_id) {
-            return true;
-        }
-
-        return $user->hasPermission('documents.update');
+        return $id === $document->created_by || $id === $document->owner_id;
     }
 
     /**
