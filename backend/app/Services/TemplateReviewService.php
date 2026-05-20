@@ -100,6 +100,13 @@ class TemplateReviewService
                 return $this->templatePublishingService->publishWithSnapshot($templateId, 'Publicación automática', $actorId);
             }
 
+            if ($template->visibility_level !== TemplateVisibilityLevel::Personal
+                && $template->documentReviewers()->doesntExist()) {
+                throw ValidationException::withMessages([
+                    'document_reviewers' => ['Las plantillas no personales requieren al menos un validador de documento asignado antes de enviarse a revisión.'],
+                ]);
+            }
+
             $template->reviewers()->update(['status' => 'pending']);
 
             $template->loadMissing('headVersion');
