@@ -719,6 +719,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   }, [detail?.template_id, templateId]);
 
   useEffect(() => {
+    if (!template) return;
+    const docIds = template.document_reviewers ?? [];
+    const tplUserIds = (template.reviewers ?? []).map((r: { user_id: string }) => r.user_id);
+    if (docIds.length > 0) {
+      setReviewerListKind('document');
+    } else if (tplUserIds.length > 0) {
+      setReviewerListKind('template_fallback');
+    } else {
+      setReviewerListKind('none');
+    }
+  }, [template]);
+
+  useEffect(() => {
     const effectiveProcessId = template?.process_id ?? locationProcessId ?? null;
     if (!effectiveProcessId) {
       setProcessSubtitle(null);
