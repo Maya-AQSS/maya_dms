@@ -185,10 +185,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   };
 
   const handleBackArrow = () => {
-    if (window.history.length <= 1) {
-      navigate("/dashboard");
+    const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
+    const idx = order.indexOf(step);
+    if (idx > 0) {
+      setStep(order[idx - 1]!);
     } else {
-      navigate(-1);
+      if (window.history.length <= 1) {
+        navigate("/dashboard");
+      } else {
+        navigate(-1);
+      }
     }
   };
 
