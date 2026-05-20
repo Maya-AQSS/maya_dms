@@ -96,6 +96,12 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const wasAuthenticatedRef = useRef(false);
+  const previousPathRef = useRef(null);
+
+  // guardar ruta anterior
+  useEffect(() => {
+    previousPathRef.current = location.pathname;
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -106,8 +112,19 @@ function App() {
   useEffect(() => {
     if (isLoading) return;
     const wasAuthenticated = wasAuthenticatedRef.current;
-    if (!wasAuthenticated && isAuthenticated && location.pathname === '/') {
-      navigate('/dashboard', { replace: true });
+    // acaba de autenticarse
+    if (!wasAuthenticated && isAuthenticated) {
+
+      // si venía de /templates/new
+      if (previousPathRef.current === "/templates/new" || previousPathRef.current === "/documentos/nuevo") {
+        navigate("/dashboard", { replace: true });
+        return;
+      }
+
+      // fallback normal
+      if (location.pathname === "/") {
+        navigate("/dashboard", { replace: true });
+      }
     }
     wasAuthenticatedRef.current = isAuthenticated;
   }, [isAuthenticated, isLoading, location.pathname, navigate]);

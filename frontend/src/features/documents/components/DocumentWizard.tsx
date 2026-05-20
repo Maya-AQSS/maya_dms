@@ -883,7 +883,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'summary') {
-      navigate(processBackTo, { state: { tab: 'documents' } });
+      if (window.history.length <= 1) {
+        navigate("/dashboard");
+      } else {
+        navigate(-1);
+      }
     }
   };
 
