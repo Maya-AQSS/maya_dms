@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
+use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
 
 /**
@@ -37,6 +38,12 @@ interface DocumentServiceInterface
      * de este mismo Service. Resto de consumidores deben usar `findOrFail()`.
      */
     public function findModelOrFail(string $id): Document;
+
+    public function findModelOrFailWithoutUserAccess(string $id): Document;
+
+    public function hasPublishedSnapshot(string $id): bool;
+
+    public function findLatestPublishedVersion(string $documentId): ?EntityVersion;
 
     /**
      * Crea un documento a partir de un DTO. Devuelve Model — ver excepción B4

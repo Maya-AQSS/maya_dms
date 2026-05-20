@@ -101,6 +101,14 @@ interface TemplateServiceInterface
     public function attachLatestPublishedVersionMeta(Collection $templates): void;
 
     /**
+     * Para plantillas en borrador visibles al viewer que NO son su creador ni su revisor activo,
+     * sobrescribe el headVersion con el último snapshot publicado (batch, sin N+1).
+     *
+     * @param  Collection<int, Template>  $templates
+     */
+    public function overlayPublishedSnapshotForNonOwners(Collection $templates, string $viewerId): void;
+
+    /**
      * Crea una plantilla con los atributos dados.
      */
     public function create(CreateTemplateDto $dto): Template;
@@ -130,6 +138,10 @@ interface TemplateServiceInterface
      * Plantilla publicada → borrador para iniciar el ciclo de una nueva versión.
      */
     public function startNewRevisionCycle(string $templateId, string $actorId): Template;
+
+    public function hasPublishedSnapshot(string $templateId): bool;
+
+    public function findLatestPublishedVersion(string $templateId): ?EntityVersion;
 
     /**
      * Descarta una versión no publicada en curso y restaura la última publicación.

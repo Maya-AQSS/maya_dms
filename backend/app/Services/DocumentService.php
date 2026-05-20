@@ -66,6 +66,21 @@ class DocumentService implements DocumentServiceInterface
         return $this->documentRepository->findOrFail($id);
     }
 
+    public function findModelOrFailWithoutUserAccess(string $id): Document
+    {
+        return $this->documentRepository->findOrFailForRefreshAfterMutation($id);
+    }
+
+    public function hasPublishedSnapshot(string $id): bool
+    {
+        return $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Document::class, $id) !== null;
+    }
+
+    public function findLatestPublishedVersion(string $documentId): ?EntityVersion
+    {
+        return $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
+    }
+
     /**
      * Crea un documento a partir de un DTO.
      */
