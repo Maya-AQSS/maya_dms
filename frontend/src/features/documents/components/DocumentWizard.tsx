@@ -1142,46 +1142,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   ) : null;
 
   const handleWizardBack = () => {
+    const order: Step[] = ['properties', 'blocks', 'summary'];
+    const idx = order.indexOf(step);
     if (isValidateMode) {
       navigate('/dashboard');
       return;
     }
-    if (step === 'properties' && (!documentId || fromTemplateSelection)) {
-      navigate('/documentos/nuevo', {
-        state: {
-          moduleId: locationModuleId,
-          processId: locationProcessId,
-        },
-      });
-      return;
-    }
-    if (step === 'blocks') {
-      setStep('properties');
-      return;
-    }
-    if (step === 'summary') {
-      setStep('blocks');
-      return;
-    }
-    // step === 'properties'
-    const tId = detail?.template_id || templateId;
-    if (tId) {
-      const templatePath = selectedTemplateVersionId
-        ? `/templates/${tId}?templateVersionId=${encodeURIComponent(selectedTemplateVersionId)}`
-        : `/templates/${tId}`;
-      navigate(templatePath, {
-        state: {
-          selectionMode: !documentId,
-          backTo: '/documentos/nuevo',
-          moduleId: locationModuleId,
-          processId: locationProcessId,
-          templateVersionId: selectedTemplateVersionId,
-        },
-      });
-    } else if (documentId) {
-      navigate(`/documents/${documentId}`);
+    if (idx > 0) {
+      setStep(order[idx - 1]!);
     } else {
-      navigate('/documentos/nuevo');
+      if (window.history.length <= 1) {
+        navigate("/dashboard");
+      } else {
+        navigate(-1);
+      }
     }
   };
 
