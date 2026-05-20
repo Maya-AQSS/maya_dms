@@ -1,105 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 /**
- * Documentos mock para local/testing.
- * Plazos y envíos con fechas fijas (curso 2025-26) para dashboard y bandejas realistas.
+ * Documentos mock (programaciones didácticas reales del CEEDCV, curso 2025-26).
+ *
+ * El pack consumido define 5 documentos:
+ * - D0: Programación de ciclo ASIR (study_id=8, sin module_id)
+ * - D1: DWES — Desarrollo Web en Entorno Servidor (study_id=7 DAW, module_id=7_2)
+ * - D2: IPO I — Itinerari Personal per a l'Ocupabilitat I (study_id=7 DAW, module_id=7_7)
+ * - D3: LAP — Logística de Aprovisionamiento (study_id=15 TIL, module_id=15_8)
+ * - D4: PXSI1 — Programación, Redes y Sistemas Informáticos I (study_id=3 BCT, module_id=3_9, study_type=NG)
  *
  * `template_version_id` es el UUID de la publicación en `entity_versions` (mismo valor que
- * `entity_version_id` en database/data/template_versions_mock.php), no el id legacy de `template_versions`.
+ * `entity_version_id` en database/data/template_versions_mock.php).
  *
- * Versión actual, submitted_at y published_at ya no van en esta tabla: se derivan de
+ * Versión actual, submitted_at y published_at se derivan de
  * {@see \App\Models\Document} y `entity_versions` / `document_reviews`.
  */
-return [
-    [
-        'id' => '77777777-7777-7777-7777-777777777901',
-        'template_id' => '33333333-3333-3333-3333-333333333309',
-        'template_version_id' => 'a0000000-0000-4000-8000-000000000609',
-        'title' => 'FP DAW - Despliegue de Aplicaciones Web (Presentacion 24-25)',
-        'study_type_id' => 'ST_FP',
-        'study_id' => 'S_FP_DAW',
-        'module_id' => 'M_DAW_DWES',
-        'delivery_deadline' => '2026-06-20 14:00:00',
-        'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'status' => 'draft',
-    ],
-    [
-        'id' => '77777777-7777-7777-7777-777777777902',
-        'template_id' => '33333333-3333-3333-3333-333333333309',
-        'template_version_id' => 'a0000000-0000-4000-8000-000000000609',
-        'title' => 'FP DAW - Web Application Deployment (English content)',
-        'study_type_id' => 'ST_FP',
-        'study_id' => 'S_FP_DAW',
-        'module_id' => 'M_DAW_DWES',
-        'delivery_deadline' => '2026-04-29 18:00:00',
-        'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'status' => 'in_review',
-    ],
-    [
-        'id' => '77777777-7777-7777-7777-777777777903',
-        'template_id' => '33333333-3333-3333-3333-333333333309',
-        'template_version_id' => 'a0000000-0000-4000-8000-000000000609',
-        'title' => 'FP DAW - Lenguajes de Marcas (Guia didactica 24-25)',
-        'study_type_id' => 'ST_FP',
-        'study_id' => 'S_FP_DAW',
-        'module_id' => 'M_DAW_DWECL',
-        'delivery_deadline' => '2026-05-12 16:30:00',
-        'created_by' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'owner_id' => '50f503c6-cb63-466c-852d-0b30ae130e98',
-        'status' => 'in_review',
-    ],
-    [
-        'id' => '77777777-7777-7777-7777-777777777904',
-        'template_id' => '33333333-3333-3333-3333-333333333304',
-        'template_version_id' => 'a0000000-0000-4000-8000-000000000607',
-        'title' => 'ESPA - Ambito de Comunicacion: La palabra en el trabajo',
-        'study_type_id' => 'ST_ESPA',
-        'study_id' => 'S_ESPA',
-        'module_id' => 'M_LEN_2',
-        'delivery_deadline' => '2026-05-05 12:00:00',
-        'created_by' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
-        'owner_id' => 'cf8bb92a-0417-4a4c-918a-08dd3fd69165',
-        'status' => 'in_review',
-    ],
-    [
-        'id' => '77777777-7777-7777-7777-777777777905',
-        'template_id' => '33333333-3333-3333-3333-333333333308',
-        'template_version_id' => 'a0000000-0000-4000-8000-000000000608',
-        'title' => 'BACH 2o - Fisica: Campo gravitatorio (Mision a Marte)',
-        'study_type_id' => 'ST_BACH',
-        'study_id' => 'S_BACH_1_C',
-        'module_id' => 'M_FIS_1C',
-        'delivery_deadline' => '2026-05-18 08:45:00',
-        'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
-        'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
-        'status' => 'in_review',
-    ],
-    [
-        'id' => '77777777-7777-7777-7777-777777777906',
-        'template_id' => '33333333-3333-3333-3333-333333333308',
-        'template_version_id' => 'a0000000-0000-4000-8000-000000000608',
-        'title' => 'BACH 2o - Fisica: Campo gravitatorio (borrador docente)',
-        'study_type_id' => 'ST_BACH',
-        'study_id' => 'S_BACH_1_C',
-        'module_id' => 'M_FIS_1C',
-        'delivery_deadline' => '2026-06-08 13:00:00',
-        'created_by' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
-        'owner_id' => '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f',
-        'status' => 'draft',
-    ],
-    [
-        'id' => '77777777-7777-7777-7777-777777777907',
-        'template_id' => '33333333-3333-3333-3333-333333333320',
-        'template_version_id' => 'a0000000-0000-4000-8000-000000000610',
-        'title' => 'Programación didáctica DWES — curso 2025-26 (demo)',
-        'study_type_id' => 'ST_FP',
-        'study_id' => 'S_FP_DAW',
-        'module_id' => 'M_DAW_DWES',
-        'delivery_deadline' => '2026-06-30 14:00:00',
-        'created_by' => '848dc299-240e-4a75-9d8e-f0a04089309d',
-        'owner_id' => '848dc299-240e-4a75-9d8e-f0a04089309d',
-        'status' => 'draft',
-    ],
-];
+
+$pack = require __DIR__ . '/programaciones_didacticas_pack.php';
+
+return $pack['documents'];
