@@ -829,6 +829,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                     ✗ Rechazaste esta programación
                   </span>
                 </div>
+              ) : myDocumentReview?.status === 'pending' ? (
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
+                  <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
+                    Esperando etapas anteriores
+                  </span>
+                </div>
               ) : (
                 <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
                   <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
@@ -1059,8 +1065,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           description={
             validatorHasCommented ? (
               <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-                El documento volverá a borrador para que el titular pueda corregirlo. El resto de validadores dejarán
-                de tener esta revisión asignada. Tus comentarios en los bloques quedarán registrados como motivo.
+                El documento volverá a borrador para que el titular pueda corregirlo.
+                Tus comentarios en los bloques quedarán registrados como motivo del rechazo.
               </p>
             ) : (
               <p className="text-sm text-text-secondary dark:text-text-dark-secondary">

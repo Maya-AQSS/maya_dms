@@ -70,19 +70,14 @@ class Document extends Model
                             ->where('user_id', $userId);
                     })
                     ->orWhere(function ($q) use ($userId) {
+                        // Any assigned reviewer (any status) can see the document while in_review.
+                        // Stage/status constraints are enforced at action level (approve/reject), not visibility.
                         $q->where('document_head_ev.snapshot_data->document->status', 'in_review')
                             ->whereExists(function ($subQuery) use ($userId) {
                                 $subQuery->select(DB::raw(1))
                                     ->from('document_reviews as dr_scope')
                                     ->whereColumn('dr_scope.document_id', 'documents.id')
-                                    ->where('dr_scope.reviewer_id', $userId)
-                                    ->where('dr_scope.status', 'pending')
-                                    ->where(function ($modeQ) {
-                                        // Non-sequential (parallel/null): any reviewer with pending review can access.
-                                        // Sequential: only the reviewer at the minimum pending stage can access.
-                                        $modeQ->whereRaw("(document_head_ev.snapshot_data->'document'->>'review_mode') IS DISTINCT FROM 'sequential'")
-                                            ->orWhereRaw("dr_scope.stage = (SELECT MIN(dr_min.stage) FROM document_reviews dr_min WHERE dr_min.document_id = documents.id AND dr_min.status = 'pending')");
-                                    });
+                                    ->where('dr_scope.reviewer_id', $userId);
                             });
                     })
                     ->orWhere(function (Builder $pub) use ($userId) {
