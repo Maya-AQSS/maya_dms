@@ -106,14 +106,62 @@ class DocumentController extends Controller
     public function show(Request $request, string $id): JsonResponse
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
-        $document = $this->documentService->findModelOrFail($id);
+
+        $servePublishedSnapshot = false;
+        try {
+            $document = $this->documentService->findModelOrFail($id);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            // Entity not visible via user_access scope (e.g., draft owned by someone else).
+            // Allow if a published snapshot exists — the controller will serve that instead.
+            $document = $this->documentService->findModelOrFailWithoutUserAccess($id);
+            if (! $this->documentService->hasPublishedSnapshot($document->id)) {
+                abort(404);
+            }
+            $servePublishedSnapshot = true;
+        }
+
         $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+
+        $isCreator = (string) $document->created_by === $viewerId || (string) $document->owner_id === $viewerId;
+
+        if (! $servePublishedSnapshot && ! $isCreator && in_array($document->status, ['draft', 'in_review'], true)) {
+            // User has scope access but is not the creator. Active reviewers see real content.
+            $isActiveReviewer = $document->status === 'in_review'
+                && $document->reviews()
+                    ->where('reviewer_id', $viewerId)
+                    ->where('status', 'pending')
+                    ->exists();
+
+            if (! $isActiveReviewer) {
+                $servePublishedSnapshot = true;
+            }
+        }
+
+        if ($servePublishedSnapshot) {
+            $latestPublished = $this->documentService->findLatestPublishedVersion($document->id);
+            if ($latestPublished === null) {
+                abort(404);
+            }
+            $document->setRelation('headVersion', $latestPublished);
+            $this->attachCanCloneMeta($document, $request);
+            $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
+            $document->loadMissing(['owner']);
+            $this->apiTeamEmbedService->embedOnDocument($document, $viewerId);
+            $blocks = $this->documentService->blocksForDisplay($document);
+
+            return response()->json([
+                'data' => array_merge(
+                    (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
+                    ['blocks' => $blocks],
+                ),
+            ]);
+        }
 
         $document->setAttribute(
             'has_review_comments',
             $document->comments()->exists(),
         );
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
         $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $document->loadMissing(['owner']);

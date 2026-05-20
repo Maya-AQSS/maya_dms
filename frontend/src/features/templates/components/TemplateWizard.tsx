@@ -107,6 +107,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showNoValidatorsModal, setShowNoValidatorsModal] = useState(false);
   const [publishChangelog, setPublishChangelog] = useState('');
   const [publishModalError, setPublishModalError] = useState<string | null>(null);
   const [blocksCount, setBlocksCount] = useState(0);
@@ -185,22 +186,17 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   };
 
   const handleBackArrow = () => {
-    if (isDirty) {
-      setLeaveGuard(true);
-      return;
-    }
-    if (step === 'blocks' && hasInvalidBlocks) {
-      setInvalidBlocksModal({ onProceed: (_remaining) => setStep('properties') });
-      return;
-    }
-    if (step === 'properties') {
-      navigate(processBackTo);
-      return;
-    }
     const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
     const idx = order.indexOf(step);
-    if (idx > 0) setStep(order[idx - 1]!);
-    else navigate(processBackTo);
+    if (idx > 0) {
+      setStep(order[idx - 1]!);
+    } else {
+      if (window.history.length <= 1) {
+        navigate("/dashboard");
+      } else {
+        navigate(-1);
+      }
+    }
   };
 
   const saveProperties = step1Methods.handleSubmit(async (values) => {
@@ -327,6 +323,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (!template?.id) return;
     if (blocksLoading || blocksCount < 1) {
       setErrors({ api: 'Añade al menos un bloque antes de continuar.' });
+      return;
+    }
+
+    const currentVisibility = step1Methods.getValues('visibility');
+    if (currentVisibility !== 'personal' && validators.length === 0) {
+      setShowNoValidatorsModal(true);
       return;
     }
 
@@ -685,6 +687,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         variant="danger"
         onConfirm={() => setBlockInvariantModal(null)}
         onCancel={() => setBlockInvariantModal(null)}
+      />
+
+      {/* No validators warning modal */}
+      <ConfirmDialog
+        open={showNoValidatorsModal}
+        title="Validador requerido"
+        description="Las plantillas con visibilidad no personal requieren al menos un validador de plantilla asignado. Añade un validador antes de continuar."
+        confirmLabel="Entendido"
+        onConfirm={() => setShowNoValidatorsModal(false)}
+        onCancel={() => setShowNoValidatorsModal(false)}
       />
 
       {/* Validation modal */}

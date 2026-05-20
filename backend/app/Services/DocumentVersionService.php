@@ -140,7 +140,6 @@ class DocumentVersionService
     public function listDocumentVersions(string $documentId): array
     {
         $document = $this->documentRepository->findOrFail($documentId);
-        $excludeCurrentPublishedVersion = (string) $document->status === 'published';
 
         $entityVersions = $this->entityVersionRepository->listPublishedForEntityOrdered(
             Document::class,
@@ -194,27 +193,14 @@ class DocumentVersionService
             });
 
         if ($entityVersions->isEmpty()) {
-            return $legacyVersions
-                ->reject(
-                    fn (array $row): bool => $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
-                )
-                ->values()
-                ->all();
+            return $legacyVersions->values()->all();
         }
 
         if ($legacyVersions->isEmpty()) {
-            return $entityVersions
-                ->reject(
-                    fn (array $row): bool => $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
-                )
-                ->values()
-                ->all();
+            return $entityVersions->values()->all();
         }
 
         return collect($this->mergeDocumentVersionListRowsPreferringEntity($entityVersions, $legacyVersions))
-            ->reject(
-                fn (array $row): bool => $excludeCurrentPublishedVersion && (int) $row['version_number'] === (int) $document->current_version,
-            )
             ->values()
             ->all();
     }

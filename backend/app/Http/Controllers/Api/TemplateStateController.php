@@ -11,8 +11,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\PublishTemplateRequest;
 use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
 use App\Http\Resources\TemplateResource;
+use App\Models\User;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -102,10 +104,38 @@ class TemplateStateController extends Controller
     /**
      * Publicada → borrador (nueva versión de edición sobre la misma plantilla).
      */
-    public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource
+    public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource|JsonResponse
     {
-        $model = $this->templateService->findModelOrFail($template);
+        // Intento normal con user_access (cubre creador y revisores activos).
+        try {
+            $model = $this->templateService->findModelOrFail($template);
+            $directAccess = true;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            // Recurso no accesible en el estado actual (p.ej. draft visible solo al creador).
+            // Si existe y tiene snapshot publicado, el usuario puede recibir el 409 informativo.
+            $model = $this->templateService->findOrFailWithoutCatalogScope($template);
+            if (! $this->templateService->hasPublishedSnapshot($model->id)) {
+                abort(404);
+            }
+            $directAccess = false;
+        }
+
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        if ($model->status !== 'published') {
+            $editorName = User::query()->where('id', $model->created_by)->value('name') ?? 'otro usuario';
+
+            return response()->json([
+                'message' => "{$editorName} ya está editando esta plantilla.",
+                'draft_author' => $editorName,
+            ], 409);
+        }
+
+        if (! $directAccess) {
+            abort(404);
+        }
+
+        $this->authorize('startRevision', $model);
 
         $updated = $this->templateService->startNewRevisionCycle(
             $model->id,
@@ -127,7 +157,7 @@ class TemplateStateController extends Controller
     public function destroyVersion(Request $request, string $template, string $version): TemplateResource
     {
         $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('update', $model);
+        $this->authorize('discard', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $updated = $this->templateService->destroyVersion(

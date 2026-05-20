@@ -66,6 +66,21 @@ class DocumentService implements DocumentServiceInterface
         return $this->documentRepository->findOrFail($id);
     }
 
+    public function findModelOrFailWithoutUserAccess(string $id): Document
+    {
+        return $this->documentRepository->findOrFailForRefreshAfterMutation($id);
+    }
+
+    public function hasPublishedSnapshot(string $id): bool
+    {
+        return $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Document::class, $id) !== null;
+    }
+
+    public function findLatestPublishedVersion(string $documentId): ?EntityVersion
+    {
+        return $this->entityVersionRepository->findLatestPublishedForEntity(Document::class, $documentId);
+    }
+
     /**
      * Crea un documento a partir de un DTO.
      */
@@ -661,10 +676,6 @@ class DocumentService implements DocumentServiceInterface
                 'status' => ['Solo un documento publicado puede pasar a borrador para una nueva versión.'],
             ]);
         }
-        $this->assertDocumentMetadataInvariantsForMutation(
-            (string) $document->title,
-            $document->delivery_deadline,
-        );
 
         return $this->documentStateService->transition($documentId, 'draft', $actorId);
     }
@@ -1020,7 +1031,8 @@ class DocumentService implements DocumentServiceInterface
                 $this->entityVersionRepository->update($headVersion, ['change_set' => $cycles]);
             }
 
-            $document = $this->documentStateService->transition($documentId, 'in_review', $actorId);
+            $reviewMode = $this->resolveReviewModeFromDocument($document);
+            $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, ['review_mode' => $reviewMode]);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 
             return $document;
@@ -1055,38 +1067,21 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $documentReviewers = $reviewersPayload['document_reviewers'] ?? [];
-        if (is_array($documentReviewers) && $documentReviewers !== []) {
-            $candidates = [];
-            $stage = 1;
-            foreach ($documentReviewers as $row) {
-                if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
-                    continue;
-                }
-                $candidates[] = [
-                    'reviewer_id' => $row['user_id'],
-                    'stage' => $stage,
-                ];
-                $stage++;
-            }
-
-            return $candidates;
-        }
-
-        $templateReviewers = $reviewersPayload['template_reviewers'] ?? [];
-        if (! is_array($templateReviewers) || $templateReviewers === []) {
+        if (! is_array($documentReviewers) || $documentReviewers === []) {
             return [];
         }
 
         $candidates = [];
-        foreach ($templateReviewers as $row) {
+        $stage = 1;
+        foreach ($documentReviewers as $row) {
             if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                 continue;
             }
-
             $candidates[] = [
                 'reviewer_id' => $row['user_id'],
-                'stage' => isset($row['stage']) ? (int) $row['stage'] : 1,
+                'stage' => $stage,
             ];
+            $stage++;
         }
 
         return $candidates;
@@ -1100,30 +1095,41 @@ class DocumentService implements DocumentServiceInterface
         $template = $this->templateRepository
             ->findForDocumentReviewCandidatesWithoutCatalogScope((string) $document->template_id);
 
+        if ($template === null || $template->documentReviewers->isEmpty()) {
+            return [];
+        }
+
         $candidates = [];
-        if ($template !== null) {
-            if ($template->documentReviewers->isNotEmpty()) {
-                $stage = 1;
-                foreach ($template->documentReviewers as $dr) {
-                    $candidates[] = [
-                        'reviewer_id' => (string) $dr->user_id,
-                        'stage' => $stage,
-                    ];
-                    $stage++;
-                }
-            } elseif ($template->reviewers->isNotEmpty()) {
-                $candidates = $template->reviewers
-                    ->sortBy('stage')
-                    ->values()
-                    ->map(fn ($r): array => [
-                        'reviewer_id' => (string) $r->user_id,
-                        'stage' => (int) $r->stage,
-                    ])
-                    ->all();
-            }
+        $stage = 1;
+        foreach ($template->documentReviewers as $dr) {
+            $candidates[] = [
+                'reviewer_id' => (string) $dr->user_id,
+                'stage' => $stage,
+            ];
+            $stage++;
         }
 
         return $candidates;
+    }
+
+    private function resolveReviewModeFromDocument(Document $document): string
+    {
+        $versionId = is_string($document->template_version_id) ? trim($document->template_version_id) : '';
+        if ($versionId !== '') {
+            $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $versionId, Template::class, (string) $document->template_id,
+            );
+            $mode = is_array($entityVersion?->snapshot_data)
+                ? data_get($entityVersion->snapshot_data, 'template.review_mode')
+                : null;
+            if (is_string($mode) && in_array($mode, ['sequential', 'parallel'], true)) {
+                return $mode;
+            }
+        }
+
+        $document->loadMissing('template');
+
+        return (string) ($document->template?->review_mode ?? 'parallel');
     }
 
     /**

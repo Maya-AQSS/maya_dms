@@ -11,7 +11,7 @@ import {
   fetchTemplateVersion,
 } from '../api/templates';
 import { fetchBlocks } from '../api/blocks';
-import { apiFetchJson } from '../api/http';
+import { apiFetchJson, ApiHttpError } from '../api/http';
 import { useTemplateVersionSummariesQuery } from '../features/templates/hooks/useTemplateVersionSummaries';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
@@ -27,6 +27,7 @@ import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
+import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock } from '../utils/blockComments';
 
@@ -90,27 +91,14 @@ export function TemplatePreviewPage() {
     templateVersionId?: string | null;
   } | null;
   const selectionMode = locationState?.selectionMode === true;
-  const backTo = locationState?.backTo ?? '/documentos/nuevo';
+  //const backTo = locationState?.backTo ?? '/documentos/nuevo';
   const defaultBackTo = locationState?.backTo ?? '/dashboard';
   const handleBack = () => {
-    if (selectionMode) {
-      navigate(backTo, {
-        state: {
-          moduleId: locationState?.moduleId,
-          processId: locationState?.processId,
-        },
-      });
-      return;
-    }
-    if (locationState?.backTo) {
-      navigate(locationState.backTo);
-      return;
-    }
-    if (window.history.length > 1) {
+    if (window.history.length <= 1) {
+      navigate("/dashboard");
+    } else {
       navigate(-1);
-      return;
     }
-    navigate(defaultBackTo);
   };
 
   const { profile, hasPermission } = useUserProfile();
@@ -129,6 +117,10 @@ export function TemplatePreviewPage() {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
+  const [draftBlockedBy, setDraftBlockedBy] = useState<string | null>(null);
+  const [showNewVersionConfirm, setShowNewVersionConfirm] = useState(false);
+  const [newVersionLoading, setNewVersionLoading] = useState(false);
+  const [newVersionError, setNewVersionError] = useState<string | null>(null);
   // processLabel derived from useProcessesQuery + template.process_id below.
   const { hierarchy } = useHierarchy();
   const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
@@ -334,16 +326,22 @@ export function TemplatePreviewPage() {
 
   const handleStartNewVersion = async () => {
     if (!id) return;
-    setActionLoading(true);
-    setActionError(null);
+    setNewVersionLoading(true);
+    setNewVersionError(null);
     try {
       const res = await startTemplateNewVersion(id);
       setTemplate(res.data);
+      setShowNewVersionConfirm(false);
       navigate(`/templates/${id}/edit`);
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
+      if (e instanceof ApiHttpError && e.status === 409) {
+        setShowNewVersionConfirm(false);
+        setDraftBlockedBy(e.message);
+        return;
+      }
+      setNewVersionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
     } finally {
-      setActionLoading(false);
+      setNewVersionLoading(false);
     }
   };
 
@@ -400,6 +398,12 @@ export function TemplatePreviewPage() {
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
             v{template.version}
           </span>
+          {template.status === 'in_review' && (template.reviewers?.length ?? 0) > 0 && (
+            <SequentialValidatorBadge
+              reviewMode={template.review_mode}
+              reviewers={(template.reviewers ?? []).map((r) => ({ stage: r.stage ?? 0, status: r.status, name: r.user_name }))}
+            />
+          )}
         </>
       )}
       {selectionMode ? (
@@ -454,7 +458,7 @@ export function TemplatePreviewPage() {
             </Button>
           )}
           {canStartNewVersion && (
-            <Button type="button" variant="outline" size="sm" loading={actionLoading} onClick={() => void handleStartNewVersion()}>
+            <Button type="button" variant="outline" size="sm" onClick={() => setShowNewVersionConfirm(true)}>
               Nueva versión
             </Button>
           )}
@@ -665,6 +669,29 @@ export function TemplatePreviewPage() {
           onClose={() => setShowHistory(false)}
         />
       )}
+
+      <ConfirmDialog
+        open={showNewVersionConfirm}
+        title="¿Crear nueva versión?"
+        description="Se creará un nuevo borrador editable a partir de la plantilla publicada actual. Podrás modificarla y volver a enviarla a validar."
+        confirmLabel="Crear nueva versión"
+        cancelLabel="Cancelar"
+        loading={newVersionLoading}
+        error={newVersionError}
+        onConfirm={() => void handleStartNewVersion()}
+        onCancel={() => { setShowNewVersionConfirm(false); setNewVersionError(null); }}
+      />
+
+      <ConfirmDialog
+        open={draftBlockedBy !== null}
+        variant="teal"
+        title="Ya existe una versión en borrador"
+        icon="🔒"
+        description={draftBlockedBy ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setDraftBlockedBy(null)}
+        onCancel={() => setDraftBlockedBy(null)}
+      />
 
       <ConfirmDialog
         open={showDeleteModal}

@@ -231,6 +231,7 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function listReviewsForDocument(string $documentId): Collection
     {
         return DocumentReview::query()
+            ->with('reviewer:id,name')
             ->where('document_id', $documentId)
             ->orderBy('stage')
             ->get();

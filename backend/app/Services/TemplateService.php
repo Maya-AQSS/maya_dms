@@ -21,6 +21,7 @@ use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use RuntimeException;
@@ -163,6 +164,60 @@ class TemplateService implements TemplateServiceInterface
     public function attachLatestPublishedVersionMeta(Collection $templates): void
     {
         $this->templateRepository->attachLatestPublishedVersionMeta($templates);
+    }
+
+    public function overlayPublishedSnapshotForNonOwners(Collection $templates, string $viewerId): void
+    {
+        // Only process draft/in_review/rejected templates that the viewer doesn't own.
+        $candidates = $templates->filter(
+            fn (Template $t) => in_array($t->status, ['draft', 'in_review', 'rejected'], true)
+                && (string) $t->created_by !== $viewerId,
+        );
+
+        if ($candidates->isEmpty()) {
+            return;
+        }
+
+        $candidateIds = $candidates->map(fn (Template $t) => (string) $t->getKey())->all();
+
+        // Exclude templates where viewer is an active reviewer (they see real content).
+        $reviewerTemplateIds = DB::table('template_reviewers')
+            ->whereIn('template_id', $candidateIds)
+            ->where('user_id', $viewerId)
+            ->pluck('template_id')
+            ->map(fn ($id) => (string) $id)
+            ->flip()
+            ->all();
+
+        $nonOwnerIds = array_values(array_filter(
+            $candidateIds,
+            fn (string $id) => ! isset($reviewerTemplateIds[$id]),
+        ));
+
+        if (empty($nonOwnerIds)) {
+            return;
+        }
+
+        // Batch-load the latest published EntityVersion per template.
+        $publishedByTemplate = EntityVersion::query()
+            ->whereIn('versionable_id', $nonOwnerIds)
+            ->where('versionable_type', Template::class)
+            ->where('version_number', '>', 0)
+            ->where('status', 'published')
+            ->orderByDesc('version_number')
+            ->get()
+            ->keyBy('versionable_id');
+
+        foreach ($candidates as $template) {
+            $id = (string) $template->getKey();
+            if (isset($reviewerTemplateIds[$id])) {
+                continue;
+            }
+            $published = $publishedByTemplate->get($id);
+            if ($published !== null) {
+                $template->setRelation('headVersion', $published);
+            }
+        }
     }
 
     /**
@@ -313,6 +368,16 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Transición explícita publicada → borrador para preparar la siguiente versión publicada.
      */
+    public function hasPublishedSnapshot(string $templateId): bool
+    {
+        return $this->entityVersionRepository->findLatestPublishedMetaForVersionable(Template::class, $templateId) !== null;
+    }
+
+    public function findLatestPublishedVersion(string $templateId): ?EntityVersion
+    {
+        return $this->entityVersionRepository->findLatestPublishedForEntity(Template::class, $templateId);
+    }
+
     public function startNewRevisionCycle(string $templateId, string $actorId): Template
     {
         $template = $this->templateRepository->findOrFail($templateId);
@@ -322,11 +387,6 @@ class TemplateService implements TemplateServiceInterface
                 'status' => ['Solo una plantilla publicada puede pasar a borrador para una nueva versión.'],
             ]);
         }
-        $this->assertTemplateMetadataInvariants(
-            (string) $template->name,
-            $template->delivery_deadline,
-            $template->visibility_level,
-        );
 
         return $this->templatePublishingService->transitionStatus(
             $template,

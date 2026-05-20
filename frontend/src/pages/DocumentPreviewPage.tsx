@@ -35,10 +35,11 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
 import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
 import { DocumentBlockHistoryPanel } from '../features/documents/components/DocumentBlockHistoryPanel';
-import { apiFetchJson } from '../api/http';
+import { apiFetchJson, ApiHttpError } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock } from '../utils/blockComments';
+import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
 // Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
 
@@ -152,6 +153,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [showDiscardVersionModal, setShowDiscardVersionModal] = useState(false);
   const [discardVersionLoading, setDiscardVersionLoading] = useState(false);
   const [discardVersionError, setDiscardVersionError] = useState<string | null>(null);
+  const [draftBlockedBy, setDraftBlockedBy] = useState<string | null>(null);
+  const [showNewVersionConfirm, setShowNewVersionConfirm] = useState(false);
+  const [newVersionLoading, setNewVersionLoading] = useState(false);
+  const [newVersionError, setNewVersionError] = useState<string | null>(null);
   const [autoPublishBanner, setAutoPublishBanner] = useState(false);
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
@@ -250,35 +255,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     : 'Volver';
 
   const handleBack = () => {
-    if (isValidateMode) {
-      if (window.history.length > 1) {
-        navigate(-1);
-        return;
-      }
-      navigate(backTo);
-      return;
-    }
-    if (cameFromSummary && documentId) {
-      if (cameFromValidate) {
-        navigate(`/documents/${documentId}/validate`);
-      } else {
-        navigate(`/documents/${documentId}/editor`, { state: { step: 'summary' } });
-      }
-      return;
-    }
-    if (previewState?.forceBackTo) {
-      navigate(backTo);
-      return;
-    }
-    if (window.history.length > 1) {
+    if (window.history.length <= 1) {
+      navigate("/dashboard");
+    } else {
       navigate(-1);
-      return;
     }
-    if (previewState?.backTo) {
-      navigate(previewState.backTo);
-      return;
-    }
-    navigate('/dashboard');
   };
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
@@ -523,16 +504,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const handleStartNewVersion = async () => {
     if (!documentId) return;
-    setActionLoading(true);
-    setActionError(null);
+    setNewVersionLoading(true);
+    setNewVersionError(null);
     try {
       const data = await startDocumentNewVersion(documentId);
       setDetail(data);
+      setShowNewVersionConfirm(false);
       navigate(`/documents/${documentId}/editor`, { state: { step: 'properties' } });
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
+      if (e instanceof ApiHttpError && e.status === 409) {
+        setShowNewVersionConfirm(false);
+        setDraftBlockedBy(e.message);
+        return;
+      }
+      setNewVersionError(e instanceof Error ? e.message : 'No se pudo abrir una nueva versión.');
     } finally {
-      setActionLoading(false);
+      setNewVersionLoading(false);
     }
   };
 
@@ -618,6 +605,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           </span>
         </>
       )}
+      {!isValidateMode && !isHistoricalSnapshot && detail.status === 'in_review' && allReviews.length > 0 && (
+        <SequentialValidatorBadge
+          reviewMode={detail.review_mode}
+          reviewers={allReviews.map((r) => ({ stage: r.stage, status: r.status, name: r.reviewer_name }))}
+        />
+      )}
       {documentId && !isHistoricalSnapshot ? <FavoriteButton entityType="document" entityId={documentId} /> : null}
       {showVersionHistory ? (
         <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
@@ -675,8 +668,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           type="button"
           variant="outline"
           size="sm"
-          loading={actionLoading}
-          onClick={() => void handleStartNewVersion()}
+          onClick={() => setShowNewVersionConfirm(true)}
         >
           Nueva versión
         </Button>
@@ -798,6 +790,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           }
           actions={
             <div className="flex items-center gap-2">
+              <SequentialValidatorBadge
+                reviewMode={detail?.review_mode}
+                reviewers={allReviews.map((r) => ({ stage: r.stage, status: r.status, name: r.reviewer_name }))}
+              />
               {actionableReviewId ? (
                 <>
                   <Button
@@ -1296,6 +1292,29 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         error={deleteError}
         onConfirm={() => void handleDelete()}
         onCancel={() => { setShowDeleteModal(false); setDeleteError(null); }}
+      />
+
+      <ConfirmDialog
+        open={showNewVersionConfirm}
+        title="¿Crear nueva versión?"
+        description="Se creará un nuevo borrador editable a partir del documento publicado actual. Podrás modificarlo y volver a enviarlo a validar."
+        confirmLabel="Crear nueva versión"
+        cancelLabel="Cancelar"
+        loading={newVersionLoading}
+        error={newVersionError}
+        onConfirm={() => void handleStartNewVersion()}
+        onCancel={() => { setShowNewVersionConfirm(false); setNewVersionError(null); }}
+      />
+
+      <ConfirmDialog
+        open={draftBlockedBy !== null}
+        variant="teal"
+        title="Ya existe una versión en borrador"
+        icon="🔒"
+        description={draftBlockedBy ?? ''}
+        confirmLabel="Entendido"
+        onConfirm={() => setDraftBlockedBy(null)}
+        onCancel={() => setDraftBlockedBy(null)}
       />
 
       <ConfirmDialog

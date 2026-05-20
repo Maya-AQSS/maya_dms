@@ -12,6 +12,7 @@ use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Resources\DocumentResource;
+use App\Models\User;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
@@ -75,8 +76,33 @@ class DocumentStateController extends Controller
      */
     public function startNewVersion(StartNewDocumentRevisionRequest $request, string $document): JsonResponse
     {
-        $model = $this->documentService->findModelOrFail($document);
+        try {
+            $model = $this->documentService->findModelOrFail($document);
+            $directAccess = true;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $model = $this->documentService->findModelOrFailWithoutUserAccess($document);
+            if (! $this->documentService->hasPublishedSnapshot($model->id)) {
+                abort(404);
+            }
+            $directAccess = false;
+        }
+
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        if ($model->status !== 'published') {
+            $editorName = User::query()->where('id', $model->owner_id)->value('name') ?? 'otro usuario';
+
+            return response()->json([
+                'message' => "{$editorName} ya está editando este documento.",
+                'draft_author' => $editorName,
+            ], 409);
+        }
+
+        if (! $directAccess) {
+            abort(404);
+        }
+
+        $this->authorize('startRevision', $model);
 
         $userId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);
@@ -99,7 +125,7 @@ class DocumentStateController extends Controller
     public function destroyVersion(Request $request, string $document, string $version): JsonResponse
     {
         $model = $this->documentService->findModelOrFail($document);
-        $this->authorize('update', $model);
+        $this->authorize('discard', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();

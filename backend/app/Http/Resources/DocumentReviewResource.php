@@ -25,6 +25,7 @@ class DocumentReviewResource extends JsonResource
             'id' => (string) $review->id,
             'document_id' => (string) $review->document_id,
             'reviewer_id' => (string) $review->reviewer_id,
+            'reviewer_name' => $review->relationLoaded('reviewer') ? ($review->reviewer?->name ?? null) : null,
             'stage' => (int) $review->stage,
             'status' => (string) $review->status,
             'rejection_reason' => $review->rejection_reason,

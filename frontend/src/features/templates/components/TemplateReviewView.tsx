@@ -7,8 +7,8 @@ import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
+import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
-import { useAuth } from '@maya/shared-auth-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
@@ -306,7 +306,6 @@ export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
-  const { user } = useAuth();
   const { profile } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id);
   const queryClient = useQueryClient();
@@ -324,13 +323,22 @@ export function TemplateReviewView({ template }: Props) {
 
   const blockRefs = useRef<Map<string, HTMLElement>>(new Map());
 
-  const currentUserId = user?.sub ?? (user as { id?: string } | null | undefined)?.id;
-  const myReview = template.reviewers?.find(r => String(r.user_id) === String(currentUserId));
+  const myReview = template.reviewers?.find(r => String(r.user_id) === String(profile?.id));
   const isReviewer = !!myReview;
   const isCreator = !!profile?.id && template.created_by === profile.id;
 
+  const previousStagesPending =
+    template.review_mode === 'sequential' &&
+    myReview != null &&
+    (template.reviewers ?? []).some(
+      (r) => r.stage < myReview.stage && r.status !== 'approved',
+    );
+
   const isActiveValidator =
-    isReviewer && template.status === 'in_review' && myReview?.status === 'pending';
+    isReviewer &&
+    template.status === 'in_review' &&
+    myReview?.status === 'pending' &&
+    !previousStagesPending;
 
   const commentMode: CommentMode = (() => {
     if (isReviewer && template.status === 'in_review') return 'validator';
@@ -398,7 +406,7 @@ export function TemplateReviewView({ template }: Props) {
 
   const handleRejectClick = () => {
     const myComments = comments.filter(
-      c => String(c.author_id) === String(currentUserId),
+      c => String(c.author_id) === String(profile?.id),
     );
     if (myComments.length === 0) setShowNoCommentsWarning(true);
     else setShowRejectModal(true);
@@ -435,6 +443,10 @@ export function TemplateReviewView({ template }: Props) {
       }
       actions={
         <div className="flex items-center gap-2">
+          <SequentialValidatorBadge
+            reviewMode={template.review_mode}
+            reviewers={(template.reviewers ?? []).map((r) => ({ stage: r.stage ?? 0, status: r.status, name: r.user_name }))}
+          />
           {isActiveValidator ? (
             <>
               <Button variant="outlineWarning" size="sm" onClick={handleRejectClick}
@@ -448,6 +460,12 @@ export function TemplateReviewView({ template }: Props) {
                 Validar y Aprobar
               </Button>
             </>
+          ) : previousStagesPending ? (
+            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
+              <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
+                Esperando etapas anteriores
+              </span>
+            </div>
           ) : myReview?.status === 'approved' ? (
             <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-success/10 border border-success/20">
               <span className="text-success-dark text-xs font-black uppercase tracking-widest">

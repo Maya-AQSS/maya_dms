@@ -180,6 +180,19 @@ class Template extends Model
      */
     private static function scopeSharedTemplatesForTeacher(Builder $shared, string $userId): void
     {
+        // Plantillas con al menos un snapshot publicado son visibles para no creadores/no revisores.
+        // Aunque el cabezal esté en borrador (nueva versión en curso), el usuario ve la última
+        // versión publicada (overlay en TemplateController::show; el listado muestra HEAD con
+        // status='draft' que el frontend interpreta como "sólo lectura publicada").
+        $shared->whereExists(function ($sub) {
+            $sub->select(DB::raw(1))
+                ->from('entity_versions as pub_snap')
+                ->whereColumn('pub_snap.versionable_id', 'templates.id')
+                ->where('pub_snap.versionable_type', self::class)
+                ->where('pub_snap.version_number', '>', 0)
+                ->where('pub_snap.status', 'published');
+        });
+
         $shared->where(function (Builder $docente) use ($userId) {
             $docente->where('template_head_ev.snapshot_data->template->visibility_level', TemplateVisibilityLevel::Global->value);
 

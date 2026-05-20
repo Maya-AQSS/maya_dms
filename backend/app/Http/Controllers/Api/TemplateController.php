@@ -49,11 +49,17 @@ class TemplateController extends Controller
     public function index(IndexTemplateRequest $request): AnonymousResourceCollection
     {
         $templates = $this->templateService->listFiltered($request->toFilterDto());
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+
+        // Overlay published snapshot for non-owner/non-reviewer viewing a draft template,
+        // so the list shows published metadata instead of draft content.
+        $this->templateService->overlayPublishedSnapshotForNonOwners($templates, $viewerId);
+
         $this->attachCanCloneMeta($templates, $request);
 
         $this->apiTeamEmbedService->embedOnTemplates(
             $templates,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
         );
 
         return TemplateResource::collection(
@@ -87,13 +93,38 @@ class TemplateController extends Controller
             abort(404);
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $isCreator = (string) $model->created_by === $viewerId;
+
+        if (! $isCreator && in_array($model->status, ['draft', 'in_review', 'rejected'], true)) {
+            // Only serve real content to an active reviewer during in_review.
+            // For draft/rejected (or in_review for non-reviewer), serve the last published snapshot.
+            $isActiveReviewer = $model->status === 'in_review'
+                && $model->reviewers()->where('user_id', $viewerId)->exists();
+
+            if (! $isActiveReviewer) {
+                $latestPublished = $this->templateService->findLatestPublishedVersion($model->id);
+                if ($latestPublished === null) {
+                    abort(404);
+                }
+                $model->setRelation('headVersion', $latestPublished);
+                $model->loadMissing(['creator']);
+                $this->attachCanCloneMeta($model, $request);
+                $this->templateService->attachLatestPublishedVersionMeta(collect([$model]));
+                $this->apiTeamEmbedService->embedOnTemplate($model, $viewerId);
+
+                return new TemplateResource(TemplateDto::fromModel($model));
+            }
+        }
+
         $model->loadMissing(['reviewers', 'documentReviewers.user', 'creator', 'headVersion']);
         $this->attachCanCloneMeta($model, $request);
         $this->templateService->attachLatestPublishedVersionMeta(collect([$model]));
 
         $this->apiTeamEmbedService->embedOnTemplate(
             $model,
-            (string) $request->user()->getAuthIdentifier(),
+            $viewerId,
         );
 
         return new TemplateResource(TemplateDto::fromModel($model));

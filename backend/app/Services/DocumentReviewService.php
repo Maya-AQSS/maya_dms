@@ -89,7 +89,7 @@ class DocumentReviewService
                 return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
             }
 
-            return $this->documentRepository->findOrFail($documentId);
+            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
         });
     }
 

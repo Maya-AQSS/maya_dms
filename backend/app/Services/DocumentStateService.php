@@ -19,7 +19,7 @@ class DocumentStateService
      */
     public function transition(string $documentId, string $newStatus, string $actorId, array $extraAttributes = []): Document
     {
-        $document = $this->documentRepository->findOrFail($documentId);
+        $document = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
         $oldStatus = $document->status;
 
         $this->documentRepository->mergeHeadWorkingCopy(
