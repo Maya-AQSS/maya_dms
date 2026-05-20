@@ -329,9 +329,9 @@ class Document extends Model
      */
     public function getCurrentVersionAttribute(mixed $value): int
     {
-        if (array_key_exists('current_version', $this->attributes)) {
+        /*if (array_key_exists('current_version', $this->attributes)) {
             return (int) $this->attributes['current_version'];
-        }
+        }*/
 
         $max = EntityVersion::query()
             ->where('versionable_type', self::class)
