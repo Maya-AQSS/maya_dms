@@ -76,7 +76,17 @@ class DocumentStateController extends Controller
      */
     public function startNewVersion(StartNewDocumentRevisionRequest $request, string $document): JsonResponse
     {
-        $model = $this->documentService->findModelOrFail($document);
+        try {
+            $model = $this->documentService->findModelOrFail($document);
+            $directAccess = true;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $model = $this->documentService->findModelOrFailWithoutUserAccess($document);
+            if (! $this->documentService->hasPublishedSnapshot($model->id)) {
+                abort(404);
+            }
+            $directAccess = false;
+        }
+
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         if ($model->status !== 'published') {
@@ -87,6 +97,12 @@ class DocumentStateController extends Controller
                 'draft_author' => $editorName,
             ], 409);
         }
+
+        if (! $directAccess) {
+            abort(404);
+        }
+
+        $this->authorize('startRevision', $model);
 
         $userId = (string) $request->user()->getAuthIdentifier();
         $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);

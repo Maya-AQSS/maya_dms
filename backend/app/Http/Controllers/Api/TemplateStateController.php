@@ -106,7 +106,20 @@ class TemplateStateController extends Controller
      */
     public function startNewVersion(StartNewTemplateRevisionRequest $request, string $template): TemplateResource|JsonResponse
     {
-        $model = $this->templateService->findModelOrFail($template);
+        // Intento normal con user_access (cubre creador y revisores activos).
+        try {
+            $model = $this->templateService->findModelOrFail($template);
+            $directAccess = true;
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            // Recurso no accesible en el estado actual (p.ej. draft visible solo al creador).
+            // Si existe y tiene snapshot publicado, el usuario puede recibir el 409 informativo.
+            $model = $this->templateService->findOrFailWithoutCatalogScope($template);
+            if (! $this->templateService->hasPublishedSnapshot($model->id)) {
+                abort(404);
+            }
+            $directAccess = false;
+        }
+
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         if ($model->status !== 'published') {
@@ -117,6 +130,12 @@ class TemplateStateController extends Controller
                 'draft_author' => $editorName,
             ], 409);
         }
+
+        if (! $directAccess) {
+            abort(404);
+        }
+
+        $this->authorize('startRevision', $model);
 
         $updated = $this->templateService->startNewRevisionCycle(
             $model->id,
