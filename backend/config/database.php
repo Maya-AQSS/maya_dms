@@ -179,7 +179,8 @@ return [
         ],
 
         // Permisos resueltos por usuario — FDW de solo lectura sobre
-        // maya_auth.v_dms_user_permissions (CTE recursivo de roles + overrides).
+        // maya_auth.v_portal_user_permissions (cross-app: incluye `*.login`
+        // de todas las apps para decidir acceso/redirect al portal).
         // Lectura vía `user_resolved_permissions` local (vista pass-through).
         'user_permissions' => [
             'host'        => env('FDW_USER_PERMISSIONS_HOST', 'maya_infra_postgres'),
@@ -188,7 +189,7 @@ return [
             'username'    => env('FDW_USER_PERMISSIONS_USERNAME', 'maya'),
             'password'    => env('FDW_USER_PERMISSIONS_PASSWORD', 'secret'),
             'schema'      => env('FDW_USER_PERMISSIONS_SCHEMA', 'public'),
-            'remote_view' => env('FDW_USER_PERMISSIONS_REMOTE_VIEW', 'v_dms_user_permissions'),
+            'remote_view' => env('FDW_USER_PERMISSIONS_REMOTE_VIEW', 'v_portal_user_permissions'),
         ],
 
         // Catálogo de permisos DMS — FDW de solo lectura sobre maya_auth.v_dms_permissions.

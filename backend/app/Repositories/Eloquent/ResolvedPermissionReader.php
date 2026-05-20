@@ -13,9 +13,12 @@ use Throwable;
 
 /**
  * Lectura de permisos resueltos del usuario sobre la vista
- * `user_resolved_permissions` (FDW → `v_dms_user_permissions` en
- * maya_authorization). Reemplaza al antiguo `UserPermissionRepository`
- * que apuntaba a `user_permissions` local en dms.
+ * `user_resolved_permissions` (FDW → `v_portal_user_permissions` en
+ * maya_authorization, cross-app desde 2026-05-21).
+ *
+ * Devuelve TODOS los slugs del usuario en las 5 apps (incl. `*.login`)
+ * para que el frontend pueda decidir acceso/redirect al portal sin
+ * llamar a otra API.
  *
  * Se mantiene el patrón de caché (15 min) y la cláusula defensiva sobre
  * vistas en PostgreSQL (Schema::hasTable solo ve tablas base).
