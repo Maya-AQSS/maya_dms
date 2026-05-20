@@ -107,6 +107,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showNoValidatorsModal, setShowNoValidatorsModal] = useState(false);
   const [publishChangelog, setPublishChangelog] = useState('');
   const [publishModalError, setPublishModalError] = useState<string | null>(null);
   const [blocksCount, setBlocksCount] = useState(0);
@@ -322,6 +323,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (!template?.id) return;
     if (blocksLoading || blocksCount < 1) {
       setErrors({ api: 'Añade al menos un bloque antes de continuar.' });
+      return;
+    }
+
+    const currentVisibility = step1Methods.getValues('visibility');
+    if (currentVisibility !== 'personal' && validators.length === 0) {
+      setShowNoValidatorsModal(true);
       return;
     }
 
@@ -680,6 +687,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         variant="danger"
         onConfirm={() => setBlockInvariantModal(null)}
         onCancel={() => setBlockInvariantModal(null)}
+      />
+
+      {/* No validators warning modal */}
+      <ConfirmDialog
+        open={showNoValidatorsModal}
+        title="Validador requerido"
+        description="Las plantillas con visibilidad no personal requieren al menos un validador de plantilla asignado. Añade un validador antes de continuar."
+        confirmLabel="Entendido"
+        onConfirm={() => setShowNoValidatorsModal(false)}
+        onCancel={() => setShowNoValidatorsModal(false)}
       />
 
       {/* Validation modal */}

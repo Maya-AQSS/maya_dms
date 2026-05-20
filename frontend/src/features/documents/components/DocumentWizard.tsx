@@ -172,6 +172,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
+  const [showNoValidatorsDocModal, setShowNoValidatorsDocModal] = useState(false);
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
@@ -877,6 +878,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           setEmptyEditableBlocksModal(emptyEditable.map((b: DocumentDisplayBlock) => b.title ?? 'Sin título'));
           return;
         }
+      }
+      if (reviewerListKind === 'none' && selectedTemplateVisibility != null && selectedTemplateVisibility !== 'personal') {
+        setShowNoValidatorsDocModal(true);
+        return;
       }
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
       setStep('summary');
@@ -1923,6 +1928,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         loading={summaryConfirmAction === 'submit' && submittingForReview}
         onCancel={() => setSummaryConfirmAction(null)}
         onConfirm={() => void handleConfirmSummaryAction()}
+      />
+      <ConfirmDialog
+        open={showNoValidatorsDocModal}
+        title="Sin validadores configurados"
+        description="La plantilla no tiene validadores asignados. Al enviar este documento, se publicará automáticamente sin revisión. Para añadir validadores, edita la plantilla."
+        confirmLabel="Continuar de todas formas"
+        cancelLabel="Cancelar"
+        onConfirm={() => {
+          setShowNoValidatorsDocModal(false);
+          setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
+          setStep('summary');
+        }}
+        onCancel={() => setShowNoValidatorsDocModal(false)}
       />
     </>
   );
