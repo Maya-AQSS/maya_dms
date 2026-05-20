@@ -108,6 +108,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showNoValidatorsModal, setShowNoValidatorsModal] = useState(false);
+  const [noValidatorsModalMessage, setNoValidatorsModalMessage] = useState('');
   const [publishChangelog, setPublishChangelog] = useState('');
   const [publishModalError, setPublishModalError] = useState<string | null>(null);
   const [blocksCount, setBlocksCount] = useState(0);
@@ -327,9 +328,20 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
 
     const currentVisibility = step1Methods.getValues('visibility');
-    if (currentVisibility !== 'personal' && validators.length === 0) {
-      setShowNoValidatorsModal(true);
-      return;
+    if (currentVisibility !== 'personal') {
+      const missingTemplate = validators.length === 0;
+      const missingDocument = documentValidators.length === 0;
+      if (missingTemplate || missingDocument) {
+        const msg =
+          missingTemplate && missingDocument
+            ? 'Las plantillas con visibilidad no personal requieren al menos un validador de plantilla y al menos un validador de documento asignados. Añade los validadores requeridos antes de continuar.'
+            : missingTemplate
+              ? 'Las plantillas con visibilidad no personal requieren al menos un validador de plantilla asignado. Añade un validador antes de continuar.'
+              : 'Las plantillas con visibilidad no personal requieren al menos un validador de documento asignado. Añade un validador de documento antes de continuar.';
+        setNoValidatorsModalMessage(msg);
+        setShowNoValidatorsModal(true);
+        return;
+      }
     }
 
     setSaving(true);
@@ -693,7 +705,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       <ConfirmDialog
         open={showNoValidatorsModal}
         title="Validador requerido"
-        description="Las plantillas con visibilidad no personal requieren al menos un validador de plantilla asignado. Añade un validador antes de continuar."
+        description={noValidatorsModalMessage}
         confirmLabel="Entendido"
         onConfirm={() => setShowNoValidatorsModal(false)}
         onCancel={() => setShowNoValidatorsModal(false)}
