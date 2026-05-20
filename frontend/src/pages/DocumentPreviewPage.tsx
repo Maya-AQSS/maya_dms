@@ -600,9 +600,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
             {STATUS_LABEL[detail.status] ?? detail.status}
           </span>
+          
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-            v{detail.current_version}
+            v{detail.status === "draft" ? detail.current_version + 1 : detail.current_version}
           </span>
+          
         </>
       )}
       {!isValidateMode && !isHistoricalSnapshot && detail.status === 'in_review' && allReviews.length > 0 && (

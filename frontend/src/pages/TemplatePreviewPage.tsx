@@ -396,7 +396,7 @@ export function TemplatePreviewPage() {
             {STATUS_LABEL[template.status] ?? template.status}
           </span>
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-            v{template.version}
+            v{template.status === "draft" ? template.version + 1 : template.version}
           </span>
           {template.status === 'in_review' && (template.reviewers?.length ?? 0) > 0 && (
             <SequentialValidatorBadge
