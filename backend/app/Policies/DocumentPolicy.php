@@ -161,6 +161,25 @@ class DocumentPolicy
     }
 
     /**
+     * Descarta la versión de trabajo (draft/in_review) y restaura la última publicación.
+     * Solo el creador, el titular o quien tenga `documents.update` puede descartar.
+     */
+    public function discard(JwtUser $user, Document $document): bool
+    {
+        if (! in_array($document->status, ['draft', 'in_review'], true)) {
+            return false;
+        }
+
+        $id = $user->getAuthIdentifier();
+
+        if ($id === $document->created_by || $id === $document->owner_id) {
+            return true;
+        }
+
+        return $user->hasPermission('documents.update');
+    }
+
+    /**
      * Publicado → borrador para preparar una nueva versión publicada del mismo expediente.
      *
      * Quién puede editar el borrador lo define {@see self::update}; aquí solo se exige documento `published`.

@@ -322,11 +322,6 @@ class TemplateService implements TemplateServiceInterface
                 'status' => ['Solo una plantilla publicada puede pasar a borrador para una nueva versión.'],
             ]);
         }
-        $this->assertTemplateMetadataInvariants(
-            (string) $template->name,
-            $template->delivery_deadline,
-            $template->visibility_level,
-        );
 
         return $this->templatePublishingService->transitionStatus(
             $template,

@@ -661,10 +661,6 @@ class DocumentService implements DocumentServiceInterface
                 'status' => ['Solo un documento publicado puede pasar a borrador para una nueva versión.'],
             ]);
         }
-        $this->assertDocumentMetadataInvariantsForMutation(
-            (string) $document->title,
-            $document->delivery_deadline,
-        );
 
         return $this->documentStateService->transition($documentId, 'draft', $actorId);
     }

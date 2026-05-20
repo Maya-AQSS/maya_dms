@@ -109,7 +109,7 @@ class DocumentStateController extends Controller
     public function destroyVersion(Request $request, string $document, string $version): JsonResponse
     {
         $model = $this->documentService->findModelOrFail($document);
-        $this->authorize('update', $model);
+        $this->authorize('discard', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
