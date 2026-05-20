@@ -42,7 +42,7 @@ class DocumentPolicyTest extends TestCase
     public function test_creator_owner_can_review_with_permission(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
-        $user   = $this->makeJwtUser($userId, ['documents.review']);
+        $user   = $this->makeJwtUser($userId, ['document.review']);
         $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId);
 
         $this->assertTrue($this->policy->review($user, $doc));
@@ -103,7 +103,7 @@ class DocumentPolicyTest extends TestCase
 
     public function test_update_allows_non_author_with_documents_update(): void
     {
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['documents.update']);
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.update']);
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -194,7 +194,7 @@ class DocumentPolicyTest extends TestCase
 
     public function test_delete_allows_stranger_with_documents_delete_permission(): void
     {
-        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['documents.delete']);
+        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['document.delete']);
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
@@ -236,7 +236,7 @@ class DocumentPolicyTest extends TestCase
     public function test_clone_denied_without_documents_create(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
-        $user = $this->makeJwtUser($userId, ['documents.update']);
+        $user = $this->makeJwtUser($userId, ['document.update']);
         $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId);
 
         $this->assertFalse($this->policy->clone($user, $doc));
@@ -246,7 +246,7 @@ class DocumentPolicyTest extends TestCase
     {
         $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
         $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-        $user = $this->makeJwtUser($strangerId, ['documents.create']);
+        $user = $this->makeJwtUser($strangerId, ['document.create']);
         $doc = $this->makeDocument(createdBy: $ownerId, ownerId: $ownerId);
 
         $this->assertFalse($this->policy->clone($user, $doc));
@@ -255,7 +255,7 @@ class DocumentPolicyTest extends TestCase
     public function test_clone_allowed_for_owner_with_documents_create(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
-        $user = $this->makeJwtUser($userId, ['documents.create']);
+        $user = $this->makeJwtUser($userId, ['document.create']);
         $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'published');
 
         $this->assertTrue($this->policy->clone($user, $doc));
@@ -264,7 +264,7 @@ class DocumentPolicyTest extends TestCase
     public function test_clone_denied_for_non_published_document(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
-        $user = $this->makeJwtUser($userId, ['documents.create']);
+        $user = $this->makeJwtUser($userId, ['document.create']);
         $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'draft');
 
         $this->assertFalse($this->policy->clone($user, $doc));
@@ -306,7 +306,7 @@ class DocumentPolicyTest extends TestCase
 
     public function test_start_revision_allows_documents_update_when_published_and_can_update(): void
     {
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['documents.update']);
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.update']);
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',

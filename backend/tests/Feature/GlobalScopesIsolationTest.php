@@ -134,7 +134,7 @@ class GlobalScopesIsolationTest extends TestCase
 
         [$templateId] = $this->seedTemplateAndDocument($userA);
 
-        $this->assignUserPermissions($userA, ['templates.read']);
+        $this->assignUserPermissions($userA, ['template.show']);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
 
@@ -188,7 +188,7 @@ class GlobalScopesIsolationTest extends TestCase
             'review_mode' => 'sequential',
         ]);
 
-        $this->assignUserPermissions($userA, ['templates.read']);
+        $this->assignUserPermissions($userA, ['template.show']);
 
         $tokenA = $this->buildAuthTokensForUser($userA);
         $this->getJson(

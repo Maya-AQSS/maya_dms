@@ -20,7 +20,7 @@ class StoreDocumentRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('documents.create')) {
+        if (! $user instanceof JwtUser || ! $user->hasPermission('document.create')) {
             return false;
         }
 

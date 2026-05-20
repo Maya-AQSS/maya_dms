@@ -93,7 +93,7 @@ class TemplatesApiTest extends TestCase
     {
         auth()->forgetUser();
 
-        $this->assignUserPermissions($sub, ['templates.read']);
+        $this->assignUserPermissions($sub, ['template.show']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -129,8 +129,8 @@ class TemplatesApiTest extends TestCase
     ): array {
         auth()->forgetUser();
 
-        $this->assignUserPermissions($creatorSub, ['templates.read']);
-        $this->assignUserPermissions($reviewerSub, ['templates.read']);
+        $this->assignUserPermissions($creatorSub, ['template.show']);
+        $this->assignUserPermissions($reviewerSub, ['template.show']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -462,7 +462,7 @@ class TemplatesApiTest extends TestCase
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId, ['teacher']);
-        $this->assignUserPermissions($userId, ['templates.read']);
+        $this->assignUserPermissions($userId, ['template.show']);
 
         $withComments = (string) Str::uuid();
         $withoutComments = (string) Str::uuid();
@@ -566,7 +566,7 @@ class TemplatesApiTest extends TestCase
     {
         $userId = (string) Str::uuid();
         $headers = $this->authHeaders($userId);
-        $this->assignUserPermissions($userId, ['templates.read', 'templates.create']);
+        $this->assignUserPermissions($userId, ['template.show', 'template.create']);
 
         $tid = (string) Str::uuid();
         Template::query()->forceCreate([
@@ -633,7 +633,7 @@ class TemplatesApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $headersCreator = $this->authHeaders($creatorId, []);
-        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+        $this->assignUserPermissions($creatorId, ['template.show', 'template.create']);
 
         $tid = (string) Str::uuid();
         $bid = (string) Str::uuid();
@@ -717,7 +717,7 @@ class TemplatesApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $headers = $this->authHeaders($creatorId, []);
-        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+        $this->assignUserPermissions($creatorId, ['template.show', 'template.create']);
 
         $tid = (string) Str::uuid();
         $bid = (string) Str::uuid();
@@ -786,7 +786,7 @@ class TemplatesApiTest extends TestCase
         $actorId = (string) Str::uuid();
         $studyId = $this->anyStudyId();
         $actorHeaders = $this->authHeaders($actorId, []);
-        $this->assignUserPermissions($actorId, ['templates.read', 'templates.update', 'templates.create']);
+        $this->assignUserPermissions($actorId, ['template.show', 'template.update', 'template.create']);
 
         $tid = (string) Str::uuid();
         $bid = (string) Str::uuid();
@@ -856,7 +856,7 @@ class TemplatesApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $headers = $this->authHeaders($creatorId, []);
-        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+        $this->assignUserPermissions($creatorId, ['template.show', 'template.create']);
 
         $reviewerTemplatePublished = (string) Str::uuid();
         $reviewerDocumentPublished = (string) Str::uuid();
@@ -1001,7 +1001,7 @@ class TemplatesApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $headers = $this->authHeaders($creatorId, []);
-        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+        $this->assignUserPermissions($creatorId, ['template.show', 'template.create']);
 
         $reviewerTemplateLive = (string) Str::uuid();
         $reviewerDocumentLive = (string) Str::uuid();
@@ -1084,7 +1084,7 @@ class TemplatesApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $headers = $this->authHeaders($creatorId, []);
-        $this->assignUserPermissions($creatorId, ['templates.read', 'templates.create']);
+        $this->assignUserPermissions($creatorId, ['template.show', 'template.create']);
 
         $tid = (string) Str::uuid();
         $bid = (string) Str::uuid();
@@ -1306,7 +1306,7 @@ class TemplatesApiTest extends TestCase
         $headers = $this->authHeaders($creatorId, []);
         DB::table('user_resolved_permissions')
             ->where('user_id', $creatorId)
-            ->whereIn('permission_slug', ['templates.read', 'documents.create'])
+            ->whereIn('permission_slug', ['template.show', 'document.create'])
             ->delete();
 
         $tid = (string) Str::uuid();
@@ -2228,8 +2228,8 @@ class TemplatesApiTest extends TestCase
         $creatorId = (string) Str::uuid();
         $reviewerId = (string) Str::uuid();
         $docReviewerId = (string) Str::uuid();
-        $this->assignUserPermissions($reviewerId, ['templates.review', 'documents.review']);
-        $this->assignUserPermissions($docReviewerId, ['documents.review']);
+        $this->assignUserPermissions($reviewerId, ['template.review', 'document.review']);
+        $this->assignUserPermissions($docReviewerId, ['document.review']);
         [$headersCreator, $headersReviewer] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerId,
@@ -2323,9 +2323,9 @@ class TemplatesApiTest extends TestCase
             'name' => 'Doc Reviewer V2',
             'email' => "doc-reviewer-v2-{$docReviewerV2Id}@example.test",
         ]);
-        $this->assignUserPermissions($reviewerV1Id, ['templates.review', 'documents.review']);
-        $this->assignUserPermissions($reviewerV2Id, ['templates.review', 'documents.review']);
-        $this->assignUserPermissions($docReviewerV2Id, ['documents.review']);
+        $this->assignUserPermissions($reviewerV1Id, ['template.review', 'document.review']);
+        $this->assignUserPermissions($reviewerV2Id, ['template.review', 'document.review']);
+        $this->assignUserPermissions($docReviewerV2Id, ['document.review']);
         [$headersCreator, $headersReviewerV1] = $this->authHeadersCreatorAndReviewer(
             $creatorId,
             $reviewerV1Id,

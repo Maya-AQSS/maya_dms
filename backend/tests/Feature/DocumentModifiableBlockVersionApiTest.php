@@ -49,7 +49,7 @@ class DocumentModifiableBlockVersionApiTest extends TestCase
     /**
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $permissionCodes = ['templates.read', 'documents.read']): array
+    private function authHeaders(string $sub, array $permissionCodes = ['template.show', 'document.show']): array
     {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $permissionCodes);

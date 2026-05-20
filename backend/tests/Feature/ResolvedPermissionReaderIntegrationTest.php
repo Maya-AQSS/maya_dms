@@ -49,7 +49,7 @@ class ResolvedPermissionReaderIntegrationTest extends TestCase
         $slugs = $reader->findPermissionSlugsByUserId(self::USER_ESO);
 
         $this->assertSame(
-            ['documents.create', 'documents.read', 'templates.read'],
+            ['document.create', 'document.show', 'template.show'],
             $slugs,
         );
     }
@@ -75,16 +75,16 @@ class ResolvedPermissionReaderIntegrationTest extends TestCase
         $this->assertSame(
             [
                 'audit.read',
-                'documents.create',
-                'documents.delete',
-                'documents.read',
-                'documents.review',
-                'documents.update',
-                'templates.create',
-                'templates.delete',
-                'templates.read',
-                'templates.review',
-                'templates.update',
+                'document.create',
+                'document.delete',
+                'document.show',
+                'document.review',
+                'document.update',
+                'template.create',
+                'template.delete',
+                'template.show',
+                'template.review',
+                'template.update',
                 'users.search',
             ],
             $slugs,

@@ -44,7 +44,7 @@ class ProcessApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['templates.read']): array
+    private function authHeaders(string $sub, array $codes = ['template.show']): array
     {
         auth()->forgetUser();
 

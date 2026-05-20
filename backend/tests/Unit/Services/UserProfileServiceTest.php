@@ -67,7 +67,7 @@ it('queries FDW filtered by user id from JWT', function () {
         ->shouldReceive('findPermissionSlugsByUserId')
         ->once()
         ->with('user-uuid-123')
-        ->andReturn(['templates.read']);
+        ->andReturn(['template.show']);
 
     Cache::shouldReceive('put')
         ->once()
@@ -86,7 +86,7 @@ it('queries FDW filtered by user id from JWT', function () {
         ->and($profile['module_ids'])->toBe([])
         ->and($profile['team_ids'])->toBe(['g1'])
         ->and($profile['teams'])->toHaveCount(1)
-        ->and($profile['permissions'])->toBe(['templates.read']);
+        ->and($profile['permissions'])->toBe(['template.show']);
 });
 
 // ── Escenario 2: Caché del perfil ──────────────────────────────────────

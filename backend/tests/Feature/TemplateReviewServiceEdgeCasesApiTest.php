@@ -64,7 +64,7 @@ class TemplateReviewServiceEdgeCasesApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['templates.read']): array
+    private function authHeaders(string $sub, array $codes = ['template.show']): array
     {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);
@@ -97,8 +97,8 @@ class TemplateReviewServiceEdgeCasesApiTest extends TestCase
     private function authHeadersPair(
         string $sub1,
         string $sub2,
-        array $codes1 = ['templates.read'],
-        array $codes2 = ['templates.read', 'templates.review'],
+        array $codes1 = ['template.show'],
+        array $codes2 = ['template.show', 'template.review'],
     ): array {
         auth()->forgetUser();
 
@@ -300,7 +300,7 @@ class TemplateReviewServiceEdgeCasesApiTest extends TestCase
         // Owner self-assigns as reviewer so they pass the global scope (see own template)
         // AND pass the policy (templates.review + assigned in template_reviewers)
         $ownerId = (string) Str::uuid();
-        $headers = $this->authHeaders($ownerId, ['templates.read', 'templates.review']);
+        $headers = $this->authHeaders($ownerId, ['template.show', 'template.review']);
 
         $templateId = $this->seedDraftTemplate($ownerId, 'draft');
         $this->addEditableBlock($templateId);
@@ -347,7 +347,7 @@ class TemplateReviewServiceEdgeCasesApiTest extends TestCase
     public function test_approve_review_returns_422_when_template_is_not_in_review(): void
     {
         $ownerId = (string) Str::uuid();
-        $headers = $this->authHeaders($ownerId, ['templates.read', 'templates.review']);
+        $headers = $this->authHeaders($ownerId, ['template.show', 'template.review']);
 
         $templateId = $this->seedDraftTemplate($ownerId, 'draft');
         $this->addEditableBlock($templateId);
@@ -389,9 +389,9 @@ class TemplateReviewServiceEdgeCasesApiTest extends TestCase
 
         // Set up three-way auth with same keypair
         auth()->forgetUser();
-        $this->assignUserPermissions($ownerId, ['templates.read']);
-        $this->assignUserPermissions($reviewer1Id, ['templates.read', 'templates.review']);
-        $this->assignUserPermissions($reviewer2Id, ['templates.read', 'templates.review']);
+        $this->assignUserPermissions($ownerId, ['template.show']);
+        $this->assignUserPermissions($reviewer1Id, ['template.show', 'template.review']);
+        $this->assignUserPermissions($reviewer2Id, ['template.show', 'template.review']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -437,9 +437,9 @@ class TemplateReviewServiceEdgeCasesApiTest extends TestCase
         $reviewer2Id = (string) Str::uuid();
 
         auth()->forgetUser();
-        $this->assignUserPermissions($ownerId, ['templates.read']);
-        $this->assignUserPermissions($reviewer1Id, ['templates.read', 'templates.review']);
-        $this->assignUserPermissions($reviewer2Id, ['templates.read', 'templates.review']);
+        $this->assignUserPermissions($ownerId, ['template.show']);
+        $this->assignUserPermissions($reviewer1Id, ['template.show', 'template.review']);
+        $this->assignUserPermissions($reviewer2Id, ['template.show', 'template.review']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 

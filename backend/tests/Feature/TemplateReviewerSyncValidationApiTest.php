@@ -62,7 +62,7 @@ class TemplateReviewerSyncValidationApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['templates.read', 'templates.update']): array
+    private function authHeaders(string $sub, array $codes = ['template.show', 'template.update']): array
     {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);

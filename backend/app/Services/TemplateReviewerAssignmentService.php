@@ -48,7 +48,7 @@ class TemplateReviewerAssignmentService
                 ]);
             }
 
-            $this->assertUsersHavePermission($uniqueUserIds, 'templates.review', 'user_ids');
+            $this->assertUsersHavePermission($uniqueUserIds, 'template.review', 'user_ids');
 
             // TemplateReviewer usa SoftDeletes; forceDelete elimina filas físicamente
             // para no violar la restricción única (template_id, user_id) al reinsertar.
@@ -79,7 +79,7 @@ class TemplateReviewerAssignmentService
                 ]);
             }
 
-            $this->assertUsersHavePermission($uniqueUserIds, 'documents.review', 'user_ids');
+            $this->assertUsersHavePermission($uniqueUserIds, 'document.review', 'user_ids');
 
             // TemplateDocumentReviewer no usa SoftDeletes: delete() es borrado físico.
             // A diferencia de TemplateReviewer (que sí usa SoftDeletes y requiere forceDelete),

@@ -78,7 +78,7 @@ class CommentApiTest extends TestCase
      */
     private function authHeaders(
         string $sub,
-        array $codes = ['templates.read', 'documents.read'],
+        array $codes = ['template.show', 'document.show'],
     ): array {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);
@@ -363,7 +363,7 @@ class CommentApiTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $headers = $this->authHeaders($otherUserId, ['templates.read']);
+        $headers = $this->authHeaders($otherUserId, ['template.show']);
 
         // Can view/index template comments (since they can view the template as a reviewer)
         $response = $this->getJson("/api/v1/templates/{$tplCtx['templateId']}/comments", $headers)
@@ -389,7 +389,7 @@ class CommentApiTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $docHeaders = $this->authHeaders($otherUserId, ['documents.read']);
+        $docHeaders = $this->authHeaders($otherUserId, ['document.show']);
 
         // Can view/index document comments (since they have a read share)
         $docResponse = $this->getJson("/api/v1/documents/{$docCtx['documentId']}/comments", $docHeaders)

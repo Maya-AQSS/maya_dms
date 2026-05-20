@@ -13,7 +13,7 @@ class DocumentCreationOptionsRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user instanceof JwtUser && $user->hasPermission('documents.create');
+        return $user instanceof JwtUser && $user->hasPermission('document.create');
     }
 
     /**

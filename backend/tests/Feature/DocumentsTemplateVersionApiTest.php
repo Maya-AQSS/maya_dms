@@ -127,7 +127,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     {
         auth()->forgetUser();
 
-        $this->assignUserPermissions($sub, ['templates.read']);
+        $this->assignUserPermissions($sub, ['template.show']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -161,8 +161,8 @@ class DocumentsTemplateVersionApiTest extends TestCase
     ): array {
         auth()->forgetUser();
 
-        $this->assignUserPermissions($creatorSub, ['templates.read']);
-        $this->assignUserPermissions($reviewerSub, ['templates.read']);
+        $this->assignUserPermissions($creatorSub, ['template.show']);
+        $this->assignUserPermissions($reviewerSub, ['template.show']);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
 
@@ -201,7 +201,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     /**
      * @param  list<string>  $codes
      */
-    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'templates.read', 'users.search']): void
+    private function grantPermissionsForUser(string $userId, array $codes = ['document.create', 'template.show', 'users.search']): void
     {
         $now = now();
         foreach ($codes as $code) {
@@ -250,7 +250,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $creatorId = (string) Str::uuid();
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
-        $this->assignUserPermissions($creatorId, ['templates.read', 'documents.create', 'users.search']);
+        $this->assignUserPermissions($creatorId, ['template.show', 'document.create', 'users.search']);
 
         $tid = (string) Str::uuid();
         $b1 = (string) Str::uuid();
@@ -729,9 +729,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
         // Sin revisores en plantilla: submit puede publicar directo; el objetivo es tener published antes de new-version.
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId, [
-            'documents.create',
-            'templates.read',
-            'templates.create',
+            'document.create',
+            'template.show',
+            'template.create',
             'users.search',
         ]);
 
@@ -813,9 +813,9 @@ class DocumentsTemplateVersionApiTest extends TestCase
     {
         $creatorId = (string) Str::uuid();
         $this->grantPermissionsForUser($creatorId, [
-            'documents.create',
-            'templates.read',
-            'templates.create',
+            'document.create',
+            'template.show',
+            'template.create',
             'users.search',
         ]);
 
@@ -904,7 +904,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $ownerId = (string) Str::uuid();
         $readerId = (string) Str::uuid();
         $this->grantPermissionsForUser($ownerId);
-        $this->grantPermissionsForUser($readerId, ['documents.create', 'templates.read', 'users.search']);
+        $this->grantPermissionsForUser($readerId, ['document.create', 'template.show', 'users.search']);
 
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hOwner, $hReviewer] = $this->authHeadersCreatorAndReviewer($ownerId, $reviewerId);
@@ -2088,7 +2088,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_destroy_document_soft_deletes_record(): void
     {
         $creatorId = (string) Str::uuid();
-        $this->grantPermissionsForUser($creatorId, ['documents.create', 'documents.delete', 'templates.read', 'users.search']);
+        $this->grantPermissionsForUser($creatorId, ['document.create', 'document.delete', 'template.show', 'users.search']);
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
 
@@ -2639,7 +2639,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_document_versions_endpoint_prefers_entity_versions_over_legacy_table(): void
     {
         $userId = (string) Str::uuid();
-        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $this->grantPermissionsForUser($userId, ['template.show', 'document.show']);
         $headers = $this->authHeaders($userId);
 
         $templateId = (string) Str::uuid();
@@ -2714,7 +2714,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_document_versions_endpoint_keeps_latest_published_when_current_is_draft(): void
     {
         $userId = (string) Str::uuid();
-        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $this->grantPermissionsForUser($userId, ['template.show', 'document.show']);
         $headers = $this->authHeaders($userId);
 
         $templateId = (string) Str::uuid();
@@ -2779,7 +2779,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_document_version_detail_endpoint_accepts_entity_version_id_for_document(): void
     {
         $userId = (string) Str::uuid();
-        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $this->grantPermissionsForUser($userId, ['template.show', 'document.show']);
         $headers = $this->authHeaders($userId);
 
         $templateId = (string) Str::uuid();
@@ -2847,7 +2847,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_document_version_detail_endpoint_rejects_entity_version_of_other_type(): void
     {
         $userId = (string) Str::uuid();
-        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $this->grantPermissionsForUser($userId, ['template.show', 'document.show']);
         $headers = $this->authHeaders($userId);
 
         $templateId = (string) Str::uuid();
@@ -2911,7 +2911,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_document_versions_endpoint_separates_document_history_from_template_history(): void
     {
         $userId = (string) Str::uuid();
-        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $this->grantPermissionsForUser($userId, ['template.show', 'document.show']);
         $headers = $this->authHeaders($userId);
 
         $templateId = (string) Str::uuid();
@@ -2994,7 +2994,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_document_versions_endpoint_falls_back_to_legacy_when_entity_versions_do_not_exist(): void
     {
         $userId = (string) Str::uuid();
-        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $this->grantPermissionsForUser($userId, ['template.show', 'document.show']);
         $headers = $this->authHeaders($userId);
 
         $templateId = (string) Str::uuid();
@@ -3361,7 +3361,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_document_version_snapshot_mutation_via_http_returns_403(): void
     {
         $userId = (string) Str::uuid();
-        $this->grantPermissionsForUser($userId, ['templates.read', 'documents.read']);
+        $this->grantPermissionsForUser($userId, ['template.show', 'document.show']);
         $headers = $this->authHeaders($userId);
 
         $templateId = (string) Str::uuid();
@@ -3418,7 +3418,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_delete_document_version_discards_live_draft_and_restores_last_published_snapshot(): void
     {
         $creatorId = (string) Str::uuid();
-        $this->grantPermissionsForUser($creatorId, ['templates.read', 'documents.read', 'documents.create', 'documents.update']);
+        $this->grantPermissionsForUser($creatorId, ['template.show', 'document.show', 'document.create', 'document.update']);
         $headers = $this->authHeaders($creatorId);
 
         $templateId = (string) Str::uuid();

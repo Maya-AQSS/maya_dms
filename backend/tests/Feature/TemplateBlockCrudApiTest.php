@@ -53,7 +53,7 @@ class TemplateBlockCrudApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['templates.read']): array
+    private function authHeaders(string $sub, array $codes = ['template.show']): array
     {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);
@@ -214,7 +214,7 @@ class TemplateBlockCrudApiTest extends TestCase
     {
         $userId  = (string) Str::uuid();
         $ctx     = $this->seedTemplateWithBlock($userId);
-        $headers = $this->authHeaders($userId, ['templates.read', 'templates.update']);
+        $headers = $this->authHeaders($userId, ['template.show', 'template.update']);
 
         $response = $this->postJson("/api/v1/templates/{$ctx['templateId']}/blocks", [
             'title'       => 'Nuevo Bloque',
@@ -231,7 +231,7 @@ class TemplateBlockCrudApiTest extends TestCase
     {
         $userId  = (string) Str::uuid();
         $ctx     = $this->seedTemplateWithBlock($userId);
-        $headers = $this->authHeaders($userId, ['templates.read', 'templates.update']);
+        $headers = $this->authHeaders($userId, ['template.show', 'template.update']);
 
         $this->postJson("/api/v1/templates/{$ctx['templateId']}/blocks", [
             'title'       => 'Bloque inválido',
@@ -245,7 +245,7 @@ class TemplateBlockCrudApiTest extends TestCase
         $ownerId  = (string) Str::uuid();
         $stranger = (string) Str::uuid();
         $ctx      = $this->seedTemplateWithBlock($ownerId);
-        $headers  = $this->authHeaders($stranger, ['templates.read', 'templates.update']);
+        $headers  = $this->authHeaders($stranger, ['template.show', 'template.update']);
 
         $this->postJson("/api/v1/templates/{$ctx['templateId']}/blocks", [
             'title'       => 'Intento de bloque',
@@ -285,7 +285,7 @@ class TemplateBlockCrudApiTest extends TestCase
             'sort_order'      => 1,
         ]);
 
-        $headers = $this->authHeaders($userId, ['templates.read', 'templates.update']);
+        $headers = $this->authHeaders($userId, ['template.show', 'template.update']);
 
         $this->deleteJson("/api/v1/blocks/{$ctx['blockId']}", [], $headers)
             ->assertNoContent();
@@ -309,7 +309,7 @@ class TemplateBlockCrudApiTest extends TestCase
             'sort_order'      => 1,
         ]);
 
-        $headers = $this->authHeaders($stranger, ['templates.read', 'templates.update']);
+        $headers = $this->authHeaders($stranger, ['template.show', 'template.update']);
 
         $this->deleteJson("/api/v1/blocks/{$ctx['blockId']}", [], $headers)
             ->assertForbidden();

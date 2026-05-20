@@ -50,7 +50,7 @@ class DocumentIndexEnrichmentTest extends TestCase
     }
 
     /** @return array<string, string> */
-    private function authHeaders(string $sub, array $permissions = ['documents.read', 'templates.read']): array
+    private function authHeaders(string $sub, array $permissions = ['document.show', 'template.show']): array
     {
         auth()->forgetUser();
 
@@ -237,7 +237,7 @@ class DocumentIndexEnrichmentTest extends TestCase
         $viewerId = (string) Str::uuid();
         $headers  = $this->authHeaders($viewerId);
 
-        $this->assignUserPermissions($ownerId, ['documents.read', 'templates.read']);
+        $this->assignUserPermissions($ownerId, ['document.show', 'template.show']);
 
         ['template_id' => $templateId, 'template_version_id' => $templateVersionId] = $this->seedPublishedTemplate($ownerId);
         ['document_id' => $documentId] = $this->seedDocumentWithPublishedVersion($ownerId, $templateId, $templateVersionId);

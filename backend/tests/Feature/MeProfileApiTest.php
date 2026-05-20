@@ -76,7 +76,7 @@ class MeProfileApiTest extends TestCase
             'study_ids'      => ['STU_FOO'],
             'module_ids'     => ['MOD_BAR'],
             'team_ids'       => ['T1'],
-            'permissions'    => ['templates.read', 'documents.create'],
+            'permissions'    => ['template.show', 'document.create'],
             'teams'          => [['id' => 'T1', 'name' => 'Equipo Calidad', 'role' => 'member', 'is_department' => false]],
             'source'         => 'fdw',
         ];
@@ -99,7 +99,7 @@ class MeProfileApiTest extends TestCase
         $this->assertIsArray($data);
 
         // Campos canónicos presentes y con valores correctos.
-        $this->assertSame(['templates.read', 'documents.create'], $data['permissions']);
+        $this->assertSame(['template.show', 'document.create'], $data['permissions']);
         $this->assertSame(['ST_ESO'], $data['study_type_ids']);
         $this->assertSame(['STU_FOO'], $data['study_ids']);
         $this->assertSame(['MOD_BAR'], $data['module_ids']);

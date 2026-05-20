@@ -11,12 +11,12 @@ use App\Models\JwtUser;
  * Autorización de documentos.
  *
  * El titular actual (owner tras delegación) puede enviar a revisión y editar.
- * Tener `documents.review` es suficiente para aprobar o rechazar, independientemente
+ * Tener `document.review` es suficiente para aprobar o rechazar, independientemente
  * de si el actor es también el creador o titular — igual que en plantillas.
  *
  * Mutaciones de persistencia: el creador o el titular pueden editar sin el permiso
  * global; un colaborador con share `edit` puede mutar contenido; el resto
- * requiere `documents.update`. `delete` sigue exigiendo `documents.delete`.
+ * requiere `document.update`. `delete` sigue exigiendo `document.delete`.
  *
  * Compartición ({@see self::share}): solo el titular actual gestiona filas en
  * `document_shares`.
@@ -48,7 +48,7 @@ class DocumentPolicy
             return true;
         }
 
-        return $user->hasPermission('documents.update');
+        return $user->hasPermission('document.update');
     }
 
     /**
@@ -81,7 +81,7 @@ class DocumentPolicy
      * Eliminar u operaciones de baja del documento.
      *
      * El titular o creador puede borrar su propio documento (paridad con TemplatePolicy).
-     * Cualquier usuario con `documents.delete` puede borrar cualquier documento.
+     * Cualquier usuario con `document.delete` puede borrar cualquier documento.
      */
     public function delete(JwtUser $user, Document $document): bool
     {
@@ -91,7 +91,7 @@ class DocumentPolicy
             return true;
         }
 
-        return $user->hasPermission('documents.delete');
+        return $user->hasPermission('document.delete');
     }
 
     /**
@@ -110,7 +110,7 @@ class DocumentPolicy
      */
     public function review(JwtUser $user, Document $document): bool
     {
-        return $user->hasPermission('documents.review');
+        return $user->hasPermission('document.review');
     }
 
     /**
@@ -156,13 +156,13 @@ class DocumentPolicy
     public function clone(JwtUser $user, Document $document): bool
     {
         return $document->status === 'published'
-            && $user->hasPermission('documents.create')
+            && $user->hasPermission('document.create')
             && $this->update($user, $document);
     }
 
     /**
      * Descarta la versión de trabajo (draft/in_review) y restaura la última publicación.
-     * Solo el creador, el titular o quien tenga `documents.update` puede descartar.
+     * Solo el creador, el titular o quien tenga `document.update` puede descartar.
      */
     public function discard(JwtUser $user, Document $document): bool
     {

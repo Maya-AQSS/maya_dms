@@ -38,7 +38,7 @@ class TemplateBlocksApiTest extends TestCase
     {
         DB::table('user_resolved_permissions')->insertOrIgnore([
             'user_id' => $userId,
-            'permission_slug' => 'templates.read',
+            'permission_slug' => 'template.show',
         ]);
     }
 

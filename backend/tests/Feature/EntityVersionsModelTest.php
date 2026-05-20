@@ -25,7 +25,7 @@ class EntityVersionsModelTest extends TestCase
             'email' => null,
             'name' => null,
             'department' => null,
-            'permissions' => ['templates.read'],
+            'permissions' => ['template.show'],
             'scope' => '',
         ]));
 

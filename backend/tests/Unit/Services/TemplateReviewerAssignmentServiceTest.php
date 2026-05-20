@@ -127,7 +127,7 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $permRepo->shouldReceive('findPermissionSlugsByUserId')
             ->once()
             ->with('user-a')
-            ->andReturn(['templates.read']); // no templates.review
+            ->andReturn(['template.show']); // no templates.review
 
         $service = $this->makeService($tmplRepo, $permRepo);
         $dto     = new SyncUsersDto(userIds: ['user-a']);
@@ -176,7 +176,7 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $permRepo->shouldReceive('findPermissionSlugsByUserId')
             ->once()
             ->with('user-a')
-            ->andReturn(['documents.read']); // no documents.review
+            ->andReturn(['document.show']); // no documents.review
 
         $service = $this->makeService($tmplRepo, $permRepo);
         $dto     = new SyncUsersDto(userIds: ['user-a']);

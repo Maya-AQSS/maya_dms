@@ -69,7 +69,7 @@ class UsersSearchApiTest extends TestCase
     {
         $userId = (string) Str::uuid();
 
-        $response = $this->getJson('/api/v1/users?search=ab', $this->authHeaders($userId, ['documents.create']));
+        $response = $this->getJson('/api/v1/users?search=ab', $this->authHeaders($userId, ['document.create']));
 
         $response->assertForbidden();
     }
@@ -100,7 +100,7 @@ class UsersSearchApiTest extends TestCase
 
         $response = $this->getJson(
             '/api/v1/users/document-reviewer-candidates',
-            $this->authHeaders($userId, ['documents.create']), // Lacks documents.read
+            $this->authHeaders($userId, ['document.create']), // Lacks documents.read
         );
 
         $response->assertForbidden();
@@ -122,12 +122,12 @@ class UsersSearchApiTest extends TestCase
         $now = now();
         DB::table('user_resolved_permissions')->insertOrIgnore([
             'user_id' => $reviewerId,
-            'permission_slug' => 'documents.review',
+            'permission_slug' => 'document.review',
         ]);
 
         $response = $this->getJson(
             '/api/v1/users/document-reviewer-candidates?search=doc',
-            $this->authHeaders($callerId, ['documents.read']),
+            $this->authHeaders($callerId, ['document.show']),
         );
 
         $response->assertOk();
@@ -153,12 +153,12 @@ class UsersSearchApiTest extends TestCase
             ]);
             DB::table('user_resolved_permissions')->insertOrIgnore([
             'user_id' => $rid,
-            'permission_slug' => 'documents.review',
+            'permission_slug' => 'document.review',
         ]);
         }
 
         $url = '/api/v1/users/document-reviewer-candidates?search=Reviewer&exclude_user_id='.urlencode($reviewerA);
-        $response = $this->getJson($url, $this->authHeaders($callerId, ['documents.read']));
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['document.show']));
 
         $response->assertOk();
         $ids = array_column($response->json('data'), 'id');
@@ -182,12 +182,12 @@ class UsersSearchApiTest extends TestCase
             ]);
             DB::table('user_resolved_permissions')->insertOrIgnore([
             'user_id' => $rid,
-            'permission_slug' => 'templates.review',
+            'permission_slug' => 'template.review',
         ]);
         }
 
         $url = '/api/v1/users/reviewer-candidates?search=Tpl&exclude_user_id='.urlencode($reviewerA);
-        $response = $this->getJson($url, $this->authHeaders($callerId, ['templates.read']));
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['template.show']));
 
         $response->assertOk();
         $ids = array_column($response->json('data'), 'id');

@@ -60,7 +60,7 @@ class UserController extends Controller
     public function reviewerCandidates(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('templates.read')) {
+        if (! $user instanceof JwtUser || ! $user->hasPermission('template.show')) {
             abort(403, 'No tienes permiso para buscar validadores de plantilla.');
         }
 
@@ -87,7 +87,7 @@ class UserController extends Controller
     public function documentReviewerCandidates(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('documents.read')) {
+        if (! $user instanceof JwtUser || ! $user->hasPermission('document.show')) {
             abort(403, 'No tienes permiso para buscar validadores de documento.');
         }
 

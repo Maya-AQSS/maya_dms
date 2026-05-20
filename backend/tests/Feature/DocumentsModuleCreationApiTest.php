@@ -38,7 +38,7 @@ class DocumentsModuleCreationApiTest extends TestCase
     /**
      * @param  list<string>  $codes
      */
-    private function grantPermissionsForUser(string $userId, array $codes = ['documents.create', 'templates.read', 'users.search']): void
+    private function grantPermissionsForUser(string $userId, array $codes = ['document.create', 'template.show', 'users.search']): void
     {
         foreach ($codes as $code) {
             DB::table('user_resolved_permissions')->insertOrIgnore([

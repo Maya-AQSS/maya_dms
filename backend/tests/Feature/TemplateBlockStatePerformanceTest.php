@@ -63,7 +63,7 @@ class TemplateBlockStatePerformanceTest extends TestCase
     public function test_block_state_update_performance(): void
     {
         $userId = (string) Str::uuid();
-        $this->assignUserPermissions($userId, ['templates.read']);
+        $this->assignUserPermissions($userId, ['template.show']);
         $templateId = (string) Str::uuid();
 
         Template::query()->forceCreate([

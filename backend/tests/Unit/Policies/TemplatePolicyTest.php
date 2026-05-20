@@ -25,7 +25,7 @@ class TemplatePolicyTest extends TestCase
     public function test_view_any_requires_templates_read(): void
     {
         $sin = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-        $con = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['templates.read']);
+        $con = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['template.show']);
 
         $this->assertFalse($this->policy->viewAny($sin));
         $this->assertTrue($this->policy->viewAny($con));
@@ -35,8 +35,8 @@ class TemplatePolicyTest extends TestCase
     {
         $creatorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
         $sin = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd');
-        $conRead = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['templates.read']);
-        $conDoc = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff', ['documents.create']);
+        $conRead = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['template.show']);
+        $conDoc = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff', ['document.create']);
         $template = new Template;
 
         $this->assertFalse($this->policy->view($sin, $template));
@@ -54,7 +54,7 @@ class TemplatePolicyTest extends TestCase
         ]);
 
         $admin = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['admin']);
-        $deleter = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['templates.delete']);
+        $deleter = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['template.delete']);
 
         $this->assertTrue($this->policy->view($admin, $template));
         $this->assertTrue($this->policy->view($deleter, $template));
@@ -91,7 +91,7 @@ class TemplatePolicyTest extends TestCase
 
     public function test_create_shared_visibility_allowed_with_templates_create(): void
     {
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['templates.create']);
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['template.create']);
 
         $this->assertTrue($this->policy->create($user, TemplateVisibilityLevel::Global->value));
     }
@@ -106,7 +106,7 @@ class TemplatePolicyTest extends TestCase
 
     public function test_update_denied_for_coordinator_on_foreign_template(): void
     {
-        $user     = $this->makeJwtUser('11111111-2222-3333-4444-555555555555', ['templates.update']);
+        $user     = $this->makeJwtUser('11111111-2222-3333-4444-555555555555', ['template.update']);
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertFalse($this->policy->update($user, $template));
@@ -116,7 +116,7 @@ class TemplatePolicyTest extends TestCase
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['templates.read', 'templates.update'],
+            ['template.show', 'template.update'],
         );
         auth()->setUser($user);
         $template = $this->makeTemplate(
@@ -132,7 +132,7 @@ class TemplatePolicyTest extends TestCase
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['templates.read'],
+            ['template.show'],
         );
         auth()->setUser($user);
         $template = $this->makeTemplate(
@@ -147,7 +147,7 @@ class TemplatePolicyTest extends TestCase
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['templates.update'],
+            ['template.update'],
         );
         $template = $this->makeTemplate(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -171,7 +171,7 @@ class TemplatePolicyTest extends TestCase
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $creator     = $this->makeJwtUser($creatorId);
         $sinPermisos = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb');
-        $conDelete   = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['templates.delete']);
+        $conDelete   = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['template.delete']);
 
         $t1 = $this->makeTemplate(createdBy: $creatorId);
         $t2 = $this->makeTemplate(createdBy: $creatorId);
@@ -184,7 +184,7 @@ class TemplatePolicyTest extends TestCase
 
     public function test_update_denied_for_user_with_only_templates_delete(): void
     {
-        $user     = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['templates.delete']);
+        $user     = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['template.delete']);
         $template = $this->makeTemplate(createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 
         $this->assertFalse($this->policy->update($user, $template));
@@ -193,7 +193,7 @@ class TemplatePolicyTest extends TestCase
     public function test_start_revision_denied_when_not_published(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId, ['templates.read']);
+        $user      = $this->makeJwtUser($creatorId, ['template.show']);
         $template  = $this->makeTemplate(createdBy: $creatorId, status: 'draft');
 
         $this->assertFalse($this->policy->startRevision($user, $template));
@@ -202,7 +202,7 @@ class TemplatePolicyTest extends TestCase
     public function test_start_revision_allows_creator_when_published_and_can_view(): void
     {
         $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user      = $this->makeJwtUser($creatorId, ['templates.read']);
+        $user      = $this->makeJwtUser($creatorId, ['template.show']);
         $template  = $this->makeTemplate(createdBy: $creatorId, status: 'published');
 
         $this->assertTrue($this->policy->startRevision($user, $template));
@@ -212,7 +212,7 @@ class TemplatePolicyTest extends TestCase
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['templates.read', 'templates.update'],
+            ['template.show', 'template.update'],
         );
         auth()->setUser($user);
         $template = $this->makeTemplate(
@@ -228,7 +228,7 @@ class TemplatePolicyTest extends TestCase
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['templates.read'],
+            ['template.show'],
         );
         auth()->setUser($user);
         $template = $this->makeTemplate(
@@ -243,7 +243,7 @@ class TemplatePolicyTest extends TestCase
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['templates.update'],
+            ['template.update'],
         );
         $template = $this->makeTemplate(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',

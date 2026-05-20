@@ -16,18 +16,18 @@ use Illuminate\Support\Facades\DB;
  *
  * REGLAS DE EDICIÓN:
  * - En borrador (`draft`): solo el creador puede editar.
- * - En publicada (`published`): puede editar el creador o quien tenga `templates.update`,
- *   siempre que además pueda ver la plantilla (scope/contexto académico + `templates.read`).
- * - La visibilidad no personal (compartida) exige además `templates.create`.
+ * - En publicada (`published`): puede editar el creador o quien tenga `template.update`,
+ *   siempre que además pueda ver la plantilla (scope/contexto académico + `template.show`).
+ * - La visibilidad no personal (compartida) exige además `template.create`.
  *
  * REGLAS DE BORRADO:
  * - El creador puede borrar su propia plantilla.
- * - Cualquier usuario con `templates.delete` puede borrar cualquier plantilla.
+ * - Cualquier usuario con `template.delete` puede borrar cualquier plantilla.
  *
  * REGLAS DE REVISIÓN:
- * - Solo usuarios con permiso `templates.review` y asignados en `template_reviewers`
+ * - Solo usuarios con permiso `template.review` y asignados en `template_reviewers`
  *   pueden aprobar/rechazar.
- * - El creador puede autoasignarse como revisor si tiene `templates.review`; en ese
+ * - El creador puede autoasignarse como revisor si tiene `template.review`; en ese
  *   caso su aprobación cuenta igual que la de cualquier otro revisor.
  *
  * REGLAS DE PUBLICACIÓN:
@@ -43,16 +43,16 @@ use Illuminate\Support\Facades\DB;
 class TemplatePolicy
 {
     /**
-     * Listar plantillas: requiere `templates.read`; el global scope acota filas visibles.
+     * Listar plantillas: requiere `template.show`; el global scope acota filas visibles.
      */
     public function viewAny(JwtUser $user): bool
     {
-        return $user->hasPermission('templates.read');
+        return $user->hasPermission('template.show');
     }
 
     /**
      * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see Template})
-     * o vínculo con un documento visible; además hace falta al menos `templates.read` o `documents.create`
+     * o vínculo con un documento visible; además hace falta al menos `template.show` o `document.create`
      * (quien puede crear programaciones desde módulo puede previsualizar plantillas ofrecidas allí).
      *
      * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
@@ -62,8 +62,8 @@ class TemplatePolicy
         $userId = (string) $user->getAuthIdentifier();
 
         // Gestión global / auditoría: mismo espíritu que {@see AcademicHierarchyController} (`admin`)
-        // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `templates.delete`).
-        if ($user->hasPermission('admin') || $user->hasPermission('templates.delete')) {
+        // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `template.delete`).
+        if ($user->hasPermission('admin') || $user->hasPermission('template.delete')) {
             return true;
         }
 
@@ -88,7 +88,7 @@ class TemplatePolicy
             return true;
         }
 
-        if (! $user->hasPermission('templates.read') && ! $user->hasPermission('documents.create')) {
+        if (! $user->hasPermission('template.show') && ! $user->hasPermission('document.create')) {
             return false;
         }
 
@@ -108,7 +108,7 @@ class TemplatePolicy
         }
 
         // Fuera del listado del scope: p. ej. anclada solo vía documento; requiere leer plantillas.
-        return $user->hasPermission('templates.read')
+        return $user->hasPermission('template.show')
             && $this->mayViewTemplateAnchoredOnAccessibleDocument($user, (string) $templateId);
     }
 
@@ -149,7 +149,7 @@ class TemplatePolicy
      * Crear plantilla.
      *
      * Visibilidad personal: cualquier usuario autenticado.
-     * Visibilidad compartida: requiere `templates.create`.
+     * Visibilidad compartida: requiere `template.create`.
      *
      * @param  string|null  $visibilityLevel  Valor de {@see TemplateVisibilityLevel}.
      */
@@ -161,7 +161,7 @@ class TemplatePolicy
             return true;
         }
 
-        return $user->hasPermission('templates.create');
+        return $user->hasPermission('template.create');
     }
 
     /**
@@ -195,7 +195,7 @@ class TemplatePolicy
             return false;
         }
 
-        if (! $isCreator && ! $user->hasPermission('templates.update')) {
+        if (! $isCreator && ! $user->hasPermission('template.update')) {
             return false;
         }
 
@@ -210,7 +210,7 @@ class TemplatePolicy
      * Eliminar o archivar plantilla.
      *
      * El creador puede borrar su propia plantilla.
-     * Cualquier usuario con `templates.delete` puede borrar cualquier plantilla.
+     * Cualquier usuario con `template.delete` puede borrar cualquier plantilla.
      */
     public function delete(JwtUser $user, Template $template): bool
     {
@@ -218,7 +218,7 @@ class TemplatePolicy
             return true;
         }
 
-        return $user->hasPermission('templates.delete');
+        return $user->hasPermission('template.delete');
     }
 
     /**
@@ -255,7 +255,7 @@ class TemplatePolicy
      * Publicada → borrador para preparar una nueva versión (misma plantilla).
      *
      * Misma idea que {@see self::update} en estado `published`: hace falta poder ver la plantilla
-     * y ser creador o tener `templates.update`.
+     * y ser creador o tener `template.update`.
      */
     public function startRevision(JwtUser $user, Template $template): bool
     {
@@ -269,17 +269,17 @@ class TemplatePolicy
 
         $isCreator = $user->getAuthIdentifier() === $template->created_by;
 
-        return $isCreator || $user->hasPermission('templates.update');
+        return $isCreator || $user->hasPermission('template.update');
     }
 
     /**
      * Revisión / aprobación.
      *
-     * Requiere permiso `templates.review` y estar asignado en `template_reviewers`.
+     * Requiere permiso `template.review` y estar asignado en `template_reviewers`.
      */
     public function review(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('templates.review')) {
+        if (! $user->hasPermission('template.review')) {
             return false;
         }
 

@@ -181,7 +181,7 @@ class DocumentShareApiTest extends TestCase
     public function test_only_owner_can_post_shares_even_if_creator(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $h = $this->authHeaders($ctx['creatorId'], ['templates.read']);
+        $h = $this->authHeaders($ctx['creatorId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
@@ -192,7 +192,7 @@ class DocumentShareApiTest extends TestCase
     public function test_owner_can_create_share_and_collaborator_sees_document(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
@@ -202,7 +202,7 @@ class DocumentShareApiTest extends TestCase
             ->assertJsonPath('data.user_id', $ctx['collabId'])
             ->assertJsonPath('data.permission', 'read');
 
-        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read']);
+        $hCollab = $this->authHeaders($ctx['collabId'], ['template.show']);
 
         $this->getJson("/api/v1/documents/{$ctx['documentId']}", $hCollab)->assertOk();
     }
@@ -210,7 +210,7 @@ class DocumentShareApiTest extends TestCase
     public function test_post_share_with_self_returns_422(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['ownerId'],
@@ -221,14 +221,14 @@ class DocumentShareApiTest extends TestCase
     public function test_delete_share_hides_document_for_collaborator(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
             'permission' => 'read',
         ], $hOwner)->assertCreated();
 
-        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read']);
+        $hCollab = $this->authHeaders($ctx['collabId'], ['template.show']);
         $this->getJson("/api/v1/documents/{$ctx['documentId']}", $hCollab)->assertOk();
 
         $this->deleteJson("/api/v1/documents/{$ctx['documentId']}/shares/{$ctx['collabId']}", [], $hOwner)
@@ -240,14 +240,14 @@ class DocumentShareApiTest extends TestCase
     public function test_collaborator_with_edit_can_update_block(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
             'permission' => 'edit',
         ], $hOwner)->assertCreated();
 
-        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read']);
+        $hCollab = $this->authHeaders($ctx['collabId'], ['template.show']);
 
         $this->putJson(
             "/api/v1/documents/{$ctx['documentId']}/blocks/{$ctx['blockId']}",
@@ -259,14 +259,14 @@ class DocumentShareApiTest extends TestCase
     public function test_collaborator_with_edit_cannot_submit_to_review(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
             'permission' => 'edit',
         ], $hOwner)->assertCreated();
 
-        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read']);
+        $hCollab = $this->authHeaders($ctx['collabId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/submit", [], $hCollab)->assertForbidden();
     }
@@ -274,14 +274,14 @@ class DocumentShareApiTest extends TestCase
     public function test_collaborator_with_read_cannot_update_document_title(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
             'permission' => 'read',
         ], $hOwner)->assertCreated();
 
-        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read']);
+        $hCollab = $this->authHeaders($ctx['collabId'], ['template.show']);
 
         $this->patchJson("/api/v1/documents/{$ctx['documentId']}", [
             'title' => 'Nuevo título',
@@ -292,7 +292,7 @@ class DocumentShareApiTest extends TestCase
     public function test_owner_can_change_share_permission_via_post_again(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
@@ -317,14 +317,14 @@ class DocumentShareApiTest extends TestCase
     public function test_documents_index_sets_is_shared_with_me_for_collaborator(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read', 'documents.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show', 'document.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
             'permission' => 'read',
         ], $hOwner)->assertCreated();
 
-        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read', 'documents.read']);
+        $hCollab = $this->authHeaders($ctx['collabId'], ['template.show', 'document.show']);
 
         $list = $this->getJson('/api/v1/documents', $hCollab)->assertOk();
         $items = $list->json('data');
@@ -338,7 +338,7 @@ class DocumentShareApiTest extends TestCase
     public function test_documents_index_sets_is_shared_with_me_false_for_owner(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read', 'documents.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show', 'document.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
@@ -355,14 +355,14 @@ class DocumentShareApiTest extends TestCase
     public function test_document_show_includes_share_metadata_for_collaborator(): void
     {
         $ctx = $this->seedDraftDocumentWithEditableBlock();
-        $hOwner = $this->authHeaders($ctx['ownerId'], ['templates.read', 'documents.read']);
+        $hOwner = $this->authHeaders($ctx['ownerId'], ['template.show', 'document.show']);
 
         $this->postJson("/api/v1/documents/{$ctx['documentId']}/shares", [
             'user_id' => $ctx['collabId'],
             'permission' => 'edit',
         ], $hOwner)->assertCreated();
 
-        $hCollab = $this->authHeaders($ctx['collabId'], ['templates.read', 'documents.read']);
+        $hCollab = $this->authHeaders($ctx['collabId'], ['template.show', 'document.show']);
 
         $this->getJson("/api/v1/documents/{$ctx['documentId']}", $hCollab)
             ->assertOk()

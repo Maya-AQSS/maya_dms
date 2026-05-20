@@ -63,7 +63,7 @@ class DocumentBlockServiceEdgeCasesApiTest extends TestCase
      */
     private function authHeaders(
         string $sub,
-        array $codes = ['documents.read', 'documents.update', 'templates.read'],
+        array $codes = ['document.show', 'document.update', 'template.show'],
     ): array {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);

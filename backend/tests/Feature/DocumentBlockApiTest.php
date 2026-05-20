@@ -56,7 +56,7 @@ class DocumentBlockApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['documents.read', 'templates.read']): array
+    private function authHeaders(string $sub, array $codes = ['document.show', 'template.show']): array
     {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);
@@ -254,7 +254,7 @@ class DocumentBlockApiTest extends TestCase
     public function test_update_returns_404_for_unknown_document(): void
     {
         $userId  = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, ['documents.read', 'documents.update', 'templates.read']);
+        $headers = $this->authHeaders($userId, ['document.show', 'document.update', 'template.show']);
 
         $this->putJson('/api/v1/documents/'.Str::uuid().'/blocks/'.Str::uuid(), ['content' => []], $headers)
             ->assertNotFound();
@@ -263,7 +263,7 @@ class DocumentBlockApiTest extends TestCase
     public function test_update_editable_block_persists_content(): void
     {
         $ctx     = $this->seedDraftDocumentWithBlocks();
-        $headers = $this->authHeaders($ctx['ownerId'], ['documents.read', 'documents.update', 'templates.read']);
+        $headers = $this->authHeaders($ctx['ownerId'], ['document.show', 'document.update', 'template.show']);
 
         $newContent = ['type' => 'doc', 'content' => [['type' => 'paragraph']]];
 
@@ -283,7 +283,7 @@ class DocumentBlockApiTest extends TestCase
         // The Document model has a user_access global scope — non-owners see 404 (not 403).
         $ctx      = $this->seedDraftDocumentWithBlocks();
         $stranger = (string) Str::uuid();
-        $headers  = $this->authHeaders($stranger, ['documents.read', 'documents.update', 'templates.read']);
+        $headers  = $this->authHeaders($stranger, ['document.show', 'document.update', 'template.show']);
 
         $this->putJson(
             "/api/v1/documents/{$ctx['documentId']}/blocks/{$ctx['editableBlockId']}",
@@ -306,7 +306,7 @@ class DocumentBlockApiTest extends TestCase
     public function test_destroy_optional_block_returns_204(): void
     {
         $ctx     = $this->seedDraftDocumentWithBlocks();
-        $headers = $this->authHeaders($ctx['ownerId'], ['documents.read', 'documents.update', 'templates.read']);
+        $headers = $this->authHeaders($ctx['ownerId'], ['document.show', 'document.update', 'template.show']);
 
         $this->deleteJson(
             "/api/v1/documents/{$ctx['documentId']}/blocks/{$ctx['optionalBlockId']}",
@@ -322,7 +322,7 @@ class DocumentBlockApiTest extends TestCase
         // The Document model has a user_access global scope — non-owners see 404 (not 403).
         $ctx      = $this->seedDraftDocumentWithBlocks();
         $stranger = (string) Str::uuid();
-        $headers  = $this->authHeaders($stranger, ['documents.read', 'documents.update', 'templates.read']);
+        $headers  = $this->authHeaders($stranger, ['document.show', 'document.update', 'template.show']);
 
         $this->deleteJson(
             "/api/v1/documents/{$ctx['documentId']}/blocks/{$ctx['optionalBlockId']}",
@@ -334,7 +334,7 @@ class DocumentBlockApiTest extends TestCase
     public function test_destroy_returns_404_for_unknown_block(): void
     {
         $ctx     = $this->seedDraftDocumentWithBlocks();
-        $headers = $this->authHeaders($ctx['ownerId'], ['documents.read', 'documents.update', 'templates.read']);
+        $headers = $this->authHeaders($ctx['ownerId'], ['document.show', 'document.update', 'template.show']);
 
         $this->deleteJson(
             "/api/v1/documents/{$ctx['documentId']}/blocks/".Str::uuid(),

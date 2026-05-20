@@ -76,7 +76,7 @@ class DashboardApiTest extends TestCase
     {
         auth()->forgetUser();
  
-        $this->assignUserPermissions($sub, ['templates.read']);
+        $this->assignUserPermissions($sub, ['template.show']);
  
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
  

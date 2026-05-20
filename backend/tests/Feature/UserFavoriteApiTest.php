@@ -42,7 +42,7 @@ class UserFavoriteApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['templates.read', 'documents.read']): array
+    private function authHeaders(string $sub, array $codes = ['template.show', 'document.show']): array
     {
         auth()->forgetUser();
 
@@ -82,7 +82,7 @@ class UserFavoriteApiTest extends TestCase
     public function test_template_favorite_add_list_remove(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, ['templates.read']);
+        $headers = $this->authHeaders($userId, ['template.show']);
 
         $create = $this->postJson('/api/v1/templates', [
             'name' => 'Fav test',
@@ -118,7 +118,7 @@ class UserFavoriteApiTest extends TestCase
     public function test_template_favorite_returns_404_for_unknown_id(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, ['templates.read']);
+        $headers = $this->authHeaders($userId, ['template.show']);
         $fakeId = (string) Str::uuid();
 
         $this->postJson("/api/v1/favorites/templates/{$fakeId}", [], $headers)
@@ -128,7 +128,7 @@ class UserFavoriteApiTest extends TestCase
     public function test_document_favorite_add_list_remove(): void
     {
         $userId = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, ['templates.read', 'documents.read']);
+        $headers = $this->authHeaders($userId, ['template.show', 'document.show']);
 
         $templateId = (string) Str::uuid();
         $documentId = (string) Str::uuid();

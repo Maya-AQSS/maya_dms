@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  */
 class UserDirectoryRepository implements UserDirectoryRepositoryInterface
 {
-    private const PERMISSION_TEMPLATE_REVIEW = 'templates.review';
+    private const PERMISSION_TEMPLATE_REVIEW = 'template.review';
 
-    private const PERMISSION_DOCUMENT_REVIEW = 'documents.review';
+    private const PERMISSION_DOCUMENT_REVIEW = 'document.review';
 
     /**
      * Busca usuarios por nombre o email.
