@@ -84,7 +84,36 @@ function computeLineDiff(original: string[], modified: string[]): DiffLine[] {
   return result;
 }
 
-// ── Block label ───────────────────────────────────────────────────────────────
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function DiffLines({ lines }: { lines: DiffLine[] }) {
+  if (lines.length === 0) {
+    return (
+      <p className="px-2 py-1 text-text-muted italic text-[11px]">
+        Sin cambios en este envío.
+      </p>
+    );
+  }
+  return (
+    <>
+      {lines.map((line, li) => (
+        <div
+          key={li}
+          className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
+            line.type === 'removed'
+              ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
+              : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
+          }`}
+        >
+          <span className="mr-2 select-none font-bold opacity-70">
+            {line.type === 'removed' ? '−' : '+'}
+          </span>
+          {line.text}
+        </div>
+      ))}
+    </>
+  );
+}
 
 function blockStateLabel(block: DocumentDisplayBlock): string {
   if (block.is_deleted) return 'Bloque opcional · eliminado';
@@ -99,13 +128,11 @@ function blockStateLabel(block: DocumentDisplayBlock): string {
 type Props = { blocks: DocumentDisplayBlock[]; onClose: () => void };
 
 export function DocumentDiffPanel({ blocks, onClose }: Props) {
-  const changedBlocks = useMemo(() => computeChangedBlocks(blocks), [blocks]);
+  const [ascending, setAscending] = useState(true);
   const [focusedIdx, setFocusedIdx] = useState(0);
   const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  useEffect(() => {
-    blockRefs.current[focusedIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, [focusedIdx]);
+  const changedBlocks = useMemo(() => computeChangedBlocks(blocks), [blocks]);
 
   const diffLines = useMemo(
     () =>
@@ -123,48 +150,53 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
     [changedBlocks],
   );
 
-  const filteredPairs = useMemo(
-    (): { block: DocumentDisplayBlock; lines: DiffLine[] }[] =>
+  const pairsChron = useMemo(
+    (): { block: DocumentDisplayBlock; lines: DiffLine[]; blockNumber: number }[] =>
       changedBlocks
-        .map((block, idx) => ({ block, lines: diffLines[idx] ?? [] }))
+        .map((block, idx) => ({
+          block,
+          lines: diffLines[idx] ?? [],
+          blockNumber: blocks.findIndex(b => b.template_block_id === block.template_block_id) + 1,
+        }))
         .filter(({ lines }) => lines.length > 0),
-    [changedBlocks, diffLines],
+    [changedBlocks, diffLines, blocks],
   );
 
-  const total = filteredPairs.length;
+  const pairs = useMemo(
+    () => (ascending ? pairsChron : [...pairsChron].reverse()),
+    [pairsChron, ascending],
+  );
+
+  useEffect(() => {
+    setFocusedIdx(0);
+  }, [ascending]);
+
+  useEffect(() => {
+    blockRefs.current[focusedIdx]?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [focusedIdx]);
+
+  const total = pairs.length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
         <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
-          ⎇ Cambios
+          ⎇ Cambios del documento
         </span>
-        {total > 1 && (
-          <>
-            <button
-              type="button"
-              disabled={focusedIdx === 0}
-              onClick={() => setFocusedIdx(i => i - 1)}
-              className="text-xs w-7 h-7 flex items-center justify-center rounded hover:bg-ui-body dark:hover:bg-ui-dark-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              aria-label="Bloque anterior"
-            >
-              ↑
-            </button>
-            <span className="text-xs text-text-muted dark:text-text-dark-muted tabular-nums">
-              {focusedIdx + 1} / {total}
-            </span>
-            <button
-              type="button"
-              disabled={focusedIdx === total - 1}
-              onClick={() => setFocusedIdx(i => i + 1)}
-              className="text-xs w-7 h-7 flex items-center justify-center rounded hover:bg-ui-body dark:hover:bg-ui-dark-bg disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              aria-label="Bloque siguiente"
-            >
-              ↓
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          onClick={() => setAscending((v) => !v)}
+          className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
+          title={ascending ? 'Mostrar últimos primero' : 'Mostrar primeros primero'}
+        >
+          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            {ascending
+              ? <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />
+              : <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
+            }
+          </svg>
+        </button>
         <button
           type="button"
           onClick={onClose}
@@ -176,63 +208,43 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto divide-y divide-ui-border dark:divide-ui-dark-border">
         {total === 0 ? (
-          <p className="text-xs text-text-muted dark:text-text-dark-muted text-center p-6 italic">
+          <p className="py-8 text-center text-xs text-text-muted dark:text-text-dark-muted italic">
             No hay cambios respecto a la plantilla original.
           </p>
         ) : (
-          <div className="divide-y divide-ui-border dark:divide-ui-dark-border">
-            {filteredPairs.map(({ block, lines }, idx) => {
-              const isFocused = idx === focusedIdx;
-              return (
-                <div
-                  key={block.template_block_id}
-                  ref={el => {
-                    blockRefs.current[idx] = el;
-                  }}
-                  onClick={() => setFocusedIdx(idx)}
-                  className={`px-4 py-3 cursor-pointer transition-colors ${
-                    isFocused
-                      ? 'bg-odoo-purple/5 dark:bg-odoo-purple/10'
-                      : 'hover:bg-ui-body/50 dark:hover:bg-ui-dark-bg/50'
-                  }`}
-                >
-                  {/* Block header */}
-                  <div className="mb-2">
-                    <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">
-                      {block.title ?? 'Sin título'}
-                    </p>
-                    <p className="text-[10px] text-text-muted dark:text-text-dark-muted uppercase tracking-wider mt-0.5">
-                      {blockStateLabel(block)}
-                    </p>
-                  </div>
-                  {/* Diff lines */}
-                  <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-[11px] font-mono">
-                    {lines.map((line, li) => (
-                      <div
-                        key={li}
-                        className={`px-2 py-0.5 whitespace-pre-wrap break-all leading-relaxed ${
-                          line.type === 'removed'
-                            ? 'bg-danger/10 text-danger-dark dark:bg-danger/15 dark:text-danger'
-                            : 'bg-success/10 text-success-dark dark:bg-success/15 dark:text-success'
-                        }`}
-                      >
-                        <span className="mr-2 select-none font-bold opacity-70">
-                          {line.type === 'removed' ? '−' : '+'}
-                        </span>
-                        {line.text}
-                      </div>
-                    ))}
-                  </div>
+          pairs.map(({ block, lines, blockNumber }, idx) => {
+            const isFocused = idx === focusedIdx;
+            return (
+              <div
+                key={block.template_block_id}
+                ref={el => { blockRefs.current[idx] = el; }}
+                onClick={() => setFocusedIdx(idx)}
+                className={`px-4 py-3 cursor-pointer transition-colors ${
+                  isFocused
+                    ? 'bg-odoo-purple/5 dark:bg-odoo-purple/10'
+                    : 'hover:bg-ui-body/50 dark:hover:bg-ui-dark-bg/50'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
+                    Bloque {blockNumber}: {block.title ?? 'Sin título'}
+                  </p>
+                  <span className="text-[10px] text-text-muted dark:text-text-dark-muted uppercase tracking-wider">
+                    {blockStateLabel(block)}
+                  </span>
                 </div>
-              );
-            })}
-          </div>
+                <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-[11px] font-mono">
+                  <DiffLines lines={lines} />
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
-      {/* Footer */}
+      {/* Footer legend */}
       {total > 0 && (
         <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border px-4 py-2 flex items-center gap-3 text-[10px] text-text-muted dark:text-text-dark-muted bg-ui-body/30 dark:bg-ui-dark-bg/30">
           <span className="flex items-center gap-1.5">

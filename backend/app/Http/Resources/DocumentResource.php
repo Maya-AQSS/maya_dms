@@ -48,6 +48,7 @@ class DocumentResource extends JsonResource
             'latest_published_version_id' => $dto->latestPublishedVersionId,
             'latest_published_version_number' => $dto->latestPublishedVersionNumber,
             'latest_published_title' => $dto->latestPublishedTitle,
+            'review_mode' => $dto->reviewMode,
         ];
     }
 }

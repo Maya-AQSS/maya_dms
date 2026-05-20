@@ -43,6 +43,7 @@ final readonly class DocumentDto
         public ?string $latestPublishedVersionId,
         public ?int $latestPublishedVersionNumber,
         public ?string $latestPublishedTitle,
+        public ?string $reviewMode,
     ) {}
 
     public static function fromModel(Document $m): self
@@ -87,6 +88,7 @@ final readonly class DocumentDto
                 ? (int) $m->getAttribute('latest_published_version_number')
                 : null,
             latestPublishedTitle: $m->getAttribute('latest_published_title'),
+            reviewMode: $m->review_mode !== null ? (string) $m->review_mode : null,
         );
     }
 

@@ -600,9 +600,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
             {STATUS_LABEL[detail.status] ?? detail.status}
           </span>
+          
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-            v{detail.current_version}
+            v{detail.status === "draft" ? detail.current_version + 1 : detail.current_version}
           </span>
+          
         </>
       )}
       {!isValidateMode && !isHistoricalSnapshot && detail.status === 'in_review' && allReviews.length > 0 && (
@@ -827,6 +829,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-warning/10 border border-warning/20">
                   <span className="text-warning-dark dark:text-warning-light text-xs font-black uppercase tracking-widest">
                     ✗ Rechazaste esta programación
+                  </span>
+                </div>
+              ) : myDocumentReview?.status === 'pending' ? (
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-ui-body dark:bg-ui-dark-border border border-ui-border dark:border-ui-dark-border">
+                  <span className="text-text-muted dark:text-text-dark-muted text-xs font-black uppercase tracking-widest">
+                    Esperando etapas anteriores
                   </span>
                 </div>
               ) : (
@@ -1059,8 +1067,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           description={
             validatorHasCommented ? (
               <p className="text-sm text-text-secondary dark:text-text-dark-secondary">
-                El documento volverá a borrador para que el titular pueda corregirlo. El resto de validadores dejarán
-                de tener esta revisión asignada. Tus comentarios en los bloques quedarán registrados como motivo.
+                El documento volverá a borrador para que el titular pueda corregirlo.
+                Tus comentarios en los bloques quedarán registrados como motivo del rechazo.
               </p>
             ) : (
               <p className="text-sm text-text-secondary dark:text-text-dark-secondary">

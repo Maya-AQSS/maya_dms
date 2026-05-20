@@ -126,14 +126,13 @@ class DocumentController extends Controller
         $isCreator = (string) $document->created_by === $viewerId || (string) $document->owner_id === $viewerId;
 
         if (! $servePublishedSnapshot && ! $isCreator && in_array($document->status, ['draft', 'in_review'], true)) {
-            // User has scope access but is not the creator. Active reviewers see real content.
-            $isActiveReviewer = $document->status === 'in_review'
+            // Any assigned reviewer (pending, approved, or rejected) can see real content while in_review.
+            $isAssignedReviewer = $document->status === 'in_review'
                 && $document->reviews()
                     ->where('reviewer_id', $viewerId)
-                    ->where('status', 'pending')
                     ->exists();
 
-            if (! $isActiveReviewer) {
+            if (! $isAssignedReviewer) {
                 $servePublishedSnapshot = true;
             }
         }
