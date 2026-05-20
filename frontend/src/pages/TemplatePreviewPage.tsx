@@ -91,27 +91,14 @@ export function TemplatePreviewPage() {
     templateVersionId?: string | null;
   } | null;
   const selectionMode = locationState?.selectionMode === true;
-  const backTo = locationState?.backTo ?? '/documentos/nuevo';
+  //const backTo = locationState?.backTo ?? '/documentos/nuevo';
   const defaultBackTo = locationState?.backTo ?? '/dashboard';
   const handleBack = () => {
-    if (selectionMode) {
-      navigate(backTo, {
-        state: {
-          moduleId: locationState?.moduleId,
-          processId: locationState?.processId,
-        },
-      });
-      return;
-    }
-    if (locationState?.backTo) {
-      navigate(locationState.backTo);
-      return;
-    }
-    if (window.history.length > 1) {
+    if (window.history.length <= 1) {
+      navigate("/dashboard");
+    } else {
       navigate(-1);
-      return;
     }
-    navigate(defaultBackTo);
   };
 
   const { profile, hasPermission } = useUserProfile();

@@ -255,35 +255,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     : 'Volver';
 
   const handleBack = () => {
-    if (isValidateMode) {
-      if (window.history.length > 1) {
-        navigate(-1);
-        return;
-      }
-      navigate(backTo);
-      return;
-    }
-    if (cameFromSummary && documentId) {
-      if (cameFromValidate) {
-        navigate(`/documents/${documentId}/validate`);
-      } else {
-        navigate(`/documents/${documentId}/editor`, { state: { step: 'summary' } });
-      }
-      return;
-    }
-    if (previewState?.forceBackTo) {
-      navigate(backTo);
-      return;
-    }
-    if (window.history.length > 1) {
+    if (window.history.length <= 1) {
+      navigate("/dashboard");
+    } else {
       navigate(-1);
-      return;
     }
-    if (previewState?.backTo) {
-      navigate(previewState.backTo);
-      return;
-    }
-    navigate('/dashboard');
   };
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
