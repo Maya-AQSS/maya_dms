@@ -21,9 +21,11 @@ use Illuminate\Support\Facades\DB;
  * - `document.show`: ver detalle; creador y titular no requieren este slug; revisores
  *   asignados en `in_review` tampoco.
  *
- * Mutaciones de persistencia: el creador o el titular pueden editar sin el permiso
- * global; un colaborador con share `edit` puede mutar contenido; el resto
- * requiere `document.update`. `delete` sigue exigiendo `document.delete`.
+ * MUTACIONES (catálogo):
+ * - `document.create`: crear programaciones (y anclar a plantilla visible).
+ * - `document.update`: editar ajenos con slug; creador, titular o share `edit` sin slug.
+ * - `document.delete`: borrar ajenos con slug; creador/titular el suyo sin slug.
+ *   `update`/`delete` con slug exigen además {@see self::view()} (contexto académico).
  *
  * Compartición ({@see self::share}): solo el titular actual gestiona filas en
  * `document_shares`.
@@ -85,21 +87,33 @@ class DocumentPolicy
     }
 
     /**
+     * Crear documentos / programaciones.
+     */
+    public function create(JwtUser $user): bool
+    {
+        return $user->hasPermission('document.create');
+    }
+
+    /**
      * Editar metadatos, bloques u otras mutaciones de contenido del documento.
      */
     public function update(JwtUser $user, Document $document): bool
     {
-        $id = $user->getAuthIdentifier();
+        $userId = (string) $user->getAuthIdentifier();
 
-        if ($id === $document->created_by || $id === $document->owner_id) {
+        if ($userId === (string) $document->created_by || $userId === (string) $document->owner_id) {
             return true;
         }
 
-        if ($this->hasEditShare($document, (string) $id)) {
+        if ($this->hasEditShare($document, $userId)) {
             return true;
         }
 
-        return $user->hasPermission('document.update');
+        if (! $user->hasPermission('document.update')) {
+            return false;
+        }
+
+        return $this->view($user, $document);
     }
 
     /**
@@ -131,18 +145,22 @@ class DocumentPolicy
     /**
      * Eliminar u operaciones de baja del documento.
      *
-     * El titular o creador puede borrar su propio documento (paridad con TemplatePolicy).
-     * Cualquier usuario con `document.delete` puede borrar cualquier documento.
+     * El titular o creador puede borrar el suyo sin `document.delete`.
+     * Con slug global hace falta además poder ver el documento (scope académico).
      */
     public function delete(JwtUser $user, Document $document): bool
     {
-        $id = $user->getAuthIdentifier();
+        $userId = (string) $user->getAuthIdentifier();
 
-        if ($id === $document->owner_id || $id === $document->created_by) {
+        if ($userId === (string) $document->owner_id || $userId === (string) $document->created_by) {
             return true;
         }
 
-        return $user->hasPermission('document.delete');
+        if (! $user->hasPermission('document.delete')) {
+            return false;
+        }
+
+        return $this->view($user, $document);
     }
 
     /**

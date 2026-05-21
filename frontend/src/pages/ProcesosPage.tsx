@@ -27,6 +27,7 @@ export function ProcesosPage() {
   const { hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.processIndex);
   const canShow = hasPermission(DMS_PERMISSIONS.processShow);
+  const canCreateDocument = hasPermission(DMS_PERMISSIONS.documentCreate);
   const locationState = location.state as { tab?: Tab } | null;
   const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
 
@@ -67,7 +68,7 @@ export function ProcesosPage() {
             >
               Nueva Plantilla
             </Button>
-          ) : (
+          ) : canCreateDocument ? (
             <Button
               type="button"
               variant="primary"
@@ -76,7 +77,7 @@ export function ProcesosPage() {
             >
               Nuevo Documento
             </Button>
-          )
+          ) : null
         }
         meta={
           <div className="flex gap-1 border-b border-ui-border dark:border-ui-dark-border">

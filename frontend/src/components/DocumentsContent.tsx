@@ -144,15 +144,15 @@ export function DocumentsContent() {
   const showSelectModuleHint =
     !profileLoading &&
     profile !== null &&
-    hasPermission('documents.create') &&
+    hasPermission(DMS_PERMISSIONS.documentCreate) &&
     !selectedModuleId;
 
   const newProgrammingDisabledReason = useMemo(() => {
     if (profileLoading || profile === null) {
       return 'Cargando perfil de usuario…';
     }
-    if (!hasPermission('documents.create')) {
-      return 'No tienes permiso para crear programaciones (documents.create).';
+    if (!hasPermission(DMS_PERMISSIONS.documentCreate)) {
+      return 'No tienes permiso para crear programaciones (document.create).';
     }
     if (!selectedModuleId) {
       return 'Selecciona un módulo para crear una nueva programación.';

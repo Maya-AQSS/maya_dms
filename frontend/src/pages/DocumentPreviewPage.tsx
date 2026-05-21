@@ -27,6 +27,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
+import { DMS_PERMISSIONS } from '../permissions';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
@@ -276,14 +277,22 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   );
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
   const uid = profile?.id;
-  /** Paridad con `DocumentPolicy::update` para poder mutar un publicado. */
-  const canMutatePublished =
+  /** Paridad con `DocumentPolicy::update`. */
+  const canUpdate =
     !!detail &&
     !!uid &&
     (detail.owner_id === uid ||
       detail.created_by === uid ||
       detail.share_permission === 'edit' ||
-      hasPermission('documents.update'));
+      hasPermission(DMS_PERMISSIONS.documentUpdate));
+  const canMutatePublished = canUpdate;
+  /** Paridad con `DocumentPolicy::delete`: titular/creador o `document.delete` (API valida contexto). */
+  const canDelete =
+    !!detail &&
+    isDraft &&
+    !detail.latest_published_version_id &&
+    (isOwner || hasPermission(DMS_PERMISSIONS.documentDelete));
+  const canEditDraft = isDraft && canUpdate;
   const isHistoricalSnapshot = versionSnapshot !== null;
   const showVersionHistory =
     publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
@@ -619,7 +628,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           Historial
         </Button>
       ) : null}
-      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && !detail.latest_published_version_id && (
+      {!isValidateMode && !isHistoricalSnapshot && canDelete && (
         <Button
           type="button"
           variant="outline"
@@ -630,7 +639,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           Eliminar
         </Button>
       )}
-      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && documentId && (
+      {!isValidateMode && !isHistoricalSnapshot && canEditDraft && documentId && (
         <Link to={`/documents/${documentId}/editor`}>
           <Button type="button" size="sm" variant="outline">
             Editar

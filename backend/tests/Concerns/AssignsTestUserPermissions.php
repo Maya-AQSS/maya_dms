@@ -27,6 +27,8 @@ trait AssignsTestUserPermissions
                 'template.update',
                 'document.index',
                 'document.show',
+                'document.create',
+                'document.update',
             ] as $appSlug) {
                 if (! in_array($appSlug, $slugs, true)) {
                     $slugs = [$appSlug, ...$slugs];

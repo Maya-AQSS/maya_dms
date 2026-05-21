@@ -9,6 +9,7 @@ use App\Http\Concerns\AttachesDocumentCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\CloneDocumentRequest;
+use App\Http\Requests\Documents\DestroyDocumentRequest;
 use App\Http\Requests\Documents\IndexDocumentRequest;
 use App\Http\Requests\Documents\ShowDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
@@ -177,13 +178,12 @@ class DocumentController extends Controller
     /**
      * Actualizar documento.
      */
-    public function update(UpdateDocumentRequest $request, string $id): JsonResponse
+    public function update(UpdateDocumentRequest $request, string $document): JsonResponse
     {
-        $document = $this->documentService->findModelOrFail($id);
-        $this->authorize('update', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $model = $request->resolveDocument();
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $updated = $this->documentService->update($id, $request->toDto()->toArray());
+        $updated = $this->documentService->update($document, $request->toDto()->toArray());
         $this->attachCanCloneMeta($updated, $request);
         $this->apiTeamEmbedService->embedOnDocument(
             $updated,
@@ -196,14 +196,13 @@ class DocumentController extends Controller
     /**
      * Eliminar documento.
      */
-    public function destroy(Request $request, string $id): JsonResponse
+    public function destroy(DestroyDocumentRequest $request, string $document): JsonResponse
     {
-        $document = $this->documentService->findModelOrFail($id);
-        $this->authorize('delete', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $model = $request->resolveDocument();
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
-        $this->documentService->delete($id, $actorId);
+        $this->documentService->delete($document, $actorId);
 
         return response()->json([], 204);
     }

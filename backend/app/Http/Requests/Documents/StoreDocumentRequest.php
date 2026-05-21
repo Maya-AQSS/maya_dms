@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\CreateDocumentDto;
+use App\Models\Document;
 use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -20,7 +22,7 @@ class StoreDocumentRequest extends FormRequest
     public function authorize(): bool
     {
         $user = $this->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('document.create')) {
+        if (! $user instanceof JwtUser || ! $user->can('create', Document::class)) {
             return false;
         }
 
@@ -42,6 +44,11 @@ class StoreDocumentRequest extends FormRequest
         }
 
         return $template !== null && $user->can('view', $template);
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso document.create para crear documentos.');
     }
 
     /**

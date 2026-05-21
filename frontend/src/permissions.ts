@@ -21,4 +21,7 @@ export const DMS_PERMISSIONS = {
   templateHistoryView: 'template.history.view',
   documentIndex: 'document.index',
   documentShow: 'document.show',
+  documentCreate: 'document.create',
+  documentUpdate: 'document.update',
+  documentDelete: 'document.delete',
 } as const;

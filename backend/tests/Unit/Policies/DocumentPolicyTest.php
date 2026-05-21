@@ -27,6 +27,12 @@ class DocumentPolicyTest extends TestCase
     /**
      * Sin el permiso documents.review, nadie puede revisar (ni terceros, ni creador, ni titular).
      */
+    public function test_create_requires_document_create(): void
+    {
+        $this->assertFalse($this->policy->create($this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')));
+        $this->assertTrue($this->policy->create($this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['document.create'])));
+    }
+
     public function test_view_any_requires_document_index(): void
     {
         $this->assertFalse($this->policy->viewAny($this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')));
@@ -143,15 +149,15 @@ class DocumentPolicyTest extends TestCase
         $this->assertTrue($this->policy->update($user, $doc));
     }
 
-    public function test_update_allows_non_author_with_documents_update(): void
+    public function test_update_denied_for_non_author_with_document_update_outside_context(): void
     {
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.update']);
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.update', 'document.show']);
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
         );
 
-        $this->assertTrue($this->policy->update($user, $doc));
+        $this->assertFalse($this->policy->update($user, $doc));
     }
 
     public function test_update_denied_for_stranger_without_documents_update(): void
@@ -234,15 +240,15 @@ class DocumentPolicyTest extends TestCase
         $this->assertTrue($this->policy->delete($user, $doc));
     }
 
-    public function test_delete_allows_stranger_with_documents_delete_permission(): void
+    public function test_delete_denied_for_stranger_with_document_delete_outside_context(): void
     {
-        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['document.delete']);
+        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['document.delete', 'document.show']);
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
         );
 
-        $this->assertTrue($this->policy->delete($user, $doc));
+        $this->assertFalse($this->policy->delete($user, $doc));
     }
 
     public function test_delete_denies_stranger_without_documents_delete_permission(): void
