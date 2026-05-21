@@ -243,6 +243,161 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     editor.focus();
   };
 
+  const SLASH_ACTIONS = [
+    {
+      name: "Tabla",
+      icon: "⊞",
+      color: "#F59E0B",
+      desc: "Cuadrícula de datos",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks(
+          [
+            {
+              type: "table",
+              content: {
+                type: "tableContent",
+                rows: [
+                  { cells: [[], []] },
+                  { cells: [[], []] },
+                ],
+              },
+            },
+          ],
+          targetId,
+          "after"
+        );
+      },
+    },
+
+    {
+      name: "Imagen",
+      icon: "🖼",
+      color: "#EC4899",
+      desc: "Insertar imagen",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks([{ type: "image" }], targetId, "after");
+      },
+    },
+
+    {
+      name: "Vídeo",
+      icon: "▶",
+      color: "#EC4899",
+      desc: "Insertar vídeo",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks([{ type: "video" as any }], targetId, "after");
+      },
+    },
+
+    {
+      name: "Código",
+      icon: "</>",
+      color: "#1E293B",
+      desc: "Bloque de código",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.updateBlock(targetId, { type: "codeBlock" });
+      },
+    },
+
+    {
+      name: "Cita",
+      icon: "❝",
+      color: "#8B5CF6",
+      desc: "Cita en bloque",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks([{ type: "quote" as any }], targetId, "after");
+      },
+    },
+
+    {
+      name: "Separador",
+      icon: "—",
+      color: "#9CA3AF",
+      desc: "Línea divisoria",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks([{ type: "horizontalRule" as any }], targetId, "after");
+      },
+    },
+
+    {
+      name: "Info",
+      icon: "ℹ",
+      color: "#3B82F6",
+      desc: "Alerta informativa",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks(
+          [{ type: "paragraph", content: "ℹ Info: " }],
+          targetId,
+          "after"
+        );
+      },
+    },
+
+    {
+      name: "Aviso",
+      icon: "⚠",
+      color: "#F59E0B",
+      desc: "Alerta de advertencia",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks(
+          [{ type: "paragraph", content: "⚠ Aviso: " }],
+          targetId,
+          "after"
+        );
+      },
+    },
+
+    {
+      name: "Error",
+      icon: "✕",
+      color: "#EF4444",
+      desc: "Mensaje de error",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks(
+          [{ type: "paragraph", content: "✕ Error: " }],
+          targetId,
+          "after"
+        );
+      },
+    },
+  ];
+
   const containerCls = isFullscreen
     ? 'maya-bn-panel maya-bn-panel--fullscreen flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden'
     : 'maya-bn-panel flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden';
@@ -297,9 +452,20 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                   </svg>
                 </button>
               </div>
-              <div className="flex-1 min-w-0">
+              <div className="flex flex-wrap gap-1 max-w">
                 <FormattingToolbar />
-              </div>
+                {SLASH_ACTIONS.map((action) => (
+                  <button
+                    key={action.name}
+                    type="button"
+                    onClick={action.run}
+                    title={action.desc}
+                    className="bn-fullscreen-btn shrink-0 p-1.5 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+              >
+                    <span>{action.icon}</span>
+                  </button>
+                ))}
+                
               <button
                 type="button"
                 aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
@@ -309,6 +475,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
               >
                 <FullscreenIcon expanded={isFullscreen} />
               </button>
+              </div>
             </div>
           )}
         </BlockNoteView>
