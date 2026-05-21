@@ -8,9 +8,11 @@ use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\JwtUser;
+use App\Models\Process;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Policies\CommentPolicy;
+use App\Policies\ProcessPolicy;
 use App\Policies\DocumentBlockPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\TemplateBlockPolicy;
@@ -177,6 +179,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Registro de políticas
         Gate::policy(Comment::class, CommentPolicy::class);
+        Gate::policy(Process::class, ProcessPolicy::class);
         Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(DocumentBlock::class, DocumentBlockPolicy::class);
         Gate::policy(Template::class, TemplatePolicy::class);

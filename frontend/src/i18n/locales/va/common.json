@@ -50,6 +50,10 @@
     "new": "Nova plantilla",
     "useTemplate": "Usar plantilla"
   },
+  "processes": {
+    "noIndexPermission": "No tens permís per veure el llistat de processos (process.index).",
+    "noShowPermission": "No tens permís per obrir el detall del procés (process.show)."
+  },
   "auth": {
     "logout": "Tancar sessió",
     "profile": "Perfil"

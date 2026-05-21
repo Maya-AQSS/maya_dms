@@ -47,7 +47,12 @@ Route::prefix('v1')->group(function () {
     Route::middleware(['jwt', 'permission:dms.login'])->group(function () {
 
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
+
         Route::get('/processes', [ProcessController::class, 'index']);
+        Route::post('/processes', [ProcessController::class, 'store']);
+        Route::get('/processes/{process}', [ProcessController::class, 'show'])->whereUuid('process');
+        Route::match(['put', 'patch'], '/processes/{process}', [ProcessController::class, 'update'])->whereUuid('process');
+        Route::delete('/processes/{process}', [ProcessController::class, 'destroy'])->whereUuid('process');
 
         // Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).

@@ -34,7 +34,7 @@ it('allows protected API routes when user has dms.login', function () {
         'permission_slug' => 'dms.login',
     ]);
 
-    $response = $this->getJson('/api/v1/processes');
+    $response = $this->getJson('/api/v1/hierarchy');
 
     $response->assertOk();
 });

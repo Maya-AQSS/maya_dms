@@ -4,4 +4,9 @@ export const DMS_PERMISSIONS = {
   index: 'dms.index',
   show: 'dms.show',
   dashboardUpdate: 'dms.dashboard.update',
+  processIndex: 'process.index',
+  processShow: 'process.show',
+  processCreate: 'process.create',
+  processUpdate: 'process.update',
+  processDelete: 'process.delete',
 } as const;

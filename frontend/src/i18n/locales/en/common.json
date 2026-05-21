@@ -50,6 +50,10 @@
     "new": "New template",
     "useTemplate": "Use template"
   },
+  "processes": {
+    "noIndexPermission": "You do not have permission to view the process list (process.index).",
+    "noShowPermission": "You do not have permission to open process details (process.show)."
+  },
   "auth": {
     "logout": "Log out",
     "profile": "Profile"

@@ -11,12 +11,12 @@ trait AssignsTestUserPermissions
      * `user_resolved_permissions` (en testing).
      *
      * @param  list<string>  $slugs
-     * @param  bool  $withAppLogin  Si true, añade `dms.login` y `dms.index` salvo que ya estén en $slugs.
+     * @param  bool  $withAppLogin  Si true, añade permisos base de app y procesos salvo que ya estén en $slugs.
      */
     protected function assignUserPermissions(string $userId, array $slugs, bool $withAppLogin = true): void
     {
         if ($withAppLogin) {
-            foreach (['dms.login', 'dms.index'] as $appSlug) {
+            foreach (['dms.login', 'dms.index', 'process.index', 'process.show'] as $appSlug) {
                 if (! in_array($appSlug, $slugs, true)) {
                     $slugs = [$appSlug, ...$slugs];
                 }
