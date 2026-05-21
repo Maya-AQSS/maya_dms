@@ -27,6 +27,8 @@ use Illuminate\Support\Facades\DB;
  * - `template.create`: crear visibilidad compartida; personal sin slug (cualquier usuario autenticado).
  * - `template.update`: editar publicada si no es creador; borrador/rechazado solo creador.
  * - `template.delete`: borrar ajenas; el creador siempre puede borrar la suya.
+ * - `template.review`: aprobar/rechazar; además debe figurar en `template_reviewers`.
+ * - `template.assign-review`: asignar revisores en plantillas no personales; en personal solo el creador en borrador/rechazado.
  * - La visibilidad no personal (compartida) exige además `template.create`.
  *
  * REGLAS DE BORRADO:
@@ -282,6 +284,31 @@ class TemplatePolicy
     }
 
     /**
+     * Asignar revisores de plantilla (POST …/reviewers).
+     *
+     * Personal: solo el creador en borrador o rechazado.
+     * Resto de visibilidades: `template.assign-review`.
+     */
+    public function assignReview(JwtUser $user, Template $template): bool
+    {
+        if (! in_array($template->status, ['draft', 'rejected'], true)) {
+            return false;
+        }
+
+        $level = $this->normalizeVisibility(
+            $template->visibility_level instanceof TemplateVisibilityLevel
+                ? $template->visibility_level->value
+                : (string) $template->visibility_level,
+        );
+
+        if ($level === TemplateVisibilityLevel::Personal) {
+            return (string) $user->getAuthIdentifier() === (string) $template->created_by;
+        }
+
+        return $user->hasPermission('template.assign-review');
+    }
+
+    /**
      * Revisión / aprobación.
      *
      * Requiere permiso `template.review` y estar asignado en `template_reviewers`.
@@ -302,8 +329,8 @@ class TemplatePolicy
     /**
      * Ver/gestionar comentarios de plantilla.
      *
-     * El creador puede comentar en cualquier estado. Los revisores asignados solo en in_review,
-     * sin requerir el permiso templates.review (paridad con DocumentPolicy::comment).
+     * El creador puede comentar en cualquier estado. Los revisores asignados pueden comentar
+     * en `in_review` aunque no tengan `template.review` (paridad con DocumentPolicy::comment).
      */
     public function comment(JwtUser $user, Template $template): bool
     {

@@ -48,6 +48,7 @@ export function TemplatesTable({ processId }: Props = {}) {
   const { profile, hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
   const canShow = hasPermission(DMS_PERMISSIONS.templateShow);
+  const canReview = hasPermission(DMS_PERMISSIONS.templateReview);
   const { hierarchy } = useHierarchy();
 
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
@@ -255,9 +256,10 @@ export function TemplatesTable({ processId }: Props = {}) {
       });
       return;
     }
-    const isReviewer =
+    const isAssignedReviewer =
       t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    navigate(isReviewer ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
+    const openReviewView = isAssignedReviewer && canReview;
+    navigate(openReviewView ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
       state: { backTo, processId },
     });
   };

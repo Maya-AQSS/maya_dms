@@ -22,6 +22,71 @@ class TemplatePolicyTest extends TestCase
         $this->policy = new TemplatePolicy;
     }
 
+    public function test_assign_review_on_personal_allows_creator_in_draft(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $creator = $this->makeJwtUser($creatorId);
+        $other = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['template.assign-review']);
+
+        $template = new Template;
+        $template->forceFill([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'created_by' => $creatorId,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'status' => 'draft',
+        ]);
+
+        $this->assertTrue($this->policy->assignReview($creator, $template));
+        $this->assertFalse($this->policy->assignReview($other, $template));
+    }
+
+    public function test_assign_review_on_global_requires_assign_review_slug(): void
+    {
+        $creatorId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $coordinator = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['template.assign-review']);
+        $teacher = $this->makeJwtUser($creatorId);
+
+        $template = new Template;
+        $template->forceFill([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'created_by' => $creatorId,
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'status' => 'draft',
+        ]);
+
+        $this->assertTrue($this->policy->assignReview($coordinator, $template));
+        $this->assertFalse($this->policy->assignReview($teacher, $template));
+    }
+
+    public function test_review_requires_template_review_and_assignment(): void
+    {
+        $reviewerId = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+        $assigned = $this->makeJwtUser($reviewerId, ['template.review']);
+        $notAssigned = $this->makeJwtUser($reviewerId);
+
+        $templateId = (string) \Illuminate\Support\Str::uuid();
+        $template = new Template;
+        $template->forceFill([
+            'id' => $templateId,
+            'created_by' => 'ffffffff-ffff-ffff-ffff-ffffffffffff',
+            'visibility_level' => TemplateVisibilityLevel::Global->value,
+            'status' => 'in_review',
+        ]);
+
+        \Illuminate\Support\Facades\DB::table('template_reviewers')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'template_id' => $templateId,
+            'user_id' => $reviewerId,
+            'stage' => 1,
+            'status' => 'pending',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->assertTrue($this->policy->review($assigned, $template));
+        $this->assertFalse($this->policy->review($notAssigned, $template));
+    }
+
     public function test_view_any_requires_template_index(): void
     {
         $sin = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');

@@ -10,23 +10,21 @@ use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
-class SyncTemplateUsersRequest extends FormRequest
+class SyncTemplateDocumentReviewersRequest extends FormRequest
 {
     public function authorize(): bool
     {
         $template = $this->resolveTemplate();
 
-        return $this->user()->can('assignReview', $template);
+        return $this->user()->can('update', $template);
     }
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para asignar revisores de plantilla.');
+        throw new AuthorizationException('No puedes asignar validadores de documento en esta plantilla.');
     }
 
     /**
-     * Reglas de validación para la sincronización de usuarios de una plantilla.
-     *
      * @return array<string, mixed>
      */
     public function rules(): array
@@ -37,9 +35,6 @@ class SyncTemplateUsersRequest extends FormRequest
         ];
     }
 
-    /**
-     * Convierte los datos validados en un DTO de sincronización de usuarios.
-     */
     public function toDto(): SyncUsersDto
     {
         return new SyncUsersDto(
@@ -49,8 +44,6 @@ class SyncTemplateUsersRequest extends FormRequest
 
     private function resolveTemplate(): Template
     {
-        $id = (string) $this->route('template');
-
-        return app(TemplateServiceInterface::class)->findModelOrFail($id);
+        return app(TemplateServiceInterface::class)->findModelOrFail((string) $this->route('template'));
     }
 }
