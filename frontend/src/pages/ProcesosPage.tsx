@@ -26,15 +26,11 @@ export function ProcesosPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const { processId } = useParams<{ processId?: string }>();
-<<<<<<< HEAD
   const locationState = location.state as { tab?: Tab; documentValidationBanner?: string } | null;
-=======
   const { hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.processIndex);
   const canShow = hasPermission(DMS_PERMISSIONS.processShow);
   const canCreateDocument = hasPermission(DMS_PERMISSIONS.documentCreate);
-  const locationState = location.state as { tab?: Tab } | null;
->>>>>>> c5aba18843abb92a6f9d02298d22d692b9692b67
   const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
   const [validationBanner, setValidationBanner] = useState<string | null>(null);
 
@@ -107,7 +103,6 @@ export function ProcesosPage() {
         }
       />
 
-<<<<<<< HEAD
       {validationBanner && (
         <div
           className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3 dark:bg-success/15 dark:border-success/40"
@@ -126,12 +121,10 @@ export function ProcesosPage() {
             Cerrar
           </Button>
         </div>
-=======
       {processId && !canShow && (
         <Alert tone="warning" className="mb-4">
           {t('processes.noShowPermission')}
         </Alert>
->>>>>>> c5aba18843abb92a6f9d02298d22d692b9692b67
       )}
 
       <ErrorBoundary key={`${activeTab}:${processId ?? 'all'}`}>
