@@ -547,8 +547,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     try {
       const updated = await approveDocumentReview(documentId, actionableReviewId, null);
       setValidateConfirm(null);
-      navigate('/dashboard', {
-        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve') },
+      navigate(backTo, {
+        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
       });
     } catch (e) {
       setValidationModalError(e instanceof Error ? e.message : 'No se pudo aprobar la revisión.');
@@ -569,8 +569,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     try {
       const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
       setValidateConfirm(null);
-      navigate('/dashboard', {
-        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject') },
+      navigate(backTo, {
+        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },
       });
     } catch (e) {
       setValidationModalError(e instanceof Error ? e.message : 'No se pudo rechazar la revisión.');
@@ -600,11 +600,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(detail.status)}`}>
             {STATUS_LABEL[detail.status] ?? detail.status}
           </span>
-          
+          {detail.status !== 'draft' && (
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-            v{detail.status === "draft" ? detail.current_version + 1 : detail.current_version}
+            v{detail.current_version}
           </span>
-          
+          )}
         </>
       )}
       {!isValidateMode && !isHistoricalSnapshot && detail.status === 'in_review' && allReviews.length > 0 && (
@@ -1108,7 +1108,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
           const isCreator = profile?.id && detail?.created_by === profile.id;
           const isOwner = profile?.id && detail?.owner_id === profile.id;
-          const commentMode = (isCreator || isOwner) ? 'creator-edit' : isDocumentReviewer ? 'validator' : 'creator-readonly';
+          const commentMode = (isDocumentReviewer && detail?.status === 'in_review') ? 'validator' : (isCreator || isOwner) ? 'creator-edit' : 'creator-readonly';
 
           if (selectedReviewView.mode === 'comments') {
             return (

@@ -49,6 +49,7 @@ class DocumentController extends Controller
         $this->documentService->attachLatestPublishedVersionMeta($documents);
         $this->documentService->attachTemplateVersionNumbers($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
+        $this->documentService->attachIsAssignedReviewerMeta($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
             $viewerId,
@@ -124,6 +125,7 @@ class DocumentController extends Controller
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
         $isCreator = (string) $document->created_by === $viewerId || (string) $document->owner_id === $viewerId;
+        $isAssignedReviewer = false;
 
         if (! $servePublishedSnapshot && ! $isCreator && in_array($document->status, ['draft', 'in_review'], true)) {
             // Any assigned reviewer (pending, approved, or rejected) can see real content while in_review.
@@ -135,6 +137,10 @@ class DocumentController extends Controller
             if (! $isAssignedReviewer) {
                 $servePublishedSnapshot = true;
             }
+        } elseif (! $servePublishedSnapshot && $document->status === 'in_review') {
+            $isAssignedReviewer = $document->reviews()
+                ->where('reviewer_id', $viewerId)
+                ->exists();
         }
 
         if ($servePublishedSnapshot) {
@@ -145,6 +151,7 @@ class DocumentController extends Controller
             $document->setRelation('headVersion', $latestPublished);
             $this->attachCanCloneMeta($document, $request);
             $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
+            $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
             $document->loadMissing(['owner']);
             $this->apiTeamEmbedService->embedOnDocument($document, $viewerId);
             $blocks = $this->documentService->blocksForDisplay($document);
@@ -161,6 +168,7 @@ class DocumentController extends Controller
             'has_review_comments',
             $document->comments()->exists(),
         );
+        $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
         $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $document->loadMissing(['owner']);

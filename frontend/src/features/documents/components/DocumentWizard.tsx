@@ -57,6 +57,7 @@ import {
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock } from '../../../utils/blockComments';
+import { uploadMedia } from '../../../api/media';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then(
@@ -951,8 +952,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     try {
       const updated = await approveDocumentReview(documentId, actionableReviewId, null);
       setValidateConfirm(null);
-      navigate('/dashboard', {
-        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve') },
+      navigate(processBackTo, {
+        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
       });
     } catch (e) {
       setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo aprobar la revisión.');
@@ -976,8 +977,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     try {
       const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
       setValidateConfirm(null);
-      navigate('/dashboard', {
-        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject') },
+      navigate(processBackTo, {
+        state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },
       });
     } catch (e) {
       setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo rechazar la revisión.');
@@ -1541,6 +1542,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                 isDark={isDark}
                                 onChange={(content) => { setLocalContent(content); triggerSave(); }}
                                 onFullscreenChange={handleEditorFullscreenChange}
+                                uploadFile={uploadMedia}
                               />
                             </Suspense>
                           </div>

@@ -29,4 +29,7 @@ chown -R www-data:www-data storage 2>/dev/null || true
 echo "[entrypoint] Running package:discover..."
 php artisan package:discover --ansi 2>/dev/null || true
 
+# Ensure public storage symlink exists for media file serving
+php artisan storage:link --force 2>/dev/null || true
+
 exec "$@"
