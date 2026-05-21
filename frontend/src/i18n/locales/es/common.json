@@ -48,7 +48,9 @@
   "templates": {
     "title": "Plantillas",
     "new": "Nueva plantilla",
-    "useTemplate": "Usar plantilla"
+    "useTemplate": "Usar plantilla",
+    "noIndexPermission": "No tienes permiso para ver el listado de plantillas (template.index).",
+    "noShowPermission": "No tienes permiso para abrir el detalle de la plantilla (template.show)."
   },
   "processes": {
     "noIndexPermission": "No tienes permiso para ver el listado de procesos (process.index).",

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -18,6 +19,7 @@ import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePag
 import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS } from '../constants';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
@@ -41,8 +43,11 @@ type Props = {
 };
 
 export function TemplatesTable({ processId }: Props = {}) {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
+  const canShow = hasPermission(DMS_PERMISSIONS.templateShow);
   const { hierarchy } = useHierarchy();
 
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
@@ -225,7 +230,24 @@ export function TemplatesTable({ processId }: Props = {}) {
     });
   };
 
+  const canOpenTemplate = (t: Template): boolean => {
+    if (canShow) {
+      return true;
+    }
+    if (profile?.id && t.created_by === profile.id) {
+      return true;
+    }
+    return (
+      t.status === 'in_review'
+      && t.reviewers?.some((r) => r.user_id === profile?.id) === true
+    );
+  };
+
   const handleRowClick = (t: Template) => {
+    if (!canOpenTemplate(t)) {
+      return;
+    }
+
     const backTo = processId ? `/procesos/${processId}` : '/dashboard';
     if (t.list_variant === 'published_fallback' && t.latest_published_version_id) {
       navigate(`/templates/${t.id}?templateVersionId=${encodeURIComponent(t.latest_published_version_id)}`, {
@@ -320,6 +342,14 @@ export function TemplatesTable({ processId }: Props = {}) {
     [profile, favoriteTemplateIds, hierarchy],
   );
 
+  if (!canIndex) {
+    return (
+      <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
+        {t('templates.noIndexPermission')}
+      </p>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {listError && (
@@ -352,6 +382,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         }}
         emptyMessage="No hay plantillas con los filtros actuales."
         onRowClick={handleRowClick}
+        rowClassName={(t) => (canOpenTemplate(t) ? '' : 'opacity-60 cursor-not-allowed')}
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:templates-table"

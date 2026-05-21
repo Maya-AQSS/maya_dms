@@ -9,4 +9,9 @@ export const DMS_PERMISSIONS = {
   processCreate: 'process.create',
   processUpdate: 'process.update',
   processDelete: 'process.delete',
+  templateIndex: 'template.index',
+  templateShow: 'template.show',
+  templateCreate: 'template.create',
+  templateUpdate: 'template.update',
+  templateDelete: 'template.delete',
 } as const;

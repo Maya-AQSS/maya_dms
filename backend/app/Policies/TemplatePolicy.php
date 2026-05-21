@@ -18,6 +18,15 @@ use Illuminate\Support\Facades\DB;
  * - En borrador (`draft`): solo el creador puede editar.
  * - En publicada (`published`): puede editar el creador o quien tenga `template.update`,
  *   siempre que además pueda ver la plantilla (scope/contexto académico + `template.show`).
+ *
+ * LISTADO Y DETALLE (catálogo):
+ * - `template.index`: listar plantillas (global, personal, equipo, contexto académico).
+ * - `template.show`: ver detalle; el creador y los revisores asignados no requieren este slug.
+ *
+ * MUTACIONES (catálogo):
+ * - `template.create`: crear visibilidad compartida; personal sin slug (cualquier usuario autenticado).
+ * - `template.update`: editar publicada si no es creador; borrador/rechazado solo creador.
+ * - `template.delete`: borrar ajenas; el creador siempre puede borrar la suya.
  * - La visibilidad no personal (compartida) exige además `template.create`.
  *
  * REGLAS DE BORRADO:
@@ -43,11 +52,11 @@ use Illuminate\Support\Facades\DB;
 class TemplatePolicy
 {
     /**
-     * Listar plantillas: requiere `template.show`; el global scope acota filas visibles.
+     * Listar plantillas: requiere `template.index`; el global scope acota filas visibles.
      */
     public function viewAny(JwtUser $user): bool
     {
-        return $user->hasPermission('template.show');
+        return $user->hasPermission('template.index');
     }
 
     /**

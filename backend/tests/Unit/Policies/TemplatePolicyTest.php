@@ -22,13 +22,15 @@ class TemplatePolicyTest extends TestCase
         $this->policy = new TemplatePolicy;
     }
 
-    public function test_view_any_requires_templates_read(): void
+    public function test_view_any_requires_template_index(): void
     {
         $sin = $this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
-        $con = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['template.show']);
+        $soloShow = $this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['template.show']);
+        $conIndex = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['template.index']);
 
         $this->assertFalse($this->policy->viewAny($sin));
-        $this->assertTrue($this->policy->viewAny($con));
+        $this->assertFalse($this->policy->viewAny($soloShow));
+        $this->assertTrue($this->policy->viewAny($conIndex));
     }
 
     public function test_view_requires_templates_read_or_documents_create_for_transient_model(): void

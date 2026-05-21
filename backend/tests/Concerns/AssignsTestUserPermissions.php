@@ -16,7 +16,16 @@ trait AssignsTestUserPermissions
     protected function assignUserPermissions(string $userId, array $slugs, bool $withAppLogin = true): void
     {
         if ($withAppLogin) {
-            foreach (['dms.login', 'dms.index', 'process.index', 'process.show'] as $appSlug) {
+            foreach ([
+                'dms.login',
+                'dms.index',
+                'process.index',
+                'process.show',
+                'template.index',
+                'template.show',
+                'template.create',
+                'template.update',
+            ] as $appSlug) {
                 if (! in_array($appSlug, $slugs, true)) {
                     $slugs = [$appSlug, ...$slugs];
                 }

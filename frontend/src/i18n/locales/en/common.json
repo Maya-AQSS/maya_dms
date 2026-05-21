@@ -48,7 +48,9 @@
   "templates": {
     "title": "Templates",
     "new": "New template",
-    "useTemplate": "Use template"
+    "useTemplate": "Use template",
+    "noIndexPermission": "You do not have permission to view the template list (template.index).",
+    "noShowPermission": "You do not have permission to open template details (template.show)."
   },
   "processes": {
     "noIndexPermission": "You do not have permission to view the process list (process.index).",
