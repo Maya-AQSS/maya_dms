@@ -10,11 +10,13 @@ use App\Models\DocumentBlock;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\Theme;
 use App\Policies\CommentPolicy;
 use App\Policies\DocumentBlockPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\TemplateBlockPolicy;
 use App\Policies\TemplatePolicy;
+use App\Policies\ThemePolicy;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
@@ -29,6 +31,7 @@ use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
+use App\Repositories\Contracts\ThemeRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
@@ -46,6 +49,7 @@ use App\Repositories\Eloquent\TemplateBlockRepository;
 use App\Repositories\Eloquent\TemplateRepository;
 use App\Repositories\Eloquent\TemplateVersionBlockLayerRepository;
 use App\Repositories\Eloquent\TemplateVersionRepository;
+use App\Repositories\Eloquent\ThemeRepository;
 use App\Repositories\Eloquent\UserDirectoryRepository;
 use App\Repositories\Eloquent\UserFavoriteRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
@@ -64,6 +68,8 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\Contracts\TeamReadServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use App\Services\Contracts\ThemeAssetServiceInterface;
+use App\Services\Contracts\ThemeServiceInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 use App\Services\Contracts\UserFavoriteServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
@@ -75,6 +81,8 @@ use App\Services\SnapshotService;
 use App\Services\TeamReadService;
 use App\Services\TemplateBlockService;
 use App\Services\TemplateService;
+use App\Services\ThemeAssetService;
+use App\Services\ThemeService;
 use App\Services\UserDirectoryService;
 use App\Services\UserFavoriteService;
 use App\Services\UserProfileService;
@@ -100,6 +108,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateRepositoryInterface::class, TemplateRepository::class);
         $this->app->bind(TemplateBlockRepositoryInterface::class, TemplateBlockRepository::class);
         $this->app->bind(TemplateVersionRepositoryInterface::class, TemplateVersionRepository::class);
+        $this->app->bind(ThemeRepositoryInterface::class, ThemeRepository::class);
         $this->app->bind(CommentRepositoryInterface::class, CommentRepository::class);
         $this->app->bind(UserProfileRepositoryInterface::class, UserProfileRepository::class);
         $this->app->bind(UserFavoriteRepositoryInterface::class, UserFavoriteRepository::class);
@@ -118,6 +127,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(DashboardServiceInterface::class, DashboardService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(TemplateBlockServiceInterface::class, TemplateBlockService::class);
+        $this->app->bind(ThemeServiceInterface::class, ThemeService::class);
+        $this->app->bind(ThemeAssetServiceInterface::class, ThemeAssetService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
         // /me + /me/locale viven en maya/shared-profile-laravel. El paquete
         // bindea por defecto JwtPassthroughResolver; aquí lo sobrescribimos
@@ -181,5 +192,6 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(DocumentBlock::class, DocumentBlockPolicy::class);
         Gate::policy(Template::class, TemplatePolicy::class);
         Gate::policy(TemplateBlock::class, TemplateBlockPolicy::class);
+        Gate::policy(Theme::class, ThemePolicy::class);
     }
 }

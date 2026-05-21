@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Resources;
+
+use App\DTOs\Themes\ThemeDto;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+/**
+ * Recibe un ThemeDto desde ThemeService — nunca el modelo Eloquent.
+ *
+ * @property-read ThemeDto $resource
+ */
+class ThemeResource extends JsonResource
+{
+    /**
+     * @return array<string, mixed>
+     */
+    public function toArray(Request $request): array
+    {
+        /** @var ThemeDto $t */
+        $t = $this->resource;
+
+        return [
+            'id' => $t->id,
+            'name' => $t->name,
+            'description' => $t->description,
+            'status' => $t->status,
+            'created_by' => $t->createdBy,
+            'team_id' => $t->teamId,
+            'palette' => $t->palette,
+            'typography' => $t->typography,
+            'layout' => $t->layout,
+            'assets' => $t->assets,
+            'accessibility' => $t->accessibility,
+            'cloned_from_id' => $t->clonedFromId,
+            'created_at' => $t->createdAt,
+            'updated_at' => $t->updatedAt,
+        ];
+    }
+}

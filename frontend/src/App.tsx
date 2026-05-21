@@ -21,6 +21,9 @@ const TemplateNewPage = lazy(() => import('./pages/TemplateNewPage').then(m => (
 const TemplateEditPage = lazy(() => import('./pages/TemplateEditPage').then(m => ({ default: m.TemplateEditPage })));
 const TemplateReviewPage = lazy(() => import('./pages/TemplateReviewPage').then(m => ({ default: m.TemplateReviewPage })));
 const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').then(m => ({ default: m.TemplatePreviewPage })));
+const ThemesListPage = lazy(() => import('./features/themes/pages/ThemesListPage').then(m => ({ default: m.ThemesListPage })));
+const ThemeNewPage = lazy(() => import('./features/themes/pages/ThemeNewPage').then(m => ({ default: m.ThemeNewPage })));
+const ThemeEditPage = lazy(() => import('./features/themes/pages/ThemeEditPage').then(m => ({ default: m.ThemeEditPage })));
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
 const DASHBOARD_API_URL = resolveServiceUrl(
@@ -46,6 +49,9 @@ function AppRoutes() {
         <Route path="/templates/:id/edit" element={<TemplateEditPage />} />
         <Route path="/templates/:id/review" element={<TemplateReviewPage />} />
         <Route path="/templates/:id" element={<TemplatePreviewPage />} />
+        <Route path="/themes" element={<ThemesListPage />} />
+        <Route path="/themes/new" element={<ThemeNewPage />} />
+        <Route path="/themes/:id/edit" element={<ThemeEditPage />} />
         <Route path="*" element={<PlaceholderPage />} />
       </Routes>
     </Suspense>

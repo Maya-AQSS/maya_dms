@@ -306,6 +306,7 @@ class Template extends Model
     protected $fillable = [
         'process_id',
         'head_entity_version_id',
+        'theme_id',
     ];
 
     public function getAttribute($key): mixed
@@ -384,6 +385,15 @@ class Template extends Model
     public function process(): BelongsTo
     {
         return $this->belongsTo(Process::class);
+    }
+
+    /**
+     * Identidad visual aplicada a los documentos que se generen desde esta
+     * plantilla. Opcional: si null, se usa el theme por defecto del sistema.
+     */
+    public function theme(): BelongsTo
+    {
+        return $this->belongsTo(Theme::class, 'theme_id');
     }
 
     public function blocks(): HasMany
