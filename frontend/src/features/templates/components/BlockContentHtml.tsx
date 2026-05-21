@@ -94,25 +94,39 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
       );
     if (isEmpty) return '';
     try {
+       DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+        if (node.tagName === 'INPUT' && !node.getAttribute('type')) {
+          node.setAttribute('type', 'checkbox');
+        }
+      });
+
       DOMPurify.addHook('afterSanitizeElements', (node) => {
-        // Fix: aplanar <p class="bn-inline-content"> dentro de <li>
         if (
           node.tagName === 'P' &&
           node.classList?.contains('bn-inline-content') &&
-          node.parentElement?.tagName === 'LI'
+          node.parentElement?.tagName === 'LI' &&
+          node.parentElement?.querySelector('input[type="checkbox"]') // ← solo si el <li> tiene checkbox
         ) {
-          const li = node.parentElement;
-          // Mover los hijos del <p> directamente al <li>
+          const label = document.createElement('label');
+          label.classList.add('pl-2');
+
           while (node.firstChild) {
-            li.insertBefore(node.firstChild, node);
+            label.appendChild(node.firstChild);
           }
-          node.remove();
+          node.replaceWith(label);
         }
+        if (
+          node.tagName === 'UL' &&
+          node.querySelector('input[type="checkbox"]')
+          ) {
+           node.style.listStyle = 'none'
+           node.style.paddingLeft = '0.5em'
+          }
       });
       // Configure DOMPurify to allow tags and the 'type' attribute
       const config = {
-      ALLOWED_TAGS: ['label', 'input'], // Add input to the allowed tags
-      ALLOWED_ATTR: ['type', 'checked'], // Allow essential attributes
+      ALLOWED_TAGS: ['label', 'input', 'ul'], // Add input to the allowed tags
+      ALLOWED_ATTR: ['type', 'checked', 'class'], // Allow essential attributes
       ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i, // Allow safe URL schemes only; block javascript: data: vbscript: etc.
       };
       const raw = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
