@@ -352,27 +352,15 @@ class TemplatePolicy
     }
 
     /**
-     * Ver/gestionar comentarios de plantilla.
-     *
-     * El creador puede comentar en cualquier estado. Los revisores asignados pueden comentar
-     * en `in_review` aunque no tengan `template.review` (paridad con DocumentPolicy::comment).
+     * Crear/listar comentarios en bloques de plantilla (`comment-block.create` + creador o revisor).
      */
     public function comment(JwtUser $user, Template $template): bool
     {
-        $userId = (string) $user->getAuthIdentifier();
-
-        if ($userId === (string) $template->created_by) {
-            return true;
-        }
-
-        if ($template->status !== 'in_review') {
+        if (! $user->hasPermission('comment-block.create')) {
             return false;
         }
 
-        return $this->review($user, $template)
-            || $template->reviewers()
-                ->where('user_id', $userId)
-                ->exists();
+        return (new CommentPolicy)->mayParticipateOnTemplate($user, $template);
     }
 
     /**

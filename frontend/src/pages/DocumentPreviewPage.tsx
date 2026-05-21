@@ -27,7 +27,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
-import { DMS_PERMISSIONS } from '../permissions';
+import { canCreateBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
@@ -1141,7 +1141,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 onClose={() => setSelectedReviewView(null)}
                 onSendMessage={handlePreviewSendMessage}
                 headerRef={pageHeaderRef}
-                canAddComments={!isHistoricalSnapshot && !isPublished}
+                canAddComments={
+                  !isHistoricalSnapshot &&
+                  !isPublished &&
+                  canCreateBlockComment(hasPermission) &&
+                  (isCreator || isOwner || isDocumentReviewer)
+                }
               />
             );
           }

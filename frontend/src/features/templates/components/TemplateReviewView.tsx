@@ -10,7 +10,7 @@ import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayou
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
-import { DMS_PERMISSIONS } from '../../../permissions';
+import { canCreateBlockComment, DMS_PERMISSIONS } from '../../../permissions';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
@@ -512,7 +512,11 @@ export function TemplateReviewView({ template }: Props) {
                   onClose={closeView}
                   onSendMessage={handleSendMessage}
                   commentLoading={actionLoading}
-                  canAddComments={template.status !== 'published'}
+                  canAddComments={
+                    template.status !== 'published' &&
+                    canCreateBlockComment(hasPermission) &&
+                    (isCreator || (isReviewer && template.status === 'in_review'))
+                  }
                 />
               ) : (
                 <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">

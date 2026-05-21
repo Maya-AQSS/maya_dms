@@ -33,6 +33,8 @@ export const DMS_PERMISSIONS = {
   blockCreate: 'block.create',
   blockUpdate: 'block.update',
   blockDelete: 'block.delete',
+  commentBlockCreate: 'comment-block.create',
+  commentBlockDelete: 'comment-block.delete',
 } as const;
 
 /** `block.index` / `block.show` requieren además mutación de plantilla o documento (catálogo). */
@@ -84,4 +86,21 @@ export function canUpdateDocumentBlock(hasPermission: (slug: string) => boolean)
 
 export function canDeleteDocumentBlock(hasPermission: (slug: string) => boolean): boolean {
   return hasPermission(DMS_PERMISSIONS.blockDelete) && canMutateDocumentBlocks(hasPermission);
+}
+
+/** Crear comentarios en bloque; el contexto (creador/revisor) lo valida la API. */
+export function canCreateBlockComment(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.commentBlockCreate);
+}
+
+export function canDeleteBlockComment(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.commentBlockDelete);
+}
+
+/** Editar texto: solo el autor del comentario (sin slug en catálogo). */
+export function canEditOwnBlockComment(
+  profileId: string | undefined,
+  authorId: string | undefined,
+): boolean {
+  return !!profileId && !!authorId && profileId === authorId;
 }

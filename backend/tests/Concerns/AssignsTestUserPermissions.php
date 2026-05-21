@@ -29,6 +29,8 @@ trait AssignsTestUserPermissions
                 'document.show',
                 'document.create',
                 'document.update',
+                'comment-block.create',
+                'comment-block.delete',
             ] as $appSlug) {
                 if (! in_array($appSlug, $slugs, true)) {
                     $slugs = [$appSlug, ...$slugs];

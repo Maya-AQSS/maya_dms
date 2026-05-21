@@ -196,27 +196,15 @@ class DocumentPolicy
     }
 
     /**
-     * Ver/gestionar comentarios del documento.
-     *
-     * El creador/titular puede comentar en cualquier estado. Los revisores asignados en
-     * `in_review` pueden comentar aunque no tengan `document.review` (paridad con plantillas).
+     * Crear/listar comentarios en bloques de documento (`comment-block.create` + titular/creador o revisor).
      */
     public function comment(JwtUser $user, Document $document): bool
     {
-        if ($this->update($user, $document)) {
-            return true;
-        }
-
-        if ($document->status !== 'in_review') {
+        if (! $user->hasPermission('comment-block.create')) {
             return false;
         }
 
-        $userId = (string) $user->getAuthIdentifier();
-
-        return $this->review($user, $document)
-            || $document->reviews()
-                ->where('reviewer_id', $userId)
-                ->exists();
+        return (new CommentPolicy)->mayParticipateOnDocument($user, $document);
     }
 
     /**
