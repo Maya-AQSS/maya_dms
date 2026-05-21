@@ -113,7 +113,6 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
       const config = {
       ALLOWED_TAGS: ['label', 'input'], // Add input to the allowed tags
       ALLOWED_ATTR: ['type', 'checked'], // Allow essential attributes
-      RETURN_DOM_FRAGMENT: true,
       ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i, // Allow safe URL schemes only; block javascript: data: vbscript: etc.
       };
       const raw = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
