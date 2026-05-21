@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\DocumentOptionsController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentStateController;
@@ -46,6 +47,9 @@ Route::prefix('v1')->group(function () {
         MeRoutes::register();
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
         Route::get('/processes', [ProcessController::class, 'index']);
+
+        // Media — subida de imágenes para bloques BlockNote
+        Route::post('media', [MediaController::class, 'store']);
 
         // Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
