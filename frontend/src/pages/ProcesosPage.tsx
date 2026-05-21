@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Button, ErrorBoundary, PageTitle } from '@maya/shared-ui-react';
 import { TemplatesTable } from '../features/templates/components/TemplatesTable';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
@@ -18,9 +19,20 @@ const TAB_CLASS = (active: boolean) =>
 export function ProcesosPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { processId } = useParams<{ processId?: string }>();
-  const locationState = location.state as { tab?: Tab } | null;
+  const locationState = location.state as { tab?: Tab; documentValidationBanner?: string } | null;
   const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
+  const [validationBanner, setValidationBanner] = useState<string | null>(null);
+
+  useEffect(() => {
+    const banner = locationState?.documentValidationBanner;
+    if (!banner) return;
+    setValidationBanner(banner);
+    if (locationState?.tab) setActiveTab(locationState.tab);
+    void queryClient.invalidateQueries({ queryKey: ['documents'] });
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigate, queryClient]);
 
   // Resuelve el proceso activo (para mostrar nombre en el header).
   const processesQuery = useProcessesQuery(undefined, { enabled: !!processId });
@@ -67,6 +79,26 @@ export function ProcesosPage() {
           </div>
         }
       />
+
+      {validationBanner && (
+        <div
+          className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3 dark:bg-success/15 dark:border-success/40"
+          role="status"
+        >
+          <p className="text-sm font-medium text-success-dark dark:text-success">
+            {validationBanner}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-success-dark dark:text-success"
+            onClick={() => setValidationBanner(null)}
+          >
+            Cerrar
+          </Button>
+        </div>
+      )}
 
       <ErrorBoundary key={`${activeTab}:${processId ?? 'all'}`}>
         {activeTab === 'templates' ? (

@@ -44,6 +44,7 @@ final readonly class DocumentDto
         public ?int $latestPublishedVersionNumber,
         public ?string $latestPublishedTitle,
         public ?string $reviewMode,
+        public bool $isAssignedReviewer = false,
     ) {}
 
     public static function fromModel(Document $m): self
@@ -89,6 +90,7 @@ final readonly class DocumentDto
                 : null,
             latestPublishedTitle: $m->getAttribute('latest_published_title'),
             reviewMode: $m->review_mode !== null ? (string) $m->review_mode : null,
+            isAssignedReviewer: (bool) ($m->getAttribute('is_assigned_reviewer') ?? false),
         );
     }
 

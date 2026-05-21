@@ -48,6 +48,8 @@ export type Document = {
   can_clone?: boolean;
   /** Modo de revisión resuelto desde el snapshot anclado; coincide con lo que aplica el backend al aprobar/rechazar. */
   review_mode?: 'sequential' | 'parallel';
+  /** El usuario autenticado está asignado como revisor de este documento. */
+  is_assigned_reviewer?: boolean;
   working_version_id?: string | null;
   review_history?: DocumentReviewCycleSnapshot[] | null;
   latest_published_version_id?: string | null;
