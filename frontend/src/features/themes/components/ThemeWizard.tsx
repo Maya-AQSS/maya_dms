@@ -174,14 +174,61 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         </Button>
       )}
       {step === 'layout' && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/themes')}
-          className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10"
-        >
-          Guardar y salir
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/themes')}
+            className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10"
+          >
+            Guardar y salir
+          </Button>
+          {theme && theme.status === 'draft' && (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={saving}
+              onClick={async () => {
+                if (!theme) return;
+                clearActionError();
+                clearActionInfo();
+                setSaving(true);
+                try {
+                  const updated = await updateTheme(theme.id, { status: 'published' });
+                  setTheme(updated);
+                  navigate('/themes');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+              className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+            >
+              Publicar
+            </Button>
+          )}
+          {theme && theme.status === 'published' && (
+            <Button
+              variant="outline"
+              size="sm"
+              loading={saving}
+              onClick={async () => {
+                if (!theme) return;
+                clearActionError();
+                clearActionInfo();
+                setSaving(true);
+                try {
+                  const updated = await updateTheme(theme.id, { status: 'archived' });
+                  setTheme(updated);
+                  navigate('/themes');
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              Archivar
+            </Button>
+          )}
+        </>
       )}
     </>
   );

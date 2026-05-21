@@ -74,14 +74,31 @@
     }
 
     /**
-     * Resuelve un asset del theme a una URL `file://` legible por
-     * WeasyPrint (que corre en el mismo container y comparte filesystem).
+     * Resuelve un asset del theme a una URL embebible en el HTML.
+     *
+     *   - WeasyPrint (server-side): usa `file://` — lee del filesystem del
+     *     container directamente, sin overhead de base64.
+     *   - Preview en navegador (iframe vía blob URL): usa `data:` URI base64.
+     *     El iframe tiene origen `blob:` y no puede resolver `file://` ni
+     *     hacer fetch autenticado al backend, así que embebemos los assets
+     *     en el propio HTML — el navegador los pinta directamente.
+     *
      * Si el path no existe (theme sin asset subido) devuelve null.
      */
-    $assetUrl = function (?string $relativePath): ?string {
+    $isPreview = ! empty($preview_mode);
+    $assetUrl = function (?string $relativePath) use ($isPreview): ?string {
         if (! $relativePath) return null;
         $absolute = storage_path('app/themes/'.ltrim($relativePath, '/'));
-        return file_exists($absolute) ? ('file://'.$absolute) : null;
+        if (! file_exists($absolute)) return null;
+
+        if ($isPreview) {
+            $mime = @mime_content_type($absolute) ?: 'image/png';
+            $contents = @file_get_contents($absolute);
+            if ($contents === false) return null;
+            return 'data:'.$mime.';base64,'.base64_encode($contents);
+        }
+
+        return 'file://'.$absolute;
     };
 
     $logoFileUrl       = $assetUrl($theme['assets']['logo_path']             ?? null);
@@ -241,7 +258,11 @@
             }
             .theme-overlay .blk {
                 position: absolute;
-                overflow: hidden;
+                /* `overflow: visible` para que un texto cuya fuente sea más
+                   alta que la celda asignada no quede recortado. Las imágenes
+                   no necesitan clipping porque el <img> tiene
+                   max-width/height: 100% + object-fit: contain. */
+                overflow: visible;
                 box-sizing: border-box;
             }
             .theme-overlay .blk-text,
@@ -258,6 +279,71 @@
             /* `main` debe estar por encima del overlay para que el cuerpo capture
                clicks/selección y el contenido no quede tapado visualmente. */
             main { position: relative; z-index: 2; }
+        @endif
+
+        @if (! empty($preview_mode))
+            /* ─── Preview en navegador (iframe + paged.js) ───────────────────
+               Diferencias respecto a WeasyPrint:
+                 - `position: fixed` NO se repite en cada página como en
+                   WeasyPrint; paged.js lo renderiza una sola vez.
+                 - Por eso, en preview movemos el overlay a `display:none` en
+                   CSS y luego, vía JS (ver bloque tras paged.js), clonamos
+                   el overlay dentro de cada `.pagedjs_pagebox` con los
+                   contadores ya sustituidos.
+
+               Además añadimos separación visual entre páginas (sombra +
+               margen) — paged.js sólo lo hace si su CSS por defecto carga
+               correctamente. */
+            html, body { background: #e8e8ec; }
+            .theme-overlay { display: none; }
+            .pagedjs_pages {
+                background: #e8e8ec;
+                padding: 16px 0;
+            }
+            .pagedjs_page {
+                background: white !important;
+                box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
+                margin: 16px auto !important;
+            }
+            /* Overlay clonado por JS dentro de cada página. `.pagedjs_pagebox`
+               representa el área completa de la página (incluye márgenes),
+               así que el clon se posiciona con top/left 0 y cubre la hoja
+               entera 21×29.7 cm. */
+            .pagedjs_pagebox { position: relative; }
+            .pagedjs_pagebox .theme-overlay-clone {
+                display: block !important;
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: {{ $cm($pageWidthCm) }};
+                height: {{ $cm($pageHeightCm) }};
+                pointer-events: none;
+                z-index: 0;
+            }
+            .pagedjs_pagebox .theme-overlay-clone .blk {
+                position: absolute;
+                overflow: visible;
+                box-sizing: border-box;
+            }
+            .pagedjs_pagebox .theme-overlay-clone .blk-text,
+            .pagedjs_pagebox .theme-overlay-clone .blk-meta { display: flex; align-items: center; font-family: var(--font-body); }
+            .pagedjs_pagebox .theme-overlay-clone .blk-image,
+            .pagedjs_pagebox .theme-overlay-clone .blk-logo { display: flex; align-items: center; justify-content: center; }
+            .pagedjs_pagebox .theme-overlay-clone .blk-image img,
+            .pagedjs_pagebox .theme-overlay-clone .blk-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+            .pagedjs_pagebox .theme-overlay-clone .blk-watermark {
+                display: flex; align-items: center; justify-content: center;
+                font-family: var(--font-heading); font-weight: 900; font-size: 60pt;
+                color: var(--color-secondary); text-transform: uppercase; letter-spacing: 0.05em;
+            }
+            /* Restablece el font-size de los contadores de página: en el
+               overlay base lo pusimos a 0 porque usábamos `::before` con
+               `content: counter(page)`. En el clon JS sustituimos el texto
+               directamente, así que el span debe ser visible. */
+            .pagedjs_pagebox .theme-overlay-clone .blk-meta .pn,
+            .pagedjs_pagebox .theme-overlay-clone .blk-meta .pt { font-size: inherit !important; }
+            .pagedjs_pagebox .theme-overlay-clone .blk-meta .pn::before,
+            .pagedjs_pagebox .theme-overlay-clone .blk-meta .pt::before { content: none !important; }
         @endif
     </style>
 </head>
@@ -394,9 +480,82 @@
 
 @if (! empty($preview_mode))
     {{-- paged.js: polyfill de CSS Paged Media para mostrar saltos de página A4
-         en el navegador. Solo se carga en preview navegador; WeasyPrint ya
-         respeta @page de forma nativa y no necesita el polyfill. --}}
-    <script src="/vendor/pagedjs/paged.polyfill.js"></script>
+         en el navegador. Solo se carga en preview; WeasyPrint ya respeta
+         @page de forma nativa.
+
+         Embebemos inline porque el iframe se sirve vía `blob:` URL, donde:
+           - Las URLs relativas no apuntan al backend.
+           - Las URLs absolutas `http://` fallarían por mixed-content (la app
+             corre sobre https tras Traefik).
+           - Las URLs absolutas `https://` requerirían trusted_proxies + CORS.
+         Inline = un único response, sin requests adicionales ni configuración. --}}
+    @php
+        $pagedJsPath = public_path('vendor/pagedjs/paged.polyfill.js');
+        $pagedJsContent = file_exists($pagedJsPath) ? file_get_contents($pagedJsPath) : null;
+    @endphp
+    @if ($pagedJsContent !== null)
+        @if ($hasGridLayout)
+            {{-- PagedConfig.after se llama tras paginar. Lo definimos ANTES
+                 del polyfill para que éste lo lea al arrancar.
+
+                 En WeasyPrint, `position: fixed` se repite nativamente en
+                 cada página; paged.js no — por eso clonamos el overlay
+                 dentro de cada .pagedjs_pagebox y sustituimos manualmente
+                 los contadores `Página N de M` (paged.js no propaga
+                 `counter(page)` a elementos fuera de su flujo). --}}
+            <script>
+                window.PagedConfig = {
+                    auto: true,
+                    after: function () {
+                        /* 1) Clonar el overlay del theme en cada página. */
+                        var overlay = document.querySelector('.theme-overlay');
+                        if (overlay) {
+                            var pages = document.querySelectorAll('.pagedjs_page');
+                            var total = pages.length;
+                            pages.forEach(function (pageEl, idx) {
+                                var pageBox = pageEl.querySelector('.pagedjs_pagebox');
+                                if (! pageBox) return;
+                                var clone = overlay.cloneNode(true);
+                                clone.classList.remove('theme-overlay');
+                                clone.classList.add('theme-overlay-clone');
+                                var num = idx + 1;
+                                clone.querySelectorAll('.pn').forEach(function (el) {
+                                    el.textContent = String(num);
+                                });
+                                clone.querySelectorAll('.pt').forEach(function (el) {
+                                    el.textContent = String(total);
+                                });
+                                pageBox.insertBefore(clone, pageBox.firstChild);
+                            });
+                            overlay.remove();
+                        }
+
+                        /* 2) Escalar las páginas para encajar en el iframe.
+                              paged.js renderiza a 21cm reales (~794px @ 96dpi);
+                              si el iframe es más estrecho la página se corta a
+                              la derecha. Aplicamos `zoom` sobre el contenedor
+                              `.pagedjs_pages` — reflowea el layout y la altura
+                              se ajusta sola (a diferencia de `transform:scale`,
+                              que mantendría el bounding box original). */
+                        var pagesContainer = document.querySelector('.pagedjs_pages');
+                        if (pagesContainer) {
+                            function fitToIframe() {
+                                var available = document.documentElement.clientWidth;
+                                /* Ancho real de la hoja: 21cm + ~32px de margen
+                                   visual a cada lado (sombra + padding). */
+                                var pageWidthPx = 21 * 37.795275591 + 64;
+                                var scale = Math.min(1, available / pageWidthPx);
+                                pagesContainer.style.zoom = scale;
+                            }
+                            fitToIframe();
+                            window.addEventListener('resize', fitToIframe);
+                        }
+                    }
+                };
+            </script>
+        @endif
+        <script>{!! $pagedJsContent !!}</script>
+    @endif
 @endif
 
 </body>

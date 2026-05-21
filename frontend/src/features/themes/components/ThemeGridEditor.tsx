@@ -14,8 +14,13 @@ const ResponsiveGridLayout = WidthProvider(Responsive);
  * 52 filas (26 cm); el usuario puede crecer hacia abajo sin tope.
  */
 const COLS = 12;
-const ROW_HEIGHT = 24; // px en pantalla
+/* Para que el editor sea pixel-perfect WYSIWYG con el PDF (29.7 cm de alto a
+ * 96 dpi = 1123 px), `ROW_HEIGHT * GRID_ROWS` debe sumar ese alto. Como además
+ * react-grid-layout añade `marginY` entre filas, ponemos margin a 0 y elegimos
+ * un ROW_HEIGHT que divida 1123 entre 52 filas. */
+const ROW_HEIGHT = Math.round(1123 / 52); // ≈ 21.6 → 22 px en pantalla
 const GRID_ROWS = 52;
+const GRID_MARGIN: [number, number] = [0, 0];
 const ASPECT_A4 = 297 / 210; // alto/ancho
 
 interface ThemeGridEditorProps {
@@ -231,15 +236,29 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
           <div
             className="theme-grid-page mx-auto bg-white shadow"
             style={{
-              // Ancho de la página A4 simulada (mantenemos aspect ratio).
-              // El editor crece verticalmente con el grid.
-              maxWidth: '900px',
+              // Ancho real de un A4 a 96dpi (21cm = 794px). Antes usábamos
+              // 900px que daba ~13% más de ancho que el PDF final, haciendo
+              // que un texto que cabe en una línea en el editor pueda
+              // saltar a dos en el PDF. A 794px el wrap del editor coincide
+              // 1:1 con el del PDF.
+              maxWidth: '794px',
               aspectRatio: `1 / ${ASPECT_A4}`,
-              minHeight: `${ROW_HEIGHT * GRID_ROWS + 64}px`,
+              /* 52 filas × ROW_HEIGHT = 1144 px ≈ 29.7 cm. Sin padding
+                 extra: el alto del canvas refleja exactamente el alto del
+                 A4 — un bloque en y=49 aparece visualmente al 94% en el
+                 editor igual que en el PDF. */
+              minHeight: `${ROW_HEIGHT * GRID_ROWS}px`,
               backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : undefined,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
+              // Inyectamos la tipografía del theme en la canvas para que el
+              // editor sea WYSIWYG: los bloques de texto (`.theme-grid-slot`)
+              // usan `var(--font-body)` — sin esto verían system-ui mientras
+              // que el PDF real usa la fuente del theme, lo que cambia el
+              // ancho del texto y rompe la previsualización fiel.
+              ['--font-body' as never]: theme.typography?.body_font ?? 'system-ui, sans-serif',
+              ['--font-heading' as never]: theme.typography?.heading_font ?? 'system-ui, sans-serif',
             }}
             onClick={(e) => {
               if (e.target === e.currentTarget) setSelectedId(null);
@@ -251,7 +270,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
               breakpoints={{ lg: 0, md: 0, sm: 0, xs: 0, xxs: 0 }}
               cols={{ lg: COLS, md: COLS, sm: COLS, xs: COLS, xxs: COLS }}
               rowHeight={ROW_HEIGHT}
-              margin={[4, 4]}
+              margin={GRID_MARGIN}
               isDraggable
               isResizable
               compactType={null}

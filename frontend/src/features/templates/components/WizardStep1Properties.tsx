@@ -5,7 +5,7 @@ import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
 import { usePublishedThemes } from '../../../features/themes/hooks/usePublishedThemes';
-import { ThemeMiniPreview } from '../../../features/themes/components/ThemeMiniPreview';
+import { ThemeA4Preview } from '../../../features/themes/components/ThemeA4Preview';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import type { UserTeam } from '../../../api/users';
 import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
@@ -331,8 +331,8 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
                 </p>
               )}
             </div>
-            <div className="flex items-end">
-              <ThemeMiniPreview theme={selectedTheme} variant="full" className="w-full" />
+            <div className="flex justify-center md:justify-start">
+              <ThemeA4Preview theme={selectedTheme} />
             </div>
           </div>
         </div>
