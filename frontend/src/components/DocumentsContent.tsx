@@ -25,6 +25,7 @@ import { fetchTemplateVersion, type TemplateVersionSnapshotBlock } from '../api/
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { useUserProfile } from '../features/user-profile';
+import { DMS_PERMISSIONS } from '../permissions';
 import type { Document, DocumentStatus } from '../types/documents';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
@@ -95,6 +96,7 @@ export function DocumentsContent() {
   const { documents, loading, error, reload } = useDocuments();
   const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
   const displayDocuments = useMemo(() => {
     const out: Document[] = [];
     for (const d of documents) {
@@ -142,15 +144,15 @@ export function DocumentsContent() {
   const showSelectModuleHint =
     !profileLoading &&
     profile !== null &&
-    hasPermission('documents.create') &&
+    hasPermission(DMS_PERMISSIONS.documentCreate) &&
     !selectedModuleId;
 
   const newProgrammingDisabledReason = useMemo(() => {
     if (profileLoading || profile === null) {
       return 'Cargando perfil de usuario…';
     }
-    if (!hasPermission('documents.create')) {
-      return 'No tienes permiso para crear programaciones (documents.create).';
+    if (!hasPermission(DMS_PERMISSIONS.documentCreate)) {
+      return 'No tienes permiso para crear programaciones (document.create).';
     }
     if (!selectedModuleId) {
       return 'Selecciona un módulo para crear una nueva programación.';
@@ -427,6 +429,16 @@ export function DocumentsContent() {
       state: { moduleId: selectedModuleId }
     });
   };
+
+  if (!canIndex) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
+          No tienes permiso para listar documentos (document.index).
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">

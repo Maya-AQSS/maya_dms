@@ -27,6 +27,54 @@ class DocumentPolicyTest extends TestCase
     /**
      * Sin el permiso documents.review, nadie puede revisar (ni terceros, ni creador, ni titular).
      */
+    public function test_create_requires_document_create(): void
+    {
+        $this->assertFalse($this->policy->create($this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')));
+        $this->assertTrue($this->policy->create($this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['document.create'])));
+    }
+
+    public function test_view_any_requires_document_index(): void
+    {
+        $this->assertFalse($this->policy->viewAny($this->makeJwtUser('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')));
+        $this->assertTrue($this->policy->viewAny($this->makeJwtUser('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', ['document.index'])));
+    }
+
+    public function test_view_allows_owner_without_document_show(): void
+    {
+        $ownerId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($ownerId);
+        $doc = $this->makeDocument(createdBy: $ownerId, ownerId: $ownerId);
+
+        $this->assertTrue($this->policy->view($user, $doc));
+    }
+
+    public function test_view_denied_for_stranger_without_document_show(): void
+    {
+        $user = $this->makeJwtUser('22222222-2222-2222-2222-222222222222');
+        $doc = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->view($user, $doc));
+    }
+
+    public function test_view_denied_for_document_delete_outside_academic_context_even_with_show(): void
+    {
+        $user = $this->makeJwtUser(
+            '22222222-2222-2222-2222-222222222222',
+            ['document.delete', 'document.show'],
+        );
+        $doc = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'published',
+        );
+
+        $this->assertFalse($this->policy->view($user, $doc));
+    }
+
     public function test_review_denied_without_documents_review_permission(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
@@ -101,15 +149,15 @@ class DocumentPolicyTest extends TestCase
         $this->assertTrue($this->policy->update($user, $doc));
     }
 
-    public function test_update_allows_non_author_with_documents_update(): void
+    public function test_update_denied_for_non_author_with_document_update_outside_context(): void
     {
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.update']);
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.update', 'document.show']);
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
         );
 
-        $this->assertTrue($this->policy->update($user, $doc));
+        $this->assertFalse($this->policy->update($user, $doc));
     }
 
     public function test_update_denied_for_stranger_without_documents_update(): void
@@ -192,15 +240,15 @@ class DocumentPolicyTest extends TestCase
         $this->assertTrue($this->policy->delete($user, $doc));
     }
 
-    public function test_delete_allows_stranger_with_documents_delete_permission(): void
+    public function test_delete_denied_for_stranger_with_document_delete_outside_context(): void
     {
-        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['document.delete']);
+        $user = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['document.delete', 'document.show']);
         $doc  = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
         );
 
-        $this->assertTrue($this->policy->delete($user, $doc));
+        $this->assertFalse($this->policy->delete($user, $doc));
     }
 
     public function test_delete_denies_stranger_without_documents_delete_permission(): void

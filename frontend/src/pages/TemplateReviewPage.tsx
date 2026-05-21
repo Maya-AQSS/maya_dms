@@ -4,11 +4,12 @@ import { Button } from '@maya/shared-ui-react';
 import { fetchTemplate, type Template } from '../api/templates';
 import { TemplateReviewView } from '../features/templates';
 import { useUserProfile } from '../features/user-profile';
+import { DMS_PERMISSIONS } from '../permissions';
 
 export function TemplateReviewPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { profile } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
   const [template, setTemplate] = useState<Template | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -21,11 +22,16 @@ export function TemplateReviewPage() {
         const res = await fetchTemplate(id!);
         const t = res.data;
 
-        // Allow assigned reviewers AND the template creator (read-only view)
         const isReviewer = t.reviewers?.some((r) => r.user_id === profile?.id);
         const isCreator = t.created_by === profile?.id;
+        const canReview = hasPermission(DMS_PERMISSIONS.templateReview);
+
         if (!isReviewer && !isCreator) {
           setError('No tienes permisos de validación sobre esta plantilla.');
+          return;
+        }
+        if (isReviewer && !canReview && !isCreator) {
+          setError('No tienes permiso para revisar plantillas.');
           return;
         }
 
@@ -38,7 +44,7 @@ export function TemplateReviewPage() {
     }
 
     void loadTemplate();
-  }, [id, profile]);
+  }, [id, profile, hasPermission]);
 
   if (loading) {
     return (

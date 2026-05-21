@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Documents;
 
+use App\Models\Document;
 use App\Models\JwtUser;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -13,7 +14,7 @@ class DocumentCreateFromModuleRequest extends FormRequest
     {
         $user = $this->user();
 
-        return $user instanceof JwtUser && $user->hasPermission('document.create');
+        return $user instanceof JwtUser && $user->can('create', Document::class);
     }
 
     /**

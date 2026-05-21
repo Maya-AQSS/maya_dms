@@ -28,7 +28,9 @@
   },
   "dashboard": {
     "noWidgets": "No hi ha widgets al panell.",
+    "noIndexPermission": "Tens accés a DocuCEED (dms.login) però no permís per veure el llistat del panell (dms.index). Demana dms.index a un administrador.",
     "reset": "Restablir",
+    "noShowPermission": "Sense permís per obrir des del panell (dms.show).",
     "widgets": {
       "recentDocuments": "Documents recents",
       "pendingValidations": "Pendents de validar"
@@ -46,7 +48,13 @@
   "templates": {
     "title": "Plantilles",
     "new": "Nova plantilla",
-    "useTemplate": "Usar plantilla"
+    "useTemplate": "Usar plantilla",
+    "noIndexPermission": "No tens permís per veure el llistat de plantilles (template.index).",
+    "noShowPermission": "No tens permís per obrir el detall de la plantilla (template.show)."
+  },
+  "processes": {
+    "noIndexPermission": "No tens permís per veure el llistat de processos (process.index).",
+    "noShowPermission": "No tens permís per obrir el detall del procés (process.show)."
   },
   "auth": {
     "logout": "Tancar sessió",

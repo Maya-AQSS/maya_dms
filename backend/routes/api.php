@@ -39,14 +39,21 @@ Route::prefix('v1')->group(function () {
     Route::get('/health/live', [HealthCheckController::class, 'live']);
     Route::get('/health/ready', [HealthCheckController::class, 'ready']);
 
-    // ── Rutas protegidas por JWT ───────────────────────────────
-    Route::middleware('jwt')->group(function () {
-
-        // Perfil del usuario autenticado — endpoints en maya/shared-profile-laravel
-        // (resolver FDW propio en App\Repositories\Resolvers\FdwUserProfileResolver).
+    // Perfil: solo JWT (sin dms.login). El front necesita /me para resolver permisos.
+    Route::middleware(['jwt'])->group(function () {
         MeRoutes::register();
+    });
+
+    // ── Rutas protegidas por JWT + permiso de acceso a la app ──
+    Route::middleware(['jwt', 'permission:dms.login'])->group(function () {
+
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
+
         Route::get('/processes', [ProcessController::class, 'index']);
+        Route::post('/processes', [ProcessController::class, 'store']);
+        Route::get('/processes/{process}', [ProcessController::class, 'show'])->whereUuid('process');
+        Route::match(['put', 'patch'], '/processes/{process}', [ProcessController::class, 'update'])->whereUuid('process');
+        Route::delete('/processes/{process}', [ProcessController::class, 'destroy'])->whereUuid('process');
 
         // Media — subida de imágenes para bloques BlockNote
         Route::post('media', [MediaController::class, 'store']);
@@ -171,8 +178,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/users/document-reviewer-candidates', [UserController::class, 'documentReviewerCandidates']);
         Route::get('/users/owner-candidates', [UserController::class, 'ownerCandidates']);
 
-        // Dashboard (BFF)
-        Route::get('/dashboard', [DashboardController::class, 'index']);
+        // Dashboard (BFF): listados del panel principal
+        Route::get('/dashboard', [DashboardController::class, 'index'])
+            ->middleware('permission:dms.index');
 
         // Favoritos (plantillas y documentos)
         Route::get('/favorites', [FavoriteController::class, 'index']);

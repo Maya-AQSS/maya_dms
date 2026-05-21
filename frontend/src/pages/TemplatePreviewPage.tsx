@@ -23,6 +23,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
+import { DMS_PERMISSIONS } from '../permissions';
 import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -258,7 +259,10 @@ export function TemplatePreviewPage() {
       ? snapshotTemplate.name
       : template?.name)
     : template?.name;
-  const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 0;
+  const showVersionHistory =
+    publishedVersionCount !== null
+    && publishedVersionCount > 0
+    && (isOwner || hasPermission(DMS_PERMISSIONS.templateHistoryView));
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
   /** Solo se permite eliminar plantillas que nunca han sido publicadas. */
@@ -266,24 +270,25 @@ export function TemplatePreviewPage() {
     !viewingPublishedSnapshot &&
     template != null &&
     !template.latest_published_version_id &&
-    (isOwner || hasPermission('templates.delete'));
+    (isOwner || hasPermission(DMS_PERMISSIONS.templateDelete));
   /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
   const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
   const canSubmit =
     !viewingPublishedSnapshot && isOwner && isDraft && hasReviewers && !template.has_review_comments;
-  /** Alineado con `TemplatePolicy::startRevision`: creador o `templates.update` en publicada. */
+  /** Alineado con `TemplatePolicy::startRevision`: creador o `template.version` en publicada. */
   const canStartNewVersion =
     !viewingPublishedSnapshot &&
     isPublished &&
     !selectionMode &&
-    (isOwner || hasPermission('templates.update'));
+    (isOwner || hasPermission(DMS_PERMISSIONS.templateVersion));
+  /** Alineado con `TemplatePolicy::discard`: solo el creador. */
   const canDiscardWorkingVersion =
     !viewingPublishedSnapshot &&
     template != null &&
+    isOwner &&
     (template.status === 'draft' || template.status === 'in_review') &&
     !!template.latest_published_version_id &&
-    !!template.working_version_id &&
-    (isOwner || hasPermission('templates.update'));
+    !!template.working_version_id;
 
   const processesQuery = useProcessesQuery(undefined, {
     enabled: !!template?.process_id,

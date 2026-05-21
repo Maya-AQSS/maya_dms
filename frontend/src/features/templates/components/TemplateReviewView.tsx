@@ -10,6 +10,7 @@ import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayou
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
@@ -306,7 +307,7 @@ export function TemplateReviewView({ template }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
-  const { profile } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
   const { blocks } = useTemplateBlocks(template.id);
   const queryClient = useQueryClient();
 
@@ -334,8 +335,11 @@ export function TemplateReviewView({ template }: Props) {
       (r) => r.stage < myReview.stage && r.status !== 'approved',
     );
 
+  const canPerformReview = hasPermission(DMS_PERMISSIONS.templateReview);
+
   const isActiveValidator =
     isReviewer &&
+    canPerformReview &&
     template.status === 'in_review' &&
     myReview?.status === 'pending' &&
     !previousStagesPending;

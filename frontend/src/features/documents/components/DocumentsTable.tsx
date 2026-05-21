@@ -19,6 +19,7 @@ import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { useUserProfile } from '../../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 import { formatListRowVisibilityCaption, listRowSearchMatches } from '../../../utils/academicContextSearch';
@@ -119,6 +120,8 @@ type Props = {
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
   const { profile, hasPermission } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
+  const canShow = hasPermission(DMS_PERMISSIONS.documentShow);
   const { hierarchy } = useHierarchy();
   const { documentIds: favoriteDocumentIds } = useFavoritesIds();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
@@ -330,6 +333,24 @@ export function DocumentsTable({ processId }: Props = {}) {
     }, 400);
   };
 
+  const canOpenDocument = (doc: Document): boolean => {
+    if (canShow) {
+      return true;
+    }
+    if (profile?.id && (doc.created_by === profile.id || doc.owner_id === profile.id)) {
+      return true;
+    }
+    return false;
+  };
+
+  if (!canIndex) {
+    return (
+      <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
+        No tienes permiso para listar documentos (document.index).
+      </p>
+    );
+  }
+
   const clearFilters = () => {
     if (nameDebounceRef.current) clearTimeout(nameDebounceRef.current);
     if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
@@ -368,6 +389,9 @@ export function DocumentsTable({ processId }: Props = {}) {
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:documents-table"
         onRowClick={(doc) => {
+          if (!canOpenDocument(doc)) {
+            return;
+          }
           if (doc.list_variant === 'published_fallback' && doc.latest_published_version_id) {
             navigate(`/documents/${doc.id}?documentVersionId=${encodeURIComponent(doc.latest_published_version_id)}`, {
               state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },

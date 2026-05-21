@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\Document;
+use App\Models\EntityVersion;
 use App\Models\JwtUser;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Autorización de documentos.
@@ -14,9 +16,16 @@ use App\Models\JwtUser;
  * Tener `document.review` es suficiente para aprobar o rechazar, independientemente
  * de si el actor es también el creador o titular — igual que en plantillas.
  *
- * Mutaciones de persistencia: el creador o el titular pueden editar sin el permiso
- * global; un colaborador con share `edit` puede mutar contenido; el resto
- * requiere `document.update`. `delete` sigue exigiendo `document.delete`.
+ * LISTADO Y DETALLE (catálogo):
+ * - `document.index`: listar documentos; el global scope `user_access` acota filas visibles.
+ * - `document.show`: ver detalle; creador y titular no requieren este slug; revisores
+ *   asignados en `in_review` tampoco.
+ *
+ * MUTACIONES (catálogo):
+ * - `document.create`: crear programaciones (y anclar a plantilla visible).
+ * - `document.update`: editar ajenos con slug; creador, titular o share `edit` sin slug.
+ * - `document.delete`: borrar ajenos con slug; creador/titular el suyo sin slug.
+ *   `update`/`delete` con slug exigen además {@see self::view()} (contexto académico).
  *
  * Compartición ({@see self::share}): solo el titular actual gestiona filas en
  * `document_shares`.
@@ -24,13 +33,65 @@ use App\Models\JwtUser;
 class DocumentPolicy
 {
     /**
-     * Ver documento: el alcance lo acota el global scope del modelo.
-     * Los controladores deben resolver el modelo con {@see Document::query()} (no sin scope)
-     * antes de delegar aquí.
+     * Listar documentos: requiere `document.index`; el scope `user_access` acota filas visibles.
+     */
+    public function viewAny(JwtUser $user): bool
+    {
+        return $user->hasPermission('document.index');
+    }
+
+    /**
+     * Ver detalle de un documento.
+     *
+     * Creador, titular y revisor asignado en `in_review` no requieren `document.show`.
+     * El resto necesita `document.show` y visibilidad vía scope académico (o snapshot publicado).
+     * `document.delete` no amplía la vista: solo autoriza borrar en {@see self::delete}.
+     *
+     * Los controladores que resuelven sin scope deben delegar aquí tras comprobar snapshot.
      */
     public function view(JwtUser $user, Document $document): bool
     {
-        return true;
+        $userId = (string) $user->getAuthIdentifier();
+
+        if ((string) $document->created_by === $userId || (string) $document->owner_id === $userId) {
+            return true;
+        }
+
+        $documentId = $document->getKey();
+        if ($documentId === null || $documentId === '') {
+            return true;
+        }
+
+        if ($document->status === 'in_review'
+            && DB::table('document_reviews')
+                ->where('document_id', $documentId)
+                ->where('reviewer_id', $userId)
+                ->exists()) {
+            return true;
+        }
+
+        if (! $user->hasPermission('document.show')) {
+            return false;
+        }
+
+        if (Document::query()->whereKey($documentId)->exists()) {
+            return true;
+        }
+
+        return EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', (string) $documentId)
+            ->where('version_number', '>', 0)
+            ->where('status', 'published')
+            ->exists();
+    }
+
+    /**
+     * Crear documentos / programaciones.
+     */
+    public function create(JwtUser $user): bool
+    {
+        return $user->hasPermission('document.create');
     }
 
     /**
@@ -38,17 +99,21 @@ class DocumentPolicy
      */
     public function update(JwtUser $user, Document $document): bool
     {
-        $id = $user->getAuthIdentifier();
+        $userId = (string) $user->getAuthIdentifier();
 
-        if ($id === $document->created_by || $id === $document->owner_id) {
+        if ($userId === (string) $document->created_by || $userId === (string) $document->owner_id) {
             return true;
         }
 
-        if ($this->hasEditShare($document, (string) $id)) {
+        if ($this->hasEditShare($document, $userId)) {
             return true;
         }
 
-        return $user->hasPermission('document.update');
+        if (! $user->hasPermission('document.update')) {
+            return false;
+        }
+
+        return $this->view($user, $document);
     }
 
     /**
@@ -80,18 +145,22 @@ class DocumentPolicy
     /**
      * Eliminar u operaciones de baja del documento.
      *
-     * El titular o creador puede borrar su propio documento (paridad con TemplatePolicy).
-     * Cualquier usuario con `document.delete` puede borrar cualquier documento.
+     * El titular o creador puede borrar el suyo sin `document.delete`.
+     * Con slug global hace falta además poder ver el documento (scope académico).
      */
     public function delete(JwtUser $user, Document $document): bool
     {
-        $id = $user->getAuthIdentifier();
+        $userId = (string) $user->getAuthIdentifier();
 
-        if ($id === $document->owner_id || $id === $document->created_by) {
+        if ($userId === (string) $document->owner_id || $userId === (string) $document->created_by) {
             return true;
         }
 
-        return $user->hasPermission('document.delete');
+        if (! $user->hasPermission('document.delete')) {
+            return false;
+        }
+
+        return $this->view($user, $document);
     }
 
     /**

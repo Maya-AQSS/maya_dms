@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Templates\SyncTemplateDocumentReviewersRequest;
 use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -29,7 +30,6 @@ class TemplateReviewersController extends Controller
     public function syncReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
     {
         $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('update', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $this->templateService->syncReviewers($model->id, $request->toDto());
@@ -40,10 +40,9 @@ class TemplateReviewersController extends Controller
     /**
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
      */
-    public function syncDocumentReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
+    public function syncDocumentReviewers(SyncTemplateDocumentReviewersRequest $request, string $template): JsonResponse
     {
         $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('update', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $this->templateService->syncDocumentReviewers($model->id, $request->toDto());

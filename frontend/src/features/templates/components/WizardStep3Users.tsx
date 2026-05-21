@@ -17,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
 import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import { Button, TextInput } from '@maya/shared-ui-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -34,11 +35,13 @@ function SortableValidatorItem({
   index,
   isOrdered,
   onRemove,
+  readOnly = false,
 }: {
   entry: ValidatorEntry;
   index: number;
   isOrdered: boolean;
   onRemove: (userId: string) => void;
+  readOnly?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: entry.userId,
@@ -90,15 +93,17 @@ function SortableValidatorItem({
           <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{entry.role}</p>
         )}
       </div>
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          onClick={() => onRemove(entry.userId)}
-          className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-danger/10 text-text-muted hover:text-danger transition-colors text-xs"
-        >
-          ✕
-        </button>
-      </div>
+      {!readOnly && (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onRemove(entry.userId)}
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-danger/10 text-text-muted hover:text-danger transition-colors text-xs"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -111,12 +116,14 @@ function ValidatorSection({
   onValidatorsChange,
   validationType,
   onValidationTypeChange,
+  readOnly = false,
 }: {
   title: string;
   validators: ValidatorEntry[];
   onValidatorsChange: (v: ValidatorEntry[]) => void;
   validationType?: 'libre' | 'ordenada';
   onValidationTypeChange?: (t: 'libre' | 'ordenada') => void;
+  readOnly?: boolean;
 }) {
   const sensors = useSensors(useSensor(PointerSensor));
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
@@ -135,6 +142,7 @@ function ValidatorSection({
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    if (readOnly) return;
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = validators.findIndex((v) => v.userId === active.id);
@@ -148,7 +156,7 @@ function ValidatorSection({
         <span className="text-xs font-bold uppercase tracking-widest text-text-secondary flex-1 min-w-0">
           {title} ({validators.length})
         </span>
-        {validationType && onValidationTypeChange && (
+        {!readOnly && validationType && onValidationTypeChange && (
           <div className="flex gap-1 shrink-0">
             {(['libre', 'ordenada'] as const).map((t) => (
               <button
@@ -187,6 +195,7 @@ function ValidatorSection({
                   index={i}
                   isOrdered={validationType === 'ordenada'}
                   onRemove={handleRequestRemove}
+                  readOnly={readOnly}
                 />
               ))}
             </SortableContext>
@@ -194,7 +203,13 @@ function ValidatorSection({
         )}
       </div>
 
-      {confirmDelete !== null && (
+      {readOnly && (
+        <p className="px-4 py-2 text-xs text-text-muted border-t border-ui-border dark:border-ui-dark-border shrink-0">
+          No tienes permiso para asignar revisores de plantilla en esta visibilidad.
+        </p>
+      )}
+
+      {confirmDelete !== null && !readOnly && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in"
           onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}
@@ -255,6 +270,7 @@ function UserAddPanel({
   searching,
   searchError,
   canSearchUsers,
+  assignDisabled = false,
   onAdd,
 }: {
   title: string;
@@ -264,22 +280,26 @@ function UserAddPanel({
   searching: boolean;
   searchError: string | null;
   canSearchUsers: boolean;
+  assignDisabled?: boolean;
   onAdd: (user: User) => void;
 }) {
+  const searchEnabled = canSearchUsers && !assignDisabled;
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       <div className="px-4 py-2 border-b border-ui-border dark:border-ui-dark-border shrink-0 space-y-1.5">
         <span className="block text-xs font-bold uppercase tracking-widest text-text-secondary">{title}</span>
-        {!canSearchUsers && (
+        {!searchEnabled && (
           <p className="text-xs text-text-muted dark:text-text-dark-muted">
-            No tienes permiso para buscar usuarios (users.search).
+            {assignDisabled
+              ? 'No tienes permiso para asignar revisores de plantilla.'
+              : 'No tienes permiso para buscar usuarios (users.search).'}
           </p>
         )}
         <div className="relative">
           <TextInput
             type="search"
             fieldSize="comfortable"
-            disabled={!canSearchUsers}
+            disabled={!searchEnabled}
             placeholder="Filtrar usuarios..."
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
@@ -296,7 +316,7 @@ function UserAddPanel({
         {searchError && <p className="text-xs text-danger-dark p-2">{searchError}</p>}
         {!searching &&
           !searchError &&
-          canSearchUsers &&
+          searchEnabled &&
           searchQuery.trim().length > 0 &&
           searchQuery.trim().length < 2 && (
             <p className="text-xs text-text-muted italic p-2">Escribe al menos 2 caracteres para buscar.</p>
@@ -335,6 +355,7 @@ function UserAddPanel({
 // ── Main component ────────────────────────────────────────────────────────────
 
 type Props = {
+  visibilityLevel?: string;
   validators: ValidatorEntry[];
   onValidatorsChange: (validators: ValidatorEntry[]) => void;
   validationType: 'libre' | 'ordenada';
@@ -346,6 +367,7 @@ type Props = {
 };
 
 export function WizardStep3Users({
+  visibilityLevel = 'personal',
   validators,
   onValidatorsChange,
   validationType,
@@ -357,6 +379,9 @@ export function WizardStep3Users({
 }: Props) {
   const { hasPermission } = useUserProfile();
   const canSearchUsers = hasPermission('users.search');
+  const isPersonal = visibilityLevel === 'personal';
+  const canAssignTemplateReviewers =
+    isPersonal || hasPermission(DMS_PERMISSIONS.templateAssignReview);
 
   // ── Estado de búsqueda para "Añadir a Plantilla"
   const [searchQueryTemplate, setSearchQueryTemplate] = useState('');
@@ -442,6 +467,7 @@ export function WizardStep3Users({
           onValidatorsChange={onValidatorsChange}
           validationType={validationType}
           onValidationTypeChange={onValidationTypeChange}
+          readOnly={!canAssignTemplateReviewers}
         />
         <ValidatorSection
           title="Validadores del documento"
@@ -462,6 +488,7 @@ export function WizardStep3Users({
           searching={searchingTemplate}
           searchError={searchErrorTemplate}
           canSearchUsers={canSearchUsers}
+          assignDisabled={!canAssignTemplateReviewers}
           onAdd={handleAddToTemplate}
         />
         <UserAddPanel
