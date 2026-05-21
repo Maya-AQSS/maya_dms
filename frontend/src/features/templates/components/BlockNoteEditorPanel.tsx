@@ -204,10 +204,12 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
           // the pasted content lands in-place instead of after an empty line.
           const currentBlock = currentBlocks[blockIdx];
           const isEmpty =
-            currentBlock.content.length === 0 ||
-            (currentBlock.content.length === 1 &&
-              currentBlock.content[0].type === 'text' &&
-              !currentBlock.content[0].text);
+            currentBlock.type !== 'image' && (
+              currentBlock.content.length === 0 ||
+              (currentBlock.content.length === 1 &&
+                currentBlock.content[0].type === 'text' &&
+                !currentBlock.content[0].text)
+            );
 
           if (isEmpty) {
             editor.removeBlocks([blockId]);
