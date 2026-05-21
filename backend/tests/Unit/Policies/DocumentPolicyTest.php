@@ -4,6 +4,7 @@ namespace Tests\Unit\Policies;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
+use App\Models\DocumentReview;
 use App\Models\DocumentShare;
 use App\Models\JwtUser;
 use App\Models\Template;
@@ -84,16 +85,53 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->review($user, $doc));
     }
 
-    /**
-     * Con el permiso documents.review, el creador/titular también puede revisar (sin SoD).
-     */
-    public function test_creator_owner_can_review_with_permission(): void
+    public function test_review_denied_with_permission_but_not_assigned(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
         $user   = $this->makeJwtUser($userId, ['document.review']);
-        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId);
+        $doc    = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'in_review');
 
-        $this->assertTrue($this->policy->review($user, $doc));
+        $this->assertFalse($this->policy->review($user, $doc));
+    }
+
+    public function test_assigned_reviewer_can_review_with_permission(): void
+    {
+        $reviewerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $user       = $this->makeJwtUser($reviewerId, ['document.review']);
+        $doc        = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'in_review',
+        );
+
+        DocumentReview::query()->forceCreate([
+            'id'          => (string) Str::uuid(),
+            'document_id' => $doc->id,
+            'reviewer_id' => $reviewerId,
+            'stage'       => 1,
+        ]);
+
+        $this->assertTrue($this->policy->review($user, $doc->fresh()));
+    }
+
+    public function test_assigned_reviewer_without_review_slug_cannot_approve_via_policy(): void
+    {
+        $reviewerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $user       = $this->makeJwtUser($reviewerId);
+        $doc        = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'in_review',
+        );
+
+        DocumentReview::query()->forceCreate([
+            'id'          => (string) Str::uuid(),
+            'document_id' => $doc->id,
+            'reviewer_id' => $reviewerId,
+            'stage'       => 1,
+        ]);
+
+        $this->assertFalse($this->policy->review($user, $doc->fresh()));
     }
 
     /**

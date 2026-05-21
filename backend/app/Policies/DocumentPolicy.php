@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\DB;
  * Autorización de documentos.
  *
  * El titular actual (owner tras delegación) puede enviar a revisión y editar.
- * Tener `document.review` es suficiente para aprobar o rechazar, independientemente
- * de si el actor es también el creador o titular — igual que en plantillas.
+ * `document.review` exige además fila en `document_reviews` (revisores definidos en la
+ * plantilla y materializados al enviar a revisión; no hay asignación manual en documento).
  *
  * LISTADO Y DETALLE (catálogo):
  * - `document.index`: listar documentos; el global scope `user_access` acota filas visibles.
@@ -175,17 +175,26 @@ class DocumentPolicy
 
     /**
      * Revisión / aprobación / rechazo del documento en flujo de revisión.
-     * El servicio verifica adicionalmente que el actor sea el revisor asignado.
+     *
+     * Requiere `document.review` y estar en `document_reviews` (pool de la plantilla).
+     * El servicio verifica además etapa, estado pendiente y modo secuencial/paralelo.
      */
     public function review(JwtUser $user, Document $document): bool
     {
-        return $user->hasPermission('document.review');
+        if (! $user->hasPermission('document.review')) {
+            return false;
+        }
+
+        return $document->reviews()
+            ->where('reviewer_id', (string) $user->getAuthIdentifier())
+            ->exists();
     }
 
     /**
      * Ver/gestionar comentarios del documento.
      *
-     * El creador/titular puede comentar en cualquier estado. Los revisores asignados solo en in_review.
+     * El creador/titular puede comentar en cualquier estado. Los revisores asignados en
+     * `in_review` pueden comentar aunque no tengan `document.review` (paridad con plantillas).
      */
     public function comment(JwtUser $user, Document $document): bool
     {
@@ -197,9 +206,11 @@ class DocumentPolicy
             return false;
         }
 
+        $userId = (string) $user->getAuthIdentifier();
+
         return $this->review($user, $document)
             || $document->reviews()
-                ->where('reviewer_id', (string) $user->getAuthIdentifier())
+                ->where('reviewer_id', $userId)
                 ->exists();
     }
 

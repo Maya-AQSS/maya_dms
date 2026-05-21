@@ -235,7 +235,10 @@ export function DocumentsTable({ processId }: Props = {}) {
         !!d.latest_published_version_id;
       const isAssignedReviewer =
         d.status === 'in_review' &&
-        hasPermission('documents.review');
+        !!profile?.id &&
+        profile.id !== d.created_by &&
+        profile.id !== d.owner_id &&
+        d.share_permission !== 'edit';
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
         d.share_permission === 'edit' ||
@@ -394,17 +397,6 @@ export function DocumentsTable({ processId }: Props = {}) {
           }
           if (doc.list_variant === 'published_fallback' && doc.latest_published_version_id) {
             navigate(`/documents/${doc.id}?documentVersionId=${encodeURIComponent(doc.latest_published_version_id)}`, {
-              state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
-            });
-            return;
-          }
-          const isReviewerForDoc =
-            doc.status === 'in_review' &&
-            hasPermission('document.review') &&
-            profile?.id !== doc.created_by &&
-            profile?.id !== doc.owner_id;
-          if (isReviewerForDoc) {
-            navigate(`/documents/${doc.id}/validate`, {
               state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
             });
             return;

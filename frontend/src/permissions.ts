@@ -24,4 +24,5 @@ export const DMS_PERMISSIONS = {
   documentCreate: 'document.create',
   documentUpdate: 'document.update',
   documentDelete: 'document.delete',
+  documentReview: 'document.review',
 } as const;

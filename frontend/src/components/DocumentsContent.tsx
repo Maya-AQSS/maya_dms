@@ -105,7 +105,10 @@ export function DocumentsContent() {
         !!d.latest_published_version_id;
       const isAssignedReviewer =
         d.status === 'in_review' &&
-        hasPermission('document.review');
+        !!profile?.id &&
+        profile.id !== d.created_by &&
+        profile.id !== d.owner_id &&
+        d.share_permission !== 'edit';
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
         d.share_permission === 'edit' ||
@@ -366,15 +369,6 @@ export function DocumentsContent() {
               e.stopPropagation();
               if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
                 navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
-                return;
-              }
-              const isReviewerForDoc =
-                d.status === 'in_review' &&
-                hasPermission('documents.review') &&
-                profile?.id !== d.created_by &&
-                profile?.id !== d.owner_id;
-              if (isReviewerForDoc) {
-                navigate(`/documents/${d.id}/validate`);
                 return;
               }
               navigate(`/documents/${d.id}`);
@@ -651,15 +645,6 @@ export function DocumentsContent() {
                   onRowClick={(d) => {
                     if (d.list_variant === 'published_fallback' && d.latest_published_version_id) {
                       navigate(`/documents/${d.id}?documentVersionId=${encodeURIComponent(d.latest_published_version_id)}`);
-                      return;
-                    }
-                    const isReviewerForDoc =
-                      d.status === 'in_review' &&
-                      hasPermission('documents.review') &&
-                      profile?.id !== d.created_by &&
-                      profile?.id !== d.owner_id;
-                    if (isReviewerForDoc) {
-                      navigate(`/documents/${d.id}/validate`);
                       return;
                     }
                     navigate(`/documents/${d.id}`);

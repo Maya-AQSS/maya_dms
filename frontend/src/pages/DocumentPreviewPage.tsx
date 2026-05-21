@@ -293,6 +293,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     !detail.latest_published_version_id &&
     (isOwner || hasPermission(DMS_PERMISSIONS.documentDelete));
   const canEditDraft = isDraft && canUpdate;
+  const canReviewDocument = hasPermission(DMS_PERMISSIONS.documentReview);
   const isHistoricalSnapshot = versionSnapshot !== null;
   const showVersionHistory =
     publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
@@ -712,7 +713,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             type="button"
             variant="outlineWarning"
             size="sm"
-            disabled={!actionableReviewId || validationReviewLoading}
+            disabled={!canReviewDocument || !actionableReviewId || validationReviewLoading}
             onClick={() => {
               setValidationModalError(null);
               setValidateConfirm('reject');
@@ -725,7 +726,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             type="button"
             variant="primary"
             size="sm"
-            disabled={!actionableReviewId || validationReviewLoading}
+            disabled={!canReviewDocument || !actionableReviewId || validationReviewLoading}
             onClick={() => {
               setValidationModalError(null);
               setValidateConfirm('approve');
@@ -902,6 +903,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   : undefined
           }
         >
+          {isValidateMode && !canReviewDocument && (
+            <div className="p-3 mb-4 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
+              ⚠ No tienes permiso para validar documentos (document.review).
+            </div>
+          )}
           {validationSetupError && !validationReviewLoading && !myDocumentReview?.status && (
             <div className="p-3 mb-4 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
               ⚠ {validationSetupError}
