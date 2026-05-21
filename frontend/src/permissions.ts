@@ -19,4 +19,6 @@ export const DMS_PERMISSIONS = {
   templateVersion: 'template.version',
   templateClone: 'template.clone',
   templateHistoryView: 'template.history.view',
+  documentIndex: 'document.index',
+  documentShow: 'document.show',
 } as const;

@@ -111,20 +111,23 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->view($conDoc, $template));
     }
 
-    public function test_view_allows_admin_and_templates_delete_without_catalog_scope(): void
+    public function test_view_denied_for_template_delete_outside_academic_context_even_with_show(): void
     {
-        $template = new Template;
-        $template->forceFill([
-            'id' => 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-            'created_by' => 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-            'status' => 'published',
-        ]);
+        auth()->setUser($this->makeJwtUser(
+            'dddddddd-dddd-dddd-dddd-dddddddddddd',
+            ['template.delete', 'template.show'],
+        ));
+        $template = $this->makeTemplate(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Personal->value,
+        );
+        $user = $this->makeJwtUser(
+            'dddddddd-dddd-dddd-dddd-dddddddddddd',
+            ['template.delete', 'template.show'],
+        );
 
-        $admin = $this->makeJwtUser('cccccccc-cccc-cccc-cccc-cccccccccccc', ['admin']);
-        $deleter = $this->makeJwtUser('dddddddd-dddd-dddd-dddd-dddddddddddd', ['template.delete']);
-
-        $this->assertTrue($this->policy->view($admin, $template));
-        $this->assertTrue($this->policy->view($deleter, $template));
+        $this->assertFalse($this->policy->view($user, $template));
     }
 
     public function test_creator_without_templates_review_permission_cannot_review_template(): void

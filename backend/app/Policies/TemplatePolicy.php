@@ -65,21 +65,15 @@ class TemplatePolicy
     }
 
     /**
-     * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see Template})
-     * o vínculo con un documento visible; además hace falta al menos `template.show` o `document.create`
-     * (quien puede crear programaciones desde módulo puede previsualizar plantillas ofrecidas allí).
+     * Ver una plantilla: scope académico (o revisor asignado / creador); además `template.show` o
+     * `document.create` para previsualizar en creación de programaciones.
+     * `template.delete` no amplía la vista: solo autoriza borrar en {@see self::delete}.
      *
      * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
      */
     public function view(JwtUser $user, Template $template): bool
     {
         $userId = (string) $user->getAuthIdentifier();
-
-        // Gestión global / auditoría: mismo espíritu que {@see AcademicHierarchyController} (`admin`)
-        // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `template.delete`).
-        if ($user->hasPermission('admin') || $user->hasPermission('template.delete')) {
-            return true;
-        }
 
         if ((string) $template->created_by === $userId) {
             return true;

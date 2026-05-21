@@ -25,6 +25,7 @@ import { fetchTemplateVersion, type TemplateVersionSnapshotBlock } from '../api/
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { useUserProfile } from '../features/user-profile';
+import { DMS_PERMISSIONS } from '../permissions';
 import type { Document, DocumentStatus } from '../types/documents';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { BLOCK_STATE_LABELS, type BlockState } from '../types/blocks';
@@ -95,6 +96,7 @@ export function DocumentsContent() {
   const { documents, loading, error, reload } = useDocuments();
   const { hierarchy } = useHierarchy();
   const { hasPermission, loading: profileLoading, profile } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
   const displayDocuments = useMemo(() => {
     const out: Document[] = [];
     for (const d of documents) {
@@ -103,7 +105,7 @@ export function DocumentsContent() {
         !!d.latest_published_version_id;
       const isAssignedReviewer =
         d.status === 'in_review' &&
-        hasPermission('documents.review');
+        hasPermission('document.review');
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
         d.share_permission === 'edit' ||
@@ -429,6 +431,16 @@ export function DocumentsContent() {
       state: { moduleId: selectedModuleId }
     });
   };
+
+  if (!canIndex) {
+    return (
+      <div className="p-6">
+        <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
+          No tienes permiso para listar documentos (document.index).
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
