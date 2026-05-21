@@ -402,6 +402,28 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     ? 'maya-bn-panel maya-bn-panel--fullscreen flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden'
     : 'maya-bn-panel flex-1 flex flex-col min-h-0 bg-white dark:bg-ui-dark-card overflow-hidden';
 
+  // Dentro de tu componente
+  const [showMarkdown, setShowMarkdown] = useState(false);
+  const [markdown, setMarkdown] = useState("");
+
+  const toggleMarkdownView = async () => {
+    if (!showMarkdown) {
+      // Activando Markdown: obtenemos el Markdown del editor
+      const md = await editor.blocksToMarkdownLossy(editor.document);
+      setMarkdown(md);
+      setShowMarkdown(true);
+    } else {
+      // Volviendo al BlockNote: parseamos Markdown a bloques
+      try {
+        const blocks = await editor.tryParseMarkdownToBlocks(markdown);
+        editor.replaceBlocks(editor.document, blocks);
+      } catch (err) {
+        console.warn("Error parsing Markdown:", err);
+      }
+      setShowMarkdown(false);
+    }
+  };
+
   return (
     <div
       ref={containerRef}
@@ -414,71 +436,96 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         </div>
       )}
       <div className="flex-1 min-h-0 relative overflow-y-auto">
-        <BlockNoteView
-          editor={editor as any}
-          editable={editable}
-          theme={isDark ? 'dark' : 'light'}
-          formattingToolbar={false}
-          onChange={() => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-            debounceRef.current = setTimeout(() => {
-              onChange?.(editor.document);
-            }, 200);
-          }}
-        >
-          {editable && (
-            <div className="order-first sticky top-0 z-10 w-full border-b border-ui-border dark:border-ui-dark-border bg-ui-card/95 dark:bg-ui-dark-card/95 backdrop-blur-md px-2 py-1 shadow-sm flex items-center gap-1">
-              <div className="flex items-center gap-0.5 shrink-0 pr-1 border-r border-ui-border dark:border-ui-dark-border mr-1">
-                <button
-                  type="button"
-                  onClick={handleUndo}
-                  aria-label="Deshacer"
-                  title="Deshacer (Ctrl+Z)"
-                  className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
-                  </svg>
-                </button>
-                <button
-                  type="button"
-                  onClick={handleRedo}
-                  aria-label="Rehacer"
-                  title="Rehacer (Ctrl+Y)"
-                  className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
-                  </svg>
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-1 max-w">
-                <FormattingToolbar />
-                {SLASH_ACTIONS.map((action) => (
+        {!showMarkdown ? (
+          <BlockNoteView
+            editor={editor as any}
+            editable={editable}
+            theme={isDark ? 'dark' : 'light'}
+            formattingToolbar={false}
+            onChange={() => {
+              if (debounceRef.current) clearTimeout(debounceRef.current);
+              debounceRef.current = setTimeout(() => {
+                onChange?.(editor.document);
+              }, 200);
+            }}
+          >
+            {editable && (
+              <div className="order-first sticky top-0 z-10 w-full border-b border-ui-border dark:border-ui-dark-border bg-ui-card/95 dark:bg-ui-dark-card/95 backdrop-blur-md px-2 py-1 shadow-sm flex items-center gap-1">
+                <div className="flex items-center gap-0.5 shrink-0 pr-1 border-r border-ui-border dark:border-ui-dark-border mr-1">
                   <button
-                    key={action.name}
                     type="button"
-                    onClick={action.run}
-                    title={action.desc}
-                    className="bn-fullscreen-btn shrink-0 p-1.5 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
-              >
-                    <span>{action.icon}</span>
+                    onClick={handleUndo}
+                    aria-label="Deshacer"
+                    title="Deshacer (Ctrl+Z)"
+                    className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+                    </svg>
                   </button>
-                ))}
-                
-              <button
-                type="button"
-                aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                aria-pressed={isFullscreen}
-                onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
-                className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
-              >
-                <FullscreenIcon expanded={isFullscreen} />
-              </button>
+                  <button
+                    type="button"
+                    onClick={handleRedo}
+                    aria-label="Rehacer"
+                    title="Rehacer (Ctrl+Y)"
+                    className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1 max-w">
+                  <FormattingToolbar />
+                  {SLASH_ACTIONS.map((action) => (
+                    <button
+                      key={action.name}
+                      type="button"
+                      onClick={action.run}
+                      title={action.desc}
+                      className="bn-fullscreen-btn shrink-0 p-1.5 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+                >
+                      <span>{action.icon}</span>
+                    </button>
+                  ))}
+                  
+                <button
+                  type="button"
+                  onClick={toggleMarkdownView}
+                  className="bn-fullscreen-btn shrink-0 p-1.5 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+                >
+                  Markdown
+                </button>
+                <button
+                  type="button"
+                  aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                  aria-pressed={isFullscreen}
+                  onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
+                  className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+                >
+                  <FullscreenIcon expanded={isFullscreen} />
+                </button>
+                </div>
               </div>
-            </div>
-          )}
-        </BlockNoteView>
+            )}
+          </BlockNoteView>
+          ) : (
+          <div className="relative h-full flex flex-col">
+            
+              <button
+                onClick={toggleMarkdownView}
+                className="bn-fullscreen-btn shrink-0 p-1.5 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+              >
+                Volver al editor
+              </button>
+            
+            <textarea
+              className="w-full h-full p-2 border rounded bg-ui-body dark:bg-ui-dark-card text-xs font-mono resize-none flex-1"
+              value={markdown}
+              onChange={(e) => setMarkdown(e.target.value)}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
