@@ -1,5 +1,5 @@
 import type { Document, DocumentDetail } from '../types/documents';
-import { apiFetchJson, apiGetJson } from './http';
+import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
 
 type DocumentsApiResponse = { data: Document[] };
 type DocumentDetailApiResponse = { data: DocumentDetail };
@@ -302,4 +302,70 @@ export async function deleteDocumentBlock(documentId: string, documentBlockId: s
     `documents/${encodeURIComponent(documentId)}/blocks/${encodeURIComponent(documentBlockId)}`,
     { method: 'DELETE' },
   );
+}
+
+/* ─── Export PDF/UA ───────────────────────────────────────────────────── */
+
+export type DocumentExportState = 'none' | 'queued' | 'processing' | 'ready' | 'failed';
+
+export interface DocumentExportPayload {
+  state: DocumentExportState;
+  document_id: string;
+  path?: string;
+  error?: string;
+  queued_at?: string;
+  ready_at?: string;
+}
+
+/** POST /api/v1/documents/{id}/export-pdf — encola la generación (idempotente). */
+export async function exportDocumentPdf(documentId: string): Promise<DocumentExportPayload> {
+  const res = await apiFetchJson<{ data: DocumentExportPayload }>(
+    `documents/${encodeURIComponent(documentId)}/export-pdf`,
+    { method: 'POST' },
+  );
+  return res.data;
+}
+
+/** GET /api/v1/documents/{id}/export-status — polling del estado. */
+export async function getDocumentExportStatus(documentId: string): Promise<DocumentExportPayload> {
+  const res = await apiGetJson<{ data: DocumentExportPayload }>(
+    `documents/${encodeURIComponent(documentId)}/export-status`,
+  );
+  return res.data;
+}
+
+/**
+ * GET /api/v1/documents/{id}/pdf — descarga binaria autenticada.
+ *
+ * El endpoint devuelve `application/pdf`. Como necesitamos pasar el JWT en
+ * un header, usamos fetch + blob y disparamos la descarga con un `<a>`
+ * sintético (mismo patrón que las demás descargas autenticadas del proyecto).
+ */
+export async function downloadDocumentPdf(documentId: string, filename: string): Promise<void> {
+  const token = await getBearerToken();
+  const response = await fetch(buildApiUrl(`documents/${encodeURIComponent(documentId)}/pdf`), {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const body = (await response.json()) as { message?: string };
+      if (body?.message) message = body.message;
+    } catch {
+      /* keep statusText */
+    }
+    throw new ApiHttpError(response.status, message);
+  }
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

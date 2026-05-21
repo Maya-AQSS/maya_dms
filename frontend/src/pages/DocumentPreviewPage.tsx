@@ -29,6 +29,7 @@ import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
+import { useDocumentPdfExport } from '../features/documents/hooks/useDocumentPdfExport';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -270,6 +271,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
   const isPublished = detail?.status === 'published';
+  // Hook que orquesta el flujo de descarga PDF/UA (POST → poll → blob → save-as).
+  const pdfExport = useDocumentPdfExport(documentId, detail?.title);
   const isDocumentReviewer = allReviews.some((r) => r.reviewer_id === profile?.id);
   const myDocumentReview = allReviews.find((r) => r.reviewer_id === profile?.id) ?? null;
   const changedBlocks = useMemo(
@@ -698,6 +701,26 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             Enviar a validar
           </Button>
         )
+      )}
+      {!isValidateMode && isPublished && !isHistoricalSnapshot && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={
+            pdfExport.state === 'queued' ||
+            pdfExport.state === 'processing' ||
+            pdfExport.state === 'downloading'
+          }
+          onClick={() => void pdfExport.start()}
+          title={pdfExport.error ?? 'Generar y descargar el PDF firmable del documento'}
+        >
+          {pdfExport.state === 'queued' || pdfExport.state === 'processing'
+            ? 'Generando…'
+            : pdfExport.state === 'downloading'
+              ? 'Descargando…'
+              : 'Descargar PDF'}
+        </Button>
       )}
       {!isValidateMode && canStartNewVersion && (
         <Button
