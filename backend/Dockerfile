@@ -24,8 +24,25 @@ RUN apk add --no-cache \
     font-inconsolata \
     font-droid font-mononoki \
  && fc-cache -f \
- && pip3 install --no-cache-dir --break-system-packages 'weasyprint==65.*' \
+ && pip3 install --no-cache-dir --break-system-packages 'weasyprint~=68.0' \
  && weasyprint --version
+
+# ─── Fuentes Google adicionales (Inter / Lora / Merriweather) ────────
+# Alpine apk no las empaqueta; descargamos las variable fonts oficiales
+# del repo Google Fonts (OFL) — incluyen todos los pesos en un único
+# archivo. Las añadimos al catálogo del editor via `config/theme_fonts.php`.
+RUN mkdir -p /usr/share/fonts/google \
+ && cd /usr/share/fonts/google \
+ && wget -q -O 'Inter.ttf'        'https://github.com/google/fonts/raw/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf' \
+ && wget -q -O 'Inter-Italic.ttf' 'https://github.com/google/fonts/raw/main/ofl/inter/Inter-Italic%5Bopsz%2Cwght%5D.ttf' \
+ && wget -q -O 'Lora.ttf'         'https://github.com/google/fonts/raw/main/ofl/lora/Lora%5Bwght%5D.ttf' \
+ && wget -q -O 'Lora-Italic.ttf'  'https://github.com/google/fonts/raw/main/ofl/lora/Lora-Italic%5Bwght%5D.ttf' \
+ && wget -q -O 'Merriweather.ttf' 'https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather%5Bopsz%2Cwdth%2Cwght%5D.ttf' \
+ && wget -q -O 'Merriweather-Italic.ttf' 'https://github.com/google/fonts/raw/main/ofl/merriweather/Merriweather-Italic%5Bopsz%2Cwdth%2Cwght%5D.ttf' \
+ && for f in *.ttf; do test -s "$f" || (echo "Missing $f"; exit 1); done \
+ && fc-cache -f \
+ && fc-list | grep -iE 'inter|lora|merri' | head -10
+
 
 # Redis + pcov via PECL. pcov se usa para coverage en `php artisan test --coverage`.
 # Es mucho más rápido que xdebug en modo coverage y no afecta a runs normales.

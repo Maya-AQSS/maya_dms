@@ -24,6 +24,11 @@ declare(strict_types=1);
 return [
     'sans' => [
         [
+            'value' => 'Inter, sans-serif',
+            'label' => 'Inter',
+            'note' => 'Sans-serif moderna optimizada para UI y lectura en pantalla',
+        ],
+        [
             'value' => 'Roboto Flex, Roboto, sans-serif',
             'label' => 'Roboto Flex',
             'note' => 'Variable font moderna, recomendada para encabezados',
@@ -60,6 +65,16 @@ return [
         ],
     ],
     'serif' => [
+        [
+            'value' => 'Merriweather, serif',
+            'label' => 'Merriweather',
+            'note' => 'Serifa pensada para lectura prolongada en pantalla',
+        ],
+        [
+            'value' => 'Lora, serif',
+            'label' => 'Lora',
+            'note' => 'Serifa balanceada, buena para textos editoriales',
+        ],
         [
             'value' => 'Noto Serif, serif',
             'label' => 'Noto Serif',
