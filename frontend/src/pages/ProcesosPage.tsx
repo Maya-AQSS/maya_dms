@@ -121,6 +121,7 @@ export function ProcesosPage() {
             Cerrar
           </Button>
         </div>
+      )}
       {processId && !canShow && (
         <Alert tone="warning" className="mb-4">
           {t('processes.noShowPermission')}
