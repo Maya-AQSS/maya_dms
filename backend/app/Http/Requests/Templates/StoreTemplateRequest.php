@@ -80,6 +80,7 @@ class StoreTemplateRequest extends FormRequest
             'review_stages' => ['sometimes', 'integer', 'min:0'],
             'review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
             'process_id' => ['required', 'uuid', 'exists:processes,id'],
+            'theme_id' => ['nullable', 'uuid', 'exists:themes,id'],
         ];
     }
 
@@ -102,6 +103,7 @@ class StoreTemplateRequest extends FormRequest
             reviewStages: (int) ($v['review_stages'] ?? 0),
             reviewMode: $v['review_mode'] ?? 'parallel',
             processId: $v['process_id'],
+            themeId: $v['theme_id'] ?? null,
         );
     }
 }

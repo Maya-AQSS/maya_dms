@@ -18,5 +18,6 @@ readonly class CreateTemplateDto
         public int $reviewStages,
         public string $reviewMode,
         public string $processId,
+        public ?string $themeId = null,
     ) {}
 }

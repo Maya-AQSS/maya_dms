@@ -50,6 +50,9 @@ final readonly class TemplateDto
         public ?string $latestPublishedAt,
         public ?array $blocksAtPreviousSubmission,
         public ?array $reviewHistory,
+        public ?string $themeId = null,
+        /** @var array<string, mixed>|null Mini-payload del theme cuando la relación está cargada. */
+        public ?array $themeMini = null,
     ) {}
 
     public static function fromModel(Template $m): self
@@ -102,6 +105,32 @@ final readonly class TemplateDto
                 ->all();
         }
 
+        // Mini-payload del theme (sólo si la relación está cargada — eager-load explícito).
+        $themeMini = null;
+        if ($m->relationLoaded('theme') && $m->theme !== null) {
+            $palette = (array) ($m->theme->palette ?? []);
+            $typo = (array) ($m->theme->typography ?? []);
+            $assets = (array) ($m->theme->assets ?? []);
+            $themeMini = [
+                'id' => (string) $m->theme->id,
+                'name' => (string) ($m->theme->name ?? ''),
+                'palette' => [
+                    'primary' => $palette['primary'] ?? null,
+                    'secondary' => $palette['secondary'] ?? null,
+                    'accent' => $palette['accent'] ?? null,
+                    'background' => $palette['background'] ?? null,
+                    'text' => $palette['text'] ?? null,
+                ],
+                'typography' => [
+                    'heading_font' => $typo['heading_font'] ?? null,
+                    'body_font' => $typo['body_font'] ?? null,
+                ],
+                'assets' => [
+                    'logo_path' => $assets['logo_path'] ?? null,
+                ],
+            ];
+        }
+
         return new self(
             id: (string) $m->id,
             name: $m->name,
@@ -138,6 +167,8 @@ final readonly class TemplateDto
             latestPublishedAt: self::formatOptionalIso($m->getAttribute('latest_published_at')),
             blocksAtPreviousSubmission: $blocksAtPreviousSubmission,
             reviewHistory: $reviewHistory,
+            themeId: $m->theme_id !== null ? (string) $m->theme_id : null,
+            themeMini: $themeMini,
         );
     }
 
