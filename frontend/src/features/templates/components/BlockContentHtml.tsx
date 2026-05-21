@@ -94,11 +94,29 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
       );
     if (isEmpty) return '';
     try {
-      const raw = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
-      return DOMPurify.sanitize(raw, {
-        // Allow safe URL schemes only; block javascript: data: vbscript: etc.
-        ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i,
+      DOMPurify.addHook('afterSanitizeElements', (node) => {
+        // Fix: aplanar <p class="bn-inline-content"> dentro de <li>
+        if (
+          node.tagName === 'P' &&
+          node.classList?.contains('bn-inline-content') &&
+          node.parentElement?.tagName === 'LI'
+        ) {
+          const li = node.parentElement;
+          // Mover los hijos del <p> directamente al <li>
+          while (node.firstChild) {
+            li.insertBefore(node.firstChild, node);
+          }
+          node.remove();
+        }
       });
+      // Configure DOMPurify to allow tags and the 'type' attribute
+      const config = {
+      ALLOWED_TAGS: ['label', 'input'], // Add input to the allowed tags
+      ALLOWED_ATTR: ['type', 'checked'], // Allow essential attributes
+      ALLOWED_URI_REGEXP: /^(https?|mailto|tel):/i, // Allow safe URL schemes only; block javascript: data: vbscript: etc.
+      };
+      const raw = getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
+      return DOMPurify.sanitize(raw, {config});
     } catch {
       return '<p><em>Error al renderizar el contenido.</em></p>';
     }
