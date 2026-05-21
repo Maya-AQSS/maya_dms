@@ -24,6 +24,7 @@ const TemplatePreviewPage = lazy(() => import('./pages/TemplatePreviewPage').the
 const ThemesListPage = lazy(() => import('./features/themes/pages/ThemesListPage').then(m => ({ default: m.ThemesListPage })));
 const ThemeNewPage = lazy(() => import('./features/themes/pages/ThemeNewPage').then(m => ({ default: m.ThemeNewPage })));
 const ThemeEditPage = lazy(() => import('./features/themes/pages/ThemeEditPage').then(m => ({ default: m.ThemeEditPage })));
+const ThemeLayoutPage = lazy(() => import('./features/themes/pages/ThemeLayoutPage').then(m => ({ default: m.ThemeLayoutPage })));
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
 const DASHBOARD_API_URL = resolveServiceUrl(
@@ -52,6 +53,7 @@ function AppRoutes() {
         <Route path="/themes" element={<ThemesListPage />} />
         <Route path="/themes/new" element={<ThemeNewPage />} />
         <Route path="/themes/:id/edit" element={<ThemeEditPage />} />
+        <Route path="/themes/:id/layout" element={<ThemeLayoutPage />} />
         <Route path="*" element={<PlaceholderPage />} />
       </Routes>
     </Suspense>

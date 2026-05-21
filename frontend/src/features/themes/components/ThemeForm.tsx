@@ -219,9 +219,10 @@ export function ThemeForm({
 
       {showLayoutTodo && (
         <section className="rounded border border-dashed border-gray-300 p-4 text-sm text-text-muted">
-          <strong>Layout (drag-and-drop):</strong> el editor visual de regiones (logo, header,
-          footer, watermark) se integrará en una próxima iteración con Puck. Por ahora el render
-          aplica un layout estándar A4 con cabecera de marca y pie de página con paginación.
+          <strong>Layout (drag-and-drop):</strong> tras crear el theme dispondrás del editor
+          visual con Puck en <em>Editar layout</em>, donde podrás colocar logo, texto, número
+          de página y fecha en las regiones de cabecera/pie. El render aplica un layout estándar
+          A4 mientras no haya regiones personalizadas.
         </section>
       )}
 

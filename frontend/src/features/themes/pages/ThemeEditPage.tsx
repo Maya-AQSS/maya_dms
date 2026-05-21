@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { PageTitle } from '@maya/shared-ui-react';
+import { Button, PageTitle } from '@maya/shared-ui-react';
 import { ThemeForm, type ThemeFormValue } from '../components/ThemeForm';
 import { ThemeAssetsSection } from '../components/ThemeAssetsSection';
 import { useTheme } from '../hooks/useTheme';
@@ -52,7 +52,20 @@ export function ThemeEditPage() {
 
   return (
     <>
-      <PageTitle title={theme.name} subtitle="Editar theme" />
+      <PageTitle
+        title={theme.name}
+        subtitle="Editar theme"
+        actions={
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(`/themes/${theme.id}/layout`)}
+          >
+            Editar layout (drag-and-drop)
+          </Button>
+        }
+      />
 
       {actionError && (
         <div className="my-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
