@@ -7,6 +7,19 @@ RUN apk add --no-cache \
 RUN docker-php-ext-install \
     pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd sockets
 
+# ─── WeasyPrint (Python) — PDF/UA tagged accessible PDF generation ─
+# Requisito legal de accesibilidad (UNE-EN 301549 / WCAG / PDF/UA).
+# Dependencias nativas: Pango (text shaping, ft2 integrado), HarfBuzz, Cairo,
+# fontconfig, gdk-pixbuf (imágenes), libffi.
+RUN apk add --no-cache \
+    python3 py3-pip \
+    pango harfbuzz \
+    cairo gdk-pixbuf \
+    fontconfig ttf-dejavu ttf-liberation \
+    libffi shared-mime-info \
+ && pip3 install --no-cache-dir --break-system-packages 'weasyprint==65.*' \
+ && weasyprint --version
+
 # Redis + pcov via PECL. pcov se usa para coverage en `php artisan test --coverage`.
 # Es mucho más rápido que xdebug en modo coverage y no afecta a runs normales.
 RUN apk add --no-cache $PHPIZE_DEPS \

@@ -1,4 +1,4 @@
-.PHONY: install up down restart logs shell-backend shell-frontend migrate seed test lint reverb
+.PHONY: install up down restart logs shell-backend shell-frontend migrate seed test lint reverb pdf-poc pdf-a11y-check
 
 # ─── Setup inicial ────────────────────────────────────────────
 install:
@@ -87,3 +87,18 @@ key-generate:
 
 route-list:
 	docker compose exec backend php artisan route:list --path=api
+
+# ─── PDF (Phase 0 POC + Phase 4 a11y CI) ──────────────────────
+# Genera un PDF/UA POC y lo deja en backend/storage/app/poc/document.pdf.
+# Requiere que la imagen backend incluya el binario weasyprint (ver backend/Dockerfile).
+pdf-poc:
+	docker compose exec backend php artisan pdf:poc
+	@echo ">>> PDF: backend/storage/app/poc/document.pdf"
+
+# Valida los PDFs fixture contra el perfil PDF/UA-1 usando verapdf en container.
+# Falla si algún PDF no cumple. Pensado para CI (Phase 4).
+pdf-a11y-check:
+	@if [ ! -f backend/storage/app/poc/document.pdf ]; then \
+		echo "✗ Falta storage/app/poc/document.pdf — ejecuta 'make pdf-poc' primero"; exit 1; \
+	fi
+	docker run --rm -v "$(PWD)/backend/storage/app:/in" verapdf/cli --profile ua1 /in/poc/document.pdf
