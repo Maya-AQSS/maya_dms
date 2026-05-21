@@ -232,7 +232,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         !!d.latest_published_version_id;
       const isAssignedReviewer =
         d.status === 'in_review' &&
-        hasPermission('documents.review');
+        d.is_assigned_reviewer === true;
       const canSeeLive =
         (profile?.id != null && (profile.id === d.created_by || profile.id === d.owner_id)) ||
         d.share_permission === 'edit' ||
@@ -376,9 +376,7 @@ export function DocumentsTable({ processId }: Props = {}) {
           }
           const isReviewerForDoc =
             doc.status === 'in_review' &&
-            hasPermission('documents.review') &&
-            profile?.id !== doc.created_by &&
-            profile?.id !== doc.owner_id;
+            doc.is_assigned_reviewer === true;
           if (isReviewerForDoc) {
             navigate(`/documents/${doc.id}/validate`, {
               state: { backTo: processId ? `/procesos/${processId}` : '/dashboard', processId },
