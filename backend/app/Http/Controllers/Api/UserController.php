@@ -29,7 +29,7 @@ class UserController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (! $user instanceof JwtUser || ! $user->hasPermission('users.search')) {
+        if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
             abort(403, 'No tienes permiso para buscar usuarios.');
         }
 

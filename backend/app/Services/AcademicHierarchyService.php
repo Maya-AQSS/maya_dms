@@ -14,7 +14,7 @@ class AcademicHierarchyService implements AcademicHierarchyServiceInterface
         private readonly AcademicHierarchyRepositoryInterface $hierarchyRepository,
     ) {}
 
-    private const GLOBAL_PERMISSIONS = ['admin', 'users.search', 'audit.read'];
+    private const GLOBAL_PERMISSIONS = ['admin', 'audit.read'];
 
     /**
      * Árbol de jerarquía académica, con caché Redis.

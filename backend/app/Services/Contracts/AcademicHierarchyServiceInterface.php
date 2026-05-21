@@ -16,8 +16,8 @@ interface AcademicHierarchyServiceInterface
     /**
      * Devuelve el árbol académico filtrado para el usuario indicado.
      *
-     * - Si el `$profile` tiene permisos globales (`admin`, `users.search`,
-     *   `audit.read`) o `study_type_ids` contiene `'*'`, devuelve el árbol
+     * - Si el `$profile` tiene permisos globales (`admin`, `audit.read`)
+     *   o `study_type_ids` contiene `'*'`, devuelve el árbol
      *   completo.
      * - Si no tiene `study_type_ids` asignados, devuelve `[]`.
      * - Si tiene asignaciones parciales, filtra `studies` y `course_modules`

@@ -201,7 +201,7 @@ class TemplatePolicy
      */
     public function update(JwtUser $user, Template $template, ?string $targetVisibilityLevel = null): bool
     {
-        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
 
         if (in_array($template->status, ['draft', 'rejected'], true)) {
             if (! $isCreator) {
@@ -241,7 +241,7 @@ class TemplatePolicy
      */
     public function delete(JwtUser $user, Template $template): bool
     {
-        if ($user->getAuthIdentifier() === $template->created_by) {
+        if ((string) $user->getAuthIdentifier() === (string) $template->created_by) {
             return true;
         }
 
@@ -304,7 +304,7 @@ class TemplatePolicy
             return false;
         }
 
-        return $user->getAuthIdentifier() === $template->created_by;
+        return (string) $user->getAuthIdentifier() === (string) $template->created_by;
     }
 
     /**
@@ -404,7 +404,7 @@ class TemplatePolicy
      */
     public function publish(JwtUser $user, Template $template): bool
     {
-        if ($user->getAuthIdentifier() === $template->created_by) {
+        if ((string) $user->getAuthIdentifier() === (string) $template->created_by) {
             return in_array($template->status, ['draft', 'in_review'], true)
                 && $template->reviewers()->doesntExist();
         }
@@ -421,7 +421,7 @@ class TemplatePolicy
      */
     public function submitForReview(JwtUser $user, Template $template): bool
     {
-        return $user->getAuthIdentifier() === $template->created_by
+        return (string) $user->getAuthIdentifier() === (string) $template->created_by
             && in_array($template->status, ['draft', 'rejected'], true);
     }
 

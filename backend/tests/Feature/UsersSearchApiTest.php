@@ -65,7 +65,7 @@ class UsersSearchApiTest extends TestCase
         return ['Authorization' => 'Bearer '.$token];
     }
 
-    public function test_users_search_returns_403_without_users_search_permission(): void
+    public function test_users_search_returns_403_without_template_or_document_show_permission(): void
     {
         $userId = (string) Str::uuid();
 
@@ -74,7 +74,7 @@ class UsersSearchApiTest extends TestCase
         $response->assertForbidden();
     }
 
-    public function test_users_search_returns_200_with_users_search_permission(): void
+    public function test_users_search_returns_200_with_template_show_permission(): void
     {
         $userId = (string) Str::uuid();
 
@@ -86,7 +86,7 @@ class UsersSearchApiTest extends TestCase
             'updated_at' => now(),
         ]);
 
-        $response = $this->getJson('/api/v1/users?search=ab', $this->authHeaders($userId, ['users.search']));
+        $response = $this->getJson('/api/v1/users?search=ab', $this->authHeaders($userId, ['template.show']));
 
         $response->assertOk();
         $data = $response->json('data');

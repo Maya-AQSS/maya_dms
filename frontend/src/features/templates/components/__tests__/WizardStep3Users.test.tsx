@@ -22,7 +22,7 @@ vi.mock('../../../../api/users', () => ({
       study_ids: [],
       module_ids: [],
       team_ids: [],
-      permissions: ['users.search'],
+      permissions: ['template.show'],
       teams: [],
       locale: 'es',
       source: 'fdw' as const,
@@ -92,7 +92,7 @@ describe('WizardStep3Users', () => {
         study_ids: [],
         module_ids: [],
         team_ids: [],
-        permissions: ['users.search'],
+        permissions: ['template.show'],
         teams: [],
         locale: 'es',
         source: 'fdw',
@@ -124,7 +124,7 @@ describe('WizardStep3Users', () => {
     expect(defaultProps.onValidatorsChange).toHaveBeenCalledWith([]);
   });
 
-  it('no llama a la API de búsqueda sin permiso users.search', async () => {
+  it('no llama a la API de búsqueda sin permiso template.show', async () => {
     vi.mocked(fetchMe).mockResolvedValue({
       data: {
         id: 'usr_step3',
@@ -145,7 +145,7 @@ describe('WizardStep3Users', () => {
 
     const searchInput = screen.getAllByPlaceholderText('Filtrar usuarios...')[0];
     expect(searchInput).toHaveProperty('disabled', true);
-    expect(screen.getAllByText(/users\.search/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/No tienes permiso para buscar usuarios/i).length).toBeGreaterThan(0);
     expect(searchTemplateReviewerCandidates).not.toHaveBeenCalled();
     expect(searchDocumentReviewerCandidates).not.toHaveBeenCalled();
   });

@@ -3,32 +3,29 @@
 namespace Tests\Feature;
 
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
-use Database\Seeders\PermissionsSeeder;
-use Database\Seeders\UserPermissionsSeeder;
-use Database\Seeders\UsersSourceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
+use Tests\Concerns\AssignsTestUserPermissions;
 use Tests\TestCase;
 
 /**
- * Comportamiento del reader sobre `user_resolved_permissions` (stub en
- * testing, vista FDW federada con maya_authorization en local/prod) con
- * datos de {@see database/data/user_permissions_mock.php}.
+ * Comportamiento del reader sobre `user_resolved_permissions` (stub físico
+ * en testing; vista FDW en local/prod apuntando a maya_authorization).
  *
- * IDs alineados con {@see database/data/users_mock.php} (UUIDs de
- * Keycloak en entorno local).
+ * Los permisos se insertan directamente con AssignsTestUserPermissions
+ * (sin seeders eliminados en ca8b2e6).
  */
 class ResolvedPermissionReaderIntegrationTest extends TestCase
 {
-    use RefreshDatabase;
+    use AssignsTestUserPermissions, RefreshDatabase;
 
-    /** Docente ESPA — lectura catálogo + documentos y alta de documentos (mock local) */
+    /** Docente ESPA — subconjunto mínimo para validar lectura */
     private const USER_ESO = 'cf8bb92a-0417-4a4c-918a-08dd3fd69165';
 
-    /** Sin filas en user_permissions_mock */
+    /** Sin filas — debe devolver lista vacía sin cachear */
     private const USER_WITHOUT_PERMISSIONS = '00000000-0000-0000-0000-000000000099';
 
-    /** Auditoría — conjunto amplio en mock (sin jerarquía académica; ver user_permissions_mock) */
+    /** Auditoría — conjunto amplio para validar orden alfabético */
     private const USER_AUDITOR = 'f6bbe247-c60e-44ea-bfac-93e90c5c27bc';
 
     protected function setUp(): void
@@ -37,9 +34,25 @@ class ResolvedPermissionReaderIntegrationTest extends TestCase
 
         Cache::flush();
 
-        $this->seed(UsersSourceSeeder::class);
-        $this->seed(PermissionsSeeder::class);
-        $this->seed(UserPermissionsSeeder::class);
+        $this->assignUserPermissions(self::USER_ESO, [
+            'document.create',
+            'document.show',
+            'template.show',
+        ], withAppLogin: false);
+
+        $this->assignUserPermissions(self::USER_AUDITOR, [
+            'audit.read',
+            'document.create',
+            'document.delete',
+            'document.show',
+            'document.review',
+            'document.update',
+            'template.create',
+            'template.delete',
+            'template.show',
+            'template.review',
+            'template.update',
+        ], withAppLogin: false);
     }
 
     public function test_returns_ordered_slugs_for_user_with_assignments(): void
@@ -85,7 +98,6 @@ class ResolvedPermissionReaderIntegrationTest extends TestCase
                 'template.show',
                 'template.review',
                 'template.update',
-                'users.search',
             ],
             $slugs,
         );

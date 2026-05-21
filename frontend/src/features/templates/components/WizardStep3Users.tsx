@@ -292,7 +292,7 @@ function UserAddPanel({
           <p className="text-xs text-text-muted dark:text-text-dark-muted">
             {assignDisabled
               ? 'No tienes permiso para asignar revisores de plantilla.'
-              : 'No tienes permiso para buscar usuarios (users.search).'}
+              : 'No tienes permiso para buscar usuarios.'}
           </p>
         )}
         <div className="relative">
@@ -378,7 +378,7 @@ export function WizardStep3Users({
   onDocumentValidationTypeChange,
 }: Props) {
   const { hasPermission } = useUserProfile();
-  const canSearchUsers = hasPermission('users.search');
+  const canSearchUsers = hasPermission(DMS_PERMISSIONS.templateShow);
   const isPersonal = visibilityLevel === 'personal';
   const canAssignTemplateReviewers =
     isPersonal || hasPermission(DMS_PERMISSIONS.templateAssignReview);
