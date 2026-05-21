@@ -85,7 +85,34 @@ export type Template = {
     block_state: string;
     sort_order: number;
   }> | null;
+  /** Theme asignado (nullable = sin theme). */
+  theme_id?: string | null;
+  /** Mini-payload del theme cuando viene incluido en la respuesta. */
+  theme?: ThemeMini | null;
 };
+
+/**
+ * Mini-payload del theme — espejo de `ThemeMini` del backend (no es el theme
+ * completo, sólo lo necesario para el selector + mini-preview).
+ */
+export interface ThemeMini {
+  id: string;
+  name: string;
+  palette: {
+    primary: string | null;
+    secondary: string | null;
+    accent: string | null;
+    background: string | null;
+    text: string | null;
+  };
+  typography: {
+    heading_font: string | null;
+    body_font: string | null;
+  };
+  assets: {
+    logo_path: string | null;
+  };
+}
 
 export type TemplatesListMeta = {
   current_page: number;

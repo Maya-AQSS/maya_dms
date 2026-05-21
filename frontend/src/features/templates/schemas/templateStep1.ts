@@ -16,6 +16,7 @@ export const templateStep1Schema = z
     studyId: z.string(),
     moduleId: z.string(),
     teamId: z.string(),
+    themeId: z.string(),
   })
   .superRefine((data, ctx) => {
     if (data.visibility === 'study_type' || data.visibility === 'study' || data.visibility === 'module') {
@@ -63,6 +64,8 @@ export type TemplateStep1Input = {
   studyId: string
   moduleId: string
   teamId: string
+  /** UUID del theme (vacío = sin theme). */
+  themeId: string
 }
 
 export const emptyTemplateStep1: TemplateStep1Input = {
@@ -74,4 +77,5 @@ export const emptyTemplateStep1: TemplateStep1Input = {
   studyId: '',
   moduleId: '',
   teamId: '',
+  themeId: '',
 }
