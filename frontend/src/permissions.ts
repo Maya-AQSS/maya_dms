@@ -28,4 +28,28 @@ export const DMS_PERMISSIONS = {
   documentVersion: 'document.version',
   documentClone: 'document.clone',
   documentHistoryView: 'document.history.view',
+  blockIndex: 'block.index',
+  blockShow: 'block.show',
+  blockCreate: 'block.create',
+  blockUpdate: 'block.update',
+  blockDelete: 'block.delete',
 } as const;
+
+/** `block.index` / `block.show` requieren además mutación de plantilla o documento (catálogo). */
+export function canAccessBlockCatalog(hasPermission: (slug: string) => boolean): boolean {
+  const hasMutation =
+    hasPermission(DMS_PERMISSIONS.templateCreate) ||
+    hasPermission(DMS_PERMISSIONS.templateUpdate) ||
+    hasPermission(DMS_PERMISSIONS.documentCreate) ||
+    hasPermission(DMS_PERMISSIONS.documentUpdate);
+
+  return hasMutation;
+}
+
+export function canListBlocks(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.blockIndex) && canAccessBlockCatalog(hasPermission);
+}
+
+export function canShowBlockDetail(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.blockShow) && canAccessBlockCatalog(hasPermission);
+}

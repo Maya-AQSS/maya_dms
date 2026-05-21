@@ -7,6 +7,8 @@ import {
   updateBlock as updateBlockRequest,
 } from '../../../api/blocks';
 import { ApiHttpError } from '../../../api/http';
+import { useUserProfile } from '../../user-profile';
+import { canListBlocks } from '../../../permissions';
 import type {
   CreateBlockPayload,
   TemplateBlock,
@@ -23,6 +25,8 @@ function formatError(err: unknown): string {
 }
 
 export function useTemplateBlocks(templateId: string) {
+  const { hasPermission } = useUserProfile();
+  const mayListBlocks = canListBlocks(hasPermission);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,6 +37,12 @@ export function useTemplateBlocks(templateId: string) {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    if (!mayListBlocks) {
+      setBlocks([]);
+      setError('No tienes permiso para listar bloques (block.index).');
+      setLoading(false);
+      return;
+    }
     try {
       const res = await fetchBlocks(templateId);
       setBlocks(res.data);
@@ -42,7 +52,7 @@ export function useTemplateBlocks(templateId: string) {
     } finally {
       setLoading(false);
     }
-  }, [templateId]);
+  }, [templateId, mayListBlocks]);
 
   useEffect(() => {
     void load();

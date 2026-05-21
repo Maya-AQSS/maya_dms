@@ -11,6 +11,7 @@ use App\Models\JwtUser;
 use App\Models\Process;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Policies\BlockPolicy;
 use App\Policies\CommentPolicy;
 use App\Policies\ProcessPolicy;
 use App\Policies\DocumentBlockPolicy;
@@ -184,5 +185,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(DocumentBlock::class, DocumentBlockPolicy::class);
         Gate::policy(Template::class, TemplatePolicy::class);
         Gate::policy(TemplateBlock::class, TemplateBlockPolicy::class);
+
+        $blockPolicy = BlockPolicy::class;
+        Gate::define('listTemplateBlocks', [$blockPolicy, 'listForTemplate']);
+        Gate::define('showTemplateBlock', [$blockPolicy, 'showForTemplate']);
+        Gate::define('listDocumentBlocks', [$blockPolicy, 'listForDocument']);
     }
 }

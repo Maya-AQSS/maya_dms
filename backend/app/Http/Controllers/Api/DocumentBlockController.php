@@ -33,7 +33,7 @@ class DocumentBlockController extends Controller
     public function index(string $document): AnonymousResourceCollection
     {
         $doc = $this->documentService->findModelOrFail($document);
-        $this->authorize('view', $doc);
+        $this->authorize('listDocumentBlocks', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         return DocumentBlockResource::collection(

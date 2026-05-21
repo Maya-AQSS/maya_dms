@@ -34,10 +34,9 @@ class TemplateBlockController extends Controller
      */
     public function index(string $template): AnonymousResourceCollection
     {
-        $this->authorizeAndValidateTemplateContext(
-            $this->findTemplateOrFail($this->templateService, $template),
-            'view',
-        );
+        $templateModel = $this->findTemplateOrFail($this->templateService, $template);
+        $this->authorize('listTemplateBlocks', $templateModel);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
 
         $blocks = $this->blockService->listForTemplate($template);
 
@@ -69,10 +68,9 @@ class TemplateBlockController extends Controller
     public function show(string $block): TemplateBlockResource
     {
         $blockDto = $this->blockService->findOrFail($block);
-        $this->authorizeAndValidateTemplateContext(
-            $this->findTemplateOrFail($this->templateService, $blockDto->templateId),
-            'view',
-        );
+        $templateModel = $this->findTemplateOrFail($this->templateService, $blockDto->templateId);
+        $this->authorize('showTemplateBlock', $templateModel);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
 
         return new TemplateBlockResource($blockDto);
     }
