@@ -15,8 +15,15 @@ RUN apk add --no-cache \
     python3 py3-pip \
     pango harfbuzz \
     cairo gdk-pixbuf \
-    fontconfig ttf-dejavu ttf-liberation \
+    fontconfig \
     libffi shared-mime-info \
+    ttf-dejavu ttf-liberation \
+    font-roboto font-roboto-flex font-roboto-mono \
+    font-opensans \
+    font-noto font-noto-extra \
+    font-inconsolata \
+    font-droid font-mononoki \
+ && fc-cache -f \
  && pip3 install --no-cache-dir --break-system-packages 'weasyprint==65.*' \
  && weasyprint --version
 

@@ -2,6 +2,7 @@ import type {
   Theme,
   ThemeAccessibility,
   ThemeAssets,
+  ThemeFontsCatalog,
   ThemeLayout,
   ThemeListFilters,
   ThemePalette,
@@ -58,6 +59,11 @@ function buildListQuery(filters: ThemeListFilters): string {
 /** GET /api/v1/themes */
 export async function fetchThemes(filters: ThemeListFilters = {}): Promise<ThemesListResponse> {
   return apiGetJson<ThemesListResponse>(`themes${buildListQuery(filters)}`);
+}
+
+/** GET /api/v1/themes/fonts — whitelist real de tipografías instaladas. */
+export async function fetchThemeFonts(): Promise<{ data: ThemeFontsCatalog }> {
+  return apiGetJson<{ data: ThemeFontsCatalog }>('themes/fonts');
 }
 
 /** GET /api/v1/themes/{id} */

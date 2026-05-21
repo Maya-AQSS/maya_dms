@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Button, FieldLabel, Select, TextInput } from '@maya/shared-ui-react';
+import { useThemeFonts } from '../hooks/useThemeFonts';
 import type {
   ThemeAccessibility,
+  ThemeFontsCatalog,
   ThemePalette,
   ThemeTypography,
 } from '../../../types/themes';
@@ -23,14 +25,6 @@ interface ThemeFormProps {
   showStatus?: boolean;
   showLayoutTodo?: boolean;
 }
-
-const FONT_WHITELIST = [
-  { value: 'DejaVu Sans, Liberation Sans, sans-serif', label: 'DejaVu Sans' },
-  { value: 'DejaVu Serif, Liberation Serif, serif', label: 'DejaVu Serif' },
-  { value: 'Inter, system-ui, sans-serif', label: 'Inter' },
-  { value: 'Source Sans 3, sans-serif', label: 'Source Sans 3' },
-  { value: 'IBM Plex Sans, sans-serif', label: 'IBM Plex Sans' },
-];
 
 const LANG_OPTIONS = [
   { value: 'es', label: 'Español' },
@@ -59,6 +53,7 @@ export function ThemeForm({
 }: ThemeFormProps) {
   const [value, setValue] = useState<ThemeFormValue>(initial);
   const [submitting, setSubmitting] = useState(false);
+  const { catalog: fonts } = useThemeFonts();
 
   const setPalette = (patch: Partial<ThemePalette>) =>
     setValue((v) => ({ ...v, palette: { ...v.palette, ...patch } }));
@@ -151,11 +146,7 @@ export function ThemeForm({
               value={value.typography.heading_font}
               onChange={(e) => setTypography({ heading_font: e.target.value })}
             >
-              {FONT_WHITELIST.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
+              {renderFontOptions(fonts, value.typography.heading_font)}
             </Select>
           </div>
           <div>
@@ -165,11 +156,7 @@ export function ThemeForm({
               value={value.typography.body_font}
               onChange={(e) => setTypography({ body_font: e.target.value })}
             >
-              {FONT_WHITELIST.map((f) => (
-                <option key={f.value} value={f.value}>
-                  {f.label}
-                </option>
-              ))}
+              {renderFontOptions(fonts, value.typography.body_font)}
             </Select>
           </div>
           <div>
@@ -247,6 +234,51 @@ export function ThemeForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+/**
+ * Renderiza el contenido del <Select> de fuentes con <optgroup> por categoría.
+ * Si el valor actual del theme no aparece en el catálogo (p.ej. una fuente
+ * retirada o deploys antiguos), lo añade en un grupo "Personalizada" para
+ * preservar el valor existente y no forzar una migración silenciosa.
+ */
+function renderFontOptions(catalog: ThemeFontsCatalog, currentValue: string) {
+  const allValues = new Set([
+    ...catalog.sans.map((f) => f.value),
+    ...catalog.serif.map((f) => f.value),
+    ...catalog.mono.map((f) => f.value),
+  ]);
+
+  return (
+    <>
+      <optgroup label="Sans-serif">
+        {catalog.sans.map((f) => (
+          <option key={f.value} value={f.value} title={f.note}>
+            {f.label}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label="Serif">
+        {catalog.serif.map((f) => (
+          <option key={f.value} value={f.value} title={f.note}>
+            {f.label}
+          </option>
+        ))}
+      </optgroup>
+      <optgroup label="Monoespacio">
+        {catalog.mono.map((f) => (
+          <option key={f.value} value={f.value} title={f.note}>
+            {f.label}
+          </option>
+        ))}
+      </optgroup>
+      {currentValue && !allValues.has(currentValue) && (
+        <optgroup label="Personalizada (legacy)">
+          <option value={currentValue}>{currentValue}</option>
+        </optgroup>
+      )}
+    </>
   );
 }
 

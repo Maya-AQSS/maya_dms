@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\TemplateStateController;
 use App\Http\Controllers\Api\TemplateVersionController;
 use App\Http\Controllers\Api\ThemeAssetController;
 use App\Http\Controllers\Api\ThemeController;
+use App\Http\Controllers\Api\ThemeFontController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 use Maya\Profile\Routing\MeRoutes;
@@ -53,6 +54,9 @@ Route::prefix('v1')->group(function () {
 
         // Themes — identidad visual reutilizable (logo, paleta, layout, accesibilidad)
         // que una plantilla puede aplicar a sus documentos.
+        // El listado de fuentes va ANTES del apiResource para no quedar atrapado
+        // por la ruta GET /themes/{theme}.
+        Route::get('themes/fonts', [ThemeFontController::class, 'index']);
         Route::apiResource('themes', ThemeController::class)
             ->whereUuid('theme');
         Route::post('themes/{theme}/clone', [ThemeController::class, 'clone'])

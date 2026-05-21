@@ -93,3 +93,19 @@ export interface ThemesListResponse {
     last_page: number;
   };
 }
+
+/** Whitelist real de tipografías servidas por el backend. */
+export interface ThemeFontOption {
+  /** Valor CSS literal para `font-family` (incluye fallbacks). */
+  value: string;
+  /** Nombre legible que se muestra en el editor. */
+  label: string;
+  /** Descripción opcional (uso recomendado). */
+  note?: string;
+}
+
+export interface ThemeFontsCatalog {
+  sans: ThemeFontOption[];
+  serif: ThemeFontOption[];
+  mono: ThemeFontOption[];
+}
