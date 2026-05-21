@@ -28,7 +28,9 @@
   },
   "dashboard": {
     "noWidgets": "No hay widgets en el panel.",
+    "noIndexPermission": "Tienes acceso a DocuCEED (dms.login) pero no permiso para ver el listado del panel (dms.index). Pide dms.index a un administrador.",
     "reset": "Restablecer",
+    "noShowPermission": "Sin permiso para abrir desde el panel (dms.show).",
     "widgets": {
       "recentDocuments": "Documentos recientes",
       "pendingValidations": "Pendientes de validar"

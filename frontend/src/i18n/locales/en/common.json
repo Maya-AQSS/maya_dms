@@ -28,7 +28,9 @@
   },
   "dashboard": {
     "noWidgets": "No widgets on the dashboard.",
+    "noIndexPermission": "You have access to DocuCEED (dms.login) but not permission to view the dashboard listings (dms.index). Ask an administrator for dms.index.",
     "reset": "Reset",
+    "noShowPermission": "No permission to open from the dashboard (dms.show).",
     "widgets": {
       "recentDocuments": "Recent documents",
       "pendingValidations": "Pending validation"

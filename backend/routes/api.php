@@ -168,8 +168,9 @@ Route::prefix('v1')->group(function () {
         Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);
         Route::get('/users/document-reviewer-candidates', [UserController::class, 'documentReviewerCandidates']);
 
-        // Dashboard (BFF)
-        Route::get('/dashboard', [DashboardController::class, 'index']);
+        // Dashboard (BFF): listados del panel principal
+        Route::get('/dashboard', [DashboardController::class, 'index'])
+            ->middleware('permission:dms.index');
 
         // Favoritos (plantillas y documentos)
         Route::get('/favorites', [FavoriteController::class, 'index']);
