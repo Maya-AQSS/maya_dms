@@ -77,8 +77,10 @@ use App\Services\Contracts\UserFavoriteServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use App\Services\DashboardService;
 use App\Services\DocumentPdfService;
+use App\Services\Contracts\TemplateRenderServiceInterface;
 use App\Services\DocumentRenderService;
 use App\Services\DocumentService;
+use App\Services\TemplateRenderService;
 use App\Services\EntityVersionLifecycleService;
 use App\Services\ProcessService;
 use App\Services\SnapshotService;
@@ -125,6 +127,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SnapshotServiceInterface::class, SnapshotService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(DocumentRenderServiceInterface::class, DocumentRenderService::class);
+        $this->app->bind(TemplateRenderServiceInterface::class, TemplateRenderService::class);
         $this->app->bind(DocumentPdfServiceInterface::class, DocumentPdfService::class);
         $this->app->bind(EntityVersionLifecycleServiceInterface::class, EntityVersionLifecycleService::class);
         $this->app->bind(ProcessServiceInterface::class, ProcessService::class);

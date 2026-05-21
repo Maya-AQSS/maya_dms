@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\DocumentExportController;
 use App\Http\Controllers\Api\DocumentPreviewController;
+use App\Http\Controllers\Api\TemplatePreviewController;
 use App\Http\Controllers\Api\DocumentOptionsController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentStateController;
@@ -79,6 +80,10 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockBulkController::class, 'bulkUpdate']);
         Route::patch('templates/{template}/blocks/reorder', [TemplateBlockBulkController::class, 'reorder'])
+            ->whereUuid('template');
+
+        // Preview HTML themed de la plantilla (mismo Blade que documentos).
+        Route::get('templates/{template}/preview', [TemplatePreviewController::class, 'show'])
             ->whereUuid('template');
 
         Route::apiResource('templates.blocks', TemplateBlockController::class)

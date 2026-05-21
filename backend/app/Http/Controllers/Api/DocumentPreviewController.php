@@ -23,12 +23,17 @@ class DocumentPreviewController extends Controller
     {
         $this->authorize('view', Document::query()->findOrFail($document));
 
-        $html = $this->renderer->renderHtml($document);
+        // previewMode = true → el Blade carga paged.js para paginación A4 en
+        // el navegador. El export PDF (DocumentPdfService) sigue invocando
+        // `renderHtml($id)` sin flag → false por defecto.
+        $html = $this->renderer->renderHtml($document, previewMode: true);
 
         return response($html, 200, [
             'Content-Type' => 'text/html; charset=utf-8',
-            // CSP estricto: el preview no debe ejecutar JS — solo HTML/CSS sanitizado.
-            'Content-Security-Policy' => "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'none'; object-src 'none'; base-uri 'none'",
+            // CSP: permitimos `script-src 'self'` (paged.js servido desde
+            // /vendor/pagedjs/ — mismo origen). Sin CDN externo, sin inline
+            // scripts más allá del wrapper IIFE que pagedjs ya emite.
+            'Content-Security-Policy' => "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; script-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'",
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }

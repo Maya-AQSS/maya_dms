@@ -392,5 +392,12 @@
     {!! $document['body_html'] !!}
 </main>
 
+@if (! empty($preview_mode))
+    {{-- paged.js: polyfill de CSS Paged Media para mostrar saltos de página A4
+         en el navegador. Solo se carga en preview navegador; WeasyPrint ya
+         respeta @page de forma nativa y no necesita el polyfill. --}}
+    <script src="/vendor/pagedjs/paged.polyfill.js"></script>
+@endif
+
 </body>
 </html>

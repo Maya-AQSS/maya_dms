@@ -56,7 +56,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
         'brand_name' => 'CEEDCV',
     ];
 
-    public function renderHtml(string $documentId): string
+    public function renderHtml(string $documentId, bool $previewMode = false): string
     {
         /** @var Document|null $document */
         $document = Document::query()
@@ -81,6 +81,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                 'body_html' => $body,
             ],
             'theme' => $theme,
+            'preview_mode' => $previewMode,
         ])->render();
     }
 
