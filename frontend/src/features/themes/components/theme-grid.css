@@ -1,0 +1,180 @@
+/*
+ * Editor de layout por rejilla (react-grid-layout) para Themes.
+ *
+ * El canvas simula una página A4. Cada bloque se posiciona libremente en
+ * una rejilla de 12 columnas; se puede arrastrar, redimensionar y solapar
+ * (capas vía z-index). Los controles de cada bloque (↑/↓/✕) se ocultan
+ * salvo hover/selección para no estorbar la edición.
+ */
+
+.theme-grid-page {
+  position: relative;
+  /* Mostramos una rejilla guía sutil para orientar visualmente */
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: calc(100% / 12) 100%;
+}
+
+.theme-grid {
+  position: relative;
+  min-height: 1248px; /* ROW_HEIGHT (24) * GRID_ROWS (52) — coincide con el JS */
+}
+
+.theme-grid-block {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+  cursor: grab;
+}
+
+.theme-grid-block:hover {
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.theme-grid-block.is-selected {
+  border-color: #6366f1; /* indigo-500 */
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+}
+
+.theme-grid-block:active {
+  cursor: grabbing;
+}
+
+/* Controles flotantes en la esquina superior derecha del bloque. */
+.theme-grid-block-controls {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: none;
+  gap: 2px;
+  z-index: 50;
+}
+
+.theme-grid-block:hover .theme-grid-block-controls,
+.theme-grid-block.is-selected .theme-grid-block-controls {
+  display: flex;
+}
+
+.theme-grid-block-controls > button {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #111;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.theme-grid-block-controls > button:hover {
+  background: #f3f4f6;
+}
+
+/* ─── Render de cada tipo de slot ──────────────────────────────────── */
+
+.theme-grid-slot {
+  width: 100%;
+  height: 100%;
+  padding: 4px 6px;
+  overflow: hidden;
+  font-family: var(--font-body, system-ui, sans-serif);
+}
+
+.theme-grid-slot--content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  border: 2px dashed #6366f1;
+  background: rgba(99, 102, 241, 0.06);
+  color: #4338ca;
+  border-radius: 4px;
+}
+
+.theme-grid-slot--content > span {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.theme-grid-slot--content > small {
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+
+.theme-grid-slot--text {
+  display: flex;
+  align-items: center;
+  white-space: pre-wrap;
+}
+
+.theme-grid-slot--logo,
+.theme-grid-slot--image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
+.theme-grid-slot--logo > span,
+.theme-grid-slot--image > span {
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.theme-grid-slot--meta {
+  display: flex;
+  align-items: center;
+  font-size: 10pt;
+  color: #4b5563;
+}
+
+.theme-grid-slot--watermark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 48pt;
+  color: #6b7280;
+  pointer-events: none;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.theme-grid-slot--legacy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.04);
+  color: #6b7280;
+  font-size: 11px;
+  border: 1px dashed #9ca3af;
+}
+
+/* Anula los bordes punteados que react-grid-layout dibuja al arrastrar
+ * (queremos los nuestros) y ajusta el resizable handle al estilo del shell. */
+.theme-grid .react-grid-placeholder {
+  background: rgba(99, 102, 241, 0.18) !important;
+  border-radius: 4px;
+  opacity: 1 !important;
+}
+
+.theme-grid .react-resizable-handle::after {
+  border-right-color: rgba(99, 102, 241, 0.6) !important;
+  border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+}

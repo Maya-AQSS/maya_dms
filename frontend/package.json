@@ -30,7 +30,6 @@
     "@maya/shared-profile-react": "file:../../maya_infra/packages/maya-shared-profile-react",
     "@maya/shared-sidebar-react": "file:../../maya_infra/packages/maya-shared-sidebar-react",
     "@maya/shared-ui-react": "file:../../maya_infra/packages/maya-shared-ui-react",
-    "@puckeditor/core": "^0.21.2",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.100.4",
     "@types/dompurify": "^3.0.5",

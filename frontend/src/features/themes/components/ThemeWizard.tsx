@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { ThemeWizardStepIdentity, type ThemeIdentityValue } from './ThemeWizardStepIdentity';
-import { ThemeLayoutEditor } from './ThemeLayoutEditor';
+import { ThemeGridEditor } from './ThemeGridEditor';
 import { useThemes } from '../hooks/useThemes';
 import type { Theme, ThemeLayoutRegion } from '../../../types/themes';
 
@@ -230,7 +230,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
       )}
       {step === 'layout' && theme && (
         <div className="flex-1 min-h-0">
-          <ThemeLayoutEditor theme={theme} onSave={persistLayout} embedded />
+          <ThemeGridEditor theme={theme} onSave={persistLayout} embedded />
         </div>
       )}
     </WizardShell>

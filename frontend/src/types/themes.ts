@@ -30,13 +30,37 @@ export interface ThemeLayoutPage {
   };
 }
 
-/** Una región del layout (header / footer / sidebar / content slot). */
+/** Tipo de bloque colocable en el layout del theme. */
+export type ThemeBlockType =
+  | 'content_slot'   // marca el área donde se renderiza el cuerpo del documento
+  | 'text'           // texto estático (cabecera, pie, etc.)
+  | 'logo'           // logo del theme
+  | 'image'          // imagen adicional
+  | 'page_number'    // contador de páginas
+  | 'date'           // fecha
+  | 'watermark'      // marca de agua (capa de fondo)
+  /** Legacy — bloques generados por el editor Puck anterior. */
+  | 'header'
+  | 'footer'
+  | 'sidebar';
+
+/** Una región / bloque del layout del theme. */
 export interface ThemeLayoutRegion {
   id: string;
-  type: 'header' | 'footer' | 'sidebar' | 'content_slot' | 'logo' | 'watermark';
-  /** Coordenadas en porcentajes 0-100 sobre la página. */
+  type: ThemeBlockType;
+  /**
+   * Posición en la rejilla del editor (12 columnas). `z` define la capa
+   * (mayor valor = más arriba) y permite solapar bloques.
+   */
+  grid?: { x: number; y: number; w: number; h: number; z?: number };
+  /**
+   * Posición legacy en porcentajes (no usada por el editor actual; se
+   * mantiene para no romper datos serializados previos).
+   */
   position?: { x: number; y: number; width: number; height: number };
-  /** Configuración serializada por Puck (cuando aplique). */
+  /** Props específicas del bloque (texto, color, formato, etc.). */
+  props?: Record<string, unknown>;
+  /** @deprecated Datos del editor Puck anterior — sólo backward-compat. */
   puck?: unknown;
 }
 
