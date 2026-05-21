@@ -29,6 +29,8 @@ import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
 import { getCommentsForBlock } from '../../../utils/blockComments';
+import { useUserProfile } from '../../user-profile';
+import { canCreateBlockComment } from '../../../permissions';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
 
@@ -149,6 +151,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 }, ref) => {
   const commentsQuery = useTemplateCommentsQuery(template.id);
   const reviewComments = commentsQuery.data?.data ?? [];
+  const { hasPermission } = useUserProfile();
+  const mayComment = canCreateBlockComment(hasPermission);
 
   const {
     blocks,
@@ -754,7 +758,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             allComments={reviewComments}
             onSendMessage={handleSendMessage}
             onClose={() => setShowCommentPanel(false)}
-            canAddComments={template.status !== 'published'}
+            canAddComments={template.status !== 'published' && mayComment}
           />
         </div>
       )}

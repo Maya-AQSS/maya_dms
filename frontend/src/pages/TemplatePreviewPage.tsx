@@ -23,6 +23,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
+import { canListBlocks, DMS_PERMISSIONS } from '../permissions';
 import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -102,6 +103,7 @@ export function TemplatePreviewPage() {
   };
 
   const { profile, hasPermission } = useUserProfile();
+  const mayListBlocks = canListBlocks(hasPermission);
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
@@ -173,14 +175,19 @@ export function TemplatePreviewPage() {
           const snap = Array.isArray(vRes.blocks_snapshot) ? vRes.blocks_snapshot : [];
           setBlocks(mapSnapshotToTemplateBlocks(id, snap).sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
         } else {
-          const [tRes, bRes] = await Promise.all([
-            fetchTemplate(id),
-            fetchBlocks(id),
-          ]);
+          const tRes = await fetchTemplate(id);
+          if (cancelled) return;
+          const t = tRes.data;
+          setTemplate(t);
+          if (mayListBlocks) {
+            const bRes = await fetchBlocks(id);
+            if (!cancelled) {
+              setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
+            }
+          } else if (!cancelled) {
+            setBlocks([]);
+          }
           if (!cancelled) {
-            const t = tRes.data;
-            setTemplate(t);
-            setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
             if (t.has_review_comments) {
               void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
                 .then((res) => { if (!cancelled) setReviewComments(res.data); })
@@ -201,7 +208,7 @@ export function TemplatePreviewPage() {
   // profile?.id was previously used in the loading condition but is no longer needed here;
   // the backend handles authorization. Keeping it out of deps avoids a double-load flash.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, templateVersionId]);
+  }, [id, templateVersionId, mayListBlocks]);
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
     if (!activeView?.blockId || !id) return;
@@ -258,7 +265,10 @@ export function TemplatePreviewPage() {
       ? snapshotTemplate.name
       : template?.name)
     : template?.name;
-  const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 0;
+  const showVersionHistory =
+    publishedVersionCount !== null
+    && publishedVersionCount > 0
+    && (isOwner || hasPermission(DMS_PERMISSIONS.templateHistoryView));
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
   /** Solo se permite eliminar plantillas que nunca han sido publicadas. */
@@ -266,24 +276,25 @@ export function TemplatePreviewPage() {
     !viewingPublishedSnapshot &&
     template != null &&
     !template.latest_published_version_id &&
-    (isOwner || hasPermission('templates.delete'));
+    (isOwner || hasPermission(DMS_PERMISSIONS.templateDelete));
   /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
   const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
   const canSubmit =
     !viewingPublishedSnapshot && isOwner && isDraft && hasReviewers && !template.has_review_comments;
-  /** Alineado con `TemplatePolicy::startRevision`: creador o `templates.update` en publicada. */
+  /** Alineado con `TemplatePolicy::startRevision`: creador o `template.version` en publicada. */
   const canStartNewVersion =
     !viewingPublishedSnapshot &&
     isPublished &&
     !selectionMode &&
-    (isOwner || hasPermission('templates.update'));
+    (isOwner || hasPermission(DMS_PERMISSIONS.templateVersion));
+  /** Alineado con `TemplatePolicy::discard`: solo el creador. */
   const canDiscardWorkingVersion =
     !viewingPublishedSnapshot &&
     template != null &&
+    isOwner &&
     (template.status === 'draft' || template.status === 'in_review') &&
     !!template.latest_published_version_id &&
-    !!template.working_version_id &&
-    (isOwner || hasPermission('templates.update'));
+    !!template.working_version_id;
 
   const processesQuery = useProcessesQuery(undefined, {
     enabled: !!template?.process_id,

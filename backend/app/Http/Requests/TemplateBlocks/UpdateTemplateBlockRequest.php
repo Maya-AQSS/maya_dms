@@ -7,15 +7,23 @@ namespace App\Http\Requests\TemplateBlocks;
 use App\DTOs\TemplateBlocks\UpdateTemplateBlockDto;
 use App\Enums\BlockState;
 use App\Http\Concerns\SanitizesBlockContent;
+use App\Http\Requests\TemplateBlocks\Concerns\ResolvesTemplateForBlockAuthorization;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateTemplateBlockRequest extends FormRequest
 {
+    use ResolvesTemplateForBlockAuthorization;
     use SanitizesBlockContent;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('updateTemplateBlock', $this->resolveTemplate());
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso para actualizar bloques de esta plantilla.');
     }
 
     public function rules(): array

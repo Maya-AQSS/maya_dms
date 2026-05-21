@@ -18,6 +18,20 @@ use Illuminate\Support\Facades\DB;
  * - En borrador (`draft`): solo el creador puede editar.
  * - En publicada (`published`): puede editar el creador o quien tenga `template.update`,
  *   siempre que además pueda ver la plantilla (scope/contexto académico + `template.show`).
+ *
+ * LISTADO Y DETALLE (catálogo):
+ * - `template.index`: listar plantillas (global, personal, equipo, contexto académico).
+ * - `template.show`: ver detalle; el creador y los revisores asignados no requieren este slug.
+ *
+ * MUTACIONES (catálogo):
+ * - `template.create`: crear visibilidad compartida; personal sin slug (cualquier usuario autenticado).
+ * - `template.update`: editar publicada si no es creador; borrador/rechazado solo creador.
+ * - `template.delete`: borrar ajenas; el creador siempre puede borrar la suya.
+ * - `template.review`: aprobar/rechazar; además debe figurar en `template_reviewers`.
+ * - `template.assign-review`: asignar revisores en plantillas no personales; en personal solo el creador en borrador/rechazado.
+ * - `template.version`: abrir ciclo de nueva versión sobre publicada (no creador).
+ * - `template.clone`: clonar publicada (no creador); además `template.update` o ser creador del origen.
+ * - `template.history.view`: listar/ver snapshots publicados (no creador).
  * - La visibilidad no personal (compartida) exige además `template.create`.
  *
  * REGLAS DE BORRADO:
@@ -43,29 +57,23 @@ use Illuminate\Support\Facades\DB;
 class TemplatePolicy
 {
     /**
-     * Listar plantillas: requiere `template.show`; el global scope acota filas visibles.
+     * Listar plantillas: requiere `template.index`; el global scope acota filas visibles.
      */
     public function viewAny(JwtUser $user): bool
     {
-        return $user->hasPermission('template.show');
+        return $user->hasPermission('template.index');
     }
 
     /**
-     * Ver una plantilla: visibilidad de catálogo (mismo criterio que el scope de {@see Template})
-     * o vínculo con un documento visible; además hace falta al menos `template.show` o `document.create`
-     * (quien puede crear programaciones desde módulo puede previsualizar plantillas ofrecidas allí).
+     * Ver una plantilla: scope académico (o revisor asignado / creador); además `template.show` o
+     * `document.create` para previsualizar en creación de programaciones.
+     * `template.delete` no amplía la vista: solo autoriza borrar en {@see self::delete}.
      *
      * Los controladores que resuelven la plantilla sin el scope `user_access` deben delegar aquí.
      */
     public function view(JwtUser $user, Template $template): bool
     {
         $userId = (string) $user->getAuthIdentifier();
-
-        // Gestión global / auditoría: mismo espíritu que {@see AcademicHierarchyController} (`admin`)
-        // y coherente con poder borrar cualquier plantilla ({@see self::delete} + `template.delete`).
-        if ($user->hasPermission('admin') || $user->hasPermission('template.delete')) {
-            return true;
-        }
 
         if ((string) $template->created_by === $userId) {
             return true;
@@ -222,20 +230,49 @@ class TemplatePolicy
     }
 
     /**
-     * Clonar plantilla.
+     * Clonar plantilla publicada en un borrador nuevo.
      *
-     * Solo se permite clonar plantillas publicadas que el usuario pueda ver
-     * y para las cuales tenga permiso de creación en la visibilidad origen.
+     * Requiere poder ver el origen, `template.create` en la visibilidad del clon,
+     * y (creador del origen o `template.clone`). Quien no es creador del origen
+     * necesita además `template.update` (misma línea que editar publicadas ajenas).
      */
     public function clone(JwtUser $user, Template $template): bool
     {
+        if ($template->status !== 'published' || ! $this->view($user, $template)) {
+            return false;
+        }
+
         $visibility = $template->visibility_level instanceof TemplateVisibilityLevel
             ? $template->visibility_level->value
             : (string) $template->visibility_level;
 
-        return $this->view($user, $template)
-            && $template->status === 'published'
-            && $this->create($user, $visibility);
+        if (! $this->create($user, $visibility)) {
+            return false;
+        }
+
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
+
+        if (! $isCreator && ! $user->hasPermission('template.clone')) {
+            return false;
+        }
+
+        return $isCreator || $user->hasPermission('template.update');
+    }
+
+    /**
+     * Ver historial de versiones publicadas (`GET …/versions`, `GET …/template-versions/{id}`).
+     */
+    public function viewHistory(JwtUser $user, Template $template): bool
+    {
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        if ((string) $user->getAuthIdentifier() === (string) $template->created_by) {
+            return true;
+        }
+
+        return $user->hasPermission('template.history.view');
     }
 
     /**
@@ -254,8 +291,7 @@ class TemplatePolicy
     /**
      * Publicada → borrador para preparar una nueva versión (misma plantilla).
      *
-     * Misma idea que {@see self::update} en estado `published`: hace falta poder ver la plantilla
-     * y ser creador o tener `template.update`.
+     * Creador o permiso `template.version`, siempre que pueda ver la plantilla.
      */
     public function startRevision(JwtUser $user, Template $template): bool
     {
@@ -267,9 +303,34 @@ class TemplatePolicy
             return false;
         }
 
-        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
 
-        return $isCreator || $user->hasPermission('template.update');
+        return $isCreator || $user->hasPermission('template.version');
+    }
+
+    /**
+     * Asignar revisores de plantilla (POST …/reviewers).
+     *
+     * Personal: solo el creador en borrador o rechazado.
+     * Resto de visibilidades: `template.assign-review`.
+     */
+    public function assignReview(JwtUser $user, Template $template): bool
+    {
+        if (! in_array($template->status, ['draft', 'rejected'], true)) {
+            return false;
+        }
+
+        $level = $this->normalizeVisibility(
+            $template->visibility_level instanceof TemplateVisibilityLevel
+                ? $template->visibility_level->value
+                : (string) $template->visibility_level,
+        );
+
+        if ($level === TemplateVisibilityLevel::Personal) {
+            return (string) $user->getAuthIdentifier() === (string) $template->created_by;
+        }
+
+        return $user->hasPermission('template.assign-review');
     }
 
     /**
@@ -291,27 +352,15 @@ class TemplatePolicy
     }
 
     /**
-     * Ver/gestionar comentarios de plantilla.
-     *
-     * El creador puede comentar en cualquier estado. Los revisores asignados solo en in_review,
-     * sin requerir el permiso templates.review (paridad con DocumentPolicy::comment).
+     * Crear/listar comentarios en bloques de plantilla (`comment-block.create` + creador o revisor).
      */
     public function comment(JwtUser $user, Template $template): bool
     {
-        $userId = (string) $user->getAuthIdentifier();
-
-        if ($userId === (string) $template->created_by) {
-            return true;
-        }
-
-        if ($template->status !== 'in_review') {
+        if (! $user->hasPermission('comment-block.create')) {
             return false;
         }
 
-        return $this->review($user, $template)
-            || $template->reviewers()
-                ->where('user_id', $userId)
-                ->exists();
+        return (new CommentPolicy)->mayParticipateOnTemplate($user, $template);
     }
 
     /**

@@ -4,15 +4,24 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Documents;
 
+use App\Http\Requests\Documents\Concerns\ResolvesDocumentForAuthorization;
 use App\Models\Comment;
 use App\Models\Document;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class RejectDocumentReviewRequest extends FormRequest
 {
+    use ResolvesDocumentForAuthorization;
+
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('review', $this->resolveDocument());
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso para revisar este documento.');
     }
 
     /**

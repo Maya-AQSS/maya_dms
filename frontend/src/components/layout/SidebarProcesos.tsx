@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { useUserProfile } from '../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../permissions';
 import { fetchProcesses } from '../../api/processes';
 import type { Process } from '../../types/processes';
 
@@ -43,16 +46,10 @@ const CHEVRON = (
 
 type ProcessNode = Process & { children: Process[] };
 
-/**
- * Agrupa procesos planos por `process_parent_id`. Procesos top-level conservan el orden
- * de entrada (que viene ordenado por código desde el backend) y los hijos se
- * ordenan también por código.
- */
 function buildTree(processes: Process[]): ProcessNode[] {
   const byId = new Map<string, ProcessNode>();
   const roots: ProcessNode[] = [];
 
-  // Pre-instancia todos como nodos
   for (const p of processes) {
     byId.set(p.id, { ...p, children: [] });
   }
@@ -61,8 +58,11 @@ function buildTree(processes: Process[]): ProcessNode[] {
     const node = byId.get(p.id)!;
     if (p.process_parent_id) {
       const parent = byId.get(p.process_parent_id);
-      if (parent) parent.children.push(node);
-      else roots.push(node); // Huérfano: tratar como top-level por seguridad
+      if (parent) {
+        parent.children.push(node);
+      } else {
+        roots.push(node);
+      }
     } else {
       roots.push(node);
     }
@@ -73,17 +73,23 @@ function buildTree(processes: Process[]): ProcessNode[] {
 
 /**
  * Sección del aside con el listado dinámico de procesos del catálogo CEEDCV.
- * Renderiza top-level (PE0X / PC0X / PS0X) y sus sub-procesos tabulados debajo.
- *
- * Mientras carga muestra skeleton; si no hay procesos, no renderiza nada
- * (evita reservar espacio en vacío, mismo patrón que SidebarFavorites).
  */
 export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
+  const { t } = useTranslation('common');
+  const { hasPermission } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.processIndex);
+  const canShow = hasPermission(DMS_PERMISSIONS.processShow);
   const [processes, setProcesses] = useState<Process[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!canIndex) {
+      setLoading(false);
+      setProcesses([]);
+      return;
+    }
+
     let cancelled = false;
     fetchProcesses()
       .then((res) => {
@@ -97,12 +103,17 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [canIndex]);
 
   const tree = useMemo(() => buildTree(processes ?? []), [processes]);
+
+  if (!canIndex) {
+    return null;
+  }
 
   if (loading) {
     return (
@@ -121,6 +132,52 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
 
   if (!processes || processes.length === 0) return null;
 
+  const linkClass = (isActive: boolean, disabled: boolean) =>
+    [
+      'flex items-center gap-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap overflow-hidden flex-1 min-w-0',
+      disabled
+        ? 'opacity-50 cursor-not-allowed text-text-inverse/50'
+        : isActive
+          ? 'bg-text-inverse/10 text-text-inverse'
+          : 'text-text-inverse/70 hover:bg-text-inverse/8 hover:text-text-inverse',
+    ].join(' ');
+
+  const renderProcessLink = (p: Process, className: string | ((isActive: boolean) => string), dot?: ReactNode) => {
+    const title = `${p.code} — ${p.name}`;
+    const content = (
+      <>
+        {dot ?? (
+          <span className="shrink-0 w-6 h-6 flex items-center justify-center text-text-inverse/60">
+            {FOLDER_ICON}
+          </span>
+        )}
+        <span className="truncate">{p.name}</span>
+      </>
+    );
+
+    if (!canShow) {
+      const disabledClass =
+        typeof className === 'function' ? className(false) : className;
+
+      return (
+        <span className={disabledClass} title={t('processes.noShowPermission')}>
+          {content}
+        </span>
+      );
+    }
+
+    const resolvedClass =
+      typeof className === 'function'
+        ? ({ isActive }: { isActive: boolean }) => className(isActive)
+        : className;
+
+    return (
+      <NavLink to={`/procesos/${p.id}`} title={title} className={resolvedClass}>
+        {content}
+      </NavLink>
+    );
+  };
+
   return (
     <div className="px-1 mt-4 pt-3 border-t border-text-inverse/8">
       <p className="text-xs font-semibold text-text-inverse/40 uppercase tracking-wider px-2 mb-1">
@@ -133,23 +190,10 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
         return (
           <div key={p.id}>
             <div className="group flex items-center gap-1">
-              <NavLink
-                to={`/procesos/${p.id}`}
-                title={`${p.code} — ${p.name}`}
-                className={({ isActive }: { isActive: boolean }) =>
-                  [
-                    'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap overflow-hidden flex-1 min-w-0',
-                    isActive
-                      ? 'bg-text-inverse/10 text-text-inverse'
-                      : 'text-text-inverse/70 hover:bg-text-inverse/8 hover:text-text-inverse',
-                  ].join(' ')
-                }
-              >
-                <span className="shrink-0 w-6 h-6 flex items-center justify-center text-text-inverse/60">
-                  {FOLDER_ICON}
-                </span>
-                <span className="truncate">{p.name}</span>
-              </NavLink>
+              {renderProcessLink(
+                p,
+                (isActive) => linkClass(isActive, !canShow),
+              )}
               {hasChildren && (
                 <button
                   type="button"
@@ -173,24 +217,23 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
             {hasChildren && isOpen && (
               <div className="ml-5 border-l border-text-inverse/10 pl-1 my-0.5 space-y-0.5">
                 {p.children.map((child) => (
-                  <NavLink
-                    key={child.id}
-                    to={`/procesos/${child.id}`}
-                    title={`${child.code} — ${child.name}`}
-                    className={({ isActive }: { isActive: boolean }) =>
-                      [
-                        'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap overflow-hidden',
-                        isActive
-                          ? 'bg-text-inverse/10 text-text-inverse'
-                          : 'text-text-inverse/55 hover:bg-text-inverse/8 hover:text-text-inverse/90',
-                      ].join(' ')
-                    }
-                  >
-                    <span className="shrink-0 w-3 flex items-center justify-center text-text-inverse/40">
-                      {SUB_DOT}
-                    </span>
-                    <span className="truncate">{child.name}</span>
-                  </NavLink>
+                  <div key={child.id}>
+                    {renderProcessLink(
+                      child,
+                      (isActive) =>
+                        [
+                          'flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors whitespace-nowrap overflow-hidden w-full',
+                          !canShow
+                            ? 'opacity-50 cursor-not-allowed text-text-inverse/50'
+                            : isActive
+                              ? 'bg-text-inverse/10 text-text-inverse'
+                              : 'text-text-inverse/55 hover:bg-text-inverse/8 hover:text-text-inverse/90',
+                        ].join(' '),
+                      <span className="shrink-0 w-3 flex items-center justify-center text-text-inverse/40">
+                        {SUB_DOT}
+                      </span>,
+                    )}
+                  </div>
                 ))}
               </div>
             )}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import type { Template, TemplateStatus } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatListRowVisibilityCaption } from '../../../utils/academicContextSearch';
 
@@ -36,7 +37,8 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
   const [dialogLoading, setDialogLoading] = useState(false);
   const canClone = t.can_clone === true;
   const canEdit = (t.status === 'draft' || t.status === 'rejected') && profile?.id === t.created_by;
-  const isAuthorized = profile?.id === t.created_by || hasPermission('templates.delete');
+  const isAuthorized =
+    profile?.id === t.created_by || hasPermission(DMS_PERMISSIONS.templateDelete);
   const hasDiscardableDraft = !!(t.working_version_id && (t.status === 'draft' || t.status === 'in_review'));
   const canDelete = isAuthorized && (!t.latest_published_version_id || hasDiscardableDraft);
 

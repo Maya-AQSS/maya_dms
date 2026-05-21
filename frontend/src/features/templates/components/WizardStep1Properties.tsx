@@ -4,6 +4,7 @@ import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/share
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import type { UserTeam } from '../../../api/users';
 import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import type { TemplateStep1Input } from '../schemas/templateStep1';
@@ -34,7 +35,7 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
   const studyTypeId = useWatch({ control, name: 'studyTypeId' });
   const studyId = useWatch({ control, name: 'studyId' });
 
-  const canCreateShared = hasPermission('templates.create');
+  const canCreateShared = hasPermission(DMS_PERMISSIONS.templateCreate);
   const visibilityOptions = VISIBILITY_OPTIONS.filter(
     (o) => o.value === 'personal' || canCreateShared,
   );

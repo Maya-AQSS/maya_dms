@@ -37,10 +37,9 @@ class TemplateBlockBulkController extends Controller
      */
     public function reorder(ReorderTemplateBlocksRequest $request, string $template): Response
     {
-        $this->authorizeAndValidateTemplateContext(
-            $this->findTemplateOrFail($this->templateService, $template),
-            'update',
-        );
+        $templateModel = $this->findTemplateOrFail($this->templateService, $template);
+        $this->authorize('updateTemplateBlock', $templateModel);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
 
         $blockIds = $request->validated('block_ids');
         $this->blockService->reorderForTemplate($template, $blockIds, (string) Auth::id());
@@ -74,7 +73,7 @@ class TemplateBlockBulkController extends Controller
                 abort(403, 'No tienes acceso a uno o más bloques solicitados.');
             }
 
-            $this->authorizeAndValidateTemplateContext($templateModel, 'update', false);
+            $this->authorize('updateTemplateBlock', $templateModel);
             $resolvedTemplates[] = $templateModel;
         }
 

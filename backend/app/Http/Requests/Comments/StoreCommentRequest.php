@@ -4,13 +4,36 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Comments;
 
+use App\Services\Contracts\DocumentServiceInterface;
+use App\Services\Contracts\TemplateServiceInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreCommentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $templateId = $this->route('template');
+        if ($templateId !== null) {
+            $template = app(TemplateServiceInterface::class)
+                ->findOrFailWithoutCatalogScope((string) $templateId);
+
+            return $this->user()->can('comment', $template);
+        }
+
+        $documentId = $this->route('document');
+        if ($documentId !== null) {
+            $document = app(DocumentServiceInterface::class)->findModelOrFail((string) $documentId);
+
+            return $this->user()->can('comment', $document);
+        }
+
+        return false;
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso para comentar en este recurso.');
     }
 
     /**

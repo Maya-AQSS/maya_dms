@@ -9,7 +9,9 @@ import {
   type LayoutItem,
   type SkeletonBlock,
 } from '@maya/shared-dashboard-react';
-import { PageTitle } from '@maya/shared-ui-react';
+import { Alert, PageTitle } from '@maya/shared-ui-react';
+import { useUserProfile } from '../../user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import { WIDGET_REGISTRY, DEFAULT_LAYOUT } from '../widgets/registry';
 
 const STORAGE_KEY = 'maya:dms:dashboard-layout';
@@ -22,6 +24,9 @@ const SKELETON_BLOCKS: SkeletonBlock[] = [
 /** Dashboard principal con grid de widgets drag-and-drop persistido en localStorage. */
 export function DashboardPage() {
   const { t } = useTranslation('common');
+  const { hasPermission, loading: profileLoading } = useUserProfile();
+  const canViewDashboard = hasPermission(DMS_PERMISSIONS.index);
+  const canEditDashboard = hasPermission(DMS_PERMISSIONS.dashboardUpdate);
   const { layout, loading, saveLayout, resetToDefault } = useDashboardLayoutLocal({
     storageKey: STORAGE_KEY,
     defaultLayout: DEFAULT_LAYOUT,
@@ -32,6 +37,7 @@ export function DashboardPage() {
   const activeLayout = editable ? (draftLayout ?? layout) : layout;
 
   const handleToggleEdit = useCallback(() => {
+    if (!canEditDashboard) return;
     setEditable((prev) => {
       if (prev) {
         setDraftLayout(null);
@@ -40,7 +46,7 @@ export function DashboardPage() {
       setDraftLayout(layout);
       return true;
     });
-  }, [layout]);
+  }, [canEditDashboard, layout]);
 
   const handleSave = useCallback(async () => {
     await saveLayout(draftLayout ?? layout);
@@ -96,7 +102,7 @@ export function DashboardPage() {
     setEditable(false);
   }, [resetToDefault]);
 
-  if (loading) {
+  if (profileLoading || loading) {
     return <DashboardSkeleton blocks={SKELETON_BLOCKS} />;
   }
 
@@ -105,7 +111,7 @@ export function DashboardPage() {
       <PageTitle
         title={t('nav.dashboard', { defaultValue: 'Panel' })}
         actions={
-          editable ? (
+          canEditDashboard && editable ? (
             <DashboardEditToolbar
               layout={activeLayout}
               registry={WIDGET_REGISTRY}
@@ -121,11 +127,20 @@ export function DashboardPage() {
                 addWidget: t('dashboard.addWidget', { defaultValue: 'Añadir widget' }),
               }}
             />
-          ) : (
+          ) : canEditDashboard ? (
             <DashboardEditToggleButton editable={editable} onToggle={handleToggleEdit} />
-          )
+          ) : null
         }
       />
+
+      {!canViewDashboard && (
+        <Alert tone="warning" className="mb-4">
+          {t('dashboard.noIndexPermission', {
+            defaultValue:
+              'Tienes acceso a DocuCEED (dms.login) pero no permiso para ver el listado del panel (dms.index). Pide dms.index a un administrador.',
+          })}
+        </Alert>
+      )}
 
       <WidgetGrid
         registry={WIDGET_REGISTRY}

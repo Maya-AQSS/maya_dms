@@ -1,5 +1,7 @@
 import { createDataHook } from '@maya/shared-auth-react';
 import { fetchDocuments } from '../../../api/documents';
+import { useUserProfile } from '../../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import type { Document } from '../../../types/documents';
 
 const useDocumentsQuery = createDataHook<string | undefined, Document[]>({
@@ -21,7 +23,9 @@ export function useDocuments(processId?: string): {
   error: Error | null;
   reload: () => Promise<void>;
 } {
-  const query = useDocumentsQuery(processId);
+  const { hasPermission } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
+  const query = useDocumentsQuery(processId, { enabled: canIndex });
 
   return {
     documents: query.data ?? [],

@@ -32,7 +32,7 @@ class TemplateVersionController extends Controller
     public function index(string $template): ResourceCollection
     {
         $model = $this->templateService->findOrFailWithoutCatalogScope($template);
-        if (! Gate::forUser(Auth::user())->allows('view', $model)) {
+        if (! Gate::forUser(Auth::user())->allows('viewHistory', $model)) {
             abort(404);
         }
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
@@ -53,7 +53,7 @@ class TemplateVersionController extends Controller
         $templateId = (string) $version->versionable_id;
 
         $template = $this->templateService->findOrFailWithoutCatalogScope($templateId);
-        if (! Gate::forUser(Auth::user())->allows('view', $template)) {
+        if (! Gate::forUser(Auth::user())->allows('viewHistory', $template)) {
             abort(404);
         }
         $this->assertOptionalProcessContextMatches((string) $template->process_id);

@@ -4,12 +4,33 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\DTOs\Processes\CreateProcessDto;
+use App\DTOs\Processes\UpdateProcessDto;
+use App\Models\Process;
+
 interface ProcessServiceInterface
 {
     /**
-     * Lista plana de procesos disponibles (top-level + sub-procesos), ordenada por código.
-     *
      * @return list<array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}>
      */
     public function list(): array;
+
+    /**
+     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     */
+    public function findOrFail(string $id): array;
+
+    public function findModelOrFail(string $id): Process;
+
+    /**
+     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     */
+    public function create(CreateProcessDto $dto): array;
+
+    /**
+     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     */
+    public function update(string $id, UpdateProcessDto $dto): array;
+
+    public function delete(string $id): void;
 }

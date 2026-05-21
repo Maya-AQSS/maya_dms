@@ -5,13 +5,23 @@ declare(strict_types=1);
 namespace App\Http\Requests\Templates;
 
 use App\DTOs\Templates\SyncUsersDto;
+use App\Models\Template;
+use App\Services\Contracts\TemplateServiceInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SyncTemplateUsersRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $template = $this->resolveTemplate();
+
+        return $this->user()->can('assignReview', $template);
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso para asignar revisores de plantilla.');
     }
 
     /**
@@ -35,5 +45,12 @@ class SyncTemplateUsersRequest extends FormRequest
         return new SyncUsersDto(
             userIds: $this->validated('user_ids', []),
         );
+    }
+
+    private function resolveTemplate(): Template
+    {
+        $id = (string) $this->route('template');
+
+        return app(TemplateServiceInterface::class)->findModelOrFail($id);
     }
 }

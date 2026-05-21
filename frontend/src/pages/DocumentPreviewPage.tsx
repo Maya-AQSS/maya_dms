@@ -27,6 +27,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
+import { canCreateBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
@@ -276,19 +277,33 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   );
   const isOwner = profile?.id === detail?.owner_id || profile?.id === detail?.created_by;
   const uid = profile?.id;
-  /** Paridad con `DocumentPolicy::update` para poder mutar un publicado. */
-  const canMutatePublished =
+  /** Paridad con `DocumentPolicy::update`. */
+  const canUpdate =
     !!detail &&
     !!uid &&
     (detail.owner_id === uid ||
       detail.created_by === uid ||
       detail.share_permission === 'edit' ||
-      hasPermission('documents.update'));
+      hasPermission(DMS_PERMISSIONS.documentUpdate));
+  const canMutatePublished = canUpdate;
+  /** Paridad con `DocumentPolicy::delete`: titular/creador o `document.delete` (API valida contexto). */
+  const canDelete =
+    !!detail &&
+    isDraft &&
+    !detail.latest_published_version_id &&
+    (isOwner || hasPermission(DMS_PERMISSIONS.documentDelete));
+  const canEditDraft = isDraft && canUpdate;
+  const canReviewDocument = hasPermission(DMS_PERMISSIONS.documentReview);
   const isHistoricalSnapshot = versionSnapshot !== null;
   const showVersionHistory =
-    publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
+    publishedDocumentVersionCount !== null &&
+    publishedDocumentVersionCount > 0 &&
+    (isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView));
   const canStartNewVersion =
-    !isValidateMode && isPublished && canMutatePublished && !isHistoricalSnapshot;
+    !isValidateMode &&
+    isPublished &&
+    !isHistoricalSnapshot &&
+    (isOwner || hasPermission(DMS_PERMISSIONS.documentVersion));
   const canClone =
     !isValidateMode &&
     !isHistoricalSnapshot &&
@@ -619,7 +634,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           Historial
         </Button>
       ) : null}
-      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && !detail.latest_published_version_id && (
+      {!isValidateMode && !isHistoricalSnapshot && canDelete && (
         <Button
           type="button"
           variant="outline"
@@ -630,7 +645,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           Eliminar
         </Button>
       )}
-      {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && documentId && (
+      {!isValidateMode && !isHistoricalSnapshot && canEditDraft && documentId && (
         <Link to={`/documents/${documentId}/editor`}>
           <Button type="button" size="sm" variant="outline">
             Editar
@@ -703,7 +718,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             type="button"
             variant="outlineWarning"
             size="sm"
-            disabled={!actionableReviewId || validationReviewLoading}
+            disabled={!canReviewDocument || !actionableReviewId || validationReviewLoading}
             onClick={() => {
               setValidationModalError(null);
               setValidateConfirm('reject');
@@ -716,7 +731,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             type="button"
             variant="primary"
             size="sm"
-            disabled={!actionableReviewId || validationReviewLoading}
+            disabled={!canReviewDocument || !actionableReviewId || validationReviewLoading}
             onClick={() => {
               setValidationModalError(null);
               setValidateConfirm('approve');
@@ -893,6 +908,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   : undefined
           }
         >
+          {isValidateMode && !canReviewDocument && (
+            <div className="p-3 mb-4 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
+              ⚠ No tienes permiso para validar documentos (document.review).
+            </div>
+          )}
           {validationSetupError && !validationReviewLoading && !myDocumentReview?.status && (
             <div className="p-3 mb-4 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger-dark font-bold">
               ⚠ {validationSetupError}
@@ -1121,7 +1141,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 onClose={() => setSelectedReviewView(null)}
                 onSendMessage={handlePreviewSendMessage}
                 headerRef={pageHeaderRef}
-                canAddComments={!isHistoricalSnapshot && !isPublished}
+                canAddComments={
+                  !isHistoricalSnapshot &&
+                  !isPublished &&
+                  canCreateBlockComment(hasPermission) &&
+                  (isCreator || isOwner || isDocumentReviewer)
+                }
               />
             );
           }

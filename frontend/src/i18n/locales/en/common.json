@@ -28,7 +28,9 @@
   },
   "dashboard": {
     "noWidgets": "No widgets on the dashboard.",
+    "noIndexPermission": "You have access to DocuCEED (dms.login) but not permission to view the dashboard listings (dms.index). Ask an administrator for dms.index.",
     "reset": "Reset",
+    "noShowPermission": "No permission to open from the dashboard (dms.show).",
     "widgets": {
       "recentDocuments": "Recent documents",
       "pendingValidations": "Pending validation"
@@ -46,7 +48,13 @@
   "templates": {
     "title": "Templates",
     "new": "New template",
-    "useTemplate": "Use template"
+    "useTemplate": "Use template",
+    "noIndexPermission": "You do not have permission to view the template list (template.index).",
+    "noShowPermission": "You do not have permission to open template details (template.show)."
+  },
+  "processes": {
+    "noIndexPermission": "You do not have permission to view the process list (process.index).",
+    "noShowPermission": "You do not have permission to open process details (process.show)."
   },
   "auth": {
     "logout": "Log out",

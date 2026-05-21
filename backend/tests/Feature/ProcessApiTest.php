@@ -177,12 +177,19 @@ class ProcessApiTest extends TestCase
         $this->assertSame($parentId, $child['process_parent_id']);
     }
 
-    public function test_index_returns_200_for_any_authenticated_user(): void
+    public function test_index_requires_process_index_permission(): void
     {
-        // No specific permission is required for listing processes —
-        // the JWT middleware is enough.
         $userId  = (string) Str::uuid();
-        $headers = $this->authHeaders($userId, []);  // no permissions
+        $headers = $this->authHeaders($userId, ['dms.login']);
+
+        $this->getJson('/api/v1/processes', $headers)
+            ->assertForbidden();
+    }
+
+    public function test_index_returns_200_with_process_index(): void
+    {
+        $userId  = (string) Str::uuid();
+        $headers = $this->authHeaders($userId, ['process.index']);
 
         $this->getJson('/api/v1/processes', $headers)
             ->assertOk();

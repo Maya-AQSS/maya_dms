@@ -1,14 +1,17 @@
 import { lazy, Suspense, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@maya/shared-layout-react';
 import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
 import { useKeycloakLocaleSync } from '@maya/shared-i18n-react';
-import { useAuth } from '@maya/shared-auth-react';
+import { useOidcSession } from '@maya/shared-auth-react';
+import { useRequireAppAccess } from '@maya/shared-profile-react';
 import { SidebarProcesos } from './components/layout';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
 import { useNavItems } from './components/layout/navItems';
 import { resolveServiceUrl } from './lib/peerService';
+import { DMS_PERMISSIONS } from './permissions';
 
 // Lazy-loaded pages
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
@@ -52,11 +55,34 @@ function AppRoutes() {
   );
 }
 
-function Main() {
-  const { logout } = useAuth();
+function AppWithLayout() {
+  const { logout, isOidcSignedIn } = useOidcSession();
   const { profile } = useUserProfile();
   const navItems = useNavItems();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const wasAuthenticatedRef = useRef(false);
+  const previousPathRef = useRef<string | null>(null);
   useKeycloakLocaleSync();
+
+  useEffect(() => {
+    previousPathRef.current = location.pathname;
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const wasAuthenticated = wasAuthenticatedRef.current;
+    if (!wasAuthenticated && isOidcSignedIn) {
+      if (previousPathRef.current === '/templates/new' || previousPathRef.current === '/documentos/nuevo') {
+        navigate('/dashboard', { replace: true });
+        return;
+      }
+
+      if (location.pathname === '/') {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+    wasAuthenticatedRef.current = isOidcSignedIn;
+  }, [isOidcSignedIn, location.pathname, navigate]);
 
   const userName = profile?.name?.trim() ?? '';
   const userInitials = profileDisplayInitials(profile);
@@ -91,59 +117,62 @@ function Main() {
   );
 }
 
-function App() {
-  const { isLoading, isAuthenticated, login } = useAuth();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const wasAuthenticatedRef = useRef(false);
-  const previousPathRef = useRef(null);
+function AuthLoadingScreen({ message }: { message: string }) {
+  return (
+    <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
+      {message}
+    </div>
+  );
+}
 
-  // guardar ruta anterior
-  useEffect(() => {
-    previousPathRef.current = location.pathname;
-  }, [location.pathname]);
+/**
+ * Requiere `dms.login` en /me. Si falta:
+ *  - Si el usuario tiene `dashboard.login`, redirige al portal (preserva SSO).
+ *  - Si no, cierra sesión SSO.
+ */
+function AppAfterProfile() {
+  const { t } = useTranslation('auth');
+  const dashboardOrigin = resolveServiceUrl(
+    import.meta.env.VITE_DASHBOARD_URL as string | undefined,
+    'dashboard',
+  );
+  const { profileLoading, lacksLoginPermission } = useRequireAppAccess(
+    DMS_PERMISSIONS.login,
+    { portalLoginSlug: 'dashboard.login', portalUrl: dashboardOrigin },
+  );
 
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      login();
-    }
-  }, [isLoading, isAuthenticated, login]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    const wasAuthenticated = wasAuthenticatedRef.current;
-    // acaba de autenticarse
-    if (!wasAuthenticated && isAuthenticated) {
-
-      // si venía de /templates/new
-      if (previousPathRef.current === "/templates/new" || previousPathRef.current === "/documentos/nuevo") {
-        navigate("/dashboard", { replace: true });
-        return;
-      }
-
-      // fallback normal
-      if (location.pathname === "/") {
-        navigate("/dashboard", { replace: true });
-      }
-    }
-    wasAuthenticatedRef.current = isAuthenticated;
-  }, [isAuthenticated, isLoading, location.pathname, navigate]);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-ui-body dark:bg-ui-dark-bg text-text-muted dark:text-text-dark-muted font-sans">
-        Iniciando sesión…
-      </div>
-    );
+  if (profileLoading) {
+    return <AuthLoadingScreen message={t('initializing')} />;
   }
 
-  if (!isAuthenticated) return null;
+  if (lacksLoginPermission) {
+    return <AuthLoadingScreen message={t('signingOutNoPermission')} />;
+  }
 
   return (
     <HierarchyProvider>
-      <Main />
+      <AppWithLayout />
     </HierarchyProvider>
   );
 }
 
-export default App;
+export default function App() {
+  const { t } = useTranslation('auth');
+  const { isOidcLoading, isOidcSignedIn, beginSignIn } = useOidcSession();
+
+  useEffect(() => {
+    if (!isOidcLoading && !isOidcSignedIn) {
+      beginSignIn();
+    }
+  }, [isOidcLoading, isOidcSignedIn, beginSignIn]);
+
+  if (isOidcLoading) {
+    return <AuthLoadingScreen message={t('initializing')} />;
+  }
+
+  if (!isOidcSignedIn) {
+    return <AuthLoadingScreen message={t('redirecting')} />;
+  }
+
+  return <AppAfterProfile />;
+}
