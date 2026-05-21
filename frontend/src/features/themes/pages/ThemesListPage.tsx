@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
+  ConfirmDialog,
   DataTable,
   Pagination,
   PageTitle,
-  type ColumnDef,
   useConfirm,
+  type ColumnDef,
 } from '@maya/shared-ui-react';
 import { useThemes } from '../hooks/useThemes';
 import type { Theme, ThemeStatus } from '../../../types/themes';
@@ -24,7 +25,7 @@ const STATUS_CLASS: Record<ThemeStatus, string> = {
 
 export function ThemesListPage() {
   const navigate = useNavigate();
-  const confirm = useConfirm();
+  const { confirmState, confirm, closeConfirm } = useConfirm();
 
   const {
     items,
@@ -123,15 +124,17 @@ export function ThemesListPage() {
             type="button"
             variant="ghost"
             size="sm"
-            onClick={async () => {
-              const ok = await confirm({
+            onClick={() =>
+              confirm({
                 title: 'Eliminar theme',
-                message: `¿Eliminar “${theme.name}”? Las plantillas que lo usen quedarán sin theme asignado.`,
+                description: `¿Eliminar “${theme.name}”? Las plantillas que lo usen quedarán sin theme asignado.`,
                 confirmLabel: 'Eliminar',
-                tone: 'danger',
-              });
-              if (ok) await deleteTheme(theme.id);
-            }}
+                variant: 'danger',
+                onConfirm: async () => {
+                  await deleteTheme(theme.id);
+                },
+              })
+            }
           >
             Eliminar
           </Button>
@@ -194,18 +197,20 @@ export function ThemesListPage() {
       <DataTable<Theme>
         columns={columns}
         rows={items}
-        keyFor={(theme) => theme.id}
+        rowKey={(theme) => theme.id}
         loading={loading}
         emptyMessage="Aún no hay themes. Crea uno desde “Nuevo theme”."
       />
 
       {meta && meta.total > meta.per_page && (
         <Pagination
-          page={meta.current_page}
-          lastPage={meta.last_page}
-          onPageChange={goToPage}
+          currentPage={meta.current_page}
+          totalPages={meta.last_page}
+          onChange={goToPage}
         />
       )}
+
+      <ConfirmDialog {...confirmState} onCancel={closeConfirm} />
     </>
   );
 }
