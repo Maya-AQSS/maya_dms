@@ -32,6 +32,7 @@ import {
   BLOCK_UI_STATE_CONFIG,
   blockToUiState,
 } from '../blockUiState';
+import { uploadMedia } from '../../../api/media';
 const BlockNoteEditorPanel = lazy(() =>
   import('./BlockNoteEditorPanel').then((m) => ({ default: m.BlockNoteEditorPanel })),
 );
@@ -452,6 +453,7 @@ export function TemplateEditor({ template }: Props) {
                 }}
                 editable={true} // Siempre editable en la plantilla
                 isDark={isDark}
+                uploadFile={uploadMedia}
               />
             </Suspense>
           </div>

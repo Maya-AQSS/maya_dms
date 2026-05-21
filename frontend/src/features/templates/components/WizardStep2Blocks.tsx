@@ -26,6 +26,7 @@ import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { apiFetchJson } from '../../../api/http';
+import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
 import { getCommentsForBlock } from '../../../utils/blockComments';
 
@@ -697,6 +698,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               editable={true}
                               isDark={effectiveIsDark}
                               onFullscreenChange={handleEditorFullscreenChange}
+                              uploadFile={uploadMedia}
                             />
                           </Suspense>
                         </div>
@@ -725,6 +727,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             editable={true}
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}
+                            uploadFile={uploadMedia}
                           />
                         </Suspense>
                       </div>

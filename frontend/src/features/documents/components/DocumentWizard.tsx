@@ -57,6 +57,7 @@ import {
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock } from '../../../utils/blockComments';
+import { uploadMedia } from '../../../api/media';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then(
@@ -1541,6 +1542,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                 isDark={isDark}
                                 onChange={(content) => { setLocalContent(content); triggerSave(); }}
                                 onFullscreenChange={handleEditorFullscreenChange}
+                                uploadFile={uploadMedia}
                               />
                             </Suspense>
                           </div>

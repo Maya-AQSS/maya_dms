@@ -13,6 +13,7 @@ interface Props {
   isDark: boolean;
   onChange?: (content: unknown) => void;
   onFullscreenChange?: (isFullscreen: boolean) => void;
+  uploadFile?: (file: File) => Promise<string>;
 }
 
 // BlockNote 0.49 changed blockGroup/blockContainer renderHTML to return {dom,contentDOM}
@@ -100,7 +101,7 @@ function cleanHtmlForPaste(html: string): string {
     .replace(/\s+/g, ' ');
 }
 
-export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange, onFullscreenChange }: Props) {
+export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange, onFullscreenChange, uploadFile }: Props) {
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -133,10 +134,12 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   // guard StrictMode's mount→cleanup→remount leaves two handlers → paste fires twice.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
+  const uploadFileRef = useRef(uploadFile);
   if (!editorRef.current) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     editorRef.current = (BlockNoteEditor as any).create({
       initialContent: safeContent ? repairBlockNoteBlocks(safeContent) : undefined,
+      uploadFile: uploadFileRef.current,
     });
     patchBlockNoteStructuralNodeViews((editorRef.current as any)._tiptapEditor);
   }
