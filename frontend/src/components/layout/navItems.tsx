@@ -8,6 +8,7 @@ export function useNavItems(): NavItem[] {
   return useMemo<NavItem[]>(
     () => [
       { id: 'dashboard', label: t('dashboard'), icon: HomeIcon, path: '/dashboard' },
+      { id: 'themes', label: 'Themes', icon: HomeIcon, path: '/themes' },
     ],
     [t],
   );

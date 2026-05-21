@@ -28,6 +28,7 @@ import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
+import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock } from '../utils/blockComments';
@@ -113,6 +114,11 @@ export function TemplatePreviewPage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [snapshotVersionNumber, setSnapshotVersionNumber] = useState<number | null>(null);
+  /**
+   * `edit` = vista de bloques actual (con comentarios/info por bloque).
+   * `themed` = iframe themed + paginado A4 (paged.js) — sólo lectura.
+   */
+  const [viewMode, setViewMode] = useState<'edit' | 'themed'>('edit');
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -385,8 +391,36 @@ export function TemplatePreviewPage() {
     }
   };
 
+  const viewToggle = template && id ? (
+    <div className="flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
+      <button
+        type="button"
+        onClick={() => setViewMode('edit')}
+        className={[
+          'rounded-full px-2.5 py-1 font-medium transition-colors',
+          viewMode === 'edit' ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card' : 'text-text-muted',
+        ].join(' ')}
+        aria-pressed={viewMode === 'edit'}
+      >
+        Edición
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode('themed')}
+        className={[
+          'rounded-full px-2.5 py-1 font-medium transition-colors',
+          viewMode === 'themed' ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card' : 'text-text-muted',
+        ].join(' ')}
+        aria-pressed={viewMode === 'themed'}
+      >
+        Vista PDF
+      </button>
+    </div>
+  ) : null;
+
   const headerToolbar = template ? (
     <div className="flex items-center justify-center gap-2 flex-wrap">
+      {viewToggle}
       {viewingPublishedSnapshot ? (
         <>
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary-dark dark:text-primary-light border border-primary/25">
@@ -580,7 +614,12 @@ export function TemplatePreviewPage() {
         {error && !loading && (
           <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
         )}
-        {!loading && !error && template && (
+        {viewMode === 'themed' && !loading && !error && template && id ? (
+          <div className="h-[calc(100vh-16rem)] min-h-[600px] rounded border border-ui-border bg-white dark:border-ui-dark-border">
+            <PagedThemedPreview kind="template" id={id} />
+          </div>
+        ) : null}
+        {viewMode === 'edit' && !loading && !error && template && (
           <>
             <h1 className="text-2xl font-bold text-text-primary dark:text-text-dark-primary pb-4 mb-6 border-b border-ui-border dark:border-ui-dark-border">
               {displayTitle ?? template.name}

@@ -47,6 +47,17 @@ return [
             'report' => false,
         ],
 
+        // Assets de Themes (logo, fondo, watermark). Aislado del disco `local`
+        // para versionado y políticas de retención propias. NO usar `serve:true`
+        // — ThemeAssetController sirve los binarios con autorización por JWT,
+        // los assets no deben ser públicos.
+        'themes' => [
+            'driver' => 'local',
+            'root' => storage_path('app/themes'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

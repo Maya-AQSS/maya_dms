@@ -79,6 +79,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       studyId: initial?.study_id || '',
       moduleId: initial?.module_id || '',
       teamId: initial?.team_id || '',
+      themeId: initial?.theme_id ?? '',
     },
     resolver: zodResolver(templateStep1Schema),
     mode: 'onChange',
@@ -216,6 +217,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         study_id: values.studyId || null,
         module_id: values.moduleId || null,
         team_id: values.teamId || null,
+        theme_id: values.themeId || null,
       };
 
       let res;

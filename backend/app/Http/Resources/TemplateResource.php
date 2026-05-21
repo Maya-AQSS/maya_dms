@@ -33,6 +33,8 @@ class TemplateResource extends JsonResource
             'process_id' => $dto->processId,
             'team_id' => $dto->teamId,
             'team' => $dto->team,
+            'theme_id' => $dto->themeId,
+            'theme' => $dto->themeMini,
             'created_by' => $dto->createdBy,
             'author_name' => $dto->authorName,
             'status' => $dto->status,

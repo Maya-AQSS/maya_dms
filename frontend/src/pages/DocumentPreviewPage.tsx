@@ -29,6 +29,8 @@ import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { canCreateBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
+import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
+import { useDocumentPdfExport } from '../features/documents/hooks/useDocumentPdfExport';
 import { PaperBlocksArticle, type PaperArticleBlock } from '../features/documents/components/PaperBlocksArticle';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -137,6 +139,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  /**
+   * `edit` = vista actual con comentarios/diffs/history por bloque.
+   * `themed` = iframe themed paginado en hojas A4 (paged.js).
+   */
+  const [viewMode, setViewMode] = useState<'edit' | 'themed'>('edit');
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
   const [historyBlockId, setHistoryBlockId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
@@ -268,6 +275,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const isDraft = detail?.status === 'draft' || detail?.status === 'rejected';
   const isPublished = detail?.status === 'published';
+  // Hook que orquesta el flujo de descarga PDF/UA (POST → poll → blob → save-as).
+  const pdfExport = useDocumentPdfExport(documentId, detail?.title);
   const isDocumentReviewer = allReviews.some((r) => r.reviewer_id === profile?.id);
   const myDocumentReview = allReviews.find((r) => r.reviewer_id === profile?.id) ?? null;
   const changedBlocks = useMemo(
@@ -597,8 +606,36 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     }
   };
 
+  const viewToggle = detail && documentId && !isValidateMode ? (
+    <div className="flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
+      <button
+        type="button"
+        onClick={() => setViewMode('edit')}
+        className={[
+          'rounded-full px-2.5 py-1 font-medium transition-colors',
+          viewMode === 'edit' ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card' : 'text-text-muted',
+        ].join(' ')}
+        aria-pressed={viewMode === 'edit'}
+      >
+        Edición
+      </button>
+      <button
+        type="button"
+        onClick={() => setViewMode('themed')}
+        className={[
+          'rounded-full px-2.5 py-1 font-medium transition-colors',
+          viewMode === 'themed' ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card' : 'text-text-muted',
+        ].join(' ')}
+        aria-pressed={viewMode === 'themed'}
+      >
+        Vista PDF
+      </button>
+    </div>
+  ) : null;
+
   const headerActions = detail ? (
     <>
+      {viewToggle}
       {isHistoricalSnapshot && !isValidateMode ? (
         <>
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/15 text-primary-dark dark:text-primary-light border border-primary/25">
@@ -682,6 +719,26 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             Enviar a validar
           </Button>
         )
+      )}
+      {!isValidateMode && isPublished && !isHistoricalSnapshot && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          loading={
+            pdfExport.state === 'queued' ||
+            pdfExport.state === 'processing' ||
+            pdfExport.state === 'downloading'
+          }
+          onClick={() => void pdfExport.start()}
+          title={pdfExport.error ?? 'Generar y descargar el PDF firmable del documento'}
+        >
+          {pdfExport.state === 'queued' || pdfExport.state === 'processing'
+            ? 'Generando…'
+            : pdfExport.state === 'downloading'
+              ? 'Descargando…'
+              : 'Descargar PDF'}
+        </Button>
       )}
       {!isValidateMode && canStartNewVersion && (
         <Button
@@ -1199,7 +1256,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             Documento publicado directamente (sin validadores asignados).
           </p>
         )}
-        {!loading && !error && detail && (
+        {viewMode === 'themed' && !loading && !error && detail && documentId ? (
+          <div className="h-[calc(100vh-16rem)] min-h-[600px] rounded border border-ui-border bg-white dark:border-ui-dark-border">
+            <PagedThemedPreview kind="document" id={documentId} />
+          </div>
+        ) : null}
+        {viewMode === 'edit' && !loading && !error && detail && (
           !isHistoricalSnapshot ? (
             // Render blocks individually to support per-block comment selection
             <>

@@ -245,6 +245,7 @@ class TemplateService implements TemplateServiceInterface
             'study_id' => $dto->studyId,
             'module_id' => $dto->moduleId,
             'team_id' => $dto->teamId,
+            'theme_id' => $dto->themeId,
             'created_by' => (string) $userId,
             'status' => 'draft',
             'review_stages' => $dto->reviewStages,
@@ -289,6 +290,9 @@ class TemplateService implements TemplateServiceInterface
         }
         if ($dto->setReviewMode) {
             $attributes['review_mode'] = $dto->reviewMode;
+        }
+        if ($dto->setThemeId) {
+            $attributes['theme_id'] = $dto->themeId;
         }
         $this->assertTemplateMetadataInvariants(
             (string) ($attributes['name'] ?? $template->name),

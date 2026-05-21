@@ -5,6 +5,9 @@ use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\DocumentExportController;
+use App\Http\Controllers\Api\DocumentPreviewController;
+use App\Http\Controllers\Api\TemplatePreviewController;
 use App\Http\Controllers\Api\MediaController;
 use App\Http\Controllers\Api\DocumentOptionsController;
 use App\Http\Controllers\Api\DocumentShareController;
@@ -20,6 +23,9 @@ use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\TemplateReviewersController;
 use App\Http\Controllers\Api\TemplateStateController;
 use App\Http\Controllers\Api\TemplateVersionController;
+use App\Http\Controllers\Api\ThemeAssetController;
+use App\Http\Controllers\Api\ThemeController;
+use App\Http\Controllers\Api\ThemeFontController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 use Maya\Profile\Routing\MeRoutes;
@@ -58,6 +64,23 @@ Route::prefix('v1')->group(function () {
         // Media — subida de imágenes para bloques BlockNote
         Route::post('media', [MediaController::class, 'store']);
 
+        // Themes — identidad visual reutilizable (logo, paleta, layout, accesibilidad)
+        // que una plantilla puede aplicar a sus documentos.
+        // El listado de fuentes va ANTES del apiResource para no quedar atrapado
+        // por la ruta GET /themes/{theme}.
+        Route::get('themes/fonts', [ThemeFontController::class, 'index']);
+        Route::apiResource('themes', ThemeController::class)
+            ->whereUuid('theme');
+        Route::post('themes/{theme}/clone', [ThemeController::class, 'clone'])
+            ->whereUuid('theme');
+
+        // Assets de Theme (logo / background / watermark).
+        Route::post('themes/{theme}/assets', [ThemeAssetController::class, 'store'])
+            ->whereUuid('theme');
+        Route::get('themes/{theme}/assets/{kind}', [ThemeAssetController::class, 'show'])
+            ->whereUuid('theme')
+            ->where('kind', 'logo|background|watermark');
+
         // Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).
         Route::apiResource('templates', TemplateController::class)
@@ -68,6 +91,10 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('template');
         Route::put('blocks/bulk', [TemplateBlockBulkController::class, 'bulkUpdate']);
         Route::patch('templates/{template}/blocks/reorder', [TemplateBlockBulkController::class, 'reorder'])
+            ->whereUuid('template');
+
+        // Preview HTML themed de la plantilla (mismo Blade que documentos).
+        Route::get('templates/{template}/preview', [TemplatePreviewController::class, 'show'])
             ->whereUuid('template');
 
         Route::apiResource('templates.blocks', TemplateBlockController::class)
@@ -122,6 +149,18 @@ Route::prefix('v1')->group(function () {
         Route::post('documents/{document}/new-version', [DocumentStateController::class, 'startNewVersion'])
             ->whereUuid('document');
         Route::post('documents/{document}/delegate', [DocumentStateController::class, 'delegate'])
+            ->whereUuid('document');
+
+        // Preview HTML themed (mismo HTML que más adelante alimentará a WeasyPrint).
+        Route::get('documents/{document}/preview', [DocumentPreviewController::class, 'show'])
+            ->whereUuid('document');
+
+        // Export a PDF/UA via WeasyPrint (async, encolado en RabbitMQ/Redis).
+        Route::post('documents/{document}/export-pdf', [DocumentExportController::class, 'start'])
+            ->whereUuid('document');
+        Route::get('documents/{document}/export-status', [DocumentExportController::class, 'status'])
+            ->whereUuid('document');
+        Route::get('documents/{document}/pdf', [DocumentExportController::class, 'download'])
             ->whereUuid('document');
 
         Route::get('documents/{document}/blocks', [DocumentBlockController::class, 'index'])

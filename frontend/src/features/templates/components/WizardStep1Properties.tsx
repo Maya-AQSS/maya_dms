@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
+import { usePublishedThemes } from '../../../features/themes/hooks/usePublishedThemes';
+import { ThemeA4Preview } from '../../../features/themes/components/ThemeA4Preview';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import type { UserTeam } from '../../../api/users';
 import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
@@ -75,6 +77,14 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
   }, [allStudies, studyId, moduleId, setValue]);
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
+
+  // Themes publicados disponibles para asignar.
+  const themesQuery = usePublishedThemes();
+  const themeId = useWatch({ control, name: 'themeId' });
+  const selectedTheme = useMemo(
+    () => themesQuery.data?.find((t) => t.id === themeId) ?? null,
+    [themesQuery.data, themeId],
+  );
 
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-ui-card dark:bg-ui-dark-card overflow-hidden">
@@ -280,6 +290,52 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
             </div>
           </div>
         )}
+
+        {/* ─── Identidad visual (theme opcional) ───────────────────── */}
+        <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border">
+          <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+            Identidad visual
+          </h3>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div>
+              <FieldLabel htmlFor="template-theme">Theme aplicado</FieldLabel>
+              <Controller
+                control={control}
+                name="themeId"
+                render={({ field }) => (
+                  <Select
+                    id="template-theme"
+                    fieldSize="comfortable"
+                    value={field.value}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    onBlur={field.onBlur}
+                    disabled={themesQuery.isLoading}
+                  >
+                    <option value="">
+                      {themesQuery.isLoading ? 'Cargando…' : '— Sin theme —'}
+                    </option>
+                    {(themesQuery.data ?? []).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </Select>
+                )}
+              />
+              <p className="mt-1 text-xs text-text-muted">
+                Define paleta, tipografías, logo y layout. Se aplica al previsualizar y al exportar PDF.
+              </p>
+              {themesQuery.isError && (
+                <p className="mt-1 text-xs text-danger-dark dark:text-danger">
+                  No se pudieron cargar los themes publicados.
+                </p>
+              )}
+            </div>
+            <div className="flex justify-center md:justify-start">
+              <ThemeA4Preview theme={selectedTheme} />
+            </div>
+          </div>
+        </div>
 
       </div>
     </div>

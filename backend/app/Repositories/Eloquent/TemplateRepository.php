@@ -26,7 +26,7 @@ class TemplateRepository implements TemplateRepositoryInterface
     public function findOrFail(string $id): Template
     {
         return Template::query()
-            ->with('headVersion')
+            ->with(['headVersion', 'theme'])
             ->withExists(['comments as has_review_comments' => fn ($q) => $q])
             ->findOrFail($id);
     }
@@ -47,7 +47,7 @@ class TemplateRepository implements TemplateRepositoryInterface
     {
         return Template::query()
             ->withoutGlobalScopes(['user_access'])
-            ->with('headVersion')
+            ->with(['headVersion', 'theme'])
             ->withExists(['comments as has_review_comments' => fn ($q) => $q])
             ->findOrFail($id);
     }
@@ -60,7 +60,7 @@ class TemplateRepository implements TemplateRepositoryInterface
     {
         return Template::query()
             ->withoutGlobalScopes(['user_access'])
-            ->with(['headVersion', 'blocks' => fn ($q) => $q->orderBy('sort_order')])
+            ->with(['headVersion', 'theme', 'blocks' => fn ($q) => $q->orderBy('sort_order')])
             ->findOrFail($id);
     }
 
