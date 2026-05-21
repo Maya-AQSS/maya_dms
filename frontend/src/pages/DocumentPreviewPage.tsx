@@ -129,7 +129,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const location = useLocation();
   const { profile, hasPermission } = useUserProfile();
   const isValidateMode = mode === 'validate';
-
+  const locationState = location.state as { moduleId?: string; processId?: string } | null;
+  const selectedProcessId = locationState?.processId;
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -255,10 +256,12 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     : 'Volver';
 
   const handleBack = () => {
-    if (window.history.length <= 1) {
+    if (window.history.length <= 1 || !selectedProcessId) {
       navigate("/dashboard");
     } else {
-      navigate(-1);
+      navigate(selectedProcessId ? `/procesos/${selectedProcessId}` : '/dashboard', {
+        state: { tab: 'documents' },
+      })
     }
   };
 
