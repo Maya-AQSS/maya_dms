@@ -42,7 +42,7 @@ export function ProcesosPage() {
     void queryClient.invalidateQueries({ queryKey: ['documents'] });
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.state, location.pathname, navigate, queryClient]);
-
+  
   const processesQuery = useProcessesQuery(undefined, { enabled: !!processId && canShow });
   const process: Process | null =
     processesQuery.data?.data.find((p) => p.id === processId) ?? null;
