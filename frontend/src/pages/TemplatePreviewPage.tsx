@@ -259,7 +259,10 @@ export function TemplatePreviewPage() {
       ? snapshotTemplate.name
       : template?.name)
     : template?.name;
-  const showVersionHistory = publishedVersionCount !== null && publishedVersionCount > 0;
+  const showVersionHistory =
+    publishedVersionCount !== null
+    && publishedVersionCount > 0
+    && (isOwner || hasPermission(DMS_PERMISSIONS.templateHistoryView));
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
   /** Solo se permite eliminar plantillas que nunca han sido publicadas. */
@@ -272,12 +275,12 @@ export function TemplatePreviewPage() {
   const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
   const canSubmit =
     !viewingPublishedSnapshot && isOwner && isDraft && hasReviewers && !template.has_review_comments;
-  /** Alineado con `TemplatePolicy::startRevision`: creador o `template.update` en publicada. */
+  /** Alineado con `TemplatePolicy::startRevision`: creador o `template.version` en publicada. */
   const canStartNewVersion =
     !viewingPublishedSnapshot &&
     isPublished &&
     !selectionMode &&
-    (isOwner || hasPermission(DMS_PERMISSIONS.templateUpdate));
+    (isOwner || hasPermission(DMS_PERMISSIONS.templateVersion));
   /** Alineado con `TemplatePolicy::discard`: solo el creador. */
   const canDiscardWorkingVersion =
     !viewingPublishedSnapshot &&

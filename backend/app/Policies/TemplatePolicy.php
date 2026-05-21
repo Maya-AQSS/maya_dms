@@ -29,6 +29,9 @@ use Illuminate\Support\Facades\DB;
  * - `template.delete`: borrar ajenas; el creador siempre puede borrar la suya.
  * - `template.review`: aprobar/rechazar; además debe figurar en `template_reviewers`.
  * - `template.assign-review`: asignar revisores en plantillas no personales; en personal solo el creador en borrador/rechazado.
+ * - `template.version`: abrir ciclo de nueva versión sobre publicada (no creador).
+ * - `template.clone`: clonar publicada (no creador); además `template.update` o ser creador del origen.
+ * - `template.history.view`: listar/ver snapshots publicados (no creador).
  * - La visibilidad no personal (compartida) exige además `template.create`.
  *
  * REGLAS DE BORRADO:
@@ -233,20 +236,49 @@ class TemplatePolicy
     }
 
     /**
-     * Clonar plantilla.
+     * Clonar plantilla publicada en un borrador nuevo.
      *
-     * Solo se permite clonar plantillas publicadas que el usuario pueda ver
-     * y para las cuales tenga permiso de creación en la visibilidad origen.
+     * Requiere poder ver el origen, `template.create` en la visibilidad del clon,
+     * y (creador del origen o `template.clone`). Quien no es creador del origen
+     * necesita además `template.update` (misma línea que editar publicadas ajenas).
      */
     public function clone(JwtUser $user, Template $template): bool
     {
+        if ($template->status !== 'published' || ! $this->view($user, $template)) {
+            return false;
+        }
+
         $visibility = $template->visibility_level instanceof TemplateVisibilityLevel
             ? $template->visibility_level->value
             : (string) $template->visibility_level;
 
-        return $this->view($user, $template)
-            && $template->status === 'published'
-            && $this->create($user, $visibility);
+        if (! $this->create($user, $visibility)) {
+            return false;
+        }
+
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
+
+        if (! $isCreator && ! $user->hasPermission('template.clone')) {
+            return false;
+        }
+
+        return $isCreator || $user->hasPermission('template.update');
+    }
+
+    /**
+     * Ver historial de versiones publicadas (`GET …/versions`, `GET …/template-versions/{id}`).
+     */
+    public function viewHistory(JwtUser $user, Template $template): bool
+    {
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        if ((string) $user->getAuthIdentifier() === (string) $template->created_by) {
+            return true;
+        }
+
+        return $user->hasPermission('template.history.view');
     }
 
     /**
@@ -265,8 +297,7 @@ class TemplatePolicy
     /**
      * Publicada → borrador para preparar una nueva versión (misma plantilla).
      *
-     * Misma idea que {@see self::update} en estado `published`: hace falta poder ver la plantilla
-     * y ser creador o tener `template.update`.
+     * Creador o permiso `template.version`, siempre que pueda ver la plantilla.
      */
     public function startRevision(JwtUser $user, Template $template): bool
     {
@@ -278,9 +309,9 @@ class TemplatePolicy
             return false;
         }
 
-        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
 
-        return $isCreator || $user->hasPermission('template.update');
+        return $isCreator || $user->hasPermission('template.version');
     }
 
     /**

@@ -16,4 +16,7 @@ export const DMS_PERMISSIONS = {
   templateDelete: 'template.delete',
   templateReview: 'template.review',
   templateAssignReview: 'template.assign-review',
+  templateVersion: 'template.version',
+  templateClone: 'template.clone',
+  templateHistoryView: 'template.history.view',
 } as const;

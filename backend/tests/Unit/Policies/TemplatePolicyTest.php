@@ -275,11 +275,11 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->startRevision($user, $template));
     }
 
-    public function test_start_revision_allows_templates_update_on_foreign_published_when_user_can_view(): void
+    public function test_start_revision_allows_template_version_on_foreign_published_when_user_can_view(): void
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['template.show', 'template.update'],
+            ['template.show', 'template.version'],
         );
         auth()->setUser($user);
         $template = $this->makeTemplate(
@@ -291,11 +291,11 @@ class TemplatePolicyTest extends TestCase
         $this->assertTrue($this->policy->startRevision($user, $template));
     }
 
-    public function test_start_revision_denied_on_foreign_published_without_templates_update(): void
+    public function test_start_revision_denied_on_foreign_published_without_template_version(): void
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['template.show'],
+            ['template.show', 'template.update'],
         );
         auth()->setUser($user);
         $template = $this->makeTemplate(
@@ -306,11 +306,11 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->startRevision($user, $template));
     }
 
-    public function test_start_revision_denied_on_foreign_published_without_templates_read(): void
+    public function test_start_revision_denied_on_foreign_published_without_view(): void
     {
         $user = $this->makeJwtUser(
             '11111111-2222-3333-4444-555555555555',
-            ['template.update'],
+            ['template.version'],
         );
         $template = $this->makeTemplate(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
@@ -318,6 +318,72 @@ class TemplatePolicyTest extends TestCase
         );
 
         $this->assertFalse($this->policy->startRevision($user, $template));
+    }
+
+    public function test_clone_allows_creator_on_published_personal(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $creator = $this->makeJwtUser($creatorId);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'published');
+
+        $this->assertTrue($this->policy->clone($creator, $template));
+    }
+
+    public function test_clone_requires_template_clone_and_update_for_non_creator(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $withSlug = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['template.show', 'template.create', 'template.clone', 'template.update'],
+        );
+        auth()->setUser($withSlug);
+        $template = $this->makeTemplate(
+            createdBy: $creatorId,
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
+
+        $this->assertTrue($this->policy->clone($withSlug, $template));
+
+        $cloneOnly = $this->makeJwtUser(
+            '22222222-3333-4444-5555-666666666666',
+            ['template.show', 'template.create', 'template.clone'],
+        );
+        auth()->setUser($cloneOnly);
+        $this->assertFalse($this->policy->clone($cloneOnly, $template));
+    }
+
+    public function test_view_history_allows_creator_without_slug(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $creator = $this->makeJwtUser($creatorId, ['template.show']);
+        $template = $this->makeTemplate(createdBy: $creatorId, status: 'published');
+
+        $this->assertTrue($this->policy->viewHistory($creator, $template));
+    }
+
+    public function test_view_history_requires_slug_for_non_creator(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $viewer = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['template.show', 'template.history.view'],
+        );
+        auth()->setUser($viewer);
+        $template = $this->makeTemplate(
+            createdBy: $creatorId,
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
+
+        $this->assertTrue($this->policy->viewHistory($viewer, $template));
+
+        $noSlug = $this->makeJwtUser(
+            '22222222-3333-4444-5555-666666666666',
+            ['template.show'],
+        );
+        auth()->setUser($noSlug);
+        $this->assertFalse($this->policy->viewHistory($noSlug, $template));
     }
 
     public function test_publish_allows_creator_without_reviewers_even_if_non_personal(): void
