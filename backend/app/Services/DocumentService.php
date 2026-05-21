@@ -1328,6 +1328,31 @@ class DocumentService implements DocumentServiceInterface
         }
     }
 
+    public function attachIsAssignedReviewerMeta(Collection $documents, string $viewerId): void
+    {
+        if ($documents->isEmpty()) {
+            return;
+        }
+
+        $ids = $documents->pluck('id')->filter(fn ($id) => is_string($id) && $id !== '')->values()->all();
+        if ($ids === []) {
+            return;
+        }
+
+        $assignedDocIds = array_flip(
+            DocumentReview::query()
+                ->whereIn('document_id', $ids)
+                ->where('reviewer_id', $viewerId)
+                ->pluck('document_id')
+                ->map(fn ($id) => (string) $id)
+                ->all(),
+        );
+
+        foreach ($documents as $document) {
+            $document->setAttribute('is_assigned_reviewer', array_key_exists((string) $document->id, $assignedDocIds));
+        }
+    }
+
     private function extractPublishedTitleFromSnapshot(mixed $snapshot): ?string
     {
         if (is_string($snapshot) && $snapshot !== '') {
