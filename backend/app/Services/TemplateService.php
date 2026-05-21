@@ -290,6 +290,9 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setReviewMode) {
             $attributes['review_mode'] = $dto->reviewMode;
         }
+        if ($dto->setCreatedBy && $dto->createdBy !== null) {
+            $attributes['created_by'] = $dto->createdBy;
+        }
         $this->assertTemplateMetadataInvariants(
             (string) ($attributes['name'] ?? $template->name),
             $attributes['delivery_deadline'] ?? $template->delivery_deadline,

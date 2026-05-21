@@ -9,6 +9,7 @@ use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -72,6 +73,24 @@ class TemplatePolicy
         }
 
         $templateId = $template->getKey();
+
+        // Creador original que cedió la plantilla: accede si hay al menos un snapshot
+        // publicado inmutable donde él era el created_by.
+        if ($templateId !== null && $templateId !== '') {
+            $wasOriginalCreator = DB::table('entity_versions')
+                ->where('versionable_type', Template::class)
+                ->where('versionable_id', $templateId)
+                ->where('version_number', '>', 0)
+                ->where('is_snapshot_immutable', true)
+                ->whereRaw(
+                    TemplateHeadSnapshot::jsonTemplateFieldExpression('entity_versions', 'created_by').' = ?',
+                    [$userId]
+                )
+                ->exists();
+            if ($wasOriginalCreator) {
+                return true;
+            }
+        }
         // Un modelo sin ID es una instancia transitoria (no persistida). En ese caso no hay
         // datos que proteger, por lo que se permite la vista si el permiso está presente.
         // En producción los controladores siempre pasan un modelo recuperado de BD.

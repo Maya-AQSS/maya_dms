@@ -36,6 +36,7 @@ export type UpdateTemplatePayload = {
   status?: TemplateStatus;
   review_stages?: number;
   review_mode?: ReviewMode;
+  created_by?: string;
 };
 
 function buildListQuery(filters: TemplateListFilters): string {

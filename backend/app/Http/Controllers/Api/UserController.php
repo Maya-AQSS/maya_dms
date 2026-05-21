@@ -101,6 +101,33 @@ class UserController extends Controller
     }
 
     /**
+     * GET /api/v1/users/owner-candidates?search={term}&per_page={n}
+     *
+     * Usuarios candidatos para ser propietarios de una plantilla o documento.
+     * Requiere `template.show` (permiso que tiene el creador de la plantilla/documento).
+     * Devuelve todos los usuarios del directorio que coincidan con la búsqueda.
+     */
+    public function ownerCandidates(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
+            abort(403, 'No tienes permiso para buscar candidatos a propietario.');
+        }
+
+        $search = trim((string) $request->get('search', ''));
+        $perPage = min((int) $request->get('per_page', 20), 50);
+        $excludeUserId = $this->optionalExcludeUserId($request);
+
+        if (mb_strlen($search) < 2) {
+            return response()->json(['data' => []]);
+        }
+
+        $users = $this->userDirectoryService->searchUsers($search, $perPage, $excludeUserId);
+
+        return response()->json(['data' => $users]);
+    }
+
+    /**
      * Obtiene el ID de usuario a excluir de la búsqueda, si se ha proporcionado.
      */
     private function optionalExcludeUserId(Request $request): ?string

@@ -30,5 +30,7 @@ readonly class UpdateTemplateDto
         public bool $setReviewStages = false,
         public ?string $reviewMode = null,
         public bool $setReviewMode = false,
+        public ?string $createdBy = null,
+        public bool $setCreatedBy = false,
     ) {}
 }

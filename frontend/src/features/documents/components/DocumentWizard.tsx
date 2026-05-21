@@ -25,6 +25,7 @@ import {
   submitDocumentForReview,
   updateDocument,
   updateDocumentBlock,
+  delegateDocument,
   type DocumentReview,
 } from '../../../api/documents';
 import { useQueryClient } from '@tanstack/react-query';
@@ -34,7 +35,7 @@ import { fetchTemplate } from '../../../api/templates';
 import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
-import { fetchMe, searchDocumentReviewerCandidates, searchUsers, type UserTeam } from '../../../api/users';
+import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates, type UserTeam } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
@@ -137,6 +138,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const setModuleId = useCallback((v: string) => setStep1Value('moduleId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const setTeamId = useCallback((v: string) => setStep1Value('teamId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const [availableTeams, setAvailableTeams] = useState<UserTeam[]>([]);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [newOwnerForDoc, setNewOwnerForDoc] = useState<{ id: string; name: string } | null>(null);
+  const [ownerQuery, setOwnerQuery] = useState('');
+  const [ownerResults, setOwnerResults] = useState<import('../../../types/users').User[]>([]);
+  const [ownerSearching, setOwnerSearching] = useState(false);
   // Cross-field errors that depend on derived flags (require*) live alongside RHF formState.errors.
   const errors: Record<string, string> = useMemo(() => {
     const map: Record<string, string> = {};
@@ -336,7 +342,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     void (async () => {
       try {
         const me = await fetchMe();
-        if (!cancelled) setAvailableTeams(me.data.teams ?? []);
+        if (!cancelled) {
+          setAvailableTeams(me.data.teams ?? []);
+          setCurrentUserId(me.data.id);
+        }
       } catch {
         if (!cancelled) setAvailableTeams([]);
       }
@@ -757,6 +766,22 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     };
   }, [locationProcessId, template?.process_id]);
 
+  useEffect(() => {
+    const q = ownerQuery.trim();
+    if (q.length < 2) {
+      setOwnerResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setOwnerSearching(true);
+      searchOwnerCandidates(q)
+        .then((res) => setOwnerResults(res.data))
+        .catch(() => setOwnerResults([]))
+        .finally(() => setOwnerSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [ownerQuery]);
+
   const canEditBlocks = isDraft && activeBlock !== null && activeBlockUiState !== 'locked';
   const canDeleteOptionalBlock = isDraft && activeBlock !== null && activeBlockUiState === 'optional';
 
@@ -871,6 +896,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             study_id: studyId || undefined,
             module_id: moduleId || undefined,
           });
+
+          if (newOwnerForDoc) {
+            await delegateDocument(documentId, newOwnerForDoc.id);
+            setNewOwnerForDoc(null);
+          }
 
           setDetail((prev: DocumentDetail | null) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
           setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'] as Step[])));
@@ -1371,6 +1401,63 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   </div>
                 </div>
               </div>
+
+              {isDraft && !!detail && !!currentUserId && detail.owner_id === currentUserId && (
+                <div className="border-t border-ui-border dark:border-ui-dark-border pt-5 space-y-3">
+                  <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
+                    Propietario
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-secondary dark:text-text-dark-secondary">Actual:</span>
+                    <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
+                      {newOwnerForDoc ? newOwnerForDoc.name : (detail.owner_name ?? '—')}
+                    </span>
+                    {newOwnerForDoc && (
+                      <button
+                        type="button"
+                        onClick={() => { setNewOwnerForDoc(null); setOwnerQuery(''); }}
+                        className="text-xs text-danger-dark hover:underline"
+                      >
+                        Deshacer
+                      </button>
+                    )}
+                  </div>
+                  <div className="relative">
+                    <TextInput
+                      type="search"
+                      fieldSize="comfortable"
+                      placeholder="Buscar nuevo propietario…"
+                      value={ownerQuery}
+                      onChange={(e: ChangeEvent<HTMLInputElement>) => setOwnerQuery(e.target.value)}
+                    />
+                  </div>
+                  {ownerQuery.trim().length > 0 && ownerQuery.trim().length < 2 && (
+                    <p className="text-xs text-text-muted italic">Escribe al menos 2 caracteres para buscar.</p>
+                  )}
+                  {ownerSearching && <p className="text-xs text-text-muted italic">Buscando…</p>}
+                  {!ownerSearching && ownerResults.length > 0 && (
+                    <ul className="border border-ui-border dark:border-ui-dark-border rounded-lg overflow-hidden divide-y divide-ui-border dark:divide-ui-dark-border">
+                      {ownerResults.map((u) => (
+                        <li key={u.id}>
+                          <button
+                            type="button"
+                            onClick={() => { setNewOwnerForDoc({ id: u.id, name: u.name }); setOwnerQuery(''); setOwnerResults([]); }}
+                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-odoo-purple/5 transition-colors"
+                          >
+                            <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20">
+                              {u.name.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? '').join('')}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary truncate">{u.name}</p>
+                              {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary">{u.role}</p>}
+                            </div>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

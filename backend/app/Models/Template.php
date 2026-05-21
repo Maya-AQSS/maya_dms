@@ -79,6 +79,22 @@ class Template extends Model
                                     ->whereColumn('template_reviewers.template_id', 'templates.id')
                                     ->where('template_reviewers.user_id', $userId);
                             });
+                    })
+                    ->orWhere(function (Builder $prevCreator) use ($userId) {
+                        // Creador original que cedió la plantilla: puede seguir viendo las
+                        // versiones publicadas si aparece como created_by en algún snapshot inmutable.
+                        $prevCreator->whereExists(function ($sub) use ($userId) {
+                            $sub->select(DB::raw(1))
+                                ->from('entity_versions as prev_pub')
+                                ->whereColumn('prev_pub.versionable_id', 'templates.id')
+                                ->where('prev_pub.versionable_type', self::class)
+                                ->where('prev_pub.version_number', '>', 0)
+                                ->where('prev_pub.is_snapshot_immutable', true)
+                                ->whereRaw(
+                                    TemplateHeadSnapshot::jsonTemplateFieldExpression('prev_pub', 'created_by').' = ?',
+                                    [$userId]
+                                );
+                        });
                     });
 
                 $outer->orWhere(fn (Builder $shared) => self::scopeSharedTemplatesForTeacher($shared, $userId));

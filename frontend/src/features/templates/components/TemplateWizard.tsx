@@ -23,6 +23,7 @@ import {
   templateCommentsKey,
   type TemplateCommentsResponse,
 } from '../hooks/useTemplateComments';
+import { useUserProfile } from '../../../features/user-profile';
 import { WizardStep1Properties } from './WizardStep1Properties';
 import { WizardStep2Blocks, type WizardStep2BlocksHandle } from './WizardStep2Blocks';
 import { WizardStep3Users, type ValidatorEntry } from './WizardStep3Users';
@@ -46,6 +47,7 @@ type Props = {
 export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { profile } = useUserProfile();
   const initial = templateProp || initialTemplate;
   const processBackTo = useMemo(() => {
     const effectiveProcessId = processId ?? templateProp?.process_id ?? initialTemplate?.process_id ?? null;
@@ -216,6 +218,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         study_id: values.studyId || null,
         module_id: values.moduleId || null,
         team_id: values.teamId || null,
+        ...(values.createdBy ? { created_by: values.createdBy } : {}),
       };
 
       let res;
@@ -622,7 +625,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         <>
           {step === 'properties' && (
             <FormProvider {...step1Methods}>
-              <WizardStep1Properties errors={errors} templateStatus={template?.status} />
+              <WizardStep1Properties
+                errors={errors}
+                templateStatus={template?.status}
+                isCreator={!!template?.id && !!profile?.id && profile.id === template.created_by}
+                currentAuthorName={template?.author_name ?? null}
+              />
             </FormProvider>
           )}
           {step === 'blocks' && template && (
