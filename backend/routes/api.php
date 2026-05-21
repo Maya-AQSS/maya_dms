@@ -38,12 +38,14 @@ Route::prefix('v1')->group(function () {
     Route::get('/health/live', [HealthCheckController::class, 'live']);
     Route::get('/health/ready', [HealthCheckController::class, 'ready']);
 
-    // ── Rutas protegidas por JWT ───────────────────────────────
-    Route::middleware('jwt')->group(function () {
-
-        // Perfil del usuario autenticado — endpoints en maya/shared-profile-laravel
-        // (resolver FDW propio en App\Repositories\Resolvers\FdwUserProfileResolver).
+    // Perfil: solo JWT (sin dms.login). El front necesita /me para resolver permisos.
+    Route::middleware(['jwt'])->group(function () {
         MeRoutes::register();
+    });
+
+    // ── Rutas protegidas por JWT + permiso de acceso a la app ──
+    Route::middleware(['jwt', 'permission:dms.login'])->group(function () {
+
         Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
         Route::get('/processes', [ProcessController::class, 'index']);
 

@@ -10,6 +10,8 @@ import {
   type SkeletonBlock,
 } from '@maya/shared-dashboard-react';
 import { PageTitle } from '@maya/shared-ui-react';
+import { useUserProfile } from '../../user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import { WIDGET_REGISTRY, DEFAULT_LAYOUT } from '../widgets/registry';
 
 const STORAGE_KEY = 'maya:dms:dashboard-layout';
@@ -22,6 +24,8 @@ const SKELETON_BLOCKS: SkeletonBlock[] = [
 /** Dashboard principal con grid de widgets drag-and-drop persistido en localStorage. */
 export function DashboardPage() {
   const { t } = useTranslation('common');
+  const { hasPermission } = useUserProfile();
+  const canEditDashboard = hasPermission(DMS_PERMISSIONS.dashboardUpdate);
   const { layout, loading, saveLayout, resetToDefault } = useDashboardLayoutLocal({
     storageKey: STORAGE_KEY,
     defaultLayout: DEFAULT_LAYOUT,
@@ -32,6 +36,7 @@ export function DashboardPage() {
   const activeLayout = editable ? (draftLayout ?? layout) : layout;
 
   const handleToggleEdit = useCallback(() => {
+    if (!canEditDashboard) return;
     setEditable((prev) => {
       if (prev) {
         setDraftLayout(null);
@@ -40,7 +45,7 @@ export function DashboardPage() {
       setDraftLayout(layout);
       return true;
     });
-  }, [layout]);
+  }, [canEditDashboard, layout]);
 
   const handleSave = useCallback(async () => {
     await saveLayout(draftLayout ?? layout);
@@ -105,7 +110,7 @@ export function DashboardPage() {
       <PageTitle
         title={t('nav.dashboard', { defaultValue: 'Panel' })}
         actions={
-          editable ? (
+          canEditDashboard && editable ? (
             <DashboardEditToolbar
               layout={activeLayout}
               registry={WIDGET_REGISTRY}
@@ -121,9 +126,9 @@ export function DashboardPage() {
                 addWidget: t('dashboard.addWidget', { defaultValue: 'Añadir widget' }),
               }}
             />
-          ) : (
+          ) : canEditDashboard ? (
             <DashboardEditToggleButton editable={editable} onToggle={handleToggleEdit} />
-          )
+          ) : null
         }
       />
 

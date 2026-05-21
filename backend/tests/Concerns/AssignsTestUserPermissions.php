@@ -11,9 +11,14 @@ trait AssignsTestUserPermissions
      * `user_resolved_permissions` (en testing).
      *
      * @param  list<string>  $slugs
+     * @param  bool  $withAppLogin  Si true, añade `dms.login` salvo que ya esté en $slugs.
      */
-    protected function assignUserPermissions(string $userId, array $slugs): void
+    protected function assignUserPermissions(string $userId, array $slugs, bool $withAppLogin = true): void
     {
+        if ($withAppLogin && ! in_array('dms.login', $slugs, true)) {
+            $slugs = ['dms.login', ...$slugs];
+        }
+
         if ($slugs === []) {
             return;
         }
