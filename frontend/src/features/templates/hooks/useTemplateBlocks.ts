@@ -8,7 +8,12 @@ import {
 } from '../../../api/blocks';
 import { ApiHttpError } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
-import { canListBlocks } from '../../../permissions';
+import {
+  canCreateTemplateBlock,
+  canDeleteTemplateBlock,
+  canListBlocks,
+  canUpdateTemplateBlock,
+} from '../../../permissions';
 import type {
   CreateBlockPayload,
   TemplateBlock,
@@ -27,6 +32,9 @@ function formatError(err: unknown): string {
 export function useTemplateBlocks(templateId: string) {
   const { hasPermission } = useUserProfile();
   const mayListBlocks = canListBlocks(hasPermission);
+  const mayCreateBlock = canCreateTemplateBlock(hasPermission);
+  const mayUpdateBlock = canUpdateTemplateBlock(hasPermission);
+  const mayDeleteBlock = canDeleteTemplateBlock(hasPermission);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,23 +68,32 @@ export function useTemplateBlocks(templateId: string) {
 
   const createBlock = useCallback(
     async (payload: CreateBlockPayload) => {
+      if (!mayCreateBlock) {
+        throw new Error('No tienes permiso para crear bloques (block.create).');
+      }
       const res = await createBlockRequest(templateId, payload);
       setBlocks((prev: TemplateBlock[]) => [...prev, res.data]);
       return res.data;
     },
-    [templateId],
+    [templateId, mayCreateBlock],
   );
 
   const updateBlock = useCallback(
     async (blockId: string, payload: UpdateBlockPayload) => {
+      if (!mayUpdateBlock) {
+        throw new Error('No tienes permiso para actualizar bloques (block.update).');
+      }
       const res = await updateBlockRequest(blockId, payload);
       setBlocks((prev: TemplateBlock[]) => prev.map((b: TemplateBlock) => (b.id === blockId ? res.data : b)));
       return res.data;
     },
-    [],
+    [mayUpdateBlock],
   );
 
   const deleteBlock = useCallback(async (blockId: string) => {
+    if (!mayDeleteBlock) {
+      throw new Error('No tienes permiso para eliminar bloques (block.delete).');
+    }
     await deleteBlockRequest(blockId);
     setBlocks((prev: TemplateBlock[]) => prev.filter((b: TemplateBlock) => b.id !== blockId));
     setSelectedIds((prev: Set<string>) => {
@@ -84,8 +101,7 @@ export function useTemplateBlocks(templateId: string) {
       next.delete(blockId);
       return next;
     });
-  }, []);
-
+  }, [mayDeleteBlock]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev: Set<string>) => {
@@ -115,7 +131,14 @@ export function useTemplateBlocks(templateId: string) {
     toggleSelect,
     selectOnly,
     clearSelection,
+    mayCreateBlock,
+    mayUpdateBlock,
+    mayDeleteBlock,
     reorderBlocks: async (draggedId: string, targetIndex: number) => {
+      if (!mayUpdateBlock) {
+        setError('No tienes permiso para reordenar bloques (block.update).');
+        return;
+      }
       const snapshot = blocks;
       const sourceIndex = snapshot.findIndex((b: TemplateBlock) => b.id === draggedId);
       if (sourceIndex === -1) return;

@@ -48,10 +48,9 @@ class TemplateBlockController extends Controller
      */
     public function store(StoreTemplateBlockRequest $request, string $template): JsonResponse
     {
-        $this->authorizeAndValidateTemplateContext(
-            $this->findTemplateOrFail($this->templateService, $template),
-            'update',
-        );
+        $templateModel = $this->findTemplateOrFail($this->templateService, $template);
+        $this->authorize('createTemplateBlock', $templateModel);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
 
         $block = $this->blockService->create(
             templateId: $template,
@@ -81,10 +80,9 @@ class TemplateBlockController extends Controller
     public function update(UpdateTemplateBlockRequest $request, string $block): TemplateBlockResource
     {
         $blockDto = $this->blockService->findOrFail($block);
-        $this->authorizeAndValidateTemplateContext(
-            $this->findTemplateOrFail($this->templateService, $blockDto->templateId),
-            'update',
-        );
+        $templateModel = $this->findTemplateOrFail($this->templateService, $blockDto->templateId);
+        $this->authorize('updateTemplateBlock', $templateModel);
+        $this->assertOptionalProcessContextMatches((string) $templateModel->process_id);
 
         $updated = $this->blockService->update(
             blockId: $block,
@@ -104,8 +102,7 @@ class TemplateBlockController extends Controller
         // Eloquent (no DTO). Excepción documentada al patrón canónico.
         $blockModel = $this->blockService->findModelOrFail($block);
         $template = $this->findTemplateOrFail($this->templateService, (string) $blockModel->template_id);
-        $blockModel->setRelation('template', $template);
-        $this->authorize('delete', $blockModel);
+        $this->authorize('deleteTemplateBlock', $template);
         $this->assertOptionalProcessContextMatches((string) $template->process_id);
 
         $this->blockService->delete($block, (string) Auth::id());

@@ -85,6 +85,50 @@ class BlockPolicyTest extends TestCase
         $this->assertTrue($this->policy->listForDocument($user, $document));
     }
 
+    public function test_create_for_template_requires_block_create_and_template_companion(): void
+    {
+        $ownerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $template = $this->makeTemplate($ownerId);
+
+        $user = $this->makeJwtUser(['block.create', 'template.update']);
+        auth()->setUser($user);
+        $this->assertTrue($this->policy->createForTemplate($user, $template));
+
+        $noSlug = $this->makeJwtUser(['template.update']);
+        $this->assertFalse($this->policy->createForTemplate($noSlug, $template));
+
+        $docOnly = $this->makeJwtUser(['block.create', 'document.update']);
+        $this->assertFalse($this->policy->createForTemplate($docOnly, $template));
+    }
+
+    public function test_update_for_document_requires_document_companion(): void
+    {
+        $ownerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $user = $this->makeJwtUser(['block.update', 'document.update']);
+        auth()->setUser($user);
+        $document = $this->makeDocument($ownerId, $ownerId);
+
+        $this->assertTrue($this->policy->updateForDocument($user, $document));
+
+        $tplOnly = $this->makeJwtUser(['block.update', 'template.update']);
+        $this->assertFalse($this->policy->updateForDocument($tplOnly, $document));
+    }
+
+    public function test_delete_for_document_follows_document_update(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $owner = $this->makeJwtUser(['block.delete', 'document.update']);
+        auth()->setUser($owner);
+        $document = $this->makeDocument($creatorId, $ownerId);
+
+        $this->assertTrue($this->policy->deleteForDocument($owner, $document));
+
+        $stranger = $this->makeJwtUser(['block.delete', 'document.update']);
+        auth()->setUser($stranger);
+        $this->assertFalse($this->policy->deleteForDocument($stranger, $document));
+    }
+
     /**
      * @param  list<string>  $permissions
      */

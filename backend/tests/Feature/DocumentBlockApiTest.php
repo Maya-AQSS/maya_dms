@@ -56,7 +56,14 @@ class DocumentBlockApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['document.show', 'template.show', 'block.index', 'document.update']): array
+    private function authHeaders(string $sub, array $codes = [
+        'document.show',
+        'template.show',
+        'block.index',
+        'block.update',
+        'block.delete',
+        'document.update',
+    ]): array
     {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);

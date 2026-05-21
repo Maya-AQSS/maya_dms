@@ -9,11 +9,14 @@ use App\Models\TemplateBlock;
 
 class TemplateBlockPolicy
 {
+    /**
+     * @deprecated Preferir Gate {@see BlockPolicy::deleteForTemplate} vía `deleteTemplateBlock`.
+     */
     public function delete(JwtUser $user, TemplateBlock $block): bool
     {
         $template = $block->template;
 
         return $template !== null
-            && (string) $user->getAuthIdentifier() === (string) $template->created_by;
+            && (new BlockPolicy)->deleteForTemplate($user, $template);
     }
 }

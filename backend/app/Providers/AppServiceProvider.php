@@ -190,5 +190,10 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('listTemplateBlocks', [$blockPolicy, 'listForTemplate']);
         Gate::define('showTemplateBlock', [$blockPolicy, 'showForTemplate']);
         Gate::define('listDocumentBlocks', [$blockPolicy, 'listForDocument']);
+        Gate::define('createTemplateBlock', [$blockPolicy, 'createForTemplate']);
+        Gate::define('updateTemplateBlock', [$blockPolicy, 'updateForTemplate']);
+        Gate::define('deleteTemplateBlock', [$blockPolicy, 'deleteForTemplate']);
+        Gate::define('updateDocumentBlock', [$blockPolicy, 'updateForDocument']);
+        Gate::define('deleteDocumentBlock', [$blockPolicy, 'deleteForDocument']);
     }
 }

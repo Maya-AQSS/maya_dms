@@ -16,11 +16,7 @@ class DocumentBlockPolicy
             return false;
         }
 
-        $id = (string) $user->getAuthIdentifier();
-
-        // Mirrors DocumentPolicy::update — creator or current owner may delete optional blocks.
-        // block_state and draft-status validation are delegated to DocumentBlockService.
-        return $id === (string) $document->created_by
-            || $id === (string) $document->owner_id;
+        // Paridad con BlockPolicy::deleteForDocument / DocumentPolicy::update.
+        return (new BlockPolicy)->deleteForDocument($user, $document);
     }
 }

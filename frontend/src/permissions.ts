@@ -53,3 +53,35 @@ export function canListBlocks(hasPermission: (slug: string) => boolean): boolean
 export function canShowBlockDetail(hasPermission: (slug: string) => boolean): boolean {
   return hasPermission(DMS_PERMISSIONS.blockShow) && canAccessBlockCatalog(hasPermission);
 }
+
+export function canMutateTemplateBlocks(hasPermission: (slug: string) => boolean): boolean {
+  return (
+    hasPermission(DMS_PERMISSIONS.templateCreate) || hasPermission(DMS_PERMISSIONS.templateUpdate)
+  );
+}
+
+export function canMutateDocumentBlocks(hasPermission: (slug: string) => boolean): boolean {
+  return (
+    hasPermission(DMS_PERMISSIONS.documentCreate) || hasPermission(DMS_PERMISSIONS.documentUpdate)
+  );
+}
+
+export function canCreateTemplateBlock(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.blockCreate) && canMutateTemplateBlocks(hasPermission);
+}
+
+export function canUpdateTemplateBlock(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.blockUpdate) && canMutateTemplateBlocks(hasPermission);
+}
+
+export function canDeleteTemplateBlock(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.blockDelete) && canMutateTemplateBlocks(hasPermission);
+}
+
+export function canUpdateDocumentBlock(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.blockUpdate) && canMutateDocumentBlocks(hasPermission);
+}
+
+export function canDeleteDocumentBlock(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.blockDelete) && canMutateDocumentBlocks(hasPermission);
+}
