@@ -5,6 +5,8 @@ use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\DocumentExportController;
+use App\Http\Controllers\Api\DocumentPreviewController;
 use App\Http\Controllers\Api\DocumentOptionsController;
 use App\Http\Controllers\Api\DocumentShareController;
 use App\Http\Controllers\Api\DocumentStateController;
@@ -127,6 +129,18 @@ Route::prefix('v1')->group(function () {
         Route::post('documents/{document}/new-version', [DocumentStateController::class, 'startNewVersion'])
             ->whereUuid('document');
         Route::post('documents/{document}/delegate', [DocumentStateController::class, 'delegate'])
+            ->whereUuid('document');
+
+        // Preview HTML themed (mismo HTML que más adelante alimentará a WeasyPrint).
+        Route::get('documents/{document}/preview', [DocumentPreviewController::class, 'show'])
+            ->whereUuid('document');
+
+        // Export a PDF/UA via WeasyPrint (async, encolado en RabbitMQ/Redis).
+        Route::post('documents/{document}/export-pdf', [DocumentExportController::class, 'start'])
+            ->whereUuid('document');
+        Route::get('documents/{document}/export-status', [DocumentExportController::class, 'status'])
+            ->whereUuid('document');
+        Route::get('documents/{document}/pdf', [DocumentExportController::class, 'download'])
             ->whereUuid('document');
 
         Route::get('documents/{document}/blocks', [DocumentBlockController::class, 'index'])
