@@ -3,6 +3,7 @@
 namespace Tests\Unit\Policies;
 
 use App\Enums\TemplateVisibilityLevel;
+use Illuminate\Support\Facades\Auth;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\DocumentShare;
@@ -316,29 +317,57 @@ class DocumentPolicyTest extends TestCase
         $this->assertFalse($this->policy->publish($creator, $doc));
     }
 
-    /**
-     * Clonar exige documents.create y capacidad de update sobre el documento origen.
-     */
-    public function test_clone_denied_without_documents_create(): void
+    public function test_clone_denied_without_document_create(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
         $user = $this->makeJwtUser($userId, ['document.update']);
-        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'published');
 
         $this->assertFalse($this->policy->clone($user, $doc));
     }
 
-    public function test_clone_denied_when_update_denied(): void
+    public function test_clone_denied_for_non_titular_without_clone_slug(): void
     {
         $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
         $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
-        $user = $this->makeJwtUser($strangerId, ['document.create']);
-        $doc = $this->makeDocument(createdBy: $ownerId, ownerId: $ownerId);
+        $user = $this->makeJwtUser($strangerId, ['document.create', 'document.show', 'document.update']);
+        auth()->setUser($user);
+        $doc = $this->makeDocument(
+            createdBy: $ownerId,
+            ownerId: $ownerId,
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
 
         $this->assertFalse($this->policy->clone($user, $doc));
     }
 
-    public function test_clone_allowed_for_owner_with_documents_create(): void
+    public function test_clone_requires_document_clone_and_update_for_non_titular(): void
+    {
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
+        $user = $this->makeJwtUser($strangerId, [
+            'document.show',
+            'document.create',
+            'document.clone',
+            'document.update',
+        ]);
+        auth()->setUser($user);
+        $doc = $this->makeDocument(
+            createdBy: $ownerId,
+            ownerId: $ownerId,
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
+
+        $this->assertTrue($this->policy->clone($user, $doc));
+
+        $cloneOnly = $this->makeJwtUser($strangerId, ['document.show', 'document.create', 'document.clone']);
+        auth()->setUser($cloneOnly);
+        $this->assertFalse($this->policy->clone($cloneOnly, $doc));
+    }
+
+    public function test_clone_allowed_for_titular_with_document_create(): void
     {
         $userId = '11111111-1111-1111-1111-111111111111';
         $user = $this->makeJwtUser($userId, ['document.create']);
@@ -390,19 +419,35 @@ class DocumentPolicyTest extends TestCase
         $this->assertTrue($this->policy->startRevision($user, $doc));
     }
 
-    public function test_start_revision_allows_documents_update_when_published_and_can_update(): void
+    public function test_start_revision_allows_document_version_for_non_titular(): void
     {
-        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.update']);
-        $doc  = $this->makeDocument(
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.show', 'document.version']);
+        auth()->setUser($user);
+        $doc = $this->makeDocument(
             createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
             ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
             status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
         );
 
         $this->assertTrue($this->policy->startRevision($user, $doc));
     }
 
-    public function test_start_revision_denied_when_published_but_update_denied(): void
+    public function test_start_revision_denied_for_non_titular_with_only_document_update(): void
+    {
+        $user = $this->makeJwtUser('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', ['document.show', 'document.update']);
+        auth()->setUser($user);
+        $doc = $this->makeDocument(
+            createdBy: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+            ownerId: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
+
+        $this->assertFalse($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_start_revision_denied_when_published_but_cannot_view(): void
     {
         $user = $this->makeJwtUser('ffffffff-ffff-ffff-ffff-ffffffffffff');
         $doc  = $this->makeDocument(
@@ -412,6 +457,37 @@ class DocumentPolicyTest extends TestCase
         );
 
         $this->assertFalse($this->policy->startRevision($user, $doc));
+    }
+
+    public function test_view_history_allows_titular_without_slug(): void
+    {
+        $userId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser($userId);
+        $doc = $this->makeDocument(createdBy: $userId, ownerId: $userId, status: 'published');
+
+        $this->assertTrue($this->policy->viewHistory($user, $doc));
+    }
+
+    public function test_view_history_requires_slug_for_non_titular(): void
+    {
+        $ownerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $viewer = $this->makeJwtUser(
+            '11111111-2222-3333-4444-555555555555',
+            ['document.show', 'document.history.view'],
+        );
+        auth()->setUser($viewer);
+        $doc = $this->makeDocument(
+            createdBy: $ownerId,
+            ownerId: $ownerId,
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Global->value,
+        );
+
+        $this->assertTrue($this->policy->viewHistory($viewer, $doc));
+
+        $noSlug = $this->makeJwtUser('22222222-3333-4444-5555-666666666666', ['document.show']);
+        auth()->setUser($noSlug);
+        $this->assertFalse($this->policy->viewHistory($noSlug, $doc));
     }
 
     /**
@@ -429,15 +505,19 @@ class DocumentPolicyTest extends TestCase
         ]);
     }
 
-    private function makeDocument(string $createdBy, string $ownerId, string $status = 'draft'): Document
-    {
+    private function makeDocument(
+        string $createdBy,
+        string $ownerId,
+        string $status = 'draft',
+        string $visibilityLevel = TemplateVisibilityLevel::Personal->value,
+    ): Document {
         $templateId = (string) Str::uuid();
         Template::query()->forceCreate([
             'id' => $templateId,
             'process_id' => '00000000-0000-0000-0000-000000000001',
             'name' => 'Plantilla doc policy',
             'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'visibility_level' => $visibilityLevel,
             'delivery_deadline' => null,
             'study_type_id' => null,
             'study_id' => null,

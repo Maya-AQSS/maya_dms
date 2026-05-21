@@ -25,4 +25,7 @@ export const DMS_PERMISSIONS = {
   documentUpdate: 'document.update',
   documentDelete: 'document.delete',
   documentReview: 'document.review',
+  documentVersion: 'document.version',
+  documentClone: 'document.clone',
+  documentHistoryView: 'document.history.view',
 } as const;

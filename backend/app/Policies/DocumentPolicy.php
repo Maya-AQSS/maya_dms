@@ -29,6 +29,11 @@ use Illuminate\Support\Facades\DB;
  *
  * Compartición ({@see self::share}): solo el titular actual gestiona filas en
  * `document_shares`.
+ *
+ * VERSIONADO Y HISTORIAL (catálogo):
+ * - `document.version`: abrir ciclo de nueva versión sobre publicada (no titular).
+ * - `document.clone`: clonar publicada (no titular); además `document.update` o ser titular.
+ * - `document.history.view`: listar/ver snapshots publicados (`GET …/versions`).
  */
 class DocumentPolicy
 {
@@ -231,13 +236,30 @@ class DocumentPolicy
     }
 
     /**
-     * Clonar documento: requiere poder crear documentos y mutar el origen (titular/creador/colaborador edit o permiso global).
+     * Clonar documento publicado en un expediente nuevo.
+     *
+     * Requiere ver el origen, `document.create` y (titular o `document.clone`).
+     * Quien no es titular necesita además `document.update` (misma línea que editar ajenos).
      */
     public function clone(JwtUser $user, Document $document): bool
     {
-        return $document->status === 'published'
-            && $user->hasPermission('document.create')
-            && $this->update($user, $document);
+        if ($document->status !== 'published' || ! $this->view($user, $document)) {
+            return false;
+        }
+
+        if (! $user->hasPermission('document.create')) {
+            return false;
+        }
+
+        if ($this->isTitular($user, $document)) {
+            return true;
+        }
+
+        if (! $user->hasPermission('document.clone')) {
+            return false;
+        }
+
+        return $user->hasPermission('document.update');
     }
 
     /**
@@ -256,10 +278,25 @@ class DocumentPolicy
     }
 
     /**
+     * Ver historial de versiones publicadas ({@see DocumentVersionController}).
+     */
+    public function viewHistory(JwtUser $user, Document $document): bool
+    {
+        if (! $this->view($user, $document)) {
+            return false;
+        }
+
+        if ($this->isTitular($user, $document)) {
+            return true;
+        }
+
+        return $user->hasPermission('document.history.view');
+    }
+
+    /**
      * Publicado → borrador para preparar una nueva versión publicada del mismo expediente.
      *
-     * Quién puede editar el borrador lo define {@see self::update}; aquí solo se exige documento `published`.
-     * Quién puede cargar el modelo desde la API queda acotado por el scope del modelo (equivalente práctico a “ver”).
+     * Titular o permiso `document.version`, siempre que pueda ver el documento.
      */
     public function startRevision(JwtUser $user, Document $document): bool
     {
@@ -267,6 +304,17 @@ class DocumentPolicy
             return false;
         }
 
-        return $this->update($user, $document);
+        if (! $this->view($user, $document)) {
+            return false;
+        }
+
+        return $this->isTitular($user, $document) || $user->hasPermission('document.version');
+    }
+
+    private function isTitular(JwtUser $user, Document $document): bool
+    {
+        $userId = (string) $user->getAuthIdentifier();
+
+        return $userId === (string) $document->created_by || $userId === (string) $document->owner_id;
     }
 }

@@ -10,6 +10,8 @@ use App\Http\Resources\DocumentVersionResource;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class DocumentVersionController extends Controller
 {
@@ -26,8 +28,18 @@ class DocumentVersionController extends Controller
      */
     public function index(string $document): AnonymousResourceCollection
     {
-        $doc = $this->documentService->findModelOrFail($document);
-        $this->authorize('view', $doc);
+        try {
+            $doc = $this->documentService->findModelOrFail($document);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $doc = $this->documentService->findModelOrFailWithoutUserAccess($document);
+            if (! $this->documentService->hasPublishedSnapshot($doc->id)) {
+                abort(404);
+            }
+        }
+
+        if (! Gate::forUser(Auth::user())->allows('viewHistory', $doc)) {
+            abort(404);
+        }
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         return DocumentVersionResource::collection(
@@ -42,8 +54,18 @@ class DocumentVersionController extends Controller
      */
     public function show(string $document, string $version): JsonResponse
     {
-        $doc = $this->documentService->findModelOrFail($document);
-        $this->authorize('view', $doc);
+        try {
+            $doc = $this->documentService->findModelOrFail($document);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $doc = $this->documentService->findModelOrFailWithoutUserAccess($document);
+            if (! $this->documentService->hasPublishedSnapshot($doc->id)) {
+                abort(404);
+            }
+        }
+
+        if (! Gate::forUser(Auth::user())->allows('viewHistory', $doc)) {
+            abort(404);
+        }
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
         $detail = $this->documentService->findDocumentVersionDetailOrFail($document, $version);

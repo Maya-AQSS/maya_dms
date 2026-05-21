@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Documents;
 
-use App\Http\Requests\Documents\Concerns\ResolvesDocumentForReview;
+use App\Http\Requests\Documents\Concerns\ResolvesDocumentForAuthorization;
 use App\Models\Comment;
 use App\Models\Document;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -12,7 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class RejectDocumentReviewRequest extends FormRequest
 {
-    use ResolvesDocumentForReview;
+    use ResolvesDocumentForAuthorization;
 
     public function authorize(): bool
     {

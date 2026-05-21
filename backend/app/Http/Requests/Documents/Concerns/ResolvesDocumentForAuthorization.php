@@ -8,7 +8,7 @@ use App\Models\Document;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
-trait ResolvesDocumentForReview
+trait ResolvesDocumentForAuthorization
 {
     public function resolveDocument(): Document
     {

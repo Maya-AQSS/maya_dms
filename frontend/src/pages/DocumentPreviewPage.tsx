@@ -296,9 +296,14 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const canReviewDocument = hasPermission(DMS_PERMISSIONS.documentReview);
   const isHistoricalSnapshot = versionSnapshot !== null;
   const showVersionHistory =
-    publishedDocumentVersionCount !== null && publishedDocumentVersionCount > 0;
+    publishedDocumentVersionCount !== null &&
+    publishedDocumentVersionCount > 0 &&
+    (isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView));
   const canStartNewVersion =
-    !isValidateMode && isPublished && canMutatePublished && !isHistoricalSnapshot;
+    !isValidateMode &&
+    isPublished &&
+    !isHistoricalSnapshot &&
+    (isOwner || hasPermission(DMS_PERMISSIONS.documentVersion));
   const canClone =
     !isValidateMode &&
     !isHistoricalSnapshot &&
