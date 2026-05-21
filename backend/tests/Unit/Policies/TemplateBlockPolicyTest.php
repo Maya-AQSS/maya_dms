@@ -27,14 +27,17 @@ class TemplateBlockPolicyTest extends TestCase
 
     // ─── Helper factories ─────────────────────────────────────────────────────
 
-    private function makeJwtUser(string $id): JwtUser
+    /**
+     * @param  list<string>  $permissions
+     */
+    private function makeJwtUser(string $id, array $permissions = []): JwtUser
     {
         return new JwtUser([
             'id'          => $id,
             'email'       => null,
             'name'        => null,
             'department'  => null,
-            'permissions' => [],
+            'permissions' => $permissions,
             'scope'       => '',
         ]);
     }
@@ -78,21 +81,30 @@ class TemplateBlockPolicyTest extends TestCase
         $this->assertFalse($this->policy->delete($user, $block));
     }
 
-    public function test_creator_can_delete_own_template_block(): void
+    public function test_creator_can_delete_own_template_block_with_block_delete(): void
     {
         $userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
-        $user   = $this->makeJwtUser($userId);
+        $user   = $this->makeJwtUser($userId, ['block.delete', 'template.update']);
         $block  = $this->makeTemplateBlock($userId);
 
         $this->assertTrue($this->policy->delete($user, $block));
     }
 
-    public function test_non_creator_cannot_delete_template_block(): void
+    public function test_creator_cannot_delete_without_block_delete_slug(): void
+    {
+        $userId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $user   = $this->makeJwtUser($userId, ['template.update']);
+        $block  = $this->makeTemplateBlock($userId);
+
+        $this->assertFalse($this->policy->delete($user, $block));
+    }
+
+    public function test_non_creator_cannot_delete_template_block_on_personal_template(): void
     {
         $creatorId  = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $strangerId = 'cccccccc-cccc-cccc-cccc-cccccccccccc';
 
-        $user  = $this->makeJwtUser($strangerId);
+        $user  = $this->makeJwtUser($strangerId, ['block.delete', 'template.update']);
         $block = $this->makeTemplateBlock($creatorId);
 
         $this->assertFalse($this->policy->delete($user, $block));

@@ -6,15 +6,23 @@ namespace App\Http\Requests\TemplateBlocks;
 
 use App\Enums\BlockState;
 use App\Http\Concerns\SanitizesBlockContent;
+use App\Http\Requests\TemplateBlocks\Concerns\ResolvesTemplateForBlockAuthorization;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreTemplateBlockRequest extends FormRequest
 {
+    use ResolvesTemplateForBlockAuthorization;
     use SanitizesBlockContent;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('createTemplateBlock', $this->resolveTemplate());
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso para crear bloques en esta plantilla.');
     }
 
     public function rules(): array

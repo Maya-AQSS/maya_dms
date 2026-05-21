@@ -53,7 +53,15 @@ class TemplateBlockCrudApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = ['template.show']): array
+    private function authHeaders(string $sub, array $codes = [
+        'template.show',
+        'block.index',
+        'block.show',
+        'block.create',
+        'block.update',
+        'block.delete',
+        'template.update',
+    ]): array
     {
         auth()->forgetUser();
         $this->assignUserPermissions($sub, $codes);
@@ -214,7 +222,7 @@ class TemplateBlockCrudApiTest extends TestCase
     {
         $userId  = (string) Str::uuid();
         $ctx     = $this->seedTemplateWithBlock($userId);
-        $headers = $this->authHeaders($userId, ['template.show', 'template.update']);
+        $headers = $this->authHeaders($userId, ['template.show', 'template.update', 'block.create']);
 
         $response = $this->postJson("/api/v1/templates/{$ctx['templateId']}/blocks", [
             'title'       => 'Nuevo Bloque',

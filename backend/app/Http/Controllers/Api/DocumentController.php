@@ -9,6 +9,9 @@ use App\Http\Concerns\AttachesDocumentCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\CloneDocumentRequest;
+use App\Http\Requests\Documents\DestroyDocumentRequest;
+use App\Http\Requests\Documents\IndexDocumentRequest;
+use App\Http\Requests\Documents\ShowDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
 use App\Http\Resources\DocumentResource;
@@ -39,16 +42,17 @@ class DocumentController extends Controller
     /**
      * Listar documentos.
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(IndexDocumentRequest $request): AnonymousResourceCollection
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
-        $processId = $request->query('process_id');
+        $processId = $request->validated('process_id');
         $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
 
         $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
         $this->documentService->attachLatestPublishedVersionMeta($documents);
         $this->documentService->attachTemplateVersionNumbers($documents);
         $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
+        $this->documentService->attachIsAssignedReviewerMeta($documents, $viewerId);
         $this->apiTeamEmbedService->embedOnDocuments(
             $documents,
             $viewerId,
@@ -103,76 +107,77 @@ class DocumentController extends Controller
     /**
      * Mostrar documento con bloques según la versión de plantilla anclada.
      */
-    public function show(Request $request, string $id): JsonResponse
+    public function show(ShowDocumentRequest $request, string $document): JsonResponse
     {
         $viewerId = (string) $request->user()->getAuthIdentifier();
+        $resolved = $request->resolveDocument();
 
         $servePublishedSnapshot = false;
         try {
-            $document = $this->documentService->findModelOrFail($id);
+            $this->documentService->findModelOrFail($document);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
-            // Entity not visible via user_access scope (e.g., draft owned by someone else).
-            // Allow if a published snapshot exists — the controller will serve that instead.
-            $document = $this->documentService->findModelOrFailWithoutUserAccess($id);
-            if (! $this->documentService->hasPublishedSnapshot($document->id)) {
-                abort(404);
-            }
             $servePublishedSnapshot = true;
         }
 
-        $this->authorize('view', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $this->assertOptionalProcessContextMatches((string) $resolved->process_id);
 
         $isCreator = (string) $document->created_by === $viewerId || (string) $document->owner_id === $viewerId;
+        $isAssignedReviewer = false;
 
-        if (! $servePublishedSnapshot && ! $isCreator && in_array($document->status, ['draft', 'in_review'], true)) {
+        if (! $servePublishedSnapshot && ! $isCreator && in_array($resolved->status, ['draft', 'in_review'], true)) {
             // Any assigned reviewer (pending, approved, or rejected) can see real content while in_review.
-            $isAssignedReviewer = $document->status === 'in_review'
-                && $document->reviews()
+            $isAssignedReviewer = $resolved->status === 'in_review'
+                && $resolved->reviews()
                     ->where('reviewer_id', $viewerId)
                     ->exists();
 
             if (! $isAssignedReviewer) {
                 $servePublishedSnapshot = true;
             }
+        } elseif (! $servePublishedSnapshot && $document->status === 'in_review') {
+            $isAssignedReviewer = $document->reviews()
+                ->where('reviewer_id', $viewerId)
+                ->exists();
         }
 
         if ($servePublishedSnapshot) {
-            $latestPublished = $this->documentService->findLatestPublishedVersion($document->id);
+            $latestPublished = $this->documentService->findLatestPublishedVersion($resolved->id);
             if ($latestPublished === null) {
                 abort(404);
             }
             $document->setRelation('headVersion', $latestPublished);
             $this->attachCanCloneMeta($document, $request);
             $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
+            $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
             $document->loadMissing(['owner']);
             $this->apiTeamEmbedService->embedOnDocument($document, $viewerId);
             $blocks = $this->documentService->blocksForDisplay($document);
 
             return response()->json([
                 'data' => array_merge(
-                    (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
+                    (new DocumentResource(DocumentDto::fromModel($resolved)))->toArray($request),
                     ['blocks' => $blocks],
                 ),
             ]);
         }
 
-        $document->setAttribute(
+        $resolved->setAttribute(
             'has_review_comments',
-            $document->comments()->exists(),
+            $resolved->comments()->exists(),
         );
+        $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
         $this->attachCanCloneMeta($document, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
         $document->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument(
-            $document,
+            $resolved,
             $viewerId,
         );
-        $blocks = $this->documentService->blocksForDisplay($document);
+        $blocks = $this->documentService->blocksForDisplay($resolved);
 
         return response()->json([
             'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
+                (new DocumentResource(DocumentDto::fromModel($resolved)))->toArray($request),
                 ['blocks' => $blocks],
             ),
         ]);
@@ -181,13 +186,12 @@ class DocumentController extends Controller
     /**
      * Actualizar documento.
      */
-    public function update(UpdateDocumentRequest $request, string $id): JsonResponse
+    public function update(UpdateDocumentRequest $request, string $document): JsonResponse
     {
-        $document = $this->documentService->findModelOrFail($id);
-        $this->authorize('update', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $model = $request->resolveDocument();
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $updated = $this->documentService->update($id, $request->toDto()->toArray());
+        $updated = $this->documentService->update($document, $request->toDto()->toArray());
         $this->attachCanCloneMeta($updated, $request);
         $this->apiTeamEmbedService->embedOnDocument(
             $updated,
@@ -200,14 +204,13 @@ class DocumentController extends Controller
     /**
      * Eliminar documento.
      */
-    public function destroy(Request $request, string $id): JsonResponse
+    public function destroy(DestroyDocumentRequest $request, string $document): JsonResponse
     {
-        $document = $this->documentService->findModelOrFail($id);
-        $this->authorize('delete', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $model = $request->resolveDocument();
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
-        $this->documentService->delete($id, $actorId);
+        $this->documentService->delete($document, $actorId);
 
         return response()->json([], 204);
     }

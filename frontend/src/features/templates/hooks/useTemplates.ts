@@ -8,6 +8,8 @@ import {
   updateTemplate as updateTemplateRequest,
 } from '../../../api/templates';
 import type { CreateTemplatePayload, UpdateTemplatePayload } from '../../../api/templates';
+import { useUserProfile } from '../../../features/user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
 import type { Template, TemplateListFilters } from '../../../types/templates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
 
@@ -47,6 +49,8 @@ export type TemplatesTableSort = { columnId: string; direction: 'asc' | 'desc' }
  * @param sortBy Orden local solo para columnas en {@see SORTABLE_TEMPLATE_COLUMN_IDS}.
  */
 export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
+  const { hasPermission } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
   const [fullList, setFullList] = useState<Template[]>([]);
   /** Sin `per_page` por defecto: las pantallas usan `filters.per_page ?? pageSize` (preferencias de tabla). */
   const [filters, setFilters] = useState<TemplateListFilters>({});
@@ -117,6 +121,13 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
   );
 
   const load = useCallback(async () => {
+    if (!canIndex) {
+      setListError(null);
+      setFullList([]);
+      setLoading(false);
+      return;
+    }
+
     try {
       setListError(null);
       setLoading(true);
@@ -128,7 +139,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
     } finally {
       setLoading(false);
     }
-  }, [filtersForApi]);
+  }, [canIndex, filtersForApi]);
 
   useEffect(() => {
     void load();

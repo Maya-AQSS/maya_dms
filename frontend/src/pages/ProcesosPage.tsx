@@ -1,9 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Button, ErrorBoundary, PageTitle } from '@maya/shared-ui-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { Alert, Button, ErrorBoundary, PageTitle } from '@maya/shared-ui-react';
 import { TemplatesTable } from '../features/templates/components/TemplatesTable';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
+import { useUserProfile } from '../features/user-profile';
 import { useProcessesQuery } from '../hooks/useProcesses';
+import { DMS_PERMISSIONS } from '../permissions';
+import type { Process } from '../types/processes';
 
 type Tab = 'templates' | 'documents';
 
@@ -16,19 +21,49 @@ const TAB_CLASS = (active: boolean) =>
   ].join(' ');
 
 export function ProcesosPage() {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const { processId } = useParams<{ processId?: string }>();
-  const locationState = location.state as { tab?: Tab } | null;
+  const { hasPermission } = useUserProfile();
+  const canIndex = hasPermission(DMS_PERMISSIONS.processIndex);
+  const canShow = hasPermission(DMS_PERMISSIONS.processShow);
+  const canCreateDocument = hasPermission(DMS_PERMISSIONS.documentCreate);
+  const locationState = location.state as { tab?: Tab; documentValidationBanner?: string } | null;
   const [activeTab, setActiveTab] = useState<Tab>(locationState?.tab ?? 'templates');
+  const [validationBanner, setValidationBanner] = useState<string | null>(null);
 
-  // Resuelve el proceso activo (para mostrar nombre en el header).
-  const processesQuery = useProcessesQuery(undefined, { enabled: !!processId });
+  useEffect(() => {
+    const banner = locationState?.documentValidationBanner;
+    if (!banner) return;
+    setValidationBanner(banner);
+    if (locationState?.tab) setActiveTab(locationState.tab);
+    void queryClient.invalidateQueries({ queryKey: ['documents'] });
+    navigate(location.pathname, { replace: true, state: {} });
+  }, [location.state, location.pathname, navigate, queryClient]);
+  
+  const processesQuery = useProcessesQuery(undefined, { enabled: !!processId && canShow });
   const process: Process | null =
     processesQuery.data?.data.find((p) => p.id === processId) ?? null;
-  const processLoading = !!processId && processesQuery.isLoading;
+  const processLoading = !!processId && canShow && processesQuery.isLoading;
+
+  useEffect(() => {
+    if (!processId || canShow) {
+      return;
+    }
+    navigate('/dashboard', { replace: true });
+  }, [processId, canShow, navigate]);
 
   const navState = processId ? { processId } : undefined;
+
+  if (!canIndex) {
+    return (
+      <Alert tone="warning">
+        {t('processes.noIndexPermission')}
+      </Alert>
+    );
+  }
 
   return (
     <>
@@ -45,7 +80,7 @@ export function ProcesosPage() {
             >
               Nueva Plantilla
             </Button>
-          ) : (
+          ) : canCreateDocument ? (
             <Button
               type="button"
               variant="primary"
@@ -54,7 +89,7 @@ export function ProcesosPage() {
             >
               Nuevo Documento
             </Button>
-          )
+          ) : null
         }
         meta={
           <div className="flex gap-1 border-b border-ui-border dark:border-ui-dark-border">
@@ -68,11 +103,37 @@ export function ProcesosPage() {
         }
       />
 
+      {processId && !canShow && (
+        <Alert tone="warning" className="mb-4">
+          {t('processes.noShowPermission')}
+        </Alert>
+      )}
+
+      {validationBanner && (
+        <div
+          className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-success/30 bg-success/10 px-4 py-3 dark:bg-success/15 dark:border-success/40"
+          role="status"
+        >
+          <p className="text-sm font-medium text-success-dark dark:text-success">
+            {validationBanner}
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-success-dark dark:text-success"
+            onClick={() => setValidationBanner(null)}
+          >
+            Cerrar
+          </Button>
+        </div>
+      )}
+
       <ErrorBoundary key={`${activeTab}:${processId ?? 'all'}`}>
         {activeTab === 'templates' ? (
-          <TemplatesTable processId={processId} />
+          <TemplatesTable processId={canShow ? processId : undefined} />
         ) : (
-          <DocumentsTable processId={processId} />
+          <DocumentsTable processId={canShow ? processId : undefined} />
         )}
       </ErrorBoundary>
     </>

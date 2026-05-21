@@ -26,8 +26,11 @@ import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { apiFetchJson } from '../../../api/http';
+import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
 import { getCommentsForBlock } from '../../../utils/blockComments';
+import { useUserProfile } from '../../user-profile';
+import { canCreateBlockComment } from '../../../permissions';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
 
@@ -148,6 +151,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 }, ref) => {
   const commentsQuery = useTemplateCommentsQuery(template.id);
   const reviewComments = commentsQuery.data?.data ?? [];
+  const { hasPermission } = useUserProfile();
+  const mayComment = canCreateBlockComment(hasPermission);
 
   const {
     blocks,
@@ -274,12 +279,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
     // Normalize whitespace-only BlockNote content to null so it is stored as empty
     // and the UI shows "Este bloque no tiene contenido." instead of blank text nodes.
+    // Non-text blocks (image, etc.) carry content in `props`, not `content[]`, so they
+    // must never be treated as blank even when their `content` array is empty.
     if (Array.isArray(parsedContent) && parsedContent.length > 0) {
-      type BlockNoteNode = { content?: Array<{ text?: unknown }> };
+      type BlockNoteNode = { type?: string; content?: Array<{ text?: unknown }> };
       const isBlank = (parsedContent as BlockNoteNode[]).every((b) =>
-        !Array.isArray(b.content) ||
-        b.content.length === 0 ||
-        b.content.every((c) => typeof c.text !== 'string' || !c.text.trim()),
+        b.type !== 'image' && (
+          !Array.isArray(b.content) ||
+          b.content.length === 0 ||
+          b.content.every((c) => typeof c.text !== 'string' || !c.text.trim())
+        ),
       );
       if (isBlank) parsedContent = null;
     }
@@ -697,6 +706,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               editable={true}
                               isDark={effectiveIsDark}
                               onFullscreenChange={handleEditorFullscreenChange}
+                              uploadFile={uploadMedia}
                             />
                           </Suspense>
                         </div>
@@ -725,6 +735,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             editable={true}
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}
+                            uploadFile={uploadMedia}
                           />
                         </Suspense>
                       </div>
@@ -747,7 +758,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             allComments={reviewComments}
             onSendMessage={handleSendMessage}
             onClose={() => setShowCommentPanel(false)}
-            canAddComments={template.status !== 'published'}
+            canAddComments={template.status !== 'published' && mayComment}
           />
         </div>
       )}

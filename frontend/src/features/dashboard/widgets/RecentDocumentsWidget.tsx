@@ -1,6 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { fetchDashboard, type DocumentReviewInboxItem, type TemplateReviewInboxItem } from '../../../api/dashboard';
+import { useUserProfile } from '../../user-profile';
+import { DMS_PERMISSIONS } from '../../../permissions';
+import { useDmsDashboard } from '../hooks/useDmsDashboard';
+import type { DocumentReviewInboxItem, TemplateReviewInboxItem } from '../../../api/dashboard';
 
 type PendingReviewItem =
   | {
@@ -18,56 +22,44 @@ type PendingReviewItem =
 
 /** Widget compacto: pendientes de validar (plantillas + documentos). */
 export default function RecentDocumentsWidget() {
+  const { t } = useTranslation('common');
+  const { hasPermission } = useUserProfile();
+  const canViewDashboard = hasPermission(DMS_PERMISSIONS.index);
+  const canOpenFromDashboard = hasPermission(DMS_PERMISSIONS.show);
   const [filter, setFilter] = useState<'all' | 'template' | 'document'>('all');
-  const [items, setItems] = useState<PendingReviewItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const state = useDmsDashboard();
 
-  useEffect(() => {
-    let mounted = true;
-    fetchDashboard()
-      .then((data) => {
-        if (!mounted) return;
-        const templateItems: PendingReviewItem[] = (data.template_review_inbox ?? []).map(
-          (item: TemplateReviewInboxItem) => ({
-            kind: 'template',
-            id: item.template_id,
-            title: item.title?.trim() || 'Plantilla sin título',
-            daysRemaining: item.days_remaining ?? null,
-          }),
-        );
-        const documentItems: PendingReviewItem[] = (data.document_review_inbox ?? []).map(
-          (item: DocumentReviewInboxItem) => ({
-            kind: 'document',
-            id: item.document_id,
-            title: item.title?.trim() || 'Documento sin título',
-            daysRemaining: item.days_remaining ?? null,
-          }),
-        );
-        const merged = [...templateItems, ...documentItems]
-          .sort((a, b) => {
-            const da = a.daysRemaining;
-            const db = b.daysRemaining;
-            if (da == null && db == null) return a.title.localeCompare(b.title);
-            if (da == null) return 1;
-            if (db == null) return -1;
-            return da - db;
-          });
-        setItems(merged);
-        setError(null);
-      })
-      .catch((err) => {
-        if (!mounted) return;
-        setError(err instanceof Error ? err : new Error('Unknown error'));
-      })
-      .finally(() => {
-        if (!mounted) return;
-        setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  const items = useMemo((): PendingReviewItem[] => {
+    if (state.status !== 'ready') {
+      return [];
+    }
+
+    const templateItems: PendingReviewItem[] = (state.data.template_review_inbox ?? []).map(
+      (item: TemplateReviewInboxItem) => ({
+        kind: 'template',
+        id: item.template_id,
+        title: item.title?.trim() || 'Plantilla sin título',
+        daysRemaining: item.days_remaining ?? null,
+      }),
+    );
+    const documentItems: PendingReviewItem[] = (state.data.document_review_inbox ?? []).map(
+      (item: DocumentReviewInboxItem) => ({
+        kind: 'document',
+        id: item.document_id,
+        title: item.title?.trim() || 'Documento sin título',
+        daysRemaining: item.days_remaining ?? null,
+      }),
+    );
+
+    return [...templateItems, ...documentItems].sort((a, b) => {
+      const da = a.daysRemaining;
+      const db = b.daysRemaining;
+      if (da == null && db == null) return a.title.localeCompare(b.title);
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return da - db;
+    });
+  }, [state]);
 
   useEffect(() => {
     const handleFilterChange = (event: Event) => {
@@ -88,7 +80,15 @@ export default function RecentDocumentsWidget() {
     return `${daysRemaining}d`;
   };
 
-  if (loading) {
+  if (!canViewDashboard) {
+    return (
+      <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
+        {t('dashboard.noIndexPermission')}
+      </p>
+    );
+  }
+
+  if (state.status === 'loading') {
     return (
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
         Cargando…
@@ -96,7 +96,7 @@ export default function RecentDocumentsWidget() {
     );
   }
 
-  if (error) {
+  if (state.status === 'error') {
     return (
       <p className="text-sm text-danger py-4 text-center">
         No se pudieron cargar los documentos.
@@ -125,13 +125,15 @@ export default function RecentDocumentsWidget() {
 
   return (
     <ul className="divide-y divide-ui-border-l dark:divide-ui-dark-border">
-      {visibleItems.map((item) => (
-        <li key={`${item.kind}:${item.id}`}>
-          <Link
-            to={item.kind === 'template' ? `/templates/${item.id}/review` : `/documents/${item.id}/validate`}
-            state={{ backTo: '/dashboard' }}
-            className="flex items-center justify-between gap-3 py-2 px-1 hover:bg-ui-body dark:hover:bg-ui-dark-bg rounded transition-colors"
-          >
+      {visibleItems.map((item) => {
+        const target =
+          item.kind === 'template'
+            ? `/templates/${item.id}/review`
+            : `/documents/${item.id}/validate`;
+        const rowClass =
+          'flex items-center justify-between gap-3 py-2 px-1 rounded transition-colors';
+        const content = (
+          <>
             <span className="min-w-0 flex items-center gap-2">
               <span
                 className={[
@@ -150,9 +152,33 @@ export default function RecentDocumentsWidget() {
             <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0 tabular-nums">
               {formatRemaining(item.daysRemaining)}
             </span>
-          </Link>
-        </li>
-      ))}
+          </>
+        );
+
+        if (!canOpenFromDashboard) {
+          return (
+            <li
+              key={`${item.kind}:${item.id}`}
+              className={`${rowClass} opacity-60 cursor-not-allowed`}
+              title={t('dashboard.noShowPermission')}
+            >
+              {content}
+            </li>
+          );
+        }
+
+        return (
+          <li key={`${item.kind}:${item.id}`}>
+            <Link
+              to={target}
+              state={{ backTo: '/dashboard' }}
+              className={`${rowClass} hover:bg-ui-body dark:hover:bg-ui-dark-bg`}
+            >
+              {content}
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

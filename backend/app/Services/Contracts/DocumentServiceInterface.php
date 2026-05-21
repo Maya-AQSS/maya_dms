@@ -260,4 +260,9 @@ interface DocumentServiceInterface
      * @param  Collection<int, Document>  $documents
      */
     public function attachTemplateVersionNumbers(Collection $documents): void;
+
+    /**
+     * @param  Collection<int, Document>  $documents
+     */
+    public function attachIsAssignedReviewerMeta(Collection $documents, string $viewerId): void;
 }

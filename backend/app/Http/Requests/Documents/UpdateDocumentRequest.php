@@ -5,13 +5,21 @@ declare(strict_types=1);
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\UpdateDocumentDto;
+use App\Models\Document;
+use App\Services\Contracts\DocumentServiceInterface;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateDocumentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('update', $this->resolveDocument());
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('No puedes actualizar este documento.');
     }
 
     /**
@@ -41,6 +49,13 @@ class UpdateDocumentRequest extends FormRequest
             moduleId: $this->stringOrNull($validated, 'module_id'),
             changedFields: array_keys($validated),
         );
+    }
+
+    public function resolveDocument(): Document
+    {
+        $id = (string) ($this->route('document') ?? $this->route('id'));
+
+        return app(DocumentServiceInterface::class)->findModelOrFail($id);
     }
 
     /**

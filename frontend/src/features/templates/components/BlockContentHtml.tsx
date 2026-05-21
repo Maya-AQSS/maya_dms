@@ -86,9 +86,11 @@ export function BlockContentHtml({ content }: { content: unknown[] }) {
       repaired.length === 0 ||
       repaired.every(
         (b: any) =>
-          !Array.isArray(b.content) ||
-          b.content.length === 0 ||
-          b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim()),
+          b.type !== 'image' && (
+            !Array.isArray(b.content) ||
+            b.content.length === 0 ||
+            b.content.every((c: any) => typeof c.text !== 'string' || !c.text.trim())
+          ),
       );
     if (isEmpty) return '';
     try {

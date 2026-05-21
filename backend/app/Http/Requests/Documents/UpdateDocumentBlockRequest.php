@@ -5,13 +5,22 @@ declare(strict_types=1);
 namespace App\Http\Requests\Documents;
 
 use App\DTOs\Documents\UpdateDocumentBlockDto;
+use App\Http\Requests\Documents\Concerns\ResolvesDocumentForAuthorization;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateDocumentBlockRequest extends FormRequest
 {
+    use ResolvesDocumentForAuthorization;
+
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('updateDocumentBlock', $this->resolveDocument());
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso para actualizar bloques de este documento.');
     }
 
     /**
