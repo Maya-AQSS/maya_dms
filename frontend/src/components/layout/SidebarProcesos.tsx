@@ -39,6 +39,28 @@ const compareByLabel = (a: Process, b: Process): number => {
   return la.localeCompare(lb, 'es-ES');
 };
 
+/**
+ * Oscurece un color hex (#RRGGBB) por un factor (0..1). Usado para
+ * generar el segundo stop del gradient diagonal del círculo del proceso.
+ * No usa CSS `color-mix` para mantener compatibilidad con navegadores
+ * antiguos — la operación es determinista y se ejecuta una vez por render.
+ */
+function darkenHex(hex: string, amount = 0.28): string {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return hex;
+  const v = parseInt(m[1], 16);
+  const r = Math.max(0, Math.floor(((v >> 16) & 0xff) * (1 - amount)));
+  const g = Math.max(0, Math.floor(((v >> 8) & 0xff) * (1 - amount)));
+  const b = Math.max(0, Math.floor((v & 0xff) * (1 - amount)));
+  return `#${[r, g, b].map((c) => c.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** Construye el linear-gradient diagonal del círculo del proceso. */
+function circleGradient(color: string | null | undefined): string | undefined {
+  if (!color) return undefined;
+  return `linear-gradient(135deg, ${color} 0%, ${darkenHex(color, 0.28)} 100%)`;
+}
+
 function buildTree(processes: Process[]): ProcessNode[] {
   const byId = new Map<string, ProcessNode>();
   const roots: ProcessNode[] = [];
@@ -156,16 +178,19 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
     // de la BD — fallback a folder + inverse/60 si no hay datos.
     const displayLabel = p.alias?.trim() || p.name;
     const title = `${p.code} — ${p.name}`;
-    // Círculo coloreado con el icono blanco-translúcido encima. El color del
-    // proceso pinta el fondo del círculo (no el icono) para mejor distinción
-    // visual y consistencia con el patrón de "avatar" de las apps favoritas.
-    const circleBg = p.color ?? 'rgba(255,255,255,0.10)';
+    // Círculo con degradado diagonal del color del proceso (base → 28% más
+    // oscuro) y el icono blanco-translúcido encima. Mantiene el efecto de
+    // profundidad que se perdió al cambiar de color directo del icono a
+    // fondo plano. Fallback: tinte translúcido si no hay color en BD.
+    const circleStyle = p.color
+      ? { backgroundImage: circleGradient(p.color) }
+      : { backgroundColor: 'rgba(255,255,255,0.10)' };
     const content = (
       <>
         {dot ?? (
           <span
-            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-text-inverse/95 [&>svg]:w-3.5 [&>svg]:h-3.5"
-            style={{ backgroundColor: circleBg }}
+            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-text-inverse/95 [&>svg]:w-3.5 [&>svg]:h-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)]"
+            style={circleStyle}
             aria-hidden="true"
           >
             {getProcessIcon(p.icon)}
