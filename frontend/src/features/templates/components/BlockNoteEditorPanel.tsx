@@ -501,15 +501,17 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                 >
                   Markdown
                 </button>
-                <button
-                  type="button"
-                  aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                  aria-pressed={isFullscreen}
-                  onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
-                  className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
-                >
-                  <FullscreenIcon expanded={isFullscreen} />
-                </button>
+                </div>
+                <div className="flex items-end gap-0.5 shrink-0 pl-1 border-l border-ui-border dark:border-ui-dark-border ml-auto">
+                  <button
+                    type="button"
+                    aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                    aria-pressed={isFullscreen}
+                    onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
+                    className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+                  >
+                    <FullscreenIcon expanded={isFullscreen} />
+                  </button>
                 </div>
               </div>
             )}
