@@ -33,7 +33,7 @@ class CommentRepository implements CommentRepositoryInterface
         int $commentableVersion,
         int $perPage,
     ): LengthAwarePaginator {
-        return Comment::query()
+        return Comment::withTrashed()
             ->select('comments.*')
             ->where('commentable_type', $commentableType)
             ->where('commentable_id', $commentableId)

@@ -34,6 +34,8 @@ class CommentResource extends JsonResource
             'created_at' => $dto->createdAt,
             'updated_at' => $dto->updatedAt,
             'is_edited' => $dto->isEdited,
+            'is_deleted' => $dto->isDeleted,
+            'deleted_by_name' => $dto->deletedByName,
         ];
 
         if ($dto->authorLoaded) {
