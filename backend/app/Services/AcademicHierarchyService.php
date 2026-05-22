@@ -6,15 +6,19 @@ namespace App\Services;
 
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Services\Contracts\AcademicHierarchyServiceInterface;
+use App\Support\AcademicHierarchyTreeBuilder;
 use Illuminate\Support\Facades\Cache;
+use Maya\Profile\Services\Contracts\AcademicContextServiceInterface;
 
 class AcademicHierarchyService implements AcademicHierarchyServiceInterface
 {
+    private const GLOBAL_PERMISSIONS = ['admin', 'users.search', 'audit.read'];
+
     public function __construct(
         private readonly AcademicHierarchyRepositoryInterface $hierarchyRepository,
+        private readonly AcademicContextServiceInterface $academicContextService,
+        private readonly AcademicHierarchyTreeBuilder $treeBuilder,
     ) {}
-
-    private const GLOBAL_PERMISSIONS = ['admin', 'users.search', 'audit.read'];
 
     /**
      * Árbol de jerarquía académica, con caché Redis.
@@ -28,49 +32,27 @@ class AcademicHierarchyService implements AcademicHierarchyServiceInterface
 
     public function getFilteredTreeForProfile(array $profile): array
     {
-        $tree = $this->getCachedTree();
-
         $allowedStudyTypeIds = $profile['study_type_ids'] ?? [];
-        $allowedStudyIds = $profile['study_ids'] ?? [];
-        $allowedModuleIds = $profile['module_ids'] ?? [];
         $permissions = $profile['permissions'] ?? [];
 
         $hasGlobalPermission = (bool) array_intersect(self::GLOBAL_PERMISSIONS, $permissions);
         $hasWildcardStudyType = in_array('*', $allowedStudyTypeIds, true);
 
         if ($hasGlobalPermission || $hasWildcardStudyType) {
-            return $tree;
+            return $this->getCachedTree();
         }
 
-        if (empty($allowedStudyTypeIds)) {
+        $userId = (string) ($profile['id'] ?? '');
+        if ($userId === '') {
             return [];
         }
 
-        $filtered = [];
-        foreach ($tree as $studyType) {
-            if (! in_array((string) $studyType['id'], $allowedStudyTypeIds, true)) {
-                continue;
-            }
+        $context = $this->academicContextService->forUser($userId)->toArray();
 
-            $studies = [];
-            foreach ($studyType['studies'] ?? [] as $study) {
-                if (! empty($allowedStudyIds) && ! in_array((string) $study['id'], $allowedStudyIds, true)) {
-                    continue;
-                }
-
-                $modules = [];
-                foreach ($study['course_modules'] ?? [] as $module) {
-                    if (empty($allowedModuleIds) || in_array((string) $module['id'], $allowedModuleIds, true)) {
-                        $modules[] = $module;
-                    }
-                }
-                $study['course_modules'] = $modules;
-                $studies[] = $study;
-            }
-            $studyType['studies'] = $studies;
-            $filtered[] = $studyType;
-        }
-
-        return $filtered;
+        return $this->treeBuilder->build([
+            'study_types' => $context['study_types'],
+            'studies' => $context['studies'],
+            'modules' => $context['modules'],
+        ]);
     }
 }

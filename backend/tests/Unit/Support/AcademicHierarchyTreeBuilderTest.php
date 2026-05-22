@@ -49,7 +49,7 @@ class AcademicHierarchyTreeBuilderTest extends TestCase
         $this->assertSame('S_ESO_1', $tree[0]['studies'][0]['course_modules'][0]['study_id']);
     }
 
-    public function test_study_type_name_comes_from_catalog_not_raw_id(): void
+    public function test_study_type_name_comes_from_grade_catalog_not_raw_id(): void
     {
         if (! Schema::hasTable('course_modules')) {
             $this->markTestSkipped('Tablas de jerarquía académica no disponibles en este entorno.');
@@ -68,6 +68,24 @@ class AcademicHierarchyTreeBuilderTest extends TestCase
         ]);
 
         $this->assertSame('Grado Superior', $tree[0]['name']);
+    }
+
+    public function test_study_type_name_comes_from_academic_context_not_raw_id(): void
+    {
+        $builder = new AcademicHierarchyTreeBuilder();
+
+        $tree = $builder->build([
+            'study_types' => [
+                ['id' => '2', 'code' => '2', 'name' => 'FP'],
+                ['id' => '3', 'code' => '3', 'name' => 'BACH'],
+            ],
+            'studies' => [],
+            'modules' => [],
+        ]);
+
+        $this->assertCount(2, $tree);
+        $this->assertSame('FP', $tree[0]['name']);
+        $this->assertSame('BACH', $tree[1]['name']);
     }
 
     public function test_hydrates_study_from_catalog_when_only_module_is_assigned(): void

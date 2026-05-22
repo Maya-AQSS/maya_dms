@@ -14,18 +14,18 @@ interface AcademicHierarchyServiceInterface
     public function getCachedTree(): array;
 
     /**
-     * Devuelve el árbol académico filtrado para el usuario indicado.
+     * Devuelve el árbol académico para el usuario indicado.
      *
      * - Si el `$profile` tiene permisos globales (`admin`, `users.search`,
-     *   `audit.read`) o `study_type_ids` contiene `'*'`, devuelve el árbol
-     *   completo.
-     * - Si no tiene `study_type_ids` asignados, devuelve `[]`.
-     * - Si tiene asignaciones parciales, filtra `studies` y `course_modules`
-     *   intersectando con `study_ids` y `module_ids` respectivamente.
+     *   `audit.read`) o `study_type_ids` contiene `'*'`, devuelve el catálogo
+     *   completo (caché Redis).
+     * - En caso contrario, monta el árbol solo con las asignaciones del usuario
+     *   (`AcademicContextService` → tablas `user_*` + catálogo `studies` /
+     *   `course_modules`).
      *
      * @param  array<string, mixed>  $profile  Perfil resuelto por
-     *                                         `UserProfileService::getProfile()` (con `study_type_ids`,
-     *                                         `study_ids`, `module_ids`, `permissions`).
+     *                                         `UserProfileService::getProfile()` (con `id`,
+     *                                         `study_type_ids`, `permissions`, etc.).
      * @return list<array<string, mixed>>
      */
     public function getFilteredTreeForProfile(array $profile): array;

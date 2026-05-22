@@ -44,7 +44,7 @@ final class AcademicHierarchyTreeBuilder
             $id = (string) $studyType['id'];
             $studyTypeNodes[$id] = [
                 'id' => $id,
-                'name' => $this->resolveStudyTypeName($id, $catalog['study_types']),
+                'name' => $this->resolveStudyTypeName($id, (string) ($studyType['name'] ?? ''), $catalog['study_types']),
                 'studies' => [],
             ];
         }
@@ -215,7 +215,7 @@ final class AcademicHierarchyTreeBuilder
 
         $studyTypeNodes[$typeId] = [
             'id' => $typeId,
-            'name' => $this->resolveStudyTypeName($typeId, $studyTypeCatalogNames),
+            'name' => $this->resolveStudyTypeName($typeId, '', $studyTypeCatalogNames),
             'studies' => [],
         ];
     }
@@ -223,8 +223,13 @@ final class AcademicHierarchyTreeBuilder
     /**
      * @param  array<string, string>  $catalogNames
      */
-    private function resolveStudyTypeName(string $id, array $catalogNames): string
+    private function resolveStudyTypeName(string $id, string $fromContext, array $catalogNames): string
     {
+        $contextName = trim($fromContext);
+        if ($contextName !== '' && $contextName !== $id) {
+            return $contextName;
+        }
+
         $catalog = trim($catalogNames[$id] ?? '');
         if ($catalog !== '') {
             return $catalog;
@@ -239,14 +244,19 @@ final class AcademicHierarchyTreeBuilder
      */
     private function resolveStudyDisplayName(string $id, array $study, array $catalogStudies): string
     {
-        $fromCatalog = trim($catalogStudies[$id] ?? '');
-        if ($fromCatalog !== '') {
-            return $fromCatalog;
-        }
-
         $fromContext = trim((string) ($study['name'] ?? ''));
         if ($fromContext !== '' && $fromContext !== $id) {
             return $fromContext;
+        }
+
+        $fromCatalog = trim($catalogStudies[$id] ?? '');
+        if ($fromCatalog !== '' && $fromCatalog !== $id) {
+            return $fromCatalog;
+        }
+
+        $fromCode = trim((string) ($study['code'] ?? ''));
+        if ($fromCode !== '' && $fromCode !== $id) {
+            return $fromCode;
         }
 
         return $id;
@@ -258,14 +268,19 @@ final class AcademicHierarchyTreeBuilder
      */
     private function resolveModuleDisplayName(string $id, array $module, array $catalogModules): string
     {
-        $fromCatalog = trim($catalogModules[$id] ?? '');
-        if ($fromCatalog !== '') {
-            return $fromCatalog;
-        }
-
         $fromContext = trim((string) ($module['name'] ?? ''));
         if ($fromContext !== '' && $fromContext !== $id) {
             return $fromContext;
+        }
+
+        $fromCatalog = trim($catalogModules[$id] ?? '');
+        if ($fromCatalog !== '' && $fromCatalog !== $id) {
+            return $fromCatalog;
+        }
+
+        $fromCode = trim((string) ($module['code'] ?? ''));
+        if ($fromCode !== '' && $fromCode !== $id) {
+            return $fromCode;
         }
 
         return $id;
