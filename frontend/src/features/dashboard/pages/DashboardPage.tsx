@@ -110,6 +110,7 @@ export function DashboardPage() {
     <>
       <PageTitle
         title={t('nav.dashboard', { defaultValue: 'Panel' })}
+        image={{ src: '/dashboard-header.png', alt: t('nav.dashboard', { defaultValue: 'Panel' }) }}
         actions={
           canEditDashboard && editable ? (
             <DashboardEditToolbar
