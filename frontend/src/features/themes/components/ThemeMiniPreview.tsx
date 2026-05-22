@@ -89,7 +89,7 @@ export function ThemeMiniPreview({ theme, variant = 'compact', className }: Them
           />
         </div>
       ) : (
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-dashed border-ui-border text-[10px] text-text-muted">
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded border border-dashed border-ui-border text-2xs text-text-muted">
           sin logo
         </div>
       )}

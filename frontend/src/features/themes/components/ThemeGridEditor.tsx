@@ -213,7 +213,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
   return (
     <div className="flex h-full min-h-0 flex-col">
       {!embedded && (
-        <div className="flex shrink-0 items-center justify-between border-b border-ui-border bg-ui-bg px-4 py-2">
+        <div className="flex shrink-0 items-center justify-between border-b border-ui-border bg-ui-body px-4 py-2">
           <div className="text-sm">
             <strong>Editor de layout</strong> — {theme.name}
           </div>
@@ -234,7 +234,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Canvas central — scrollable verticalmente */}
-        <div className="flex-1 min-w-0 overflow-auto bg-gray-100 p-6 dark:bg-gray-900">
+        <div className="flex-1 min-w-0 overflow-auto bg-ui-body p-6 dark:bg-ui-dark-bg">
           <div
             className="theme-grid-page mx-auto bg-white shadow"
             style={{
@@ -380,7 +380,7 @@ function Toolbar({ onAddBlock, saving, dirty, error }: ToolbarProps) {
                 <button
                   type="button"
                   role="menuitem"
-                  className="block w-full px-3 py-1.5 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="block w-full px-3 py-1.5 text-left text-sm hover:bg-ui-body dark:hover:bg-ui-dark-card"
                   onClick={() => {
                     onAddBlock(b.type);
                     setOpen(false);
@@ -402,11 +402,11 @@ function Toolbar({ onAddBlock, saving, dirty, error }: ToolbarProps) {
         {saving ? (
           <span className="text-text-muted">Guardando…</span>
         ) : dirty ? (
-          <span className="text-amber-600">Cambios pendientes</span>
+          <span className="text-warning-dark">Cambios pendientes</span>
         ) : (
-          <span className="text-green-600">Guardado</span>
+          <span className="text-success-dark">Guardado</span>
         )}
-        {error && <span className="text-red-600">⚠ {error}</span>}
+        {error && <span className="text-danger-dark">⚠ {error}</span>}
       </div>
     </div>
   );
@@ -448,7 +448,7 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
           {url ? (
             <img src={url} alt={(p.alt as string) ?? 'Logo'} className="max-h-full max-w-full object-contain" />
           ) : (
-            <span>Logo (sube uno en el paso anterior)</span>
+            <span className="text-text-muted">Logo (sube uno en el paso anterior)</span>
           )}
         </div>
       );
@@ -466,7 +466,7 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
           {url ? (
             <img src={url} alt={(p.alt as string) ?? ''} className="max-h-full max-w-full object-contain" />
           ) : (
-            <span>{asset} (sin imagen)</span>
+            <span className="text-text-muted">{asset} (sin imagen)</span>
           )}
         </div>
       );
@@ -605,7 +605,7 @@ function renderTypeFields(
               type="color"
               value={(p.color as string) ?? '#333333'}
               onChange={(e) => onChange({ color: e.target.value })}
-              className="h-8 w-full cursor-pointer rounded border border-gray-300"
+              className="h-8 w-full cursor-pointer rounded border border-ui-border"
             />
           </div>
           <AlignField value={(p.align as string) ?? 'left'} onChange={(v) => onChange({ align: v })} />

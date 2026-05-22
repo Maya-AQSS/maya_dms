@@ -57,12 +57,12 @@ export function ViewCardHeader({
       className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card"
     >
       <div className="px-4 py-4 flex items-center shrink-0 border-r border-ui-border dark:border-ui-dark-border bg-ui-body/30 dark:bg-ui-dark-bg/50">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-odoo-purple">
+        <span className="text-2xs font-black uppercase tracking-[0.2em] text-odoo-purple">
           Bloque #{blockSortOrder ?? '?'}
         </span>
       </div>
       <div className="flex-1 px-5 py-4 flex items-center justify-between min-w-0">
-        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary truncate">
+        <span className="text-2xs font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary truncate">
           {title}
         </span>
         <button
@@ -112,7 +112,7 @@ function QuotedReply({
     >
       <div className="w-1 bg-odoo-purple shrink-0" />
       <div className="px-3 py-2 bg-black/5 dark:bg-white/5 group-hover:bg-odoo-purple/5 transition-colors flex-1 min-w-0">
-        <p className="text-[11px] font-black text-odoo-purple mb-0.5 truncate">
+        <p className="text-2xs font-black text-odoo-purple mb-0.5 truncate">
           {parent.author?.name || 'Usuario'}
         </p>
         <p className="text-xs text-text-muted dark:text-text-dark-muted line-clamp-2 break-words whitespace-pre-wrap">
@@ -205,7 +205,7 @@ function CommentItem({
         <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
           {comment.author?.name || 'Usuario'}
         </span>
-        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70 inline-flex items-center gap-1.5">
+        <span className="text-2xs text-text-muted font-bold uppercase tracking-wider opacity-70 inline-flex items-center gap-1.5">
           {formatTime(comment.created_at)}
           {comment.is_edited && (
             <span className="opacity-50 normal-case tracking-normal font-medium italic">(editado)</span>
@@ -225,7 +225,7 @@ function CommentItem({
             autoFocus
           />
           {editError && (
-            <p className="text-xs text-red-500 font-medium">{editError}</p>
+            <p className="text-xs text-danger-dark font-medium">{editError}</p>
           )}
           <div className="flex items-center gap-2 justify-end">
             <button
@@ -240,7 +240,7 @@ function CommentItem({
               type="button"
               onClick={handleSaveEdit}
               disabled={!editBody.trim() || bodyUnchanged || editLoading}
-              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-odoo-purple text-white hover:bg-odoo-purple/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-odoo-purple text-text-inverse hover:bg-odoo-purple/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {editLoading ? 'Guardando…' : 'Guardar'}
             </button>
@@ -251,7 +251,7 @@ function CommentItem({
         <div
           className={`relative text-sm leading-relaxed p-4 rounded-xl border shadow-sm break-words whitespace-pre-wrap transition-all duration-500 ${
             isHighlighted
-              ? 'bg-[#E3F2FD] dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary'
+              ? 'bg-odoo-purple/10 dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary'
               : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
           }`}
         >
@@ -286,7 +286,7 @@ function CommentItem({
                   type="button"
                   onClick={() => setConfirmDelete(true)}
                   aria-label="Eliminar"
-                  className="p-1 rounded-full text-text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                  className="p-1 rounded-full text-text-muted hover:text-danger-dark hover:bg-danger-light dark:hover:bg-danger/10 transition-colors"
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
@@ -314,7 +314,7 @@ function CommentItem({
             type="button"
             onClick={handleDelete}
             disabled={deleteLoading}
-            className="px-2.5 py-1 text-xs font-bold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40"
+            className="px-2.5 py-1 text-xs font-bold rounded-lg bg-danger text-text-inverse hover:bg-danger/90 transition-colors disabled:opacity-40"
           >
             {deleteLoading ? '…' : 'Eliminar'}
           </button>
@@ -482,7 +482,7 @@ export function BlockCommentsCard({
                 aria-expanded={deletedOpen}
               >
                 <span className="flex-1 border-t border-dashed border-text-muted/20 dark:border-text-dark-muted/15" />
-                <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted/50 dark:text-text-dark-muted/40 font-medium shrink-0 select-none">
+                <span className="inline-flex items-center gap-1.5 text-2xs text-text-muted/50 dark:text-text-dark-muted/40 font-medium shrink-0 select-none">
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
                   </svg>
@@ -510,7 +510,7 @@ export function BlockCommentsCard({
                           : ''
                       } bg-ui-body/20 dark:bg-ui-dark-bg/20`}
                     >
-                      <svg className="w-3.5 h-3.5 text-red-400/70 dark:text-red-500/60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <svg className="w-3.5 h-3.5 text-danger/70 dark:text-danger/60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
                       </svg>
                       <span className="text-xs text-text-muted dark:text-text-dark-muted flex-1 min-w-0 truncate">
@@ -522,7 +522,7 @@ export function BlockCommentsCard({
                         )}
                       </span>
                       {dc.deleted_at && (
-                        <span className="text-[10px] text-text-muted/50 dark:text-text-dark-muted/40 font-medium shrink-0">
+                        <span className="text-2xs text-text-muted/50 dark:text-text-dark-muted/40 font-medium shrink-0">
                           {formatTime(dc.deleted_at)}
                         </span>
                       )}
@@ -543,7 +543,7 @@ export function BlockCommentsCard({
             {replyingTo && (
               <div className="flex items-stretch mb-2 rounded-lg overflow-hidden border-l-4 border-odoo-purple bg-odoo-purple/10 animate-in slide-in-from-bottom-1">
                 <div className="flex-1 px-3 py-2 min-w-0">
-                  <p className="text-[11px] font-black text-odoo-purple mb-0.5 truncate">
+                  <p className="text-2xs font-black text-odoo-purple mb-0.5 truncate">
                     {replyingTo.name}
                   </p>
                   {replyingToMessage && (

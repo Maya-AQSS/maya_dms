@@ -173,7 +173,7 @@ export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
         })}
 
         {regions.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-[7px] text-text-muted">
+          <div className="absolute inset-0 flex items-center justify-center text-[7px] text-text-muted" /* scale-down mock */>
             Layout vacío
           </div>
         )}
@@ -182,7 +182,7 @@ export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
       {/* Pie con nombre + paleta */}
       <div className="flex w-full max-w-[200px] items-center gap-2">
         <p
-          className="min-w-0 flex-1 truncate text-[11px] font-semibold text-text-primary dark:text-text-dark-primary"
+          className="min-w-0 flex-1 truncate text-2xs font-semibold text-text-primary dark:text-text-dark-primary"
           title={theme.name}
           style={typography?.heading_font ? { fontFamily: typography.heading_font } : undefined}
         >

@@ -246,7 +246,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         </div>
       )}
       {actionInfo && step === 'identity' && (
-        <div className="flex items-center gap-4 px-6 py-2 border-b border-green-300 bg-green-50 text-sm text-green-700">
+        <div className="flex items-center gap-4 px-6 py-2 border-b border-success bg-success-light text-sm text-success-dark">
           <span className="flex-1">{actionInfo}</span>
           <button type="button" onClick={clearActionInfo} className="underline text-xs">
             cerrar

@@ -15,7 +15,7 @@ export function ThemeEditPage() {
 
   if (error || !theme) {
     return (
-      <div className="m-4 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+      <div className="m-4 rounded border border-danger bg-danger-light p-3 text-sm text-danger-dark">
         {error || 'No se ha podido cargar el theme.'}
       </div>
     );

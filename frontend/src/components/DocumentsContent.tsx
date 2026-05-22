@@ -520,7 +520,7 @@ export function DocumentsContent() {
                         <span className="text-sm font-medium text-text-primary dark:text-text-dark-primary block">
                           {option.name}
                         </span>
-                        <span className="text-[11px] text-text-muted dark:text-text-dark-muted mt-1 block">
+                        <span className="text-2xs text-text-muted dark:text-text-dark-muted mt-1 block">
                           Visibilidad: {option.visibility_level ?? '—'}
                           {option.team_name ? ` · Equipo: ${option.team_name}` : ''}
                         </span>

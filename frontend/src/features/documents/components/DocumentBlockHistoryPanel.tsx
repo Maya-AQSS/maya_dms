@@ -155,13 +155,13 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
-        <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
+        <span className="text-2xs font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
           {t('history.panelHeader', { n: blockNumber })}
         </span>
         <button
           type="button"
           onClick={() => setAscending((v) => !v)}
-          className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
+          className="flex items-center gap-1 text-2xs font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
           title={ascending ? t('history.sortAscendingTitle') : t('history.sortDescendingTitle')}
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -195,7 +195,7 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
                 <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
                   {t('history.revision', { n: entry.cycle })}
                 </p>
-                <span className="text-[10px] text-text-muted dark:text-text-dark-muted tabular-nums">
+                <span className="text-2xs text-text-muted dark:text-text-dark-muted tabular-nums">
                   {new Date(entry.submitted_at).toLocaleString(i18n.language, {
                     day: '2-digit',
                     month: '2-digit',
@@ -205,7 +205,7 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
                   })}
                 </span>
               </div>
-              <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-[11px] font-mono">
+              <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-2xs font-mono">
                 <DiffLines lines={entry.diffContent} />
               </div>
             </div>
@@ -215,7 +215,7 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
 
       {/* Footer legend */}
       {entries.length > 0 && (
-        <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border px-4 py-2 flex items-center gap-3 text-[10px] text-text-muted dark:text-text-dark-muted bg-ui-body/30 dark:bg-ui-dark-bg/30">
+        <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border px-4 py-2 flex items-center gap-3 text-2xs text-text-muted dark:text-text-dark-muted bg-ui-body/30 dark:bg-ui-dark-bg/30">
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-danger/25 border border-danger/40" />
             {t('diff.legendRemoved')}
