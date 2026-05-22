@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@maya/shared-ui-react';
@@ -13,7 +14,21 @@ type Props = {
   entityType: 'template' | 'document';
   entityId: string;
   onClose: () => void;
+  canStartNewVersion?: boolean;
+  onNewVersion?: () => void;
 };
+
+const TRIGGER_EVENT_LABELS: Record<string, string> = {
+  published: 'Publicación manual',
+  auto_published: 'Publicación automática',
+  manual_publish: 'Publicación manual',
+  new_version: 'Nueva versión',
+  review_approved: 'Aprobado por validador',
+};
+
+function formatTriggerEvent(raw: string): string {
+  return TRIGGER_EVENT_LABELS[raw] ?? raw;
+}
 
 function formatWhen(iso: string | null | undefined, locale: string): string {
   if (!iso) return '—';
@@ -29,7 +44,51 @@ function fetchErrorMessage(e: unknown, fallback: string): string {
   return fallback;
 }
 
-export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Props) {
+function IconPerson() {
+  return (
+    <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+    </svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+  );
+}
+
+function IconCalendar() {
+  return (
+    <svg className="w-3 h-3 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+    </svg>
+  );
+}
+
+function VersionBadge({ version }: { version: number }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary-dark dark:text-primary-light border border-primary/20">
+      v{version}
+    </span>
+  );
+}
+
+function MetaRow({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="flex items-start gap-1.5 text-[11px] text-text-muted dark:text-text-dark-muted">
+      <span className="mt-px text-text-secondary/60 dark:text-text-dark-secondary/60">{icon}</span>
+      <span>
+        <span className="font-semibold text-text-secondary dark:text-text-dark-secondary">{label}: </span>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+export function VersionHistoryPanel({ open, entityType, entityId, onClose, canStartNewVersion, onNewVersion }: Props) {
   const { t, i18n } = useTranslation('common');
   const navigate = useNavigate();
 
@@ -83,18 +142,32 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
         role="dialog"
         aria-modal="true"
         aria-label={t('versionHistory.title')}
-        className="relative w-full max-w-sm h-full bg-ui-card dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border shadow-2xl flex flex-col animate-in slide-in-from-right-4"
+        className="relative w-full max-w-md h-full bg-ui-card dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border shadow-2xl flex flex-col animate-in slide-in-from-right-4"
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-ui-border dark:border-ui-dark-border shrink-0">
-          <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-            {t('versionHistory.title')}
-          </h2>
-          <Button type="button" variant="ghost" size="xs" onClick={onClose}>
-            ✕
-          </Button>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-ui-border dark:border-ui-dark-border shrink-0 gap-3">
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary leading-none">
+              {t('versionHistory.title')}
+            </h2>
+            {!loading && !error && (
+              <p className="text-[11px] text-text-muted dark:text-text-dark-muted mt-0.5">
+                {entityType === 'template' ? templateRows.length : documentRows.length} versión{(entityType === 'template' ? templateRows.length : documentRows.length) !== 1 ? 'es' : ''} publicada{(entityType === 'template' ? templateRows.length : documentRows.length) !== 1 ? 's' : ''}
+              </p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {canStartNewVersion && onNewVersion ? (
+              <Button type="button" variant="primary" size="xs" onClick={() => { onNewVersion(); onClose(); }}>
+                + Nueva versión
+              </Button>
+            ) : null}
+            <Button type="button" variant="ghost" size="xs" onClick={onClose} aria-label="Cerrar">
+              ✕
+            </Button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
+        <div className="flex-1 overflow-y-auto px-4 py-4 min-h-0 space-y-0">
           {loading && (
             <p className="text-sm text-text-muted dark:text-text-dark-muted text-center py-8">
               {t('versionHistory.loading')}
@@ -112,50 +185,72 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
                 : t('versionHistory.emptyDocument')}
             </p>
           )}
+
           {!loading && !error && entityType === 'template' && templateRows.length > 0 && (
-            <ul className="space-y-3" role="list">
+            <ul className="space-y-2.5" role="list">
               {templateRows.map((row) => (
                 <li key={row.id}>
                   <button
                     type="button"
-                    className="w-full text-left rounded-lg border border-ui-border dark:border-ui-dark-border bg-white/80 dark:bg-ui-dark-card/70 px-3 py-2.5 hover:bg-white dark:hover:bg-ui-dark-card hover:border-text-muted/30 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="w-full text-left rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card/80 px-4 py-3.5 hover:border-primary/40 hover:bg-primary/[0.03] dark:hover:bg-primary/5 hover:shadow-sm transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 group"
                     onClick={() => {
                       navigate(`/templates/${encodeURIComponent(entityId)}?templateVersionId=${encodeURIComponent(row.id)}`);
                       onClose();
                     }}
                     aria-label={t('versionHistory.previewTemplateAria', { n: row.version_number })}
                   >
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-                        v{row.version_number}
-                      </span>
-                      <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <VersionBadge version={row.version_number} />
+                      <span className="flex items-center gap-1 text-[11px] text-text-muted dark:text-text-dark-muted">
+                        <IconCalendar />
                         {formatWhen(row.published_at, i18n.language)}
                       </span>
                     </div>
+
                     {row.changelog ? (
-                      <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">
+                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap mb-2.5 pb-2.5 border-b border-ui-border/50 dark:border-ui-dark-border/50 italic">
                         {row.changelog}
                       </p>
                     ) : null}
-                    <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
-                      {t('versionHistory.publishedBy')}: {row.published_by_name ?? t('status.unknown')}
-                    </p>
-                    <p className="text-xs text-text-muted dark:text-text-dark-muted">
-                      {t('versionHistory.versionAuthor')}: {row.author_name ?? t('status.unknown')}
-                    </p>
+
+                    <div className="space-y-1.5">
+                      <MetaRow
+                        icon={<IconPerson />}
+                        label="Creador"
+                        value={row.author_name?.trim() || t('status.unknown')}
+                      />
+                      <MetaRow
+                        icon={<IconCheck />}
+                        label="Publicado por"
+                        value={row.published_by_name?.trim() || t('status.unknown')}
+                      />
+                      {row.reviewer_names && row.reviewer_names.length > 0 ? (
+                        <MetaRow
+                          icon={<IconPerson />}
+                          label="Validadores"
+                          value={row.reviewer_names.join(', ')}
+                        />
+                      ) : null}
+                    </div>
+
+                    <div className="mt-2.5 flex justify-end">
+                      <span className="text-[10px] font-semibold text-primary/40 dark:text-primary-light/40 group-hover:text-primary dark:group-hover:text-primary-light transition-colors uppercase tracking-wider">
+                        Ver versión →
+                      </span>
+                    </div>
                   </button>
                 </li>
               ))}
             </ul>
           )}
+
           {!loading && !error && entityType === 'document' && documentRows.length > 0 && (
-            <ul className="space-y-3" role="list">
+            <ul className="space-y-2.5" role="list">
               {documentRows.map((row) => (
                 <li key={row.id}>
                   <button
                     type="button"
-                    className="w-full text-left rounded-lg border border-ui-border dark:border-ui-dark-border bg-white/80 dark:bg-ui-dark-card/70 px-3 py-2.5 hover:bg-white dark:hover:bg-ui-dark-card hover:border-text-muted/30 transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    className="w-full text-left rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card/80 px-4 py-3.5 hover:border-primary/40 hover:bg-primary/[0.03] dark:hover:bg-primary/5 hover:shadow-sm transition-all cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 group"
                     onClick={() => {
                       navigate(
                         `/documents/${encodeURIComponent(entityId)}?documentVersionId=${encodeURIComponent(row.id)}`,
@@ -164,28 +259,51 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
                     }}
                     aria-label={t('versionHistory.previewDocumentAria', { n: row.version_number })}
                   >
-                    <div className="flex items-baseline justify-between gap-2">
-                      <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-                        v{row.version_number}
-                      </span>
-                      <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
+                    <div className="flex items-center justify-between gap-2 mb-2.5">
+                      <VersionBadge version={row.version_number} />
+                      <span className="flex items-center gap-1 text-[11px] text-text-muted dark:text-text-dark-muted">
+                        <IconCalendar />
                         {formatWhen(row.created_at, i18n.language)}
                       </span>
                     </div>
-                    <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
-                      {row.trigger_event}
-                    </p>
-                    <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
-                      {t('versionHistory.publishedBy')}: {row.published_by_name ?? t('status.unknown')}
-                    </p>
-                    <p className="text-xs text-text-muted dark:text-text-dark-muted">
-                      {t('versionHistory.versionAuthor')}: {row.author_name ?? t('status.unknown')}
-                    </p>
+
+                    {row.trigger_event ? (
+                      <p className="text-[11px] text-text-muted dark:text-text-dark-muted mb-2 italic">
+                        {formatTriggerEvent(row.trigger_event)}
+                      </p>
+                    ) : null}
+
                     {(row.notes ?? row.changelog) ? (
-                      <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">
+                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap mb-2.5 pb-2.5 border-b border-ui-border/50 dark:border-ui-dark-border/50 italic">
                         {row.notes ?? row.changelog}
                       </p>
                     ) : null}
+
+                    <div className="space-y-1.5">
+                      <MetaRow
+                        icon={<IconPerson />}
+                        label="Creador"
+                        value={row.author_name?.trim() || t('status.unknown')}
+                      />
+                      <MetaRow
+                        icon={<IconCheck />}
+                        label="Publicado por"
+                        value={row.published_by_name?.trim() || t('status.unknown')}
+                      />
+                      {row.reviewer_names && row.reviewer_names.length > 0 ? (
+                        <MetaRow
+                          icon={<IconPerson />}
+                          label="Validadores"
+                          value={row.reviewer_names.join(', ')}
+                        />
+                      ) : null}
+                    </div>
+
+                    <div className="mt-2.5 flex justify-end">
+                      <span className="text-[10px] font-semibold text-primary/40 dark:text-primary-light/40 group-hover:text-primary dark:group-hover:text-primary-light transition-colors uppercase tracking-wider">
+                        Ver versión →
+                      </span>
+                    </div>
                   </button>
                 </li>
               ))}

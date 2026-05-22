@@ -37,6 +37,7 @@ class DocumentVersionResource extends JsonResource
             'published_by_name' => $row['published_by_name'] ?? null,
             'author_name' => $row['author_name'] ?? null,
             'owner_name' => $row['owner_name'] ?? null,
+            'reviewer_names' => $row['reviewer_names'] ?? [],
             'created_at' => $row['created_at'] ?? null,
         ];
     }

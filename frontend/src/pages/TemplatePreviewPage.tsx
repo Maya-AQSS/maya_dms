@@ -519,11 +519,6 @@ export function TemplatePreviewPage() {
               Clonar
             </Button>
           )}
-          {canStartNewVersion && (
-            <Button type="button" variant="outline" size="sm" onClick={() => setShowNewVersionConfirm(true)}>
-              Nueva versión
-            </Button>
-          )}
           {canDiscardWorkingVersion && (
             <Button
               type="button"
@@ -738,6 +733,8 @@ export function TemplatePreviewPage() {
           entityType="template"
           entityId={id}
           onClose={() => setShowHistory(false)}
+          canStartNewVersion={canStartNewVersion}
+          onNewVersion={() => setShowNewVersionConfirm(true)}
         />
       )}
 

@@ -115,6 +115,7 @@ export type TemplateVersionDetail = {
   published_by: string | null;
   published_by_name?: string | null;
   author_name?: string | null;
+  reviewer_names?: string[] | null;
   published_at: string | null;
   created_at?: string;
   updated_at?: string;
@@ -136,6 +137,7 @@ export type TemplateVersionSummary = {
   published_by: string | null;
   published_by_name?: string | null;
   author_name?: string | null;
+  reviewer_names?: string[] | null;
   changelog: string | null;
 };
 

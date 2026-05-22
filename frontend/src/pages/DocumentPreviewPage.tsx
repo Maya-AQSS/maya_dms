@@ -16,7 +16,6 @@ import {
   type DocumentReview,
 } from '../api/documents';
 import { fetchMe } from '../api/users';
-import { useDocumentVersionSummariesQuery } from '../features/documents/hooks/useDocumentVersionSummaries';
 import { useDocumentCommentsQuery } from '../features/documents/hooks/useDocumentComments';
 import { useTemplateQuery } from '../features/templates/hooks/useTemplate';
 import { useProcessesQuery } from '../hooks/useProcesses';
@@ -176,8 +175,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
-  // processLabel + publishedDocumentVersionCount derive from createDataHook queries below.
-
   // Validate-mode comment + info state (mirrors TemplateReviewView)
   type ValidateActiveView = { blockId: string; mode: 'comments' | 'info' } | null;
   const [validateActiveView, setValidateActiveView] = useState<ValidateActiveView>(null);
@@ -192,11 +189,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [selectedReviewView, setSelectedReviewView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
   const pageHeaderRef = useRef<HTMLDivElement>(null);
 
-  const versionSummariesQuery = useDocumentVersionSummariesQuery(documentId ?? '', {
-    enabled: !!documentId,
-  });
-  const publishedDocumentVersionCount =
-    versionSummariesQuery.data?.length ?? null;
 
   useEffect(() => {
     if (!documentId) {
@@ -310,9 +302,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const canReviewDocument = hasPermission(DMS_PERMISSIONS.documentReview);
   const isHistoricalSnapshot = versionSnapshot !== null;
   const showVersionHistory =
-    publishedDocumentVersionCount !== null &&
-    publishedDocumentVersionCount > 0 &&
-    (isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView));
+    isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView);
   const canStartNewVersion =
     !isValidateMode &&
     isPublished &&
@@ -688,7 +678,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           </span>
           {detail.status !== 'draft' && (
           <span className="text-xs font-mono bg-ui-body dark:bg-ui-dark-bg border border-ui-border dark:border-ui-dark-border px-2 py-0.5 rounded-full text-text-secondary dark:text-text-dark-secondary">
-            v{detail.current_version}
+             v{detail.current_version}
           </span>
           )}
         </>
@@ -769,16 +759,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             : pdfExport.state === 'downloading'
               ? 'Descargando…'
               : 'Descargar PDF'}
-        </Button>
-      )}
-      {!isValidateMode && canStartNewVersion && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowNewVersionConfirm(true)}
-        >
-          Nueva versión
         </Button>
       )}
       {!isValidateMode && canClone && (
@@ -1415,6 +1395,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           entityType="document"
           entityId={documentId}
           onClose={() => setShowHistory(false)}
+          canStartNewVersion={canStartNewVersion}
+          onNewVersion={() => setShowNewVersionConfirm(true)}
         />
       )}
 

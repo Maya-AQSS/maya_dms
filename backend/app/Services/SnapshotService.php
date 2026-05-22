@@ -78,7 +78,10 @@ class SnapshotService implements SnapshotServiceInterface
      */
     private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array
     {
-        $document->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+        $document->loadMissing([
+            'blocks' => fn ($q) => $q->orderBy('sort_order'),
+            'reviews' => fn ($q) => $q->orderBy('stage')->orderBy('created_at'),
+        ]);
 
         $lifecycle = $this->snapshotDocumentLifecycleIso8601($document);
 
@@ -112,6 +115,13 @@ class SnapshotService implements SnapshotServiceInterface
                     'last_edited_by' => $b->last_edited_by,
                     'locked_by' => $b->locked_by,
                     'locked_at' => $b->locked_at?->toIso8601String(),
+                ];
+            })->values()->all(),
+            'reviewers' => $document->reviews->map(static function ($r): array {
+                return [
+                    'reviewer_id' => (string) $r->reviewer_id,
+                    'stage' => $r->stage !== null ? (int) $r->stage : null,
+                    'status' => (string) ($r->status ?? 'pending'),
                 ];
             })->values()->all(),
         ];

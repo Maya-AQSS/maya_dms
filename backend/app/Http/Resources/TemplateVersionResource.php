@@ -31,6 +31,20 @@ class TemplateVersionResource extends JsonResource
 
         $publishedAt = $this->published_at ?? null;
 
+        $reviewers = data_get($snapshotData, 'reviewers.template_reviewers');
+        $reviewerNames = [];
+        if (is_array($reviewers)) {
+            foreach ($reviewers as $r) {
+                $uid = $r['user_id'] ?? null;
+                if (is_string($uid) && $uid !== '') {
+                    $name = $this->resolveUserNameById($uid);
+                    if ($name !== null) {
+                        $reviewerNames[] = $name;
+                    }
+                }
+            }
+        }
+
         return [
             'id' => $this->id,
             'template_id' => $this->versionable_id,
@@ -41,6 +55,7 @@ class TemplateVersionResource extends JsonResource
             'published_by' => $publishedBy,
             'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
             'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+            'reviewer_names' => $reviewerNames,
             'published_at' => $publishedAt?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
             'updated_at' => $this->updated_at?->toIso8601String(),
