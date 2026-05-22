@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BlockNoteEditor } from '@blocknote/core';
+import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { FormattingToolbar } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
 import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
+import { createIframeBlock } from './IframeBlock'
 import '@blocknote/ariakit/style.css';
 import '../styles/blocknote-panel.css';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
@@ -131,6 +132,14 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         (normalized as any)
       : undefined;
 
+  //Added iframe block for youtube videos    
+  const schema = BlockNoteSchema.create().extend({
+    blockSpecs: {
+      ...defaultBlockSpecs,
+      iframe: createIframeBlock(), // Aquí registramos el bloque iframe
+    },
+  })
+
   // Use a ref for stable editor identity across React StrictMode's double-mount cycle.
   // useCreateBlockNote registers ProseMirror clipboard handlers on mount; without this
   // guard StrictMode's mount→cleanup→remount leaves two handlers → paste fires twice.
@@ -140,6 +149,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   if (!editorRef.current) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     editorRef.current = (BlockNoteEditor as any).create({
+      schema, // PASAMOS EL NUEVO ESQUEMA
       initialContent: safeContent ? repairBlockNoteBlocks(safeContent) : undefined,
       uploadFile: uploadFileRef.current,
     });
@@ -288,7 +298,16 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         const targetId = currentBlock?.id;
         if (!targetId) return;
 
-        editor.insertBlocks([{ type: "video" as any }], targetId, "after");
+        editor.insertBlocks([
+        {
+          type: "iframe",
+          props: { 
+            url: "https://example.com",
+            width: "100%",
+            height: "400px"
+          },
+        },
+      ], targetId, "after");
       },
     },
 
