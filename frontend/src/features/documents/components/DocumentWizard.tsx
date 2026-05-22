@@ -192,7 +192,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [localContent, setLocalContent] = useState<unknown>(null);
   const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
   const [emptyEditableBlocksModal, setEmptyEditableBlocksModal] = useState<string[] | null>(null);
