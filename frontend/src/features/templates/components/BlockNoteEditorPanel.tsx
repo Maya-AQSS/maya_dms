@@ -156,75 +156,59 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     if (!dom) return;
 
     const handlePaste = (e: ClipboardEvent) => {
-      const plain = e.clipboardData?.getData('text/plain') ?? '';
-      const html = e.clipboardData?.getData('text/html') ?? '';
+    const selection = editor.getTextCursorPosition();
+    const currentBlock = editor.document.find((b: any) => b.id === selection.block.id);
+    
+    // Si estamos en un bloque de código, no interceptamos
+    if (currentBlock.type === 'codeBlock') {
+      return; 
+    }
 
-      // Empty paste — nothing to do.
-      if (!plain.trim() && !html.trim()) return;
+    const plain = e.clipboardData?.getData('text/plain') ?? '';
+    const html = e.clipboardData?.getData('text/html') ?? '';
 
-      let parsedBlocks: any[] | undefined;
-      let handled = false;
+    if (!plain.trim() && !html.trim()) return;
 
-      // 1. Prioritize HTML if it looks like rich content (has tags).
-      // We clean it to ensure spaces between tags are preserved.
-      if (html && html.includes('<')) {
-        const cleaned = cleanHtmlForPaste(html);
-        try {
-          parsedBlocks = (editor as any).tryParseHTMLToBlocks(cleaned);
-          if (parsedBlocks && parsedBlocks.length > 0) {
-            handled = true;
-          }
-        } catch (err) {
-          console.warn('Failed to parse pasted HTML:', err);
-        }
+    let parsedBlocks: any[] | undefined;
+    let handled = false;
+
+    if (html && html.includes('<')) {
+      const cleaned = cleanHtmlForPaste(html);
+      try {
+        parsedBlocks = (editor as any).tryParseHTMLToBlocks(cleaned);
+        if (parsedBlocks?.length) handled = true;
+      } catch (err) {
+        console.warn('Failed to parse pasted HTML:', err);
+      }
+    }
+
+    if (!handled && plain) {
+      try {
+        parsedBlocks = (editor as any).tryParseMarkdownToBlocks(plain);
+        if (parsedBlocks?.length) handled = true;
+      } catch (err) {
+        console.warn('Failed to parse pasted text/markdown:', err);
+      }
+    }
+
+    if (handled && parsedBlocks) {
+      // Inserción de bloques como antes
+      const currentBlocks = editor.document;
+      const blockIdx = currentBlocks.findIndex((b: any) => b.id === selection.block.id);
+      if (blockIdx !== -1) {
+        editor.insertBlocks(parsedBlocks, currentBlocks[blockIdx].id, 'after');
+        const isEmpty = !currentBlocks[blockIdx].content?.length || 
+          (currentBlocks[blockIdx].content.length === 1 && !currentBlocks[blockIdx].content[0].text);
+        if (isEmpty) editor.removeBlocks([currentBlocks[blockIdx].id]);
+      } else {
+        editor.insertBlocks(parsedBlocks, currentBlocks[currentBlocks.length - 1].id, 'after');
       }
 
-      // 2. Fallback to plain text if HTML failed or wasn't provided.
-      if (!handled && plain) {
-        try {
-          parsedBlocks = (editor as any).tryParseMarkdownToBlocks(plain);
-          if (parsedBlocks && parsedBlocks.length > 0) {
-            handled = true;
-          }
-        } catch (err) {
-          console.warn('Failed to parse pasted text/markdown:', err);
-        }
-      }
-
-      if (handled && parsedBlocks) {
-        // Intercepted and parsed — insert blocks at current selection.
-        const currentBlocks = editor.document;
-        const selection = editor.getTextCursorPosition();
-        const blockId = selection.block.id;
-        const blockIdx = currentBlocks.findIndex((b: any) => b.id === blockId);
-
-        if (blockIdx !== -1) {
-          editor.insertBlocks(parsedBlocks as any[], blockId, 'after');
-          // If the current block was empty, remove it so
-          // the pasted content lands in-place instead of after an empty line.
-          const currentBlock = currentBlocks[blockIdx];
-          const isEmpty =
-            currentBlock.type !== 'image' && (
-              currentBlock.content.length === 0 ||
-              (currentBlock.content.length === 1 &&
-                currentBlock.content[0].type === 'text' &&
-                !currentBlock.content[0].text)
-            );
-
-          if (isEmpty) {
-            editor.removeBlocks([blockId]);
-          }
-        } else {
-          editor.insertBlocks(parsedBlocks as any[], currentBlocks[currentBlocks.length - 1].id, 'after');
-        }
-
-        // Trigger onChange so autosave picks up the pasted content.
-        onChange?.(editor.document);
-
-        e.preventDefault();
-        e.stopPropagation();
-      }
-    };
+      onChange?.(editor.document);
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  };
 
     // Use capture phase to ensure we intercept before the default handler.
     dom.addEventListener('paste', handlePaste, true);
@@ -501,15 +485,17 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                 >
                   Markdown
                 </button>
-                <button
-                  type="button"
-                  aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
-                  aria-pressed={isFullscreen}
-                  onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
-                  className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
-                >
-                  <FullscreenIcon expanded={isFullscreen} />
-                </button>
+                </div>
+                <div className="flex items-end gap-0.5 shrink-0 pl-1 border-l border-ui-border dark:border-ui-dark-border ml-auto">
+                  <button
+                    type="button"
+                    aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                    aria-pressed={isFullscreen}
+                    onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
+                    className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+                  >
+                    <FullscreenIcon expanded={isFullscreen} />
+                  </button>
                 </div>
               </div>
             )}
