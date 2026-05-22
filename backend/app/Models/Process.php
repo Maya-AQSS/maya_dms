@@ -24,6 +24,8 @@ class Process extends Model
         'code',
         'name',
         'alias',
+        'icon',
+        'color',
         'description',
         'process_parent_id',
     ];

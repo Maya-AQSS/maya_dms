@@ -25,6 +25,8 @@ class ProcessesSeeder extends Seeder
         $rows = array_map(static function (array $row) use ($now): array {
             $row['process_parent_id'] ??= null;
             $row['description'] ??= null;
+            $row['icon']        ??= null;
+            $row['color']       ??= null;
             $row['created_at']  ??= $now;
             $row['updated_at']  ??= $now;
 
@@ -36,20 +38,14 @@ class ProcessesSeeder extends Seeder
         $top  = array_values(array_filter($rows, static fn (array $r): bool => $r['process_parent_id'] === null));
         $subs = array_values(array_filter($rows, static fn (array $r): bool => $r['process_parent_id'] !== null));
 
+        $updateCols = ['code', 'name', 'alias', 'icon', 'color', 'description', 'process_parent_id', 'updated_at'];
+
         if ($top !== []) {
-            DB::table('processes')->upsert(
-                $top,
-                ['id'],
-                ['code', 'name', 'alias', 'description', 'process_parent_id', 'updated_at'],
-            );
+            DB::table('processes')->upsert($top, ['id'], $updateCols);
         }
 
         if ($subs !== []) {
-            DB::table('processes')->upsert(
-                $subs,
-                ['id'],
-                ['code', 'name', 'alias', 'description', 'process_parent_id', 'updated_at'],
-            );
+            DB::table('processes')->upsert($subs, ['id'], $updateCols);
         }
     }
 

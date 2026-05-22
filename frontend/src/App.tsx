@@ -105,7 +105,7 @@ function AppWithLayout() {
   return (
     <AppLayout
       navItems={navItems}
-      brandName="Maya DMS"
+      brandName="DocuCEED"
       brandVersion="v1.0"
       brandLogoUrl="/favicon.png"
       userName={userName}

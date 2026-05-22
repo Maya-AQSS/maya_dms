@@ -1,26 +1,12 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NavLink } from 'react-router-dom';
+import { useSidebarCollapsed } from '@maya/shared-layout-react';
 import { useUserProfile } from '../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../permissions';
 import { fetchProcesses } from '../../api/processes';
 import type { Process } from '../../types/processes';
-
-const FOLDER_ICON = (
-  <svg
-    width="16"
-    height="16"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    aria-hidden="true"
-  >
-    <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" />
-  </svg>
-);
+import { getProcessIcon } from './processIcons';
 
 const SUB_DOT = (
   <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden="true">
@@ -79,6 +65,7 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
   const { hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.processIndex);
   const canShow = hasPermission(DMS_PERMISSIONS.processShow);
+  const collapsed = useSidebarCollapsed();
   const [processes, setProcesses] = useState<Process[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -117,13 +104,18 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
 
   if (loading) {
     return (
-      <div className="px-1 mt-4 pt-3 border-t border-text-inverse/8">
-        <p className="text-xs font-semibold text-text-inverse/40 uppercase tracking-wider px-2 mb-1">
-          {label}
-        </p>
-        <div className="space-y-1.5 px-2 py-1">
+      <div className={['mt-4 pt-3 border-t border-text-inverse/8', collapsed ? 'px-0' : 'px-1'].join(' ')}>
+        {!collapsed && (
+          <p className="text-xs font-semibold text-text-inverse/40 uppercase tracking-wider px-2 mb-1">
+            {label}
+          </p>
+        )}
+        <div className={['space-y-1.5 py-1', collapsed ? 'px-0' : 'px-2'].join(' ')}>
           {[0, 1, 2].map((i) => (
-            <div key={i} className="h-8 rounded-lg bg-text-inverse/5 animate-pulse" />
+            <div
+              key={i}
+              className={['rounded-lg bg-text-inverse/5 animate-pulse', collapsed ? 'h-10 w-10 mx-auto rounded-xl' : 'h-8'].join(' ')}
+            />
           ))}
         </div>
       </div>
@@ -132,9 +124,12 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
 
   if (!processes || processes.length === 0) return null;
 
+  // En modo expandido: py-2.5 + px-3.5 = misma altura que los NavLink principales.
+  // En modo colapsado: justify-center sin label.
   const linkClass = (isActive: boolean, disabled: boolean) =>
     [
-      'flex items-center gap-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap overflow-hidden flex-1 min-w-0',
+      'flex items-center rounded-xl text-sm font-medium transition-colors whitespace-nowrap overflow-hidden',
+      collapsed ? 'justify-center w-10 h-10 mx-auto' : 'gap-3 px-3.5 py-2.5 flex-1 min-w-0',
       disabled
         ? 'opacity-50 cursor-not-allowed text-text-inverse/50'
         : isActive
@@ -143,15 +138,26 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
     ].join(' ');
 
   const renderProcessLink = (p: Process, className: string | ((isActive: boolean) => string), dot?: ReactNode) => {
+    // `alias` es el texto user-facing (≤25 chars). `name` queda como nombre
+    // completo de uso administrativo y como tooltip. El icono y color salen
+    // de la BD — fallback a folder + inverse/60 si no hay datos.
+    const displayLabel = p.alias?.trim() || p.name;
     const title = `${p.code} — ${p.name}`;
+    const iconColor = p.color ?? undefined;
     const content = (
       <>
         {dot ?? (
-          <span className="shrink-0 w-6 h-6 flex items-center justify-center text-text-inverse/60">
-            {FOLDER_ICON}
+          <span
+            className={[
+              'shrink-0 w-6 h-6 flex items-center justify-center',
+              iconColor ? '' : 'text-text-inverse/60',
+            ].join(' ').trim()}
+            style={iconColor ? { color: iconColor } : undefined}
+          >
+            {getProcessIcon(p.icon)}
           </span>
         )}
-        <span className="truncate">{p.name}</span>
+        {!collapsed && <span className="truncate">{displayLabel}</span>}
       </>
     );
 
@@ -179,22 +185,24 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
   };
 
   return (
-    <div className="px-1 mt-4 pt-3 border-t border-text-inverse/8">
-      <p className="text-xs font-semibold text-text-inverse/40 uppercase tracking-wider px-2 mb-1">
-        {label}
-      </p>
+    <div className={['mt-4 pt-3 border-t border-text-inverse/8', collapsed ? 'px-0' : 'px-1'].join(' ')}>
+      {!collapsed && (
+        <p className="text-xs font-semibold text-text-inverse/40 uppercase tracking-wider px-2 mb-1">
+          {label}
+        </p>
+      )}
       {tree.map((p) => {
         const hasChildren = p.children.length > 0;
         const isOpen = openId === p.id;
 
         return (
           <div key={p.id}>
-            <div className="group flex items-center gap-1">
+            <div className={collapsed ? '' : 'group flex items-center gap-1'}>
               {renderProcessLink(
                 p,
                 (isActive) => linkClass(isActive, !canShow),
               )}
-              {hasChildren && (
+              {hasChildren && !collapsed && (
                 <button
                   type="button"
                   onClick={() => setOpenId(isOpen ? null : p.id)}
@@ -214,7 +222,7 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
               )}
             </div>
 
-            {hasChildren && isOpen && (
+            {hasChildren && isOpen && !collapsed && (
               <div className="ml-5 border-l border-text-inverse/10 pl-1 my-0.5 space-y-0.5">
                 {p.children.map((child) => (
                   <div key={child.id}>

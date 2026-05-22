@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NavItem } from '@maya/shared-layout-react';
-import { HomeIcon } from '@maya/shared-layout-react';
+import { HomeIcon, TemplateIcon } from '@maya/shared-layout-react';
 import { useUserProfile } from '@maya/shared-profile-react';
 import { canManageThemesCatalog } from '../../permissions';
 
@@ -15,7 +15,7 @@ export function useNavItems(): NavItem[] {
     ];
 
     if (canManageThemesCatalog(hasPermission)) {
-      items.push({ id: 'themes', label: t('themes:title'), icon: HomeIcon, path: '/themes' });
+      items.push({ id: 'themes', label: t('themes:title'), icon: TemplateIcon, path: '/themes' });
     }
 
     return items;
