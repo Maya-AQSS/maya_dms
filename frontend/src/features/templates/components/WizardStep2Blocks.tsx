@@ -716,13 +716,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     ) : (
                       <div className="flex-1 min-h-0 flex flex-col gap-2">
-                        {formUiState === 'modifiable' && !formContent && (
-                          <p className="text-xs font-bold text-warning-dark bg-warning-light/40 border border-warning/30 rounded-lg px-3 py-2 shrink-0">
-                            Los bloques modificables deben tener contenido predeterminado (obligatorio).
+                        {formUiState === 'modifiable'  && !formContent && (
+                          <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
+                            Los bloques tipo {formUiState} deben tener contenido predeterminado (obligatorio).
+                          </p>
+                        )}
+                        {formUiState === 'locked' && !formContent && (
+                          <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
+                            Los bloques tipo bloqueado deben tener contenido predeterminado (obligatorio).
                           </p>
                         )}
                         {formUiState === 'editable' && !formContent && (
-                          <p className="text-xs font-medium text-info-dark bg-info/5 border border-info/20 rounded-lg px-3 py-2 shrink-0">
+                          <p className="bg-info/10 text-info-dark rounded px-3 py-1.5 dark:bg-info-dark/30 dark:text-info-light">
                             Se recomienda añadir contenido predeterminado para los bloques editables.
                           </p>
                         )}
