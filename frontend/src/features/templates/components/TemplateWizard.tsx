@@ -220,7 +220,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         module_id: values.moduleId || null,
         team_id: values.teamId || null,
         theme_id: values.themeId || null,
-        ...(values.createdBy ? { created_by: values.createdBy } : {}),
+        // created_by is transferred explicitly via handleTransferOwnership on the summary step
       };
 
       let res;
@@ -325,6 +325,28 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setSaving(false);
     }
   };
+  const pendingOwnerTransfer = step1Methods.watch('createdBy');
+
+  const handleTransferOwnership = async () => {
+    if (!template?.id || !pendingOwnerTransfer) return;
+    setSaving(true);
+    setErrors({});
+    try {
+      await apiUpdateTemplate(template.id, { created_by: pendingOwnerTransfer });
+      navigate(processBackTo);
+    } catch (e) {
+      const detail =
+        e instanceof ApiHttpError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : 'Error al transferir la propiedad';
+      setErrors({ api: detail });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveUsers = async () => {
     if (!template?.id) return;
     if (blocksLoading || blocksCount < 1) {
@@ -516,7 +538,18 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           Guardar y continuar →
         </Button>
       )}
-      {step === 'summary' && (validators.length > 0 || documentValidators.length > 0) && (
+      {step === 'summary' && !!pendingOwnerTransfer && (
+        <Button
+          variant="primary"
+          size="sm"
+          loading={saving}
+          onClick={() => void handleTransferOwnership()}
+          className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+        >
+          Cambiar propiedad
+        </Button>
+      )}
+      {step === 'summary' && !pendingOwnerTransfer && (validators.length > 0 || documentValidators.length > 0) && (
         <Button
           variant="primary"
           size="sm"
@@ -527,7 +560,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           Enviar a validar
         </Button>
       )}
-      {step === 'summary' && validators.length === 0 && documentValidators.length === 0 && (
+      {step === 'summary' && !pendingOwnerTransfer && validators.length === 0 && documentValidators.length === 0 && (
         <Button
           variant="primary"
           size="sm"
