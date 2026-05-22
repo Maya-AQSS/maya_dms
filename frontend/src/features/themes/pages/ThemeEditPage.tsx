@@ -1,9 +1,12 @@
-import { useParams } from 'react-router-dom';
+import { Navigate, useParams } from 'react-router-dom';
+import { useUserProfile } from '@maya/shared-profile-react';
+import { canUpdateTheme } from '../../../permissions';
 import { ThemeWizard } from '../components/ThemeWizard';
 import { useTheme } from '../hooks/useTheme';
 
 export function ThemeEditPage() {
   const { id } = useParams<{ id: string }>();
+  const { profile, hasPermission } = useUserProfile();
   const { theme, loading, error } = useTheme(id);
 
   if (loading && !theme) {
@@ -16,6 +19,10 @@ export function ThemeEditPage() {
         {error || 'No se ha podido cargar el theme.'}
       </div>
     );
+  }
+
+  if (!canUpdateTheme(hasPermission, profile?.id, theme.created_by)) {
+    return <Navigate to="/themes" replace />;
   }
 
   return <ThemeWizard initial={theme} />;

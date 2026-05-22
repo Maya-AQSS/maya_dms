@@ -35,7 +35,63 @@ export const DMS_PERMISSIONS = {
   blockDelete: 'block.delete',
   commentBlockCreate: 'comment-block.create',
   commentBlockDelete: 'comment-block.delete',
+  themeIndex: 'theme.index',
+  themeShow: 'theme.show',
+  themeCreate: 'theme.create',
+  themeClone: 'theme.clone',
+  themeUpdate: 'theme.update',
+  themeDelete: 'theme.delete',
 } as const;
+
+/**
+ * Sección Themes en navegación y gestión (no el selector del wizard de plantilla).
+ * Requiere theme.index y theme.show; el profesor no los tiene.
+ */
+export function canManageThemesCatalog(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.themeIndex) && hasPermission(DMS_PERMISSIONS.themeShow);
+}
+
+export function canCreateTheme(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.themeCreate);
+}
+
+/**
+ * Editar un theme: creador (con acceso al catálogo) o `theme.update` (jefe de estudios+).
+ */
+export function canUpdateTheme(
+  hasPermission: (slug: string) => boolean,
+  profileId: string | undefined,
+  createdBy: string | undefined,
+): boolean {
+  if (!profileId || !createdBy) {
+    return hasPermission(DMS_PERMISSIONS.themeUpdate);
+  }
+
+  if (profileId === createdBy) {
+    return canCreateTheme(hasPermission);
+  }
+
+  return hasPermission(DMS_PERMISSIONS.themeUpdate);
+}
+
+export function canCloneTheme(hasPermission: (slug: string) => boolean): boolean {
+  return hasPermission(DMS_PERMISSIONS.themeClone);
+}
+
+/**
+ * Eliminar un theme: creador o `theme.delete` (admin).
+ */
+export function canDeleteTheme(
+  hasPermission: (slug: string) => boolean,
+  profileId: string | undefined,
+  createdBy: string | undefined,
+): boolean {
+  if (profileId && createdBy && profileId === createdBy) {
+    return true;
+  }
+
+  return hasPermission(DMS_PERMISSIONS.themeDelete);
+}
 
 /** `block.index` / `block.show` requieren además mutación de plantilla o documento (catálogo). */
 export function canAccessBlockCatalog(hasPermission: (slug: string) => boolean): boolean {

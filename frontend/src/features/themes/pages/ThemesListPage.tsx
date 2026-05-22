@@ -8,6 +8,13 @@ import {
   useConfirm,
   type ColumnDef,
 } from '@maya/shared-ui-react';
+import { useUserProfile } from '@maya/shared-profile-react';
+import {
+  canCloneTheme,
+  canCreateTheme,
+  canDeleteTheme,
+  canUpdateTheme,
+} from '../../../permissions';
 import { useThemes } from '../hooks/useThemes';
 import type { Theme, ThemeStatus } from '../../../types/themes';
 
@@ -26,6 +33,9 @@ const STATUS_CLASS: Record<ThemeStatus, string> = {
 export function ThemesListPage() {
   const navigate = useNavigate();
   const { confirmState, confirm, closeConfirm } = useConfirm();
+  const { profile, hasPermission } = useUserProfile();
+  const mayCreate = canCreateTheme(hasPermission);
+  const mayClone = canCloneTheme(hasPermission);
 
   const {
     items,
@@ -45,15 +55,21 @@ export function ThemesListPage() {
     {
       id: 'name',
       header: 'Nombre',
-      cell: (theme) => (
-        <button
-          type="button"
-          onClick={() => navigate(`/themes/${theme.id}/edit`)}
-          className="text-left font-medium text-odoo-purple hover:underline"
-        >
-          {theme.name}
-        </button>
-      ),
+      cell: (theme) => {
+        const mayEdit = canUpdateTheme(hasPermission, profile?.id, theme.created_by);
+        if (!mayEdit) {
+          return <span className="font-medium">{theme.name}</span>;
+        }
+        return (
+          <button
+            type="button"
+            onClick={() => navigate(`/themes/${theme.id}/edit`)}
+            className="text-left font-medium text-odoo-purple hover:underline"
+          >
+            {theme.name}
+          </button>
+        );
+      },
     },
     {
       id: 'description',
@@ -102,44 +118,55 @@ export function ThemesListPage() {
     {
       id: 'actions',
       header: '',
-      cell: (theme) => (
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate(`/themes/${theme.id}/edit`)}
-          >
-            Editar
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => void cloneTheme(theme.id)}
-          >
-            Clonar
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() =>
-              confirm({
-                title: 'Eliminar theme',
-                description: `¿Eliminar “${theme.name}”? Las plantillas que lo usen quedarán sin theme asignado.`,
-                confirmLabel: 'Eliminar',
-                variant: 'danger',
-                onConfirm: async () => {
-                  await deleteTheme(theme.id);
-                },
-              })
-            }
-          >
-            Eliminar
-          </Button>
-        </div>
-      ),
+      cell: (theme) => {
+        const mayEdit = canUpdateTheme(hasPermission, profile?.id, theme.created_by);
+        const mayDelete = canDeleteTheme(hasPermission, profile?.id, theme.created_by);
+
+        return (
+          <div className="flex justify-end gap-2">
+            {mayEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/themes/${theme.id}/edit`)}
+              >
+                Editar
+              </Button>
+            )}
+            {mayClone && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => void cloneTheme(theme.id)}
+              >
+                Clonar
+              </Button>
+            )}
+            {mayDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  confirm({
+                    title: 'Eliminar theme',
+                    description: `¿Eliminar “${theme.name}”? Las plantillas que lo usen quedarán sin theme asignado.`,
+                    confirmLabel: 'Eliminar',
+                    variant: 'danger',
+                    onConfirm: async () => {
+                      await deleteTheme(theme.id);
+                    },
+                  })
+                }
+              >
+                Eliminar
+              </Button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -149,14 +176,16 @@ export function ThemesListPage() {
         title="Themes"
         subtitle="Identidad visual reutilizable para plantillas y documentos"
         actions={
-          <Button
-            type="button"
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/themes/new')}
-          >
-            Nuevo theme
-          </Button>
+          mayCreate ? (
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('/themes/new')}
+            >
+              Nuevo theme
+            </Button>
+          ) : undefined
         }
       />
 

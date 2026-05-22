@@ -9,8 +9,15 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class IndexThemeRequest extends FormRequest
 {
+    /**
+     * Catálogo de gestión → theme.index. Selector en plantilla (solo publicados) → dms.login.
+     */
     public function authorize(): bool
     {
+        if (($this->input('status') ?? '') === 'published') {
+            return $this->user()->can('viewPublishedForTemplate', Theme::class);
+        }
+
         return $this->user()->can('viewAny', Theme::class);
     }
 
