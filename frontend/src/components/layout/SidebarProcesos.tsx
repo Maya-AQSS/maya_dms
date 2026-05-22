@@ -166,13 +166,18 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
       );
     }
 
-    const resolvedClass =
-      typeof className === 'function'
-        ? ({ isActive }: { isActive: boolean }) => className(isActive)
-        : className;
-
     return (
-      <NavLink to={`/procesos/${p.id}`} title={title} className={resolvedClass}>
+      <NavLink 
+      to={`/procesos/${p.id}`} 
+      title={title} 
+      className={({ isActive }: { isActive: boolean }) =>
+                  [
+                    'flex items-center gap-2 px-3.5 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap overflow-hidden flex-1 min-w-0',
+                    isActive
+                      ? 'bg-text-inverse/10 text-text-inverse'
+                      : 'text-text-inverse/70 hover:bg-text-inverse/8 hover:text-text-inverse',
+                  ].join(' ')
+                }>
         {content}
       </NavLink>
     );
