@@ -170,9 +170,11 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     const handlePaste = (e: ClipboardEvent) => {
     const selection = editor.getTextCursorPosition();
     const currentBlock = editor.document.find((b: any) => b.id === selection.block.id);
-    
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && (activeElement.tagName === "INPUT")
+      
     // Si estamos en un bloque de código, no interceptamos
-    if (currentBlock.type === 'codeBlock') {
+    if (currentBlock.type === 'codeBlock' || isInputFocused) {
       return; 
     }
 
@@ -288,28 +290,19 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       },
     },
 
-    {
+    /*{
       name: "Vídeo",
       icon: "▶",
       color: "#EC4899",
-      desc: "Insertar vídeo",
+      desc: "Insertar vídeo local",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
         const targetId = currentBlock?.id;
         if (!targetId) return;
 
-        editor.insertBlocks([
-        {
-          type: "iframe",
-          props: { 
-            url: "https://example.com",
-            width: "100%",
-            height: "400px"
-          },
-        },
-      ], targetId, "after");
+        editor.insertBlocks([{ type: "video" as any }], targetId, "after");
       },
-    },
+    },*/
 
     {
       name: "Código",
@@ -404,6 +397,23 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
           targetId,
           "after"
         );
+      },
+    },
+    {
+      name: "Embed Vídeo",
+      icon: "<->",
+      color: "#EC4899",
+      desc: "Insertar vídeo youtube",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks([
+        {
+          type: "iframe",
+        },
+      ], targetId, "after");
       },
     },
   ];
