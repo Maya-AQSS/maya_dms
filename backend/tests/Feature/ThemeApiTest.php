@@ -34,16 +34,12 @@ class ThemeApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    /**
-     * @param  list<string>  $codes
-     * @return array<string, string>
-     */
     private function authHeaders(string $sub, array $codes = [], bool $withThemeCatalog = true): array
     {
         auth()->forgetUser();
 
         if ($withThemeCatalog) {
-            foreach (['theme.index', 'theme.show', 'dms.login'] as $slug) {
+            foreach (['theme.index', 'theme.show', 'theme.create', 'theme.update', 'theme.clone', 'theme.delete', 'dms.login'] as $slug) {
                 if (! in_array($slug, $codes, true)) {
                     $codes[] = $slug;
                 }
@@ -169,13 +165,34 @@ class ThemeApiTest extends TestCase
         $theme->save();
 
         $policy = new \App\Policies\ThemePolicy;
-        $ownerUser = new \App\Models\JwtUser(['id' => $owner, 'sub' => $owner]);
-        $strangerUser = new \App\Models\JwtUser(['id' => $stranger, 'sub' => $stranger]);
+        $ownerUser = new \App\Models\JwtUser([
+            'id' => $owner,
+            'sub' => $owner,
+            'permissions' => ['theme.show', 'theme.create'],
+        ]);
+        $strangerUser = new \App\Models\JwtUser([
+            'id' => $stranger,
+            'sub' => $stranger,
+            'permissions' => ['theme.show'],
+        ]);
+        $editorUser = new \App\Models\JwtUser([
+            'id' => $stranger,
+            'sub' => $stranger,
+            'permissions' => ['theme.show', 'theme.update'],
+        ]);
 
         $this->assertTrue($policy->update($ownerUser, $theme));
         $this->assertFalse($policy->update($strangerUser, $theme));
+        $this->assertTrue($policy->update($editorUser, $theme));
+        $adminUser = new \App\Models\JwtUser([
+            'id' => $stranger,
+            'sub' => $stranger,
+            'permissions' => ['theme.show', 'theme.delete'],
+        ]);
+
         $this->assertTrue($policy->delete($ownerUser, $theme));
         $this->assertFalse($policy->delete($strangerUser, $theme));
+        $this->assertTrue($policy->delete($adminUser, $theme));
     }
 
     public function test_delete_removes_theme(): void

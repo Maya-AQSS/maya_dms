@@ -65,26 +65,100 @@ class ThemePolicyTest extends TestCase
         $this->assertFalse($this->policy->view($user, $draft));
     }
 
+    public function test_create_requires_theme_create(): void
+    {
+        $this->assertFalse($this->policy->create($this->makeJwtUser(['dms.login'])));
+        $this->assertTrue($this->policy->create($this->makeJwtUser(['theme.create'])));
+    }
+
+    public function test_update_allows_creator_without_theme_update(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $creator = $this->makeJwtUser(['theme.create', 'theme.show'], $creatorId);
+        $theme = $this->makeTheme('draft', $creatorId);
+
+        $this->assertTrue($this->policy->update($creator, $theme));
+    }
+
+    public function test_update_denies_non_creator_without_theme_update(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $stranger = $this->makeJwtUser(['theme.show'], (string) Str::uuid());
+        $theme = $this->makeTheme('draft', $creatorId);
+
+        $this->assertFalse($this->policy->update($stranger, $theme));
+    }
+
+    public function test_update_allows_non_creator_with_theme_update(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $editor = $this->makeJwtUser(['theme.show', 'theme.update'], (string) Str::uuid());
+        $theme = $this->makeTheme('draft', $creatorId);
+
+        $this->assertTrue($this->policy->update($editor, $theme));
+    }
+
+    public function test_delete_allows_creator_without_theme_delete(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $creator = $this->makeJwtUser(['theme.show', 'theme.create'], $creatorId);
+        $theme = $this->makeTheme('draft', $creatorId);
+
+        $this->assertTrue($this->policy->delete($creator, $theme));
+    }
+
+    public function test_delete_allows_admin_with_theme_delete(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $admin = $this->makeJwtUser(['theme.show', 'theme.delete'], (string) Str::uuid());
+        $theme = $this->makeTheme('draft', $creatorId);
+
+        $this->assertTrue($this->policy->delete($admin, $theme));
+    }
+
+    public function test_delete_denies_non_creator_without_theme_delete(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $other = $this->makeJwtUser(['theme.show', 'theme.update'], (string) Str::uuid());
+        $theme = $this->makeTheme('draft', $creatorId);
+
+        $this->assertFalse($this->policy->delete($other, $theme));
+    }
+
+    public function test_clone_requires_theme_clone_and_view(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $user = $this->makeJwtUser(['theme.create', 'theme.show'], $creatorId);
+        $theme = $this->makeTheme('published', $creatorId);
+
+        $this->assertFalse($this->policy->clone($user, $theme));
+
+        $cloner = $this->makeJwtUser(['theme.clone', 'theme.show'], $creatorId);
+        $this->assertTrue($this->policy->clone($cloner, $theme));
+    }
+
     /**
      * @param  list<string>  $permissions
      */
-    private function makeJwtUser(array $permissions): JwtUser
+    private function makeJwtUser(array $permissions, ?string $id = null): JwtUser
     {
+        $userId = $id ?? (string) Str::uuid();
+
         return new JwtUser([
-            'id' => (string) Str::uuid(),
-            'sub' => (string) Str::uuid(),
+            'id' => $userId,
+            'sub' => $userId,
             'permissions' => $permissions,
         ]);
     }
 
-    private function makeTheme(string $status): Theme
+    private function makeTheme(string $status, ?string $createdBy = null): Theme
     {
         $theme = new Theme;
         $theme->forceFill([
             'id' => (string) Str::uuid(),
             'name' => 'Test',
             'status' => $status,
-            'created_by' => (string) Str::uuid(),
+            'created_by' => $createdBy ?? (string) Str::uuid(),
         ]);
 
         return $theme;

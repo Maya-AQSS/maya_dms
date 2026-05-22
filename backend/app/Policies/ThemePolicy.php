@@ -18,6 +18,12 @@ use App\Models\Theme;
  * Selector del wizard de plantilla (paso propiedades), no la sección Themes:
  * - Sin `theme.index` / `theme.show`, con `dms.login`: solo
  *   `GET /themes?status=published`, ver un theme publicado y sus assets (p. ej. profesor).
+ *
+ * Mutaciones:
+ * - `theme.create`: crear themes (jefe de departamento en adelante).
+ * - `theme.update`: editar themes ajenos; el creador puede editar el suyo sin este slug.
+ * - `theme.clone`: clonar (jefe de estudios en adelante) si puede ver el origen.
+ * - `theme.delete`: borrar ajenos (solo admin); el creador siempre puede borrar el suyo.
  */
 class ThemePolicy
 {
@@ -52,35 +58,50 @@ class ThemePolicy
     }
 
     /**
-     * Crear themes: autenticación suficiente. Si se quiere restringir a
-     * roles específicos (editor/admin), añadir comprobación de permiso.
+     * Crear themes: requiere `theme.create`.
      */
     public function create(JwtUser $user): bool
     {
-        return true;
+        return $user->hasPermission('theme.create');
     }
 
     /**
-     * Editar: el creador siempre puede; admins de equipo si team_id presente.
-     * Por ahora: solo creador (MVP). Roles vendrán después.
+     * Editar: el creador siempre puede; el resto necesita `theme.show` (vía {@see view})
+     * y `theme.update`.
      */
     public function update(JwtUser $user, Theme $theme): bool
     {
-        return (string) $user->getAuthIdentifier() === (string) $theme->created_by;
-    }
+        if (! $this->view($user, $theme)) {
+            return false;
+        }
 
-    public function delete(JwtUser $user, Theme $theme): bool
-    {
-        return $this->update($user, $theme);
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $theme->created_by;
+
+        return $isCreator || $user->hasPermission('theme.update');
     }
 
     /**
-     * Cualquier usuario con permiso de crear puede clonar (el clon es nuevo
-     * y queda bajo su propiedad).
+     * Eliminar: el creador siempre; cualquier usuario con `theme.delete` (admin).
+     */
+    public function delete(JwtUser $user, Theme $theme): bool
+    {
+        if (! $this->view($user, $theme)) {
+            return false;
+        }
+
+        if ((string) $user->getAuthIdentifier() === (string) $theme->created_by) {
+            return true;
+        }
+
+        return $user->hasPermission('theme.delete');
+    }
+
+    /**
+     * Clonar: requiere `theme.clone` y poder ver el origen.
      */
     public function clone(JwtUser $user, Theme $theme): bool
     {
-        return $this->create($user);
+        return $user->hasPermission('theme.clone') && $this->view($user, $theme);
     }
 
     /**
