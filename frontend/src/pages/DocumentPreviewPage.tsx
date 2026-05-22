@@ -771,16 +771,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               : 'Descargar PDF'}
         </Button>
       )}
-      {!isValidateMode && canStartNewVersion && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setShowNewVersionConfirm(true)}
-        >
-          Nueva versión
-        </Button>
-      )}
       {!isValidateMode && canClone && (
         <Button
           type="button"
@@ -1415,6 +1405,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           entityType="document"
           entityId={documentId}
           onClose={() => setShowHistory(false)}
+          canStartNewVersion={canStartNewVersion}
+          onNewVersion={() => setShowNewVersionConfirm(true)}
         />
       )}
 
