@@ -98,6 +98,7 @@ function SortableBlockItem({
   };
 
   const isLocked = blockToUiState(block) === 'locked';
+  const ui = blockToUiState(block);
 
   return (
     <div ref={setNodeRef} style={style}>
@@ -106,6 +107,7 @@ function SortableBlockItem({
         variant={itemState}
         locked={isLocked}
         hasReviewComments={hasReviewComments}
+        stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
         onClick={onClick}
         dragHandle={
           <button
