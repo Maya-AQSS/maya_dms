@@ -159,59 +159,6 @@ function CommentItem({
 
   const bodyUnchanged = editBody.trim() === comment.body.trim();
 
-  if (comment.is_deleted) {
-    const deletedAt = comment.deleted_at ? formatTime(comment.deleted_at) : null;
-    return (
-      <div id={`comment-${comment.id}`}>
-        {parentComment && onScrollToComment && (
-          <QuotedReply
-            parent={parentComment}
-            onClick={() => onScrollToComment(parentComment.id)}
-          />
-        )}
-        <button
-          type="button"
-          onClick={() => setConfirmDelete(prev => !prev)}
-          className="w-full flex items-center gap-2 py-1 group/deleted"
-          aria-expanded={confirmDelete}
-        >
-          <span className="flex-1 border-t border-dashed border-text-muted/25 dark:border-text-dark-muted/20" />
-          <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted/60 dark:text-text-dark-muted/50 font-medium italic shrink-0 select-none">
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
-            </svg>
-            Comentario eliminado
-            <svg
-              className={`w-3 h-3 transition-transform duration-200 ${confirmDelete ? 'rotate-180' : ''}`}
-              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-            </svg>
-          </span>
-          <span className="flex-1 border-t border-dashed border-text-muted/25 dark:border-text-dark-muted/20" />
-        </button>
-
-        {confirmDelete && (
-          <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-red-200/50 dark:border-red-900/30 bg-red-50/30 dark:bg-red-950/15 animate-in fade-in slide-in-from-top-1 duration-150">
-            <svg className="w-3.5 h-3.5 text-red-400 dark:text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
-            </svg>
-            <span className="text-xs text-red-400 dark:text-red-500 italic flex-1">
-              {comment.deleted_by_name
-                ? `Eliminado por ${comment.deleted_by_name}`
-                : 'Eliminado'}
-            </span>
-            {deletedAt && (
-              <span className="text-[10px] text-text-muted/60 dark:text-text-dark-muted/50 font-medium shrink-0">
-                {deletedAt}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   const handleStartEdit = () => {
     setEditBody(comment.body);
     setEditError(null);
@@ -429,12 +376,16 @@ export function BlockCommentsCard({
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
+  const [deletedOpen, setDeletedOpen] = useState(false);
 
   const commentById = new Map(allComments.map(c => [c.id, c]));
 
   const sortedComments = [...blockComments].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
+
+  const activeComments = sortedComments.filter(c => !c.is_deleted);
+  const deletedComments = sortedComments.filter(c => c.is_deleted);
 
   const canEditComment = (comment: BlockComment) =>
     !commentingClosed && canEditOwnBlockComment(currentUserId, comment.author_id);
@@ -487,7 +438,7 @@ export function BlockCommentsCard({
 
       {/* Flat message list — oldest first */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-4 pb-4 space-y-5">
-        {sortedComments.length === 0 ? (
+        {activeComments.length === 0 && deletedComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
             <svg className="w-10 h-10 mb-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
@@ -497,7 +448,8 @@ export function BlockCommentsCard({
             </p>
           </div>
         ) : (
-          sortedComments.map((comment) => {
+          <>
+          {activeComments.map((comment) => {
             const parentComment = comment.parent_id
               ? commentById.get(comment.parent_id)
               : undefined;
@@ -516,7 +468,68 @@ export function BlockCommentsCard({
                 onDeleteComment={onDeleteComment}
               />
             );
-          })
+          })}
+
+          {deletedComments.length > 0 && (
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setDeletedOpen(o => !o)}
+                className="w-full flex items-center gap-2 py-1.5 group/deleted-toggle"
+                aria-expanded={deletedOpen}
+              >
+                <span className="flex-1 border-t border-dashed border-text-muted/20 dark:border-text-dark-muted/15" />
+                <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted/50 dark:text-text-dark-muted/40 font-medium shrink-0 select-none">
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                  {deletedComments.length === 1
+                    ? '1 comentario eliminado'
+                    : `${deletedComments.length} comentarios eliminados`}
+                  <svg
+                    className={`w-3 h-3 transition-transform duration-200 ${deletedOpen ? 'rotate-180' : ''}`}
+                    fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </span>
+                <span className="flex-1 border-t border-dashed border-text-muted/20 dark:border-text-dark-muted/15" />
+              </button>
+
+              {deletedOpen && (
+                <div className="mt-1 rounded-xl border border-ui-border/40 dark:border-ui-dark-border/40 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
+                  {deletedComments.map((dc, i) => (
+                    <div
+                      key={dc.id}
+                      className={`flex items-center gap-3 px-3 py-2.5 ${
+                        i < deletedComments.length - 1
+                          ? 'border-b border-ui-border/30 dark:border-ui-dark-border/30'
+                          : ''
+                      } bg-ui-body/20 dark:bg-ui-dark-bg/20`}
+                    >
+                      <svg className="w-3.5 h-3.5 text-red-400/70 dark:text-red-500/60 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                      </svg>
+                      <span className="text-xs text-text-muted dark:text-text-dark-muted flex-1 min-w-0 truncate">
+                        <span className="font-semibold">{dc.author?.name || 'Usuario'}</span>
+                        {dc.deleted_by_name && (
+                          <span className="font-normal opacity-70">
+                            {' · '}eliminado por {dc.deleted_by_name}
+                          </span>
+                        )}
+                      </span>
+                      {dc.deleted_at && (
+                        <span className="text-[10px] text-text-muted/50 dark:text-text-dark-muted/40 font-medium shrink-0">
+                          {formatTime(dc.deleted_at)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          </>
         )}
       </div>
 
