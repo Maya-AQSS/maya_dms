@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Button,
+  Card,
   DataTable,
   PageTitle,
   Pagination,
@@ -489,7 +490,7 @@ export function DocumentsContent() {
         </div>
       )}
 
-      <div className="bg-ui-card dark:bg-ui-dark-card rounded-lg border border-ui-border dark:border-ui-dark-border shadow-card overflow-hidden">
+      <Card className="overflow-hidden">
         {newProgrammingDisabledReason && !showSelectModuleHint && (
           <p className="px-5 py-2 text-xs text-text-muted dark:text-text-dark-muted border-b border-ui-border-l dark:border-ui-dark-border-l">
             {newProgrammingDisabledReason}
@@ -689,7 +690,7 @@ export function DocumentsContent() {
             )}
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

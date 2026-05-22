@@ -42,7 +42,7 @@ export default function PendingValidationsWidget() {
   }
 
   return (
-    <div className="w-full h-full rounded-xl bg-gradient-to-br from-odoo-purple/15 via-odoo-purple/5 to-transparent dark:from-odoo-dark-teal/25 dark:via-odoo-dark-teal/10 dark:to-transparent p-4">
+    <div className="w-full h-full rounded-xl bg-card-tinted-accent p-4">
       <div className="flex items-baseline gap-2">
         <span className="text-xs uppercase tracking-wide font-medium text-text-secondary dark:text-text-dark-secondary">
           {t('dashboard.widgets.pendingValidations')}
@@ -51,7 +51,7 @@ export default function PendingValidationsWidget() {
           type="button"
           onClick={() => emitFilter('all')}
           disabled={loading}
-          className="text-4xl font-bold tabular-nums bg-gradient-to-br from-odoo-purple to-odoo-purple-d dark:from-odoo-dark-teal dark:to-odoo-dark-teal-d bg-clip-text text-transparent leading-none enabled:cursor-pointer disabled:opacity-70"
+          className="text-4xl font-bold tabular-nums text-gradient-primary leading-none enabled:cursor-pointer disabled:opacity-70"
           aria-label={t('dashboard.widgets.showAllPendingAria')}
           title={t('dashboard.widgets.showAllTitle')}
         >

@@ -784,7 +784,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
                       </span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
                       </div>
                     </div>
                   );
@@ -810,7 +810,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
                       </span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
                       </div>
                     </div>
                   );
