@@ -121,7 +121,7 @@ class DocumentController extends Controller
 
         $this->assertOptionalProcessContextMatches((string) $resolved->process_id);
 
-        $isCreator = (string) $document->created_by === $viewerId || (string) $document->owner_id === $viewerId;
+        $isCreator = (string) $resolved->created_by === $viewerId || (string) $resolved->owner_id === $viewerId;
         $isAssignedReviewer = false;
 
         if (! $servePublishedSnapshot && ! $isCreator && in_array($resolved->status, ['draft', 'in_review'], true)) {
@@ -134,8 +134,8 @@ class DocumentController extends Controller
             if (! $isAssignedReviewer) {
                 $servePublishedSnapshot = true;
             }
-        } elseif (! $servePublishedSnapshot && $document->status === 'in_review') {
-            $isAssignedReviewer = $document->reviews()
+        } elseif (! $servePublishedSnapshot && $resolved->status === 'in_review') {
+            $isAssignedReviewer = $resolved->reviews()
                 ->where('reviewer_id', $viewerId)
                 ->exists();
         }
@@ -145,13 +145,13 @@ class DocumentController extends Controller
             if ($latestPublished === null) {
                 abort(404);
             }
-            $document->setRelation('headVersion', $latestPublished);
-            $this->attachCanCloneMeta($document, $request);
-            $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
-            $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
-            $document->loadMissing(['owner']);
-            $this->apiTeamEmbedService->embedOnDocument($document, $viewerId);
-            $blocks = $this->documentService->blocksForDisplay($document);
+            $resolved->setRelation('headVersion', $latestPublished);
+            $this->attachCanCloneMeta($resolved, $request);
+            $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
+            $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
+            $resolved->loadMissing(['owner']);
+            $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
+            $blocks = $this->documentService->blocksForDisplay($resolved);
 
             return response()->json([
                 'data' => array_merge(
@@ -165,10 +165,10 @@ class DocumentController extends Controller
             'has_review_comments',
             $resolved->comments()->exists(),
         );
-        $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
-        $this->attachCanCloneMeta($document, $request);
-        $this->documentService->attachShareMetadataForViewer(collect([$document]), $viewerId);
-        $document->loadMissing(['owner']);
+        $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
+        $this->attachCanCloneMeta($resolved, $request);
+        $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
+        $resolved->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument(
             $resolved,
             $viewerId,
