@@ -36,6 +36,7 @@ class TemplateVersionSummaryResource extends JsonResource
             'published_by' => $publishedBy,
             'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
             'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+            'reviewer_names' => $this->extractReviewerNamesFromSnapshot(),
             'changelog' => $this->changelog,
         ];
     }
@@ -53,6 +54,36 @@ class TemplateVersionSummaryResource extends JsonResource
         $authorId = data_get($snapshot, 'template.created_by');
 
         return is_string($authorId) && $authorId !== '' ? $authorId : null;
+    }
+
+    /** @return list<string> */
+    private function extractReviewerNamesFromSnapshot(): array
+    {
+        $snapshot = $this->snapshot_data;
+        if (is_string($snapshot)) {
+            $decoded = json_decode($snapshot, true);
+            $snapshot = is_array($decoded) ? $decoded : [];
+        }
+        if (! is_array($snapshot)) {
+            return [];
+        }
+        $reviewers = data_get($snapshot, 'reviewers.template_reviewers');
+        if (! is_array($reviewers)) {
+            return [];
+        }
+        $names = [];
+        foreach ($reviewers as $r) {
+            $userId = $r['user_id'] ?? null;
+            if (! is_string($userId) || $userId === '') {
+                continue;
+            }
+            $name = $this->resolveUserNameById($userId);
+            if ($name !== null) {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
     }
 
     private function resolveUserNameById(string $userId): ?string

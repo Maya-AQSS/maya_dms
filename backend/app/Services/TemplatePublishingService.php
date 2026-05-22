@@ -159,6 +159,7 @@ class TemplatePublishingService
             $snapshotPayload = [
                 'template' => [
                     'id' => $template->id,
+                    'created_by' => $template->created_by,
                     'process_id' => $template->process_id,
                     'name' => $template->name,
                     'description' => $template->description,
