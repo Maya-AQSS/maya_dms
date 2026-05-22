@@ -142,7 +142,7 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
         role="dialog"
         aria-modal="true"
         aria-label={t('versionHistory.title')}
-        className="relative w-full max-w-sm h-full bg-ui-card dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border shadow-2xl flex flex-col animate-in slide-in-from-right-4"
+        className="relative w-full max-w-md h-full bg-ui-card dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border shadow-2xl flex flex-col animate-in slide-in-from-right-4"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-ui-border dark:border-ui-dark-border shrink-0 gap-3">
           <div className="min-w-0">
@@ -216,7 +216,7 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
                     <div className="space-y-1.5">
                       <MetaRow
                         icon={<IconPerson />}
-                        label="Autor"
+                        label="Creador"
                         value={row.author_name?.trim() || t('status.unknown')}
                       />
                       <MetaRow
@@ -224,6 +224,13 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
                         label="Publicado por"
                         value={row.published_by_name?.trim() || t('status.unknown')}
                       />
+                      {row.reviewer_names && row.reviewer_names.length > 0 ? (
+                        <MetaRow
+                          icon={<IconPerson />}
+                          label="Validadores"
+                          value={row.reviewer_names.join(', ')}
+                        />
+                      ) : null}
                     </div>
 
                     <div className="mt-2.5 flex justify-end">
@@ -275,7 +282,7 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
                     <div className="space-y-1.5">
                       <MetaRow
                         icon={<IconPerson />}
-                        label="Autor"
+                        label="Creador"
                         value={row.author_name?.trim() || t('status.unknown')}
                       />
                       <MetaRow
@@ -283,6 +290,13 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
                         label="Publicado por"
                         value={row.published_by_name?.trim() || t('status.unknown')}
                       />
+                      {row.reviewer_names && row.reviewer_names.length > 0 ? (
+                        <MetaRow
+                          icon={<IconPerson />}
+                          label="Validadores"
+                          value={row.reviewer_names.join(', ')}
+                        />
+                      ) : null}
                     </div>
 
                     <div className="mt-2.5 flex justify-end">
