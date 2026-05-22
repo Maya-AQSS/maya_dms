@@ -34,9 +34,21 @@ class ThemeApiTest extends TestCase
      * @param  list<string>  $codes
      * @return array<string, string>
      */
-    private function authHeaders(string $sub, array $codes = []): array
+    /**
+     * @param  list<string>  $codes
+     * @return array<string, string>
+     */
+    private function authHeaders(string $sub, array $codes = [], bool $withThemeCatalog = true): array
     {
         auth()->forgetUser();
+
+        if ($withThemeCatalog) {
+            foreach (['theme.index', 'theme.show', 'dms.login'] as $slug) {
+                if (! in_array($slug, $codes, true)) {
+                    $codes[] = $slug;
+                }
+            }
+        }
 
         $this->assignUserPermissions($sub, $codes);
 
@@ -63,6 +75,13 @@ class ThemeApiTest extends TestCase
     public function test_index_requires_authentication(): void
     {
         $this->getJson('/api/v1/themes')->assertUnauthorized();
+    }
+
+    public function test_index_forbidden_without_theme_index(): void
+    {
+        $headers = $this->authHeaders((string) Str::uuid(), ['dms.login'], withThemeCatalog: false);
+
+        $this->getJson('/api/v1/themes', $headers)->assertForbidden();
     }
 
     public function test_index_returns_empty_collection_when_no_themes(): void
