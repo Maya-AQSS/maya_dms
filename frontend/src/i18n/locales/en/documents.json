@@ -1,0 +1,110 @@
+{
+  "newDocument": "New Document",
+  "blockDescription": "Block description",
+  "approveTitle": "Confirm approval",
+  "validateTitle": "Document validation",
+  "wizard": {
+    "searchByName": "Search by name...",
+    "searchVisibility": "Global, personal, team, team name, study or module…",
+    "authorPlaceholder": "Author name...",
+    "datePlaceholder": "Choose start date…",
+    "deadlinePlaceholder": "Any deadline…",
+    "namePlaceholder": "Schedule name",
+    "selectDate": "Select date…",
+    "exitFullscreenAria": "Exit fullscreen",
+    "exitFullscreenTitle": "Exit fullscreen (Esc)",
+    "unfilledBlocksTitle": "Editable blocks not filled",
+    "loadingValidation": "Loading validation data…"
+  },
+  "table": {
+    "rejectedTitle": "This document was rejected in review."
+  },
+  "diff": {
+    "previousBlock": "Previous block",
+    "nextBlock": "Next block",
+    "closePanel": "Close panel",
+    "panelHeader": "⎇ Document changes",
+    "modalTitle": "Changes view",
+    "noChangesInSubmission": "No changes in this submission.",
+    "noChangesVsTemplate": "No changes from the original template.",
+    "sortAscendingTitle": "Show latest first",
+    "sortDescendingTitle": "Show earliest first",
+    "blockLabel": "Block {{n}}: {{title}}",
+    "untitled": "Untitled",
+    "legendRemoved": "Removed",
+    "legendAdded": "Added",
+    "blocksWithChanges_one": "{{count}} block with changes",
+    "blocksWithChanges_other": "{{count}} blocks with changes",
+    "emptyBlock": "(empty block)",
+    "previous": "↑ Previous",
+    "next": "Next ↓",
+    "deletedSuffix": "(deleted)",
+    "originalContent": "─ Original content (template)",
+    "editedContent": "+ Edited content",
+    "states": {
+      "deleted": "Optional block · deleted",
+      "modifiableEdited": "Modifiable block · edited",
+      "editableEdited": "Editable block · edited",
+      "optionalEdited": "Optional block · edited",
+      "edited": "Block · edited"
+    }
+  },
+  "blocks": {
+    "pendingComments": "Pending comments",
+    "requiredBlock": "Required — this block must be filled",
+    "reorderAria": "Reorder block",
+    "newBlockPlaceholder": "New block",
+    "blockNamePlaceholder": "Block name",
+    "closePanelAria": "Close panel",
+    "backToTemplates": "Back to Templates",
+    "undoAria": "Undo",
+    "undoTitle": "Undo (Ctrl+Z)",
+    "redoAria": "Redo",
+    "redoTitle": "Redo (Ctrl+Y)",
+    "versionHistoryAria": "Version history",
+    "describeChangesPlaceholder": "Describe the changes in this version..."
+  },
+  "pages": {
+    "documentsTitle": "Documents",
+    "scheduleTitle": "Teaching schedules"
+  },
+  "history": {
+    "closePanelAria": "Close panel",
+    "panelHeader": "⎇ Block {{n}} · Change history",
+    "sortAscendingTitle": "Show most recent first",
+    "sortDescendingTitle": "Show oldest first",
+    "noChanges": "This block has no recorded changes.",
+    "revision": "Revision {{n}}",
+    "revisions_one": "{{count}} revision",
+    "revisions_other": "{{count}} revisions"
+  },
+  "widgets": {
+    "showAllPendingAria": "Show all pending validations",
+    "showAllTitle": "Show all"
+  },
+  "validators": {
+    "templateTitle": "Template validators",
+    "documentTitle": "Document validators",
+    "addToTemplate": "Add to Template",
+    "addToDocument": "Add to Document",
+    "filterUsersPlaceholder": "Filter users...",
+    "requiredCommentsTitle": "Required comments"
+  },
+  "list": {
+    "titleColumn": "Title",
+    "versionColumn": "Version"
+  },
+  "preview": {
+    "viewBlockChangesTitle": "View this block's changes",
+    "viewBlockHistoryTitle": "View this block's change history",
+    "viewBlockDescriptionTitle": "View block description",
+    "unresolvedCommentsBlocked": "You cannot submit for validation while there are unresolved review comments",
+    "createNewVersionTitle": "Create new version?",
+    "draftAlreadyExistsTitle": "A draft version already exists",
+    "discardNewVersionTitle": "Discard new version?"
+  },
+  "fields": {
+    "module": "Module",
+    "deadline": "Deadline"
+  }
+}

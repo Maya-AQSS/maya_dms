@@ -43,7 +43,7 @@ type Props = {
 };
 
 export function TemplatesTable({ processId }: Props = {}) {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['common', 'templates', 'documents']);
   const navigate = useNavigate();
   const { profile, hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.templateIndex);
@@ -278,7 +278,7 @@ export function TemplatesTable({ processId }: Props = {}) {
             {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title="Esta plantilla tiene bloques con comentarios de revisión pendientes."
+                title={t('templates:pendingReviewTitle')}
               >
                 ⚠ Revisión
               </span>
@@ -393,7 +393,7 @@ export function TemplatesTable({ processId }: Props = {}) {
             <FilterField label="Nombre">
               <TextInput
                 fieldSize="sm"
-                placeholder="Buscar por nombre..."
+                placeholder={t('documents:wizard.searchByName')}
                 value={nameInput}
                 onChange={handleNameChange}
               />
@@ -402,7 +402,7 @@ export function TemplatesTable({ processId }: Props = {}) {
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
+                placeholder={t('templates:table.searchVisibility')}
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />
@@ -425,7 +425,7 @@ export function TemplatesTable({ processId }: Props = {}) {
             <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
-                placeholder="Nombre del autor..."
+                placeholder={t('templates:table.authorPlaceholder')}
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
@@ -452,7 +452,7 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={(d: string | null) =>
                   applyFilters({ delivery_deadline: d ?? undefined, page: 1 })
                 }
-                placeholder="Cualquier plazo…"
+                placeholder={t('templates:table.deadlinePlaceholder')}
                 ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
               />
             </FilterField>

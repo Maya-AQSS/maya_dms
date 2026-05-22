@@ -1,0 +1,59 @@
+{
+  "pageTitle": "Plantilles",
+  "pageSubtitle": "Llistat segons la teua visibilitat a l'API. La visibilitat compartida en alta/edició requereix rols de coordinació.",
+  "newTitle": "Nova plantilla",
+  "editTitle": "Editar plantilla",
+  "modals": {
+    "unnamedBlocks": "Blocs sense títol",
+    "invalidStructure": "Estructura de blocs invàlida",
+    "validatorRequired": "Validador requerit",
+    "sendValidation": "Enviar a validació",
+    "publish": "Publicar plantilla"
+  },
+  "pendingReviewTitle": "Aquesta plantilla té blocs amb comentaris de revisió pendents.",
+  "blockDescriptionTitle": "Descripció del Bloc",
+  "wizard": {
+    "purposePlaceholder": "Propòsit de la plantilla…",
+    "selectDatePlaceholder": "Seleccionar data…",
+    "filterUsersPlaceholder": "Filtrar usuaris…"
+  },
+  "table": {
+    "searchVisibility": "Global, personal, equip, nom d'equip, estudi o mòdul…",
+    "authorPlaceholder": "Nom de l'autor...",
+    "deadlinePlaceholder": "Qualsevol termini…"
+  },
+  "comments": {
+    "closePanelAria": "Tancar panell",
+    "title": "Comentaris de Revisió",
+    "messagePlaceholder": "Escriu un missatge..."
+  },
+  "review": {
+    "blockDescriptionTitle": "Descripció del Bloc",
+    "viewDescription": "Veure descripció",
+    "viewBlockHistory": "Veure historial del bloc",
+    "blockCommentsTitle": "Comentaris del Bloc",
+    "closePanelAria": "Tancar panell"
+  },
+  "placeholders": {
+    "templateName": "Nom de la plantilla…",
+    "changeDescription": "Descripció del canvi…"
+  },
+  "fields": {
+    "visibility": "Visibilitat",
+    "deadline": "Termini d'entrega",
+    "theme": "Theme aplicat",
+    "linking": "Vinculació",
+    "module": "Mòdul"
+  },
+  "selectPlaceholder": "— Seleccionar —",
+  "notEditableInState": "No editable en l'estat actual.",
+  "noStudyTypesAssigned": "No tens tipus d'estudi assignats, contacta amb un administrador",
+  "loadingTeams": "Carregant equips…",
+  "visualIdentity": "Identitat visual",
+  "preview": {
+    "createNewVersionTitle": "Crear nova versió?",
+    "draftAlreadyExistsTitle": "Ja existeix una versió en esborrany",
+    "discardNewVersionTitle": "Descartar nova versió?",
+    "rejectValidationTitle": "Rebutjar validació?"
+  }
+}

@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, useBlocker } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import type { Template } from '../../../types/templates';
@@ -45,6 +46,7 @@ type Props = {
 };
 
 export function TemplateWizard({ template: templateProp, initialTemplate, processId }: Props) {
+  const { t } = useTranslation(['templates', 'common']);
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { profile } = useUserProfile();
@@ -599,7 +601,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             variant="ghost"
             size="xs"
             onClick={() => setPermissionError(null)}
-            aria-label="Cerrar"
+            aria-label={t('common:actions.close')}
             className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
             ✕
@@ -618,7 +620,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
               const { blocks: _b, ...rest } = prev;
               return rest;
             })}
-            aria-label="Cerrar"
+            aria-label={t('common:actions.close')}
             className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
             ✕
@@ -634,7 +636,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
             variant="ghost"
             size="xs"
             onClick={() => setErrors({})}
-            aria-label="Cerrar"
+            aria-label={t('common:actions.close')}
             className="shrink-0 !text-sm leading-none opacity-70 hover:opacity-100"
           >
             ✕
@@ -647,8 +649,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   return (
     <>
       <WizardShell<Step>
-        title={template ? template.name : 'Nueva plantilla'}
-        subtitle={processSubtitle ?? (template ? 'Editar plantilla' : undefined)}
+        title={template ? template.name : t('templates:newTitle')}
+        subtitle={processSubtitle ?? (template ? t('templates:editTitle') : undefined)}
         onBack={handleBackArrow}
         actions={headerActions}
         steps={stepsData}
@@ -718,7 +720,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       {/* Invalid blocks navigation guard */}
       <ConfirmDialog
         open={!!invalidBlocksModal}
-        title="Bloques sin título"
+        title={t('templates:modals.unnamedBlocks')}
         description="Hay bloques sin título. Debes completarlos antes de salir, o puedes descartarlos."
         confirmLabel="Descartar bloques sin título"
         variant="danger"
@@ -737,7 +739,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       {/* Block invariant error modal */}
       <ConfirmDialog
         open={!!blockInvariantModal}
-        title="Estructura de bloques inválida"
+        title={t('templates:modals.invalidStructure')}
         description={blockInvariantModal ?? ''}
         confirmLabel="Entendido"
         variant="danger"
@@ -748,7 +750,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       {/* No validators warning modal */}
       <ConfirmDialog
         open={showNoValidatorsModal}
-        title="Validador requerido"
+        title={t('templates:modals.validatorRequired')}
         description={noValidatorsModalMessage}
         confirmLabel="Entendido"
         onConfirm={() => setShowNoValidatorsModal(false)}
@@ -758,7 +760,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       {/* Validation modal */}
       <ConfirmDialog
         open={showValidationModal}
-        title="Enviar a validación"
+        title={t('templates:modals.sendValidation')}
         icon="✉️"
         description={
           <div className="space-y-4">
@@ -824,7 +826,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       />
       <ConfirmDialog
         open={showPublishModal}
-        title="Publicar plantilla"
+        title={t('templates:modals.publish')}
         description={
           <div className="space-y-2">
             <p className="text-xs text-text-muted">
@@ -836,7 +838,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
                 setPublishChangelog(e.target.value);
                 if (publishModalError) setPublishModalError(null);
               }}
-              placeholder="Describe los cambios de esta versión..."
+              placeholder={t('placeholders.changeDescription')}
               className="w-full min-h-24 rounded-md border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
             />
           </div>

@@ -11,11 +11,11 @@ export function useNavItems(): NavItem[] {
 
   return useMemo<NavItem[]>(() => {
     const items: NavItem[] = [
-      { id: 'dashboard', label: t('dashboard'), icon: HomeIcon, path: '/dashboard' },
+      { id: 'dashboard', label: t('nav.dashboard'), icon: HomeIcon, path: '/dashboard' },
     ];
 
     if (canManageThemesCatalog(hasPermission)) {
-      items.push({ id: 'themes', label: 'Themes', icon: HomeIcon, path: '/themes' });
+      items.push({ id: 'themes', label: t('themes:title'), icon: HomeIcon, path: '/themes' });
     }
 
     return items;

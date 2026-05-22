@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import type { Template, ReviewCycleSnapshot, ReviewCycleBlock } from '../../../types/templates';
@@ -169,6 +170,7 @@ function DiffLines({ lines }: { lines: DiffLine[] }) {
 }
 
 function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: HistoryPanelProps) {
+  const { t } = useTranslation(['templates', 'documents']);
   const [ascending, setAscending] = useState(false);
   const [tab, setTab] = useState<HistoryTab>('content');
 
@@ -206,13 +208,13 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
         <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
-          ⎇ Bloque {blockNumber} · Historial de cambios
+          {t('documents:history.panelHeader', { n: blockNumber })}
         </span>
         <button
           type="button"
           onClick={() => setAscending((v) => !v)}
           className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
-          title={ascending ? 'Mostrar más recientes primero' : 'Mostrar más antiguos primero'}
+          title={ascending ? t('documents:history.sortAscendingTitle') : t('documents:history.sortDescendingTitle')}
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             {ascending
@@ -224,7 +226,7 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
         <button
           type="button"
           onClick={onClose}
-          aria-label="Cerrar panel"
+          aria-label={t('review.closePanelAria')}
           className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
         >
           ✕
@@ -304,6 +306,7 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function TemplateReviewView({ template }: Props) {
+  const { t } = useTranslation('templates');
   const navigate = useNavigate();
   const location = useLocation();
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
@@ -551,7 +554,7 @@ export function TemplateReviewView({ template }: Props) {
                 <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
                   <ViewCardHeader
                     blockSortOrder={(blocks.findIndex((b) => b.id === selectedBlock.id) + 1) || '?'}
-                    title="Descripción del Bloque"
+                    title={t('review.blockDescriptionTitle')}
                     onClose={closeView}
                   />
                   <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>
@@ -607,7 +610,7 @@ export function TemplateReviewView({ template }: Props) {
                             ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
                             : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                         ].join(' ')}
-                        title="Ver descripción"
+                        title={t('review.viewDescription')}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -656,7 +659,7 @@ export function TemplateReviewView({ template }: Props) {
                             ? 'border-odoo-teal text-odoo-teal bg-odoo-teal/10 shadow-sm'
                             : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-teal hover:border-odoo-teal/50 hover:bg-odoo-teal/5',
                         ].join(' ')}
-                        title="Ver historial de cambios del bloque"
+                        title={t('review.viewBlockHistory')}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -679,7 +682,7 @@ export function TemplateReviewView({ template }: Props) {
 
       <ConfirmDialog
         open={showRejectModal}
-        title="¿Rechazar validación?"
+        title={t('preview.rejectValidationTitle')}
         description="La plantilla volverá al estado de borrador y el creador recibirá tus comentarios para corregirla."
         confirmLabel="Rechazar definitivamente"
         variant="danger"

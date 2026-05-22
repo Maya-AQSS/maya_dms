@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FieldLabel, Select } from '@maya/shared-ui-react';
 import { useHierarchy } from '../../hierarchy';
 import { fetchMe, type UserTeam } from '../../../api/users';
@@ -41,6 +42,7 @@ export function TemplateHierarchyFields({
   maxLevel,
   showTeam = true,
 }: Props) {
+  const { t } = useTranslation('templates');
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const [teams, setTeams] = useState<UserTeam[]>([]);
 
@@ -121,7 +123,7 @@ export function TemplateHierarchyFields({
 
       {showModulo && (
         <div>
-          <FieldLabel>Módulo</FieldLabel>
+          <FieldLabel>{t('fields.module')}</FieldLabel>
           <Select
             fieldSize="sm"
             value={values.module_id}

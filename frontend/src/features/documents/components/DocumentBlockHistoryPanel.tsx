@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import type { DocumentReviewCycleSnapshot } from '../../../types/documents';
 
@@ -123,6 +124,7 @@ type Props = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClose }: Props) {
+  const { t, i18n } = useTranslation('documents');
   const [ascending, setAscending] = useState(false);
 
   const entriesChron = useMemo((): CycleEntry[] => {
@@ -154,13 +156,13 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
         <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
-          ⎇ Bloque {blockNumber} · Historial de cambios
+          {t('history.panelHeader', { n: blockNumber })}
         </span>
         <button
           type="button"
           onClick={() => setAscending((v) => !v)}
           className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
-          title={ascending ? 'Mostrar más recientes primero' : 'Mostrar más antiguos primero'}
+          title={ascending ? t('history.sortAscendingTitle') : t('history.sortDescendingTitle')}
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             {ascending ? (
@@ -173,7 +175,7 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
         <button
           type="button"
           onClick={onClose}
-          aria-label="Cerrar panel"
+          aria-label={t('history.closePanelAria')}
           className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
         >
           ✕
@@ -184,17 +186,17 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
       <div className="flex-1 overflow-y-auto divide-y divide-ui-border dark:divide-ui-dark-border">
         {entries.length === 0 ? (
           <p className="py-8 text-center text-xs text-text-muted dark:text-text-dark-muted italic">
-            Este bloque no tiene cambios registrados.
+            {t('history.noChanges')}
           </p>
         ) : (
           entries.map((entry) => (
             <div key={entry.cycle} className="px-4 py-3">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
-                  Revisión {entry.cycle}
+                  {t('history.revision', { n: entry.cycle })}
                 </p>
                 <span className="text-[10px] text-text-muted dark:text-text-dark-muted tabular-nums">
-                  {new Date(entry.submitted_at).toLocaleString('es-ES', {
+                  {new Date(entry.submitted_at).toLocaleString(i18n.language, {
                     day: '2-digit',
                     month: '2-digit',
                     year: 'numeric',
@@ -216,14 +218,14 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
         <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border px-4 py-2 flex items-center gap-3 text-[10px] text-text-muted dark:text-text-dark-muted bg-ui-body/30 dark:bg-ui-dark-bg/30">
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-danger/25 border border-danger/40" />
-            Eliminado
+            {t('diff.legendRemoved')}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-success/25 border border-success/40" />
-            Añadido
+            {t('diff.legendAdded')}
           </span>
           <span className="ml-auto font-semibold">
-            {entries.length} revisión{entries.length !== 1 ? 'es' : ''}
+            {t('history.revisions', { count: entries.length })}
           </span>
         </div>
       )}

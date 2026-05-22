@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BlockNoteEditor } from '@blocknote/core';
 import { FormattingToolbar } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
@@ -102,6 +103,7 @@ function cleanHtmlForPaste(html: string): string {
 }
 
 export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange, onFullscreenChange, uploadFile }: Props) {
+  const { t } = useTranslation('documents');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -444,8 +446,8 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                   <button
                     type="button"
                     onClick={handleUndo}
-                    aria-label="Deshacer"
-                    title="Deshacer (Ctrl+Z)"
+                    aria-label={t('blocks.undoAria')}
+                    title={t('blocks.undoTitle')}
                     className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -455,8 +457,8 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                   <button
                     type="button"
                     onClick={handleRedo}
-                    aria-label="Rehacer"
-                    title="Rehacer (Ctrl+Y)"
+                    aria-label={t('blocks.redoAria')}
+                    title={t('blocks.redoTitle')}
                     className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

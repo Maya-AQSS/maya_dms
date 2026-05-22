@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Template } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
 import { fetchProcesses } from '../../../api/processes';
@@ -22,6 +23,7 @@ interface Props {
  * wizard sin cambiar de ruta.
  */
 export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
+  const { t } = useTranslation('templates');
   const [processLabel, setProcessLabel] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
 
@@ -96,7 +98,7 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
           <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-sm flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
             <ViewCardHeader
               blockSortOrder={(blocks.findIndex(b => b.id === block.id) + 1) || '?'}
-              title="Descripción del Bloque"
+              title={t('review.blockDescriptionTitle')}
               onClose={() => setActiveView(null)}
             />
             <div className="flex-1 overflow-y-auto" style={{ padding: '40px 60px' }}>

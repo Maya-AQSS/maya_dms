@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@maya/shared-ui-react';
 import { ApiHttpError } from '../api/http';
@@ -14,21 +15,22 @@ type Props = {
   onClose: () => void;
 };
 
-function formatWhen(iso: string | null | undefined): string {
+function formatWhen(iso: string | null | undefined, locale: string): string {
   if (!iso) return '—';
   try {
-    return new Date(iso).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+    return new Date(iso).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' });
   } catch {
     return iso;
   }
 }
 
-function fetchErrorMessage(e: unknown): string {
+function fetchErrorMessage(e: unknown, fallback: string): string {
   if (e instanceof ApiHttpError) return e.message || `Error ${e.status}`;
-  return 'No se pudo cargar el historial.';
+  return fallback;
 }
 
 export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Props) {
+  const { t, i18n } = useTranslation('common');
   const navigate = useNavigate();
 
   const enabledTemplate = open && entityType === 'template' && !!entityId;
@@ -43,7 +45,7 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
 
   const activeQuery = entityType === 'template' ? templateQuery : documentQuery;
   const loading = activeQuery.isLoading || activeQuery.isFetching;
-  const error = activeQuery.error ? fetchErrorMessage(activeQuery.error) : null;
+  const error = activeQuery.error ? fetchErrorMessage(activeQuery.error, t('versionHistory.loadFailed')) : null;
 
   const templateRows = useMemo<TemplateVersionSummary[]>(
     () => (templateQuery.data ? [...templateQuery.data].sort((a, b) => b.version_number - a.version_number) : []),
@@ -80,12 +82,12 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="Historial de versiones"
+        aria-label={t('versionHistory.title')}
         className="relative w-full max-w-sm h-full bg-ui-card dark:bg-ui-dark-card border-l border-ui-border dark:border-ui-dark-border shadow-2xl flex flex-col animate-in slide-in-from-right-4"
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-ui-border dark:border-ui-dark-border shrink-0">
           <h2 className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-            Historial de versiones
+            {t('versionHistory.title')}
           </h2>
           <Button type="button" variant="ghost" size="xs" onClick={onClose}>
             ✕
@@ -95,7 +97,7 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
         <div className="flex-1 overflow-y-auto px-4 py-3 min-h-0">
           {loading && (
             <p className="text-sm text-text-muted dark:text-text-dark-muted text-center py-8">
-              Cargando historial…
+              {t('versionHistory.loading')}
             </p>
           )}
           {!loading && error && (
@@ -106,8 +108,8 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
           {!loading && !error && empty && (
             <p className="text-sm text-text-muted dark:text-text-dark-muted text-center py-8 leading-relaxed">
               {entityType === 'template'
-                ? 'No hay versiones publicadas registradas para esta plantilla.'
-                : 'No hay versiones publicadas registradas para este documento.'}
+                ? t('versionHistory.emptyTemplate')
+                : t('versionHistory.emptyDocument')}
             </p>
           )}
           {!loading && !error && entityType === 'template' && templateRows.length > 0 && (
@@ -121,14 +123,14 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
                       navigate(`/templates/${encodeURIComponent(entityId)}?templateVersionId=${encodeURIComponent(row.id)}`);
                       onClose();
                     }}
-                    aria-label={`Ver vista previa de la plantilla en la versión ${row.version_number}`}
+                    aria-label={t('versionHistory.previewTemplateAria', { n: row.version_number })}
                   >
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
                         v{row.version_number}
                       </span>
                       <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
-                        {formatWhen(row.published_at)}
+                        {formatWhen(row.published_at, i18n.language)}
                       </span>
                     </div>
                     {row.changelog ? (
@@ -137,10 +139,10 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
                       </p>
                     ) : null}
                     <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
-                      Publicado por: {row.published_by_name ?? 'Desconocido'}
+                      {t('versionHistory.publishedBy')}: {row.published_by_name ?? t('status.unknown')}
                     </p>
                     <p className="text-xs text-text-muted dark:text-text-dark-muted">
-                      Autor versión: {row.author_name ?? 'Desconocido'}
+                      {t('versionHistory.versionAuthor')}: {row.author_name ?? t('status.unknown')}
                     </p>
                   </button>
                 </li>
@@ -160,24 +162,24 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose }: Pro
                       );
                       onClose();
                     }}
-                    aria-label={`Ver vista previa del documento en la versión ${row.version_number}`}
+                    aria-label={t('versionHistory.previewDocumentAria', { n: row.version_number })}
                   >
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
                         v{row.version_number}
                       </span>
                       <span className="text-xs text-text-muted dark:text-text-dark-muted shrink-0">
-                        {formatWhen(row.created_at)}
+                        {formatWhen(row.created_at, i18n.language)}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
                       {row.trigger_event}
                     </p>
                     <p className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
-                      Publicado por: {row.published_by_name ?? 'Desconocido'}
+                      {t('versionHistory.publishedBy')}: {row.published_by_name ?? t('status.unknown')}
                     </p>
                     <p className="text-xs text-text-muted dark:text-text-dark-muted">
-                      Autor versión: {row.author_name ?? 'Desconocido'}
+                      {t('versionHistory.versionAuthor')}: {row.author_name ?? t('status.unknown')}
                     </p>
                     {(row.notes ?? row.changelog) ? (
                       <p className="mt-1.5 text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap">

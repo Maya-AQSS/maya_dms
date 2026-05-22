@@ -1,0 +1,110 @@
+{
+  "newDocument": "Nuevo Documento",
+  "blockDescription": "Descripción del Bloque",
+  "approveTitle": "Confirmar aprobación",
+  "validateTitle": "Validación de Documento",
+  "wizard": {
+    "searchByName": "Buscar por nombre...",
+    "searchVisibility": "Global, personal, equipo, nombre de equipo, estudio o módulo…",
+    "authorPlaceholder": "Nombre del autor...",
+    "datePlaceholder": "Elegir día inicial…",
+    "deadlinePlaceholder": "Cualquier plazo…",
+    "namePlaceholder": "Nombre de la programación",
+    "selectDate": "Seleccionar fecha…",
+    "exitFullscreenAria": "Salir de pantalla completa",
+    "exitFullscreenTitle": "Salir de pantalla completa (Esc)",
+    "unfilledBlocksTitle": "Bloques editables sin rellenar",
+    "loadingValidation": "Cargando datos de validación…"
+  },
+  "table": {
+    "rejectedTitle": "Este documento fue rechazado en revisión."
+  },
+  "diff": {
+    "previousBlock": "Bloque anterior",
+    "nextBlock": "Bloque siguiente",
+    "closePanel": "Cerrar panel",
+    "panelHeader": "⎇ Cambios del documento",
+    "modalTitle": "Vista de cambios",
+    "noChangesInSubmission": "Sin cambios en este envío.",
+    "noChangesVsTemplate": "No hay cambios respecto a la plantilla original.",
+    "sortAscendingTitle": "Mostrar últimos primero",
+    "sortDescendingTitle": "Mostrar primeros primero",
+    "blockLabel": "Bloque {{n}}: {{title}}",
+    "untitled": "Sin título",
+    "legendRemoved": "Eliminado",
+    "legendAdded": "Añadido",
+    "blocksWithChanges_one": "{{count}} bloque con cambios",
+    "blocksWithChanges_other": "{{count}} bloques con cambios",
+    "emptyBlock": "(bloque sin contenido)",
+    "previous": "↑ Anterior",
+    "next": "Siguiente ↓",
+    "deletedSuffix": "(eliminado)",
+    "originalContent": "─ Contenido original (plantilla)",
+    "editedContent": "+ Contenido editado",
+    "states": {
+      "deleted": "Bloque opcional · eliminado",
+      "modifiableEdited": "Bloque modificable · editado",
+      "editableEdited": "Bloque editable · editado",
+      "optionalEdited": "Bloque opcional · editado",
+      "edited": "Bloque · editado"
+    }
+  },
+  "blocks": {
+    "pendingComments": "Comentarios pendientes",
+    "requiredBlock": "Obligatorio — este bloque debe rellenarse",
+    "reorderAria": "Reordenar bloque",
+    "newBlockPlaceholder": "Nuevo bloque",
+    "blockNamePlaceholder": "Nombre del bloque",
+    "closePanelAria": "Cerrar panel",
+    "backToTemplates": "Volver a Plantillas",
+    "undoAria": "Deshacer",
+    "undoTitle": "Deshacer (Ctrl+Z)",
+    "redoAria": "Rehacer",
+    "redoTitle": "Rehacer (Ctrl+Y)",
+    "versionHistoryAria": "Historial de versiones",
+    "describeChangesPlaceholder": "Describe los cambios de esta versión..."
+  },
+  "pages": {
+    "documentsTitle": "Documentos",
+    "scheduleTitle": "Programaciones Didácticas"
+  },
+  "history": {
+    "closePanelAria": "Cerrar panel",
+    "panelHeader": "⎇ Bloque {{n}} · Historial de cambios",
+    "sortAscendingTitle": "Mostrar más recientes primero",
+    "sortDescendingTitle": "Mostrar más antiguos primero",
+    "noChanges": "Este bloque no tiene cambios registrados.",
+    "revision": "Revisión {{n}}",
+    "revisions_one": "{{count}} revisión",
+    "revisions_other": "{{count}} revisiones"
+  },
+  "widgets": {
+    "showAllPendingAria": "Mostrar todos los pendientes de validar",
+    "showAllTitle": "Mostrar todos"
+  },
+  "validators": {
+    "templateTitle": "Validadores de la plantilla",
+    "documentTitle": "Validadores del documento",
+    "addToTemplate": "Añadir a Plantilla",
+    "addToDocument": "Añadir a Documento",
+    "filterUsersPlaceholder": "Filtrar usuarios...",
+    "requiredCommentsTitle": "Comentarios obligatorios"
+  },
+  "list": {
+    "titleColumn": "Título",
+    "versionColumn": "Versión"
+  },
+  "preview": {
+    "viewBlockChangesTitle": "Ver cambios de este bloque",
+    "viewBlockHistoryTitle": "Ver historial de cambios de este bloque",
+    "viewBlockDescriptionTitle": "Ver descripción del bloque",
+    "unresolvedCommentsBlocked": "No puedes enviar a validar mientras haya comentarios de revisión sin resolver",
+    "createNewVersionTitle": "¿Crear nueva versión?",
+    "draftAlreadyExistsTitle": "Ya existe una versión en borrador",
+    "discardNewVersionTitle": "¿Descartar nueva versión?"
+  },
+  "fields": {
+    "module": "Módulo",
+    "deadline": "Fecha límite"
+  }
+}

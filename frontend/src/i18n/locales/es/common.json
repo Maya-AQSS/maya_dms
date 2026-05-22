@@ -1,39 +1,16 @@
 {
-  "actions": {
-    "save": "Guardar",
-    "cancel": "Cancelar",
-    "create": "Crear",
-    "edit": "Editar",
-    "delete": "Eliminar",
-    "close": "Cerrar",
-    "confirm": "Confirmar",
-    "back": "Volver",
-    "search": "Buscar",
-    "upload": "Subir",
-    "download": "Descargar",
-    "preview": "Previsualizar",
-    "duplicate": "Duplicar"
-  },
-  "status": {
-    "loading": "Cargando…",
-    "saving": "Guardando…",
-    "empty": "Sin resultados",
-    "error": "Se produjo un error"
-  },
-  "nav": {
-    "dashboard": "Panel",
-    "documents": "Documentos",
-    "templates": "Plantillas",
-    "trash": "Papelera"
-  },
   "dashboard": {
     "noWidgets": "No hay widgets en el panel.",
     "noIndexPermission": "Tienes acceso a DocuCEED (dms.login) pero no permiso para ver el listado del panel (dms.index). Pide dms.index a un administrador.",
-    "reset": "Restablecer",
     "noShowPermission": "Sin permiso para abrir desde el panel (dms.show).",
     "widgets": {
       "recentDocuments": "Documentos recientes",
-      "pendingValidations": "Pendientes de validar"
+      "pendingValidations": "Pendientes de validar",
+      "showAllPendingAria": "Mostrar todos los pendientes de validar",
+      "showAllTitle": "Mostrar todos",
+      "dataUnavailable": "Datos no disponibles",
+      "templatesLabel": "Plantillas",
+      "documentsLabel": "Documentos"
     }
   },
   "documents": {
@@ -42,8 +19,7 @@
     "untitled": "Sin título",
     "lastModified": "Última modificación",
     "createdBy": "Creado por",
-    "confirmDelete": "¿Eliminar este documento?",
-    "deleteMessage": "Esta acción no se puede deshacer."
+    "confirmDelete": "¿Eliminar este documento?"
   },
   "templates": {
     "title": "Plantillas",
@@ -56,14 +32,18 @@
     "noIndexPermission": "No tienes permiso para ver el listado de procesos (process.index).",
     "noShowPermission": "No tienes permiso para abrir el detalle del proceso (process.show)."
   },
-  "auth": {
-    "logout": "Cerrar sesión",
-    "profile": "Perfil"
+  "versionHistory": {
+    "title": "Historial de versiones",
+    "loadFailed": "No se pudo cargar el historial.",
+    "loading": "Cargando historial…",
+    "emptyTemplate": "No hay versiones publicadas registradas para esta plantilla.",
+    "emptyDocument": "No hay versiones publicadas registradas para este documento.",
+    "previewTemplateAria": "Ver vista previa de la plantilla en la versión {{n}}",
+    "previewDocumentAria": "Ver vista previa del documento en la versión {{n}}",
+    "publishedBy": "Publicado por",
+    "versionAuthor": "Autor versión"
   },
-  "userMenu": {
-    "darkMode": "Modo oscuro",
-    "lightMode": "Modo claro",
-    "profile": "Perfil",
-    "logout": "Cerrar sesión"
+  "filters": {
+    "allModules": "Todos los módulos"
   }
 }

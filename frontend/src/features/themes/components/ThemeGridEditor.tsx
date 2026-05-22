@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
+import { useTranslation } from 'react-i18next';
 import { Button, FieldLabel, Select, TextInput } from '@maya/shared-ui-react';
 import { themeAssetUrl } from '../../../api/themes';
 import type { Theme, ThemeBlockType, ThemeLayoutRegion } from '../../../types/themes';
@@ -80,6 +81,7 @@ function regionsToLayout(regions: ThemeLayoutRegion[]): Layout[] {
 }
 
 export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridEditorProps) {
+  const { t } = useTranslation(['themes', 'common']);
   // Sólo trabajamos sobre regions del nuevo modelo (con `grid`). El resto
   // (regions legacy de Puck) se mantienen aparte y se reescriben tal cual al
   // guardar — no se pierden, simplemente no son editables visualmente aquí.
@@ -292,7 +294,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
                     <div className="theme-grid-block-controls">
                       <button
                         type="button"
-                        title="Capa arriba"
+                        title={t('themes:layerUp')}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleZUp(r.id);
@@ -302,7 +304,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
                       </button>
                       <button
                         type="button"
-                        title="Capa abajo"
+                        title={t('themes:layerDown')}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleZDown(r.id);
@@ -312,7 +314,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
                       </button>
                       <button
                         type="button"
-                        title="Eliminar"
+                        title={t('common:actions.delete')}
                         onClick={(e) => {
                           e.stopPropagation();
                           handleRemove(r.id);
@@ -413,13 +415,14 @@ function Toolbar({ onAddBlock, saving, dirty, error }: ToolbarProps) {
 /* ─── Preview de cada bloque dentro de la rejilla ─────────────────────── */
 
 function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: Theme }) {
+  const { t } = useTranslation('themes');
   const p = region.props ?? {};
   switch (region.type) {
     case 'content_slot':
       return (
         <div className="theme-grid-slot theme-grid-slot--content">
           <span>{(p.label as string) ?? 'Contenido del documento'}</span>
-          <small>Aquí se renderizan los bloques del documento al generar el PDF</small>
+          <small>{t('editor.blocksPlaceholder')}</small>
         </div>
       );
     case 'text':
@@ -474,7 +477,7 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
           className="theme-grid-slot theme-grid-slot--meta"
           style={{ textAlign: ((p.align as string) ?? 'right') as React.CSSProperties['textAlign'] }}
         >
-          {(p.format as string) === 'page-of-pages' ? 'Página N de M' : 'Página N'}
+          {(p.format as string) === 'page-of-pages' ? t('editor.pageNumberOfTotal') : t('editor.pageNumber')}
         </div>
       );
     case 'date':
@@ -511,6 +514,7 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
 /* ─── Inspector lateral ───────────────────────────────────────────────── */
 
 function EmptyInspector() {
+  const { t } = useTranslation('themes');
   return (
     <div className="space-y-3 text-sm text-text-muted">
       <h3 className="text-base font-semibold text-text-primary dark:text-text-dark-primary">
@@ -518,7 +522,7 @@ function EmptyInspector() {
       </h3>
       <p>
         Selecciona un bloque del lienzo para editar sus propiedades, o añade uno nuevo
-        desde el botón <strong>+ Añadir bloque</strong>.
+        desde el botón <strong>{t('editor.addBlock')}</strong>.
       </p>
       <ul className="list-disc space-y-1 pl-4">
         <li>Arrastra cualquier bloque para moverlo.</li>
@@ -537,6 +541,7 @@ interface BlockInspectorProps {
 }
 
 function BlockInspector({ region, onUpdateProps, onUpdateGrid }: BlockInspectorProps) {
+  const { t } = useTranslation('themes');
   const p = region.props ?? {};
   const grid = region.grid;
 
@@ -568,7 +573,7 @@ function BlockInspector({ region, onUpdateProps, onUpdateGrid }: BlockInspectorP
         <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">
           Propiedades
         </h4>
-        {renderTypeFields(region.type, p, onUpdateProps)}
+        {renderTypeFields(region.type, p, onUpdateProps, t)}
       </section>
     </div>
   );
@@ -578,6 +583,7 @@ function renderTypeFields(
   type: ThemeBlockType,
   p: Record<string, unknown>,
   onChange: (patch: Record<string, unknown>) => void,
+  t: (key: string) => string,
 ): React.ReactNode {
   switch (type) {
     case 'text':
@@ -651,8 +657,8 @@ function renderTypeFields(
               value={(p.format as string) ?? 'page-of-pages'}
               onChange={(e) => onChange({ format: e.target.value })}
             >
-              <option value="page">Página N</option>
-              <option value="page-of-pages">Página N de M</option>
+              <option value="page">{t('editor.pageNumber')}</option>
+              <option value="page-of-pages">{t('editor.pageNumberOfTotal')}</option>
             </Select>
           </div>
           <AlignField value={(p.align as string) ?? 'right'} onChange={(v) => onChange({ align: v })} />
@@ -759,9 +765,10 @@ interface AlignFieldProps {
 }
 
 function AlignField({ value, onChange }: AlignFieldProps) {
+  const { t } = useTranslation('themes');
   return (
     <div>
-      <FieldLabel htmlFor="blk-align">Alineación</FieldLabel>
+      <FieldLabel htmlFor="blk-align">{t('editor.alignment')}</FieldLabel>
       <Select id="blk-align" value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="left">Izquierda</option>
         <option value="center">Centro</option>

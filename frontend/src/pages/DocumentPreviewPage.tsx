@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
@@ -124,6 +125,7 @@ type Props = {
 };
 
 export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
+  const { t } = useTranslation('documents');
   const { documentId } = useParams<{ documentId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -724,7 +726,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       {!isValidateMode && !isHistoricalSnapshot && isDraft && isOwner && (
         detail.has_review_comments ? (
           <span
-            title="No puedes enviar a validar mientras haya comentarios de revisión sin resolver"
+            title={t('preview.unresolvedCommentsBlocked')}
             className="inline-flex"
           >
             <Button
@@ -879,7 +881,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     return (
       <>
         <PaperPreviewLayout
-          title="Validación de Documento"
+          title={t('validateTitle')}
           onBack={handleBack}
           backLabel="Volver"
           metaInfo={
@@ -973,7 +975,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                       <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
                         <ViewCardHeader
                           blockSortOrder={(validateBlocks.indexOf(validateSelectedBlock) + 1) || '?'}
-                          title="Descripción del Bloque"
+                          title={t('blockDescription')}
                           onClose={() => setValidateActiveView(null)}
                           headerRef={validateViewHeaderRef}
                         />
@@ -1086,7 +1088,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 aria-label={`Ver cambios del bloque ${block.sort_order}`}
                                 onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setHistoryBlockId(null); setDiffBlockId(prev => prev === blockId ? null : blockId); }}
                                 className={[btnBase, diffBlockId === blockId ? btnActive : btnIdle].join(' ')}
-                                title="Ver cambios de este bloque"
+                                title={t('preview.viewBlockChangesTitle')}
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -1101,7 +1103,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 aria-label={`Ver historial de cambios del bloque ${block.sort_order}`}
                                 onClick={(e) => { e.stopPropagation(); setValidateActiveView(null); setDiffBlockId(null); setHistoryBlockId(prev => prev === blockId ? null : blockId); }}
                                 className={[btnBase, historyBlockId === blockId ? btnActive : btnIdle].join(' ')}
-                                title="Ver historial de cambios de este bloque"
+                                title={t('preview.viewBlockHistoryTitle')}
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />
@@ -1119,7 +1121,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                   'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                                   infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
                                 ].join(' ')}
-                                title="Ver descripción del bloque"
+                                title={t('preview.viewBlockDescriptionTitle')}
                               >
                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                   <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1166,7 +1168,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
         <ConfirmDialog
           open={validateConfirm === 'approve'}
-          title="Confirmar aprobación"
+          title={t('approveTitle')}
           description="Se registrará tu aprobación. Si eres el último validador pendiente, el documento pasará a publicado."
           confirmLabel="Aprobar"
           error={validationModalError}
@@ -1251,7 +1253,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
               <ViewCardHeader
                 blockSortOrder={((detail?.blocks?.indexOf(block) ?? -1) + 1) || '?'}
-                title="Descripción del Bloque"
+                title={t('blockDescription')}
                 onClose={() => setSelectedReviewView(null)}
                 headerRef={pageHeaderRef}
               />
@@ -1343,7 +1345,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                                 diffBlockId === block.template_block_id ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
                               ].join(' ')}
-                              title="Ver cambios de este bloque"
+                              title={t('preview.viewBlockChangesTitle')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -1359,7 +1361,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                                 infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
                               ].join(' ')}
-                              title="Ver descripción del bloque"
+                              title={t('preview.viewBlockDescriptionTitle')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1431,7 +1433,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
       <ConfirmDialog
         open={showNewVersionConfirm}
-        title="¿Crear nueva versión?"
+        title={t('preview.createNewVersionTitle')}
         description="Se creará un nuevo borrador editable a partir del documento publicado actual. Podrás modificarlo y volver a enviarlo a validar."
         confirmLabel="Crear nueva versión"
         cancelLabel="Cancelar"
@@ -1444,7 +1446,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       <ConfirmDialog
         open={draftBlockedBy !== null}
         variant="teal"
-        title="Ya existe una versión en borrador"
+        title={t('preview.draftAlreadyExistsTitle')}
         icon="🔒"
         description={draftBlockedBy ?? ''}
         confirmLabel="Entendido"
@@ -1455,7 +1457,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       <ConfirmDialog
         open={showDiscardVersionModal}
         variant="danger"
-        title="¿Descartar nueva versión?"
+        title={t('preview.discardNewVersionTitle')}
         description={
           <div className="space-y-2 text-left">
             <p className="text-sm text-text-secondary dark:text-text-dark-secondary">

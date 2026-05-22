@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   fetchTemplate,
@@ -80,6 +81,7 @@ function mapSnapshotToTemplateBlocks(templateId: string, snapshot: import('../ap
 }
 
 export function TemplatePreviewPage() {
+  const { t } = useTranslation('templates');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -606,7 +608,7 @@ export function TemplatePreviewPage() {
             <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
               <ViewCardHeader
                 blockSortOrder={(blocks.findIndex((b) => b.id === block.id) + 1) || '?'}
-                title="Descripción del Bloque"
+                title={t('review.blockDescriptionTitle')}
                 onClose={() => setActiveView(null)}
                 headerRef={commentCardHeaderRef}
               />
@@ -682,7 +684,7 @@ export function TemplatePreviewPage() {
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                                 infoActive ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm' : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5'
                               ].join(' ')}
-                              title="Ver descripción"
+                              title={t('review.viewDescription')}
                             >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -741,7 +743,7 @@ export function TemplatePreviewPage() {
 
       <ConfirmDialog
         open={showNewVersionConfirm}
-        title="¿Crear nueva versión?"
+        title={t('preview.createNewVersionTitle')}
         description="Se creará un nuevo borrador editable a partir de la plantilla publicada actual. Podrás modificarla y volver a enviarla a validar."
         confirmLabel="Crear nueva versión"
         cancelLabel="Cancelar"
@@ -754,7 +756,7 @@ export function TemplatePreviewPage() {
       <ConfirmDialog
         open={draftBlockedBy !== null}
         variant="teal"
-        title="Ya existe una versión en borrador"
+        title={t('preview.draftAlreadyExistsTitle')}
         icon="🔒"
         description={draftBlockedBy ?? ''}
         confirmLabel="Entendido"
@@ -777,7 +779,7 @@ export function TemplatePreviewPage() {
       <ConfirmDialog
         open={showDiscardVersionModal}
         variant="danger"
-        title="¿Descartar nueva versión?"
+        title={t('preview.discardNewVersionTitle')}
         description="Se descartarán los cambios en borrador/en revisión y se restaurará la última versión publicada de la plantilla."
         confirmLabel="Descartar versión"
         cancelLabel="Cancelar"

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   DndContext,
   closestCenter,
@@ -283,6 +284,7 @@ function UserAddPanel({
   assignDisabled?: boolean;
   onAdd: (user: User) => void;
 }) {
+  const { t } = useTranslation('documents');
   const searchEnabled = canSearchUsers && !assignDisabled;
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -300,7 +302,7 @@ function UserAddPanel({
             type="search"
             fieldSize="comfortable"
             disabled={!searchEnabled}
-            placeholder="Filtrar usuarios..."
+            placeholder={t('validators.filterUsersPlaceholder')}
             value={searchQuery}
             onChange={(e) => onSearchQueryChange(e.target.value)}
             className="pl-9"
@@ -377,6 +379,7 @@ export function WizardStep3Users({
   documentValidationType,
   onDocumentValidationTypeChange,
 }: Props) {
+  const { t } = useTranslation('documents');
   const { hasPermission } = useUserProfile();
   const canSearchUsers = hasPermission(DMS_PERMISSIONS.templateShow);
   const isPersonal = visibilityLevel === 'personal';
@@ -462,7 +465,7 @@ export function WizardStep3Users({
       {/* Columna Izquierda — 30%: Dos secciones de validadores */}
       <div className="md:w-[30%] min-w-0 shrink-0 flex flex-col border-r border-ui-border dark:border-ui-dark-border overflow-hidden bg-white dark:bg-ui-dark-card">
         <ValidatorSection
-          title="Validadores de la plantilla"
+          title={t('validators.templateTitle')}
           validators={validators}
           onValidatorsChange={onValidatorsChange}
           validationType={validationType}
@@ -470,7 +473,7 @@ export function WizardStep3Users({
           readOnly={!canAssignTemplateReviewers}
         />
         <ValidatorSection
-          title="Validadores del documento"
+          title={t('validators.documentTitle')}
           validators={documentValidators}
           onValidatorsChange={onDocumentValidatorsChange}
           validationType={documentValidationType}
@@ -481,7 +484,7 @@ export function WizardStep3Users({
       {/* Columna Derecha — 70%: Dos paneles de búsqueda independientes */}
       <div className="flex-1 min-w-0 flex flex-col overflow-hidden divide-y divide-ui-border dark:divide-ui-dark-border bg-ui-body/30 dark:bg-ui-dark-bg">
         <UserAddPanel
-          title="Añadir a Plantilla"
+          title={t('validators.addToTemplate')}
           searchQuery={searchQueryTemplate}
           onSearchQueryChange={setSearchQueryTemplate}
           filteredUsers={filteredTemplateUsers}
@@ -492,7 +495,7 @@ export function WizardStep3Users({
           onAdd={handleAddToTemplate}
         />
         <UserAddPanel
-          title="Añadir a Documento"
+          title={t('validators.addToDocument')}
           searchQuery={searchQueryDocument}
           onSearchQueryChange={setSearchQueryDocument}
           filteredUsers={filteredDocumentUsers}

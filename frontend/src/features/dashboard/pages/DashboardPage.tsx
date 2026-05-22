@@ -123,7 +123,7 @@ export function DashboardPage() {
               labels={{
                 save: t('actions.save'),
                 cancel: t('actions.cancel'),
-                reset: t('dashboard.reset', { defaultValue: 'Restablecer' }),
+                reset: t('actions.reset', { defaultValue: 'Restablecer' }),
                 addWidget: t('dashboard.addWidget', { defaultValue: 'Añadir widget' }),
               }}
             />

@@ -1,4 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { computeChangedBlocks } from './DocumentDiffModal';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import type { DocumentDisplayBlock } from '../../../types/documents';
@@ -87,10 +88,11 @@ function computeLineDiff(original: string[], modified: string[]): DiffLine[] {
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function DiffLines({ lines }: { lines: DiffLine[] }) {
+  const { t } = useTranslation('documents');
   if (lines.length === 0) {
     return (
       <p className="px-2 py-1 text-text-muted italic text-[11px]">
-        Sin cambios en este envío.
+        {t('diff.noChangesInSubmission')}
       </p>
     );
   }
@@ -115,12 +117,15 @@ function DiffLines({ lines }: { lines: DiffLine[] }) {
   );
 }
 
-function blockStateLabel(block: DocumentDisplayBlock): string {
-  if (block.is_deleted) return 'Bloque opcional · eliminado';
-  if (block.block_state === 'modifiable') return 'Bloque modificable · editado';
-  if (block.block_state === 'editable') return 'Bloque editable · editado';
-  if (block.block_state === 'optional') return 'Bloque opcional · editado';
-  return 'Bloque · editado';
+function blockStateLabel(
+  block: DocumentDisplayBlock,
+  t: (key: string) => string,
+): string {
+  if (block.is_deleted) return t('diff.states.deleted');
+  if (block.block_state === 'modifiable') return t('diff.states.modifiableEdited');
+  if (block.block_state === 'editable') return t('diff.states.editableEdited');
+  if (block.block_state === 'optional') return t('diff.states.optionalEdited');
+  return t('diff.states.edited');
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -128,6 +133,7 @@ function blockStateLabel(block: DocumentDisplayBlock): string {
 type Props = { blocks: DocumentDisplayBlock[]; onClose: () => void };
 
 export function DocumentDiffPanel({ blocks, onClose }: Props) {
+  const { t } = useTranslation('documents');
   const [ascending, setAscending] = useState(true);
   const [focusedIdx, setFocusedIdx] = useState(0);
   const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -141,13 +147,13 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
           const lines = extractTextLines(b.default_content);
           return lines.length > 0
             ? lines.map(text => ({ type: 'removed' as const, text }))
-            : [{ type: 'removed' as const, text: '(bloque sin contenido)' }];
+            : [{ type: 'removed' as const, text: t('diff.emptyBlock') }];
         }
         const original = extractTextLines(b.default_content);
         const modified = extractTextLines(b.content);
         return computeLineDiff(original, modified).filter(l => l.type !== 'unchanged');
       }),
-    [changedBlocks],
+    [changedBlocks, t],
   );
 
   const pairsChron = useMemo(
@@ -182,13 +188,13 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
       {/* Header */}
       <div className="flex items-center shrink-0 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card px-4 py-3 gap-2">
         <span className="text-[10px] font-black uppercase tracking-[0.15em] text-text-primary dark:text-text-dark-primary flex-1">
-          ⎇ Cambios del documento
+          {t('diff.panelHeader')}
         </span>
         <button
           type="button"
           onClick={() => setAscending((v) => !v)}
           className="flex items-center gap-1 text-[10px] font-black uppercase tracking-widest text-text-muted hover:text-odoo-teal transition-colors cursor-pointer"
-          title={ascending ? 'Mostrar últimos primero' : 'Mostrar primeros primero'}
+          title={ascending ? t('diff.sortAscendingTitle') : t('diff.sortDescendingTitle')}
         >
           <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             {ascending
@@ -200,7 +206,7 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="Cerrar panel"
+          aria-label={t('diff.closePanel')}
           className="w-7 h-7 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-colors text-sm shrink-0"
         >
           ✕
@@ -211,7 +217,7 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
       <div className="flex-1 overflow-y-auto divide-y divide-ui-border dark:divide-ui-dark-border">
         {total === 0 ? (
           <p className="py-8 text-center text-xs text-text-muted dark:text-text-dark-muted italic">
-            No hay cambios respecto a la plantilla original.
+            {t('diff.noChangesVsTemplate')}
           </p>
         ) : (
           pairs.map(({ block, lines, blockNumber }, idx) => {
@@ -229,10 +235,10 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
               >
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary">
-                    Bloque {blockNumber}: {block.title ?? 'Sin título'}
+                    {t('diff.blockLabel', { n: blockNumber, title: block.title ?? t('diff.untitled') })}
                   </p>
                   <span className="text-[10px] text-text-muted dark:text-text-dark-muted uppercase tracking-wider">
-                    {blockStateLabel(block)}
+                    {blockStateLabel(block, t)}
                   </span>
                 </div>
                 <div className="rounded overflow-hidden border border-ui-border dark:border-ui-dark-border text-[11px] font-mono">
@@ -249,14 +255,14 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
         <div className="shrink-0 border-t border-ui-border dark:border-ui-dark-border px-4 py-2 flex items-center gap-3 text-[10px] text-text-muted dark:text-text-dark-muted bg-ui-body/30 dark:bg-ui-dark-bg/30">
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-danger/25 border border-danger/40" />
-            Eliminado
+            {t('diff.legendRemoved')}
           </span>
           <span className="flex items-center gap-1.5">
             <span className="inline-block w-3 h-3 rounded-sm bg-success/25 border border-success/40" />
-            Añadido
+            {t('diff.legendAdded')}
           </span>
           <span className="ml-auto font-semibold">
-            {total} bloque{total !== 1 ? 's' : ''} con cambios
+            {t('diff.blocksWithChanges', { count: total })}
           </span>
         </div>
       )}

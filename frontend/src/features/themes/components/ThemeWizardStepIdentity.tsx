@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { FieldLabel, Select, TextInput } from '@maya/shared-ui-react';
 import { useThemeFonts } from '../hooks/useThemeFonts';
 import { ThemeAssetsSection } from './ThemeAssetsSection';
@@ -27,18 +28,8 @@ interface ThemeWizardStepIdentityProps {
   onAssetsUploaded?: (theme: Theme) => void;
 }
 
-const LANG_OPTIONS = [
-  { value: 'es', label: 'Español' },
-  { value: 'ca', label: 'Catalán/Valenciano' },
-  { value: 'en', label: 'Inglés' },
-  { value: 'fr', label: 'Francés' },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Borrador' },
-  { value: 'published', label: 'Publicado' },
-  { value: 'archived', label: 'Archivado' },
-];
+const LANG_OPTION_KEYS = ['es', 'ca', 'en', 'fr'] as const;
+const STATUS_OPTION_KEYS = ['draft', 'published', 'archived'] as const;
 
 /**
  * Paso 1 del wizard: información estática (general, paleta, tipografía,
@@ -54,6 +45,7 @@ export function ThemeWizardStepIdentity({
   theme,
   onAssetsUploaded,
 }: ThemeWizardStepIdentityProps) {
+  const { t } = useTranslation('themes');
   const { catalog: fonts } = useThemeFonts();
 
   const set = (patch: Partial<ThemeIdentityValue>) => onChange({ ...value, ...patch });
@@ -68,11 +60,11 @@ export function ThemeWizardStepIdentity({
     <div className="flex-1 overflow-y-auto px-6 py-4">
       <div className="mx-auto max-w-4xl space-y-8 pb-8">
         <section className="space-y-3">
-          <h2 className="text-base font-semibold">Información general</h2>
+          <h2 className="text-base font-semibold">{t('identity.sections.general')}</h2>
 
           <div>
             <FieldLabel required htmlFor="theme-name">
-              Nombre
+              {t('identity.fields.name')}
             </FieldLabel>
             <TextInput
               id="theme-name"
@@ -80,24 +72,24 @@ export function ThemeWizardStepIdentity({
               onChange={(e) => set({ name: e.target.value })}
               required
               maxLength={255}
-              placeholder="Ej.: Tema corporativo CEEDCV"
+              placeholder={t('identity.fields.namePlaceholder')}
             />
           </div>
 
           <div>
-            <FieldLabel htmlFor="theme-description">Descripción</FieldLabel>
+            <FieldLabel htmlFor="theme-description">{t('identity.fields.description')}</FieldLabel>
             <TextInput
               id="theme-description"
               value={value.description}
               onChange={(e) => set({ description: e.target.value })}
               maxLength={2000}
-              placeholder="Para qué tipo de documentos usar este theme"
+              placeholder={t('identity.fields.descriptionPlaceholder')}
             />
           </div>
 
           {showStatus && (
             <div>
-              <FieldLabel htmlFor="theme-status">Estado</FieldLabel>
+              <FieldLabel htmlFor="theme-status">{t('identity.fields.status')}</FieldLabel>
               <Select
                 id="theme-status"
                 value={value.status ?? 'draft'}
@@ -105,9 +97,9 @@ export function ThemeWizardStepIdentity({
                   set({ status: e.target.value as 'draft' | 'published' | 'archived' })
                 }
               >
-                {STATUS_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
+                {STATUS_OPTION_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {t(`identity.statusOptions.${key}`)}
                   </option>
                 ))}
               </Select>
@@ -116,21 +108,21 @@ export function ThemeWizardStepIdentity({
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-semibold">Paleta de colores</h2>
+          <h2 className="text-base font-semibold">{t('identity.sections.palette')}</h2>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-            <ColorField label="Primario" value={value.palette.primary} onChange={(c) => setPalette({ primary: c })} />
-            <ColorField label="Secundario" value={value.palette.secondary} onChange={(c) => setPalette({ secondary: c })} />
-            <ColorField label="Acento" value={value.palette.accent ?? '#f59e0b'} onChange={(c) => setPalette({ accent: c })} />
-            <ColorField label="Texto" value={value.palette.text} onChange={(c) => setPalette({ text: c })} />
-            <ColorField label="Fondo" value={value.palette.background} onChange={(c) => setPalette({ background: c })} />
+            <ColorField label={t('identity.colors.primary')} value={value.palette.primary} onChange={(c) => setPalette({ primary: c })} />
+            <ColorField label={t('identity.colors.secondary')} value={value.palette.secondary} onChange={(c) => setPalette({ secondary: c })} />
+            <ColorField label={t('identity.colors.accent')} value={value.palette.accent ?? '#f59e0b'} onChange={(c) => setPalette({ accent: c })} />
+            <ColorField label={t('identity.colors.text')} value={value.palette.text} onChange={(c) => setPalette({ text: c })} />
+            <ColorField label={t('identity.colors.background')} value={value.palette.background} onChange={(c) => setPalette({ background: c })} />
           </div>
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-semibold">Tipografía</h2>
+          <h2 className="text-base font-semibold">{t('identity.sections.typography')}</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <FieldLabel htmlFor="theme-heading-font">Fuente de encabezados</FieldLabel>
+              <FieldLabel htmlFor="theme-heading-font">{t('identity.fields.headingFont')}</FieldLabel>
               <Select
                 id="theme-heading-font"
                 value={value.typography.heading_font}
@@ -140,7 +132,7 @@ export function ThemeWizardStepIdentity({
               </Select>
             </div>
             <div>
-              <FieldLabel htmlFor="theme-body-font">Fuente de cuerpo</FieldLabel>
+              <FieldLabel htmlFor="theme-body-font">{t('identity.fields.bodyFont')}</FieldLabel>
               <Select
                 id="theme-body-font"
                 value={value.typography.body_font}
@@ -150,7 +142,7 @@ export function ThemeWizardStepIdentity({
               </Select>
             </div>
             <div>
-              <FieldLabel htmlFor="theme-base-size">Tamaño base (pt)</FieldLabel>
+              <FieldLabel htmlFor="theme-base-size">{t('identity.fields.baseSize')}</FieldLabel>
               <TextInput
                 id="theme-base-size"
                 type="number"
@@ -163,7 +155,7 @@ export function ThemeWizardStepIdentity({
               />
             </div>
             <div>
-              <FieldLabel htmlFor="theme-line-height">Altura de línea</FieldLabel>
+              <FieldLabel htmlFor="theme-line-height">{t('identity.fields.lineHeight')}</FieldLabel>
               <TextInput
                 id="theme-line-height"
                 type="number"
@@ -180,24 +172,24 @@ export function ThemeWizardStepIdentity({
         </section>
 
         <section className="space-y-3">
-          <h2 className="text-base font-semibold">Accesibilidad (PDF/UA)</h2>
+          <h2 className="text-base font-semibold">{t('identity.sections.accessibility')}</h2>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <FieldLabel htmlFor="theme-language">Idioma</FieldLabel>
+              <FieldLabel htmlFor="theme-language">{t('identity.fields.language')}</FieldLabel>
               <Select
                 id="theme-language"
                 value={value.accessibility.language}
                 onChange={(e) => setAccessibility({ language: e.target.value })}
               >
-                {LANG_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
+                {LANG_OPTION_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {t(`identity.languageOptions.${key}`)}
                   </option>
                 ))}
               </Select>
             </div>
             <div>
-              <FieldLabel htmlFor="theme-author">Autor (metadatos PDF)</FieldLabel>
+              <FieldLabel htmlFor="theme-author">{t('identity.fields.author')}</FieldLabel>
               <TextInput
                 id="theme-author"
                 value={value.accessibility.author}
@@ -211,8 +203,7 @@ export function ThemeWizardStepIdentity({
           <ThemeAssetsSection theme={theme} onUploaded={onAssetsUploaded} />
         ) : (
           <section className="rounded border border-dashed border-gray-300 p-4 text-sm text-text-muted">
-            <strong>Assets visuales (logo, fondo, marca de agua):</strong> guarda primero el theme
-            para poder subir imágenes. Una vez creado, este panel mostrará las tarjetas de subida.
+            <strong>{t('identity.assets.assetsTitle')}</strong> {t('identity.assets.assetsHint')}
           </section>
         )}
       </div>
