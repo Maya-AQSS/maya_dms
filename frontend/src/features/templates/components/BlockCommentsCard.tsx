@@ -1,4 +1,4 @@
-import { useState, type RefObject } from 'react';
+import { useState, useEffect, type RefObject } from 'react';
 import { Button } from '@maya/shared-ui-react';
 import { canEditOwnBlockComment } from '../../../permissions';
 
@@ -132,15 +132,31 @@ function CommentItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
   const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
+  useEffect(() => {
+    if (!isEditing) setEditBody(comment.body);
+  }, [comment.body, isEditing]);
+
+  const bodyUnchanged = editBody.trim() === comment.body.trim();
+
+  const handleStartEdit = () => {
+    setEditBody(comment.body);
+    setEditError(null);
+    setIsEditing(true);
+  };
+
   const handleSaveEdit = async () => {
-    if (!editBody.trim() || !onEditComment) return;
+    if (!editBody.trim() || bodyUnchanged || !onEditComment) return;
     setEditLoading(true);
+    setEditError(null);
     try {
       await onEditComment(comment.id, editBody.trim());
       setIsEditing(false);
+    } catch {
+      setEditError('No se pudo guardar. Inténtalo de nuevo.');
     } finally {
       setEditLoading(false);
     }
@@ -148,6 +164,7 @@ function CommentItem({
 
   const handleCancelEdit = () => {
     setEditBody(comment.body);
+    setEditError(null);
     setIsEditing(false);
   };
 
@@ -162,10 +179,9 @@ function CommentItem({
     }
   };
 
-  const showActionBar = mode !== 'creator-readonly' || canEdit || canDelete;
-
   return (
-    <div id={`comment-${comment.id}`} className="relative">
+    <div id={`comment-${comment.id}`} className="relative group/comment">
+      {/* Header */}
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
           {comment.author?.name || 'Usuario'}
@@ -173,122 +189,132 @@ function CommentItem({
         <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70 inline-flex items-center gap-1.5">
           {formatTime(comment.created_at)}
           {comment.is_edited && (
-            <span className="opacity-60 normal-case tracking-normal font-medium">(editado)</span>
+            <span className="opacity-50 normal-case tracking-normal font-medium italic">(editado)</span>
           )}
         </span>
       </div>
 
-      <div
-        className={`text-sm leading-relaxed p-4 rounded-xl border shadow-sm break-words whitespace-pre-wrap transition-all duration-500 ${
-          isHighlighted
-            ? 'bg-[#E3F2FD] dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary'
-            : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
-        }`}
-      >
-        {parentComment && onScrollToComment && (
-          <QuotedReply
-            parent={parentComment}
-            onClick={() => onScrollToComment(parentComment.id)}
-          />
-        )}
-        {isEditing ? (
+      {/* Edit form */}
+      {isEditing ? (
+        <div className="space-y-2">
           <textarea
             value={editBody}
-            onChange={(e) => setEditBody(e.target.value)}
-            className="w-full p-2 text-sm rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none"
-            rows={3}
+            onChange={(e) => { setEditBody(e.target.value); setEditError(null); }}
+            onKeyDown={(e) => { if (e.key === 'Escape') handleCancelEdit(); }}
+            className="w-full p-3 text-sm rounded-xl border border-odoo-purple/60 bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
+            rows={Math.max(3, editBody.split('\n').length)}
             autoFocus
           />
-        ) : (
-          comment.body
-        )}
-      </div>
-
-      {showActionBar && (
-        <div className="mt-2 flex items-center gap-4">
-          {mode !== 'creator-readonly' && !isEditing && (
+          {editError && (
+            <p className="text-xs text-red-500 font-medium">{editError}</p>
+          )}
+          <div className="flex items-center gap-2 justify-end">
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onReplyClick(comment.id, comment.author?.name || 'Usuario');
-              }}
-              className="text-xs font-bold text-odoo-purple hover:underline relative z-10"
+              onClick={handleCancelEdit}
+              disabled={editLoading}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg border border-ui-border dark:border-ui-dark-border text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary transition-colors disabled:opacity-40"
             >
-              Responder
+              Cancelar
             </button>
+            <button
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={!editBody.trim() || bodyUnchanged || editLoading}
+              className="px-3 py-1.5 text-xs font-bold rounded-lg bg-odoo-purple text-white hover:bg-odoo-purple/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {editLoading ? 'Guardando…' : 'Guardar'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* Bubble */
+        <div
+          className={`relative text-sm leading-relaxed p-4 rounded-xl border shadow-sm break-words whitespace-pre-wrap transition-all duration-500 ${
+            isHighlighted
+              ? 'bg-[#E3F2FD] dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary'
+              : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
+          }`}
+        >
+          {parentComment && onScrollToComment && (
+            <QuotedReply
+              parent={parentComment}
+              onClick={() => onScrollToComment(parentComment.id)}
+            />
           )}
+          {comment.body}
 
-          {isEditing ? (
-            <>
-              <button
-                type="button"
-                onClick={handleCancelEdit}
-                disabled={editLoading}
-                className="text-xs font-bold text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary transition-colors"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveEdit}
-                disabled={!editBody.trim() || editLoading}
-                className="text-xs font-bold text-odoo-purple hover:underline disabled:opacity-40"
-              >
-                {editLoading ? 'Guardando…' : 'Guardar'}
-              </button>
-            </>
-          ) : (
-            <>
+          {/* Hover action pill */}
+          {(canEdit || canDelete) && !confirmDelete && (
+            <span className="absolute -top-3 right-2 opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150 inline-flex items-center gap-0.5 bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-full shadow-md px-1 py-0.5 z-10">
               {canEdit && (
                 <button
                   type="button"
-                  onClick={() => { setEditBody(comment.body); setIsEditing(true); }}
-                  className="text-xs font-bold text-text-muted hover:text-odoo-purple transition-colors relative z-10"
-                  aria-label="Editar comentario"
+                  onClick={handleStartEdit}
+                  aria-label="Editar"
+                  className="p-1 rounded-full text-text-muted hover:text-odoo-purple hover:bg-odoo-purple/10 transition-colors"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 15H9v-3z" />
                   </svg>
                 </button>
               )}
-
-              {canDelete && (
-                confirmDelete ? (
-                  <span className="inline-flex items-center gap-2">
-                    <span className="text-xs text-text-muted">¿Eliminar?</span>
-                    <button
-                      type="button"
-                      onClick={handleDelete}
-                      disabled={deleteLoading}
-                      className="text-xs font-bold text-red-500 hover:underline disabled:opacity-40"
-                    >
-                      {deleteLoading ? '…' : 'Sí'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setConfirmDelete(false)}
-                      disabled={deleteLoading}
-                      className="text-xs font-bold text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary transition-colors"
-                    >
-                      No
-                    </button>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmDelete(true)}
-                    className="text-xs font-bold text-text-muted hover:text-red-500 transition-colors relative z-10"
-                    aria-label="Eliminar comentario"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
-                    </svg>
-                  </button>
-                )
+              {canEdit && canDelete && (
+                <span className="w-px h-3 bg-ui-border dark:bg-ui-dark-border" />
               )}
-            </>
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  aria-label="Eliminar"
+                  className="p-1 rounded-full text-text-muted hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                  </svg>
+                </button>
+              )}
+            </span>
           )}
+        </div>
+      )}
+
+      {/* Delete confirmation */}
+      {confirmDelete && !isEditing && (
+        <div className="mt-1.5 flex items-center justify-end gap-2">
+          <span className="text-xs text-text-muted">¿Eliminar este comentario?</span>
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(false)}
+            disabled={deleteLoading}
+            className="px-2.5 py-1 text-xs font-bold rounded-lg border border-ui-border dark:border-ui-dark-border text-text-muted hover:text-text-primary transition-colors disabled:opacity-40"
+          >
+            No
+          </button>
+          <button
+            type="button"
+            onClick={handleDelete}
+            disabled={deleteLoading}
+            className="px-2.5 py-1 text-xs font-bold rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors disabled:opacity-40"
+          >
+            {deleteLoading ? '…' : 'Eliminar'}
+          </button>
+        </div>
+      )}
+
+      {/* Reply button — visible on hover */}
+      {mode !== 'creator-readonly' && !isEditing && !confirmDelete && (
+        <div className="mt-1 h-5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onReplyClick(comment.id, comment.author?.name || 'Usuario');
+            }}
+            className="text-xs font-bold text-odoo-purple hover:underline opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150"
+          >
+            Responder
+          </button>
         </div>
       )}
     </div>

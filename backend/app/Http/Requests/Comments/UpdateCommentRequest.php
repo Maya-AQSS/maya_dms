@@ -22,6 +22,6 @@ class UpdateCommentRequest extends FormRequest
 
     public function commentBody(): string
     {
-        return trim($this->string('body'));
+        return (string) $this->string('body')->trim();
     }
 }
