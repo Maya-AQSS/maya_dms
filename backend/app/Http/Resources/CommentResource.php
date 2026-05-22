@@ -32,6 +32,8 @@ class CommentResource extends JsonResource
             'resolved_by' => $dto->resolvedBy,
             'resolved_at' => $dto->resolvedAt,
             'created_at' => $dto->createdAt,
+            'updated_at' => $dto->updatedAt,
+            'is_edited' => $dto->isEdited,
         ];
 
         if ($dto->authorLoaded) {

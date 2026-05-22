@@ -1,5 +1,6 @@
 import { useState, type RefObject } from 'react';
 import { Button } from '@maya/shared-ui-react';
+import { canEditOwnBlockComment } from '../../../permissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -12,6 +13,8 @@ export type BlockComment = {
   author?: { id: string; name: string };
   body: string;
   created_at: string;
+  updated_at?: string | null;
+  is_edited?: boolean;
   parent_id?: string | null;
 };
 
@@ -70,7 +73,6 @@ export function ViewCardHeader({
 }
 
 // ── QuotedReply ───────────────────────────────────────────────────────────────
-// WhatsApp-style quoted bubble shown inside a reply message.
 
 function QuotedReply({
   parent,
@@ -111,6 +113,10 @@ function CommentItem({
   parentComment,
   onScrollToComment,
   isHighlighted = false,
+  canEdit = false,
+  canDelete = false,
+  onEditComment,
+  onDeleteComment,
 }: {
   comment: BlockComment;
   mode: CommentMode;
@@ -118,15 +124,57 @@ function CommentItem({
   parentComment?: BlockComment;
   onScrollToComment?: (commentId: string) => void;
   isHighlighted?: boolean;
+  canEdit?: boolean;
+  canDelete?: boolean;
+  onEditComment?: (commentId: string, newBody: string) => Promise<void>;
+  onDeleteComment?: (commentId: string) => Promise<void>;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editBody, setEditBody] = useState(comment.body);
+  const [editLoading, setEditLoading] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleSaveEdit = async () => {
+    if (!editBody.trim() || !onEditComment) return;
+    setEditLoading(true);
+    try {
+      await onEditComment(comment.id, editBody.trim());
+      setIsEditing(false);
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditBody(comment.body);
+    setIsEditing(false);
+  };
+
+  const handleDelete = async () => {
+    if (!onDeleteComment) return;
+    setDeleteLoading(true);
+    try {
+      await onDeleteComment(comment.id);
+    } finally {
+      setDeleteLoading(false);
+      setConfirmDelete(false);
+    }
+  };
+
+  const showActionBar = mode !== 'creator-readonly' || canEdit || canDelete;
+
   return (
     <div id={`comment-${comment.id}`} className="relative">
       <div className="flex items-center justify-between mb-1.5">
         <span className="text-xs font-black text-text-primary dark:text-text-dark-primary">
           {comment.author?.name || 'Usuario'}
         </span>
-        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70">
+        <span className="text-[10px] text-text-muted font-bold uppercase tracking-wider opacity-70 inline-flex items-center gap-1.5">
           {formatTime(comment.created_at)}
+          {comment.is_edited && (
+            <span className="opacity-60 normal-case tracking-normal font-medium">(editado)</span>
+          )}
         </span>
       </div>
 
@@ -143,21 +191,104 @@ function CommentItem({
             onClick={() => onScrollToComment(parentComment.id)}
           />
         )}
-        {comment.body}
+        {isEditing ? (
+          <textarea
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+            className="w-full p-2 text-sm rounded-lg border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none"
+            rows={3}
+            autoFocus
+          />
+        ) : (
+          comment.body
+        )}
       </div>
 
-      {mode !== 'creator-readonly' && (
+      {showActionBar && (
         <div className="mt-2 flex items-center gap-4">
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onReplyClick(comment.id, comment.author?.name || 'Usuario');
-            }}
-            className="text-xs font-bold text-odoo-purple hover:underline relative z-10"
-          >
-            Responder
-          </button>
+          {mode !== 'creator-readonly' && !isEditing && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onReplyClick(comment.id, comment.author?.name || 'Usuario');
+              }}
+              className="text-xs font-bold text-odoo-purple hover:underline relative z-10"
+            >
+              Responder
+            </button>
+          )}
+
+          {isEditing ? (
+            <>
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                disabled={editLoading}
+                className="text-xs font-bold text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={!editBody.trim() || editLoading}
+                className="text-xs font-bold text-odoo-purple hover:underline disabled:opacity-40"
+              >
+                {editLoading ? 'Guardando…' : 'Guardar'}
+              </button>
+            </>
+          ) : (
+            <>
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => { setEditBody(comment.body); setIsEditing(true); }}
+                  className="text-xs font-bold text-text-muted hover:text-odoo-purple transition-colors relative z-10"
+                  aria-label="Editar comentario"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.586-6.586a2 2 0 012.828 0l.172.172a2 2 0 010 2.828L12 15H9v-3z" />
+                  </svg>
+                </button>
+              )}
+
+              {canDelete && (
+                confirmDelete ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="text-xs text-text-muted">¿Eliminar?</span>
+                    <button
+                      type="button"
+                      onClick={handleDelete}
+                      disabled={deleteLoading}
+                      className="text-xs font-bold text-red-500 hover:underline disabled:opacity-40"
+                    >
+                      {deleteLoading ? '…' : 'Sí'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(false)}
+                      disabled={deleteLoading}
+                      className="text-xs font-bold text-text-muted hover:text-text-primary dark:hover:text-text-dark-primary transition-colors"
+                    >
+                      No
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="text-xs font-bold text-text-muted hover:text-red-500 transition-colors relative z-10"
+                    aria-label="Eliminar comentario"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+                    </svg>
+                  </button>
+                )
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -177,6 +308,10 @@ type BlockCommentsCardProps = {
   commentingClosed?: boolean;
   headerRef?: RefObject<HTMLDivElement | null>;
   onClose: () => void;
+  currentUserId?: string;
+  canDeleteAnyComment?: boolean;
+  onEditComment?: (commentId: string, newBody: string) => Promise<void>;
+  onDeleteComment?: (commentId: string) => Promise<void>;
 };
 
 export function BlockCommentsCard({
@@ -190,6 +325,10 @@ export function BlockCommentsCard({
   canAddComments = true,
   headerRef,
   onClose,
+  currentUserId,
+  canDeleteAnyComment = false,
+  onEditComment,
+  onDeleteComment,
 }: BlockCommentsCardProps) {
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [replyBody, setReplyBody] = useState('');
@@ -200,6 +339,12 @@ export function BlockCommentsCard({
   const sortedComments = [...blockComments].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
+
+  const canEditComment = (comment: BlockComment) =>
+    !commentingClosed && canEditOwnBlockComment(currentUserId, comment.author_id);
+
+  const canDeleteComment = (comment: BlockComment) =>
+    !commentingClosed && (canEditOwnBlockComment(currentUserId, comment.author_id) || canDeleteAnyComment);
 
   const handleSubmit = async () => {
     if (!replyBody.trim() || !onSendMessage) return;
@@ -269,6 +414,10 @@ export function BlockCommentsCard({
                 parentComment={parentComment}
                 onScrollToComment={handleScrollToComment}
                 isHighlighted={highlightedCommentId === comment.id}
+                canEdit={canEditComment(comment)}
+                canDelete={canDeleteComment(comment)}
+                onEditComment={onEditComment}
+                onDeleteComment={onDeleteComment}
               />
             );
           })

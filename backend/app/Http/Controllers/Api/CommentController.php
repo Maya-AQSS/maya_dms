@@ -9,6 +9,7 @@ use App\DTOs\Comments\CommentDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Comments\StoreCommentRequest;
+use App\Http\Requests\Comments\UpdateCommentRequest;
 use App\Http\Resources\CommentResource;
 use App\Models\Comment;
 use App\Models\Document;
@@ -102,6 +103,21 @@ class CommentController extends Controller
         $this->authorizeCommentAccess($commentModel, 'view');
 
         return (new CommentResource(CommentDto::fromModel($commentModel)))->response();
+    }
+
+    public function update(UpdateCommentRequest $request, string $comment): JsonResponse
+    {
+        $commentModel = $this->commentService->findModelOrFail($comment);
+        $this->authorizeCommentAccess($commentModel, 'view');
+        $this->authorize('update', $commentModel);
+
+        $commentDto = $this->commentService->update(
+            $commentModel,
+            $request->commentBody(),
+            (string) Auth::id(),
+        );
+
+        return (new CommentResource($commentDto))->response();
     }
 
     public function destroy(string $comment): JsonResponse

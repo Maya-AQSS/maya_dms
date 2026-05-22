@@ -23,7 +23,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
-import { canListBlocks, DMS_PERMISSIONS } from '../permissions';
+import { canListBlocks, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -230,6 +230,19 @@ export function TemplatePreviewPage() {
     } finally {
       setReviewCommentsLoading(false);
     }
+  };
+
+  const handleEditComment = async (commentId: string, newBody: string) => {
+    const res = await apiFetchJson<{ data: ReviewComment }>(`comments/${commentId}`, {
+      method: 'PATCH',
+      body: { body: newBody },
+    });
+    setReviewComments(prev => prev.map(c => c.id === commentId ? res.data : c));
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
+    setReviewComments(prev => prev.filter(c => c.id !== commentId));
   };
 
 
@@ -582,6 +595,10 @@ export function TemplatePreviewPage() {
                 onSendMessage={handleSendMessage}
                 headerRef={commentCardHeaderRef}
                 onClose={() => setActiveView(null)}
+                currentUserId={profile?.id}
+                canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
               />
             );
           }

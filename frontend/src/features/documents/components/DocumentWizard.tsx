@@ -30,6 +30,8 @@ import {
 } from '../../../api/documents';
 import { useQueryClient } from '@tanstack/react-query';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
+import { useUserProfile } from '../../user-profile';
+import { canDeleteBlockComment } from '../../../permissions';
 import { fetchProcesses } from '../../../api/processes';
 import { fetchTemplate } from '../../../api/templates';
 import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
@@ -95,6 +97,7 @@ type Props = {
 export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { hasPermission } = useUserProfile();
   const location = useLocation();
   const { isDark } = useDarkMode();
 
@@ -283,6 +286,27 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       (current) => ({ data: [...(current?.data ?? []), res.data] }),
     );
   }, [documentId, reviewComments, queryClient]);
+
+  const handleDocumentCommentEdit = useCallback(async (commentId: string, newBody: string) => {
+    if (!documentId) return;
+    const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
+      method: 'PATCH',
+      body: { body: newBody },
+    });
+    queryClient.setQueryData<{ data: BlockComment[] }>(
+      ['documents', documentId, 'comments'],
+      (current) => ({ data: (current?.data ?? []).map(c => c.id === commentId ? res.data : c) }),
+    );
+  }, [documentId, queryClient]);
+
+  const handleDocumentCommentDelete = useCallback(async (commentId: string) => {
+    if (!documentId) return;
+    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
+    queryClient.setQueryData<{ data: BlockComment[] }>(
+      ['documents', documentId, 'comments'],
+      (current) => ({ data: (current?.data ?? []).filter(c => c.id !== commentId) }),
+    );
+  }, [documentId, queryClient]);
 
   const refreshDetail = useCallback(async () => {
     if (!documentId) return;
@@ -1678,6 +1702,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 onSendMessage={handleDocumentCommentSend}
                 onClose={() => setShowDocumentCommentPanel(false)}
                 canAddComments={detail?.status !== 'published'}
+                currentUserId={currentUserId ?? undefined}
+                canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+                onEditComment={handleDocumentCommentEdit}
+                onDeleteComment={handleDocumentCommentDelete}
               />
             </div>
           )}
