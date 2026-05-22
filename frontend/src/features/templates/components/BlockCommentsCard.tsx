@@ -16,6 +16,7 @@ export type BlockComment = {
   updated_at?: string | null;
   is_edited?: boolean;
   is_deleted?: boolean;
+  deleted_at?: string | null;
   deleted_by_name?: string | null;
   parent_id?: string | null;
 };
@@ -159,6 +160,7 @@ function CommentItem({
   const bodyUnchanged = editBody.trim() === comment.body.trim();
 
   if (comment.is_deleted) {
+    const deletedAt = comment.deleted_at ? formatTime(comment.deleted_at) : null;
     return (
       <div id={`comment-${comment.id}`}>
         {parentComment && onScrollToComment && (
@@ -167,16 +169,45 @@ function CommentItem({
             onClick={() => onScrollToComment(parentComment.id)}
           />
         )}
-        <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl border border-red-200/60 dark:border-red-900/40 bg-red-50/40 dark:bg-red-950/20 text-text-muted dark:text-text-dark-muted">
-          <svg className="w-3.5 h-3.5 text-red-400 dark:text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
-          </svg>
-          <span className="text-xs italic text-red-400 dark:text-red-500">
-            {comment.deleted_by_name
-              ? `Comentario eliminado por ${comment.deleted_by_name}`
-              : 'Comentario eliminado'}
+        <button
+          type="button"
+          onClick={() => setConfirmDelete(prev => !prev)}
+          className="w-full flex items-center gap-2 py-1 group/deleted"
+          aria-expanded={confirmDelete}
+        >
+          <span className="flex-1 border-t border-dashed border-text-muted/25 dark:border-text-dark-muted/20" />
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted/60 dark:text-text-dark-muted/50 font-medium italic shrink-0 select-none">
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+            </svg>
+            Comentario eliminado
+            <svg
+              className={`w-3 h-3 transition-transform duration-200 ${confirmDelete ? 'rotate-180' : ''}`}
+              fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
           </span>
-        </div>
+          <span className="flex-1 border-t border-dashed border-text-muted/25 dark:border-text-dark-muted/20" />
+        </button>
+
+        {confirmDelete && (
+          <div className="mt-1 flex items-center gap-2 px-3 py-2 rounded-xl border border-red-200/50 dark:border-red-900/30 bg-red-50/30 dark:bg-red-950/15 animate-in fade-in slide-in-from-top-1 duration-150">
+            <svg className="w-3.5 h-3.5 text-red-400 dark:text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M1 7h22M8 7V5a2 2 0 012-2h4a2 2 0 012 2v2" />
+            </svg>
+            <span className="text-xs text-red-400 dark:text-red-500 italic flex-1">
+              {comment.deleted_by_name
+                ? `Eliminado por ${comment.deleted_by_name}`
+                : 'Eliminado'}
+            </span>
+            {deletedAt && (
+              <span className="text-[10px] text-text-muted/60 dark:text-text-dark-muted/50 font-medium shrink-0">
+                {deletedAt}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     );
   }

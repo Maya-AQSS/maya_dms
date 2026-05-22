@@ -28,6 +28,7 @@ final readonly class CommentDto
         public ?string $updatedAt,
         public bool $isEdited,
         public bool $isDeleted,
+        public ?string $deletedAt,
         public ?string $deletedByName,
         // Source model retained for policy gates that need an Eloquent instance.
         public Comment $source,
@@ -58,6 +59,7 @@ final readonly class CommentDto
             updatedAt: $m->updated_at?->toIso8601String(),
             isEdited: $m->updated_at !== null,
             isDeleted: $m->trashed(),
+            deletedAt: $m->deleted_at?->toIso8601String(),
             deletedByName: $m->deleted_by_name,
             source: $m,
         );
