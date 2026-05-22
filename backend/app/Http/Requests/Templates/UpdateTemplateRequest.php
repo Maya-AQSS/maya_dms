@@ -20,6 +20,10 @@ class UpdateTemplateRequest extends FormRequest
     {
         $template = $this->resolveTemplate();
 
+        if ($this->has('created_by') && $this->user()->getAuthIdentifier() !== (string) $template->created_by) {
+            return false;
+        }
+
         if ($this->filled('visibility_level')) {
             return $this->user()->can('update', [$template, $this->input('visibility_level')]);
         }
@@ -85,6 +89,7 @@ class UpdateTemplateRequest extends FormRequest
             'review_stages' => ['sometimes', 'integer', 'min:0'],
             'review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
             'theme_id' => ['sometimes', 'nullable', 'uuid', 'exists:themes,id'],
+            'created_by' => ['sometimes', 'string', 'uuid'],
         ];
     }
 
@@ -118,6 +123,8 @@ class UpdateTemplateRequest extends FormRequest
             setReviewMode: $this->has('review_mode'),
             themeId: $this->input('theme_id'),
             setThemeId: $this->has('theme_id'),
+            createdBy: $this->input('created_by'),
+            setCreatedBy: $this->has('created_by'),
         );
     }
 

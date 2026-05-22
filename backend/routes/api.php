@@ -215,6 +215,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);
         Route::get('/users/document-reviewer-candidates', [UserController::class, 'documentReviewerCandidates']);
+        Route::get('/users/owner-candidates', [UserController::class, 'ownerCandidates']);
 
         // Dashboard (BFF): listados del panel principal
         Route::get('/dashboard', [DashboardController::class, 'index'])

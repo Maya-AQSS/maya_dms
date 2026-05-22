@@ -294,6 +294,9 @@ class TemplateService implements TemplateServiceInterface
         if ($dto->setThemeId) {
             $attributes['theme_id'] = $dto->themeId;
         }
+        if ($dto->setCreatedBy && $dto->createdBy !== null) {
+            $attributes['created_by'] = $dto->createdBy;
+        }
         $this->assertTemplateMetadataInvariants(
             (string) ($attributes['name'] ?? $template->name),
             $attributes['delivery_deadline'] ?? $template->delivery_deadline,

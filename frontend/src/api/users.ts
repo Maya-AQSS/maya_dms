@@ -47,6 +47,15 @@ export async function searchDocumentReviewerCandidates(
   return apiGetJson<UsersSearchResponse>(`users/document-reviewer-candidates?${q.toString()}`);
 }
 
+/** GET /api/v1/users/owner-candidates?search={query}&per_page=20 */
+export async function searchOwnerCandidates(query: string, excludeUserId?: string): Promise<UsersSearchResponse> {
+  const q = new URLSearchParams({ search: query, per_page: '20' });
+  if (excludeUserId) {
+    q.set('exclude_user_id', excludeUserId);
+  }
+  return apiGetJson<UsersSearchResponse>(`users/owner-candidates?${q.toString()}`);
+}
+
 /**
  * GET /api/v1/me — devuelve el perfil envuelto en `{ data }` por compatibilidad
  * con los consumidores históricos de DMS (DocumentPreviewPage, DocumentWizard…).

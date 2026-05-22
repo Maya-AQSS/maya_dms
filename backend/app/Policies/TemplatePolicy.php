@@ -9,6 +9,7 @@ use App\Models\EntityVersion;
 use App\Models\JwtUser;
 use App\Models\Template;
 use App\Support\DocumentHeadSnapshot;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -80,6 +81,24 @@ class TemplatePolicy
         }
 
         $templateId = $template->getKey();
+
+        // Creador original que cedió la plantilla: accede si hay al menos un snapshot
+        // publicado inmutable donde él era el created_by.
+        if ($templateId !== null && $templateId !== '') {
+            $wasOriginalCreator = DB::table('entity_versions')
+                ->where('versionable_type', Template::class)
+                ->where('versionable_id', $templateId)
+                ->where('version_number', '>', 0)
+                ->where('is_snapshot_immutable', true)
+                ->whereRaw(
+                    TemplateHeadSnapshot::jsonTemplateFieldExpression('entity_versions', 'created_by').' = ?',
+                    [$userId]
+                )
+                ->exists();
+            if ($wasOriginalCreator) {
+                return true;
+            }
+        }
         // Un modelo sin ID es una instancia transitoria (no persistida). En ese caso no hay
         // datos que proteger, por lo que se permite la vista si el permiso está presente.
         // En producción los controladores siempre pasan un modelo recuperado de BD.
@@ -182,7 +201,7 @@ class TemplatePolicy
      */
     public function update(JwtUser $user, Template $template, ?string $targetVisibilityLevel = null): bool
     {
-        $isCreator = $user->getAuthIdentifier() === $template->created_by;
+        $isCreator = (string) $user->getAuthIdentifier() === (string) $template->created_by;
 
         if (in_array($template->status, ['draft', 'rejected'], true)) {
             if (! $isCreator) {
@@ -222,7 +241,7 @@ class TemplatePolicy
      */
     public function delete(JwtUser $user, Template $template): bool
     {
-        if ($user->getAuthIdentifier() === $template->created_by) {
+        if ((string) $user->getAuthIdentifier() === (string) $template->created_by) {
             return true;
         }
 
@@ -285,7 +304,7 @@ class TemplatePolicy
             return false;
         }
 
-        return $user->getAuthIdentifier() === $template->created_by;
+        return (string) $user->getAuthIdentifier() === (string) $template->created_by;
     }
 
     /**
@@ -373,7 +392,7 @@ class TemplatePolicy
      */
     public function publish(JwtUser $user, Template $template): bool
     {
-        if ($user->getAuthIdentifier() === $template->created_by) {
+        if ((string) $user->getAuthIdentifier() === (string) $template->created_by) {
             return in_array($template->status, ['draft', 'in_review'], true)
                 && $template->reviewers()->doesntExist();
         }
@@ -390,7 +409,7 @@ class TemplatePolicy
      */
     public function submitForReview(JwtUser $user, Template $template): bool
     {
-        return $user->getAuthIdentifier() === $template->created_by
+        return (string) $user->getAuthIdentifier() === (string) $template->created_by
             && in_array($template->status, ['draft', 'rejected'], true);
     }
 

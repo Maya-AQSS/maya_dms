@@ -32,5 +32,7 @@ readonly class UpdateTemplateDto
         public bool $setReviewMode = false,
         public ?string $themeId = null,
         public bool $setThemeId = false,
+        public ?string $createdBy = null,
+        public bool $setCreatedBy = false,
     ) {}
 }

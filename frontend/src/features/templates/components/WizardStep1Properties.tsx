@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
@@ -6,17 +6,20 @@ import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';
 import { usePublishedThemes } from '../../../features/themes/hooks/usePublishedThemes';
 import { ThemeA4Preview } from '../../../features/themes/components/ThemeA4Preview';
+import { searchOwnerCandidates, type UserTeam } from '../../../api/users';
+import type { User } from '../../../types/users';
 import { DMS_PERMISSIONS } from '../../../permissions';
-import type { UserTeam } from '../../../api/users';
 import type { TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import type { TemplateStep1Input } from '../schemas/templateStep1';
 
 type Props = {
   errors?: { api?: string };
   templateStatus?: TemplateStatus;
+  isCreator?: boolean;
+  currentAuthorName?: string | null;
 };
 
-export function WizardStep1Properties({ errors, templateStatus }: Props) {
+export function WizardStep1Properties({ errors, templateStatus, isCreator, currentAuthorName }: Props) {
   const deadlineLocked = templateStatus === 'in_review' || templateStatus === 'published';
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const { profile, loading: profileLoading, error: profileError, hasPermission } = useUserProfile();
@@ -30,8 +33,31 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
     control,
     register,
     setValue,
+    watch,
     formState: { errors: formErrors },
   } = useFormContext<TemplateStep1Input>();
+
+  const [ownerQuery, setOwnerQuery] = useState('');
+  const [ownerResults, setOwnerResults] = useState<User[]>([]);
+  const [ownerSearching, setOwnerSearching] = useState(false);
+  const [selectedOwnerName, setSelectedOwnerName] = useState<string | null>(null);
+  const createdBy = watch('createdBy');
+
+  useEffect(() => {
+    const q = ownerQuery.trim();
+    if (q.length < 2) {
+      setOwnerResults([]);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setOwnerSearching(true);
+      searchOwnerCandidates(q)
+        .then((res) => setOwnerResults(res.data))
+        .catch(() => setOwnerResults([]))
+        .finally(() => setOwnerSearching(false));
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [ownerQuery]);
 
   const visibility = useWatch({ control, name: 'visibility' });
   const studyTypeId = useWatch({ control, name: 'studyTypeId' });
@@ -336,6 +362,76 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
             </div>
           </div>
         </div>
+
+        {isCreator && (
+          <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in">
+            <FieldLabel>Propietario</FieldLabel>
+            <div className="mt-1 mb-2 flex items-center gap-2">
+              <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+                Actual:
+              </span>
+              <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
+                {createdBy ? (selectedOwnerName ?? '—') : (currentAuthorName ?? '—')}
+              </span>
+              {createdBy && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue('createdBy', undefined);
+                    setSelectedOwnerName(null);
+                    setOwnerQuery('');
+                  }}
+                  className="text-xs text-danger-dark hover:underline"
+                >
+                  Deshacer
+                </button>
+              )}
+            </div>
+            <div className="relative">
+              <TextInput
+                type="search"
+                fieldSize="comfortable"
+                placeholder="Buscar usuario por nombre…"
+                value={ownerQuery}
+                onChange={(e) => setOwnerQuery(e.target.value)}
+                className="pl-9"
+              />
+              <svg className="absolute left-3 top-2.5 w-4 h-4 text-text-muted pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            {ownerQuery.trim().length > 0 && ownerQuery.trim().length < 2 && (
+              <p className="mt-1 text-xs text-text-muted italic">Escribe al menos 2 caracteres para buscar.</p>
+            )}
+            {ownerSearching && <p className="mt-1 text-xs text-text-muted italic">Buscando…</p>}
+            {!ownerSearching && ownerResults.length > 0 && (
+              <ul className="mt-1 border border-ui-border dark:border-ui-dark-border rounded-lg overflow-hidden divide-y divide-ui-border dark:divide-ui-dark-border">
+                {ownerResults.map((u) => (
+                  <li key={u.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setValue('createdBy', u.id, { shouldDirty: true });
+                        setSelectedOwnerName(u.name);
+                        setOwnerQuery('');
+                        setOwnerResults([]);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-odoo-purple/5 transition-colors"
+                    >
+                      <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20">
+                        {u.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('')}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary truncate">{u.name}</p>
+                        {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary">{u.role}</p>}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
 
       </div>
     </div>
