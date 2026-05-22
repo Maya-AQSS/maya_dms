@@ -1,0 +1,62 @@
+{
+  "title": "Temes",
+  "subtitle": "Identitat visual reutilitzable per a plantilles i documents",
+  "closeErrorMessage": "Tancar missatge d'error",
+  "closeInfoMessage": "Tancar missatge informatiu",
+  "layerUp": "Capa amunt",
+  "layerDown": "Capa avall",
+  "newPurposePlaceholder": "Per a quin tipus de documents usar aquest theme",
+  "identity": {
+    "sections": {
+      "general": "Informació general",
+      "palette": "Paleta de colors",
+      "typography": "Tipografia",
+      "accessibility": "Accessibilitat (PDF/UA)"
+    },
+    "fields": {
+      "name": "Nom",
+      "namePlaceholder": "Ex.: Tema corporatiu CEEDCV",
+      "description": "Descripció",
+      "descriptionPlaceholder": "Per a quin tipus de documents usar aquest theme",
+      "status": "Estat",
+      "headingFont": "Font de capçaleres",
+      "bodyFont": "Font de cos",
+      "baseSize": "Mida base (pt)",
+      "lineHeight": "Alçada de línia",
+      "language": "Idioma",
+      "title": "Títol",
+      "subject": "Assumpte",
+      "author": "Autor (metadades PDF)"
+    },
+    "colors": {
+      "primary": "Primari",
+      "secondary": "Secundari",
+      "accent": "Accent",
+      "text": "Text",
+      "background": "Fons"
+    },
+    "statusOptions": {
+      "draft": "Esborrany",
+      "published": "Publicat",
+      "archived": "Arxivat"
+    },
+    "languageOptions": {
+      "es": "Espanyol",
+      "ca": "Català/Valencià",
+      "en": "Anglès",
+      "fr": "Francès"
+    },
+    "assets": {
+      "assetsTitle": "Assets visuals (logo, fons, marca d'aigua):",
+      "assetsHint": "guarda primer el theme per poder pujar imatges. Una vegada creat, aquest panell mostrarà les targetes de pujada."
+    }
+  },
+  "editor": {
+    "blocksPlaceholder": "Aquí es renderitzen els blocs del document al generar el PDF",
+    "addBlock": "+ Afegir bloc",
+    "pageNumber": "Pàgina N",
+    "pageNumberOfTotal": "Pàgina N de M",
+    "alignment": "Alineació"
+  },
+  "emptyMessage": "Encara no hi ha temes. Crea'n un des de \"Nou tema\"."
+}

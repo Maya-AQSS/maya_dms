@@ -1,39 +1,16 @@
 {
-  "actions": {
-    "save": "Save",
-    "cancel": "Cancel",
-    "create": "Create",
-    "edit": "Edit",
-    "delete": "Delete",
-    "close": "Close",
-    "confirm": "Confirm",
-    "back": "Back",
-    "search": "Search",
-    "upload": "Upload",
-    "download": "Download",
-    "preview": "Preview",
-    "duplicate": "Duplicate"
-  },
-  "status": {
-    "loading": "Loading…",
-    "saving": "Saving…",
-    "empty": "No results",
-    "error": "An error occurred"
-  },
-  "nav": {
-    "dashboard": "Dashboard",
-    "documents": "Documents",
-    "templates": "Templates",
-    "trash": "Trash"
-  },
   "dashboard": {
     "noWidgets": "No widgets on the dashboard.",
     "noIndexPermission": "You have access to DocuCEED (dms.login) but not permission to view the dashboard listings (dms.index). Ask an administrator for dms.index.",
-    "reset": "Reset",
     "noShowPermission": "No permission to open from the dashboard (dms.show).",
     "widgets": {
       "recentDocuments": "Recent documents",
-      "pendingValidations": "Pending validation"
+      "pendingValidations": "Pending validation",
+      "showAllPendingAria": "Show all pending validations",
+      "showAllTitle": "Show all",
+      "dataUnavailable": "Data unavailable",
+      "templatesLabel": "Templates",
+      "documentsLabel": "Documents"
     }
   },
   "documents": {
@@ -42,8 +19,7 @@
     "untitled": "Untitled",
     "lastModified": "Last modified",
     "createdBy": "Created by",
-    "confirmDelete": "Delete this document?",
-    "deleteMessage": "This action cannot be undone."
+    "confirmDelete": "Delete this document?"
   },
   "templates": {
     "title": "Templates",
@@ -56,14 +32,18 @@
     "noIndexPermission": "You do not have permission to view the process list (process.index).",
     "noShowPermission": "You do not have permission to open process details (process.show)."
   },
-  "auth": {
-    "logout": "Log out",
-    "profile": "Profile"
+  "versionHistory": {
+    "title": "Version history",
+    "loadFailed": "Could not load history.",
+    "loading": "Loading history…",
+    "emptyTemplate": "No published versions recorded for this template.",
+    "emptyDocument": "No published versions recorded for this document.",
+    "previewTemplateAria": "Preview the template at version {{n}}",
+    "previewDocumentAria": "Preview the document at version {{n}}",
+    "publishedBy": "Published by",
+    "versionAuthor": "Version author"
   },
-  "userMenu": {
-    "darkMode": "Dark mode",
-    "lightMode": "Light mode",
-    "profile": "Profile",
-    "logout": "Log out"
+  "filters": {
+    "allModules": "All modules"
   }
 }

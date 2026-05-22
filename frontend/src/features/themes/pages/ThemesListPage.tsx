@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Button,
   ConfirmDialog,
@@ -25,6 +26,7 @@ const STATUS_CLASS: Record<ThemeStatus, string> = {
 
 export function ThemesListPage() {
   const navigate = useNavigate();
+  const { t } = useTranslation(['themes', 'common']);
   const { confirmState, confirm, closeConfirm } = useConfirm();
 
   const {
@@ -146,8 +148,8 @@ export function ThemesListPage() {
   return (
     <>
       <PageTitle
-        title="Themes"
-        subtitle="Identidad visual reutilizable para plantillas y documentos"
+        title={t('themes:title')}
+        subtitle={t('themes:subtitle')}
         actions={
           <Button
             type="button"
@@ -155,7 +157,7 @@ export function ThemesListPage() {
             size="sm"
             onClick={() => navigate('/themes/new')}
           >
-            Nuevo theme
+            + {t('common:actions.create')}
           </Button>
         }
       />
@@ -173,7 +175,7 @@ export function ThemesListPage() {
             type="button"
             onClick={clearActionError}
             className="ml-3 underline"
-            aria-label="Cerrar mensaje de error"
+            aria-label={t('themes:closeErrorMessage')}
           >
             cerrar
           </button>
@@ -187,7 +189,7 @@ export function ThemesListPage() {
             type="button"
             onClick={clearActionInfo}
             className="ml-3 underline"
-            aria-label="Cerrar mensaje informativo"
+            aria-label={t('themes:closeInfoMessage')}
           >
             cerrar
           </button>
@@ -199,7 +201,7 @@ export function ThemesListPage() {
         rows={items}
         rowKey={(theme) => theme.id}
         loading={loading}
-        emptyMessage="Aún no hay themes. Crea uno desde “Nuevo theme”."
+        emptyMessage={t('themes:emptyMessage')}
       />
 
       {meta && meta.total > meta.per_page && (

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
@@ -60,6 +61,7 @@ function themeToIdentity(t: Theme): ThemeIdentityValue {
  * avanza al editor visual.
  */
 export function ThemeWizard({ initial }: ThemeWizardProps) {
+  const { t } = useTranslation('themes');
   const navigate = useNavigate();
   const { createTheme, updateTheme, actionError, actionInfo, clearActionError, clearActionInfo } = useThemes();
 
@@ -238,7 +240,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
       {actionError && (
         <div className="flex items-center gap-4 px-6 py-3 border-b border-danger-dark/30 bg-danger/10 animate-in slide-in-from-top-1">
           <span className="flex-1 text-xs font-bold text-danger-dark">⚠️ {actionError}</span>
-          <Button variant="ghost" size="xs" onClick={clearActionError} aria-label="Cerrar">
+          <Button variant="ghost" size="xs" onClick={clearActionError} aria-label={t('closeErrorMessage')}>
             ✕
           </Button>
         </div>

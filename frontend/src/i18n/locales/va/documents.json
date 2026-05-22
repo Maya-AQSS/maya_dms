@@ -1,0 +1,110 @@
+{
+  "newDocument": "Nou Document",
+  "blockDescription": "Descripció del Bloc",
+  "approveTitle": "Confirmar aprovació",
+  "validateTitle": "Validació de Document",
+  "wizard": {
+    "searchByName": "Cercar per nom...",
+    "searchVisibility": "Global, personal, equip, nom d'equip, estudi o mòdul…",
+    "authorPlaceholder": "Nom de l'autor...",
+    "datePlaceholder": "Triar dia inicial…",
+    "deadlinePlaceholder": "Qualsevol termini…",
+    "namePlaceholder": "Nom de la programació",
+    "selectDate": "Seleccionar data…",
+    "exitFullscreenAria": "Eixir de pantalla completa",
+    "exitFullscreenTitle": "Eixir de pantalla completa (Esc)",
+    "unfilledBlocksTitle": "Blocs editables sense omplir",
+    "loadingValidation": "Carregant dades de validació…"
+  },
+  "table": {
+    "rejectedTitle": "Aquest document va ser rebutjat en revisió."
+  },
+  "diff": {
+    "previousBlock": "Bloc anterior",
+    "nextBlock": "Bloc següent",
+    "closePanel": "Tancar panell",
+    "panelHeader": "⎇ Canvis del document",
+    "modalTitle": "Vista de canvis",
+    "noChangesInSubmission": "Sense canvis en aquest enviament.",
+    "noChangesVsTemplate": "No hi ha canvis respecte a la plantilla original.",
+    "sortAscendingTitle": "Mostrar últims primer",
+    "sortDescendingTitle": "Mostrar primers primer",
+    "blockLabel": "Bloc {{n}}: {{title}}",
+    "untitled": "Sense títol",
+    "legendRemoved": "Eliminat",
+    "legendAdded": "Afegit",
+    "blocksWithChanges_one": "{{count}} bloc amb canvis",
+    "blocksWithChanges_other": "{{count}} blocs amb canvis",
+    "emptyBlock": "(bloc sense contingut)",
+    "previous": "↑ Anterior",
+    "next": "Següent ↓",
+    "deletedSuffix": "(eliminat)",
+    "originalContent": "─ Contingut original (plantilla)",
+    "editedContent": "+ Contingut editat",
+    "states": {
+      "deleted": "Bloc opcional · eliminat",
+      "modifiableEdited": "Bloc modificable · editat",
+      "editableEdited": "Bloc editable · editat",
+      "optionalEdited": "Bloc opcional · editat",
+      "edited": "Bloc · editat"
+    }
+  },
+  "blocks": {
+    "pendingComments": "Comentaris pendents",
+    "requiredBlock": "Obligatori — aquest bloc s'ha d'omplir",
+    "reorderAria": "Reordenar bloc",
+    "newBlockPlaceholder": "Nou bloc",
+    "blockNamePlaceholder": "Nom del bloc",
+    "closePanelAria": "Tancar panell",
+    "backToTemplates": "Tornar a Plantilles",
+    "undoAria": "Desfer",
+    "undoTitle": "Desfer (Ctrl+Z)",
+    "redoAria": "Refer",
+    "redoTitle": "Refer (Ctrl+Y)",
+    "versionHistoryAria": "Historial de versions",
+    "describeChangesPlaceholder": "Descriu els canvis d'aquesta versió..."
+  },
+  "pages": {
+    "documentsTitle": "Documents",
+    "scheduleTitle": "Programacions Didàctiques"
+  },
+  "history": {
+    "closePanelAria": "Tancar panell",
+    "panelHeader": "⎇ Bloc {{n}} · Historial de canvis",
+    "sortAscendingTitle": "Mostrar més recents primer",
+    "sortDescendingTitle": "Mostrar més antics primer",
+    "noChanges": "Aquest bloc no té canvis registrats.",
+    "revision": "Revisió {{n}}",
+    "revisions_one": "{{count}} revisió",
+    "revisions_other": "{{count}} revisions"
+  },
+  "widgets": {
+    "showAllPendingAria": "Mostrar tots els pendents de validar",
+    "showAllTitle": "Mostrar tots"
+  },
+  "validators": {
+    "templateTitle": "Validadors de la plantilla",
+    "documentTitle": "Validadors del document",
+    "addToTemplate": "Afegir a Plantilla",
+    "addToDocument": "Afegir a Document",
+    "filterUsersPlaceholder": "Filtrar usuaris...",
+    "requiredCommentsTitle": "Comentaris obligatoris"
+  },
+  "list": {
+    "titleColumn": "Títol",
+    "versionColumn": "Versió"
+  },
+  "preview": {
+    "viewBlockChangesTitle": "Veure canvis d'aquest bloc",
+    "viewBlockHistoryTitle": "Veure historial de canvis d'aquest bloc",
+    "viewBlockDescriptionTitle": "Veure descripció del bloc",
+    "unresolvedCommentsBlocked": "No pots enviar a validar mentre hi hagi comentaris de revisió sense resoldre",
+    "createNewVersionTitle": "Crear nova versió?",
+    "draftAlreadyExistsTitle": "Ja existeix una versió en esborrany",
+    "discardNewVersionTitle": "Descartar nova versió?"
+  },
+  "fields": {
+    "module": "Mòdul",
+    "deadline": "Data límit"
+  }
+}

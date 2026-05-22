@@ -1,4 +1,5 @@
 import { useId, useState, type ChangeEvent } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { CascadeDocumentFilters } from '../features/documents';
 import { useHierarchy } from '../features/hierarchy';
 import { Button, Select } from '@maya/shared-ui-react';
@@ -34,6 +35,7 @@ const ChevronIcon = ({ open }: { open: boolean }) => (
  * @returns El componente de filtros en cascada.
  */
 export function CascadeFilters({ onFilterChange, value }: CascadeFiltersProps) {
+  const { t: tCommon } = useTranslation('common');
   const { hierarchy, loading, error } = useHierarchy();
   const typeSelectId = useId();
   const studySelectId = useId();
@@ -180,7 +182,7 @@ export function CascadeFilters({ onFilterChange, value }: CascadeFiltersProps) {
             value={selectedModule}
             onChange={handleModuleChange}
           >
-            <option value="">Todos los módulos</option>
+            <option value="">{tCommon('filters.allModules')}</option>
             {modules.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}

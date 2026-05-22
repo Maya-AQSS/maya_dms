@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense, lazy } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDarkMode } from '@maya/shared-layout-react';
 import {
   DndContext,
@@ -84,6 +85,7 @@ function SortableBlockItem({
   onClick: () => void;
   hasReviewComments?: boolean;
 }) {
+  const { t } = useTranslation('documents');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   const style: React.CSSProperties = {
@@ -111,7 +113,7 @@ function SortableBlockItem({
             {...listeners}
             className="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-primary focus:outline-none"
             onClick={(e) => e.stopPropagation()}
-            aria-label="Reordenar bloque"
+            aria-label={t('documents:blocks.reorderAria')}
           >
             ⠿
           </button>
@@ -149,6 +151,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   onInvalidBlocksChange,
   onCommentAdded,
 }, ref) => {
+  const { t } = useTranslation(['documents', 'common']);
   const commentsQuery = useTemplateCommentsQuery(template.id);
   const reviewComments = commentsQuery.data?.data ?? [];
   const { hasPermission } = useUserProfile();
@@ -565,8 +568,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
                 <button
                   type="button"
-                  aria-label="Salir de pantalla completa"
-                  title="Salir de pantalla completa (Esc)"
+                  aria-label={t('documents:wizard.exitFullscreenAria')}
+                  title={t('documents:wizard.exitFullscreenTitle')}
                   onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}
                   className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50"
                 >
@@ -608,8 +611,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     </Button>
                   )}
                   <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
-                  <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>Eliminar</Button>
-                  <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>Cancelar</Button>
+                  <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>{t('common:actions.delete')}</Button>
+                  <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>{t('common:actions.cancel')}</Button>
                 </div>
               </div>
             )}
@@ -650,7 +653,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         <FieldLabel required>Nombre del bloque</FieldLabel>
                         <TextInput
                           value={formName}
-                          placeholder="Nuevo bloque"
+                          placeholder={t('documents:blocks.newBlockPlaceholder')}
                           error={!!nameError}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                             setFormName(e.target.value);

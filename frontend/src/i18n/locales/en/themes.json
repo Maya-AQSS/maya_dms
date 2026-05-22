@@ -1,0 +1,62 @@
+{
+  "title": "Themes",
+  "subtitle": "Reusable visual identity for templates and documents",
+  "closeErrorMessage": "Close error message",
+  "closeInfoMessage": "Close informational message",
+  "layerUp": "Layer up",
+  "layerDown": "Layer down",
+  "newPurposePlaceholder": "What kind of documents this theme is for",
+  "identity": {
+    "sections": {
+      "general": "General information",
+      "palette": "Color palette",
+      "typography": "Typography",
+      "accessibility": "Accessibility (PDF/UA)"
+    },
+    "fields": {
+      "name": "Name",
+      "namePlaceholder": "E.g.: CEEDCV corporate theme",
+      "description": "Description",
+      "descriptionPlaceholder": "Which document types this theme is for",
+      "status": "Status",
+      "headingFont": "Heading font",
+      "bodyFont": "Body font",
+      "baseSize": "Base size (pt)",
+      "lineHeight": "Line height",
+      "language": "Language",
+      "title": "Title",
+      "subject": "Subject",
+      "author": "Author (PDF metadata)"
+    },
+    "colors": {
+      "primary": "Primary",
+      "secondary": "Secondary",
+      "accent": "Accent",
+      "text": "Text",
+      "background": "Background"
+    },
+    "statusOptions": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived"
+    },
+    "languageOptions": {
+      "es": "Spanish",
+      "ca": "Catalan/Valencian",
+      "en": "English",
+      "fr": "French"
+    },
+    "assets": {
+      "assetsTitle": "Visual assets (logo, background, watermark):",
+      "assetsHint": "save the theme first so you can upload images. Once created, this panel will show the upload cards."
+    }
+  },
+  "editor": {
+    "blocksPlaceholder": "Document blocks render here when generating the PDF",
+    "addBlock": "+ Add block",
+    "pageNumber": "Page N",
+    "pageNumberOfTotal": "Page N of M",
+    "alignment": "Alignment"
+  },
+  "emptyMessage": "No themes yet. Create one from \"New theme\"."
+}

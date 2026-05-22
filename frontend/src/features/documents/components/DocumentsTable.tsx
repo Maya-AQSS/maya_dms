@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useDocuments } from '../hooks/useDocuments';
 import {
   DataTable,
@@ -119,6 +120,7 @@ type Props = {
 
 export function DocumentsTable({ processId }: Props = {}) {
   const navigate = useNavigate();
+  const { t } = useTranslation(['documents', 'common']);
   const { profile, hasPermission } = useUserProfile();
   const canIndex = hasPermission(DMS_PERMISSIONS.documentIndex);
   const canShow = hasPermission(DMS_PERMISSIONS.documentShow);
@@ -142,7 +144,7 @@ export function DocumentsTable({ processId }: Props = {}) {
             {doc.has_review_comments && doc.status === 'draft' && profile && (doc.owner_id === profile.id || doc.created_by === profile.id) && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title="Este documento fue rechazado en revisión."
+                title={t('documents:table.rejectedTitle')}
               >
                 ⚠ Revisión
               </span>
@@ -417,7 +419,7 @@ export function DocumentsTable({ processId }: Props = {}) {
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Buscar por nombre..."
+                placeholder={t('documents:wizard.searchByName')}
                 value={nameInput}
                 onChange={handleNameChange}
               />
@@ -426,7 +428,7 @@ export function DocumentsTable({ processId }: Props = {}) {
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
+                placeholder={t('documents:wizard.searchVisibility')}
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />
@@ -445,7 +447,7 @@ export function DocumentsTable({ processId }: Props = {}) {
             <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
-                placeholder="Nombre del autor..."
+                placeholder={t('documents:wizard.authorPlaceholder')}
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
@@ -467,7 +469,7 @@ export function DocumentsTable({ processId }: Props = {}) {
               <DatePicker
                 value={filters.date || null}
                 onChange={(d) => handleFilterChange({ date: d ?? '' })}
-                placeholder="Cualquier plazo…"
+                placeholder={t('documents:wizard.deadlinePlaceholder')}
                 ariaLabel="Documentos no publicados cuya fecha límite de validación sea esta fecha o anterior (las filas publicadas no aplican)"
               />
             </FilterField>

@@ -8,6 +8,7 @@ import {
   useState,
   type ChangeEvent,
 } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -93,6 +94,7 @@ type Props = {
  */
 export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props) {
   const navigate = useNavigate();
+  const { t } = useTranslation(['documents', 'common']);
   const queryClient = useQueryClient();
   const location = useLocation();
   const { isDark } = useDarkMode();
@@ -1064,7 +1066,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   if (isValidateMode && detail && detail.status === 'in_review' && validationReviewLoading) {
     return (
       <div className="flex flex-col h-[calc(100dvh-7rem)] items-center justify-center overflow-hidden bg-ui-body dark:bg-ui-dark-bg px-6">
-        <p className="text-sm text-text-muted dark:text-text-dark-muted">Cargando datos de validación…</p>
+        <p className="text-sm text-text-muted dark:text-text-dark-muted">{t('wizard.loadingValidation')}</p>
       </div>
     );
   }
@@ -1311,7 +1313,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 </div>
 
                 <div className="space-y-1">
-                  <FieldLabel required={requireModule}>Módulo</FieldLabel>
+                  <FieldLabel required={requireModule}>{t('documents:fields.module')}</FieldLabel>
                   <Select
                     fieldSize="comfortable"
                     value={moduleId}
@@ -1348,7 +1350,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         setErrors((prev: Record<string, string>) => ({ ...prev, title: '' }));
                       }}
                       disabled={!isDraft}
-                      placeholder="Nombre de la programación"
+                      placeholder={t('documents:wizard.namePlaceholder')}
                       error={!!errors.title}
                     />
                     {errors.title && (
@@ -1357,13 +1359,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   </div>
 
                   <div className="space-y-1">
-                    <FieldLabel htmlFor="doc-delivery-deadline-input" required>Fecha límite</FieldLabel>
+                    <FieldLabel htmlFor="doc-delivery-deadline-input" required>{t('documents:fields.deadline')}</FieldLabel>
                     <DatePicker
                       value={deliveryDeadline || null}
                       onChange={(d: string | null) => setDeliveryDeadline(d ?? '')}
                       disabled={!isDraft}
-                      placeholder="Seleccionar fecha…"
-                      ariaLabel="Fecha límite del documento"
+                      placeholder={t('documents:wizard.selectDate')}
+                      ariaLabel={t('documents:fields.deadline')}
                     />
                     {errors.deliveryDeadline && (
                       <p className="text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
@@ -1386,8 +1388,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
               <button
                 type="button"
-                aria-label="Salir de pantalla completa"
-                title="Salir de pantalla completa (Esc)"
+                aria-label={t('documents:wizard.exitFullscreenAria')}
+                title={t('documents:wizard.exitFullscreenTitle')}
                 onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}
                 className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50"
               >
@@ -1793,7 +1795,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     </WizardShell>
     <ConfirmDialog
         open={emptyEditableBlocksModal !== null}
-        title="Bloques editables sin rellenar"
+        title={t('documents:wizard.unfilledBlocksTitle')}
         description={
           <div className="space-y-2">
             <p>Debes rellenar todos los bloques editables antes de continuar. Bloques pendientes:</p>
@@ -1830,7 +1832,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       />
       <ConfirmDialog
         open={validateConfirm === 'approve'}
-        title="Confirmar aprobación"
+        title={t('documents:approveTitle')}
         description="Se registrará tu aprobación. Si eres el último validador pendiente, el documento pasará a publicado."
         confirmLabel="Aprobar"
         error={validationModalError}

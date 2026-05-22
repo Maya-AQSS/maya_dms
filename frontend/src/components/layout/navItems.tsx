@@ -7,8 +7,8 @@ export function useNavItems(): NavItem[] {
   const { t } = useTranslation('nav');
   return useMemo<NavItem[]>(
     () => [
-      { id: 'dashboard', label: t('dashboard'), icon: HomeIcon, path: '/dashboard' },
-      { id: 'themes', label: 'Themes', icon: HomeIcon, path: '/themes' },
+      { id: 'dashboard', label: t('nav.dashboard'), icon: HomeIcon, path: '/dashboard' },
+      { id: 'themes', label: t('themes:title'), icon: HomeIcon, path: '/themes' },
     ],
     [t],
   );

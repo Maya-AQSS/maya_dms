@@ -7,6 +7,7 @@ import React, {
   lazy,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
 import {
@@ -103,6 +104,7 @@ function SortableOutlineItem({
   isActive: boolean;
   onClick: () => void;
 }) {
+  const { t } = useTranslation('documents');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: block.id });
 
@@ -134,7 +136,7 @@ function SortableOutlineItem({
         {...attributes}
         {...listeners}
         className="shrink-0 w-5 h-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-text-muted hover:text-text-secondary focus:outline-none"
-        aria-label="Reordenar bloque"
+        aria-label={t('blocks.reorderAria')}
       >
         ⠿
       </button>
@@ -167,6 +169,7 @@ type Props = { template: Template };
 
 export function TemplateEditor({ template }: Props) {
   const navigate = useNavigate();
+  const { t } = useTranslation('documents');
   const { blocks, loading, createBlock, updateBlock, reorderBlocks } =
     useTemplateBlocks(template.id);
   const { isDark } = useDarkMode();
@@ -404,7 +407,7 @@ export function TemplateEditor({ template }: Props) {
                   fieldSize="sm"
                   value={localTitle}
                   disabled={isBlockLocked}
-                  placeholder="Nombre del bloque"
+                  placeholder={t('blocks.blockNamePlaceholder')}
                   onChange={(e) => {
                     setLocalTitle(e.target.value);
                     markDirty();
@@ -472,7 +475,7 @@ export function TemplateEditor({ template }: Props) {
           variant="ghost"
           size="xs"
           onClick={() => navigate('/procesos')}
-          aria-label="Volver a Plantillas"
+          aria-label={t('blocks.backToTemplates')}
           className="!w-9 !h-9 !p-0 !rounded-full active:scale-95"
         >
           ←

@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
+import { useTranslation } from 'react-i18next';
 import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function WizardStep1Properties({ errors, templateStatus }: Props) {
+  const { t } = useTranslation('templates');
   const deadlineLocked = templateStatus === 'in_review' || templateStatus === 'published';
   const { hierarchy, loading: hierarchyLoading } = useHierarchy();
   const { profile, loading: profileLoading, error: profileError, hasPermission } = useUserProfile();
@@ -97,11 +99,11 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="md:col-span-2">
-            <FieldLabel required>Nombre</FieldLabel>
+            <FieldLabel required>{t('tables.name')}</FieldLabel>
             <TextInput
               type="text"
               fieldSize="comfortable"
-              placeholder="Ej. Acta de Evaluación Final"
+              placeholder={t('placeholders.templateName')}
               error={!!formErrors.name}
               {...register('name')}
             />
@@ -111,17 +113,17 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
           </div>
 
           <div className="md:col-span-2">
-            <FieldLabel>Descripción</FieldLabel>
+            <FieldLabel>{t('tables.description')}</FieldLabel>
             <TextArea
               fieldSize="comfortable"
-              placeholder="Propósito de la plantilla…"
+              placeholder={t('wizard.purposePlaceholder')}
               style={{ minHeight: '64px' }}
               {...register('description')}
             />
           </div>
 
           <div>
-            <FieldLabel required>Visibilidad</FieldLabel>
+            <FieldLabel required>{t('fields.visibility')}</FieldLabel>
             <Controller
               control={control}
               name="visibility"
@@ -148,7 +150,7 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
           </div>
 
           <div>
-            <FieldLabel htmlFor="delivery-deadline" required>Plazo de entrega</FieldLabel>
+            <FieldLabel htmlFor="delivery-deadline" required>{t('fields.deadline')}</FieldLabel>
             <Controller
               control={control}
               name="deliveryDeadline"
@@ -157,8 +159,8 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
                   value={field.value || null}
                   onChange={(d: string | null) => field.onChange(d ?? '')}
                   disabled={deadlineLocked}
-                  placeholder="Seleccionar fecha…"
-                  ariaLabel="Plazo de entrega"
+                  placeholder={t('wizard.selectDatePlaceholder')}
+                  ariaLabel={t('fields.deadline')}
                 />
               )}
             />
@@ -167,7 +169,7 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
             )}
             {deadlineLocked && (
               <p className="mt-1 text-xs text-text-muted italic">
-                No editable en estado actual.
+                {t('notEditableInState')}
               </p>
             )}
           </div>
@@ -199,9 +201,9 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
                         error={!!formErrors.studyTypeId}
                       >
                         {hierarchy.length === 0 && !hierarchyLoading ? (
-                          <option value="" disabled>No tienes tipos de estudio asignados, contacta con un administrador</option>
+                          <option value="" disabled>{t('noStudyTypesAssigned')}</option>
                         ) : (
-                          <option value="">— Seleccionar —</option>
+                          <option value="">{t('selectPlaceholder')}</option>
                         )}
                         {hierarchy.map((t) => (
                           <option key={t.id} value={t.id}>{t.name}</option>
@@ -232,7 +234,7 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
                         onBlur={field.onBlur}
                         error={!!formErrors.studyId}
                       >
-                        <option value="">— Seleccionar —</option>
+                        <option value="">{t('selectPlaceholder')}</option>
                         {filteredStudies.map((s) => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
@@ -253,7 +255,7 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
                     error={!!formErrors.moduleId}
                     {...register('moduleId')}
                   >
-                    <option value="">— Seleccionar —</option>
+                    <option value="">{t('selectPlaceholder')}</option>
                     {filteredModules.map((m) => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
@@ -273,7 +275,7 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
                     {...register('teamId')}
                   >
                     <option value="">
-                      {teamsLoading ? 'Cargando equipos…' : '— Seleccionar —'}
+                      {teamsLoading ? t('loadingTeams') : t('selectPlaceholder')}
                     </option>
                     {teams.map((team) => (
                       <option key={team.id} value={team.id}>{team.name}</option>
@@ -294,11 +296,11 @@ export function WizardStep1Properties({ errors, templateStatus }: Props) {
         {/* ─── Identidad visual (theme opcional) ───────────────────── */}
         <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border">
           <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
-            Identidad visual
+            {t('visualIdentity')}
           </h3>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <FieldLabel htmlFor="template-theme">Theme aplicado</FieldLabel>
+              <FieldLabel htmlFor="template-theme">{t('fields.theme')}</FieldLabel>
               <Controller
                 control={control}
                 name="themeId"

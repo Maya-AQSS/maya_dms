@@ -1,0 +1,59 @@
+{
+  "pageTitle": "Plantillas",
+  "pageSubtitle": "Listado según tu visibilidad en la API. La visibilidad compartida en alta/edición requiere roles de coordinación.",
+  "newTitle": "Nueva plantilla",
+  "editTitle": "Editar plantilla",
+  "modals": {
+    "unnamedBlocks": "Bloques sin título",
+    "invalidStructure": "Estructura de bloques inválida",
+    "validatorRequired": "Validador requerido",
+    "sendValidation": "Enviar a validación",
+    "publish": "Publicar plantilla"
+  },
+  "pendingReviewTitle": "Esta plantilla tiene bloques con comentarios de revisión pendientes.",
+  "blockDescriptionTitle": "Descripción del Bloque",
+  "wizard": {
+    "purposePlaceholder": "Propósito de la plantilla…",
+    "selectDatePlaceholder": "Seleccionar fecha…",
+    "filterUsersPlaceholder": "Filtrar usuarios…"
+  },
+  "table": {
+    "searchVisibility": "Global, personal, equipo, nombre de equipo, estudio o módulo…",
+    "authorPlaceholder": "Nombre del autor...",
+    "deadlinePlaceholder": "Cualquier plazo…"
+  },
+  "comments": {
+    "closePanelAria": "Cerrar panel",
+    "title": "Comentarios de Revisión",
+    "messagePlaceholder": "Escribe un mensaje..."
+  },
+  "review": {
+    "blockDescriptionTitle": "Descripción del Bloque",
+    "viewDescription": "Ver descripción",
+    "viewBlockHistory": "Ver historial del bloque",
+    "blockCommentsTitle": "Comentarios del Bloque",
+    "closePanelAria": "Cerrar panel"
+  },
+  "placeholders": {
+    "templateName": "Nombre de la plantilla…",
+    "changeDescription": "Descripción del cambio…"
+  },
+  "fields": {
+    "visibility": "Visibilidad",
+    "deadline": "Plazo de entrega",
+    "theme": "Theme aplicado",
+    "linking": "Vinculación",
+    "module": "Módulo"
+  },
+  "selectPlaceholder": "— Seleccionar —",
+  "notEditableInState": "No editable en estado actual.",
+  "noStudyTypesAssigned": "No tienes tipos de estudio asignados, contacta con un administrador",
+  "loadingTeams": "Cargando equipos…",
+  "visualIdentity": "Identidad visual",
+  "preview": {
+    "createNewVersionTitle": "¿Crear nueva versión?",
+    "draftAlreadyExistsTitle": "Ya existe una versión en borrador",
+    "discardNewVersionTitle": "¿Descartar nueva versión?",
+    "rejectValidationTitle": "¿Rechazar validación?"
+  }
+}

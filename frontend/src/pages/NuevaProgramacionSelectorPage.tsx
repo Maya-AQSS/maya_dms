@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { fetchTemplates } from '../api/templates';
 import { fetchProcesses } from '../api/processes';
 import {
@@ -34,6 +35,7 @@ const SORTABLE_SELECTOR_COLUMN_IDS = new Set(['name', 'latest_published_at']);
 export function NuevaProgramacionSelectorPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation(['documents', 'common']);
   const { hierarchy } = useHierarchy();
   const locationState = location.state as { moduleId?: string; processId?: string } | null;
   const selectedModuleId = locationState?.moduleId;
@@ -357,7 +359,7 @@ export function NuevaProgramacionSelectorPage() {
   return (
     <div className="min-h-full overflow-y-auto p-6 space-y-4">
       <PageTitle
-        title="Nuevo Documento"
+        title={t('documents:newDocument')}
         subtitle={
           process
             ? `Proceso: ${process.code} — ${process.name} · Selecciona una plantilla`
@@ -415,7 +417,7 @@ export function NuevaProgramacionSelectorPage() {
             <FilterField label="Nombre">
               <TextInput
                 fieldSize="sm"
-                placeholder="Buscar por nombre..."
+                placeholder={t('documents:wizard.searchByName')}
                 value={nameInput}
                 onChange={handleNameChange}
               />
@@ -424,7 +426,7 @@ export function NuevaProgramacionSelectorPage() {
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
+                placeholder={t('documents:wizard.searchVisibility')}
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />
@@ -432,7 +434,7 @@ export function NuevaProgramacionSelectorPage() {
             <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
-                placeholder="Nombre del autor..."
+                placeholder={t('documents:wizard.authorPlaceholder')}
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
@@ -457,7 +459,7 @@ export function NuevaProgramacionSelectorPage() {
               <DatePicker
                 value={filterUi.publishedOn || null}
                 onChange={(d) => applyFilters({ published_on: d ?? undefined })}
-                placeholder="Elegir día inicial…"
+                placeholder={t('documents:wizard.datePlaceholder')}
                 ariaLabel="Filtrar plantillas publicadas desde esta fecha (inclusive)"
               />
             </FilterField>

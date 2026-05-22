@@ -1,0 +1,62 @@
+{
+  "title": "Temas",
+  "subtitle": "Identidad visual reutilizable para plantillas y documentos",
+  "closeErrorMessage": "Cerrar mensaje de error",
+  "closeInfoMessage": "Cerrar mensaje informativo",
+  "layerUp": "Capa arriba",
+  "layerDown": "Capa abajo",
+  "newPurposePlaceholder": "Para qué tipo de documentos usar este theme",
+  "identity": {
+    "sections": {
+      "general": "Información general",
+      "palette": "Paleta de colores",
+      "typography": "Tipografía",
+      "accessibility": "Accesibilidad (PDF/UA)"
+    },
+    "fields": {
+      "name": "Nombre",
+      "namePlaceholder": "Ej.: Tema corporativo CEEDCV",
+      "description": "Descripción",
+      "descriptionPlaceholder": "Para qué tipo de documentos usar este theme",
+      "status": "Estado",
+      "headingFont": "Fuente de encabezados",
+      "bodyFont": "Fuente de cuerpo",
+      "baseSize": "Tamaño base (pt)",
+      "lineHeight": "Altura de línea",
+      "language": "Idioma",
+      "title": "Título",
+      "subject": "Asunto",
+      "author": "Autor (metadatos PDF)"
+    },
+    "colors": {
+      "primary": "Primario",
+      "secondary": "Secundario",
+      "accent": "Acento",
+      "text": "Texto",
+      "background": "Fondo"
+    },
+    "statusOptions": {
+      "draft": "Borrador",
+      "published": "Publicado",
+      "archived": "Archivado"
+    },
+    "languageOptions": {
+      "es": "Español",
+      "ca": "Catalán/Valenciano",
+      "en": "Inglés",
+      "fr": "Francés"
+    },
+    "assets": {
+      "assetsTitle": "Assets visuales (logo, fondo, marca de agua):",
+      "assetsHint": "guarda primero el theme para poder subir imágenes. Una vez creado, este panel mostrará las tarjetas de subida."
+    }
+  },
+  "editor": {
+    "blocksPlaceholder": "Aquí se renderizan los bloques del documento al generar el PDF",
+    "addBlock": "+ Añadir bloque",
+    "pageNumber": "Página N",
+    "pageNumberOfTotal": "Página N de M",
+    "alignment": "Alineación"
+  },
+  "emptyMessage": "Aún no hay temas. Crea uno desde \"Nuevo tema\"."
+}

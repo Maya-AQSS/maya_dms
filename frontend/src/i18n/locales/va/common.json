@@ -1,39 +1,16 @@
 {
-  "actions": {
-    "save": "Guardar",
-    "cancel": "Cancel·lar",
-    "create": "Crear",
-    "edit": "Editar",
-    "delete": "Eliminar",
-    "close": "Tancar",
-    "confirm": "Confirmar",
-    "back": "Tornar",
-    "search": "Cercar",
-    "upload": "Pujar",
-    "download": "Descarregar",
-    "preview": "Previsualitzar",
-    "duplicate": "Duplicar"
-  },
-  "status": {
-    "loading": "Carregant…",
-    "saving": "Guardant…",
-    "empty": "Sense resultats",
-    "error": "S'ha produït un error"
-  },
-  "nav": {
-    "dashboard": "Panell",
-    "documents": "Documents",
-    "templates": "Plantilles",
-    "trash": "Paperera"
-  },
   "dashboard": {
     "noWidgets": "No hi ha widgets al panell.",
     "noIndexPermission": "Tens accés a DocuCEED (dms.login) però no permís per veure el llistat del panell (dms.index). Demana dms.index a un administrador.",
-    "reset": "Restablir",
     "noShowPermission": "Sense permís per obrir des del panell (dms.show).",
     "widgets": {
       "recentDocuments": "Documents recents",
-      "pendingValidations": "Pendents de validar"
+      "pendingValidations": "Pendents de validar",
+      "showAllPendingAria": "Mostrar tots els pendents de validar",
+      "showAllTitle": "Mostrar tots",
+      "dataUnavailable": "Dades no disponibles",
+      "templatesLabel": "Plantilles",
+      "documentsLabel": "Documents"
     }
   },
   "documents": {
@@ -42,8 +19,7 @@
     "untitled": "Sense títol",
     "lastModified": "Última modificació",
     "createdBy": "Creat per",
-    "confirmDelete": "Eliminar este document?",
-    "deleteMessage": "Esta acció no es pot desfer."
+    "confirmDelete": "Eliminar este document?"
   },
   "templates": {
     "title": "Plantilles",
@@ -56,14 +32,18 @@
     "noIndexPermission": "No tens permís per veure el llistat de processos (process.index).",
     "noShowPermission": "No tens permís per obrir el detall del procés (process.show)."
   },
-  "auth": {
-    "logout": "Tancar sessió",
-    "profile": "Perfil"
+  "versionHistory": {
+    "title": "Historial de versions",
+    "loadFailed": "No s'ha pogut carregar l'historial.",
+    "loading": "Carregant historial…",
+    "emptyTemplate": "No hi ha versions publicades registrades per a aquesta plantilla.",
+    "emptyDocument": "No hi ha versions publicades registrades per a aquest document.",
+    "previewTemplateAria": "Veure vista prèvia de la plantilla en la versió {{n}}",
+    "previewDocumentAria": "Veure vista prèvia del document en la versió {{n}}",
+    "publishedBy": "Publicat per",
+    "versionAuthor": "Autor versió"
   },
-  "userMenu": {
-    "darkMode": "Mode fosc",
-    "lightMode": "Mode clar",
-    "profile": "Perfil",
-    "logout": "Tancar sessió"
+  "filters": {
+    "allModules": "Tots els mòduls"
   }
 }

@@ -1,0 +1,59 @@
+{
+  "pageTitle": "Templates",
+  "pageSubtitle": "List according to your API visibility. Shared visibility on create/edit requires coordination roles.",
+  "newTitle": "New template",
+  "editTitle": "Edit template",
+  "modals": {
+    "unnamedBlocks": "Untitled blocks",
+    "invalidStructure": "Invalid block structure",
+    "validatorRequired": "Validator required",
+    "sendValidation": "Send to validation",
+    "publish": "Publish template"
+  },
+  "pendingReviewTitle": "This template has blocks with pending review comments.",
+  "blockDescriptionTitle": "Block description",
+  "wizard": {
+    "purposePlaceholder": "Purpose of the template…",
+    "selectDatePlaceholder": "Select date…",
+    "filterUsersPlaceholder": "Filter users…"
+  },
+  "table": {
+    "searchVisibility": "Global, personal, team, team name, study or module…",
+    "authorPlaceholder": "Author name...",
+    "deadlinePlaceholder": "Any deadline…"
+  },
+  "comments": {
+    "closePanelAria": "Close panel",
+    "title": "Review comments",
+    "messagePlaceholder": "Write a message..."
+  },
+  "review": {
+    "blockDescriptionTitle": "Block description",
+    "viewDescription": "View block description",
+    "viewBlockHistory": "View block change history",
+    "blockCommentsTitle": "Block comments",
+    "closePanelAria": "Close panel"
+  },
+  "placeholders": {
+    "templateName": "E.g. Final Assessment Report",
+    "changeDescription": "Describe the changes in this version..."
+  },
+  "fields": {
+    "visibility": "Visibility",
+    "deadline": "Delivery deadline",
+    "theme": "Applied theme",
+    "linking": "Linking",
+    "module": "Module"
+  },
+  "selectPlaceholder": "— Select —",
+  "notEditableInState": "Not editable in current state.",
+  "noStudyTypesAssigned": "You have no study types assigned, contact an administrator",
+  "loadingTeams": "Loading teams…",
+  "visualIdentity": "Visual identity",
+  "preview": {
+    "createNewVersionTitle": "Create new version?",
+    "draftAlreadyExistsTitle": "A draft version already exists",
+    "discardNewVersionTitle": "Discard new version?",
+    "rejectValidationTitle": "Reject validation?"
+  }
+}

@@ -45,22 +45,22 @@ export default function PendingValidationsWidget() {
     <div className="w-full h-full rounded-xl bg-gradient-to-br from-odoo-purple/15 via-odoo-purple/5 to-transparent dark:from-odoo-dark-teal/25 dark:via-odoo-dark-teal/10 dark:to-transparent p-4">
       <div className="flex items-baseline gap-2">
         <span className="text-xs uppercase tracking-wide font-medium text-text-secondary dark:text-text-dark-secondary">
-          Pendientes de validar
+          {t('dashboard.widgets.pendingValidations')}
         </span>
         <button
           type="button"
           onClick={() => emitFilter('all')}
           disabled={loading}
           className="text-4xl font-bold tabular-nums bg-gradient-to-br from-odoo-purple to-odoo-purple-d dark:from-odoo-dark-teal dark:to-odoo-dark-teal-d bg-clip-text text-transparent leading-none enabled:cursor-pointer disabled:opacity-70"
-          aria-label="Mostrar todos los pendientes de validar"
-          title="Mostrar todos"
+          aria-label={t('dashboard.widgets.showAllPendingAria')}
+          title={t('dashboard.widgets.showAllTitle')}
         >
           {loading ? '…' : error ? '—' : (count ?? 0)}
         </button>
       </div>
       {error ? (
         <span className="mt-1 text-xs text-text-muted dark:text-text-dark-muted">
-          Datos no disponibles
+          {t('dashboard.widgets.dataUnavailable')}
         </span>
       ) : (
         <div className="mt-2 flex flex-col gap-1.5 text-xs">
@@ -75,7 +75,7 @@ export default function PendingValidationsWidget() {
                 : 'text-text-muted dark:text-text-dark-muted enabled:hover:text-text-primary dark:enabled:hover:text-text-dark-primary',
             ].join(' ')}
           >
-            Plantillas: {loading ? '…' : templateCount ?? 0}
+            {t('dashboard.widgets.templatesLabel')}: {loading ? '…' : templateCount ?? 0}
           </button>
           <button
             type="button"
@@ -88,7 +88,7 @@ export default function PendingValidationsWidget() {
                 : 'text-text-muted dark:text-text-dark-muted enabled:hover:text-text-primary dark:enabled:hover:text-text-dark-primary',
             ].join(' ')}
           >
-            Documentos: {loading ? '…' : documentCount ?? 0}
+            {t('dashboard.widgets.documentsLabel')}: {loading ? '…' : documentCount ?? 0}
           </button>
         </div>
       )}

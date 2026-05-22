@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -63,6 +64,7 @@ const STATUS_CLASS: Record<DocumentStatus, string> = {
  * Componente para mostrar el contenido de los documentos.
  */
 export function DocumentsContent() {
+  const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const location = useLocation();
   const [showSubmittedForReviewBanner, setShowSubmittedForReviewBanner] = useState(false);
@@ -297,7 +299,7 @@ export function DocumentsContent() {
     () => [
       {
         id: 'title',
-        header: 'Título',
+        header: t('list.titleColumn'),
         sortable: true,
         alwaysVisible: true,
         cell: (d: Document) => (
@@ -308,7 +310,7 @@ export function DocumentsContent() {
             {d.has_review_comments && d.status === 'draft' && profile && (d.owner_id === profile.id || d.created_by === profile.id) && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title="Este documento fue rechazado en revisión."
+                title={t('table.rejectedTitle')}
               >
                 ⚠ Revisión
               </span>
@@ -318,7 +320,7 @@ export function DocumentsContent() {
       },
       {
         id: 'version',
-        header: 'Versión',
+        header: t('list.versionColumn'),
         sortable: true,
         align: 'left',
         cell: (d: Document) => (
@@ -329,7 +331,7 @@ export function DocumentsContent() {
       },
       {
         id: 'status',
-        header: 'Estado',
+        header: t('tables.status'),
         sortable: true,
         align: 'left',
         cell: (d: Document) => (
@@ -342,7 +344,7 @@ export function DocumentsContent() {
       },
       {
         id: 'delivery_deadline',
-        header: 'Fecha',
+        header: t('tables.date'),
         sortable: true,
         align: 'left',
         cell: (d: Document) => (
@@ -356,7 +358,7 @@ export function DocumentsContent() {
         header: '',
         align: 'right',
         alwaysVisible: true,
-        visibilityLabel: 'Acciones',
+        visibilityLabel: t('tables.actions'),
         cell: (d: Document) => (
           <Button
             type="button"
@@ -626,7 +628,7 @@ export function DocumentsContent() {
             {!error && (
               <>
                 <DataTable<Document>
-                  title="Programaciones Didácticas"
+                  title={t('pages.scheduleTitle')}
                   description={
                     <span>
                       {filtered.length}{' '}

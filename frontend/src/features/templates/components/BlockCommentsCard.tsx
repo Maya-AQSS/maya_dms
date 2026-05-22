@@ -1,4 +1,5 @@
 import { useState, type RefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@maya/shared-ui-react';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -43,6 +44,7 @@ export function ViewCardHeader({
   onClose: () => void;
   headerRef?: RefObject<HTMLDivElement | null>;
 }) {
+  const { t } = useTranslation('documents');
   return (
     <div
       ref={headerRef}
@@ -58,7 +60,7 @@ export function ViewCardHeader({
           {title}
         </span>
         <button
-          aria-label="Cerrar panel"
+          aria-label={t('blocks.closePanelAria')}
           onClick={onClose}
           className="group ml-3 w-8 h-8 rounded-full hover:bg-ui-body dark:hover:bg-ui-dark-bg flex items-center justify-center text-text-muted transition-all shrink-0"
         >
@@ -191,6 +193,7 @@ export function BlockCommentsCard({
   headerRef,
   onClose,
 }: BlockCommentsCardProps) {
+  const { t } = useTranslation(['templates', 'documents']);
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
   const [replyBody, setReplyBody] = useState('');
   const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null);
@@ -231,7 +234,7 @@ export function BlockCommentsCard({
     <div className="bg-white dark:bg-ui-dark-card rounded-xl shadow-2xl border border-ui-border/60 dark:border-ui-dark-border flex flex-col overflow-hidden animate-in fade-in slide-in-from-right-4 duration-300 h-full">
       <ViewCardHeader
         blockSortOrder={blockSortOrder ?? '?'}
-        title="Comentarios de Revisión"
+        title={t('templates:comments.title')}
         onClose={onClose}
         headerRef={headerRef}
       />
@@ -303,7 +306,7 @@ export function BlockCommentsCard({
               id="block-comments-chat-input"
               value={replyBody}
               onChange={(e) => setReplyBody(e.target.value)}
-              placeholder="Escribe un mensaje..."
+              placeholder={t('templates:comments.messagePlaceholder')}
               className="w-full h-20 p-3 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
             />
             <div className="mt-3 flex justify-end">

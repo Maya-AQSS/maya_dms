@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   Button,
   DataTable,
@@ -43,6 +44,7 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
  */
 export function TemplatesContent() {
   const navigate = useNavigate();
+  const { t } = useTranslation(['templates', 'common']);
   const { profile } = useUserProfile();
   const { hierarchy } = useHierarchy();
   const { hiddenIds, toggleHidden, sortBy, setSortBy, pageSize, setPageSize } = useTablePreferences({
@@ -236,7 +238,7 @@ export function TemplatesContent() {
             {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title="Esta plantilla tiene bloques con comentarios de revisión pendientes."
+                title={t('templates:pendingReviewTitle')}
               >
                 ⚠ Revisión
               </span>
@@ -304,8 +306,8 @@ export function TemplatesContent() {
   return (
     <div className="p-6 space-y-6">
       <PageTitle
-        title="Plantillas"
-        subtitle="Listado según tu visibilidad en la API. La visibilidad compartida en alta/edición requiere roles de coordinación."
+        title={t('templates:pageTitle')}
+        subtitle={t('templates:pageSubtitle')}
         actions={
           <>
             <Button
@@ -382,7 +384,7 @@ export function TemplatesContent() {
               <TextInput
                 fieldSize="sm"
                 type="search"
-                placeholder="Global, personal, equipo, nombre de equipo, estudio o módulo…"
+                placeholder={t('templates:table.searchVisibility')}
                 value={academicContextInput}
                 onChange={handleAcademicContextChange}
               />
@@ -403,7 +405,7 @@ export function TemplatesContent() {
             <FilterField label="Autor">
               <TextInput
                 fieldSize="sm"
-                placeholder="Nombre del autor..."
+                placeholder={t('templates:table.authorPlaceholder')}
                 value={authorInput}
                 onChange={handleAuthorChange}
               />
@@ -412,12 +414,12 @@ export function TemplatesContent() {
               <DatePicker
                 value={filterUi.deliveryDeadline || null}
                 onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
-                placeholder="Cualquier plazo…"
+                placeholder={t('templates:table.deadlinePlaceholder')}
                 ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
               />
             </FilterField>
             <div className="col-span-full pt-2 border-t border-ui-border/50 dark:border-ui-dark-border/50">
-              <FieldLabel>Vinculación</FieldLabel>
+              <FieldLabel>{t('fields.linking')}</FieldLabel>
               <TemplateHierarchyFields
                 values={{
                   study_type_id: filterUi.studyTypeId,
