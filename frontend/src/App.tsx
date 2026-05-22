@@ -114,8 +114,8 @@ function AppWithLayout() {
       onProfile={onProfile}
       favoritesSlot={
         <>
-          <SidebarProcesos />
           <SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />
+          <SidebarProcesos />
         </>
       }
       notificationsSlot={<NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />}

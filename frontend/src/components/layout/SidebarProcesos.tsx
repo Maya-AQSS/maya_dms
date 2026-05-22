@@ -32,6 +32,13 @@ const CHEVRON = (
 
 type ProcessNode = Process & { children: Process[] };
 
+/** Comparador locale-aware (ES) para ordenar por alias o name fallback. */
+const compareByLabel = (a: Process, b: Process): number => {
+  const la = (a.alias?.trim() || a.name).toLocaleLowerCase('es-ES');
+  const lb = (b.alias?.trim() || b.name).toLocaleLowerCase('es-ES');
+  return la.localeCompare(lb, 'es-ES');
+};
+
 function buildTree(processes: Process[]): ProcessNode[] {
   const byId = new Map<string, ProcessNode>();
   const roots: ProcessNode[] = [];
@@ -52,6 +59,12 @@ function buildTree(processes: Process[]): ProcessNode[] {
     } else {
       roots.push(node);
     }
+  }
+
+  // Orden alfabético en raíces y en cada nivel de hijos (locale-aware).
+  roots.sort(compareByLabel);
+  for (const root of roots) {
+    root.children.sort(compareByLabel);
   }
 
   return roots;
@@ -143,16 +156,17 @@ export function SidebarProcesos({ label = 'Procesos' }: { label?: string }) {
     // de la BD — fallback a folder + inverse/60 si no hay datos.
     const displayLabel = p.alias?.trim() || p.name;
     const title = `${p.code} — ${p.name}`;
-    const iconColor = p.color ?? undefined;
+    // Círculo coloreado con el icono blanco-translúcido encima. El color del
+    // proceso pinta el fondo del círculo (no el icono) para mejor distinción
+    // visual y consistencia con el patrón de "avatar" de las apps favoritas.
+    const circleBg = p.color ?? 'rgba(255,255,255,0.10)';
     const content = (
       <>
         {dot ?? (
           <span
-            className={[
-              'shrink-0 w-6 h-6 flex items-center justify-center',
-              iconColor ? '' : 'text-text-inverse/60',
-            ].join(' ').trim()}
-            style={iconColor ? { color: iconColor } : undefined}
+            className="shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-text-inverse/95 [&>svg]:w-3.5 [&>svg]:h-3.5"
+            style={{ backgroundColor: circleBg }}
+            aria-hidden="true"
           >
             {getProcessIcon(p.icon)}
           </span>
