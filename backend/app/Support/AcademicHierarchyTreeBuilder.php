@@ -56,7 +56,8 @@ final class AcademicHierarchyTreeBuilder
         if ($moduleIds !== []) {
             foreach ($context['modules'] as $module) {
                 $moduleId = (string) $module['id'];
-                $studyId = $catalog['module_study_ids'][$moduleId] ?? '';
+                $studyId = $catalog['module_study_ids'][$moduleId]
+                    ?? $this->parseStudyIdFromModuleId($moduleId);
                 if ($studyId === '') {
                     continue;
                 }
@@ -284,6 +285,18 @@ final class AcademicHierarchyTreeBuilder
         }
 
         return $id;
+    }
+
+    /**
+     * Odoo: module_id = `{study_id}_{subject_id}` (misma convención que `user_course_modules`).
+     */
+    private function parseStudyIdFromModuleId(string $moduleId): string
+    {
+        if (preg_match('/^(\d+)_\d+$/', $moduleId, $matches) === 1) {
+            return $matches[1];
+        }
+
+        return '';
     }
 
     /**
