@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { BlockNoteEditor } from '@blocknote/core';
+import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { FormattingToolbar } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
 import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
+import { createIframeBlock } from './IframeBlock'
 import '@blocknote/ariakit/style.css';
 import '../styles/blocknote-panel.css';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
@@ -131,6 +132,14 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         (normalized as any)
       : undefined;
 
+  //Added iframe block for youtube videos    
+  const schema = BlockNoteSchema.create().extend({
+    blockSpecs: {
+      ...defaultBlockSpecs,
+      iframe: createIframeBlock(), // Aquí registramos el bloque iframe
+    },
+  })
+
   // Use a ref for stable editor identity across React StrictMode's double-mount cycle.
   // useCreateBlockNote registers ProseMirror clipboard handlers on mount; without this
   // guard StrictMode's mount→cleanup→remount leaves two handlers → paste fires twice.
@@ -140,6 +149,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
   if (!editorRef.current) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     editorRef.current = (BlockNoteEditor as any).create({
+      schema, // PASAMOS EL NUEVO ESQUEMA
       initialContent: safeContent ? repairBlockNoteBlocks(safeContent) : undefined,
       uploadFile: uploadFileRef.current,
     });
@@ -160,9 +170,11 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     const handlePaste = (e: ClipboardEvent) => {
     const selection = editor.getTextCursorPosition();
     const currentBlock = editor.document.find((b: any) => b.id === selection.block.id);
-    
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && (activeElement.tagName === "INPUT")
+      
     // Si estamos en un bloque de código, no interceptamos
-    if (currentBlock.type === 'codeBlock') {
+    if (currentBlock.type === 'codeBlock' || isInputFocused) {
       return; 
     }
 
@@ -278,11 +290,11 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       },
     },
 
-    {
+    /*{
       name: "Vídeo",
       icon: "▶",
       color: "#EC4899",
-      desc: "Insertar vídeo",
+      desc: "Insertar vídeo local",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
         const targetId = currentBlock?.id;
@@ -290,7 +302,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
 
         editor.insertBlocks([{ type: "video" as any }], targetId, "after");
       },
-    },
+    },*/
 
     {
       name: "Código",
@@ -385,6 +397,23 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
           targetId,
           "after"
         );
+      },
+    },
+    {
+      name: "Embed Vídeo",
+      icon: "<->",
+      color: "#EC4899",
+      desc: "Insertar vídeo youtube",
+      run: () => {
+        const currentBlock = editor.getTextCursorPosition().block;
+        const targetId = currentBlock?.id;
+        if (!targetId) return;
+
+        editor.insertBlocks([
+        {
+          type: "iframe",
+        },
+      ], targetId, "after");
       },
     },
   ];
