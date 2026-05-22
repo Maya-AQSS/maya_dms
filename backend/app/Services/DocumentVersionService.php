@@ -81,6 +81,7 @@ class DocumentVersionService
                 'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
                 'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
                 'owner_name' => $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
+                'reviewer_names' => $this->extractReviewerNamesFromSnapshot($snapshotData),
                 'changelog' => $version->notes,
                 'snapshot_data' => $snapshotData,
                 'created_at' => $version->created_at?->toIso8601String(),
@@ -115,6 +116,7 @@ class DocumentVersionService
                 'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
                 'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
                 'owner_name' => $ownerId !== null ? $this->resolveUserNameById($ownerId) : null,
+                'reviewer_names' => $this->extractReviewerNamesFromSnapshot($snapshotData),
                 'changelog' => $entityVersion->changelog,
                 'snapshot_data' => $snapshotData,
                 'created_at' => ($entityVersion->published_at ?? $entityVersion->created_at)?->toIso8601String(),
@@ -149,6 +151,7 @@ class DocumentVersionService
             $authorId = data_get($snapshot, 'document.created_by');
             $authorId = is_string($authorId) && $authorId !== '' ? $authorId : (is_string($v->created_by) ? $v->created_by : null);
             $publishedBy = is_string($v->published_by) && $v->published_by !== '' ? $v->published_by : (is_string($v->created_by) ? $v->created_by : null);
+            $reviewerNames = $this->extractReviewerNamesFromSnapshot($snapshot);
 
             return [
                 'id' => $v->id,
@@ -158,6 +161,7 @@ class DocumentVersionService
                 'triggered_by' => (string) ($v->published_by ?? $v->created_by),
                 'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
                 'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                'reviewer_names' => $reviewerNames,
                 'changelog' => $v->changelog,
                 'notes' => $v->changelog,
                 'created_at' => ($v->published_at ?? $v->created_at)?->toIso8601String(),
@@ -178,6 +182,8 @@ class DocumentVersionService
                 $authorId = is_string($authorId) && $authorId !== '' ? $authorId : null;
                 $publishedBy = is_string($v->triggered_by) && $v->triggered_by !== '' ? $v->triggered_by : null;
 
+                $reviewerNamesLegacy = $this->extractReviewerNamesFromSnapshot($snapshot);
+
                 return [
                     'id' => $v->id,
                     'document_id' => $v->document_id,
@@ -186,6 +192,7 @@ class DocumentVersionService
                     'triggered_by' => $v->triggered_by,
                     'published_by_name' => $publishedBy !== null ? $this->resolveUserNameById($publishedBy) : null,
                     'author_name' => $authorId !== null ? $this->resolveUserNameById($authorId) : null,
+                    'reviewer_names' => $reviewerNamesLegacy,
                     'changelog' => $v->notes,
                     'notes' => $v->notes,
                     'created_at' => $v->created_at?->toIso8601String(),
@@ -230,6 +237,31 @@ class DocumentVersionService
             ->sortByDesc(static fn (array $row): int => (int) $row['version_number'])
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     * @return list<string>
+     */
+    private function extractReviewerNamesFromSnapshot(array $snapshot): array
+    {
+        $reviewers = data_get($snapshot, 'reviewers');
+        if (! is_array($reviewers)) {
+            return [];
+        }
+        $names = [];
+        foreach ($reviewers as $r) {
+            $userId = $r['reviewer_id'] ?? null;
+            if (! is_string($userId) || $userId === '') {
+                continue;
+            }
+            $name = $this->resolveUserNameById($userId);
+            if ($name !== null) {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
     }
 
     private function resolveUserNameById(string $userId): ?string

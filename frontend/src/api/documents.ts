@@ -61,6 +61,7 @@ export type DocumentVersionSummary = {
   triggered_by: string;
   published_by_name?: string | null;
   author_name?: string | null;
+  reviewer_names?: string[] | null;
   changelog: string | null;
   notes: string | null;
   created_at: string | null;
