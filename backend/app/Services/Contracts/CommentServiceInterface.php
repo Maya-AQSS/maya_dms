@@ -57,5 +57,5 @@ interface CommentServiceInterface
      * Elimina un comentario. Recibe el Model Eloquent (las policies del Controller
      * ya lo cargan vía `findModelOrFail()` o el route binding).
      */
-    public function delete(Comment $comment): void;
+    public function delete(Comment $comment, string $deletedBy): void;
 }

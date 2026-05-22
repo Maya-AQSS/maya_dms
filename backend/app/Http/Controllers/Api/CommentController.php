@@ -127,7 +127,7 @@ class CommentController extends Controller
         $this->authorizeCommentAccess($commentModel, 'view');
         $this->authorize('delete', $commentModel);
 
-        $this->commentService->delete($commentModel);
+        $this->commentService->delete($commentModel, (string) Auth::id());
 
         return response()->json([], 204);
     }

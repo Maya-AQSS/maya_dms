@@ -110,8 +110,10 @@ class CommentService implements CommentServiceInterface
         return CommentDto::fromModel($commentModel);
     }
 
-    public function delete(Comment $comment): void
+    public function delete(Comment $comment, string $deletedBy): void
     {
+        $comment->deleted_by = $deletedBy;
+        $comment->save();
         $comment->delete();
     }
 
