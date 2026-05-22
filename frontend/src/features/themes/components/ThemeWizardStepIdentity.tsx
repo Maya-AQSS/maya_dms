@@ -202,7 +202,7 @@ export function ThemeWizardStepIdentity({
         {theme && onAssetsUploaded ? (
           <ThemeAssetsSection theme={theme} onUploaded={onAssetsUploaded} />
         ) : (
-          <section className="rounded border border-dashed border-gray-300 p-4 text-sm text-text-muted">
+          <section className="rounded border border-dashed border-ui-border p-4 text-sm text-text-muted">
             <strong>{t('identity.assets.assetsTitle')}</strong> {t('identity.assets.assetsHint')}
           </section>
         )}
@@ -265,14 +265,14 @@ function ColorField({ label, value, onChange }: ColorFieldProps) {
           type="color"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-9 w-12 cursor-pointer rounded border border-gray-300"
+          className="h-9 w-12 cursor-pointer rounded border border-ui-border"
           aria-label={`${label} (selector de color)`}
         />
         <input
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="flex-1 rounded border border-gray-300 px-2 py-1 text-sm font-mono"
+          className="flex-1 rounded border border-ui-border px-2 py-1 text-sm font-mono"
           pattern="^#[0-9a-fA-F]{3,8}$"
           maxLength={9}
           aria-label={`${label} (valor hexadecimal)`}

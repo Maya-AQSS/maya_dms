@@ -13,12 +13,12 @@ use Illuminate\Support\Str;
 class ProcessRepository implements ProcessRepositoryInterface
 {
     /**
-     * @return list<array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}>
+     * @return list<array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}>
      */
     public function all(): array
     {
         return Process::query()
-            ->select(['id', 'code', 'name', 'alias', 'description', 'process_parent_id'])
+            ->select(['id', 'code', 'name', 'alias', 'icon', 'color', 'description', 'process_parent_id'])
             ->orderBy('code')
             ->get()
             ->map(fn (Process $process): array => $this->toRow($process))
@@ -32,7 +32,7 @@ class ProcessRepository implements ProcessRepositoryInterface
     }
 
     /**
-     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
      */
     public function toRow(Process $process): array
     {
@@ -41,13 +41,15 @@ class ProcessRepository implements ProcessRepositoryInterface
             'code' => (string) $process->code,
             'name' => (string) $process->name,
             'alias' => (string) $process->alias,
+            'icon' => $process->icon,
+            'color' => $process->color,
             'description' => $process->description,
             'process_parent_id' => $process->process_parent_id,
         ];
     }
 
     /**
-     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
      */
     public function create(CreateProcessDto $dto): array
     {
@@ -64,7 +66,7 @@ class ProcessRepository implements ProcessRepositoryInterface
     }
 
     /**
-     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
      */
     public function update(Process $process, UpdateProcessDto $dto): array
     {

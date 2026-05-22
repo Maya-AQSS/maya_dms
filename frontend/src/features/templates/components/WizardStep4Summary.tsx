@@ -135,7 +135,7 @@ export function WizardStep4Summary({
                       <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20 flex items-center justify-center">{initials}</span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
                       </div>
                     </div>
                   );
@@ -166,7 +166,7 @@ export function WizardStep4Summary({
                       <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-xs font-black border border-odoo-teal/20 flex items-center justify-center">{initials}</span>
                       <div className="min-w-0">
                         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-tight">{v.role}</p>}
+                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
                       </div>
                     </div>
                   );

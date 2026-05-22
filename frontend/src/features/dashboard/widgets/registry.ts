@@ -15,6 +15,7 @@ export const WIDGET_REGISTRY: WidgetRegistry = {
     id: 'pending-validations',
     titleKey: 'dashboard.widgets.pendingValidations',
     hideTitle: true,
+    highlight: true,
     defaultSize: { w: 4, h: 2 },
     minSize: { w: 3, h: 2 },
     component: PendingValidationsWidget,

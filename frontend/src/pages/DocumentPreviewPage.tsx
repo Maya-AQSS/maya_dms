@@ -870,7 +870,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 {detail?.title ?? 'Documento'}
               </p>
               {processLabel && (
-                <p className="text-[11px] text-text-muted mt-0.5 truncate max-w-[420px]">
+                <p className="text-2xs text-text-muted mt-0.5 truncate max-w-[420px]">
                   {processLabel}
                 </p>
               )}
@@ -1126,7 +1126,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               </svg>
                               <span>Mensajes</span>
                               {getCommentsForBlock(block.document_block_id, validateComments).length > 0 && (
-                                <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                                <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
                                   {getCommentsForBlock(block.document_block_id, validateComments).length}
                                 </span>
                               )}
@@ -1363,7 +1363,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                             </svg>
                             <span>Mensajes</span>
                             {getCommentsForBlock(block.document_block_id, reviewComments).length > 0 && (
-                              <span className="ml-1 bg-odoo-purple text-white px-1.5 py-0.5 rounded-full text-[10px] leading-none font-bold">
+                              <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
                                 {getCommentsForBlock(block.document_block_id, reviewComments).length}
                               </span>
                             )}

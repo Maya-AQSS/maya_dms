@@ -26,9 +26,9 @@ const STATUS_LABEL: Record<ThemeStatus, string> = {
 };
 
 const STATUS_CLASS: Record<ThemeStatus, string> = {
-  draft: 'bg-yellow-100 text-yellow-800',
-  published: 'bg-green-100 text-green-800',
-  archived: 'bg-gray-100 text-gray-700',
+  draft: 'bg-warning-light text-warning-dark',
+  published: 'bg-success-light text-success-dark',
+  archived: 'bg-ui-body text-text-primary',
 };
 
 export function ThemesListPage() {
@@ -100,7 +100,7 @@ export function ThemesListPage() {
                 key={`${theme.id}-${idx}`}
                 title={String(color)}
                 style={{ backgroundColor: String(color) }}
-                className="inline-block h-4 w-4 rounded-full border border-gray-300"
+                className="inline-block h-4 w-4 rounded-full border border-ui-border"
               />
             ))}
         </div>
@@ -192,13 +192,13 @@ export function ThemesListPage() {
       />
 
       {listError && (
-        <div className="my-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <div className="my-3 rounded border border-danger bg-danger-light p-3 text-sm text-danger-dark">
           {listError}
         </div>
       )}
 
       {actionError && (
-        <div className="my-3 rounded border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+        <div className="my-3 rounded border border-danger bg-danger-light p-3 text-sm text-danger-dark">
           <span>{actionError}</span>
           <button
             type="button"
@@ -212,7 +212,7 @@ export function ThemesListPage() {
       )}
 
       {actionInfo && (
-        <div className="my-3 rounded border border-green-300 bg-green-50 p-3 text-sm text-green-700">
+        <div className="my-3 rounded border border-success bg-success-light p-3 text-sm text-success-dark">
           <span>{actionInfo}</span>
           <button
             type="button"

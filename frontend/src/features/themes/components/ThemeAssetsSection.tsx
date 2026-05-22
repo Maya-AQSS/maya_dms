@@ -98,7 +98,7 @@ function AssetCard({ theme, kind, onUploaded }: AssetCardProps) {
     <div className="flex flex-col gap-2 rounded border border-ui-border p-3 dark:border-ui-dark-border">
       <span className="text-sm font-medium">{ASSET_LABELS[kind]}</span>
 
-      <div className="flex h-28 items-center justify-center rounded border border-dashed border-gray-300 bg-gray-50 dark:bg-gray-800">
+      <div className="flex h-28 items-center justify-center rounded border border-dashed border-ui-border bg-ui-body dark:border-ui-dark-border dark:bg-ui-dark-card">
         {previewUrl ? (
           <img
             src={previewUrl}
@@ -133,7 +133,7 @@ function AssetCard({ theme, kind, onUploaded }: AssetCardProps) {
       </Button>
 
       {error && (
-        <p className="text-xs text-red-600" role="alert">
+        <p className="text-xs text-danger-dark" role="alert">
           {error}
         </p>
       )}

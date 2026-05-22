@@ -28,7 +28,7 @@ export function SequentialValidatorBadge({ reviewers, reviewMode }: Props) {
       <svg className="w-3 h-3 text-odoo-teal dark:text-odoo-dark-teal shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
-      <span className="text-[10px] font-black uppercase tracking-widest text-odoo-teal dark:text-odoo-dark-teal whitespace-nowrap">
+      <span className="text-2xs font-black uppercase tracking-widest text-odoo-teal dark:text-odoo-dark-teal whitespace-nowrap">
         {names}
         <span className="opacity-50 ml-1">· etapa {minStage}</span>
       </span>

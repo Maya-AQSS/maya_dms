@@ -51,6 +51,7 @@ import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { visibilityLabel } from '../../templates/constants';
 import {
   Button,
+  Card,
   ConfirmDialog,
   DatePicker,
   ErrorBoundary,
@@ -1244,7 +1245,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </div>
             )}
 
-            <div className="bg-ui-card dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6 space-y-6 animate-in fade-in slide-in-from-top-1">
+            <Card padding="lg" radius="xl" className="space-y-6 animate-in fade-in slide-in-from-top-1">
               {template && (
                 <div>
                   <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1">
@@ -1553,8 +1554,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     })
                   )}
                 </div>
-              </div>
-              
+              </Card>
+
               <button
                 type="button"
                 onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}

@@ -16,6 +16,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  *     code: string,
  *     name: string,
  *     alias: string,
+ *     icon: string|null,
+ *     color: string|null,
  *     description: string|null,
  *     process_parent_id: string|null,
  * } $resource
@@ -32,6 +34,8 @@ class ProcessResource extends JsonResource
             'code' => $this->resource['code'] ?? null,
             'name' => $this->resource['name'] ?? null,
             'alias' => $this->resource['alias'] ?? null,
+            'icon' => $this->resource['icon'] ?? null,
+            'color' => $this->resource['color'] ?? null,
             'description' => $this->resource['description'] ?? null,
             'process_parent_id' => $this->resource['process_parent_id'] ?? null,
         ];

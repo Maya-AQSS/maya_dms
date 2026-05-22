@@ -91,7 +91,7 @@ function SortableValidatorItem({
       <div className="flex-1 min-w-0">
         <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{entry.name}</p>
         {entry.role && (
-          <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{entry.role}</p>
+          <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-wider">{entry.role}</p>
         )}
       </div>
       {!readOnly && (
@@ -343,7 +343,7 @@ function UserAddPanel({
               </span>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-text-primary dark:text-text-dark-primary truncate">{u.name}</p>
-                {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-tight">{u.role}</p>}
+                {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary uppercase tracking-wider">{u.role}</p>}
               </div>
               <span className="shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-odoo-purple text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity">+</span>
             </button>

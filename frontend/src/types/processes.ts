@@ -9,7 +9,12 @@ export type Process = {
   id: string;
   code: string;
   name: string;
+  /** Texto user-facing (≤25 chars) que se muestra en sidebar y listados compactos. */
   alias: string;
+  /** Slug de icono resuelto por `processIcons.tsx` (lucide-style). */
+  icon: string | null;
+  /** Hex `#RRGGBB` único por proceso para distinguirlos visualmente. */
+  color: string | null;
   description: string | null;
   process_parent_id: string | null;
 };

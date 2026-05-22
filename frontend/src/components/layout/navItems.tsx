@@ -1,13 +1,20 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NavItem } from '@maya/shared-layout-react';
-import { HomeIcon } from '@maya/shared-layout-react';
+import { FolderIcon, HomeIcon, TemplateIcon } from '@maya/shared-layout-react';
 import { useUserProfile } from '@maya/shared-profile-react';
-import { canManageThemesCatalog } from '../../permissions';
+import { canManageThemesCatalog, DMS_PERMISSIONS } from '../../permissions';
+import { useMediaQuery } from '../../hooks/useMediaQuery';
 
-export function useNavItems(): NavItem[] {
+interface UseNavItemsOptions {
+  onOpenProcessesDrawer?: () => void;
+}
+
+export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}): NavItem[] {
   const { t } = useTranslation('nav');
   const { hasPermission } = useUserProfile();
+  const isDesktop = useMediaQuery('(min-width: 768px)');
+  const canIndexProcesses = hasPermission(DMS_PERMISSIONS.processIndex);
 
   return useMemo<NavItem[]>(() => {
     const items: NavItem[] = [
@@ -15,9 +22,24 @@ export function useNavItems(): NavItem[] {
     ];
 
     if (canManageThemesCatalog(hasPermission)) {
-      items.push({ id: 'themes', label: t('themes:title'), icon: HomeIcon, path: '/themes' });
+      items.push({ id: 'themes', label: t('themes:title'), icon: TemplateIcon, path: '/themes' });
+    }
+
+    if (canIndexProcesses) {
+      items.push({
+        id: 'procesos',
+        label: t('procesos', { defaultValue: 'Procesos' }),
+        icon: FolderIcon,
+        path: '/procesos',
+        onClick: (event) => {
+          if (isDesktop && onOpenProcessesDrawer) {
+            event.preventDefault();
+            onOpenProcessesDrawer();
+          }
+        },
+      });
     }
 
     return items;
-  }, [t, hasPermission]);
+  }, [t, hasPermission, canIndexProcesses, isDesktop, onOpenProcessesDrawer]);
 }

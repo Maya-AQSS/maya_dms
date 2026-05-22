@@ -137,7 +137,7 @@ export default function RecentDocumentsWidget() {
             <span className="min-w-0 flex items-center gap-2">
               <span
                 className={[
-                  'shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide',
+                  'shrink-0 inline-flex items-center rounded px-1.5 py-0.5 text-2xs font-bold uppercase tracking-wide',
                   item.kind === 'template'
                     ? 'bg-odoo-purple/10 text-odoo-purple'
                     : 'bg-odoo-teal/10 text-odoo-teal',
