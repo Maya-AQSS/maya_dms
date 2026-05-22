@@ -44,7 +44,7 @@ export default function PendingValidationsWidget() {
   return (
     <div className="w-full h-full rounded-xl bg-card-tinted-accent p-4">
       <div className="flex items-baseline gap-2">
-        <span className="text-xs uppercase tracking-wide font-medium text-text-secondary dark:text-text-dark-secondary">
+        <span className="text-xs uppercase tracking-wider font-semibold text-text-secondary dark:text-text-dark-secondary">
           {t('dashboard.widgets.pendingValidations')}
         </span>
         <button
