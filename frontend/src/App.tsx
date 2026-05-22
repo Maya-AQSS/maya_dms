@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@maya/shared-layout-react';
@@ -6,7 +6,7 @@ import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react'
 import { useKeycloakLocaleSync } from '@maya/shared-i18n-react';
 import { useOidcSession } from '@maya/shared-auth-react';
 import { useRequireAppAccess } from '@maya/shared-profile-react';
-import { SidebarProcesos } from './components/layout';
+import { ProcessesDrawer } from './components/layout/ProcessesDrawer';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
 import { useNavItems } from './components/layout/navItems';
@@ -66,7 +66,10 @@ function AppRoutes() {
 function AppWithLayout() {
   const { logout, isOidcSignedIn } = useOidcSession();
   const { profile } = useUserProfile();
-  const navItems = useNavItems();
+  const [processesDrawerOpen, setProcessesDrawerOpen] = useState(false);
+  const openProcessesDrawer = useCallback(() => setProcessesDrawerOpen(true), []);
+  const closeProcessesDrawer = useCallback(() => setProcessesDrawerOpen(false), []);
+  const navItems = useNavItems({ onOpenProcessesDrawer: openProcessesDrawer });
   const navigate = useNavigate();
   const location = useLocation();
   const wasAuthenticatedRef = useRef(false);
@@ -103,25 +106,23 @@ function AppWithLayout() {
   };
 
   return (
-    <AppLayout
-      navItems={navItems}
-      brandName="DocuCEED"
-      brandVersion="v1.0"
-      brandLogoUrl="/favicon.png"
-      userName={userName}
-      userInitials={userInitials}
-      onLogout={logout}
-      onProfile={onProfile}
-      favoritesSlot={
-        <>
-          <SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />
-          <SidebarProcesos />
-        </>
-      }
-      notificationsSlot={<NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />}
-    >
-      <AppRoutes />
-    </AppLayout>
+    <>
+      <AppLayout
+        navItems={navItems}
+        brandName="DocuCEED"
+        brandVersion="v1.0"
+        brandLogoUrl="/favicon.png"
+        userName={userName}
+        userInitials={userInitials}
+        onLogout={logout}
+        onProfile={onProfile}
+        favoritesSlot={<SidebarFavorites label="Favoritas" dashboardApiUrl={DASHBOARD_API_URL} />}
+        notificationsSlot={<NotificationsBell dashboardApiUrl={DASHBOARD_API_URL} />}
+      >
+        <AppRoutes />
+      </AppLayout>
+      <ProcessesDrawer open={processesDrawerOpen} onClose={closeProcessesDrawer} />
+    </>
   );
 }
 

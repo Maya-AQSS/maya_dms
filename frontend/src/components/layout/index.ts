@@ -1,2 +1,2 @@
 export { useNavItems } from './navItems';
-export { SidebarProcesos } from './SidebarProcesos';
+export { ProcessesDrawer } from './ProcessesDrawer';
