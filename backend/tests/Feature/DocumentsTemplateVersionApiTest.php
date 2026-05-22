@@ -201,7 +201,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     /**
      * @param  list<string>  $codes
      */
-    private function grantPermissionsForUser(string $userId, array $codes = ['document.create', 'template.show', 'users.search']): void
+    private function grantPermissionsForUser(string $userId, array $codes = ['document.create', 'template.show']): void
     {
         $now = now();
         foreach ($codes as $code) {
@@ -250,7 +250,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $creatorId = (string) Str::uuid();
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
-        $this->assignUserPermissions($creatorId, ['template.show', 'document.create', 'users.search']);
+        $this->assignUserPermissions($creatorId, ['template.show', 'document.create']);
 
         $tid = (string) Str::uuid();
         $b1 = (string) Str::uuid();
@@ -732,7 +732,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'document.create',
             'template.show',
             'template.create',
-            'users.search',
         ]);
 
         $headers = $this->authHeaders($creatorId);
@@ -816,7 +815,6 @@ class DocumentsTemplateVersionApiTest extends TestCase
             'document.create',
             'template.show',
             'template.create',
-            'users.search',
         ]);
 
         $headers = $this->authHeaders($creatorId);
@@ -904,7 +902,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $ownerId = (string) Str::uuid();
         $readerId = (string) Str::uuid();
         $this->grantPermissionsForUser($ownerId);
-        $this->grantPermissionsForUser($readerId, ['document.create', 'template.show', 'users.search']);
+        $this->grantPermissionsForUser($readerId, ['document.create', 'template.show']);
 
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hOwner, $hReviewer] = $this->authHeadersCreatorAndReviewer($ownerId, $reviewerId);
@@ -2088,7 +2086,7 @@ class DocumentsTemplateVersionApiTest extends TestCase
     public function test_destroy_document_soft_deletes_record(): void
     {
         $creatorId = (string) Str::uuid();
-        $this->grantPermissionsForUser($creatorId, ['document.create', 'document.delete', 'template.show', 'users.search']);
+        $this->grantPermissionsForUser($creatorId, ['document.create', 'document.delete', 'template.show']);
         $reviewerId = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';
         [$hCreator, $hReviewer] = $this->authHeadersCreatorAndReviewer($creatorId, $reviewerId);
 

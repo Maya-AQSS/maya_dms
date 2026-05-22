@@ -107,8 +107,6 @@ class Comment extends Model
 
     public $incrementing = false;
 
-    public const UPDATED_AT = null;
-
     public const ALLOWED_COMMENTABLE_TYPES = [
         Document::class,
         Template::class,
@@ -155,5 +153,10 @@ class Comment extends Model
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function edits(): HasMany
+    {
+        return $this->hasMany(CommentEdit::class);
     }
 }

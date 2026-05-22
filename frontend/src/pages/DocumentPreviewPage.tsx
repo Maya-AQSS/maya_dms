@@ -27,7 +27,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
-import { canCreateBlockComment, DMS_PERMISSIONS } from '../permissions';
+import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
 import { useDocumentPdfExport } from '../features/documents/hooks/useDocumentPdfExport';
@@ -451,6 +451,35 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     } finally {
       setReviewCommentsLoading(false);
     }
+  };
+
+  const updateCommentInCache = (docId: string, commentId: string, updated: BlockComment) => {
+    queryClient.setQueryData<{ data: BlockComment[] }>(
+      ['documents', docId, 'comments'],
+      (prev) => ({ data: (prev?.data ?? []).map(c => c.id === commentId ? updated : c) }),
+    );
+  };
+
+  const removeCommentFromCache = (docId: string, commentId: string) => {
+    queryClient.setQueryData<{ data: BlockComment[] }>(
+      ['documents', docId, 'comments'],
+      (prev) => ({ data: (prev?.data ?? []).filter(c => c.id !== commentId) }),
+    );
+  };
+
+  const handleEditComment = async (commentId: string, newBody: string) => {
+    if (!documentId) return;
+    const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
+      method: 'PATCH',
+      body: { body: newBody },
+    });
+    updateCommentInCache(documentId, commentId, res.data);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!documentId) return;
+    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
+    removeCommentFromCache(documentId, commentId);
   };
 
   const handleValidateSendMessage = async (parentId: string | null, body: string) => {
@@ -935,6 +964,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         canAddComments={isDocumentReviewer && !isPublished}
                         headerRef={validateViewHeaderRef}
                         onClose={() => setValidateActiveView(null)}
+                        currentUserId={profile?.id}
+                        canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+                        onEditComment={handleEditComment}
+                        onDeleteComment={handleDeleteComment}
                       />
                     ) : (
                       <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -1207,6 +1240,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   canCreateBlockComment(hasPermission) &&
                   (isCreator || isOwner || isDocumentReviewer)
                 }
+                currentUserId={profile?.id}
+                canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+                onEditComment={handleEditComment}
+                onDeleteComment={handleDeleteComment}
               />
             );
           }

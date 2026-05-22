@@ -25,6 +25,11 @@ final readonly class CommentDto
         public ?string $resolvedBy,
         public ?string $resolvedAt,
         public ?string $createdAt,
+        public ?string $updatedAt,
+        public bool $isEdited,
+        public bool $isDeleted,
+        public ?string $deletedAt,
+        public ?string $deletedByName,
         // Source model retained for policy gates that need an Eloquent instance.
         public Comment $source,
     ) {}
@@ -51,6 +56,11 @@ final readonly class CommentDto
             resolvedBy: $m->resolved_by !== null ? (string) $m->resolved_by : null,
             resolvedAt: $m->resolved_at?->toIso8601String(),
             createdAt: $m->created_at?->toIso8601String(),
+            updatedAt: $m->updated_at?->toIso8601String(),
+            isEdited: $m->updated_at !== null,
+            isDeleted: $m->trashed(),
+            deletedAt: $m->deleted_at?->toIso8601String(),
+            deletedByName: $m->deleted_by_name,
             source: $m,
         );
     }

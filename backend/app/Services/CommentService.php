@@ -102,8 +102,19 @@ class CommentService implements CommentServiceInterface
         return CommentDto::fromModel($comment);
     }
 
-    public function delete(Comment $comment): void
+    public function update(Comment $comment, string $body, string $editedBy): CommentDto
     {
+        $commentModel = $this->commentRepository->update($comment, $body, $editedBy);
+        $commentModel->loadMissing('author');
+
+        return CommentDto::fromModel($commentModel);
+    }
+
+    public function delete(Comment $comment, string $deletedBy, string $deletedByName): void
+    {
+        $comment->deleted_by = $deletedBy;
+        $comment->deleted_by_name = $deletedByName;
+        $comment->save();
         $comment->delete();
     }
 

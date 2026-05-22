@@ -40,13 +40,23 @@ class CommentPolicyTest extends TestCase
         $this->assertFalse($this->policy->update($this->makeJwtUser($otherId), $comment));
     }
 
-    public function test_delete_denied_without_comment_block_delete_slug(): void
+    public function test_author_can_delete_own_comment_without_delete_slug(): void
     {
         $authorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
         $template = $this->makeTemplate($authorId);
         $comment = $this->makeComment($authorId, $template);
 
-        $this->assertFalse($this->policy->delete($this->makeJwtUser($authorId, ['comment-block.create']), $comment));
+        $this->assertTrue($this->policy->delete($this->makeJwtUser($authorId, ['comment-block.create']), $comment));
+    }
+
+    public function test_non_author_delete_denied_without_comment_block_delete_slug(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $otherId = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+        $template = $this->makeTemplate($creatorId);
+        $comment = $this->makeComment($otherId, $template);
+
+        $this->assertFalse($this->policy->delete($this->makeJwtUser($creatorId, ['comment-block.create']), $comment));
     }
 
     public function test_author_can_delete_own_comment_when_creator_of_template(): void

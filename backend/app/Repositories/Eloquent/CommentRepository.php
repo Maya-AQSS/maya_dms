@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\Models\Comment;
+use App\Models\CommentEdit;
 use App\Models\Document;
 use App\Models\Template;
 use App\Repositories\Contracts\CommentRepositoryInterface;
@@ -32,7 +33,7 @@ class CommentRepository implements CommentRepositoryInterface
         int $commentableVersion,
         int $perPage,
     ): LengthAwarePaginator {
-        return Comment::query()
+        return Comment::withTrashed()
             ->select('comments.*')
             ->where('commentable_type', $commentableType)
             ->where('commentable_id', $commentableId)
@@ -48,6 +49,23 @@ class CommentRepository implements CommentRepositoryInterface
     public function create(array $attributes): Comment
     {
         return Comment::create($attributes);
+    }
+
+    /**
+     * Actualiza el cuerpo del comentario y guarda la versión anterior en comment_edits.
+     */
+    public function update(Comment $comment, string $newBody, string $editedBy): Comment
+    {
+        CommentEdit::create([
+            'comment_id' => $comment->id,
+            'previous_body' => $comment->body,
+            'edited_by' => $editedBy,
+            'edited_at' => now(),
+        ]);
+
+        $comment->update(['body' => $newBody]);
+
+        return $comment;
     }
 
     /**

@@ -29,7 +29,7 @@ vi.mock('../../../../api/users', () => ({
       study_ids: [],
       module_ids: [],
       team_ids: [],
-      permissions: ['template.create', 'template.index', 'template.show', 'users.search'],
+      permissions: ['template.create', 'template.index', 'template.show'],
       teams: [],
       locale: 'es',
       source: 'fdw' as const,

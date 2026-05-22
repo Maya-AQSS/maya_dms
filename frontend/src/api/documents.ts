@@ -196,6 +196,15 @@ export async function updateDocument(documentId: string, payload: {
   return body.data;
 }
 
+/** POST /api/v1/documents/{id}/delegate */
+export async function delegateDocument(documentId: string, newOwnerId: string): Promise<Document> {
+  const body = await apiFetchJson<{ data: Document }>(
+    `documents/${encodeURIComponent(documentId)}/delegate`,
+    { method: 'POST', body: { new_owner_id: newOwnerId } },
+  );
+  return body.data;
+}
+
 /** POST /api/v1/documents/{id}/submit */
 export async function submitDocumentForReview(documentId: string): Promise<Document> {
   const body = await apiFetchJson<DocumentSubmitApiResponse>(

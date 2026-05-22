@@ -10,7 +10,7 @@ import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayou
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
-import { canCreateBlockComment, DMS_PERMISSIONS } from '../../../permissions';
+import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../../../permissions';
 import { apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
@@ -388,6 +388,31 @@ export function TemplateReviewView({ template }: Props) {
     }
   };
 
+  const handleEditComment = async (commentId: string, newBody: string) => {
+    const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
+      method: 'PATCH',
+      body: { body: newBody },
+    });
+    queryClient.setQueryData<TemplateCommentsResponse>(
+      templateCommentsKey(template.id),
+      (current) => {
+        if (!current) return current;
+        return { ...current, data: current.data.map(c => c.id === commentId ? res.data : c) };
+      },
+    );
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
+    queryClient.setQueryData<TemplateCommentsResponse>(
+      templateCommentsKey(template.id),
+      (current) => {
+        if (!current) return current;
+        return { ...current, data: current.data.filter(c => c.id !== commentId) };
+      },
+    );
+  };
+
   const openView = (blockId: string, mode: 'comments' | 'info') => {
     setDiffBlockId(null);
     setActiveView({ blockId, mode });
@@ -517,6 +542,10 @@ export function TemplateReviewView({ template }: Props) {
                     canCreateBlockComment(hasPermission) &&
                     (isCreator || (isReviewer && template.status === 'in_review'))
                   }
+                  currentUserId={profile?.id}
+                  canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+                  onEditComment={handleEditComment}
+                  onDeleteComment={handleDeleteComment}
                 />
               ) : (
                 <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">

@@ -25,7 +25,10 @@ class CommentPolicy
 
     public function delete(JwtUser $user, Comment $comment): bool
     {
-        if (! $user->hasPermission('comment-block.delete')) {
+        $userId = (string) $user->getAuthIdentifier();
+        $isAuthor = $userId === (string) $comment->author_id;
+
+        if (! $isAuthor && ! $user->hasPermission('comment-block.delete')) {
             return false;
         }
 

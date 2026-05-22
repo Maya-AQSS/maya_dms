@@ -23,7 +23,6 @@ export function meProfileFixture(overrides: Partial<MeProfile> = {}): MeProfile 
       'documents.create',
       'documents.read',
       'documents.update',
-      'users.search',
     ],
     teams: [],
     source: 'fdw',

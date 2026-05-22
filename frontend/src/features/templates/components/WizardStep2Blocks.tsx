@@ -22,7 +22,7 @@ import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
-import { useTemplateCommentsQuery } from '../hooks/useTemplateComments';
+import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { apiFetchJson } from '../../../api/http';
@@ -30,7 +30,8 @@ import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
 import { getCommentsForBlock } from '../../../utils/blockComments';
 import { useUserProfile } from '../../user-profile';
-import { canCreateBlockComment } from '../../../permissions';
+import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
+import { useQueryClient } from '@tanstack/react-query';
 
 const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
 
@@ -151,7 +152,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 }, ref) => {
   const commentsQuery = useTemplateCommentsQuery(template.id);
   const reviewComments = commentsQuery.data?.data ?? [];
-  const { hasPermission } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
+  const queryClient = useQueryClient();
   const mayComment = canCreateBlockComment(hasPermission);
 
   const {
@@ -475,6 +477,31 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     onCommentAdded?.(res.data);
   }, [activeSingleId, template.id, onCommentAdded]);
 
+  const handleEditComment = useCallback(async (commentId: string, newBody: string) => {
+    const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
+      method: 'PATCH',
+      body: { body: newBody },
+    });
+    queryClient.setQueryData<TemplateCommentsResponse>(
+      templateCommentsKey(template.id),
+      (current) => {
+        if (!current) return current;
+        return { ...current, data: current.data.map(c => c.id === commentId ? res.data : c) };
+      },
+    );
+  }, [queryClient, template.id]);
+
+  const handleDeleteComment = useCallback(async (commentId: string) => {
+    await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
+    queryClient.setQueryData<TemplateCommentsResponse>(
+      templateCommentsKey(template.id),
+      (current) => {
+        if (!current) return current;
+        return { ...current, data: current.data.filter(c => c.id !== commentId) };
+      },
+    );
+  }, [queryClient, template.id]);
+
   const renderSaveStatus = () => {
     if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
     if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ Guardado</span>;
@@ -759,6 +786,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             onSendMessage={handleSendMessage}
             onClose={() => setShowCommentPanel(false)}
             canAddComments={template.status !== 'published' && mayComment}
+            currentUserId={profile?.id}
+            canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+            onEditComment={handleEditComment}
+            onDeleteComment={handleDeleteComment}
           />
         </div>
       )}

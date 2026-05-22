@@ -32,6 +32,11 @@ interface CommentRepositoryInterface
     public function create(array $attributes): Comment;
 
     /**
+     * Actualiza el cuerpo del comentario y guarda la versión anterior en comment_edits.
+     */
+    public function update(Comment $comment, string $newBody, string $editedBy): Comment;
+
+    /**
      * Busca un comentario por ID ignorando scopes globales.
      */
     public function findWithoutScopesById(string $id): ?Comment;

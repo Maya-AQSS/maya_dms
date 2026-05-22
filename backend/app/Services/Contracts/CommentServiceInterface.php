@@ -49,8 +49,13 @@ interface CommentServiceInterface
     ): CommentDto;
 
     /**
+     * Edita el cuerpo de un comentario y registra la versión anterior en el historial.
+     */
+    public function update(Comment $comment, string $body, string $editedBy): CommentDto;
+
+    /**
      * Elimina un comentario. Recibe el Model Eloquent (las policies del Controller
      * ya lo cargan vía `findModelOrFail()` o el route binding).
      */
-    public function delete(Comment $comment): void;
+    public function delete(Comment $comment, string $deletedBy, string $deletedByName): void;
 }
