@@ -53,6 +53,11 @@ class DocumentBlockService
             // Keep them in the response (with is_deleted: true) so the diff view can show them.
             $isDeleted = $state === 'optional' && $row === null;
 
+            $rowKind = $row?->kind;
+            $kind = $rowKind instanceof \App\Enums\BlockKind
+                ? $rowKind->value
+                : (is_string($rowKind) && $rowKind !== '' ? $rowKind : (string) ($def['kind'] ?? 'content'));
+
             $out[] = [
                 'document_block_id' => $row?->id,
                 'template_block_id' => $tid,
@@ -61,6 +66,7 @@ class DocumentBlockService
                 'description' => $def['description'] ?? null,
                 'default_content' => $def['default_content'] ?? null,
                 'block_state' => $state,
+                'kind' => $kind,
                 'mandatory' => $mandatory,
                 'sort_order' => (int) ($def['sort_order'] ?? 0),
                 'content' => $row?->content,
@@ -293,6 +299,9 @@ class DocumentBlockService
             'block_state' => $b->block_state,
             'mandatory' => $b->mandatory,
             'sort_order' => $b->sort_order,
+            'kind' => $b->kind instanceof \App\Enums\BlockKind
+                ? $b->kind->value
+                : (is_string($b->kind) && $b->kind !== '' ? $b->kind : 'content'),
         ])->all();
     }
 

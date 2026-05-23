@@ -29,6 +29,7 @@ class TemplateBlockResource extends JsonResource
             'description' => $dto->description,
             'block_state' => $dto->blockState,
             'sort_order' => $dto->sortOrder,
+            'kind' => $dto->kind,
             'created_at' => $dto->createdAt,
             'updated_at' => $dto->updatedAt,
         ];

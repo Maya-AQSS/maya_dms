@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\BlockKind;
 use App\Observers\TemplateBlockObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
@@ -28,6 +29,11 @@ class TemplateBlock extends Model
         'description',
         'block_state',
         'sort_order',
+        'kind',
+    ];
+
+    protected $attributes = [
+        'kind' => BlockKind::Content->value,
     ];
 
     protected function casts(): array
@@ -36,6 +42,7 @@ class TemplateBlock extends Model
             'default_content' => 'array',
             'description' => 'array',
             'sort_order' => 'integer',
+            'kind' => BlockKind::class,
         ];
     }
 

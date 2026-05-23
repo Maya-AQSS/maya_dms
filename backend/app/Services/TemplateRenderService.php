@@ -68,26 +68,42 @@ class TemplateRenderService implements TemplateRenderServiceInterface
         $theme = $this->resolveTheme($template);
 
         // El cuerpo del "preview document" se construye a partir de los
-        // `default_content` de cada bloque, en orden. Cada bloque empieza
-        // con su título como h2 para que el árbol PDF/UA quede correcto
-        // si en algún momento alguien decide imprimir el preview.
-        $blockHtmlParts = [];
+        // `default_content` de cada bloque, en orden. Para bloques `content`
+        // se antepone su título como h2 (estructura PDF/UA correcta).
+        // Para bloques especiales (cover/blank/toc) se delega al
+        // {@see BlockNoteHtmlRenderer::renderDocument} para respetar el
+        // contrato de página completa + supresión de chrome del theme.
+        $blocksWithKind = [];
         foreach ($template->blocks as $block) {
-            $title = (string) ($block->title ?? '');
-            if ($title !== '') {
-                $blockHtmlParts[] = '<h2>'.e($title).'</h2>';
-            }
+            $kind = $block->kind;
+            $kindValue = $kind instanceof \BackedEnum
+                ? $kind->value
+                : (is_string($kind) && $kind !== '' ? $kind : 'content');
+
             $default = $block->default_content;
-            if (is_array($default) && count($default) > 0) {
-                $blockHtmlParts[] = BlockNoteHtmlRenderer::renderBlocks($default);
-            } elseif (is_string($default) && $default !== '') {
-                // Backwards-compat: algún seed legacy guardaba string en lugar de array.
-                $blockHtmlParts[] = '<p>'.e($default).'</p>';
+            if (! is_array($default)) {
+                $default = [];
+            }
+
+            if ($kindValue === 'content') {
+                $title = (string) ($block->title ?? '');
+                $content = $default;
+                if ($title !== '') {
+                    array_unshift($content, [
+                        'type' => 'heading',
+                        'props' => ['level' => 2],
+                        'content' => [['type' => 'text', 'text' => $title, 'styles' => []]],
+                    ]);
+                }
+                $blocksWithKind[] = ['kind' => 'content', 'content' => $content];
             } else {
-                $blockHtmlParts[] = '<p><em>—</em></p>';
+                $blocksWithKind[] = ['kind' => $kindValue, 'content' => $default];
             }
         }
-        $body = implode("\n", $blockHtmlParts);
+        $body = BlockNoteHtmlRenderer::renderDocument($blocksWithKind);
+
+        $firstKind = isset($blocksWithKind[0]['kind']) ? (string) $blocksWithKind[0]['kind'] : 'content';
+        $suppressDocTitle = $firstKind === 'cover';
 
         return View::make('documents.render', [
             'document' => [
@@ -96,6 +112,7 @@ class TemplateRenderService implements TemplateRenderServiceInterface
                 'subject' => $template->description,
                 'lang' => $theme['accessibility']['language'] ?? 'es',
                 'body_html' => $body,
+                'suppress_doc_title' => $suppressDocTitle,
             ],
             'theme' => $theme,
             'preview_mode' => $previewMode,

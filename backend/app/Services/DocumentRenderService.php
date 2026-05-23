@@ -68,9 +68,24 @@ class DocumentRenderService implements DocumentRenderServiceInterface
         }
 
         $theme = $this->resolveTheme($document);
-        $body = BlockNoteHtmlRenderer::renderBlocks(
-            $document->blocks->map(fn ($block) => (array) $block->content)->all()
-        );
+        $blocksWithKind = $document->blocks->map(function ($block): array {
+            $kind = $block->kind;
+            $kindValue = $kind instanceof \BackedEnum
+                ? $kind->value
+                : (is_string($kind) && $kind !== '' ? $kind : 'content');
+
+            return [
+                'kind' => $kindValue,
+                'content' => (array) $block->content,
+            ];
+        })->all();
+
+        $body = BlockNoteHtmlRenderer::renderDocument($blocksWithKind);
+
+        // Si el documento empieza con un bloque cover, la portada reemplaza
+        // al título y subject de la cabecera del <main>.
+        $firstKind = isset($blocksWithKind[0]['kind']) ? (string) $blocksWithKind[0]['kind'] : 'content';
+        $suppressDocTitle = $firstKind === 'cover';
 
         return View::make('documents.render', [
             'document' => [
@@ -79,6 +94,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                 'subject' => $document->description,
                 'lang' => $theme['accessibility']['language'] ?? 'es',
                 'body_html' => $body,
+                'suppress_doc_title' => $suppressDocTitle,
             ],
             'theme' => $theme,
             'preview_mode' => $previewMode,

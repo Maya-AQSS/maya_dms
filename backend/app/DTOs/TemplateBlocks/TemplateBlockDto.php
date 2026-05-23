@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DTOs\TemplateBlocks;
 
+use App\Enums\BlockKind;
 use App\Models\TemplateBlock;
 use BackedEnum;
 
@@ -17,6 +18,7 @@ final readonly class TemplateBlockDto
         public mixed $description,
         public ?string $blockState,
         public int $sortOrder,
+        public string $kind,
         public ?string $createdAt,
         public ?string $updatedAt,
     ) {}
@@ -24,6 +26,7 @@ final readonly class TemplateBlockDto
     public static function fromModel(TemplateBlock $m): self
     {
         $state = $m->block_state;
+        $kind = $m->kind;
 
         return new self(
             id: (string) $m->id,
@@ -33,6 +36,7 @@ final readonly class TemplateBlockDto
             description: $m->description,
             blockState: $state instanceof BackedEnum ? (string) $state->value : ($state !== null ? (string) $state : null),
             sortOrder: (int) $m->sort_order,
+            kind: $kind instanceof BlockKind ? $kind->value : (is_string($kind) && $kind !== '' ? $kind : BlockKind::Content->value),
             createdAt: $m->created_at?->toIso8601String(),
             updatedAt: $m->updated_at?->toIso8601String(),
         );

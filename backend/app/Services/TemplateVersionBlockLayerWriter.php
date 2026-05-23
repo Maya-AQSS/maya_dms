@@ -94,6 +94,7 @@ final class TemplateVersionBlockLayerWriter
     private function blockPayloadFromTemplateBlock(TemplateBlock $block): array
     {
         $state = $block->block_state;
+        $kind = $block->kind;
 
         return [
             'id' => $block->getKey(),
@@ -102,6 +103,9 @@ final class TemplateVersionBlockLayerWriter
             'default_content' => $block->default_content,
             'block_state' => $state instanceof \BackedEnum ? $state->value : $state,
             'sort_order' => (int) $block->sort_order,
+            'kind' => $kind instanceof \BackedEnum
+                ? $kind->value
+                : (is_string($kind) && $kind !== '' ? $kind : \App\Enums\BlockKind::Content->value),
         ];
     }
 

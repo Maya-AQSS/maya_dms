@@ -94,6 +94,8 @@ final class DocumentVersionBlockLayerWriter
      */
     private function blockPayloadFromDocumentBlock(DocumentBlock $block): array
     {
+        $kind = $block->kind;
+
         return [
             'id' => $block->getKey(),
             'template_block_id' => $block->template_block_id,
@@ -103,6 +105,9 @@ final class DocumentVersionBlockLayerWriter
             'last_edited_by' => $block->last_edited_by,
             'locked_by' => $block->locked_by,
             'locked_at' => $block->locked_at?->toIso8601String(),
+            'kind' => $kind instanceof \BackedEnum
+                ? $kind->value
+                : (is_string($kind) && $kind !== '' ? $kind : \App\Enums\BlockKind::Content->value),
         ];
     }
 

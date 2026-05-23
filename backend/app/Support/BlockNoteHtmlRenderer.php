@@ -37,6 +37,216 @@ final class BlockNoteHtmlRenderer
     }
 
     /**
+     * Renderiza una secuencia de bloques con metadatos de kind. Cada item del
+     * input es `['kind' => string, 'content' => array]`. Envuelve cada bloque
+     * en `<section class="block-kind-{kind}">` para que el CSS Paged Media de
+     * `render.blade.php` aplique saltos de página y supresión de chrome del
+     * theme en cover/blank.
+     *
+     * - kind=content → render BlockNote normal.
+     * - kind=cover   → render BlockNote normal dentro de la sección (CSS aplica
+     *                  reset y supresión de chrome).
+     * - kind=blank   → sección vacía marcada como artifact PDF/UA-1.
+     * - kind=toc     → índice generado a partir de los headings de los bloques
+     *                  `content` previos en el mismo documento.
+     *
+     * IDs de heading: en una primera pasada se asigna `props.id` determinístico
+     * (`block-{n}-h-{m}`) a cada heading de bloques `content`, y se construye
+     * el árbol del índice. En la segunda pasada se rendea el HTML — los
+     * headings emiten `<hN id="…">`, el TOC referencia con `target-counter()`.
+     *
+     * @param  array<int, array{kind?: string, content?: array<int, mixed>}>  $blocksWithKind
+     */
+    public static function renderDocument(array $blocksWithKind): string
+    {
+        $blocksWithKind = self::assignHeadingIds($blocksWithKind);
+        $tocEntries = self::collectTocEntries($blocksWithKind);
+
+        $buffer = '';
+        foreach ($blocksWithKind as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $kind = is_string($item['kind'] ?? null) && $item['kind'] !== '' ? $item['kind'] : 'content';
+            $content = is_array($item['content'] ?? null) ? $item['content'] : [];
+
+            $buffer .= match ($kind) {
+                'cover' => '<section class="block-kind-cover">'.self::renderBlocks($content).'</section>',
+                'blank' => '<section class="block-kind-blank" role="presentation" aria-hidden="true"></section>',
+                'toc' => '<section class="block-kind-toc">'.self::renderToc($tocEntries).'</section>',
+                default => '<section class="block-kind-content">'.self::renderBlocks($content).'</section>',
+            };
+        }
+
+        return $buffer;
+    }
+
+    /**
+     * Primera pasada: asigna `props.id` determinístico a cada heading de los
+     * bloques `content`. Devuelve el array de bloques con los IDs inyectados.
+     * Los bloques no-content se devuelven sin cambios.
+     *
+     * @param  array<int, array{kind?: string, content?: array<int, mixed>}>  $blocksWithKind
+     * @return array<int, array{kind?: string, content?: array<int, mixed>}>
+     */
+    private static function assignHeadingIds(array $blocksWithKind): array
+    {
+        $out = [];
+        $blockIndex = 0;
+        foreach ($blocksWithKind as $item) {
+            if (! is_array($item)) {
+                $out[] = $item;
+                $blockIndex++;
+                continue;
+            }
+            $kind = is_string($item['kind'] ?? null) && $item['kind'] !== '' ? $item['kind'] : 'content';
+            if ($kind !== 'content') {
+                $out[] = $item;
+                $blockIndex++;
+                continue;
+            }
+            $content = is_array($item['content'] ?? null) ? $item['content'] : [];
+            $headingCounter = 0;
+            $item['content'] = self::injectHeadingIds($content, $blockIndex, $headingCounter);
+            $out[] = $item;
+            $blockIndex++;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Recorre el árbol BlockNote y asigna `props.id = "block-{$blockIndex}-h-{n}"`
+     * a cada heading que no tenga ID propio. Mutación pura (devuelve copia).
+     *
+     * @param  array<int, mixed>  $tree
+     * @return array<int, mixed>
+     */
+    private static function injectHeadingIds(array $tree, int $blockIndex, int &$headingCounter): array
+    {
+        $out = [];
+        foreach ($tree as $node) {
+            if (! is_array($node)) {
+                $out[] = $node;
+                continue;
+            }
+            if (($node['type'] ?? null) === 'heading') {
+                $props = (array) ($node['props'] ?? []);
+                if (! isset($props['id']) || ! is_string($props['id']) || $props['id'] === '') {
+                    $props['id'] = sprintf('block-%d-h-%d', $blockIndex, $headingCounter);
+                }
+                $node['props'] = $props;
+                $headingCounter++;
+            }
+            if (isset($node['children']) && is_array($node['children'])) {
+                $node['children'] = self::injectHeadingIds($node['children'], $blockIndex, $headingCounter);
+            }
+            $out[] = $node;
+        }
+
+        return $out;
+    }
+
+    /**
+     * Recoge entradas de TOC: cada heading de los bloques `content` produce
+     * `['id' => string, 'level' => int, 'text' => string]`.
+     *
+     * @param  array<int, array{kind?: string, content?: array<int, mixed>}>  $blocksWithKind
+     * @return list<array{id: string, level: int, text: string}>
+     */
+    private static function collectTocEntries(array $blocksWithKind): array
+    {
+        $entries = [];
+        foreach ($blocksWithKind as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $kind = is_string($item['kind'] ?? null) && $item['kind'] !== '' ? $item['kind'] : 'content';
+            if ($kind !== 'content') {
+                continue;
+            }
+            $content = is_array($item['content'] ?? null) ? $item['content'] : [];
+            self::walkHeadings($content, $entries);
+        }
+
+        return $entries;
+    }
+
+    /**
+     * @param  array<int, mixed>  $tree
+     * @param  list<array{id: string, level: int, text: string}>  $entries
+     */
+    private static function walkHeadings(array $tree, array &$entries): void
+    {
+        foreach ($tree as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+            if (($node['type'] ?? null) === 'heading') {
+                $props = (array) ($node['props'] ?? []);
+                $id = is_string($props['id'] ?? null) ? $props['id'] : '';
+                $level = (int) ($props['level'] ?? 2);
+                $level = max(1, min(6, $level));
+                $text = self::plainTextFromInline((array) ($node['content'] ?? []));
+                if ($id !== '' && $text !== '') {
+                    $entries[] = ['id' => $id, 'level' => $level, 'text' => $text];
+                }
+            }
+            if (isset($node['children']) && is_array($node['children'])) {
+                self::walkHeadings($node['children'], $entries);
+            }
+        }
+    }
+
+    /**
+     * @param  array<int, mixed>  $content
+     */
+    private static function plainTextFromInline(array $content): string
+    {
+        $buf = '';
+        foreach ($content as $span) {
+            if (! is_array($span)) {
+                continue;
+            }
+            $type = (string) ($span['type'] ?? 'text');
+            if ($type === 'text') {
+                $buf .= (string) ($span['text'] ?? '');
+            } elseif ($type === 'link') {
+                $buf .= self::plainTextFromInline((array) ($span['content'] ?? []));
+            }
+        }
+
+        return trim($buf);
+    }
+
+    /**
+     * Renderiza la `<ol class="toc">` a partir de las entradas recogidas.
+     * Cada entrada emite un `<li class="toc-h{level}">` con `<a>` al ancla
+     * y `<span class="toc-page" data-href="#…">` para que WeasyPrint pinte
+     * el número de página real vía `target-counter()`.
+     *
+     * @param  list<array{id: string, level: int, text: string}>  $entries
+     */
+    private static function renderToc(array $entries): string
+    {
+        if ($entries === []) {
+            return '<ol class="toc"></ol>';
+        }
+
+        $html = '<ol class="toc">';
+        foreach ($entries as $entry) {
+            $href = '#'.$entry['id'];
+            $html .= '<li class="toc-h'.$entry['level'].'">'
+                .'<a href="'.e($href).'">'.e($entry['text']).'</a>'
+                .'<span class="toc-page" data-href="'.e($href).'"></span>'
+                .'</li>';
+        }
+        $html .= '</ol>';
+
+        return $html;
+    }
+
+    /**
      * @param  array<string, mixed>  $block
      */
     private static function renderBlock(array $block): string
@@ -71,7 +281,10 @@ final class BlockNoteHtmlRenderer
         $level = (int) ($props['level'] ?? 2);
         $level = max(1, min(6, $level));
 
-        return '<h'.$level.$styleAttr.'>'.$inline.'</h'.$level.'>';
+        $id = is_string($props['id'] ?? null) && $props['id'] !== '' ? $props['id'] : null;
+        $idAttr = $id !== null ? ' id="'.e($id).'"' : '';
+
+        return '<h'.$level.$idAttr.$styleAttr.'>'.$inline.'</h'.$level.'>';
     }
 
     /**

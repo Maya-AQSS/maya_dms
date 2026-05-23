@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\BlockKind;
 use App\Observers\DocumentBlockObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
@@ -31,6 +32,11 @@ class DocumentBlock extends Model
         'locked_by',
         'locked_at',
         'sort_order',
+        'kind',
+    ];
+
+    protected $attributes = [
+        'kind' => BlockKind::Content->value,
     ];
 
     protected function casts(): array
@@ -40,6 +46,7 @@ class DocumentBlock extends Model
             'is_filled' => 'boolean',
             'locked_at' => 'datetime',
             'sort_order' => 'integer',
+            'kind' => BlockKind::class,
         ];
     }
 

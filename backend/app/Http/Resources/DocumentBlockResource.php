@@ -35,6 +35,7 @@ class DocumentBlockResource extends JsonResource
             'description' => $row['description'] ?? null,
             'default_content' => $row['default_content'] ?? null,
             'block_state' => $row['block_state'] ?? null,
+            'kind' => $row['kind'] ?? 'content',
             'mandatory' => (bool) ($row['mandatory'] ?? false),
             'content' => $row['content'] ?? null,
             'sort_order' => $row['sort_order'] ?? null,

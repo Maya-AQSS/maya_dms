@@ -345,6 +345,148 @@
             .pagedjs_pagebox .theme-overlay-clone .blk-meta .pn::before,
             .pagedjs_pagebox .theme-overlay-clone .blk-meta .pt::before { content: none !important; }
         @endif
+
+        /* ─── Bloques especiales: cover, blank, toc ──────────────────────
+           Reglas de paginación y supresión total del chrome del theme en
+           páginas cover/blank (la portada y la página en blanco son
+           lienzos limpios, sin header/footer/marca de agua/paleta del
+           theme — confirmado en el council).
+           Para `toc` se mantiene el chrome porque el índice forma parte
+           del flujo normal del documento — solo se fuerza salto de página
+           antes y después.
+        */
+
+        /* Páginas nombradas sin chrome */
+        @page cover {
+            margin: 0;
+            background: white;
+            @top-left      { content: none; }
+            @top-center    { content: none; }
+            @top-right     { content: none; }
+            @bottom-left   { content: none; }
+            @bottom-center { content: none; }
+            @bottom-right  { content: none; }
+            @left-top      { content: none; }
+            @left-middle   { content: none; }
+            @left-bottom   { content: none; }
+            @right-top     { content: none; }
+            @right-middle  { content: none; }
+            @right-bottom  { content: none; }
+        }
+        @page blank {
+            margin: 0;
+            background: white;
+            @top-left      { content: none; }
+            @top-center    { content: none; }
+            @top-right     { content: none; }
+            @bottom-left   { content: none; }
+            @bottom-center { content: none; }
+            @bottom-right  { content: none; }
+            @left-top      { content: none; }
+            @left-middle   { content: none; }
+            @left-bottom   { content: none; }
+            @right-top     { content: none; }
+            @right-middle  { content: none; }
+            @right-bottom  { content: none; }
+        }
+
+        /* Selección de página nombrada y saltos.
+           El bloque cover/blank se renderiza dentro de `<main>` que ya tiene
+           z-index: 2 por encima de `.theme-overlay` (z-index: 1). Para
+           enmascarar visualmente el overlay del theme en estas páginas,
+           el wrapper se extiende a A4 completo y pinta fondo blanco —
+           combinado con `@page cover { margin: 0 }` el resultado es una
+           página totalmente blanca, sin headers/footers/marca de agua. */
+        .block-kind-cover {
+            page: cover;
+            break-before: page;
+            break-after: page;
+            background: white;
+            color: black;
+            font-family: initial;
+            position: relative;
+            z-index: 5;
+            min-height: 29.7cm;
+            width: 21cm;
+            margin-left: -{{ $cm($marginLeft) }};
+            margin-top: -{{ $cm($marginTop) }};
+            margin-right: -{{ $cm($marginRight) }};
+            padding: 0;
+            box-sizing: border-box;
+        }
+        .block-kind-blank {
+            page: blank;
+            break-before: page;
+            break-after: page;
+            background: white;
+            position: relative;
+            z-index: 5;
+            min-height: 29.7cm;
+            width: 21cm;
+            margin-left: -{{ $cm($marginLeft) }};
+            margin-top: -{{ $cm($marginTop) }};
+            margin-right: -{{ $cm($marginRight) }};
+        }
+        .block-kind-toc {
+            break-before: page;
+            break-after: page;
+        }
+
+        /* Reset CSS de variables y tipografía del theme en cover/blank */
+        .block-kind-cover, .block-kind-blank {
+            --primary: initial;
+            --secondary: initial;
+            --text: black;
+            --background: white;
+            color: black;
+            background: white;
+        }
+        .block-kind-cover * {
+            font-family: inherit;
+        }
+
+        /* Suprimir el overlay fijo del theme en cover y blank.
+           El overlay (`.theme-overlay` con position: fixed) se pintaría
+           sobre TODAS las páginas si no lo escondemos cuando la página
+           activa es cover/blank. WeasyPrint soporta el selector
+           `:nth-of-type(page)` indirectamente via `@page :first` u otras
+           pseudo, pero la forma más fiable es ocultar el overlay cuando
+           el documento contiene cover/blank vía clase en body — se gestiona
+           en el HTML (no aplica un display:none global porque rompería
+           el resto del documento). */
+        .block-kind-cover ~ * .theme-overlay,
+        .block-kind-blank ~ * .theme-overlay { /* no-op fallback */ }
+
+        /* TOC: índice de contenidos */
+        .toc {
+            list-style: none;
+            padding: 0;
+            margin: 1em 0;
+        }
+        .toc li {
+            margin: 0.4em 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+        }
+        .toc a {
+            color: inherit;
+            text-decoration: none;
+            flex: 1 1 auto;
+        }
+        .toc-page {
+            margin-left: 1em;
+            white-space: nowrap;
+        }
+        .toc-page::before {
+            content: target-counter(attr(data-href url), page);
+        }
+        .toc-h1 { padding-left: 0; font-weight: 600; }
+        .toc-h2 { padding-left: 1em; }
+        .toc-h3 { padding-left: 2em; }
+        .toc-h4 { padding-left: 3em; }
+        .toc-h5 { padding-left: 4em; }
+        .toc-h6 { padding-left: 5em; }
     </style>
 </head>
 <body>
@@ -469,9 +611,11 @@
 @endif
 
 <main role="main">
-    <h1 class="doc-title">{{ $document['title'] }}</h1>
-    @if (! empty($document['subject']))
-        <p class="doc-subject">{{ $document['subject'] }}</p>
+    @if (empty($document['suppress_doc_title']))
+        <h1 class="doc-title">{{ $document['title'] }}</h1>
+        @if (! empty($document['subject']))
+            <p class="doc-subject">{{ $document['subject'] }}</p>
+        @endif
     @endif
 
     {{-- Contenido del documento (HTML sanitizado por BlockNoteHtmlRenderer en backend) --}}
