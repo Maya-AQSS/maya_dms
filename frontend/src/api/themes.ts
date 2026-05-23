@@ -131,11 +131,3 @@ export async function uploadThemeAsset(
   return (await response.json()) as { data: Theme };
 }
 
-/**
- * URL absoluta para servir un asset del theme. El JWT del cliente la autoriza.
- * Útil como `src` de <img> o como background-image CSS.
- */
-export function themeAssetUrl(themeId: string, kind: ThemeAssetKind): string {
-  // buildApiUrl resuelve `baseUrl + path`, garantizando que vamos al mismo origen.
-  return buildApiUrl(`themes/${themeId}/assets/${kind}`);
-}

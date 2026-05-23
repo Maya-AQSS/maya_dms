@@ -45,6 +45,13 @@ Route::prefix('v1')->group(function () {
     Route::get('/health/live', [HealthCheckController::class, 'live']);
     Route::get('/health/ready', [HealthCheckController::class, 'ready']);
 
+    // ── Media — servir imágenes de bloques (sin JWT; token HMAC en query param) ──
+    // No pasa por JwtMiddleware porque <img src="..."> no puede enviar Bearer header.
+    // La seguridad la garantiza el token HMAC firmado con APP_KEY generado en store().
+    Route::get('/media/{uuid}', [MediaController::class, 'show'])
+        ->whereUuid('uuid')
+        ->name('api.v1.media.show');
+
     // Perfil: solo JWT (sin dms.login). El front necesita /me para resolver permisos.
     Route::middleware(['jwt'])->group(function () {
         MeRoutes::register();
@@ -80,9 +87,6 @@ Route::prefix('v1')->group(function () {
         // Assets de Theme (logo / background / watermark).
         Route::post('themes/{theme}/assets', [ThemeAssetController::class, 'store'])
             ->whereUuid('theme');
-        Route::get('themes/{theme}/assets/{kind}', [ThemeAssetController::class, 'show'])
-            ->whereUuid('theme')
-            ->where('kind', 'logo|background|watermark');
 
         // Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).

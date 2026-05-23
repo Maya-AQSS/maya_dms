@@ -15,7 +15,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class ThemeAssetService implements ThemeAssetServiceInterface
 {
-    private const DISK = 'themes';
+    private const DISK = 'media';
 
     public function __construct(
         private readonly ThemeRepositoryInterface $repository,
@@ -28,13 +28,12 @@ class ThemeAssetService implements ThemeAssetServiceInterface
             throw new NotFoundHttpException('Theme no encontrado.');
         }
 
-        $ext = strtolower($file->getClientOriginalExtension() ?: $file->extension());
-        $filename = sprintf('%s-%s.%s', $assetKey, Str::uuid()->toString(), $ext);
-        $path = $themeId.'/'.$filename;
+        $uuid = Str::uuid()->toString();
+        $path = "themes/{$themeId}/{$uuid}";
 
-        Storage::disk(self::DISK)->putFileAs($themeId, $file, $filename);
+        Storage::disk(self::DISK)->put($path, $file->getContent());
 
-        // Eliminar el asset anterior del mismo tipo si existía (housekeeping).
+        // Delete previous asset of same kind if existed (housekeeping).
         $previous = $theme->assets[$assetKey] ?? null;
         if (is_string($previous) && $previous !== '' && $previous !== $path) {
             Storage::disk(self::DISK)->delete($previous);

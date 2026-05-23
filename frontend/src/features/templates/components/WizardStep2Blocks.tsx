@@ -748,7 +748,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               editable={true}
                               isDark={effectiveIsDark}
                               onFullscreenChange={handleEditorFullscreenChange}
-                              uploadFile={uploadMedia}
+                              uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
                             />
                           </Suspense>
                         </div>
@@ -777,7 +777,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             editable={true}
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}
-                            uploadFile={uploadMedia}
+                            uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
                           />
                         </Suspense>
                       </div>

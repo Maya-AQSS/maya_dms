@@ -1651,7 +1651,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                 isDark={isDark}
                                 onChange={(content) => { setLocalContent(content); triggerSave(); }}
                                 onFullscreenChange={handleEditorFullscreenChange}
-                                uploadFile={uploadMedia}
+                                uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
                               />
                             </Suspense>
                           </div>

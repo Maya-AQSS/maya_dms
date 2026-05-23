@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import { themeAssetUrl } from '../../../api/themes';
 import type { Theme, ThemeLayoutRegion, ThemeBlockType } from '../../../types/themes';
 
 interface ThemeA4PreviewProps {
@@ -88,10 +87,7 @@ function blockStyle(
  * ve a escala el aspecto que tendrá el documento al exportarse a PDF.
  */
 export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
-  const logoUrl = useMemo(() => {
-    if (!theme?.assets.logo_path) return null;
-    return `${themeAssetUrl(theme.id, 'logo')}?t=${encodeURIComponent(theme.updated_at)}`;
-  }, [theme]);
+  const logoUrl = useMemo(() => theme?.assets.logo_path ?? null, [theme]);
 
   if (!theme) {
     return (

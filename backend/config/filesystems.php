@@ -58,6 +58,17 @@ return [
             'report' => false,
         ],
 
+        // Imágenes incrustadas en bloques de documentos (BlockNote). Disco privado:
+        // MediaController sirve los binarios con token HMAC firmado en la URL.
+        // Esto permite que <img src="...?token=..."> funcione sin Bearer header,
+        // mientras que la URL no es pública ni predecible sin APP_KEY.
+        'media' => [
+            'driver' => 'local',
+            'root' => storage_path('app/media'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

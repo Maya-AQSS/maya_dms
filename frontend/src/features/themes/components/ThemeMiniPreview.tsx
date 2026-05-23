@@ -1,4 +1,3 @@
-import { themeAssetUrl } from '../../../api/themes';
 import type { Theme } from '../../../types/themes';
 import type { ThemeMini } from '../../../types/templates';
 
@@ -31,16 +30,7 @@ function normalize(theme: Theme | ThemeMini): NormalizedTheme {
     palette?.text,
   ].filter((c): c is string => typeof c === 'string' && c.length > 0);
 
-  const logoPath = assets?.logo_path ?? null;
-  // El path es relativo al disk `themes`. Para el preview de UI necesitamos la
-  // URL servida por el backend con JWT — `themeAssetUrl(themeId, 'logo')`.
-  // El mini-payload incluye `updated_at` sólo cuando viene del Theme completo;
-  // para el ThemeMini usamos un cache buster ligero basado en el path.
-  const logoUrl = logoPath
-    ? `${themeAssetUrl(theme.id, 'logo')}?t=${encodeURIComponent(
-        (theme as Theme).updated_at ?? logoPath,
-      )}`
-    : null;
+  const logoUrl = assets?.logo_path ?? null;
 
   return {
     id: theme.id,

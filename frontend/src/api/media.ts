@@ -1,9 +1,19 @@
 import { buildApiUrl, getBearerToken } from './http';
 
-export async function uploadMedia(file: File): Promise<string> {
+export type MediaContext =
+  | { type: 'block';    id: string }
+  | { type: 'template'; id: string }
+  | { type: 'document'; id: string }
+  | { type: 'theme';    id: string };
+
+export async function uploadMedia(file: File, context?: MediaContext): Promise<string> {
   const token = await getBearerToken();
   const form = new FormData();
   form.append('image', file);
+  if (context) {
+    form.append('context_type', context.type);
+    form.append('context_id', context.id);
+  }
 
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (token) headers.Authorization = `Bearer ${token}`;
