@@ -71,7 +71,7 @@ export function ProcesosPage() {
         title={processId ? (process?.name ?? (processLoading ? 'Cargando proceso…' : 'Proceso')) : 'Procesos'}
         subtitle={process ? process.alias || process.code : undefined}
         actions={
-          activeTab === 'templates' ? (
+          !processId ? null : activeTab === 'templates' ? (
             <Button
               type="button"
               variant="primary"
