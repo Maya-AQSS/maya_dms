@@ -483,7 +483,7 @@ export function TemplateReviewView({ template }: Props) {
             <>
               <Button variant="outlineWarning" size="sm" onClick={handleRejectClick}
                 disabled={actionLoading} loading={actionLoading}
-                className="text-xs font-black uppercase tracking-wider">
+                className="text-xs font-black uppercase tracking-wider hover:text-warning">
                 Rechazar validación
               </Button>
               <Button variant="primary" size="sm" onClick={handleApprove}
