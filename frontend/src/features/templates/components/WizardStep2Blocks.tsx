@@ -20,6 +20,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, TextInput } from '@maya/shared-ui-react';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
+import { BlockEditor } from '../../blocks-ui/BlockEditor';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -417,6 +418,44 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     }
   };
 
+  const handleAddSpecialBlock = async (kind: 'cover' | 'blank' | 'toc') => {
+    if (activeSingleId) {
+      const nameErr = validateBlockName(formName);
+      if (nameErr) {
+        setNameError(nameErr);
+        setActiveTab('properties');
+        return;
+      }
+    }
+    setBusy(true);
+    try {
+      const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
+      const kindLabel: Record<string, string> = {
+        cover: 'Portada',
+        blank: 'Página en blanco',
+        toc: 'Índice',
+      };
+      const newBlock = await createBlock({
+        title: kindLabel[kind],
+        type: 'paragraph',
+        block_state,
+        mandatory,
+        kind,
+      });
+      setSelectedBlockIds([newBlock.id]);
+      setActiveSingleId(newBlock.id);
+      setPanelMode('edit');
+      loadFormFromBlock(newBlock);
+      setActiveTab('properties');
+      setShowCommentPanel(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const hasTocBlock = blocks.some(b => b.kind === 'toc');
+  const featureFlagEnabled = import.meta.env.VITE_DMS_SPECIAL_BLOCKS_ENABLED === 'true';
+
   const handleDelete = async () => {
     setBusy(true);
     try {
@@ -552,7 +591,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     </DndContext>
                   )}
                 </div>
-                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0 space-y-2">
                   <Button
                     variant="outline"
                     className="w-full border-dashed"
@@ -561,6 +600,35 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   >
                     + Añadir bloque
                   </Button>
+                  {featureFlagEnabled && (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full text-xs"
+                        onClick={() => void handleAddSpecialBlock('cover')}
+                        disabled={busy}
+                      >
+                        🎨 Portada
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full text-xs"
+                        onClick={() => void handleAddSpecialBlock('toc')}
+                        disabled={busy || hasTocBlock}
+                        title={hasTocBlock ? 'Solo se permite un bloque de índice por plantilla' : ''}
+                      >
+                        ≡ Índice
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="w-full text-xs"
+                        onClick={() => void handleAddSpecialBlock('blank')}
+                        disabled={busy}
+                      >
+                        ⊘ Página en blanco
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
@@ -738,18 +806,21 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         )}
                         <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                           <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
-                            <BlockNoteEditorPanel
-                              key={`content-${activeSingleId ?? 'none'}`}
-                              initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
-                              onChange={json => {
-                                setFormContent(JSON.stringify(json));
-                                setTabIsDirty(true);
-                              }}
-                              editable={true}
-                              isDark={effectiveIsDark}
-                              onFullscreenChange={handleEditorFullscreenChange}
-                              uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
-                            />
+                            {selectedBlock && (
+                              <BlockEditor
+                                key={`content-${activeSingleId ?? 'none'}`}
+                                block={selectedBlock}
+                                initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
+                                onChange={json => {
+                                  setFormContent(JSON.stringify(json));
+                                  setTabIsDirty(true);
+                                }}
+                                editable={true}
+                                isDark={effectiveIsDark}
+                                onFullscreenChange={handleEditorFullscreenChange}
+                                uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
+                              />
+                            )}
                           </Suspense>
                         </div>
                       </div>

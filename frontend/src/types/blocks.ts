@@ -1,4 +1,5 @@
 export type BlockState = 'editable' | 'modifiable' | 'locked' | 'optional';
+export type BlockKind = 'content' | 'cover' | 'blank' | 'toc';
 
 export type TemplateBlock = {
   id: string;
@@ -10,6 +11,7 @@ export type TemplateBlock = {
   block_state: BlockState;
   mandatory: boolean;
   sort_order: number;
+  kind?: BlockKind;
   created_at?: string;
   updated_at?: string;
 };
@@ -26,6 +28,7 @@ export type CreateBlockPayload = {
   block_state?: BlockState;
   mandatory?: boolean;
   sort_order?: number;
+  kind?: BlockKind;
 };
 
 export type UpdateBlockPayload = {
@@ -36,6 +39,7 @@ export type UpdateBlockPayload = {
   block_state?: BlockState;
   mandatory?: boolean;
   sort_order?: number;
+  kind?: BlockKind;
 };
 
 export type BulkUpdateBlockPayload = {
@@ -49,4 +53,11 @@ export const BLOCK_STATE_LABELS: Record<BlockState, string> = {
   modifiable: 'Modificable',
   locked: 'Bloqueado',
   optional: 'Opcional',
+};
+
+export const BLOCK_KIND_LABELS: Record<BlockKind, string> = {
+  content: 'Contenido',
+  cover: 'Portada',
+  blank: 'Página en blanco',
+  toc: 'Índice',
 };
