@@ -385,10 +385,6 @@ class DocumentRepository implements DocumentRepositoryInterface
                     });
             });
 
-        $query->where(function ($w) use ($userId) {
-            Document::applyAcademicOverlapForTableAlias($w, $userId, 'd');
-        });
-
         $rows = $query
             ->orderByRaw(
                 'CASE WHEN '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'delivery_deadline').' IS NULL THEN 1 ELSE 0 END ASC'
