@@ -534,7 +534,7 @@ export function TemplateReviewView({ template }: Props) {
               activeView.mode === 'comments' ? (
                 <BlockCommentsCard
                   mode={commentMode}
-                  blockSortOrder={(blocks.findIndex((b) => b.id === selectedBlock.id) + 1) || '?'}
+                  blockSortOrder={(selectedBlock.sort_order + 1) || '?'}
                   blockComments={getCommentsForBlock(selectedBlock.id, comments)}
                   allComments={comments}
                   onClose={closeView}
@@ -632,7 +632,7 @@ export function TemplateReviewView({ template }: Props) {
                         'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                         isSelected && activeView?.mode === 'comments'
                           ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                          : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                          : 'border-ui-border dark:border-ui-dark-border text-text bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                       ].join(' ')}
                     >
                       <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -657,7 +657,7 @@ export function TemplateReviewView({ template }: Props) {
                           'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
                           diffBlockId === block.id
                             ? 'border-odoo-teal text-odoo-teal bg-odoo-teal/10 shadow-sm'
-                            : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-teal hover:border-odoo-teal/50 hover:bg-odoo-teal/5',
+                            : 'border-ui-border dark:border-ui-dark-border text-text bg-ui-body/30 hover:text-odoo-teal hover:border-odoo-teal/50 hover:bg-odoo-teal/5',
                         ].join(' ')}
                         title={t('review.viewBlockHistory')}
                       >
