@@ -114,6 +114,7 @@ export default defineConfig({
       'html-parse-stringify', 'void-elements',
       'use-sync-external-store', 'use-sync-external-store/shim',
       '@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities',
+      'react-grid-layout',
       '@tanstack/react-query',
       'react-i18next', 'i18next', 'i18next-browser-languagedetector',
       'dompurify', 'react-router-dom', 'react-dom', 'react-dom/client',
