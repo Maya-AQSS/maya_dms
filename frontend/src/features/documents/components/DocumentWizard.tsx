@@ -1484,7 +1484,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   )}
                 </div>
               )}
-            </div>
+            </Card>
           </div>
         </div>
       )}
@@ -1554,7 +1554,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     })
                   )}
                 </div>
-              </Card>
+              </div>
 
               <button
                 type="button"

@@ -316,16 +316,6 @@ class DashboardApiTest extends TestCase
             'status' => 'pending',
         ]);
 
-        foreach ([$rev1, $rev2] as $uid) {
-            \DB::table('user_studies')->insertOrIgnore([
-                'id' => (string) Str::uuid(),
-                'user_id' => $uid,
-                'study_id' => $studyId,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
         $r1 = $this->getJson('/api/v1/dashboard', $headers);
         $r1->assertOk()
             ->assertJsonPath('data.stats.documents_critical', 1)
