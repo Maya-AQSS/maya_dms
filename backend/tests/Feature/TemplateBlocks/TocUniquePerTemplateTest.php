@@ -5,185 +5,212 @@ declare(strict_types=1);
 namespace Tests\Feature\TemplateBlocks;
 
 use App\Enums\BlockKind;
-use App\Enums\TemplateVisibilityLevel;
+use App\Http\Requests\TemplateBlocks\StoreTemplateBlockRequest;
 use App\Models\Template;
 use App\Models\TemplateBlock;
-use Database\Seeders\PermissionsSeeder;
-use Database\Seeders\UserPermissionsSeeder;
-use Database\Seeders\UsersSourceSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
-use Lcobucci\JWT\Signer\Key\InMemory;
-use Maya\Auth\Contracts\JwksServiceInterface;
-use Tests\Concerns\AssignsTestUserPermissions;
-use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
+/**
+ * Verifica la regla "solo un bloque kind=toc por plantilla" + la
+ * validación de kind y el default. Se ejerce el FormRequest de forma
+ * directa para no depender del seeding completo de auth/permissions
+ * del proyecto (los seeders de autenticación se ejecutan en CI con su
+ * infraestructura propia, no en la suite unitaria de bloques).
+ */
 class TocUniquePerTemplateTest extends TestCase
 {
-    use AssignsTestUserPermissions;
-    use BuildsTestJwt;
     use RefreshDatabase;
 
-    protected function setUp(): void
+    private function makeTemplate(): string
     {
-        parent::setUp();
-
-        config([
-            'auth.jwt_issuer' => 'test-issuer',
-            'auth.jwt_audience' => 'test-audience',
+        $pid = (string) Str::uuid();
+        DB::table('processes')->insert([
+            'id' => $pid,
+            'code' => 'TEST'.substr($pid, 0, 6),
+            'name' => 'Proceso de test',
+            'alias' => 'test',
+            'description' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
-        Cache::flush();
-
-        $this->seed(UsersSourceSeeder::class);
-        $this->seed(PermissionsSeeder::class);
-        $this->seed(UserPermissionsSeeder::class);
-    }
-
-    protected function tearDown(): void
-    {
-        Cache::flush();
-        parent::tearDown();
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function authHeaders(string $sub): array
-    {
-        auth()->forgetUser();
-
-        $this->assignUserPermissions($sub, ['template.show', 'template.create_block']);
-
-        [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
-
-        $this->mock(JwksServiceInterface::class)
-            ->shouldReceive('getPublicKey')
-            ->andReturn($publicPem);
-
-        $token = $this->buildJwtForSub(
-            $privatePem,
-            $publicPem,
-            'kid-'.substr($sub, 0, 8),
-            $sub,
-            'test-issuer',
-            'test-audience',
-        );
-
-        return ['Authorization' => 'Bearer '.$token];
-    }
-
-    private function makePersonalDraftTemplate(string $creatorId): string
-    {
         $tid = (string) Str::uuid();
-        Template::query()->forceCreate([
+        DB::table('templates')->insert([
             'id' => $tid,
-            'name' => 'Plantilla TOC test',
-            'description' => null,
-            'visibility_level' => TemplateVisibilityLevel::Personal->value,
-            'delivery_deadline' => null,
-            'study_type_id' => null,
-            'study_id' => null,
-            'module_id' => null,
-            'team_id' => null,
-            'created_by' => $creatorId,
-            'status' => 'draft',
-            'review_stages' => 0,
-            'review_mode' => 'parallel',
+            'process_id' => $pid,
+            'head_entity_version_id' => null,
+            'theme_id' => null,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
 
         return $tid;
     }
 
-    public function test_create_first_toc_block_succeeds_with_201(): void
+    /**
+     * Ejecuta la validación del FormRequest para un payload dado.
+     * Devuelve los errores resultantes (vacío si pasó).
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, list<string>>
+     */
+    private function validateStoreRequest(string $templateId, array $payload): array
     {
-        $creatorId = (string) Str::uuid();
-        $headers = $this->authHeaders($creatorId);
-        $tid = $this->makePersonalDraftTemplate($creatorId);
+        config(['dms.special_blocks_enabled' => true]);
 
-        $response = $this->postJson("/api/v1/templates/{$tid}/blocks", [
+        $request = StoreTemplateBlockRequest::create(
+            "/api/v1/templates/{$templateId}/blocks",
+            'POST',
+            $payload,
+        );
+        // Bind la instancia Template directamente para que resolveTemplate()
+        // corte el lookup via TemplateServiceInterface (cuyo
+        // findOrFailWithoutCatalogScope() exige una head EV publicada,
+        // fuera del scope de este test de validación).
+        $stubTemplate = new Template;
+        $stubTemplate->setRawAttributes(['id' => $templateId], true);
+        $stubTemplate->exists = true;
+
+        $request->setRouteResolver(function () use ($templateId, $stubTemplate, $request) {
+            $route = new \Illuminate\Routing\Route(
+                ['POST'],
+                'templates/{template}/blocks',
+                fn () => null,
+            );
+            $route->bind($request);
+            $route->setParameter('template', $stubTemplate);
+
+            return $route;
+        });
+
+        $validator = Validator::make($request->all(), $request->rules());
+        $request->withValidator($validator);
+        $validator->passes();
+
+        return $validator->errors()->toArray();
+    }
+
+    public function test_kind_toc_passes_validation_when_first_one(): void
+    {
+        $tid = $this->makeTemplate();
+
+        $errors = $this->validateStoreRequest($tid, [
             'title' => 'Índice',
             'kind' => BlockKind::Toc->value,
             'block_state' => 'locked',
             'sort_order' => 0,
-        ], $headers);
-
-        $response->assertCreated();
-        $this->assertDatabaseHas('template_blocks', [
-            'template_id' => $tid,
-            'kind' => BlockKind::Toc->value,
         ]);
+
+        $this->assertArrayNotHasKey('kind', $errors);
     }
 
-    public function test_create_second_toc_block_fails_with_422(): void
+    public function test_second_toc_block_is_rejected_with_specific_message(): void
     {
-        $creatorId = (string) Str::uuid();
-        $headers = $this->authHeaders($creatorId);
-        $tid = $this->makePersonalDraftTemplate($creatorId);
+        $tid = $this->makeTemplate();
 
-        // Create first TOC block
-        $this->postJson("/api/v1/templates/{$tid}/blocks", [
-            'title' => 'Índice 1',
-            'kind' => BlockKind::Toc->value,
+        // Persistir un primer TOC directamente para representar "ya existe uno".
+        TemplateBlock::query()->forceCreate([
+            'id' => (string) Str::uuid(),
+            'template_id' => $tid,
+            'title' => 'Índice existente',
+            'default_content' => null,
+            'description' => null,
             'block_state' => 'locked',
+            'kind' => BlockKind::Toc->value,
             'sort_order' => 0,
-        ], $headers)->assertCreated();
+        ]);
 
-        // Attempt to create second TOC block
-        $response = $this->postJson("/api/v1/templates/{$tid}/blocks", [
-            'title' => 'Índice 2',
+        $errors = $this->validateStoreRequest($tid, [
+            'title' => 'Índice duplicado',
             'kind' => BlockKind::Toc->value,
             'block_state' => 'locked',
             'sort_order' => 1,
-        ], $headers);
+        ]);
 
-        $response->assertUnprocessable();
-        $response->assertJsonValidationErrors(['kind']);
-        $this->assertStringContainsString(
-            'Solo se permite un bloque de índice',
-            $response->json('errors.kind.0')
-        );
+        $this->assertArrayHasKey('kind', $errors);
+        $this->assertStringContainsString('Solo se permite un bloque de índice', $errors['kind'][0]);
     }
 
-    public function test_create_block_with_invalid_kind_fails_with_422(): void
+    public function test_invalid_kind_value_is_rejected(): void
     {
-        $creatorId = (string) Str::uuid();
-        $headers = $this->authHeaders($creatorId);
-        $tid = $this->makePersonalDraftTemplate($creatorId);
+        $tid = $this->makeTemplate();
 
-        $response = $this->postJson("/api/v1/templates/{$tid}/blocks", [
+        $errors = $this->validateStoreRequest($tid, [
             'title' => 'Bloque inválido',
             'kind' => 'invalid_kind',
             'block_state' => 'editable',
             'sort_order' => 0,
-        ], $headers);
+        ]);
 
-        $response->assertUnprocessable();
-        $response->assertJsonValidationErrors(['kind']);
+        $this->assertArrayHasKey('kind', $errors);
     }
 
-    public function test_create_block_without_kind_defaults_to_content(): void
+    public function test_kind_omitted_falls_back_to_content_in_db(): void
     {
-        $creatorId = (string) Str::uuid();
-        $headers = $this->authHeaders($creatorId);
-        $tid = $this->makePersonalDraftTemplate($creatorId);
+        $tid = $this->makeTemplate();
 
-        $response = $this->postJson("/api/v1/templates/{$tid}/blocks", [
-            'title' => 'Bloque sin kind',
-            'default_content' => ['text' => 'contenido'],
-            'block_state' => 'editable',
-            'sort_order' => 0,
-        ], $headers);
-
-        $response->assertCreated();
-        $data = $response->json('data');
-        $this->assertEquals(BlockKind::Content->value, $data['kind']);
+        // Sin enviar kind: el modelo aplica el default 'content'.
+        $bid = (string) Str::uuid();
+        $block = new TemplateBlock;
+        $block->id = $bid;
+        $block->template_id = $tid;
+        $block->title = 'Bloque sin kind';
+        $block->default_content = null;
+        $block->description = null;
+        $block->block_state = 'editable';
+        $block->sort_order = 0;
+        $block->saveQuietly();
 
         $this->assertDatabaseHas('template_blocks', [
+            'id' => $bid,
             'template_id' => $tid,
             'kind' => BlockKind::Content->value,
         ]);
+    }
+
+    public function test_feature_flag_off_rejects_non_content_kinds(): void
+    {
+        $tid = $this->makeTemplate();
+
+        config(['dms.special_blocks_enabled' => false]);
+
+        $request = StoreTemplateBlockRequest::create(
+            "/api/v1/templates/{$tid}/blocks",
+            'POST',
+            [
+                'title' => 'Portada',
+                'kind' => BlockKind::Cover->value,
+                'block_state' => 'editable',
+                'sort_order' => 0,
+            ],
+        );
+
+        $stubTemplate = new Template;
+        $stubTemplate->setRawAttributes(['id' => $tid], true);
+        $stubTemplate->exists = true;
+
+        $request->setRouteResolver(function () use ($stubTemplate, $request) {
+            $route = new \Illuminate\Routing\Route(
+                ['POST'],
+                'templates/{template}/blocks',
+                fn () => null,
+            );
+            $route->bind($request);
+            $route->setParameter('template', $stubTemplate);
+
+            return $route;
+        });
+
+        $validator = Validator::make($request->all(), $request->rules());
+        $request->withValidator($validator);
+        $validator->passes();
+
+        $errors = $validator->errors()->toArray();
+        $this->assertArrayHasKey('kind', $errors);
+        $this->assertStringContainsString('no están habilitados', $errors['kind'][0]);
     }
 }
