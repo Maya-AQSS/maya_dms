@@ -51,7 +51,6 @@ import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { visibilityLabel } from '../../templates/constants';
 import {
   Button,
-  Card,
   ConfirmDialog,
   DatePicker,
   ErrorBoundary,
@@ -1237,55 +1236,90 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     >
       <>
       {!isValidateMode && step === 'properties' && (
-        <div className="flex-1 overflow-y-auto px-4 py-6 bg-ui-body/30 dark:bg-ui-dark-bg space-y-6">
-          <div className="max-w-xl mx-auto space-y-6">
+        <div className="flex-1 min-h-0 flex flex-col bg-ui-card dark:bg-ui-dark-card overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-8 py-6 space-y-6">
             {formError && (
               <div className="rounded-lg border border-danger/30 bg-danger/5 px-4 py-3 text-xs text-danger-dark dark:text-danger">
                 {formError}
               </div>
             )}
 
-            <Card padding="lg" radius="xl" className="space-y-6 animate-in fade-in slide-in-from-top-1">
-              {template && (
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary mb-1">
-                    Plantilla base
-                  </p>
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
-                      {template.name}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/documentos/nuevo')}
-                      className="text-xs text-odoo-purple dark:text-odoo-dark-purple hover:underline cursor-pointer shrink-0"
-                    >
-                      Cambiar plantilla
-                    </button>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-secondary dark:text-text-dark-secondary">
-                    <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
-                      Visibilidad: {visibilityLabel(template.visibility_level)}
-                    </span>
-                    {templateScopeLabel && template.visibility_level !== 'team' && (
-                      <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
-                        Ámbito: {templateScopeLabel}
-                      </span>
-                    )}
-                    {(visibilityRule === 'team' || visibilityRule === 'global') && (template.team?.name || fixedTeamId || teamId) && (
-                      <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
-                        Equipo: {template.team?.name ?? availableTeams.find((t) => t.id === (fixedTeamId || teamId))?.name ?? 'Asignado'}
-                      </span>
-                    )}
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-2">
+                <FieldLabel required htmlFor="doc-title-input">Nombre</FieldLabel>
+                <TextInput
+                  id="doc-title-input"
+                  type="text"
+                  fieldSize="comfortable"
+                  value={title}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => {
+                    setTitle(e.target.value);
+                    setErrors((prev: Record<string, string>) => ({ ...prev, title: '' }));
+                  }}
+                  disabled={!isDraft}
+                  placeholder={t('documents:wizard.namePlaceholder')}
+                  error={!!errors.title}
+                />
+                {errors.title && (
+                  <p className="text-xs text-danger-dark dark:text-danger">{errors.title}</p>
+                )}
+              </div>
+
+              <div>
+                <FieldLabel required htmlFor="doc-delivery-deadline-input">{t('documents:fields.deadline')}</FieldLabel>
+                <DatePicker
+                  value={deliveryDeadline || null}
+                  onChange={(d: string | null) => setDeliveryDeadline(d ?? '')}
+                  disabled={!isDraft}
+                  placeholder={t('documents:wizard.selectDate')}
+                  ariaLabel={t('documents:fields.deadline')}
+                />
+                {errors.deliveryDeadline && (
+                  <p className="text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
+                )}
+              </div>
+            </div>
+
+            {template && (
+              <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border">
+                <h3 className="mb-3 text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                  Plantilla base
+                </h3>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold text-text-primary dark:text-text-dark-primary">
+                    {template.name}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/documentos/nuevo')}
+                    className="text-xs text-odoo-purple dark:text-odoo-dark-purple hover:underline cursor-pointer shrink-0"
+                  >
+                    Cambiar plantilla
+                  </button>
                 </div>
-              )}
+                <div className="mt-2 flex flex-wrap gap-2 text-xs text-text-secondary dark:text-text-dark-secondary">
+                  <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
+                    Visibilidad: {visibilityLabel(template.visibility_level)}
+                  </span>
+                  {templateScopeLabel && template.visibility_level !== 'team' && (
+                    <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
+                      Ámbito: {templateScopeLabel}
+                    </span>
+                  )}
+                  {(visibilityRule === 'team' || visibilityRule === 'global') && (template.team?.name || fixedTeamId || teamId) && (
+                    <span className="rounded border border-ui-border dark:border-ui-dark-border px-2 py-0.5">
+                      Equipo: {template.team?.name ?? availableTeams.find((t) => t.id === (fixedTeamId || teamId))?.name ?? 'Asignado'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
-              <div className="border-t border-ui-border dark:border-ui-dark-border pt-5 space-y-4">
-                <p className="text-xs text-text-muted dark:text-text-dark-muted">
-                  Selecciona el contexto académico donde se archivará esta programación.
-                </p>
-
+            <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border">
+              <p className="mb-4 text-xs text-text-muted dark:text-text-dark-muted">
+                Selecciona el contexto académico donde se archivará esta programación.
+              </p>
+              <div className="space-y-4">
                 {teamEditable && (
                   <div className="space-y-1">
                     <FieldLabel>Equipo (opcional, exclusivo con contexto académico)</FieldLabel>
@@ -1389,102 +1423,64 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   )}
                 </div>
               </div>
+            </div>
 
-              <div className="border-t border-ui-border dark:border-ui-dark-border pt-5 space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-1">
-                    <FieldLabel required htmlFor="doc-title-input">Nombre</FieldLabel>
-                    <TextInput
-                      id="doc-title-input"
-                      type="text"
-                      fieldSize="comfortable"
-                      value={title}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => {
-                        setTitle(e.target.value);
-                        setErrors((prev: Record<string, string>) => ({ ...prev, title: '' }));
-                      }}
-                      disabled={!isDraft}
-                      placeholder={t('documents:wizard.namePlaceholder')}
-                      error={!!errors.title}
-                    />
-                    {errors.title && (
-                      <p className="text-xs text-danger-dark dark:text-danger">{errors.title}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-1">
-                    <FieldLabel htmlFor="doc-delivery-deadline-input" required>{t('documents:fields.deadline')}</FieldLabel>
-                    <DatePicker
-                      value={deliveryDeadline || null}
-                      onChange={(d: string | null) => setDeliveryDeadline(d ?? '')}
-                      disabled={!isDraft}
-                      placeholder={t('documents:wizard.selectDate')}
-                      ariaLabel={t('documents:fields.deadline')}
-                    />
-                    {errors.deliveryDeadline && (
-                      <p className="text-xs text-danger-dark dark:text-danger">{errors.deliveryDeadline}</p>
-                    )}
-                  </div>
+            {isDraft && !!detail && !!currentUserId && detail.owner_id === currentUserId && (
+              <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in space-y-3">
+                <p className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                  Propietario
+                </p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-text-secondary dark:text-text-dark-secondary">Actual:</span>
+                  <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
+                    {newOwnerForDoc ? newOwnerForDoc.name : (detail.owner_name ?? '—')}
+                  </span>
+                  {newOwnerForDoc && (
+                    <button
+                      type="button"
+                      onClick={() => { setNewOwnerForDoc(null); setOwnerQuery(''); }}
+                      className="text-xs text-danger-dark hover:underline"
+                    >
+                      Deshacer
+                    </button>
+                  )}
                 </div>
+                <div className="relative">
+                  <TextInput
+                    type="search"
+                    fieldSize="comfortable"
+                    placeholder="Buscar nuevo propietario…"
+                    value={ownerQuery}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) => setOwnerQuery(e.target.value)}
+                  />
+                </div>
+                {ownerQuery.trim().length > 0 && ownerQuery.trim().length < 2 && (
+                  <p className="text-xs text-text-muted italic">Escribe al menos 2 caracteres para buscar.</p>
+                )}
+                {ownerSearching && <p className="text-xs text-text-muted italic">Buscando…</p>}
+                {!ownerSearching && ownerResults.length > 0 && (
+                  <ul className="border border-ui-border dark:border-ui-dark-border rounded-lg overflow-hidden divide-y divide-ui-border dark:divide-ui-dark-border">
+                    {ownerResults.map((u) => (
+                      <li key={u.id}>
+                        <button
+                          type="button"
+                          onClick={() => { setNewOwnerForDoc({ id: u.id, name: u.name }); setOwnerQuery(''); setOwnerResults([]); }}
+                          className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-odoo-purple/5 transition-colors"
+                        >
+                          <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20">
+                            {u.name.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? '').join('')}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary truncate">{u.name}</p>
+                            {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary">{u.role}</p>}
+                          </div>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-
-              {isDraft && !!detail && !!currentUserId && detail.owner_id === currentUserId && (
-                <div className="border-t border-ui-border dark:border-ui-dark-border pt-5 space-y-3">
-                  <p className="text-xs font-bold uppercase tracking-wider text-text-secondary dark:text-text-dark-secondary">
-                    Propietario
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-secondary dark:text-text-dark-secondary">Actual:</span>
-                    <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
-                      {newOwnerForDoc ? newOwnerForDoc.name : (detail.owner_name ?? '—')}
-                    </span>
-                    {newOwnerForDoc && (
-                      <button
-                        type="button"
-                        onClick={() => { setNewOwnerForDoc(null); setOwnerQuery(''); }}
-                        className="text-xs text-danger-dark hover:underline"
-                      >
-                        Deshacer
-                      </button>
-                    )}
-                  </div>
-                  <div className="relative">
-                    <TextInput
-                      type="search"
-                      fieldSize="comfortable"
-                      placeholder="Buscar nuevo propietario…"
-                      value={ownerQuery}
-                      onChange={(e: ChangeEvent<HTMLInputElement>) => setOwnerQuery(e.target.value)}
-                    />
-                  </div>
-                  {ownerQuery.trim().length > 0 && ownerQuery.trim().length < 2 && (
-                    <p className="text-xs text-text-muted italic">Escribe al menos 2 caracteres para buscar.</p>
-                  )}
-                  {ownerSearching && <p className="text-xs text-text-muted italic">Buscando…</p>}
-                  {!ownerSearching && ownerResults.length > 0 && (
-                    <ul className="border border-ui-border dark:border-ui-dark-border rounded-lg overflow-hidden divide-y divide-ui-border dark:divide-ui-dark-border">
-                      {ownerResults.map((u) => (
-                        <li key={u.id}>
-                          <button
-                            type="button"
-                            onClick={() => { setNewOwnerForDoc({ id: u.id, name: u.name }); setOwnerQuery(''); setOwnerResults([]); }}
-                            className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-odoo-purple/5 transition-colors"
-                          >
-                            <span className="shrink-0 flex items-center justify-center w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20">
-                              {u.name.split(' ').filter(Boolean).slice(0, 2).map((w: string) => w[0]?.toUpperCase() ?? '').join('')}
-                            </span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-semibold text-text-primary dark:text-text-dark-primary truncate">{u.name}</p>
-                              {u.role && <p className="text-xs text-text-secondary dark:text-text-dark-secondary">{u.role}</p>}
-                            </div>
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
-            </Card>
+            )}
           </div>
         </div>
       )}
