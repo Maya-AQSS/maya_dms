@@ -21,7 +21,6 @@ vi.mock('../../../../api/users', () => ({
       module_ids: [],
       team_ids: [],
       permissions: [],
-      teams: [],
       locale: 'es',
       source: 'fdw' as const,
     },
@@ -31,7 +30,7 @@ vi.mock('../../../../api/users', () => ({
 import { useHierarchy } from '../../../../features/hierarchy';
 
 vi.mock('../../../../features/hierarchy', () => ({
-  useHierarchy: vi.fn(() => ({ hierarchy: [], loading: false, error: null })),
+  useHierarchy: vi.fn(() => ({ hierarchy: [], teams: [], loading: false, error: null })),
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 

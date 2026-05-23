@@ -85,8 +85,8 @@ it('queries FDW filtered by user id from JWT', function () {
         ->and($profile['study_ids'])->toBe([])
         ->and($profile['module_ids'])->toBe([])
         ->and($profile['team_ids'])->toBe(['g1'])
-        ->and($profile['teams'])->toHaveCount(1)
-        ->and($profile['permissions'])->toBe(['template.show']);
+        ->and($profile['permissions'])->toBe(['template.show'])
+        ->and($profile)->not->toHaveKey('teams');
 });
 
 // ── Escenario 2: Caché del perfil ──────────────────────────────────────
@@ -102,7 +102,6 @@ it('returns cached profile without querying FDW', function () {
         'module_ids'     => [],
         'team_ids'       => [],
         'permissions'    => [],
-        'teams'          => [],
         'source'         => 'fdw',
     ];
 
@@ -194,7 +193,7 @@ it('falls back to JWT data when FDW throws exception', function () {
         ->and($profile['module_ids'])->toBe([])
         ->and($profile['team_ids'])->toBe([])
         ->and($profile['permissions'])->toBe([])
-        ->and($profile['teams'])->toBe([]);
+        ->and($profile)->not->toHaveKey('teams');
 });
 
 it('falls back copies department from jwt departamento claim', function () {
@@ -326,9 +325,9 @@ it('merges FDW data, JWT claims, and teams into complete profile', function () {
             'module_ids',
             'team_ids',
             'permissions',
-            'teams',
             'source',
         ])
+        ->and($profile)->not->toHaveKey('teams')
         ->and($profile['department'])->toBe('Ingeniería')
-        ->and($profile['teams'])->toHaveCount(1);
+        ->and($profile['team_ids'])->toBe(['g1']);
 });

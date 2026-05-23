@@ -1,8 +1,6 @@
-import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldLabel, Select } from '@maya/shared-ui-react';
 import { useHierarchy } from '../../hierarchy';
-import { fetchMe, type UserTeam } from '../../../api/users';
 
 export type TemplateHierarchyFieldKey = 'study_type_id' | 'study_id' | 'module_id' | 'team_id';
 
@@ -43,14 +41,7 @@ export function TemplateHierarchyFields({
   showTeam = true,
 }: Props) {
   const { t } = useTranslation('templates');
-  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
-  const [teams, setTeams] = useState<UserTeam[]>([]);
-
-  useEffect(() => {
-    fetchMe()
-      .then((res) => setTeams(res.data.teams ?? []))
-      .catch(() => setTeams([]));
-  }, []);
+  const { hierarchy, teams, loading: hierarchyLoading } = useHierarchy();
 
   const allStudies = hierarchy.flatMap((t) => t.studies);
   const allModules = allStudies.flatMap((s) => s.course_modules);

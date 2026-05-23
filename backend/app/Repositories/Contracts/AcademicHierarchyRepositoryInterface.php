@@ -4,15 +4,8 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
-use Illuminate\Database\Eloquent\Collection;
-
 interface AcademicHierarchyRepositoryInterface
 {
-    /**
-     * Get the complete academic hierarchy tree
-     */
-    public function getTree(): Collection;
-
     /**
      * `study_id` del módulo, o null si no existe.
      */

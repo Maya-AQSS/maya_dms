@@ -30,7 +30,6 @@ vi.mock('../../../../api/users', () => ({
       module_ids: [],
       team_ids: [],
       permissions: ['template.create', 'template.index', 'template.show'],
-      teams: [],
       locale: 'es',
       source: 'fdw' as const,
     },
@@ -39,7 +38,7 @@ vi.mock('../../../../api/users', () => ({
   searchDocumentReviewerCandidates: vi.fn().mockResolvedValue({ data: [] }),
 }));
 vi.mock('../../../../features/hierarchy', () => ({
-  useHierarchy: () => ({ hierarchy: [], loading: false, error: null }),
+  useHierarchy: () => ({ hierarchy: [], teams: [], loading: false, error: null }),
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 

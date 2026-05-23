@@ -38,7 +38,7 @@ import { fetchTemplate } from '../../../api/templates';
 import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
-import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates, type UserTeam } from '../../../api/users';
+import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
@@ -142,7 +142,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const setStudyId = useCallback((v: string) => setStep1Value('studyId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const setModuleId = useCallback((v: string) => setStep1Value('moduleId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const setTeamId = useCallback((v: string) => setStep1Value('teamId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
-  const [availableTeams, setAvailableTeams] = useState<UserTeam[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [newOwnerForDoc, setNewOwnerForDoc] = useState<{ id: string; name: string } | null>(null);
   const [ownerQuery, setOwnerQuery] = useState('');
@@ -189,7 +188,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [template, setTemplate] = useState<Template | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
 
-  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
+  const { hierarchy, teams: availableTeams, loading: hierarchyLoading } = useHierarchy();
   const [blockViewTab, setBlockViewTab] = useState<BlockViewTab>('content');
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
@@ -362,17 +361,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     void reload();
   }, [reload]);
 
+  // currentUserId viene de /me; los equipos disponibles vienen del contexto
+  // académico jerárquico (HierarchyProvider) — /me solo expone team_ids.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const me = await fetchMe();
         if (!cancelled) {
-          setAvailableTeams(me.data.teams ?? []);
           setCurrentUserId(me.data.id);
         }
       } catch {
-        if (!cancelled) setAvailableTeams([]);
+        // currentUserId queda en su valor inicial; UI degrada con gracia.
       }
     })();
     return () => {
