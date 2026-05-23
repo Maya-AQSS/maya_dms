@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\AcademicHierarchyController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
@@ -28,6 +27,7 @@ use App\Http\Controllers\Api\ThemeController;
 use App\Http\Controllers\Api\ThemeFontController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
+use Maya\Profile\Routing\AcademicContextRoutes;
 use Maya\Profile\Routing\MeRoutes;
 
 /*
@@ -53,7 +53,10 @@ Route::prefix('v1')->group(function () {
     // ── Rutas protegidas por JWT + permiso de acceso a la app ──
     Route::middleware(['jwt', 'permission:dms.login'])->group(function () {
 
-        Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
+        // Contexto académico del usuario (study_types + studies + modules + teams
+        // con id/code/name). Filtrado server-side por user_id desde el paquete
+        // compartido maya-shared-profile-laravel. Sustituye al antiguo /hierarchy.
+        AcademicContextRoutes::registerMe();
 
         Route::get('/processes', [ProcessController::class, 'index']);
         Route::post('/processes', [ProcessController::class, 'store']);

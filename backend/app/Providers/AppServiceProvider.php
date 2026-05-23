@@ -57,10 +57,8 @@ use App\Repositories\Eloquent\UserDirectoryRepository;
 use App\Repositories\Eloquent\UserFavoriteRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
 use App\Repositories\Resolvers\FdwUserProfileResolver;
-use App\Services\AcademicHierarchyService;
 use App\Services\ApiTeamEmbedService;
 use App\Services\CommentService;
-use App\Services\Contracts\AcademicHierarchyServiceInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DashboardServiceInterface;
@@ -151,7 +149,6 @@ class AppServiceProvider extends ServiceProvider
         );
         $this->app->bind(UserFavoriteServiceInterface::class, UserFavoriteService::class);
         $this->app->bind(UserDirectoryServiceInterface::class, UserDirectoryService::class);
-        $this->app->bind(AcademicHierarchyServiceInterface::class, AcademicHierarchyService::class);
     }
 
     public function boot(): void
@@ -162,6 +159,7 @@ class AppServiceProvider extends ServiceProvider
         // — eliminada la tabla local `user_permissions`.
         $this->loadMigrationsFrom(ProfileMigrations::users());
         $this->loadMigrationsFrom(ProfileMigrations::academicAssignments());
+        $this->loadMigrationsFrom(ProfileMigrations::academicCatalogs());
         $this->loadMigrationsFrom(ProfileMigrations::teams());
         $this->loadMigrationsFrom(ProfileMigrations::userPermissions());
 

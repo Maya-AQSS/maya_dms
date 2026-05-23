@@ -23,12 +23,12 @@ type Props = {
 export function WizardStep1Properties({ errors, templateStatus, isCreator, currentAuthorName }: Props) {
   const { t } = useTranslation('templates');
   const deadlineLocked = templateStatus === 'in_review' || templateStatus === 'published';
-  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
-  const { profile, loading: profileLoading, error: profileError, hasPermission } = useUserProfile();
-  const teams: UserTeam[] = profile?.teams ?? [];
-  const teamsLoading = profileLoading;
-  const teamsError = profileError
-    ? 'No se pudo cargar el perfil (equipos). Revisa la sesión o inténtalo de nuevo.'
+  const { hierarchy, teams: hierarchyTeams, loading: hierarchyLoading, error: hierarchyError } = useHierarchy();
+  const { hasPermission } = useUserProfile();
+  const teams: UserTeam[] = hierarchyTeams;
+  const teamsLoading = hierarchyLoading;
+  const teamsError = hierarchyError
+    ? 'No se pudo cargar el contexto académico (equipos). Revisa la sesión o inténtalo de nuevo.'
     : null;
 
   const {
@@ -105,6 +105,21 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
   }, [allStudies, studyId, moduleId, setValue]);
 
   const showAcademicBlock = visibility !== 'personal' && visibility !== 'global';
+
+  /**
+   * Estado de cascada progresiva: qué selects mostrar y cuántas columnas usar.
+   * Memoizado para evitar recalcular en cada render del wizard.
+   */
+  const cascadeState = useMemo(() => {
+    const needsStudyType =
+      visibility === 'study_type' || visibility === 'study' || visibility === 'module';
+    const showStudy = (visibility === 'study' || visibility === 'module') && !!studyTypeId;
+    const showModule = visibility === 'module' && !!studyId;
+    const visibleCols = 1 + (showStudy ? 1 : 0) + (showModule ? 1 : 0);
+    const gridColsClass =
+      visibleCols === 3 ? 'grid-cols-3' : visibleCols === 2 ? 'grid-cols-2' : 'grid-cols-1';
+    return { needsStudyType, showStudy, showModule, gridColsClass };
+  }, [visibility, studyTypeId, studyId]);
 
   // Themes publicados disponibles para asignar.
   const themesQuery = usePublishedThemes();
@@ -201,121 +216,124 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
           </div>
         </div>
 
-        {showAcademicBlock && (
+        {showAcademicBlock && cascadeState && (
           <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in">
-            <div className={`grid gap-4 ${
-              visibility === 'module' ? 'grid-cols-3' :
-              visibility === 'study' ? 'grid-cols-2' :
-              'grid-cols-1'
-            }`}>
-              {(visibility === 'study_type' || visibility === 'study' || visibility === 'module') && (
-                <div>
-                  <Controller
-                    control={control}
-                    name="studyTypeId"
-                    render={({ field }) => (
-                      <Select
-                        fieldSize="comfortable"
-                        value={field.value}
-                        disabled={hierarchyLoading}
-                        onChange={(e) => {
-                          field.onChange(e.target.value);
-                          setValue('studyId', '', { shouldDirty: true });
-                          setValue('moduleId', '', { shouldDirty: true });
-                        }}
-                        onBlur={field.onBlur}
-                        error={!!formErrors.studyTypeId}
-                      >
-                        {hierarchy.length === 0 && !hierarchyLoading ? (
-                          <option value="" disabled>{t('noStudyTypesAssigned')}</option>
-                        ) : (
-                          <option value="">{t('selectPlaceholder')}</option>
+            {/*
+              Cascada progresiva: el siguiente select aparece solo cuando el
+              anterior tiene valor. Evita mostrar 3 selects vacíos a la vez en
+              visibility=module — el usuario navega un paso a la vez.
+              Estado memoizado en `cascadeState` (declaración arriba) para evitar
+              re-evaluación en cada render.
+            */}
+            <div className={`grid gap-4 ${cascadeState.gridColsClass}`}>
+                  {cascadeState.needsStudyType && (
+                    <div>
+                      <Controller
+                        control={control}
+                        name="studyTypeId"
+                        render={({ field }) => (
+                          <Select
+                            fieldSize="comfortable"
+                            value={field.value}
+                            disabled={hierarchyLoading}
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                              setValue('studyId', '', { shouldDirty: true });
+                              setValue('moduleId', '', { shouldDirty: true });
+                            }}
+                            onBlur={field.onBlur}
+                            error={!!formErrors.studyTypeId}
+                          >
+                            {hierarchy.length === 0 && !hierarchyLoading ? (
+                              <option value="" disabled>{t('noStudyTypesAssigned')}</option>
+                            ) : (
+                              <option value="">{t('selectPlaceholder')}</option>
+                            )}
+                            {hierarchy.map((opt) => (
+                              <option key={opt.id} value={opt.id}>{opt.name}</option>
+                            ))}
+                          </Select>
                         )}
-                        {hierarchy.map((t) => (
-                          <option key={t.id} value={t.id}>{t.name}</option>
-                        ))}
-                      </Select>
-                    )}
-                  />
-                  {formErrors.studyTypeId?.message && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.studyTypeId.message}</p>
+                      />
+                      {formErrors.studyTypeId?.message && (
+                        <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.studyTypeId.message}</p>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
 
-              {(visibility === 'study' || visibility === 'module') && (
-                <div>
-                  <Controller
-                    control={control}
-                    name="studyId"
-                    render={({ field }) => (
+                  {cascadeState.showStudy && (
+                    <div className="animate-in slide-in-from-left-2 fade-in">
+                      <Controller
+                        control={control}
+                        name="studyId"
+                        render={({ field }) => (
+                          <Select
+                            fieldSize="comfortable"
+                            value={field.value}
+                            disabled={hierarchyLoading || filteredStudies.length === 0}
+                            onChange={(e) => {
+                              field.onChange(e.target.value);
+                              setValue('moduleId', '', { shouldDirty: true });
+                            }}
+                            onBlur={field.onBlur}
+                            error={!!formErrors.studyId}
+                          >
+                            <option value="">{t('selectPlaceholder')}</option>
+                            {filteredStudies.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </Select>
+                        )}
+                      />
+                      {formErrors.studyId?.message && (
+                        <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.studyId.message}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {cascadeState.showModule && (
+                    <div className="animate-in slide-in-from-left-2 fade-in">
                       <Select
                         fieldSize="comfortable"
-                        value={field.value}
-                        disabled={hierarchyLoading}
-                        onChange={(e) => {
-                          field.onChange(e.target.value);
-                          setValue('moduleId', '', { shouldDirty: true });
-                        }}
-                        onBlur={field.onBlur}
-                        error={!!formErrors.studyId}
+                        disabled={hierarchyLoading || filteredModules.length === 0}
+                        error={!!formErrors.moduleId}
+                        {...register('moduleId')}
                       >
                         <option value="">{t('selectPlaceholder')}</option>
-                        {filteredStudies.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
+                        {filteredModules.map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
                         ))}
                       </Select>
-                    )}
-                  />
-                  {formErrors.studyId?.message && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.studyId.message}</p>
+                      {formErrors.moduleId?.message && (
+                        <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.moduleId.message}</p>
+                      )}
+                    </div>
                   )}
-                </div>
-              )}
-
-              {visibility === 'module' && (
-                <div>
-                  <Select
-                    fieldSize="comfortable"
-                    disabled={hierarchyLoading}
-                    error={!!formErrors.moduleId}
-                    {...register('moduleId')}
-                  >
-                    <option value="">{t('selectPlaceholder')}</option>
-                    {filteredModules.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </Select>
-                  {formErrors.moduleId?.message && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.moduleId.message}</p>
-                  )}
-                </div>
-              )}
-
-              {visibility === 'team' && (
-                <div>
-                  <Select
-                    fieldSize="comfortable"
-                    disabled={teamsLoading || !teams.length}
-                    error={!!formErrors.teamId}
-                    {...register('teamId')}
-                  >
-                    <option value="">
-                      {teamsLoading ? t('loadingTeams') : t('selectPlaceholder')}
-                    </option>
-                    {teams.map((team) => (
-                      <option key={team.id} value={team.id}>{team.name}</option>
-                    ))}
-                  </Select>
-                  {teamsError && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{teamsError}</p>
-                  )}
-                  {formErrors.teamId?.message && (
-                    <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.teamId.message}</p>
-                  )}
-                </div>
-              )}
             </div>
+
+            {visibility === 'team' && (
+              <div>
+                <Select
+                  fieldSize="comfortable"
+                  disabled={teamsLoading || !teams.length}
+                  error={!!formErrors.teamId}
+                  {...register('teamId')}
+                >
+                  <option value="">
+                    {teamsLoading ? t('loadingTeams') : t('selectPlaceholder')}
+                  </option>
+                  {teams.map((team) => (
+                    <option key={team.id} value={team.id}>{team.name}</option>
+                  ))}
+                </Select>
+                {teamsError && (
+                  <p className="mt-1 text-xs text-danger-dark dark:text-danger">{teamsError}</p>
+                )}
+                {formErrors.teamId?.message && (
+                  <p className="mt-1 text-xs text-danger-dark dark:text-danger">{formErrors.teamId.message}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 
