@@ -320,7 +320,7 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
         )}
 
         {/* ─── Seleccionar editor ───────────────────── */}
-        {isCreator && (
+        {(isCreator || !currentAuthorName) && (
           <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in">
             <FieldLabel>Propietario</FieldLabel>
             <div className="mt-1 mb-2 flex items-center gap-2">
