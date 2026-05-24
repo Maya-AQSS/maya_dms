@@ -17,7 +17,46 @@
     "loadingValidation": "Loading validation data…"
   },
   "table": {
-    "rejectedTitle": "This document was rejected in review."
+    "columns": {
+      "name": "Name",
+      "visibility": "Visibility",
+      "author": "Author",
+      "status": "Status",
+      "validationDate": "Validation date"
+    },
+    "status": {
+      "draft": "Draft",
+      "in_review": "In review",
+      "published": "Published",
+      "rejected": "Rejected"
+    },
+    "statusFilter": {
+      "all": "All"
+    },
+    "favoritesFilter": {
+      "all": "All",
+      "onlyFavorites": "Only favorites"
+    },
+    "filters": {
+      "name": "Name",
+      "visibility": "Visibility",
+      "status": "Status",
+      "author": "Author",
+      "favorites": "Favorites",
+      "validationUntil": "Validation date (until)"
+    },
+    "notAvailable": "—",
+    "reviewBadge": "Review",
+    "rejectedTitle": "This document was rejected in review.",
+    "noIndexPermission": "You do not have permission to list documents (document.index).",
+    "loadError": "Error loading documents: {{message}}",
+    "emptyFiltered": "There are no documents matching the current filters.",
+    "filtersLabel": "Filters",
+    "columnsLabel": "Columns",
+    "clearFiltersLabel": "Clear",
+    "pageSizeLabel": "Per page",
+    "deadlineAria": "Unpublished documents whose validation deadline is this date or earlier (published rows do not apply)",
+    "paginationInfo": "Page {{page}} of {{totalPages}} — {{count}} documents"
   },
   "diff": {
     "previousBlock": "Previous block",

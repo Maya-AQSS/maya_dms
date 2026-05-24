@@ -18,9 +18,49 @@
     "filterUsersPlaceholder": "Filtrar usuarios…"
   },
   "table": {
+    "columns": {
+      "name": "Nombre",
+      "visibility": "Visibilidad",
+      "author": "Autor",
+      "status": "Estado",
+      "validationDate": "Fecha de validación"
+    },
+    "status": {
+      "draft": "Borrador",
+      "in_review": "En revisión",
+      "published": "Publicada",
+      "archived": "Archivada",
+      "rejected": "Rechazada"
+    },
+    "statusFilter": {
+      "all": "Todos"
+    },
+    "favoritesFilter": {
+      "all": "Todos",
+      "onlyFavorites": "Solo favoritos"
+    },
+    "filters": {
+      "name": "Nombre",
+      "visibility": "Visibilidad",
+      "status": "Estado",
+      "author": "Autor",
+      "favorites": "Favoritos",
+      "validationUntil": "Fecha de validación (hasta)"
+    },
+    "searchName": "Buscar por nombre...",
     "searchVisibility": "Global, personal, equipo, nombre de equipo, estudio o módulo…",
     "authorPlaceholder": "Nombre del autor...",
-    "deadlinePlaceholder": "Cualquier plazo…"
+    "deadlinePlaceholder": "Cualquier plazo…",
+    "deadlineAria": "Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)",
+    "notAvailable": "—",
+    "reviewBadge": "Revisión",
+    "close": "Cerrar",
+    "emptyFiltered": "No hay plantillas con los filtros actuales.",
+    "filtersLabel": "Filtros",
+    "columnsLabel": "Columnas",
+    "clearFiltersLabel": "Limpiar",
+    "pageSizeLabel": "Por página",
+    "paginationInfo": "{{from}}–{{to}} de {{total}}"
   },
   "comments": {
     "closePanelAria": "Cerrar panel",

@@ -15,7 +15,6 @@ import {
   type ColumnDef,
 } from '@maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
-import { FAVORITES_FILTER_OPTIONS } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';
 import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
@@ -30,19 +29,16 @@ import type { AcademicHierarchy } from '../../../types/hierarchy';
 // Estado y visibilidad: clases provenientes del módulo compartido `badges`
 // (los colores hex viven en `maya_infra/configs/styles/index.css`).
 
-const STATUS_LABEL: Record<DocumentStatus, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicado',
-  rejected: 'Rechazado',
-};
-
-const STATUS_FILTER_OPTIONS: { value: string; label: string }[] = [
-  { value: '', label: 'Todos' },
-  { value: 'draft', label: 'Borrador' },
-  { value: 'in_review', label: 'En revisión' },
-  { value: 'published', label: 'Publicado' },
-];
+function documentStatusLabel(
+  status: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!status) {
+    return t('documents:table.notAvailable');
+  }
+  const label = t(`documents:table.status.${status as DocumentStatus}`, { defaultValue: '' });
+  return label || status;
+}
 
 /** `delivery_deadline` presente y día calendario ≤ cap (Y-m-d), inclusive. */
 function deliveryDeadlineOnOrBefore(iso: string | null | undefined, capYmd: string): boolean {
@@ -131,11 +127,30 @@ export function DocumentsTable({ processId }: Props = {}) {
   });
   const { documents, loading, error } = useDocuments(processId);
 
+  const statusFilterOptions = useMemo(
+    () => [
+      { value: '', label: t('documents:table.statusFilter.all') },
+      { value: 'draft', label: t('documents:table.status.draft') },
+      { value: 'in_review', label: t('documents:table.status.in_review') },
+      { value: 'published', label: t('documents:table.status.published') },
+      { value: 'rejected', label: t('documents:table.status.rejected') },
+    ],
+    [t],
+  );
+
+  const favoritesFilterOptions = useMemo(
+    () => [
+      { value: '', label: t('documents:table.favoritesFilter.all') },
+      { value: 'favorites', label: t('documents:table.favoritesFilter.onlyFavorites') },
+    ],
+    [t],
+  );
+
   const columns: ColumnDef<Document>[] = useMemo(
     () => [
       {
         id: 'title',
-        header: 'Nombre',
+        header: t('documents:table.columns.name'),
         alwaysVisible: true,
         cell: (doc) => (
           <span className="flex items-center gap-2 min-w-0">
@@ -146,7 +161,7 @@ export function DocumentsTable({ processId }: Props = {}) {
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                 title={t('documents:table.rejectedTitle')}
               >
-                ⚠ Revisión
+                  ⚠ {t('documents:table.reviewBadge')}
               </span>
             )}
           </span>
@@ -155,11 +170,15 @@ export function DocumentsTable({ processId }: Props = {}) {
       },
       {
         id: 'visibility_level',
-        header: 'Visibilidad',
+        header: t('documents:table.columns.visibility'),
         cell: (doc) => {
           const visLevel = doc.visibility_level;
           if (visLevel == null) {
-            return <span className="text-xs text-text-secondary dark:text-text-dark-secondary">—</span>;
+            return (
+              <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+                {t('documents:table.notAvailable')}
+              </span>
+            );
           }
           const level = visLevel as TemplateVisibilityLevel;
           const caption = formatListRowVisibilityCaption(hierarchy, {
@@ -182,35 +201,39 @@ export function DocumentsTable({ processId }: Props = {}) {
       },
       {
         id: 'owner_name',
-        header: 'Autor',
+        header: t('documents:table.columns.author'),
         cell: (doc) => (
-          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">{doc.owner_name ?? '—'}</span>
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
+            {doc.owner_name ?? t('documents:table.notAvailable')}
+          </span>
         ),
       },
       {
         id: 'status',
-        header: 'Estado',
+        header: t('documents:table.columns.status'),
         cell: (doc) => {
           const status = doc.status as DocumentStatus;
           return (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
-              {STATUS_LABEL[status] ?? status}
+              {documentStatusLabel(status, t)}
             </span>
           );
         },
       },
       {
         id: 'delivery_deadline',
-        header: 'Fecha de validación',
+        header: t('documents:table.columns.validationDate'),
         sortable: true,
         cell: (doc) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {doc.status === 'published' ? '—' : formatCalendarDateForBrowser(doc.delivery_deadline)}
+            {doc.status === 'published'
+              ? t('documents:table.notAvailable')
+              : formatCalendarDateForBrowser(doc.delivery_deadline)}
           </span>
         ),
       },
     ],
-    [favoriteDocumentIds, hierarchy, profile],
+    [favoriteDocumentIds, hierarchy, profile, t],
   );
 
   const [filters, setFilters] = useState<Filters>({
@@ -348,7 +371,7 @@ export function DocumentsTable({ processId }: Props = {}) {
   if (!canIndex) {
     return (
       <p className="text-sm text-text-secondary dark:text-text-dark-secondary py-4 text-center">
-        No tienes permiso para listar documentos (document.index).
+        {t('documents:table.noIndexPermission')}
       </p>
     );
   }
@@ -368,7 +391,7 @@ export function DocumentsTable({ processId }: Props = {}) {
     <div className="space-y-4">
       {error && (
         <div className="rounded-lg border border-warning/40 bg-warning-light/40 dark:bg-warning-dark/10 px-4 py-3 text-sm text-warning-dark dark:text-warning-light">
-          Error al cargar documentos: {error.message}
+          {t('documents:table.loadError', { message: error.message })}
         </div>
       )}
 
@@ -386,7 +409,11 @@ export function DocumentsTable({ processId }: Props = {}) {
           setPageSize(size)
           setPage(1)
         }}
-        emptyMessage="No hay documentos con los filtros actuales."
+        filtersLabel={t('documents:table.filtersLabel')}
+        columnsLabel={t('documents:table.columnsLabel')}
+        clearFiltersLabel={t('documents:table.clearFiltersLabel')}
+        pageSizeLabel={t('documents:table.pageSizeLabel')}
+        emptyMessage={t('documents:table.emptyFiltered')}
         filtersActiveCount={filtersActiveCount}
         onClearFilters={clearFilters}
         filtersStorageKey="maya:dms:documents-table"
@@ -415,7 +442,7 @@ export function DocumentsTable({ processId }: Props = {}) {
         }}
         filtersPanel={
           <>
-            <FilterField label="Nombre">
+            <FilterField label={t('documents:table.filters.name')}>
               <TextInput
                 fieldSize="sm"
                 type="search"
@@ -424,7 +451,7 @@ export function DocumentsTable({ processId }: Props = {}) {
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Visibilidad">
+            <FilterField label={t('documents:table.filters.visibility')}>
               <TextInput
                 fieldSize="sm"
                 type="search"
@@ -433,18 +460,18 @@ export function DocumentsTable({ processId }: Props = {}) {
                 onChange={handleAcademicContextChange}
               />
             </FilterField>
-            <FilterField label="Estado">
+            <FilterField label={t('documents:table.filters.status')}>
               <Select
                 fieldSize="sm"
                 value={filters.status}
                 onChange={(e) => handleFilterChange({ status: e.target.value })}
               >
-                {STATUS_FILTER_OPTIONS.map((o) => (
+                {statusFilterOptions.map((o) => (
                   <option key={o.value} value={o.value}>{o.label}</option>
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Autor">
+            <FilterField label={t('documents:table.filters.author')}>
               <TextInput
                 fieldSize="sm"
                 placeholder={t('documents:wizard.authorPlaceholder')}
@@ -452,25 +479,25 @@ export function DocumentsTable({ processId }: Props = {}) {
                 onChange={handleAuthorChange}
               />
             </FilterField>
-            <FilterField label="Favoritos">
+            <FilterField label={t('documents:table.filters.favorites')}>
               <Select
                 fieldSize="sm"
                 value={filters.favorites}
                 onChange={(e) => handleFilterChange({ favorites: e.target.value })}
               >
-                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                {favoritesFilterOptions.map((o) => (
                   <option key={o.value || 'all'} value={o.value}>
                     {o.label}
                   </option>
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Fecha de validación (hasta)">
+            <FilterField label={t('documents:table.filters.validationUntil')}>
               <DatePicker
                 value={filters.date || null}
                 onChange={(d) => handleFilterChange({ date: d ?? '' })}
                 placeholder={t('documents:wizard.deadlinePlaceholder')}
-                ariaLabel="Documentos no publicados cuya fecha límite de validación sea esta fecha o anterior (las filas publicadas no aplican)"
+                ariaLabel={t('documents:table.deadlineAria')}
               />
             </FilterField>
           </>
@@ -481,7 +508,11 @@ export function DocumentsTable({ processId }: Props = {}) {
         currentPage={safePage}
         totalPages={totalPages}
         onChange={setPage}
-        info={`Página ${safePage} de ${totalPages} — ${filtered.length} documentos`}
+        info={t('documents:table.paginationInfo', {
+          page: safePage,
+          totalPages,
+          count: filtered.length,
+        })}
       />
     </div>
   );
