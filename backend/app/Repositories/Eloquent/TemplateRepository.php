@@ -32,6 +32,27 @@ class TemplateRepository implements TemplateRepositoryInterface
     }
 
     /**
+     * Localiza una plantilla por el ID de una de sus entity_versions o lanza excepción.
+     * Sin scope de catálogo; usado para autorización vía Gate en flujo de favoritos.
+     */
+    public function findOrFailByVersionId(string $entityVersionId): Template
+    {
+        $versionableId = DB::table('entity_versions')
+            ->where('id', '=', $entityVersionId)
+            ->where('versionable_type', '=', Template::class)
+            ->value('versionable_id');
+
+        if ($versionableId === null) {
+            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(Template::class, [$entityVersionId]);
+        }
+
+        return Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with(['headVersion', 'theme'])
+            ->findOrFail($versionableId);
+    }
+
+    /**
      * Localiza una plantilla por su ID con lock FOR UPDATE o lanza excepción.
      */
     public function findOrFailForUpdate(string $id): Template

@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { FAVORITE_STAR_FILLED_CHAR, FAVORITE_STAR_OUTLINE_CHAR } from '@maya/shared-ui-react';
 import {
   addDocumentFavorite,
@@ -13,8 +14,16 @@ type Props = {
   entityId: string;
 };
 
+const FAVORITES_QUERY_KEY = ['favorites', 'ids'];
+
+interface FavoritesIds {
+  template_ids: string[];
+  document_ids: string[];
+}
+
 export function FavoriteButton({ entityType, entityId }: Props) {
-  const { templateIds, documentIds, loading, refetch } = useFavoritesIds();
+  const queryClient = useQueryClient();
+  const { templateIds, documentIds, loading } = useFavoritesIds();
   const [toggling, setToggling] = useState(false);
 
   const isFavorite = entityType === 'template'
@@ -24,6 +33,27 @@ export function FavoriteButton({ entityType, entityId }: Props) {
   const onClick = useCallback(async () => {
     if (toggling || loading) return;
     setToggling(true);
+
+    const previous = queryClient.getQueryData<FavoritesIds>(FAVORITES_QUERY_KEY);
+
+    queryClient.setQueryData<FavoritesIds>(FAVORITES_QUERY_KEY, (old) => {
+      if (!old) return old;
+      if (entityType === 'template') {
+        return {
+          ...old,
+          template_ids: isFavorite
+            ? old.template_ids.filter((id) => id !== entityId)
+            : [...old.template_ids, entityId],
+        };
+      }
+      return {
+        ...old,
+        document_ids: isFavorite
+          ? old.document_ids.filter((id) => id !== entityId)
+          : [...old.document_ids, entityId],
+      };
+    });
+
     try {
       if (entityType === 'template') {
         if (!isFavorite) await addTemplateFavorite(entityId);
@@ -32,11 +62,13 @@ export function FavoriteButton({ entityType, entityId }: Props) {
         if (!isFavorite) await addDocumentFavorite(entityId);
         else await removeDocumentFavorite(entityId);
       }
+      await queryClient.invalidateQueries({ queryKey: FAVORITES_QUERY_KEY });
+    } catch {
+      queryClient.setQueryData(FAVORITES_QUERY_KEY, previous);
     } finally {
-      await refetch();
       setToggling(false);
     }
-  }, [entityType, entityId, isFavorite, loading, toggling, refetch]);
+  }, [entityType, entityId, isFavorite, loading, toggling, queryClient]);
 
   return (
     <button

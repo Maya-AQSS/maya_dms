@@ -6,7 +6,6 @@ namespace App\Models;
 
 use App\Observers\UserFavoriteTemplateObserver;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-
 use App\Repositories\Eloquent\UserFavoriteRepository;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,18 +16,18 @@ class UserFavoriteTemplate extends Model
     protected $table = 'user_favorite_templates';
 
     /**
-     * PK compuesta (user_id, template_id). No usar save() vía Eloquent;
+     * PK compuesta (user_id, template_version_id). No usar save() vía Eloquent;
      * la persistencia va por {@see UserFavoriteRepository}.
      */
     public $incrementing = false;
 
     protected $fillable = [
         'user_id',
-        'template_id',
+        'template_version_id',
     ];
 
-    public function template(): BelongsTo
+    public function templateVersion(): BelongsTo
     {
-        return $this->belongsTo(Template::class);
+        return $this->belongsTo(EntityVersion::class, 'template_version_id');
     }
 }

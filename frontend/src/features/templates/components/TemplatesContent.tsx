@@ -233,7 +233,12 @@ export function TemplatesContent() {
         alwaysVisible: true,
         cell: (t) => (
           <span className="flex items-center gap-2 min-w-0">
-            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
+            {(() => {
+              const versionId = t.list_variant === 'published_fallback'
+                ? t.latest_published_version_id
+                : t.working_version_id;
+              return versionId && favoriteTemplateIds.has(versionId) ? <FavoriteInlineMark /> : null;
+            })()}
             <span className="truncate font-medium">{t.name}</span>
             {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
               <span

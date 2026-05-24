@@ -24,14 +24,14 @@ interface UserFavoriteRepositoryInterface
     public function listDocumentIdsForUser(string $userId): array;
 
     /**
-     * Añade una plantilla favorita al usuario.
+     * Añade una versión de plantilla favorita al usuario.
      */
-    public function addTemplateFavorite(string $userId, string $templateId): void;
+    public function addTemplateFavorite(string $userId, string $templateVersionId): void;
 
     /**
-     * Elimina una plantilla favorita del usuario.
+     * Elimina una versión de plantilla favorita del usuario.
      */
-    public function removeTemplateFavorite(string $userId, string $templateId): void;
+    public function removeTemplateFavorite(string $userId, string $templateVersionId): void;
 
     /**
      * Añade un documento favorito al usuario.

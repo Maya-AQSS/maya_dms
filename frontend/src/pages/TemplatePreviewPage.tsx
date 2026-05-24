@@ -492,7 +492,9 @@ export function TemplatePreviewPage() {
         </>
       ) : (
         <>
-          {!viewingPublishedSnapshot && id ? <FavoriteButton entityType="template" entityId={id} /> : null}
+          {!viewingPublishedSnapshot && template?.working_version_id
+            ? <FavoriteButton entityType="template" entityId={template.working_version_id} />
+            : null}
           {showVersionHistory ? (
             <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>
               Historial

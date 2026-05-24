@@ -21,10 +21,10 @@ use App\Models\Template;
 interface UserFavoriteServiceInterface
 {
     /**
-     * Resuelve un Template para el flujo de favoritos. La autorización vía Gate
-     * se ejecuta sobre el Model resultante en el controlador.
+     * Resuelve un Template a partir del ID de una de sus entity_versions.
+     * La autorización vía Gate se ejecuta sobre el Model resultante en el controlador.
      */
-    public function findTemplateModelOrFail(string $templateId): Template;
+    public function findTemplateModelOrFail(string $templateVersionId): Template;
 
     /**
      * Resuelve un Document para el flujo de favoritos. La autorización vía Gate
@@ -40,14 +40,14 @@ interface UserFavoriteServiceInterface
     public function listIdsForUser(string $userId): array;
 
     /**
-     * Añade una plantilla favorita al usuario.
+     * Añade una versión de plantilla favorita al usuario.
      */
-    public function addTemplateFavorite(string $userId, string $templateId): void;
+    public function addTemplateFavorite(string $userId, string $templateVersionId): void;
 
     /**
-     * Elimina una plantilla favorita del usuario.
+     * Elimina una versión de plantilla favorita del usuario.
      */
-    public function removeTemplateFavorite(string $userId, string $templateId): void;
+    public function removeTemplateFavorite(string $userId, string $templateVersionId): void;
 
     /**
      * Añade un documento favorito al usuario.
