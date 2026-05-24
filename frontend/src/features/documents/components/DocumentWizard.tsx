@@ -1006,7 +1006,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const handleApproveValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
+      return false;
     }
     setValidationModalError(null);
     setSummaryError(null);
@@ -1019,6 +1019,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       });
     } catch (e) {
       setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo aprobar la revisión.');
+      return false;
     } finally {
       setValidationActionLoading(false);
     }
@@ -1031,7 +1032,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const handleRejectValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
+      return false;
     }
     setValidationModalError(null);
     setSummaryError(null);
@@ -1044,6 +1045,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       });
     } catch (e) {
       setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo rechazar la revisión.');
+      return false;
     } finally {
       setValidationActionLoading(false);
     }

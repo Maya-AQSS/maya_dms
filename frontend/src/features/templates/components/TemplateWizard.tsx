@@ -259,7 +259,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   });
   const handlePublish = async (changelog?: string | null) => {
-    if (!template?.id) return;
+    if (!template?.id) return false;
     setSaving(true);
     try {
       await apiPublishTemplate(template.id, changelog);
@@ -274,6 +274,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       } else {
         setErrors({ api: message });
       }
+      return false;
     } finally {
       setSaving(false);
     }
@@ -304,16 +305,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setShowValidationModal(true);
   };
 
-  const handleConfirmPublish = () => {
+  const handleConfirmPublish = async () => {
     if (requiresPublishChangelog && publishChangelog.trim() === '') {
       setPublishModalError('El changelog es obligatorio a partir de la segunda versión.');
-      return;
+      return false;
     }
-    void handlePublish(publishChangelog.trim());
+    return handlePublish(publishChangelog.trim());
   };
 
   const handleSubmitForReview = async () => {
-    if (!template?.id) return;
+    if (!template?.id) return false;
     setSaving(true);
     setErrors({});
     try {
@@ -323,6 +324,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       navigate(processBackTo);
     } catch (e) {
       setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
+      return false;
     } finally {
       setSaving(false);
     }
