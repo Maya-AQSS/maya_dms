@@ -979,7 +979,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                     />
                   )
                 : diffBlockId !== null
-                  ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
+                  ? (
+                      <DocumentDiffPanel
+                        blocks={diffPanelBlocks}
+                        allBlocks={detail?.blocks}
+                        onClose={() => setDiffBlockId(null)}
+                      />
+                    )
                   : undefined
           }
         >
@@ -1196,7 +1202,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         headerRef={pageHeaderRef}
         sidebar={
           diffBlockId !== null && !selectedReviewView
-            ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
+            ? (
+                <DocumentDiffPanel
+                  blocks={diffPanelBlocks}
+                  allBlocks={detail?.blocks}
+                  onClose={() => setDiffBlockId(null)}
+                />
+              )
             : selectedReviewView && (() => {
           const block = detail?.blocks?.find(b => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId);
           if (!block) return null;

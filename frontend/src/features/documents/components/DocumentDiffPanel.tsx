@@ -130,14 +130,21 @@ function blockStateLabel(
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-type Props = { blocks: DocumentDisplayBlock[]; onClose: () => void };
+type Props = {
+  /** Bloques a mostrar en el diff (p. ej. solo el bloque seleccionado). */
+  blocks: DocumentDisplayBlock[];
+  /** Lista completa del documento para numerar bloques; si no se pasa, se usa `blocks`. */
+  allBlocks?: DocumentDisplayBlock[];
+  onClose: () => void;
+};
 
-export function DocumentDiffPanel({ blocks, onClose }: Props) {
+export function DocumentDiffPanel({ blocks, allBlocks, onClose }: Props) {
   const { t } = useTranslation('documents');
   const [ascending, setAscending] = useState(true);
   const [focusedIdx, setFocusedIdx] = useState(0);
   const blockRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  const numberingBlocks = allBlocks ?? blocks;
   const changedBlocks = useMemo(() => computeChangedBlocks(blocks), [blocks]);
 
   const diffLines = useMemo(
@@ -162,10 +169,11 @@ export function DocumentDiffPanel({ blocks, onClose }: Props) {
         .map((block, idx) => ({
           block,
           lines: diffLines[idx] ?? [],
-          blockNumber: blocks.findIndex(b => b.template_block_id === block.template_block_id) + 1,
+          blockNumber:
+            numberingBlocks.findIndex(b => b.template_block_id === block.template_block_id) + 1,
         }))
         .filter(({ lines }) => lines.length > 0),
-    [changedBlocks, diffLines, blocks],
+    [changedBlocks, diffLines, numberingBlocks],
   );
 
   const pairs = useMemo(
