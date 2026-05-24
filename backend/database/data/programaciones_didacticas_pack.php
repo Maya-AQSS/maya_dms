@@ -27,6 +27,8 @@ declare(strict_types=1);
  *
  * @return array{
  *   templates: list<array<string, mixed>>,
+ *   template_reviewers: list<array<string, mixed>>,
+ *   template_document_reviewers: list<array<string, mixed>>,
  *   template_blocks: list<array<string, mixed>>,
  *   template_versions: list<array<string, mixed>>,
  *   entity_versions: list<array<string, mixed>>,
@@ -626,8 +628,57 @@ return (static function (): array {
 
     $document_blocks = require __DIR__ . '/programaciones_didacticas_doc_blocks.php';
 
+    // ============================================================
+    // TEMPLATE REVIEWERS — Dirección (Keycloak / maya_infra: ed568442…)
+    // ============================================================
+
+    $template_reviewers = [
+        [
+            'id' => 'ff000000-0000-4000-8000-000000000000',
+            'template_id' => $T0,
+            'user_id' => $uDir,
+            'stage' => 1,
+            'status' => 'pending',
+        ],
+        [
+            'id' => 'ff000001-0000-4000-8000-000000000000',
+            'template_id' => $T1,
+            'user_id' => $uDir,
+            'stage' => 1,
+            'status' => 'pending',
+        ],
+        [
+            'id' => 'ff000002-0000-4000-8000-000000000000',
+            'template_id' => $T2,
+            'user_id' => $uDir,
+            'stage' => 1,
+            'status' => 'pending',
+        ],
+    ];
+
+    // ============================================================
+    // TEMPLATE DOCUMENT REVIEWERS — Dirección (Keycloak / maya_infra: ed568442…)
+    // ============================================================
+
+    $template_document_reviewers = [
+        [
+            'template_id' => $T0,
+            'user_id' => $uDir,
+        ],
+        [
+            'template_id' => $T1,
+            'user_id' => $uDir,
+        ],
+        [
+            'template_id' => $T2,
+            'user_id' => $uDir,
+        ],
+    ];
+
     return [
         'templates' => $templates,
+        'template_reviewers' => $template_reviewers,
+        'template_document_reviewers' => $template_document_reviewers,
         'template_blocks' => $blocks,
         'template_versions' => $template_versions,
         'documents' => $documents,

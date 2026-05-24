@@ -19,4 +19,6 @@ $pack = require __DIR__ . '/programaciones_didacticas_pack.php';
 
 return [
     'templates' => $pack['templates'],
+    'template_reviewers' => $pack['template_reviewers'],
+    'template_document_reviewers' => $pack['template_document_reviewers'],
 ];
