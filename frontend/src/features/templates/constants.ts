@@ -13,6 +13,7 @@ export const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
   { value: 'draft', label: 'Borrador' },
   { value: 'in_review', label: 'En revisión' },
+  { value: 'rejected', label: 'Rechazada' },
   { value: 'published', label: 'Publicada' },
   { value: 'archived', label: 'Archivada' },
 ] as const;

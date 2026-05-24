@@ -35,6 +35,13 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
   rejected: 'Rechazada',
 };
 
+function templateStatusLabel(status: string | null | undefined): string {
+  if (!status) {
+    return '—';
+  }
+  return STATUS_LABEL[status as TemplateStatus] ?? status;
+}
+
 // Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
 
 type Props = {
@@ -85,7 +92,11 @@ export function TemplatesTable({ processId }: Props = {}) {
   const clientFilteredCatalog = useMemo(() => {
     let list = catalogSorted;
     if (favoritesFilter === 'favorites') {
-      list = list.filter((t) => favoriteTemplateIds.has(t.id));
+      list = list.filter(
+        (t) =>
+          (!!t.working_version_id && favoriteTemplateIds.has(t.working_version_id)) ||
+          (!!t.latest_published_version_id && favoriteTemplateIds.has(t.latest_published_version_id)),
+      );
     }
     if (nameFilter.trim()) {
       const needle = normalizeForSearch(nameFilter.trim());
@@ -238,10 +249,12 @@ export function TemplatesTable({ processId }: Props = {}) {
     if (profile?.id && t.created_by === profile.id) {
       return true;
     }
-    return (
-      t.status === 'in_review'
-      && t.reviewers?.some((r) => r.user_id === profile?.id) === true
-    );
+    const isAssignedReviewer =
+      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    if (isAssignedReviewer && (t.status === 'in_review' || t.status === 'rejected')) {
+      return true;
+    }
+    return false;
   };
 
   const handleRowClick = (t: Template) => {
@@ -257,11 +270,18 @@ export function TemplatesTable({ processId }: Props = {}) {
       return;
     }
     const isAssignedReviewer =
-      t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    const openReviewView = isAssignedReviewer && canReview;
-    navigate(openReviewView ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
-      state: { backTo, processId },
-    });
+      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    const openReviewView = t.status === 'in_review' && isAssignedReviewer && canReview;
+    if (openReviewView) {
+      navigate(`/templates/${t.id}/review`, { state: { backTo, processId } });
+      return;
+    }
+    const isOwner = profile?.id != null && t.created_by === profile.id;
+    if (isOwner && t.status === 'draft') {
+      navigate(`/templates/${t.id}/edit`, { state: { backTo, processId } });
+      return;
+    }
+    navigate(`/templates/${t.id}`, { state: { backTo, processId } });
   };
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -271,33 +291,39 @@ export function TemplatesTable({ processId }: Props = {}) {
         header: 'Nombre',
         sortable: true,
         alwaysVisible: true,
-        cell: (t) => (
-          <span className="flex items-center gap-2 min-w-0">
-            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
-            <span className="truncate font-medium">{t.name}</span>
-            {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
-              <span
-                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title={t('templates:pendingReviewTitle')}
-              >
-                ⚠ Revisión
-              </span>
-            )}
-          </span>
-        ),
+        cell: (template) => {
+          const versionId =
+            template.list_variant === 'published_fallback'
+              ? template.latest_published_version_id
+              : template.working_version_id;
+          return (
+            <span className="flex items-center gap-2 min-w-0">
+              {versionId && favoriteTemplateIds.has(versionId) ? <FavoriteInlineMark /> : null}
+              <span className="truncate font-medium">{template.name}</span>
+              {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
+                <span
+                  className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                  title={t('templates:pendingReviewTitle')}
+                >
+                  ⚠ Revisión
+                </span>
+              )}
+            </span>
+          );
+        },
       },
       {
         id: 'visibility_level',
         header: 'Visibilidad',
-        cell: (t) => {
-          const level = t.visibility_level as TemplateVisibilityLevel;
+        cell: (template) => {
+          const level = template.visibility_level as TemplateVisibilityLevel;
           const caption = formatListRowVisibilityCaption(hierarchy, {
             visibility_level: level,
-            study_type_id: t.study_type_id,
-            study_id: t.study_id,
-            module_id: t.module_id,
-            team_id: t.team_id,
-            team: t.team,
+            study_type_id: template.study_type_id,
+            study_id: template.study_id,
+            module_id: template.module_id,
+            team_id: template.team_id,
+            team: template.team,
           });
           return (
             <span
@@ -312,20 +338,20 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'author_name',
         header: 'Autor',
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.author_name ?? '—'}
+            {template.author_name ?? '—'}
           </span>
         ),
       },
       {
         id: 'status',
         header: 'Estado',
-        cell: (t) => {
-          const status = t.status as TemplateStatus;
+        cell: (template) => {
+          const status = template.status ?? '';
           return (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
-              {STATUS_LABEL[status] ?? status}
+              {templateStatusLabel(status)}
             </span>
           );
         },
@@ -334,14 +360,14 @@ export function TemplatesTable({ processId }: Props = {}) {
         id: 'delivery_deadline',
         header: 'Fecha de validación',
         sortable: true,
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
+            {template.status === 'published' ? '—' : formatCalendarDateForBrowser(template.delivery_deadline)}
           </span>
         ),
       },
     ],
-    [profile, favoriteTemplateIds, hierarchy],
+    [profile, favoriteTemplateIds, hierarchy, t],
   );
 
   if (!canIndex) {

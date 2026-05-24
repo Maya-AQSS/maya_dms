@@ -80,7 +80,13 @@ function buildListQuery(filters: TemplateListFilters): string {
 
 /** GET /api/v1/templates */
 export async function fetchTemplates(filters: TemplateListFilters = {}): Promise<TemplatesListResponse> {
-  return apiGetJson<TemplatesListResponse>(`templates${buildListQuery(filters)}`);
+  const body = await apiGetJson<TemplatesListResponse | Template[]>(
+    `templates${buildListQuery(filters)}`,
+  );
+  if (Array.isArray(body)) {
+    return { data: body };
+  }
+  return { data: Array.isArray(body?.data) ? body.data : [] };
 }
 
 /** GET /api/v1/templates/{id} */

@@ -726,11 +726,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             Los bloques tipo bloqueado deben tener contenido predeterminado (obligatorio).
                           </p>
                         )}
-                        {formUiState === 'locked' && !formContent && (
-                          <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
-                            Los bloques bloqueados deben tener contenido predeterminado (obligatorio).
-                          </p>
-                        )}
                         {formUiState === 'editable' && !formContent && (
                           <p className="bg-info/10 text-info-dark rounded px-3 py-1.5 dark:bg-info-dark/30 dark:text-info-light">
                             Se recomienda añadir contenido predeterminado para los bloques editables.

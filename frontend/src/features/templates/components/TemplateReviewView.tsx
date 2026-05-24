@@ -12,7 +12,7 @@ import { SequentialValidatorBadge } from '../../documents/components/SequentialV
 import { Button, ConfirmDialog } from '@maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../../../permissions';
-import { apiFetchJson } from '../../../api/http';
+import { apiFetchJson, ApiHttpError } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
 import {
@@ -317,8 +317,7 @@ export function TemplateReviewView({ template }: Props) {
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
-  // Error state tracked for telemetry but not surfaced in this view yet.
-  const [, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const [, setCommentLoading] = useState(false);
 
@@ -428,9 +427,10 @@ export function TemplateReviewView({ template }: Props) {
     setError(null);
     try {
       await approveTemplateReview(template.id);
+      await queryClient.invalidateQueries({ queryKey: ['templates'] });
       navigate(backTo);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al aprobar la plantilla');
+      setError(e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al aprobar la plantilla');
     } finally {
       setActionLoading(false);
     }
@@ -450,9 +450,10 @@ export function TemplateReviewView({ template }: Props) {
     setError(null);
     try {
       await rejectTemplateReview(template.id);
+      await queryClient.invalidateQueries({ queryKey: ['templates'] });
       navigate(backTo);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error al rechazar la plantilla');
+      setError(e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al rechazar la plantilla');
     } finally {
       setActionLoading(false);
     }
@@ -566,6 +567,14 @@ export function TemplateReviewView({ template }: Props) {
             : undefined
       }
     >
+      {error && (
+        <div
+          role="alert"
+          className="mb-6 rounded-lg border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger-dark dark:text-danger"
+        >
+          {error}
+        </div>
+      )}
       {/* Blocks list (article content) */}
       <div className="space-y-12">
         {blocks.length === 0 ? (

@@ -588,7 +588,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const handleApproveValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
+      return false;
     }
     setValidationModalError(null);
     setValidationActionLoading(true);
@@ -600,6 +600,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       });
     } catch (e) {
       setValidationModalError(e instanceof Error ? e.message : 'No se pudo aprobar la revisión.');
+      return false;
     } finally {
       setValidationActionLoading(false);
     }
@@ -610,7 +611,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const handleRejectValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
+      return false;
     }
     setValidationModalError(null);
     setValidationActionLoading(true);
@@ -622,6 +623,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       });
     } catch (e) {
       setValidationModalError(e instanceof Error ? e.message : 'No se pudo rechazar la revisión.');
+      return false;
     } finally {
       setValidationActionLoading(false);
     }
@@ -979,7 +981,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                     />
                   )
                 : diffBlockId !== null
-                  ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
+                  ? (
+                      <DocumentDiffPanel
+                        blocks={diffPanelBlocks}
+                        allBlocks={detail?.blocks}
+                        onClose={() => setDiffBlockId(null)}
+                      />
+                    )
                   : undefined
           }
         >
@@ -1196,7 +1204,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         headerRef={pageHeaderRef}
         sidebar={
           diffBlockId !== null && !selectedReviewView
-            ? <DocumentDiffPanel blocks={diffPanelBlocks} onClose={() => setDiffBlockId(null)} />
+            ? (
+                <DocumentDiffPanel
+                  blocks={diffPanelBlocks}
+                  allBlocks={detail?.blocks}
+                  onClose={() => setDiffBlockId(null)}
+                />
+              )
             : selectedReviewView && (() => {
           const block = detail?.blocks?.find(b => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId);
           if (!block) return null;

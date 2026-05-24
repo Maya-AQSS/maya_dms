@@ -169,7 +169,7 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'rejected']);
 
-            return $this->templatePublishingService->transitionStatus($template, 'draft', $actorId);
+            return $this->templatePublishingService->transitionStatus($template, 'rejected', $actorId);
         });
     }
 

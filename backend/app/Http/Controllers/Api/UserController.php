@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\DTOs\Users\ReviewerCandidateFilterDto;
 use App\Models\JwtUser;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -56,6 +57,9 @@ class UserController extends Controller
      * `search` es opcional; si se omite devuelve todos los candidatos (hasta per_page).
      *
      * `exclude_user_id`: opcional; no devuelve ese usuario (p. ej. creador de la plantilla, SoD).
+     *
+     * Contexto académico opcional (según visibilidad de la plantilla):
+     * `visibility_level`, `study_type_id`, `study_id`, `module_id`, `team_id`.
      */
     public function reviewerCandidates(Request $request): JsonResponse
     {
@@ -67,8 +71,14 @@ class UserController extends Controller
         $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
+        $academicFilter = ReviewerCandidateFilterDto::fromRequest($request);
 
-        $users = $this->userDirectoryService->searchTemplateReviewerCandidates($search, $perPage, $excludeUserId);
+        $users = $this->userDirectoryService->searchTemplateReviewerCandidates(
+            $search,
+            $perPage,
+            $excludeUserId,
+            $academicFilter,
+        );
 
         return response()->json(['data' => $users]);
     }
@@ -83,6 +93,9 @@ class UserController extends Controller
      * `search` es opcional; si se omite devuelve todos los candidatos (hasta per_page).
      *
      * `exclude_user_id`: opcional; no devuelve ese usuario (p. ej. creador de la plantilla, SoD).
+     *
+     * Contexto académico opcional (según visibilidad de la plantilla):
+     * `visibility_level`, `study_type_id`, `study_id`, `module_id`, `team_id`.
      */
     public function documentReviewerCandidates(Request $request): JsonResponse
     {
@@ -94,8 +107,14 @@ class UserController extends Controller
         $search = trim((string) $request->get('search', ''));
         $perPage = min((int) $request->get('per_page', 20), 50);
         $excludeUserId = $this->optionalExcludeUserId($request);
+        $academicFilter = ReviewerCandidateFilterDto::fromRequest($request);
 
-        $users = $this->userDirectoryService->searchDocumentReviewerCandidates($search, $perPage, $excludeUserId);
+        $users = $this->userDirectoryService->searchDocumentReviewerCandidates(
+            $search,
+            $perPage,
+            $excludeUserId,
+            $academicFilter,
+        );
 
         return response()->json(['data' => $users]);
     }
