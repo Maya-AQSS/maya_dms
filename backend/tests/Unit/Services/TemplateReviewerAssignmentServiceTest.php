@@ -8,6 +8,8 @@ use App\DTOs\Templates\SyncUsersDto;
 use App\Models\Template;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
+use App\Services\ReviewerAcademicScopeResolver;
 use App\Services\TemplateReviewerAssignmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -46,6 +48,11 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $template->shouldReceive('getAttribute')->with('review_mode')->andReturn($reviewMode);
         $template->shouldReceive('getAttribute')->with('review_stages')->andReturn($reviewStages);
         $template->shouldReceive('getAttribute')->with('id')->andReturn('tmpl-uuid');
+        $template->shouldReceive('getAttribute')->with('visibility_level')->andReturn('personal');
+        $template->shouldReceive('getAttribute')->with('study_type_id')->andReturn(null);
+        $template->shouldReceive('getAttribute')->with('study_id')->andReturn(null);
+        $template->shouldReceive('getAttribute')->with('module_id')->andReturn(null);
+        $template->shouldReceive('getAttribute')->with('team_id')->andReturn(null);
 
         return $template;
     }
@@ -53,8 +60,21 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
     private function makeService(
         TemplateRepositoryInterface $templateRepo,
         ResolvedPermissionReaderInterface $permRepo,
+        ?ReviewerAcademicScopeResolver $scopeResolver = null,
+        ?UserDirectoryRepositoryInterface $userDirectoryRepository = null,
     ): TemplateReviewerAssignmentService {
-        return new TemplateReviewerAssignmentService($templateRepo, $permRepo);
+        $scopeResolver ??= Mockery::mock(ReviewerAcademicScopeResolver::class);
+        $scopeResolver->shouldReceive('resolve')->andReturnNull()->byDefault();
+
+        $userDirectoryRepository ??= Mockery::mock(UserDirectoryRepositoryInterface::class);
+        $userDirectoryRepository->shouldReceive('filterUserIdsMatchingAcademicScope')->andReturn([])->byDefault();
+
+        return new TemplateReviewerAssignmentService(
+            $templateRepo,
+            $permRepo,
+            $scopeResolver,
+            $userDirectoryRepository,
+        );
     }
 
     /**

@@ -194,4 +194,149 @@ class UsersSearchApiTest extends TestCase
         $this->assertNotContains($reviewerA, $ids);
         $this->assertContains($reviewerB, $ids);
     }
+
+    public function test_template_reviewer_candidates_filters_by_study_scope_without_downward_inclusion(): void
+    {
+        $callerId = (string) Str::uuid();
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+        $moduleId = (string) Str::uuid();
+        $studyReviewerId = (string) Str::uuid();
+        $moduleOnlyReviewerId = (string) Str::uuid();
+        $otherStudyReviewerId = (string) Str::uuid();
+
+        DB::table('study_types')->insert([
+            'id' => $studyTypeId,
+            'name' => 'Grado test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('studies')->insert([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Medicina test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('course_modules')->insert([
+            'id' => $moduleId,
+            'study_id' => $studyId,
+            'name' => 'Anatomía test',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([$studyReviewerId, $moduleOnlyReviewerId, $otherStudyReviewerId] as $rid) {
+            DB::table('users')->insert([
+                'id' => $rid,
+                'name' => 'Reviewer '.$rid,
+                'email' => 'scope-'.$rid.'@maya.test',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('user_resolved_permissions')->insertOrIgnore([
+                'user_id' => $rid,
+                'permission_slug' => 'template.review',
+            ]);
+        }
+
+        DB::table('user_studies')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $studyReviewerId,
+            'study_id' => $studyId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('user_course_modules')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $moduleOnlyReviewerId,
+            'module_id' => $moduleId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('user_studies')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $otherStudyReviewerId,
+            'study_id' => (string) Str::uuid(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $url = '/api/v1/users/reviewer-candidates?visibility_level=study&study_id='.urlencode($studyId);
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['template.show']));
+
+        $response->assertOk();
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertContains($studyReviewerId, $ids);
+        $this->assertNotContains($moduleOnlyReviewerId, $ids);
+        $this->assertNotContains($otherStudyReviewerId, $ids);
+    }
+
+    public function test_template_reviewer_candidates_module_scope_includes_parent_study_assignment(): void
+    {
+        $callerId = (string) Str::uuid();
+        $studyTypeId = (string) Str::uuid();
+        $studyId = (string) Str::uuid();
+        $moduleId = (string) Str::uuid();
+        $studyReviewerId = (string) Str::uuid();
+        $moduleReviewerId = (string) Str::uuid();
+
+        DB::table('study_types')->insert([
+            'id' => $studyTypeId,
+            'name' => 'Grado module scope',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('studies')->insert([
+            'id' => $studyId,
+            'study_type_id' => $studyTypeId,
+            'name' => 'Estudio module scope',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('course_modules')->insert([
+            'id' => $moduleId,
+            'study_id' => $studyId,
+            'name' => 'Módulo module scope',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        foreach ([$studyReviewerId, $moduleReviewerId] as $rid) {
+            DB::table('users')->insert([
+                'id' => $rid,
+                'name' => 'Module scope '.$rid,
+                'email' => 'mod-'.$rid.'@maya.test',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('user_resolved_permissions')->insertOrIgnore([
+                'user_id' => $rid,
+                'permission_slug' => 'template.review',
+            ]);
+        }
+
+        DB::table('user_studies')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $studyReviewerId,
+            'study_id' => $studyId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('user_course_modules')->insert([
+            'id' => (string) Str::uuid(),
+            'user_id' => $moduleReviewerId,
+            'module_id' => $moduleId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $url = '/api/v1/users/reviewer-candidates?visibility_level=module&module_id='.urlencode($moduleId);
+        $response = $this->getJson($url, $this->authHeaders($callerId, ['template.show']));
+
+        $response->assertOk();
+        $ids = array_column($response->json('data'), 'id');
+        $this->assertContains($studyReviewerId, $ids);
+        $this->assertContains($moduleReviewerId, $ids);
+    }
 }

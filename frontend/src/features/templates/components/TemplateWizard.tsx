@@ -685,6 +685,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           {step === 'users' && (
             <WizardStep3Users
               visibilityLevel={step1Methods.watch('visibility')}
+              studyTypeId={step1Methods.watch('studyTypeId') || undefined}
+              studyId={step1Methods.watch('studyId') || undefined}
+              moduleId={step1Methods.watch('moduleId') || undefined}
+              teamId={step1Methods.watch('teamId') || undefined}
               validators={validators}
               onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
               validationType={validationType}

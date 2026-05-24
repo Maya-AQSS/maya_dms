@@ -653,10 +653,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setTemplateReviewerPoolIds([]);
       setReviewerListKind('none');
       try {
-        const [templateResp, usersResp] = await Promise.all([
-          fetchTemplate(detail.template_id),
-          searchDocumentReviewerCandidates(),
-        ]);
+        const templateResp = await fetchTemplate(detail.template_id);
+        if (cancelled) return;
+        const usersResp = await searchDocumentReviewerCandidates('', undefined, {
+          visibility_level: templateResp.data.visibility_level,
+          study_type_id: templateResp.data.study_type_id ?? undefined,
+          study_id: templateResp.data.study_id ?? undefined,
+          module_id: templateResp.data.module_id ?? undefined,
+          team_id: templateResp.data.team_id ?? undefined,
+        });
         if (cancelled) return;
         setDocumentReviewMode(templateResp.data.review_mode ?? 'parallel');
 

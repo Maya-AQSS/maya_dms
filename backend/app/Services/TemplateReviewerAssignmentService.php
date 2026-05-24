@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
+use App\Models\Template;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,6 +17,8 @@ class TemplateReviewerAssignmentService
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly ResolvedPermissionReaderInterface $resolvedPermissions,
+        private readonly ReviewerAcademicScopeResolver $academicScopeResolver,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -49,6 +53,7 @@ class TemplateReviewerAssignmentService
             }
 
             $this->assertUsersHavePermission($uniqueUserIds, 'template.review', 'user_ids');
+            $this->assertUsersMatchTemplateAcademicScope($template, $uniqueUserIds, 'user_ids');
 
             // TemplateReviewer usa SoftDeletes; forceDelete elimina filas físicamente
             // para no violar la restricción única (template_id, user_id) al reinsertar.
@@ -80,6 +85,7 @@ class TemplateReviewerAssignmentService
             }
 
             $this->assertUsersHavePermission($uniqueUserIds, 'document.review', 'user_ids');
+            $this->assertUsersMatchTemplateAcademicScope($template, $uniqueUserIds, 'user_ids');
 
             // TemplateDocumentReviewer no usa SoftDeletes: delete() es borrado físico.
             // A diferencia de TemplateReviewer (que sí usa SoftDeletes y requiere forceDelete),
@@ -116,6 +122,40 @@ class TemplateReviewerAssignmentService
         throw ValidationException::withMessages([
             $field => [
                 'Todos los usuarios asignados deben tener el permiso '.$requiredPermission.'.',
+            ],
+        ]);
+    }
+
+    /**
+     * @param  list<string>  $userIds
+     */
+    private function assertUsersMatchTemplateAcademicScope(Template $template, array $userIds, string $field): void
+    {
+        if ($userIds === []) {
+            return;
+        }
+
+        $scope = $this->academicScopeResolver->resolve(
+            is_string($template->visibility_level) ? $template->visibility_level : null,
+            is_string($template->study_type_id) ? $template->study_type_id : null,
+            is_string($template->study_id) ? $template->study_id : null,
+            is_string($template->module_id) ? $template->module_id : null,
+            is_string($template->team_id) ? $template->team_id : null,
+        );
+
+        if ($scope === null) {
+            return;
+        }
+
+        $matching = $this->userDirectoryRepository->filterUserIdsMatchingAcademicScope($userIds, $scope);
+
+        if (count($matching) === count($userIds)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            $field => [
+                'Los validadores asignados deben pertenecer al contexto académico de la plantilla.',
             ],
         ]);
     }

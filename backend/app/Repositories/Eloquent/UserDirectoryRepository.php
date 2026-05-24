@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\DTOs\Users\ReviewerAcademicAssignmentScope;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -54,17 +56,59 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
     /**
      * Usuarios que pueden validar plantillas: tienen {@see self::PERMISSION_TEMPLATE_REVIEW} en `user_resolved_permissions`.
      */
-    public function searchTemplateReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
-    {
-        return $this->searchReviewerCandidatesByPermission(self::PERMISSION_TEMPLATE_REVIEW, $search, $limit, $excludeUserId);
+    public function searchTemplateReviewerCandidates(
+        string $search,
+        int $limit,
+        ?string $excludeUserId = null,
+        ?ReviewerAcademicAssignmentScope $academicScope = null,
+    ): array {
+        return $this->searchReviewerCandidatesByPermission(
+            self::PERMISSION_TEMPLATE_REVIEW,
+            $search,
+            $limit,
+            $excludeUserId,
+            $academicScope,
+        );
     }
 
     /**
      * Usuarios que pueden validar documentos: tienen {@see self::PERMISSION_DOCUMENT_REVIEW} en `user_resolved_permissions`.
      */
-    public function searchDocumentReviewerCandidates(string $search, int $limit, ?string $excludeUserId = null): array
+    public function searchDocumentReviewerCandidates(
+        string $search,
+        int $limit,
+        ?string $excludeUserId = null,
+        ?ReviewerAcademicAssignmentScope $academicScope = null,
+    ): array {
+        return $this->searchReviewerCandidatesByPermission(
+            self::PERMISSION_DOCUMENT_REVIEW,
+            $search,
+            $limit,
+            $excludeUserId,
+            $academicScope,
+        );
+    }
+
+    /**
+     * @param  list<string>  $userIds
+     * @return list<string>
+     */
+    public function filterUserIdsMatchingAcademicScope(array $userIds, ReviewerAcademicAssignmentScope $scope): array
     {
-        return $this->searchReviewerCandidatesByPermission(self::PERMISSION_DOCUMENT_REVIEW, $search, $limit, $excludeUserId);
+        $userIds = array_values(array_unique(array_filter($userIds, static fn (string $id): bool => $id !== '')));
+
+        if ($userIds === [] || $scope->matchesNothing()) {
+            return [];
+        }
+
+        $query = DB::table('users')->whereIn('users.id', $userIds);
+        $this->applyAcademicScopeFilter($query, $scope);
+
+        return $query
+            ->pluck('users.id')
+            ->map(static fn ($id) => (string) $id)
+            ->values()
+            ->all();
     }
 
     /**
@@ -80,6 +124,7 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
         string $search,
         int $limit,
         ?string $excludeUserId = null,
+        ?ReviewerAcademicAssignmentScope $academicScope = null,
     ): array {
         $query = DB::table('users')
             ->join('user_resolved_permissions', 'users.id', '=', 'user_resolved_permissions.user_id')
@@ -87,6 +132,10 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
 
         if ($excludeUserId !== null && $excludeUserId !== '') {
             $query->where('users.id', '!=', $excludeUserId);
+        }
+
+        if ($academicScope !== null) {
+            $this->applyAcademicScopeFilter($query, $academicScope);
         }
 
         if (mb_strlen($search) >= 2) {
@@ -109,6 +158,58 @@ class UserDirectoryRepository implements UserDirectoryRepositoryInterface
             ])
             ->values()
             ->all();
+    }
+
+    private function applyAcademicScopeFilter(Builder $query, ReviewerAcademicAssignmentScope $scope): void
+    {
+        if ($scope->matchesNothing()) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where(function (Builder $w) use ($scope): void {
+            if ($scope->moduleIds !== []) {
+                $w->orWhereExists(function (Builder $sub) use ($scope): void {
+                    $sub->select(DB::raw(1))
+                        ->from('user_course_modules')
+                        ->whereColumn('user_course_modules.user_id', 'users.id')
+                        ->whereIn('user_course_modules.module_id', $scope->moduleIds);
+                });
+            }
+
+            if ($scope->studyIds !== []) {
+                $w->orWhereExists(function (Builder $sub) use ($scope): void {
+                    $sub->select(DB::raw(1))
+                        ->from('user_studies')
+                        ->whereColumn('user_studies.user_id', 'users.id')
+                        ->whereIn('user_studies.study_id', $scope->studyIds);
+                });
+            }
+
+            if ($scope->studyTypeIds !== []) {
+                $w->orWhereExists(function (Builder $sub) use ($scope): void {
+                    $sub->select(DB::raw(1))
+                        ->from('user_study_types')
+                        ->whereColumn('user_study_types.user_id', 'users.id')
+                        ->whereIn('user_study_types.study_type_id', $scope->studyTypeIds);
+                });
+            }
+
+            if ($scope->teamIds !== []) {
+                $w->orWhereExists(function (Builder $sub) use ($scope): void {
+                    $sub->select(DB::raw(1))
+                        ->from('team_members');
+                    if (DB::connection()->getDriverName() === 'pgsql') {
+                        $sub->whereRaw('team_members.user_id::text = users.id::text')
+                            ->whereIn(DB::raw('team_members.team_id::text'), $scope->teamIds);
+                    } else {
+                        $sub->whereColumn('team_members.user_id', 'users.id')
+                            ->whereIn('team_members.team_id', $scope->teamIds);
+                    }
+                });
+            }
+        });
     }
 
     public function findNameById(string $userId): ?string
