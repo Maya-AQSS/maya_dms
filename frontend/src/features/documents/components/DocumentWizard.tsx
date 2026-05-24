@@ -178,7 +178,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
   /** IDs de `template_document_reviewers` (vacío si la plantilla no define pool de documento). */
   const [, setDocumentReviewerPoolIds] = useState<string[]>([]);
-  /** IDs de `template_reviewers` (revisores normativos; el backend los usa si no hay pool de documento). */
+  /** IDs de `template_reviewers` (solo informativos en UI si no hay pool de documento). */
   const [, setTemplateReviewerPoolIds] = useState<string[]>([]);
   const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
@@ -519,6 +519,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const allStudies = hierarchy.flatMap((t) => t.studies);
   const selectedTemplateVisibility = template?.visibility_level ?? detail?.visibility_level ?? null;
   const visibilityRule: VisibilityRuleMode = selectedTemplateVisibility ?? 'unknown';
+  /** Solo hay revisión de documento si la plantilla define validadores de documento (no revisores de plantilla). */
+  const willSubmitDocumentToReview = reviewerListKind === 'document';
   const templateStudyTypeId = template?.study_type_id ?? null;
   const templateStudyId = template?.study_id ?? null;
   const templateModuleId = template?.module_id ?? null;
@@ -1177,7 +1179,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             disabled={!isDraft}
             onClick={() => setSummaryConfirmAction('submit')}
           >
-            Enviar a validar
+            {willSubmitDocumentToReview ? 'Enviar a validar' : 'Publicar'}
           </Button>
         </>
       )}
@@ -1758,8 +1760,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 <div className="space-y-1">
                   {reviewerListKind === 'template_fallback' && (
                     <p className="text-xs text-text-muted dark:text-text-dark-muted leading-snug">
-                      La plantilla no define validadores de documento; al enviar se usarán los revisores
-                      normativos de la plantilla (misma prioridad que en el servidor).
+                      La plantilla no define validadores de documento. Los revisores de plantilla listados abajo
+                      no aplican a la revisión del documento; al publicar no pasará por validación.
                     </p>
                   )}
                   <ul className="mt-1 space-y-1 text-xs">
@@ -1989,19 +1991,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       />
       <ConfirmDialog
         open={summaryConfirmAction !== null}
-        title={summaryConfirmAction === 'submit' ? 'Confirmar envío a validar' : 'Confirmar guardado'}
+        title={
+          summaryConfirmAction === 'submit'
+            ? willSubmitDocumentToReview
+              ? 'Confirmar envío a validar'
+              : 'Confirmar publicación'
+            : 'Confirmar guardado'
+        }
         description={
           summaryConfirmAction === 'submit'
             ? (
                 <div className="space-y-2">
                   <p>
-                    {reviewerListKind === 'document'
+                    {willSubmitDocumentToReview
                       ? 'Se enviará una notificación a los validadores del documento configurados en la plantilla.'
-                      : reviewerListKind === 'template_fallback'
-                        ? 'La plantilla no tiene validadores de documento; se notificará según los revisores normativos de la plantilla listados abajo.'
-                        : 'No hay revisores configurados en la plantilla para este envío.'}
+                      : 'No hay validadores de documento en la plantilla. El documento se publicará directamente sin pasar por revisión.'}
                   </p>
-                  {documentReviewers.length > 0 ? (
+                  {willSubmitDocumentToReview && documentReviewers.length > 0 ? (
                     <>
                       <p>
                         Tipo de revisión:{' '}
@@ -2021,15 +2027,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         </ul>
                       )}
                     </>
-                  ) : (
-                    <p>No hay personas en la lista de revisión para mostrar.</p>
-                  )}
+                  ) : null}
                   <p>Después no se podrá seguir editando como borrador.</p>
                 </div>
               )
             : '¿Quieres guardar y salir sin enviar? El documento permanecerá en estado borrador.'
         }
-        confirmLabel={summaryConfirmAction === 'submit' ? 'Sí, enviar a validar' : 'Sí, guardar y salir'}
+        confirmLabel={
+          summaryConfirmAction === 'submit'
+            ? willSubmitDocumentToReview
+              ? 'Sí, enviar a validar'
+              : 'Sí, publicar'
+            : 'Sí, guardar y salir'
+        }
         cancelLabel="Cancelar"
         variant={summaryConfirmAction === 'submit' ? 'primary' : 'teal'}
         loading={summaryConfirmAction === 'submit' && submittingForReview}
@@ -2039,7 +2049,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       <ConfirmDialog
         open={showNoValidatorsDocModal}
         title="Sin validadores configurados"
-        description="La plantilla no tiene validadores asignados. Al enviar este documento, se publicará automáticamente sin revisión. Para añadir validadores, edita la plantilla."
+        description="La plantilla no tiene validadores de documento. El documento se publicará directamente sin revisión. Para añadir validadores, edita la plantilla."
         confirmLabel="Continuar de todas formas"
         cancelLabel="Cancelar"
         onConfirm={() => {
