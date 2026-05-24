@@ -19,9 +19,9 @@ class UserFavoriteService implements UserFavoriteServiceInterface
         private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
-    public function findTemplateModelOrFail(string $templateId): Template
+    public function findTemplateModelOrFail(string $templateVersionId): Template
     {
-        return $this->templateRepository->findOrFail($templateId);
+        return $this->templateRepository->findOrFailByVersionId($templateVersionId);
     }
 
     public function findDocumentModelOrFail(string $documentId): Document
@@ -42,14 +42,14 @@ class UserFavoriteService implements UserFavoriteServiceInterface
         ];
     }
 
-    public function addTemplateFavorite(string $userId, string $templateId): void
+    public function addTemplateFavorite(string $userId, string $templateVersionId): void
     {
-        $this->repository->addTemplateFavorite($userId, $templateId);
+        $this->repository->addTemplateFavorite($userId, $templateVersionId);
     }
 
-    public function removeTemplateFavorite(string $userId, string $templateId): void
+    public function removeTemplateFavorite(string $userId, string $templateVersionId): void
     {
-        $this->repository->removeTemplateFavorite($userId, $templateId);
+        $this->repository->removeTemplateFavorite($userId, $templateVersionId);
     }
 
     public function addDocumentFavorite(string $userId, string $documentId): void

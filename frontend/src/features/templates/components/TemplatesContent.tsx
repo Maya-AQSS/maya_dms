@@ -231,20 +231,26 @@ export function TemplatesContent() {
         header: 'Nombre',
         sortable: true,
         alwaysVisible: true,
-        cell: (template) => (
-          <span className="flex items-center gap-2 min-w-0">
-            {favoriteTemplateIds.has(template.id) && <FavoriteInlineMark />}
-            <span className="truncate font-medium">{template.name}</span>
-            {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
-              <span
-                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title={t('templates:pendingReviewTitle')}
-              >
-                ⚠ Revisión
-              </span>
-            )}
-          </span>
-        ),
+        cell: (template) => {
+          const versionId =
+            template.list_variant === 'published_fallback'
+              ? template.latest_published_version_id
+              : template.working_version_id;
+          return (
+            <span className="flex items-center gap-2 min-w-0">
+              {versionId && favoriteTemplateIds.has(versionId) ? <FavoriteInlineMark /> : null}
+              <span className="truncate font-medium">{template.name}</span>
+              {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
+                <span
+                  className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                  title={t('templates:pendingReviewTitle')}
+                >
+                  ⚠ Revisión
+                </span>
+              )}
+            </span>
+          );
+        },
       },
       {
         id: 'visibility_level',
