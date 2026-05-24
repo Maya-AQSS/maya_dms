@@ -90,4 +90,14 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
             ->where('document_id', '=', $documentId)
             ->delete();
     }
+
+    /**
+     * Reasigna todos los favoritos que apuntaban a $oldVersionId para que apunten a $newVersionId.
+     */
+    public function migrateFavoriteTemplateVersion(string $oldVersionId, string $newVersionId): void
+    {
+        DB::table('user_favorite_templates')
+            ->where('template_version_id', '=', $oldVersionId)
+            ->update(['template_version_id' => $newVersionId]);
+    }
 }

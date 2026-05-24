@@ -307,13 +307,11 @@ export function TemplatesTable({ processId }: Props = {}) {
         sortable: true,
         alwaysVisible: true,
         cell: (template) => {
-          const versionId =
-            template.list_variant === 'published_fallback'
-              ? template.latest_published_version_id
-              : template.working_version_id;
+          const isFavorite =
+            (template.latest_published_version_id && favoriteTemplateIds.has(template.latest_published_version_id));
           return (
             <span className="flex items-center gap-2 min-w-0">
-              {versionId && favoriteTemplateIds.has(versionId) ? <FavoriteInlineMark /> : null}
+              {isFavorite ? <FavoriteInlineMark /> : null}
               <span className="truncate font-medium">{template.name}</span>
               {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
                 <span

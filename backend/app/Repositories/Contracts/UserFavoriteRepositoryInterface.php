@@ -42,4 +42,10 @@ interface UserFavoriteRepositoryInterface
      * Elimina un documento favorito del usuario.
      */
     public function removeDocumentFavorite(string $userId, string $documentId): void;
+
+    /**
+     * Reasigna todos los favoritos que apuntaban a $oldVersionId para que apunten a $newVersionId.
+     * Se llama dentro de la transacción de publicación para migrar favoritos automáticamente.
+     */
+    public function migrateFavoriteTemplateVersion(string $oldVersionId, string $newVersionId): void;
 }
