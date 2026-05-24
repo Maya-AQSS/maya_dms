@@ -83,13 +83,14 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
   const perPage = filters.per_page ?? DEFAULT_PER_PAGE;
 
   const sortedList = useMemo(() => {
+    const list = Array.isArray(fullList) ? fullList : [];
     if (!sortBy || !SORTABLE_TEMPLATE_COLUMN_IDS.has(sortBy.columnId)) {
-      return fullList;
+      return list;
     }
     const { columnId, direction } = sortBy;
     const dir = direction === 'asc' ? 1 : -1;
 
-    return [...fullList].sort((a, b) => {
+    return [...list].sort((a, b) => {
       if (columnId === 'name') {
         return (a.name ?? '').localeCompare(b.name ?? '', 'es') * dir;
       }
@@ -132,7 +133,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
       setListError(null);
       setLoading(true);
       const res = await fetchTemplates(filtersForApi);
-      setFullList(res.data);
+      setFullList(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       setListError(formatActionError(e));
       setFullList([]);

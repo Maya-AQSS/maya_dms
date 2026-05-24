@@ -35,6 +35,13 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
   rejected: 'Rechazada',
 };
 
+function templateStatusLabel(status: string | null | undefined): string {
+  if (!status) {
+    return '—';
+  }
+  return STATUS_LABEL[status as TemplateStatus] ?? status;
+}
+
 // Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
 
 type Props = {
@@ -238,10 +245,12 @@ export function TemplatesTable({ processId }: Props = {}) {
     if (profile?.id && t.created_by === profile.id) {
       return true;
     }
-    return (
-      t.status === 'in_review'
-      && t.reviewers?.some((r) => r.user_id === profile?.id) === true
-    );
+    const isAssignedReviewer =
+      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    if (isAssignedReviewer && (t.status === 'in_review' || t.status === 'rejected')) {
+      return true;
+    }
+    return false;
   };
 
   const handleRowClick = (t: Template) => {
@@ -257,11 +266,18 @@ export function TemplatesTable({ processId }: Props = {}) {
       return;
     }
     const isAssignedReviewer =
-      t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    const openReviewView = isAssignedReviewer && canReview;
-    navigate(openReviewView ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
-      state: { backTo, processId },
-    });
+      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    const openReviewView = t.status === 'in_review' && isAssignedReviewer && canReview;
+    if (openReviewView) {
+      navigate(`/templates/${t.id}/review`, { state: { backTo, processId } });
+      return;
+    }
+    const isOwner = profile?.id != null && t.created_by === profile.id;
+    if (isOwner && t.status === 'draft') {
+      navigate(`/templates/${t.id}/edit`, { state: { backTo, processId } });
+      return;
+    }
+    navigate(`/templates/${t.id}`, { state: { backTo, processId } });
   };
 
   const columns: ColumnDef<Template>[] = useMemo(
@@ -322,10 +338,10 @@ export function TemplatesTable({ processId }: Props = {}) {
         id: 'status',
         header: 'Estado',
         cell: (t) => {
-          const status = t.status as TemplateStatus;
+          const status = t.status ?? '';
           return (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
-              {STATUS_LABEL[status] ?? status}
+              {templateStatusLabel(status)}
             </span>
           );
         },

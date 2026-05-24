@@ -48,8 +48,13 @@ export interface AcademicContextLoad {
  * - Habilita reutilización futura desde otros consumidores (admin views).
  */
 export function buildAcademicContext(payload: AcademicContextPayload): AcademicContextLoad {
+  const studyTypes = payload.study_types ?? [];
+  const studies = payload.studies ?? [];
+  const modules = payload.modules ?? [];
+  const teamsPayload = payload.teams ?? [];
+
   const modulesByStudy = new Map<string, AcademicContextModule[]>();
-  for (const mod of payload.modules) {
+  for (const mod of modules) {
     const bucket = modulesByStudy.get(mod.study_id);
     if (bucket) {
       bucket.push(mod);
@@ -59,7 +64,7 @@ export function buildAcademicContext(payload: AcademicContextPayload): AcademicC
   }
 
   const studiesByType = new Map<string, AcademicContextStudy[]>();
-  for (const study of payload.studies) {
+  for (const study of studies) {
     const bucket = studiesByType.get(study.study_type_id);
     if (bucket) {
       bucket.push(study);
@@ -68,7 +73,7 @@ export function buildAcademicContext(payload: AcademicContextPayload): AcademicC
     }
   }
 
-  const hierarchy: AcademicHierarchy = payload.study_types.map((type) => ({
+  const hierarchy: AcademicHierarchy = studyTypes.map((type) => ({
     id: type.id,
     name: type.name,
     studies: (studiesByType.get(type.id) ?? []).map((study) => ({
@@ -83,7 +88,7 @@ export function buildAcademicContext(payload: AcademicContextPayload): AcademicC
     })),
   }));
 
-  const teams: UserTeam[] = payload.teams.map((team) => ({
+  const teams: UserTeam[] = teamsPayload.map((team) => ({
     id: team.id,
     name: team.name,
     description: null,

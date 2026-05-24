@@ -4,6 +4,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Alert, Button, ErrorBoundary, PageTitle } from '@maya/shared-ui-react';
 import { TemplatesTable } from '../features/templates/components/TemplatesTable';
+import { TemplatesTableBoundary } from '../features/templates/components/TemplatesTableBoundary';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
 import { useUserProfile } from '../features/user-profile';
 import { useProcessesQuery } from '../hooks/useProcesses';
@@ -131,7 +132,9 @@ export function ProcesosPage() {
 
       <ErrorBoundary key={`${activeTab}:${processId ?? 'all'}`}>
         {activeTab === 'templates' ? (
-          <TemplatesTable processId={canShow ? processId : undefined} />
+          <TemplatesTableBoundary>
+            <TemplatesTable processId={canShow ? processId : undefined} />
+          </TemplatesTableBoundary>
         ) : (
           <DocumentsTable processId={canShow ? processId : undefined} />
         )}
