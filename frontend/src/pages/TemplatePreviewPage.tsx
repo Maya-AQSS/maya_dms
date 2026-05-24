@@ -492,8 +492,8 @@ export function TemplatePreviewPage() {
         </>
       ) : (
         <>
-          {!viewingPublishedSnapshot && template?.working_version_id
-            ? <FavoriteButton entityType="template" entityId={template.working_version_id} />
+          {!viewingPublishedSnapshot && template?.latest_published_version_id
+            ? <FavoriteButton entityType="template" entityId={template.latest_published_version_id} />
             : null}
           {showVersionHistory ? (
             <Button type="button" variant="outline" size="sm" onClick={() => setShowHistory(true)}>

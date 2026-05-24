@@ -232,10 +232,7 @@ export function TemplatesContent() {
         sortable: true,
         alwaysVisible: true,
         cell: (template) => {
-          const versionId =
-            template.list_variant === 'published_fallback'
-              ? template.latest_published_version_id
-              : template.working_version_id;
+          const versionId = template.latest_published_version_id;
           return (
             <span className="flex items-center gap-2 min-w-0">
               {versionId && favoriteTemplateIds.has(versionId) ? <FavoriteInlineMark /> : null}
