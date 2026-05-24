@@ -399,13 +399,8 @@ export function NuevaProgramacionSelectorPage() {
             t.list_variant === 'published_fallback'
               ? (t.latest_published_version_id ?? null)
               : null;
-          const path = selectedTemplateVersionId
-            ? `/templates/${t.id}?templateVersionId=${encodeURIComponent(selectedTemplateVersionId)}`
-            : `/templates/${t.id}`;
-          navigate(path, {
+          navigate(`/documentos/nuevo/${t.id}/wizard`, {
             state: {
-              selectionMode: true,
-              backTo: '/documentos/nuevo',
               moduleId: selectedModuleId,
               processId: selectedProcessId,
               templateVersionId: selectedTemplateVersionId,
