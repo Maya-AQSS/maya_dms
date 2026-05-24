@@ -287,11 +287,11 @@ export function TemplatesTable({ processId }: Props = {}) {
         header: 'Nombre',
         sortable: true,
         alwaysVisible: true,
-        cell: (t) => (
+        cell: (template) => (
           <span className="flex items-center gap-2 min-w-0">
-            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
-            <span className="truncate font-medium">{t.name}</span>
-            {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
+            {favoriteTemplateIds.has(template.id) && <FavoriteInlineMark />}
+            <span className="truncate font-medium">{template.name}</span>
+            {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
               <span
                 className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
                 title={t('templates:pendingReviewTitle')}
@@ -305,15 +305,15 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'visibility_level',
         header: 'Visibilidad',
-        cell: (t) => {
-          const level = t.visibility_level as TemplateVisibilityLevel;
+        cell: (template) => {
+          const level = template.visibility_level as TemplateVisibilityLevel;
           const caption = formatListRowVisibilityCaption(hierarchy, {
             visibility_level: level,
-            study_type_id: t.study_type_id,
-            study_id: t.study_id,
-            module_id: t.module_id,
-            team_id: t.team_id,
-            team: t.team,
+            study_type_id: template.study_type_id,
+            study_id: template.study_id,
+            module_id: template.module_id,
+            team_id: template.team_id,
+            team: template.team,
           });
           return (
             <span
@@ -328,17 +328,17 @@ export function TemplatesTable({ processId }: Props = {}) {
       {
         id: 'author_name',
         header: 'Autor',
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.author_name ?? '—'}
+            {template.author_name ?? '—'}
           </span>
         ),
       },
       {
         id: 'status',
         header: 'Estado',
-        cell: (t) => {
-          const status = t.status ?? '';
+        cell: (template) => {
+          const status = template.status ?? '';
           return (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
               {templateStatusLabel(status)}
@@ -350,14 +350,14 @@ export function TemplatesTable({ processId }: Props = {}) {
         id: 'delivery_deadline',
         header: 'Fecha de validación',
         sortable: true,
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
+            {template.status === 'published' ? '—' : formatCalendarDateForBrowser(template.delivery_deadline)}
           </span>
         ),
       },
     ],
-    [profile, favoriteTemplateIds, hierarchy],
+    [profile, favoriteTemplateIds, hierarchy, t],
   );
 
   if (!canIndex) {
