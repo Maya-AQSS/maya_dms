@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FAVORITE_STAR_FILLED_CHAR, FAVORITE_STAR_OUTLINE_CHAR } from '@maya/shared-ui-react';
 import {
   addDocumentFavorite,
   addTemplateFavorite,
-  fetchFavorites,
   removeDocumentFavorite,
   removeTemplateFavorite,
 } from '../api/favorites';
+import { useFavoritesIds } from '../hooks/useFavoritesIds';
 
 type Props = {
   entityType: 'template' | 'document';
@@ -14,51 +14,29 @@ type Props = {
 };
 
 export function FavoriteButton({ entityType, entityId }: Props) {
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const { templateIds, documentIds, loading, refetch } = useFavoritesIds();
   const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    void (async () => {
-      try {
-        const { data } = await fetchFavorites();
-        if (cancelled) return;
-        const ids = entityType === 'template' ? data.template_ids : data.document_ids;
-        setIsFavorite(ids.includes(entityId));
-      } catch {
-        if (!cancelled) setIsFavorite(false);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [entityType, entityId]);
+  const isFavorite = entityType === 'template'
+    ? templateIds.has(entityId)
+    : documentIds.has(entityId);
 
   const onClick = useCallback(async () => {
     if (toggling || loading) return;
     setToggling(true);
-    const next = !isFavorite;
-    setIsFavorite(next);
     try {
       if (entityType === 'template') {
-        if (next) await addTemplateFavorite(entityId);
+        if (!isFavorite) await addTemplateFavorite(entityId);
         else await removeTemplateFavorite(entityId);
       } else {
-        if (next) await addDocumentFavorite(entityId);
+        if (!isFavorite) await addDocumentFavorite(entityId);
         else await removeDocumentFavorite(entityId);
       }
-    } catch {
-      setIsFavorite(!next);
     } finally {
+      await refetch();
       setToggling(false);
     }
-  }, [entityType, entityId, isFavorite, loading, toggling]);
+  }, [entityType, entityId, isFavorite, loading, toggling, refetch]);
 
   return (
     <button
