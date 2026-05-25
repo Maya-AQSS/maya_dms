@@ -749,7 +749,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         )}
                         <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                           {isSaving && (
-                            <div className="p-4">Guardando...</div>
+                            <div className="p-4">Guardando cambios...</div>
                           )}
                           {!isSaving && (
                           <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
