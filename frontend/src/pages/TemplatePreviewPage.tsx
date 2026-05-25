@@ -44,6 +44,7 @@ const STATUS_LABEL: Record<string, string> = {
   in_review: 'En revisión',
   published: 'Publicada',
   archived: 'Archivada',
+  rejected: 'Rechazada',
 };
 
 function blockContentNodes(block: TemplateBlock): unknown[] {
