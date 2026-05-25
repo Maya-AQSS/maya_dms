@@ -24,14 +24,14 @@ interface UserFavoriteRepositoryInterface
     public function listDocumentIdsForUser(string $userId): array;
 
     /**
-     * Añade una plantilla favorita al usuario.
+     * Añade una versión de plantilla favorita al usuario.
      */
-    public function addTemplateFavorite(string $userId, string $templateId): void;
+    public function addTemplateFavorite(string $userId, string $templateVersionId): void;
 
     /**
-     * Elimina una plantilla favorita del usuario.
+     * Elimina una versión de plantilla favorita del usuario.
      */
-    public function removeTemplateFavorite(string $userId, string $templateId): void;
+    public function removeTemplateFavorite(string $userId, string $templateVersionId): void;
 
     /**
      * Añade un documento favorito al usuario.
@@ -42,4 +42,10 @@ interface UserFavoriteRepositoryInterface
      * Elimina un documento favorito del usuario.
      */
     public function removeDocumentFavorite(string $userId, string $documentId): void;
+
+    /**
+     * Reasigna todos los favoritos que apuntaban a $oldVersionId para que apunten a $newVersionId.
+     * Se llama dentro de la transacción de publicación para migrar favoritos automáticamente.
+     */
+    public function migrateFavoriteTemplateVersion(string $oldVersionId, string $newVersionId): void;
 }

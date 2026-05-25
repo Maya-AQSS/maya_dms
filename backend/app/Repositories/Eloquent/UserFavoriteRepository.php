@@ -19,7 +19,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
         return DB::table('user_favorite_templates')
             ->where('user_id', '=', $userId)
             ->orderBy('created_at', 'desc')
-            ->pluck('template_id')
+            ->pluck('template_version_id')
             ->map(static fn ($id) => (string) $id)
             ->values()
             ->all();
@@ -44,25 +44,25 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
     /**
      * Añade una plantilla favorita al usuario.
      */
-    public function addTemplateFavorite(string $userId, string $templateId): void
+    public function addTemplateFavorite(string $userId, string $templateVersionId): void
     {
         $now = now();
         DB::table('user_favorite_templates')->insertOrIgnore([
             'user_id' => $userId,
-            'template_id' => $templateId,
+            'template_version_id' => $templateVersionId,
             'created_at' => $now,
             'updated_at' => $now,
         ]);
     }
 
     /**
-     * Elimina una plantilla favorita del usuario.
+     * Elimina una versión de plantilla favorita del usuario.
      */
-    public function removeTemplateFavorite(string $userId, string $templateId): void
+    public function removeTemplateFavorite(string $userId, string $templateVersionId): void
     {
         DB::table('user_favorite_templates')
             ->where('user_id', '=', $userId)
-            ->where('template_id', '=', $templateId)
+            ->where('template_version_id', '=', $templateVersionId)
             ->delete();
     }
 
@@ -89,5 +89,15 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
             ->where('user_id', '=', $userId)
             ->where('document_id', '=', $documentId)
             ->delete();
+    }
+
+    /**
+     * Reasigna todos los favoritos que apuntaban a $oldVersionId para que apunten a $newVersionId.
+     */
+    public function migrateFavoriteTemplateVersion(string $oldVersionId, string $newVersionId): void
+    {
+        DB::table('user_favorite_templates')
+            ->where('template_version_id', '=', $oldVersionId)
+            ->update(['template_version_id' => $newVersionId]);
     }
 }

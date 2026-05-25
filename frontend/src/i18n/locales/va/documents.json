@@ -17,7 +17,46 @@
     "loadingValidation": "Carregant dades de validació…"
   },
   "table": {
-    "rejectedTitle": "Aquest document va ser rebutjat en revisió."
+    "columns": {
+      "name": "Nom",
+      "visibility": "Visibilitat",
+      "author": "Autor",
+      "status": "Estat",
+      "validationDate": "Data de validació"
+    },
+    "status": {
+      "draft": "Esborrany",
+      "in_review": "En revisió",
+      "published": "Publicat",
+      "rejected": "Rebutjat"
+    },
+    "statusFilter": {
+      "all": "Tots"
+    },
+    "favoritesFilter": {
+      "all": "Tots",
+      "onlyFavorites": "Només favorits"
+    },
+    "filters": {
+      "name": "Nom",
+      "visibility": "Visibilitat",
+      "status": "Estat",
+      "author": "Autor",
+      "favorites": "Favorits",
+      "validationUntil": "Data de validació (fins)"
+    },
+    "notAvailable": "—",
+    "reviewBadge": "Revisió",
+    "rejectedTitle": "Aquest document va ser rebutjat en revisió.",
+    "noIndexPermission": "No tens permís per llistar documents (document.index).",
+    "loadError": "Error en carregar documents: {{message}}",
+    "emptyFiltered": "No hi ha documents amb els filtres actuals.",
+    "filtersLabel": "Filtres",
+    "columnsLabel": "Columnes",
+    "clearFiltersLabel": "Netejar",
+    "pageSizeLabel": "Per pàgina",
+    "deadlineAria": "Documents no publicats amb data límit de validació en esta data o anterior (les files publicades no apliquen)",
+    "paginationInfo": "Pàgina {{page}} de {{totalPages}} — {{count}} documents"
   },
   "diff": {
     "previousBlock": "Bloc anterior",

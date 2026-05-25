@@ -375,7 +375,7 @@ class DocumentRepository implements DocumentRepositoryInterface
             })
             ->where('dr.reviewer_id', $userId)
             ->where('dr.status', 'pending')
-            ->where('document_head_ev.snapshot_data->document->status', 'in_review')
+            ->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status').' = ?', ['in_review'])
             ->where(function ($q) {
                 $q->whereNull('template_head_ev.snapshot_data->template->review_mode')
                     ->orWhere('template_head_ev.snapshot_data->template->review_mode', 'parallel')

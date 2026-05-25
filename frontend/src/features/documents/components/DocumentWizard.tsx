@@ -38,7 +38,7 @@ import { fetchTemplate } from '../../../api/templates';
 import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
-import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates, type UserTeam } from '../../../api/users';
+import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
 import { useDarkMode } from '@maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
@@ -142,7 +142,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const setStudyId = useCallback((v: string) => setStep1Value('studyId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const setModuleId = useCallback((v: string) => setStep1Value('moduleId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
   const setTeamId = useCallback((v: string) => setStep1Value('teamId', v, { shouldDirty: true, shouldValidate: false }), [setStep1Value]);
-  const [availableTeams, setAvailableTeams] = useState<UserTeam[]>([]);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [newOwnerForDoc, setNewOwnerForDoc] = useState<{ id: string; name: string } | null>(null);
   const [ownerQuery, setOwnerQuery] = useState('');
@@ -179,7 +178,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [documentReviewers, setDocumentReviewers] = useState<ReviewerView[]>([]);
   /** IDs de `template_document_reviewers` (vacío si la plantilla no define pool de documento). */
   const [, setDocumentReviewerPoolIds] = useState<string[]>([]);
-  /** IDs de `template_reviewers` (revisores normativos; el backend los usa si no hay pool de documento). */
+  /** IDs de `template_reviewers` (solo informativos en UI si no hay pool de documento). */
   const [, setTemplateReviewerPoolIds] = useState<string[]>([]);
   const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
@@ -189,7 +188,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [template, setTemplate] = useState<Template | null>(null);
   const [loadingTemplate, setLoadingTemplate] = useState(false);
 
-  const { hierarchy, loading: hierarchyLoading } = useHierarchy();
+  const { hierarchy, teams: availableTeams, loading: hierarchyLoading } = useHierarchy();
   const [blockViewTab, setBlockViewTab] = useState<BlockViewTab>('content');
   const [validationReviewLoading, setValidationReviewLoading] = useState(false);
   const [validationSetupError, setValidationSetupError] = useState<string | null>(null);
@@ -362,17 +361,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     void reload();
   }, [reload]);
 
+  // currentUserId viene de /me; los equipos disponibles vienen del contexto
+  // académico jerárquico (HierarchyProvider) — /me solo expone team_ids.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
         const me = await fetchMe();
         if (!cancelled) {
-          setAvailableTeams(me.data.teams ?? []);
           setCurrentUserId(me.data.id);
         }
       } catch {
-        if (!cancelled) setAvailableTeams([]);
+        // currentUserId queda en su valor inicial; UI degrada con gracia.
       }
     })();
     return () => {
@@ -519,6 +519,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const allStudies = hierarchy.flatMap((t) => t.studies);
   const selectedTemplateVisibility = template?.visibility_level ?? detail?.visibility_level ?? null;
   const visibilityRule: VisibilityRuleMode = selectedTemplateVisibility ?? 'unknown';
+  /** Solo hay revisión de documento si la plantilla define validadores de documento (no revisores de plantilla). */
+  const willSubmitDocumentToReview = reviewerListKind === 'document';
   const templateStudyTypeId = template?.study_type_id ?? null;
   const templateStudyId = template?.study_id ?? null;
   const templateModuleId = template?.module_id ?? null;
@@ -653,10 +655,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setTemplateReviewerPoolIds([]);
       setReviewerListKind('none');
       try {
-        const [templateResp, usersResp] = await Promise.all([
-          fetchTemplate(detail.template_id),
-          searchDocumentReviewerCandidates(),
-        ]);
+        const templateResp = await fetchTemplate(detail.template_id);
+        if (cancelled) return;
+        const usersResp = await searchDocumentReviewerCandidates('', undefined, {
+          visibility_level: templateResp.data.visibility_level,
+          study_type_id: templateResp.data.study_type_id ?? undefined,
+          study_id: templateResp.data.study_id ?? undefined,
+          module_id: templateResp.data.module_id ?? undefined,
+          team_id: templateResp.data.team_id ?? undefined,
+        });
         if (cancelled) return;
         setDocumentReviewMode(templateResp.data.review_mode ?? 'parallel');
 
@@ -999,7 +1006,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const handleApproveValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
+      return false;
     }
     setValidationModalError(null);
     setSummaryError(null);
@@ -1012,6 +1019,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       });
     } catch (e) {
       setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo aprobar la revisión.');
+      return false;
     } finally {
       setValidationActionLoading(false);
     }
@@ -1024,7 +1032,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const handleRejectValidation = async () => {
     if (!documentId || !actionableReviewId) {
       setValidationModalError('Faltan datos críticos para procesar la revisión.');
-      return;
+      return false;
     }
     setValidationModalError(null);
     setSummaryError(null);
@@ -1037,6 +1045,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       });
     } catch (e) {
       setValidationModalError(e instanceof ApiHttpError ? e.message : 'No se pudo rechazar la revisión.');
+      return false;
     } finally {
       setValidationActionLoading(false);
     }
@@ -1172,7 +1181,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             disabled={!isDraft}
             onClick={() => setSummaryConfirmAction('submit')}
           >
-            Enviar a validar
+            {willSubmitDocumentToReview ? 'Enviar a validar' : 'Publicar'}
           </Button>
         </>
       )}
@@ -1651,7 +1660,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                 isDark={isDark}
                                 onChange={(content) => { setLocalContent(content); triggerSave(); }}
                                 onFullscreenChange={handleEditorFullscreenChange}
-                                uploadFile={uploadMedia}
+                                uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
                               />
                             </Suspense>
                           </div>
@@ -1753,8 +1762,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 <div className="space-y-1">
                   {reviewerListKind === 'template_fallback' && (
                     <p className="text-xs text-text-muted dark:text-text-dark-muted leading-snug">
-                      La plantilla no define validadores de documento; al enviar se usarán los revisores
-                      normativos de la plantilla (misma prioridad que en el servidor).
+                      La plantilla no define validadores de documento. Los revisores de plantilla listados abajo
+                      no aplican a la revisión del documento; al publicar no pasará por validación.
                     </p>
                   )}
                   <ul className="mt-1 space-y-1 text-xs">
@@ -1984,19 +1993,23 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       />
       <ConfirmDialog
         open={summaryConfirmAction !== null}
-        title={summaryConfirmAction === 'submit' ? 'Confirmar envío a validar' : 'Confirmar guardado'}
+        title={
+          summaryConfirmAction === 'submit'
+            ? willSubmitDocumentToReview
+              ? 'Confirmar envío a validar'
+              : 'Confirmar publicación'
+            : 'Confirmar guardado'
+        }
         description={
           summaryConfirmAction === 'submit'
             ? (
                 <div className="space-y-2">
                   <p>
-                    {reviewerListKind === 'document'
+                    {willSubmitDocumentToReview
                       ? 'Se enviará una notificación a los validadores del documento configurados en la plantilla.'
-                      : reviewerListKind === 'template_fallback'
-                        ? 'La plantilla no tiene validadores de documento; se notificará según los revisores normativos de la plantilla listados abajo.'
-                        : 'No hay revisores configurados en la plantilla para este envío.'}
+                      : 'No hay validadores de documento en la plantilla. El documento se publicará directamente sin pasar por revisión.'}
                   </p>
-                  {documentReviewers.length > 0 ? (
+                  {willSubmitDocumentToReview && documentReviewers.length > 0 ? (
                     <>
                       <p>
                         Tipo de revisión:{' '}
@@ -2016,15 +2029,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         </ul>
                       )}
                     </>
-                  ) : (
-                    <p>No hay personas en la lista de revisión para mostrar.</p>
-                  )}
+                  ) : null}
                   <p>Después no se podrá seguir editando como borrador.</p>
                 </div>
               )
             : '¿Quieres guardar y salir sin enviar? El documento permanecerá en estado borrador.'
         }
-        confirmLabel={summaryConfirmAction === 'submit' ? 'Sí, enviar a validar' : 'Sí, guardar y salir'}
+        confirmLabel={
+          summaryConfirmAction === 'submit'
+            ? willSubmitDocumentToReview
+              ? 'Sí, enviar a validar'
+              : 'Sí, publicar'
+            : 'Sí, guardar y salir'
+        }
         cancelLabel="Cancelar"
         variant={summaryConfirmAction === 'submit' ? 'primary' : 'teal'}
         loading={summaryConfirmAction === 'submit' && submittingForReview}
@@ -2034,7 +2051,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       <ConfirmDialog
         open={showNoValidatorsDocModal}
         title="Sin validadores configurados"
-        description="La plantilla no tiene validadores asignados. Al enviar este documento, se publicará automáticamente sin revisión. Para añadir validadores, edita la plantilla."
+        description="La plantilla no tiene validadores de documento. El documento se publicará directamente sin revisión. Para añadir validadores, edita la plantilla."
         confirmLabel="Continuar de todas formas"
         cancelLabel="Cancelar"
         onConfirm={() => {

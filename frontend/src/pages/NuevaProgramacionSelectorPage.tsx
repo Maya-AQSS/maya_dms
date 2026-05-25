@@ -115,28 +115,30 @@ export function NuevaProgramacionSelectorPage() {
   const listPerPage = filters.per_page ?? pageSize;
 
   const mappedTemplates = useMemo(() => {
-    return allTemplates.map((t) => {
-      if (t.status !== 'published' && t.latest_published_version_id) {
+    return allTemplates.map((template) => {
+      if (template.status !== 'published' && template.latest_published_version_id) {
         return {
-          ...t,
-          name: t.latest_published_name ?? t.name,
+          ...template,
+          name: template.latest_published_name ?? template.name,
           status: 'published' as const,
-          version: t.latest_published_version_number ?? t.version,
+          version: template.latest_published_version_number ?? template.version,
           list_variant: 'published_fallback' as const,
-          list_row_id: `${t.id}:published`,
+          list_row_id: `${template.id}:published`,
         };
       }
       return {
-        ...t,
+        ...template,
         list_variant: 'live' as const,
-        list_row_id: `${t.id}:live`,
+        list_row_id: `${template.id}:live`,
       };
     });
   }, [allTemplates]);
 
   const afterFavorites = useMemo(() => {
     if (favoritesFilter !== 'favorites') return mappedTemplates;
-    return mappedTemplates.filter((t) => favoriteTemplateIds.has(t.id));
+    return mappedTemplates.filter(
+      (template) => !!template.latest_published_version_id && favoriteTemplateIds.has(template.latest_published_version_id),
+    );
   }, [mappedTemplates, favoritesFilter, favoriteTemplateIds]);
 
   const afterName = useMemo(() => {
@@ -144,23 +146,23 @@ export function NuevaProgramacionSelectorPage() {
       return afterFavorites;
     }
     const needle = normalizeForSearch(nameFilter.trim());
-    return afterFavorites.filter((t) => normalizeForSearch(t.name ?? '').includes(needle));
+    return afterFavorites.filter((template) => normalizeForSearch(template.name ?? '').includes(needle));
   }, [afterFavorites, nameFilter]);
 
   const afterAcademicContext = useMemo(() => {
     if (!academicContextFilter.trim()) {
       return afterName;
     }
-    return afterName.filter((t) =>
+    return afterName.filter((template) =>
       listRowSearchMatches(
         hierarchy,
         {
-          visibility_level: t.visibility_level,
-          study_type_id: t.study_type_id,
-          study_id: t.study_id,
-          module_id: t.module_id,
-          team_id: t.team_id,
-          team: t.team,
+          visibility_level: template.visibility_level,
+          study_type_id: template.study_type_id,
+          study_id: template.study_id,
+          module_id: template.module_id,
+          team_id: template.team_id,
+          team: template.team,
         },
         academicContextFilter,
       ),
@@ -219,10 +221,10 @@ export function NuevaProgramacionSelectorPage() {
         header: 'Nombre',
         sortable: true,
         alwaysVisible: true,
-        cell: (t) => (
+        cell: (template) => (
           <span className="flex items-center gap-2 min-w-0">
-            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
-            <span className="truncate font-medium">{t.name}</span>
+            {!!template.latest_published_version_id && favoriteTemplateIds.has(template.latest_published_version_id) && <FavoriteInlineMark />}
+            <span className="truncate font-medium">{template.name}</span>
           </span>
         ),
       },
@@ -251,9 +253,9 @@ export function NuevaProgramacionSelectorPage() {
       {
         id: 'author_name',
         header: 'Autor',
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.author_name ?? '—'}
+            {template.author_name ?? '—'}
           </span>
         ),
       },
@@ -261,17 +263,17 @@ export function NuevaProgramacionSelectorPage() {
         id: 'latest_published_at',
         header: 'Fecha de publicación',
         sortable: true,
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {formatCalendarDateForBrowser(t.latest_published_at)}
+            {formatCalendarDateForBrowser(template.latest_published_at)}
           </span>
         ),
       },
       {
         id: 'version',
         header: 'Versión',
-        cell: (t) => (
-          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">v{t.version}</span>
+        cell: (template) => (
+          <span className="text-xs text-text-secondary dark:text-text-dark-secondary">v{template.version}</span>
         ),
       },
     ],
@@ -399,13 +401,8 @@ export function NuevaProgramacionSelectorPage() {
             t.list_variant === 'published_fallback'
               ? (t.latest_published_version_id ?? null)
               : null;
-          const path = selectedTemplateVersionId
-            ? `/templates/${t.id}?templateVersionId=${encodeURIComponent(selectedTemplateVersionId)}`
-            : `/templates/${t.id}`;
-          navigate(path, {
+          navigate(`/documentos/nuevo/${t.id}/wizard`, {
             state: {
-              selectionMode: true,
-              backTo: '/documentos/nuevo',
               moduleId: selectedModuleId,
               processId: selectedProcessId,
               templateVersionId: selectedTemplateVersionId,

@@ -1,64 +1,74 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { FAVORITE_STAR_FILLED_CHAR, FAVORITE_STAR_OUTLINE_CHAR } from '@maya/shared-ui-react';
 import {
   addDocumentFavorite,
   addTemplateFavorite,
-  fetchFavorites,
   removeDocumentFavorite,
   removeTemplateFavorite,
 } from '../api/favorites';
+import { useFavoritesIds } from '../hooks/useFavoritesIds';
 
 type Props = {
   entityType: 'template' | 'document';
   entityId: string;
 };
 
+const FAVORITES_QUERY_KEY = ['favorites', 'ids'];
+
+interface FavoritesIds {
+  template_ids: string[];
+  document_ids: string[];
+}
+
 export function FavoriteButton({ entityType, entityId }: Props) {
-  const [isFavorite, setIsFavorite] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const { templateIds, documentIds, loading } = useFavoritesIds();
   const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-
-    void (async () => {
-      try {
-        const { data } = await fetchFavorites();
-        if (cancelled) return;
-        const ids = entityType === 'template' ? data.template_ids : data.document_ids;
-        setIsFavorite(ids.includes(entityId));
-      } catch {
-        if (!cancelled) setIsFavorite(false);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [entityType, entityId]);
+  const isFavorite = entityType === 'template'
+    ? templateIds.has(entityId)
+    : documentIds.has(entityId);
 
   const onClick = useCallback(async () => {
     if (toggling || loading) return;
     setToggling(true);
-    const next = !isFavorite;
-    setIsFavorite(next);
+
+    const previous = queryClient.getQueryData<FavoritesIds>(FAVORITES_QUERY_KEY);
+
+    queryClient.setQueryData<FavoritesIds>(FAVORITES_QUERY_KEY, (old) => {
+      if (!old) return old;
+      if (entityType === 'template') {
+        return {
+          ...old,
+          template_ids: isFavorite
+            ? old.template_ids.filter((id) => id !== entityId)
+            : [...old.template_ids, entityId],
+        };
+      }
+      return {
+        ...old,
+        document_ids: isFavorite
+          ? old.document_ids.filter((id) => id !== entityId)
+          : [...old.document_ids, entityId],
+      };
+    });
+
     try {
       if (entityType === 'template') {
-        if (next) await addTemplateFavorite(entityId);
+        if (!isFavorite) await addTemplateFavorite(entityId);
         else await removeTemplateFavorite(entityId);
       } else {
-        if (next) await addDocumentFavorite(entityId);
+        if (!isFavorite) await addDocumentFavorite(entityId);
         else await removeDocumentFavorite(entityId);
       }
+      await queryClient.invalidateQueries({ queryKey: FAVORITES_QUERY_KEY });
     } catch {
-      setIsFavorite(!next);
+      queryClient.setQueryData(FAVORITES_QUERY_KEY, previous);
     } finally {
       setToggling(false);
     }
-  }, [entityType, entityId, isFavorite, loading, toggling]);
+  }, [entityType, entityId, isFavorite, loading, toggling, queryClient]);
 
   return (
     <button

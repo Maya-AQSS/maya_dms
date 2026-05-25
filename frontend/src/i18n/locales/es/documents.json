@@ -17,7 +17,46 @@
     "loadingValidation": "Cargando datos de validación…"
   },
   "table": {
-    "rejectedTitle": "Este documento fue rechazado en revisión."
+    "columns": {
+      "name": "Nombre",
+      "visibility": "Visibilidad",
+      "author": "Autor",
+      "status": "Estado",
+      "validationDate": "Fecha de validación"
+    },
+    "status": {
+      "draft": "Borrador",
+      "in_review": "En revisión",
+      "published": "Publicado",
+      "rejected": "Rechazado"
+    },
+    "statusFilter": {
+      "all": "Todos"
+    },
+    "favoritesFilter": {
+      "all": "Todos",
+      "onlyFavorites": "Solo favoritos"
+    },
+    "filters": {
+      "name": "Nombre",
+      "visibility": "Visibilidad",
+      "status": "Estado",
+      "author": "Autor",
+      "favorites": "Favoritos",
+      "validationUntil": "Fecha de validación (hasta)"
+    },
+    "notAvailable": "—",
+    "reviewBadge": "Revisión",
+    "rejectedTitle": "Este documento fue rechazado en revisión.",
+    "noIndexPermission": "No tienes permiso para listar documentos (document.index).",
+    "loadError": "Error al cargar documentos: {{message}}",
+    "emptyFiltered": "No hay documentos con los filtros actuales.",
+    "filtersLabel": "Filtros",
+    "columnsLabel": "Columnas",
+    "clearFiltersLabel": "Limpiar",
+    "pageSizeLabel": "Por página",
+    "deadlineAria": "Documentos no publicados cuya fecha límite de validación sea esta fecha o anterior (las filas publicadas no aplican)",
+    "paginationInfo": "Página {{page}} de {{totalPages}} — {{count}} documentos"
   },
   "diff": {
     "previousBlock": "Bloque anterior",

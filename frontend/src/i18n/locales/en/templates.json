@@ -18,9 +18,49 @@
     "filterUsersPlaceholder": "Filter users…"
   },
   "table": {
+    "columns": {
+      "name": "Name",
+      "visibility": "Visibility",
+      "author": "Author",
+      "status": "Status",
+      "validationDate": "Validation date"
+    },
+    "status": {
+      "draft": "Draft",
+      "in_review": "In review",
+      "published": "Published",
+      "archived": "Archived",
+      "rejected": "Rejected"
+    },
+    "statusFilter": {
+      "all": "All"
+    },
+    "favoritesFilter": {
+      "all": "All",
+      "onlyFavorites": "Only favorites"
+    },
+    "filters": {
+      "name": "Name",
+      "visibility": "Visibility",
+      "status": "Status",
+      "author": "Author",
+      "favorites": "Favorites",
+      "validationUntil": "Validation date (until)"
+    },
+    "searchName": "Search by name...",
     "searchVisibility": "Global, personal, team, team name, study or module…",
     "authorPlaceholder": "Author name...",
-    "deadlinePlaceholder": "Any deadline…"
+    "deadlinePlaceholder": "Any deadline…",
+    "deadlineAria": "Unpublished templates whose validation deadline is this date or earlier (published rows do not apply)",
+    "notAvailable": "—",
+    "reviewBadge": "Review",
+    "close": "Close",
+    "emptyFiltered": "There are no templates matching the current filters.",
+    "filtersLabel": "Filters",
+    "columnsLabel": "Columns",
+    "clearFiltersLabel": "Clear",
+    "pageSizeLabel": "Per page",
+    "paginationInfo": "{{from}}–{{to}} of {{total}}"
   },
   "comments": {
     "closePanelAria": "Close panel",

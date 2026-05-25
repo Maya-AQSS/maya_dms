@@ -29,6 +29,7 @@ services:
       FDW_USERS_TABLE: ${FDW_USERS_TABLE:-users}
       # ─── Redis ────────────────────────────────────────────────
       CACHE_STORE: redis
+      SESSION_DRIVER: ${SESSION_DRIVER:-file}
       REDIS_HOST: maya_redis
       REDIS_PASSWORD: ${REDIS_PASSWORD:-secret}
       REDIS_PORT: 6379

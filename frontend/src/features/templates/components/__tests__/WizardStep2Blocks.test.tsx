@@ -34,7 +34,6 @@ vi.mock('../../../../api/users', () => ({
       module_ids: [],
       team_ids: [],
       permissions: [],
-      teams: [],
       locale: 'es',
       source: 'fdw' as const,
     },

@@ -18,9 +18,49 @@
     "filterUsersPlaceholder": "Filtrar usuaris…"
   },
   "table": {
+    "columns": {
+      "name": "Nom",
+      "visibility": "Visibilitat",
+      "author": "Autor",
+      "status": "Estat",
+      "validationDate": "Data de validació"
+    },
+    "status": {
+      "draft": "Esborrany",
+      "in_review": "En revisió",
+      "published": "Publicada",
+      "archived": "Arxivada",
+      "rejected": "Rebutjada"
+    },
+    "statusFilter": {
+      "all": "Tots"
+    },
+    "favoritesFilter": {
+      "all": "Tots",
+      "onlyFavorites": "Només favorits"
+    },
+    "filters": {
+      "name": "Nom",
+      "visibility": "Visibilitat",
+      "status": "Estat",
+      "author": "Autor",
+      "favorites": "Favorits",
+      "validationUntil": "Data de validació (fins)"
+    },
+    "searchName": "Cercar per nom...",
     "searchVisibility": "Global, personal, equip, nom d'equip, estudi o mòdul…",
     "authorPlaceholder": "Nom de l'autor...",
-    "deadlinePlaceholder": "Qualsevol termini…"
+    "deadlinePlaceholder": "Qualsevol termini…",
+    "deadlineAria": "Plantilles no publicades amb data límit de validació en esta data o anterior (les publicades no apliquen)",
+    "notAvailable": "—",
+    "reviewBadge": "Revisió",
+    "close": "Tancar",
+    "emptyFiltered": "No hi ha plantilles amb els filtres actuals.",
+    "filtersLabel": "Filtres",
+    "columnsLabel": "Columnes",
+    "clearFiltersLabel": "Netejar",
+    "pageSizeLabel": "Per pàgina",
+    "paginationInfo": "{{from}}–{{to}} de {{total}}"
   },
   "comments": {
     "closePanelAria": "Tancar panell",

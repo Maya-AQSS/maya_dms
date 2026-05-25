@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\AcademicHierarchyController;
 use App\Http\Controllers\Api\CommentController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
@@ -28,6 +27,7 @@ use App\Http\Controllers\Api\ThemeController;
 use App\Http\Controllers\Api\ThemeFontController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
+use Maya\Profile\Routing\AcademicContextRoutes;
 use Maya\Profile\Routing\MeRoutes;
 
 /*
@@ -45,6 +45,13 @@ Route::prefix('v1')->group(function () {
     Route::get('/health/live', [HealthCheckController::class, 'live']);
     Route::get('/health/ready', [HealthCheckController::class, 'ready']);
 
+    // ── Media — servir imágenes de bloques (sin JWT; token HMAC en query param) ──
+    // No pasa por JwtMiddleware porque <img src="..."> no puede enviar Bearer header.
+    // La seguridad la garantiza el token HMAC firmado con APP_KEY generado en store().
+    Route::get('/media/{uuid}', [MediaController::class, 'show'])
+        ->whereUuid('uuid')
+        ->name('api.v1.media.show');
+
     // Perfil: solo JWT (sin dms.login). El front necesita /me para resolver permisos.
     Route::middleware(['jwt'])->group(function () {
         MeRoutes::register();
@@ -53,7 +60,10 @@ Route::prefix('v1')->group(function () {
     // ── Rutas protegidas por JWT + permiso de acceso a la app ──
     Route::middleware(['jwt', 'permission:dms.login'])->group(function () {
 
-        Route::get('/hierarchy', [AcademicHierarchyController::class, 'index']);
+        // Contexto académico del usuario (study_types + studies + modules + teams
+        // con id/code/name). Filtrado server-side por user_id desde el paquete
+        // compartido maya-shared-profile-laravel. Sustituye al antiguo /hierarchy.
+        AcademicContextRoutes::registerMe();
 
         Route::get('/processes', [ProcessController::class, 'index']);
         Route::post('/processes', [ProcessController::class, 'store']);
@@ -77,9 +87,6 @@ Route::prefix('v1')->group(function () {
         // Assets de Theme (logo / background / watermark).
         Route::post('themes/{theme}/assets', [ThemeAssetController::class, 'store'])
             ->whereUuid('theme');
-        Route::get('themes/{theme}/assets/{kind}', [ThemeAssetController::class, 'show'])
-            ->whereUuid('theme')
-            ->where('kind', 'logo|background|watermark');
 
         // Plantillas
         // Combinación de validación UUID (develop) y actualización masiva de bloques (feature).

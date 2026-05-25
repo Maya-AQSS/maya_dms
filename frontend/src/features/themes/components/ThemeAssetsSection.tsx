@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import { Button } from '@maya/shared-ui-react';
 import {
-  themeAssetUrl,
   uploadThemeAsset,
   type ThemeAssetKind,
 } from '../../../api/themes';
@@ -65,12 +64,7 @@ function AssetCard({ theme, kind, onUploaded }: AssetCardProps) {
   const path = theme.assets[ASSET_KEYS[kind]];
   const hasAsset = typeof path === 'string' && path !== '';
 
-  // cacheBuster fuerza al browser a refrescar la imagen tras un upload.
-  // Usamos updated_at; podría usarse el path mismo pero updated_at evita
-  // pegada de cache en CDN o service workers.
-  const previewUrl = hasAsset
-    ? `${themeAssetUrl(theme.id, kind)}?t=${encodeURIComponent(theme.updated_at)}`
-    : null;
+  const previewUrl = hasAsset ? path : null;
 
   const handleFile = async (file: File) => {
     setError(null);

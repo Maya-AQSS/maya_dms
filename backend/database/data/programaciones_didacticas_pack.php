@@ -27,6 +27,8 @@ declare(strict_types=1);
  *
  * @return array{
  *   templates: list<array<string, mixed>>,
+ *   template_reviewers: list<array<string, mixed>>,
+ *   template_document_reviewers: list<array<string, mixed>>,
  *   template_blocks: list<array<string, mixed>>,
  *   template_versions: list<array<string, mixed>>,
  *   entity_versions: list<array<string, mixed>>,
@@ -119,7 +121,7 @@ return (static function (): array {
             'description' => 'Plantilla base para programaciones de ciclo formativo de grado superior (FP). '
                 .'Bloques bloqueados con texto común del CEEDCV, modificables con placeholders en MAYÚSCULAS y editables libres por departamento.',
             'visibility_level' => 'study_type',
-            'study_type_id' => 'GS',
+            'study_type_id' => '2',
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
@@ -135,7 +137,7 @@ return (static function (): array {
             'description' => 'Plantilla para programaciones didácticas de un módulo de un ciclo formativo de grado superior. '
                 .'Bloques bloqueados con texto común del CEEDCV, modificables con placeholders en MAYÚSCULAS y editables libres por módulo.',
             'visibility_level' => 'study_type',
-            'study_type_id' => 'GS',
+            'study_type_id' => '2',
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
@@ -151,7 +153,7 @@ return (static function (): array {
             'description' => 'Plantilla para programaciones didácticas de una asignatura de Bachillerato (LOMLOE). '
                 .'Bloques bloqueados con texto común del CEEDCV, modificables con placeholders en MAYÚSCULAS y editables libres por asignatura.',
             'visibility_level' => 'study_type',
-            'study_type_id' => 'NG',
+            'study_type_id' => '3',
             'study_id' => null,
             'module_id' => null,
             'team_id' => null,
@@ -193,7 +195,7 @@ return (static function (): array {
             'template_id' => $T0,
             'template_version_id' => $EV_T0_PUB,
             'title' => 'Programación de ciclo — ASIR (curso 2025-26)',
-            'study_type_id' => 'GS',
+            'study_type_id' => '2',
             'study_id' => '8',           // ASIR
             'module_id' => null,         // Ciclo completo, sin módulo
             'delivery_deadline' => '2026-09-30 14:00:00',
@@ -206,7 +208,7 @@ return (static function (): array {
             'template_id' => $T1,
             'template_version_id' => $EV_T1_PUB,
             'title' => 'DWES — Desarrollo Web en Entorno Servidor (0613) — 2025-26',
-            'study_type_id' => 'GS',
+            'study_type_id' => '2',
             'study_id' => '7',           // DAW
             'module_id' => '7_2',        // DWES
             'delivery_deadline' => '2026-09-30 14:00:00',
@@ -219,7 +221,7 @@ return (static function (): array {
             'template_id' => $T1,
             'template_version_id' => $EV_T1_PUB,
             'title' => "IPO I — Itinerari Personal per a l'Ocupabilitat I (1709) — 2025-26",
-            'study_type_id' => 'GS',
+            'study_type_id' => '2',
             'study_id' => '7',           // DAW (también está en DAM, asignamos al DAW del archivo)
             'module_id' => '7_7',        // IPO1
             'delivery_deadline' => '2026-09-30 14:00:00',
@@ -232,7 +234,7 @@ return (static function (): array {
             'template_id' => $T1,
             'template_version_id' => $EV_T1_PUB,
             'title' => 'LAP — Logística de Aprovisionamiento (0626) — 2025-26',
-            'study_type_id' => 'GS',
+            'study_type_id' => '2',
             'study_id' => '15',          // TIL
             'module_id' => '15_8',       // LAP
             'delivery_deadline' => '2026-09-30 14:00:00',
@@ -245,7 +247,7 @@ return (static function (): array {
             'template_id' => $T2,
             'template_version_id' => $EV_T2_PUB,
             'title' => 'PXSI1 — Programación, Redes y Sistemas Informáticos I (1º Bachillerato) — 2025-26',
-            'study_type_id' => 'NG',
+            'study_type_id' => '3',
             'study_id' => '3',           // BCT
             'module_id' => '3_9',        // PXSI1
             'delivery_deadline' => '2026-09-30 14:00:00',
@@ -626,8 +628,57 @@ return (static function (): array {
 
     $document_blocks = require __DIR__ . '/programaciones_didacticas_doc_blocks.php';
 
+    // ============================================================
+    // TEMPLATE REVIEWERS — Dirección (Keycloak / maya_infra: ed568442…)
+    // ============================================================
+
+    $template_reviewers = [
+        [
+            'id' => 'ff000000-0000-4000-8000-000000000000',
+            'template_id' => $T0,
+            'user_id' => $uDir,
+            'stage' => 1,
+            'status' => 'pending',
+        ],
+        [
+            'id' => 'ff000001-0000-4000-8000-000000000000',
+            'template_id' => $T1,
+            'user_id' => $uDir,
+            'stage' => 1,
+            'status' => 'pending',
+        ],
+        [
+            'id' => 'ff000002-0000-4000-8000-000000000000',
+            'template_id' => $T2,
+            'user_id' => $uDir,
+            'stage' => 1,
+            'status' => 'pending',
+        ],
+    ];
+
+    // ============================================================
+    // TEMPLATE DOCUMENT REVIEWERS — Dirección (Keycloak / maya_infra: ed568442…)
+    // ============================================================
+
+    $template_document_reviewers = [
+        [
+            'template_id' => $T0,
+            'user_id' => $uDir,
+        ],
+        [
+            'template_id' => $T1,
+            'user_id' => $uDir,
+        ],
+        [
+            'template_id' => $T2,
+            'user_id' => $uDir,
+        ],
+    ];
+
     return [
         'templates' => $templates,
+        'template_reviewers' => $template_reviewers,
+        'template_document_reviewers' => $template_document_reviewers,
         'template_blocks' => $blocks,
         'template_versions' => $template_versions,
         'documents' => $documents,

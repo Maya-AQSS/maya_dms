@@ -2,7 +2,6 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Button, FieldLabel, Select, TextInput } from '@maya/shared-ui-react';
-import { themeAssetUrl } from '../../../api/themes';
 import type { Theme, ThemeBlockType, ThemeLayoutRegion } from '../../../types/themes';
 import './theme-grid.css';
 
@@ -206,9 +205,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
 
   const layout = useMemo(() => regionsToLayout(editableRegions), [editableRegions]);
 
-  const backgroundUrl = theme.assets.background_image_path
-    ? `${themeAssetUrl(theme.id, 'background')}?t=${encodeURIComponent(theme.updated_at)}`
-    : null;
+  const backgroundUrl = theme.assets.background_image_path || null;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -439,10 +436,7 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
         </div>
       );
     case 'logo': {
-      const hasLogo = theme.assets.logo_path;
-      const url = hasLogo
-        ? `${themeAssetUrl(theme.id, 'logo')}?t=${encodeURIComponent(theme.updated_at)}`
-        : null;
+      const url = theme.assets.logo_path || null;
       return (
         <div className="theme-grid-slot theme-grid-slot--logo">
           {url ? (
@@ -458,9 +452,7 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
       const path = theme.assets[
         asset === 'background' ? 'background_image_path' : asset === 'watermark' ? 'watermark_path' : 'logo_path'
       ];
-      const url = path
-        ? `${themeAssetUrl(theme.id, asset)}?t=${encodeURIComponent(theme.updated_at)}`
-        : null;
+      const url = path || null;
       return (
         <div className="theme-grid-slot theme-grid-slot--image">
           {url ? (

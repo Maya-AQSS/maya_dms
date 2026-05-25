@@ -231,36 +231,39 @@ export function TemplatesContent() {
         header: 'Nombre',
         sortable: true,
         alwaysVisible: true,
-        cell: (t) => (
-          <span className="flex items-center gap-2 min-w-0">
-            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
-            <span className="truncate font-medium">{t.name}</span>
-            {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
-              <span
-                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title={t('templates:pendingReviewTitle')}
-              >
-                ⚠ Revisión
-              </span>
-            )}
-          </span>
-        ),
+        cell: (template) => {
+          const versionId = template.latest_published_version_id;
+          return (
+            <span className="flex items-center gap-2 min-w-0">
+              {versionId && favoriteTemplateIds.has(versionId) ? <FavoriteInlineMark /> : null}
+              <span className="truncate font-medium">{template.name}</span>
+              {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
+                <span
+                  className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                  title={t('templates:pendingReviewTitle')}
+                >
+                  ⚠ Revisión
+                </span>
+              )}
+            </span>
+          );
+        },
       },
       {
         id: 'visibility_level',
         header: 'Visibilidad',
-        cell: (t) => {
+        cell: (template) => {
           const caption = formatListRowVisibilityCaption(hierarchy, {
-            visibility_level: t.visibility_level,
-            study_type_id: t.study_type_id,
-            study_id: t.study_id,
-            module_id: t.module_id,
-            team_id: t.team_id,
-            team: t.team,
+            visibility_level: template.visibility_level,
+            study_type_id: template.study_type_id,
+            study_id: template.study_id,
+            module_id: template.module_id,
+            team_id: template.team_id,
+            team: template.team,
           });
           return (
             <span
-              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(t.visibility_level)}`}
+              className={`inline-flex max-w-full min-w-0 text-xs font-medium px-2 py-0.5 rounded-full ${visibilityBadgeClass(template.visibility_level)}`}
               title={caption}
             >
               <span className="truncate">{caption}</span>
@@ -271,17 +274,17 @@ export function TemplatesContent() {
       {
         id: 'author_name',
         header: 'Autor',
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.author_name ?? '—'}
+            {template.author_name ?? '—'}
           </span>
         ),
       },
       {
         id: 'status',
         header: 'Estado',
-        cell: (t) => {
-          const status = t.status as TemplateStatus;
+        cell: (template) => {
+          const status = template.status as TemplateStatus;
           return (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
               {STATUS_LABEL[status] ?? status}
@@ -293,14 +296,14 @@ export function TemplatesContent() {
         id: 'delivery_deadline',
         header: 'Fecha de validación',
         sortable: true,
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
+            {template.status === 'published' ? '—' : formatCalendarDateForBrowser(template.delivery_deadline)}
           </span>
         ),
       },
     ],
-    [profile, favoriteTemplateIds, hierarchy],
+    [profile, favoriteTemplateIds, hierarchy, t],
   );
 
   return (

@@ -8,6 +8,7 @@ use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Validation\ValidationException;
@@ -19,6 +20,7 @@ class TemplatePublishingService
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
         private readonly TemplateVersionBlockLayerWriter $templateVersionBlockLayerWriter,
+        private readonly UserFavoriteRepositoryInterface $userFavoriteRepository,
     ) {}
 
     /**
@@ -191,6 +193,14 @@ class TemplatePublishingService
             );
 
             $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($entityVersion, $template);
+
+            // Migrar favoritos: los que apuntaban a la versión publicada anterior pasan a la nueva.
+            if ($entityVersion->base_version_id !== null) {
+                $this->userFavoriteRepository->migrateFavoriteTemplateVersion(
+                    (string) $entityVersion->base_version_id,
+                    (string) $entityVersion->id,
+                );
+            }
 
             $oldStatus = $template->status;
             $updated = $this->templateRepository->update($template, [

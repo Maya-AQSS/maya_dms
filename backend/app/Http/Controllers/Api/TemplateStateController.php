@@ -50,7 +50,7 @@ class TemplateStateController extends Controller
     }
 
     /**
-     * En revisión → borrador (revisor).
+     * En revisión → rechazada (revisor). El creador puede editar y reenviar.
      */
     public function rejectReview(string $template): TemplateResource
     {

@@ -23,7 +23,6 @@ vi.mock('../../../../api/users', () => ({
       module_ids: [],
       team_ids: [],
       permissions: ['template.show'],
-      teams: [],
       locale: 'es',
       source: 'fdw' as const,
     },
@@ -93,7 +92,6 @@ describe('WizardStep3Users', () => {
         module_ids: [],
         team_ids: [],
         permissions: ['template.show'],
-        teams: [],
         locale: 'es',
         source: 'fdw',
       },
@@ -136,7 +134,6 @@ describe('WizardStep3Users', () => {
         module_ids: [],
         team_ids: [],
         permissions: [],
-        teams: [],
         locale: 'es',
         source: 'fdw',
       },
@@ -161,7 +158,9 @@ describe('WizardStep3Users', () => {
     fireEvent.change(searchInputs[0], { target: { value: 'User 2' } });
 
     await waitFor(() => {
-      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('User 2');
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('User 2', undefined, expect.objectContaining({
+        visibility_level: 'personal',
+      }));
       expect(screen.getAllByText('User 2').length).toBeGreaterThan(0);
     });
 
@@ -184,8 +183,12 @@ describe('WizardStep3Users', () => {
     fireEvent.change(searchInputs[1], { target: { value: 'ab' } });
 
     await waitFor(() => {
-      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab');
-      expect(searchDocumentReviewerCandidates).toHaveBeenCalledWith('ab');
+      expect(searchTemplateReviewerCandidates).toHaveBeenCalledWith('ab', undefined, expect.objectContaining({
+        visibility_level: 'personal',
+      }));
+      expect(searchDocumentReviewerCandidates).toHaveBeenCalledWith('ab', undefined, expect.objectContaining({
+        visibility_level: 'personal',
+      }));
     });
   });
 });

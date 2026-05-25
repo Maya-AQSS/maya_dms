@@ -13,18 +13,18 @@ use Maya\Profile\Repositories\Contracts\UserProfileResolverInterface;
  * Resolver de perfil específico de maya_dms.
  *
  * Delega al `App\Services\UserProfileService` existente (FDW + Redis cache +
- * fallback JWT) que también consumen `AcademicHierarchyController` y el auth
- * guard, y adapta el array resultante al `UserProfileDto` canónico que espera
- * el paquete compartido.
+ * fallback JWT) que también consume el auth guard, y adapta el array
+ * resultante al `UserProfileDto` canónico que espera el paquete compartido.
  *
  * Forma canónica del DTO devuelto (cross-app, snake_case en inglés):
- *   `permissions`, `study_type_ids`, `study_ids`, `module_ids`, `team_ids`,
- *   `teams` (objetos completos).
+ *   `permissions`, `study_type_ids`, `study_ids`, `module_ids`, `team_ids`.
  *
- * Los nombres internos del Service (`study_type_ids`, `study_ids`,
- * `module_ids`, `team_ids`, `permissions`, `teams`) coinciden con la forma
- * canónica, por lo que el resolver SOLO filtra los campos sobrantes del
- * payload — no renombra.
+ * Los objetos completos de equipos (con nombre, descripción, etc.) NO se
+ * exponen aquí — el frontend los consulta vía `GET /me/academic-context`
+ * (paquete maya-shared-profile-laravel).
+ *
+ * Los nombres internos del Service coinciden con la forma canónica, por lo
+ * que el resolver SOLO filtra los campos sobrantes del payload — no renombra.
  *
  * Campos eliminados del payload `/me` (no se exponen):
  * - `department`/`departamento`: claim del JWT, no debe ir en /me.
@@ -67,7 +67,7 @@ final class FdwUserProfileResolver implements UserProfileResolverInterface
         $extra['study_ids'] = $this->arrayList($extra['study_ids'] ?? []);
         $extra['module_ids'] = $this->arrayList($extra['module_ids'] ?? []);
         $extra['team_ids'] = $this->arrayList($extra['team_ids'] ?? []);
-        $extra['teams'] = is_array($extra['teams'] ?? null) ? $extra['teams'] : [];
+        unset($extra['teams']);
 
         return new UserProfileDto(
             id: (string) ($profile['id'] ?? $userId),

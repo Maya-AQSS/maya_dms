@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DndContext,
@@ -16,7 +16,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { User } from '../../../types/users';
-import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates } from '../../../api/users';
+import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates, type ReviewerCandidateAcademicContext } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { Button, TextInput } from '@maya/shared-ui-react';
@@ -358,6 +358,10 @@ function UserAddPanel({
 
 type Props = {
   visibilityLevel?: string;
+  studyTypeId?: string;
+  studyId?: string;
+  moduleId?: string;
+  teamId?: string;
   validators: ValidatorEntry[];
   onValidatorsChange: (validators: ValidatorEntry[]) => void;
   validationType: 'libre' | 'ordenada';
@@ -370,6 +374,10 @@ type Props = {
 
 export function WizardStep3Users({
   visibilityLevel = 'personal',
+  studyTypeId,
+  studyId,
+  moduleId,
+  teamId,
   validators,
   onValidatorsChange,
   validationType,
@@ -398,6 +406,19 @@ export function WizardStep3Users({
   const [searchingDocument, setSearchingDocument] = useState(false);
   const [searchErrorDocument, setSearchErrorDocument] = useState<string | null>(null);
 
+  const reviewerAcademicContext = useMemo((): ReviewerCandidateAcademicContext | undefined => {
+    if (!visibilityLevel) {
+      return undefined;
+    }
+    return {
+      visibility_level: visibilityLevel,
+      study_type_id: studyTypeId || undefined,
+      study_id: studyId || undefined,
+      module_id: moduleId || undefined,
+      team_id: teamId || undefined,
+    };
+  }, [visibilityLevel, studyTypeId, studyId, moduleId, teamId]);
+
   useEffect(() => {
     if (!canSearchUsers) {
       setSearchResultsTemplate([]);
@@ -411,13 +432,13 @@ export function WizardStep3Users({
     const timer = setTimeout(() => {
       setSearchingTemplate(true);
       setSearchErrorTemplate(null);
-      searchTemplateReviewerCandidates(q)
+      searchTemplateReviewerCandidates(q, undefined, reviewerAcademicContext)
         .then((res) => setSearchResultsTemplate(res.data))
         .catch(() => setSearchErrorTemplate('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingTemplate(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryTemplate, canSearchUsers]);
+  }, [searchQueryTemplate, canSearchUsers, reviewerAcademicContext]);
 
   useEffect(() => {
     if (!canSearchUsers) {
@@ -432,13 +453,13 @@ export function WizardStep3Users({
     const timer = setTimeout(() => {
       setSearchingDocument(true);
       setSearchErrorDocument(null);
-      searchDocumentReviewerCandidates(q)
+      searchDocumentReviewerCandidates(q, undefined, reviewerAcademicContext)
         .then((res) => setSearchResultsDocument(res.data))
         .catch(() => setSearchErrorDocument('No se pudo completar la búsqueda. Inténtalo de nuevo.'))
         .finally(() => setSearchingDocument(false));
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQueryDocument, canSearchUsers]);
+  }, [searchQueryDocument, canSearchUsers, reviewerAcademicContext]);
 
   const handleAddToTemplate = (user: User) => {
     if (!validators.some((v) => v.userId === user.id)) {

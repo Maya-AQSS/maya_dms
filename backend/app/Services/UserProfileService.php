@@ -52,7 +52,9 @@ class UserProfileService implements UserProfileServiceInterface
                 return $this->buildFallbackProfile($userId, $jwtProfile);
             }
 
-            $teams = $this->repository->findTeamsByUserId($userId);
+            // /me expone solo IDs de equipos; los objetos completos (con
+            // nombre/descripción) se sirven desde GET /me/academic-context.
+            $teamIds = array_column($this->repository->findTeamsByUserId($userId), 'id');
 
             // MOCK locale — la columna `locale` aún no existe en `v_app_users` (FDW Odoo).
             // Cuando se añada en maya_core_employee + se exponga en la vista, leer con:
@@ -66,9 +68,8 @@ class UserProfileService implements UserProfileServiceInterface
                 'study_type_ids' => $this->repository->findStudyTypeIdsByUserId($userId),
                 'study_ids' => $this->repository->findStudyIdsByUserId($userId),
                 'module_ids' => $this->repository->findModuleIdsByUserId($userId),
-                'team_ids' => array_column($teams, 'id'),
+                'team_ids' => $teamIds,
                 'permissions' => $this->resolvedPermissions->findPermissionSlugsByUserId($userId),
-                'teams' => $teams,
                 'source' => 'fdw',
             ];
 
@@ -112,7 +113,6 @@ class UserProfileService implements UserProfileServiceInterface
             'module_ids' => $scopes['module_ids'],
             'team_ids' => [],
             'permissions' => $this->resolvedPermissions->findPermissionSlugsByUserId($userId),
-            'teams' => [],
             'source' => 'jwt_fallback',
         ];
     }

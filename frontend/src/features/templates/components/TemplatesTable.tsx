@@ -16,7 +16,6 @@ import {
 } from '@maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
-import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS } from '../constants';
 import type { Template, TemplateStatus, TemplateVisibilityLevel } from '../../../types/templates';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
@@ -27,13 +26,16 @@ import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 import { normalizeForSearch } from '../../../utils/normalizeForSearch';
 
-const STATUS_LABEL: Record<TemplateStatus, string> = {
-  draft: 'Borrador',
-  in_review: 'En revisión',
-  published: 'Publicada',
-  archived: 'Archivada',
-  rejected: 'Rechazada',
-};
+function templateStatusLabel(
+  status: string | null | undefined,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): string {
+  if (!status) {
+    return t('templates:table.notAvailable');
+  }
+  const label = t(`templates:table.status.${status as TemplateStatus}`, { defaultValue: '' });
+  return label || status;
+}
 
 // Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
 
@@ -85,7 +87,11 @@ export function TemplatesTable({ processId }: Props = {}) {
   const clientFilteredCatalog = useMemo(() => {
     let list = catalogSorted;
     if (favoritesFilter === 'favorites') {
-      list = list.filter((t) => favoriteTemplateIds.has(t.id));
+      list = list.filter(
+        (t) =>
+          (!!t.working_version_id && favoriteTemplateIds.has(t.working_version_id)) ||
+          (!!t.latest_published_version_id && favoriteTemplateIds.has(t.latest_published_version_id)),
+      );
     }
     if (nameFilter.trim()) {
       const needle = normalizeForSearch(nameFilter.trim());
@@ -182,6 +188,26 @@ export function TemplatesTable({ processId }: Props = {}) {
     [nameFilter, academicContextFilter, filterUi.status, filterUi.deliveryDeadline, authorInput].filter((v) => v && v !== '')
       .length;
 
+  const statusOptions = useMemo(
+    () => [
+      { value: '', label: t('templates:table.statusFilter.all') },
+      { value: 'draft', label: t('templates:table.status.draft') },
+      { value: 'in_review', label: t('templates:table.status.in_review') },
+      { value: 'rejected', label: t('templates:table.status.rejected') },
+      { value: 'published', label: t('templates:table.status.published') },
+      { value: 'archived', label: t('templates:table.status.archived') },
+    ],
+    [t],
+  );
+
+  const favoritesFilterOptions = useMemo(
+    () => [
+      { value: '', label: t('templates:table.favoritesFilter.all') },
+      { value: 'favorites', label: t('templates:table.favoritesFilter.onlyFavorites') },
+    ],
+    [t],
+  );
+
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setNameInput(value);
@@ -238,10 +264,12 @@ export function TemplatesTable({ processId }: Props = {}) {
     if (profile?.id && t.created_by === profile.id) {
       return true;
     }
-    return (
-      t.status === 'in_review'
-      && t.reviewers?.some((r) => r.user_id === profile?.id) === true
-    );
+    const isAssignedReviewer =
+      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    if (isAssignedReviewer && (t.status === 'in_review' || t.status === 'rejected')) {
+      return true;
+    }
+    return false;
   };
 
   const handleRowClick = (t: Template) => {
@@ -257,47 +285,58 @@ export function TemplatesTable({ processId }: Props = {}) {
       return;
     }
     const isAssignedReviewer =
-      t.status === 'in_review' && t.reviewers?.some((r) => r.user_id === profile?.id);
-    const openReviewView = isAssignedReviewer && canReview;
-    navigate(openReviewView ? `/templates/${t.id}/review` : `/templates/${t.id}`, {
-      state: { backTo, processId },
-    });
+      t.reviewers?.some((r) => r.user_id === profile?.id) === true;
+    const openReviewView = t.status === 'in_review' && isAssignedReviewer && canReview;
+    if (openReviewView) {
+      navigate(`/templates/${t.id}/review`, { state: { backTo, processId } });
+      return;
+    }
+    const isOwner = profile?.id != null && t.created_by === profile.id;
+    if (isOwner && t.status === 'draft') {
+      navigate(`/templates/${t.id}/edit`, { state: { backTo, processId } });
+      return;
+    }
+    navigate(`/templates/${t.id}`, { state: { backTo, processId } });
   };
 
   const columns: ColumnDef<Template>[] = useMemo(
     () => [
       {
         id: 'name',
-        header: 'Nombre',
+        header: t('templates:table.columns.name'),
         sortable: true,
         alwaysVisible: true,
-        cell: (t) => (
-          <span className="flex items-center gap-2 min-w-0">
-            {favoriteTemplateIds.has(t.id) && <FavoriteInlineMark />}
-            <span className="truncate font-medium">{t.name}</span>
-            {t.has_review_comments && (t.status === 'draft' || t.status === 'rejected') && profile && t.created_by === profile.id && (
-              <span
-                className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
-                title={t('templates:pendingReviewTitle')}
-              >
-                ⚠ Revisión
-              </span>
-            )}
-          </span>
-        ),
+        cell: (template) => {
+          const isFavorite =
+            (template.latest_published_version_id && favoriteTemplateIds.has(template.latest_published_version_id));
+          return (
+            <span className="flex items-center gap-2 min-w-0">
+              {isFavorite ? <FavoriteInlineMark /> : null}
+              <span className="truncate font-medium">{template.name}</span>
+              {template.has_review_comments && (template.status === 'draft' || template.status === 'rejected') && profile && template.created_by === profile.id && (
+                <span
+                  className="shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-xs font-bold bg-danger/10 text-danger-dark dark:text-danger border border-danger/20"
+                  title={t('templates:pendingReviewTitle')}
+                >
+                  ⚠ {t('templates:table.reviewBadge')}
+                </span>
+              )}
+            </span>
+          );
+        },
       },
       {
         id: 'visibility_level',
-        header: 'Visibilidad',
-        cell: (t) => {
-          const level = t.visibility_level as TemplateVisibilityLevel;
+        header: t('templates:table.columns.visibility'),
+        cell: (template) => {
+          const level = template.visibility_level as TemplateVisibilityLevel;
           const caption = formatListRowVisibilityCaption(hierarchy, {
             visibility_level: level,
-            study_type_id: t.study_type_id,
-            study_id: t.study_id,
-            module_id: t.module_id,
-            team_id: t.team_id,
-            team: t.team,
+            study_type_id: template.study_type_id,
+            study_id: template.study_id,
+            module_id: template.module_id,
+            team_id: template.team_id,
+            team: template.team,
           });
           return (
             <span
@@ -311,37 +350,39 @@ export function TemplatesTable({ processId }: Props = {}) {
       },
       {
         id: 'author_name',
-        header: 'Autor',
-        cell: (t) => (
+        header: t('templates:table.columns.author'),
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.author_name ?? '—'}
+            {template.author_name ?? t('templates:table.notAvailable')}
           </span>
         ),
       },
       {
         id: 'status',
-        header: 'Estado',
-        cell: (t) => {
-          const status = t.status as TemplateStatus;
+        header: t('templates:table.columns.status'),
+        cell: (template) => {
+          const status = template.status ?? '';
           return (
             <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${statusBadgeClass(status)}`}>
-              {STATUS_LABEL[status] ?? status}
+              {templateStatusLabel(status, t)}
             </span>
           );
         },
       },
       {
         id: 'delivery_deadline',
-        header: 'Fecha de validación',
+        header: t('templates:table.columns.validationDate'),
         sortable: true,
-        cell: (t) => (
+        cell: (template) => (
           <span className="text-xs text-text-secondary dark:text-text-dark-secondary">
-            {t.status === 'published' ? '—' : formatCalendarDateForBrowser(t.delivery_deadline)}
+            {template.status === 'published'
+              ? t('templates:table.notAvailable')
+              : formatCalendarDateForBrowser(template.delivery_deadline)}
           </span>
         ),
       },
     ],
-    [profile, favoriteTemplateIds, hierarchy],
+    [profile, favoriteTemplateIds, hierarchy, t],
   );
 
   if (!canIndex) {
@@ -363,7 +404,7 @@ export function TemplatesTable({ processId }: Props = {}) {
         <div className="rounded-lg border border-odoo-purple/30 bg-odoo-purple/5 px-4 py-3 text-sm text-text-primary dark:text-text-dark-primary flex justify-between gap-4">
           <span>{actionError}</span>
           <Button type="button" variant="ghost" size="xs" onClick={clearActionError} className="shrink-0">
-            Cerrar
+            {t('templates:table.close')}
           </Button>
         </div>
       )}
@@ -382,7 +423,11 @@ export function TemplatesTable({ processId }: Props = {}) {
           setPageSize(size);
           applyFilters({ per_page: size });
         }}
-        emptyMessage="No hay plantillas con los filtros actuales."
+        filtersLabel={t('templates:table.filtersLabel')}
+        columnsLabel={t('templates:table.columnsLabel')}
+        clearFiltersLabel={t('templates:table.clearFiltersLabel')}
+        pageSizeLabel={t('templates:table.pageSizeLabel')}
+        emptyMessage={t('templates:table.emptyFiltered')}
         onRowClick={handleRowClick}
         rowClassName={(t) => (canOpenTemplate(t) ? '' : 'opacity-60 cursor-not-allowed')}
         filtersActiveCount={filtersActiveCount}
@@ -390,15 +435,15 @@ export function TemplatesTable({ processId }: Props = {}) {
         filtersStorageKey="maya:dms:templates-table"
         filtersPanel={
           <>
-            <FilterField label="Nombre">
+            <FilterField label={t('templates:table.filters.name')}>
               <TextInput
                 fieldSize="sm"
-                placeholder={t('documents:wizard.searchByName')}
+                placeholder={t('templates:table.searchName')}
                 value={nameInput}
                 onChange={handleNameChange}
               />
             </FilterField>
-            <FilterField label="Visibilidad">
+            <FilterField label={t('templates:table.filters.visibility')}>
               <TextInput
                 fieldSize="sm"
                 type="search"
@@ -407,7 +452,7 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={handleAcademicContextChange}
               />
             </FilterField>
-            <FilterField label="Estado">
+            <FilterField label={t('templates:table.filters.status')}>
               <Select
                 fieldSize="sm"
                 value={filterUi.status}
@@ -415,14 +460,14 @@ export function TemplatesTable({ processId }: Props = {}) {
                   applyFilters({ status: (e.target.value as any) || undefined })
                 }
               >
-                {STATUS_OPTIONS.map((o) => (
+                {statusOptions.map((o) => (
                   <option key={o.value || 'all'} value={o.value}>
                     {o.label}
                   </option>
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Autor">
+            <FilterField label={t('templates:table.filters.author')}>
               <TextInput
                 fieldSize="sm"
                 placeholder={t('templates:table.authorPlaceholder')}
@@ -430,7 +475,7 @@ export function TemplatesTable({ processId }: Props = {}) {
                 onChange={handleAuthorChange}
               />
             </FilterField>
-            <FilterField label="Favoritos">
+            <FilterField label={t('templates:table.filters.favorites')}>
               <Select
                 fieldSize="sm"
                 value={favoritesFilter}
@@ -439,21 +484,21 @@ export function TemplatesTable({ processId }: Props = {}) {
                   applyFilters({ page: 1 });
                 }}
               >
-                {FAVORITES_FILTER_OPTIONS.map((o) => (
+                {favoritesFilterOptions.map((o) => (
                   <option key={o.value || 'all'} value={o.value}>
                     {o.label}
                   </option>
                 ))}
               </Select>
             </FilterField>
-            <FilterField label="Fecha de validación (hasta)">
+            <FilterField label={t('templates:table.filters.validationUntil')}>
               <DatePicker
                 value={filterUi.deliveryDeadline || null}
                 onChange={(d: string | null) =>
                   applyFilters({ delivery_deadline: d ?? undefined, page: 1 })
                 }
                 placeholder={t('templates:table.deadlinePlaceholder')}
-                ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
+                ariaLabel={t('templates:table.deadlineAria')}
               />
             </FilterField>
           </>
@@ -467,7 +512,11 @@ export function TemplatesTable({ processId }: Props = {}) {
           onChange={goToPage}
           info={
             meta.total > 0
-              ? `${(meta.current_page - 1) * meta.per_page + 1}–${Math.min(meta.current_page * meta.per_page, meta.total)} de ${meta.total}`
+              ? t('templates:table.paginationInfo', {
+                  from: (meta.current_page - 1) * meta.per_page + 1,
+                  to: Math.min(meta.current_page * meta.per_page, meta.total),
+                  total: meta.total,
+                })
               : undefined
           }
         />

@@ -67,6 +67,8 @@ class MeProfileApiTest extends TestCase
         // El Service interno devuelve el shape canónico directamente (los
         // nombres internos coinciden con la forma cross-app). El resolver
         // solo filtra los campos sobrantes.
+        // /me ya no expone `teams` (objetos completos): solo `team_ids`. Los
+        // nombres se sirven desde GET /me/academic-context.
         $serviceProfile = [
             'id'             => self::SUB,
             'email'          => 'me.contract@test.local',
@@ -77,7 +79,6 @@ class MeProfileApiTest extends TestCase
             'module_ids'     => ['MOD_BAR'],
             'team_ids'       => ['T1'],
             'permissions'    => ['template.show', 'document.create'],
-            'teams'          => [['id' => 'T1', 'name' => 'Equipo Calidad', 'role' => 'member', 'is_department' => false]],
             'source'         => 'fdw',
         ];
 
@@ -104,13 +105,11 @@ class MeProfileApiTest extends TestCase
         $this->assertSame(['STU_FOO'], $data['study_ids']);
         $this->assertSame(['MOD_BAR'], $data['module_ids']);
         $this->assertSame(['T1'], $data['team_ids']);
-        $this->assertSame(
-            [['id' => 'T1', 'name' => 'Equipo Calidad', 'role' => 'member', 'is_department' => false]],
-            $data['teams'],
-        );
 
         // Campos legacy / sobrantes: NO deben estar en el payload público.
-        foreach (['roles', 'department', 'departamento', 'organization_id', 'organizacion_id', 'source'] as $forbidden) {
+        // `teams` (objetos completos) ya no se expone — el frontend usa
+        // GET /me/academic-context para obtener los nombres.
+        foreach (['roles', 'department', 'departamento', 'organization_id', 'organizacion_id', 'source', 'teams'] as $forbidden) {
             $this->assertArrayNotHasKey($forbidden, $data, "No debería existir «{$forbidden}» en /me");
         }
     }

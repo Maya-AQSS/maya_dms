@@ -17,6 +17,12 @@ interface TemplateRepositoryInterface
     public function findOrFail(string $id): Template;
 
     /**
+     * Localiza una plantilla por el ID de una de sus entity_versions o lanza excepción.
+     * Sin scope de catálogo; usado para autorización vía Gate en flujo de favoritos.
+     */
+    public function findOrFailByVersionId(string $entityVersionId): Template;
+
+    /**
      * Localiza una plantilla por su ID con lock FOR UPDATE o lanza excepción.
      */
     public function findOrFailForUpdate(string $id): Template;

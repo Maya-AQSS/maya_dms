@@ -24,7 +24,6 @@ export function meProfileFixture(overrides: Partial<MeProfile> = {}): MeProfile 
       'documents.read',
       'documents.update',
     ],
-    teams: [],
     source: 'fdw',
     ...overrides,
   };

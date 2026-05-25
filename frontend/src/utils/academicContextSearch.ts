@@ -32,7 +32,7 @@ function resolveStudyTypeName(hierarchy: AcademicHierarchy, studyTypeId: string 
 function resolveStudyName(hierarchy: AcademicHierarchy, studyId: string | null | undefined): string | null {
   if (!studyId) return null;
   for (const st of hierarchy) {
-    const s = st.studies.find((x) => String(x.id) === String(studyId));
+    const s = (st.studies ?? []).find((x) => String(x.id) === String(studyId));
     if (s?.name?.trim()) return s.name.trim();
   }
   return null;
@@ -41,8 +41,8 @@ function resolveStudyName(hierarchy: AcademicHierarchy, studyId: string | null |
 function resolveModuleName(hierarchy: AcademicHierarchy, moduleId: string | null | undefined): string | null {
   if (!moduleId) return null;
   for (const st of hierarchy) {
-    for (const s of st.studies) {
-      const m = s.course_modules.find((x) => String(x.id) === String(moduleId));
+    for (const s of st.studies ?? []) {
+      const m = (s.course_modules ?? []).find((x) => String(x.id) === String(moduleId));
       if (m?.name?.trim()) return m.name.trim();
     }
   }
@@ -102,7 +102,7 @@ export function academicContextSearchHaystack(
   const sid = fields.study_id;
   if (sid) {
     for (const st of hierarchy) {
-      const s = st.studies.find((x) => String(x.id) === String(sid));
+      const s = (st.studies ?? []).find((x) => String(x.id) === String(sid));
       if (s?.name) {
         parts.push(s.name);
         break;
@@ -113,8 +113,8 @@ export function academicContextSearchHaystack(
   const mid = fields.module_id;
   if (mid) {
     outer: for (const st of hierarchy) {
-      for (const s of st.studies) {
-        const m = s.course_modules.find((x) => String(x.id) === String(mid));
+      for (const s of st.studies ?? []) {
+        const m = (s.course_modules ?? []).find((x) => String(x.id) === String(mid));
         if (m?.name) {
           parts.push(m.name);
           break outer;
