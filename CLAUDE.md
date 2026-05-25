@@ -20,9 +20,13 @@ Sistema de gestión documental (Document Management System) del ecosistema Maya 
 - Traefik:   http://localhost:8888/dashboard/
 
 ## Paquetes compartidos
-- `maya-shared-auth-laravel`: middleware JWT/JWKS (Composer path en `../infra/packages/`)
-- `maya-shared-auth-react`: hooks/componentes Keycloak auth (npm file: en `../infra/packages/`)
-- Symlink `../packages → ../infra/packages` para compatibilidad
+Provienen del mono-repo `Maya-AQSS/maya-platform` y se distribuyen vía repos split
+(read-only) por paquete. Los servicios los consumen con Composer VCS y npm github:.
+
+- Backend: `maya/shared-*-laravel` (Composer, `https://github.com/Maya-AQSS/shared-*-laravel`, `^0.1`)
+- Frontend: `@maya/shared-*-react` (npm, `github:Maya-AQSS/shared-*-react#v0.1.0`)
+- Dev override local: copiar `backend/composer.local.dist.json` → `composer.local.json` (gitignored)
+- Doc completa: ver PM05 en `DOCUMENTATION/docs/src/desarrollo/`
 
 ## Guías importantes
 - `../maya_authorization/docs/src/new-app-guide.md` — requisitos para nuevas apps

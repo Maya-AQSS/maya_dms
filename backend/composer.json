@@ -15,11 +15,11 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "lcobucci/jwt": "^5.6",
-        "maya/shared-auth-laravel": "@dev",
-        "maya/shared-http-laravel": "@dev",
-        "maya/shared-messaging-laravel": "@dev",
-        "maya/shared-platform-laravel": "@dev",
-        "maya/shared-profile-laravel": "@dev",
+        "maya/shared-auth-laravel": "^0.1",
+        "maya/shared-http-laravel": "^0.1",
+        "maya/shared-messaging-laravel": "^0.1",
+        "maya/shared-platform-laravel": "^0.1",
+        "maya/shared-profile-laravel": "^0.1",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "dev-master"
     },
     "require-dev": {
@@ -30,7 +30,8 @@
         "nunomaduro/collision": "^8.6",
         "pestphp/pest": "^4.4",
         "pestphp/pest-plugin-laravel": "^4.1",
-        "phpunit/phpunit": "^12.0"
+        "phpunit/phpunit": "^12.0",
+        "wikimedia/composer-merge-plugin": "^2.1"
     },
     "autoload": {
         "psr-4": {
@@ -83,6 +84,16 @@
     "extra": {
         "laravel": {
             "dont-discover": []
+        },
+        "merge-plugin": {
+            "include": [
+                "composer.local.json"
+            ],
+            "recurse": true,
+            "replace": false,
+            "merge-dev": true,
+            "merge-extra": false,
+            "merge-scripts": false
         }
     },
     "config": {
@@ -91,31 +102,32 @@
         "sort-packages": true,
         "allow-plugins": {
             "pestphp/pest-plugin": true,
-            "php-http/discovery": true
+            "php-http/discovery": true,
+            "wikimedia/composer-merge-plugin": true
         }
     },
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": {
         "maya-shared-auth": {
-            "type": "path",
-            "url": "../../maya_infra/packages/maya-shared-auth-laravel"
+            "type": "vcs",
+            "url": "https://github.com/Maya-AQSS/shared-auth-laravel"
         },
         "maya-shared-http": {
-            "type": "path",
-            "url": "../../maya_infra/packages/maya-shared-http-laravel"
+            "type": "vcs",
+            "url": "https://github.com/Maya-AQSS/shared-http-laravel"
         },
         "maya-shared-messaging": {
-            "type": "path",
-            "url": "../../maya_infra/packages/maya-shared-messaging-laravel"
+            "type": "vcs",
+            "url": "https://github.com/Maya-AQSS/shared-messaging-laravel"
         },
         "maya-shared-platform": {
-            "type": "path",
-            "url": "../../maya_infra/packages/maya-shared-platform-laravel"
+            "type": "vcs",
+            "url": "https://github.com/Maya-AQSS/shared-platform-laravel"
         },
         "maya-shared-profile": {
-            "type": "path",
-            "url": "../../maya_infra/packages/maya-shared-profile-laravel"
+            "type": "vcs",
+            "url": "https://github.com/Maya-AQSS/shared-profile-laravel"
         }
     }
 }

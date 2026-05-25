@@ -23,22 +23,25 @@
       "i18next-browser-languagedetector": ["node_modules/i18next-browser-languagedetector"],
       "react-grid-layout": ["node_modules/@types/react-grid-layout/index.d.ts"],
       "@maya/shared-auth-react": [
-        "../../maya_infra/packages/maya-shared-auth-react/src/index.ts"
+        "./node_modules/@maya/shared-auth-react/src/index.ts"
       ],
       "@maya/shared-dashboard-react": [
-        "../../maya_infra/packages/maya-shared-dashboard-react/src/index.ts"
+        "./node_modules/@maya/shared-dashboard-react/src/index.ts"
       ],
       "@maya/shared-i18n-react": [
-        "../../maya_infra/packages/maya-shared-i18n-react/src/index.ts"
+        "./node_modules/@maya/shared-i18n-react/src/index.ts"
       ],
       "@maya/shared-layout-react": [
-        "../../maya_infra/packages/maya-shared-layout-react/src/index.ts"
+        "./node_modules/@maya/shared-layout-react/src/index.ts"
       ],
       "@maya/shared-sidebar-react": [
-        "../../maya_infra/packages/maya-shared-sidebar-react/src/index.ts"
+        "./node_modules/@maya/shared-sidebar-react/src/index.ts"
       ],
       "@maya/shared-ui-react": [
-        "../../maya_infra/packages/maya-shared-ui-react/src/index.ts"
+        "./node_modules/@maya/shared-ui-react/src/index.ts"
+      ],
+      "@maya/shared-profile-react": [
+        "./node_modules/@maya/shared-profile-react/src/index.ts"
       ]
     },
     

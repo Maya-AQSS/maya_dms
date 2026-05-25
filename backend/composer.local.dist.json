@@ -1,0 +1,40 @@
+{
+    "_comment": "Plantilla de override para desarrollo local contra un checkout de maya-platform. Copiar a composer.local.json (gitignored) y ejecutar composer update maya/* para activar.",
+    "repositories": {
+        "shared-auth-local": {
+            "type": "path",
+            "url": "../../maya-platform/packages/php/shared-auth-laravel",
+            "options": {
+                "symlink": true
+            }
+        },
+        "shared-http-local": {
+            "type": "path",
+            "url": "../../maya-platform/packages/php/shared-http-laravel",
+            "options": {
+                "symlink": true
+            }
+        },
+        "shared-messaging-local": {
+            "type": "path",
+            "url": "../../maya-platform/packages/php/shared-messaging-laravel",
+            "options": {
+                "symlink": true
+            }
+        },
+        "shared-platform-local": {
+            "type": "path",
+            "url": "../../maya-platform/packages/php/shared-platform-laravel",
+            "options": {
+                "symlink": true
+            }
+        },
+        "shared-profile-local": {
+            "type": "path",
+            "url": "../../maya-platform/packages/php/shared-profile-laravel",
+            "options": {
+                "symlink": true
+            }
+        }
+    }
+}
