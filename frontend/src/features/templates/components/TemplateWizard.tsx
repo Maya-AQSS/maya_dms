@@ -254,10 +254,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       } else {
         setErrors({ api: e instanceof Error ? e.message : 'Error al guardar' });
       }
+      return false
     } finally {
       setSaving(false);
+      return true
     }
   });
+  
   const handlePublish = async (changelog?: string | null) => {
     if (!template?.id) return false;
     setSaving(true);
@@ -407,103 +410,74 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   };
 
+  const validateBlocksStep = (onInvalid?: (remaining: Block[]) => void) => {
+    if (blocksLoading || blocksCount < 1) {
+      setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
+      return false;
+    }
+
+    if (hasInvalidBlocks) {
+      setInvalidBlocksModal({ onProceed: onInvalid });
+      return false;
+    }
+
+    const err = validateBlocksInvariants(wizardBlocks);
+    if (err) {
+      setBlockInvariantModal(err);
+      return false;
+    }
+
+    return true;
+  };
+
+  const saveBlocks = async () => {
+    setSaving(true);
+    try {
+      await blocksRef.current?.saveIfPending();
+      setCompletedSteps(prev =>
+        Array.from(new Set([...prev, 'blocks'])) as Step[]
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleContinue = async () => {
     if (step === 'properties') {
-      void saveProperties();
+      const ok = await saveProperties();
+      if (!ok) return;
     } else if (step === 'blocks') {
-      if (blocksLoading) return;
-      if (blocksCount < 1) {
-        setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
-        return;
-      }
-      if (hasInvalidBlocks) {
-        setInvalidBlocksModal({
-          onProceed: (remaining) => {
-            if (remaining.length === 0) {
-              setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
-              return;
-            }
-            const err = validateBlocksInvariants(remaining);
-            if (err) { setBlockInvariantModal(err); return; }
-            setSaving(true);
-            void blocksRef.current?.saveIfPending().then(() => {
-              setCompletedSteps((prev) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
-              setStep('users');
-            }).finally(() => setSaving(false));
-          },
-        });
-        return;
-      }
-      const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
-      if (blockInvariantErr) {
-        setBlockInvariantModal(blockInvariantErr);
-        return;
-      }
-      setErrors((prev) => ({ ...prev, blocks: undefined }));
-      setSaving(true);
-      try {
-        await blocksRef.current?.saveIfPending();
-        setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'])) as Step[]);
+      if (!validateBlocksStep(async (remaining) => {
+        const err = validateBlocksInvariants(remaining);
+        if (err) return setBlockInvariantModal(err);
+
+        await saveBlocks();
         setStep('users');
-      } catch {
-        // block save failed; error already shown in the panel
-      } finally {
-        setSaving(false);
-      }
-    } else if (step === 'users') {
+      })) return;
+
+      await saveBlocks();
+      setStep('users');
+      return;
+    }
+      else if (step === 'users') {
       void saveUsers();
     } else if (step === 'summary') {
       navigate(processBackTo);
     }
   };
 
-  const handleGoToStep = (s: Step) => {
-    if (s === 'properties') {
-      if (step === 'blocks' && hasInvalidBlocks) {
-        setInvalidBlocksModal({ onProceed: (_remaining) => setStep('properties') });
-        return;
-      }
-      setStep(s);
-      return;
-    }
-    if (s === 'blocks' && completedSteps.includes('properties')) {
-      setStep(s);
-      return;
+  const handleGoToStep = async (s: Step) => {
+    if (step === 'properties') {
+      const ok = await saveProperties();
+      if (!ok) return;
     }
     if (s === 'users' && completedSteps.includes('blocks')) {
-      if (blocksLoading || blocksCount < 1) {
-        setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
-        return;
-      }
-      if (hasInvalidBlocks) {
-        setInvalidBlocksModal({
-          onProceed: (remaining) => {
-            if (remaining.length === 0) {
-              setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
-              return;
-            }
-            const err = validateBlocksInvariants(remaining);
-            if (err) { setBlockInvariantModal(err); return; }
-            setStep('users');
-          },
-        });
-        return;
-      }
-      const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
-      if (blockInvariantErr) {
-        setBlockInvariantModal(blockInvariantErr);
-        return;
-      }
-      setStep(s);
+      if (!validateBlocksStep(() => setStep('blocks'))) return;
+      setStep('users');
       return;
     }
-    if (s === 'summary' && completedSteps.includes('users')) {
-      if (blocksLoading || blocksCount < 1) {
-        setErrors({ api: 'Añade al menos un bloque antes de publicar o enviar a validación.' });
-        return;
-      }
-      setStep(s);
-    }
+
+    setStep(s);
   };
 
   // ── Render Helpers ─────────────────────────────────────────────────────────

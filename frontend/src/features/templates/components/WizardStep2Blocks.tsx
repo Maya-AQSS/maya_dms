@@ -530,6 +530,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     return null;
   };
 
+  const handleSaveAndContinue = async () => {
+  setIsSaving(true);
+    try {
+      const success = await saveCurrentTab();
+      if (!success) return;
+      onContinue?.();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className={[
       isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 min-h-0 flex flex-col md:flex-row relative overflow-visible',
@@ -628,7 +639,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 </h3>
                 {renderSaveStatus()}
                 {onContinue && (
-                  <Button variant="primary" size="xs" onClick={onContinue} className="shrink-0">
+                  <Button variant="primary" size="xs" onClick={handleSaveAndContinue} className="shrink-0">
                     Guardar y continuar →
                   </Button>
                 )}
