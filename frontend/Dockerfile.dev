@@ -1,4 +1,7 @@
 FROM node:24-alpine
+
+# git required by npm to clone github: URLs (e.g. @maya/shared-*-react)
+RUN apk add --no-cache git
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
