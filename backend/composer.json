@@ -111,23 +111,28 @@
     "repositories": {
         "maya-shared-auth": {
             "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-auth-laravel"
+            "url": "https://github.com/Maya-AQSS/shared-auth-laravel",
+            "no-api": true
         },
         "maya-shared-http": {
             "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-http-laravel"
+            "url": "https://github.com/Maya-AQSS/shared-http-laravel",
+            "no-api": true
         },
         "maya-shared-messaging": {
             "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-messaging-laravel"
+            "url": "https://github.com/Maya-AQSS/shared-messaging-laravel",
+            "no-api": true
         },
         "maya-shared-platform": {
             "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-platform-laravel"
+            "url": "https://github.com/Maya-AQSS/shared-platform-laravel",
+            "no-api": true
         },
         "maya-shared-profile": {
             "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-profile-laravel"
+            "url": "https://github.com/Maya-AQSS/shared-profile-laravel",
+            "no-api": true
         }
     }
 }
