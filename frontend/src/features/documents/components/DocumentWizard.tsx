@@ -851,10 +851,26 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   }, [activeBlock]);
 
-  const handleGoToStep = (s: Step) => {
-    if (s === 'properties') setStep(s);
-    else if (s === 'blocks' && completedSteps.includes('properties')) setStep(s);
-    else if (s === 'summary' && completedSteps.includes('blocks')) setStep(s);
+  const handleGoToStep = async(s: Step) => {
+    if (step === 'properties'){
+      // First run zod schema validation; if it fails, errors are set automatically.
+      const valid = await new Promise<DocumentStep1Input | false>((resolve) => {
+        void handleStep1Submit(
+          (values) => resolve(values),
+          () => resolve(false),
+        )();
+      });
+      if (!valid) return;
+    }
+    if (s === 'properties'){
+      setStep(s);
+    } 
+    else if (s === 'blocks' && completedSteps.includes('properties')){
+      setStep(s);
+    } 
+    else if (s === 'summary' && completedSteps.includes('blocks')){
+      setStep(s);
+    }
   };
 
   const handleContinue = async () => {
