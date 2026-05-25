@@ -107,32 +107,5 @@
         }
     },
     "minimum-stability": "dev",
-    "prefer-stable": true,
-    "repositories": {
-        "ceedcv-maya-shared-auth": {
-            "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-auth-laravel",
-            "no-api": true
-        },
-        "ceedcv-maya-shared-http": {
-            "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-http-laravel",
-            "no-api": true
-        },
-        "ceedcv-maya-shared-messaging": {
-            "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-messaging-laravel",
-            "no-api": true
-        },
-        "ceedcv-maya-shared-platform": {
-            "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-platform-laravel",
-            "no-api": true
-        },
-        "ceedcv-maya-shared-profile": {
-            "type": "vcs",
-            "url": "https://github.com/Maya-AQSS/shared-profile-laravel",
-            "no-api": true
-        }
-    }
+    "prefer-stable": true
 }
