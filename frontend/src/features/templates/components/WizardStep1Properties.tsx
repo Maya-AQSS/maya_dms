@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@maya/shared-ui-react';
+import { DatePicker, FieldLabel, Select, TextArea, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { VISIBILITY_OPTIONS } from '../constants';
 import { useHierarchy } from '../../../features/hierarchy';
 import { useUserProfile } from '../../../features/user-profile';

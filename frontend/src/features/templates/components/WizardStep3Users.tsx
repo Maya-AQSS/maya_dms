@@ -19,7 +19,7 @@ import type { User } from '../../../types/users';
 import { searchDocumentReviewerCandidates, searchTemplateReviewerCandidates, type ReviewerCandidateAcademicContext } from '../../../api/users';
 import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
-import { Button, TextInput } from '@maya/shared-ui-react';
+import { Button, TextInput } from '@ceedcv-maya/shared-ui-react';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 

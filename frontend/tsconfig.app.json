@@ -22,26 +22,26 @@
       "react-i18next": ["node_modules/react-i18next"],
       "i18next-browser-languagedetector": ["node_modules/i18next-browser-languagedetector"],
       "react-grid-layout": ["node_modules/@types/react-grid-layout/index.d.ts"],
-      "@maya/shared-auth-react": [
-        "./node_modules/@maya/shared-auth-react/src/index.ts"
+      "@ceedcv-maya/shared-auth-react": [
+        "./node_modules/@ceedcv-maya/shared-auth-react/src/index.ts"
       ],
-      "@maya/shared-dashboard-react": [
-        "./node_modules/@maya/shared-dashboard-react/src/index.ts"
+      "@ceedcv-maya/shared-dashboard-react": [
+        "./node_modules/@ceedcv-maya/shared-dashboard-react/src/index.ts"
       ],
-      "@maya/shared-i18n-react": [
-        "./node_modules/@maya/shared-i18n-react/src/index.ts"
+      "@ceedcv-maya/shared-i18n-react": [
+        "./node_modules/@ceedcv-maya/shared-i18n-react/src/index.ts"
       ],
-      "@maya/shared-layout-react": [
-        "./node_modules/@maya/shared-layout-react/src/index.ts"
+      "@ceedcv-maya/shared-layout-react": [
+        "./node_modules/@ceedcv-maya/shared-layout-react/src/index.ts"
       ],
-      "@maya/shared-sidebar-react": [
-        "./node_modules/@maya/shared-sidebar-react/src/index.ts"
+      "@ceedcv-maya/shared-sidebar-react": [
+        "./node_modules/@ceedcv-maya/shared-sidebar-react/src/index.ts"
       ],
-      "@maya/shared-ui-react": [
-        "./node_modules/@maya/shared-ui-react/src/index.ts"
+      "@ceedcv-maya/shared-ui-react": [
+        "./node_modules/@ceedcv-maya/shared-ui-react/src/index.ts"
       ],
-      "@maya/shared-profile-react": [
-        "./node_modules/@maya/shared-profile-react/src/index.ts"
+      "@ceedcv-maya/shared-profile-react": [
+        "./node_modules/@ceedcv-maya/shared-profile-react/src/index.ts"
       ]
     },
     

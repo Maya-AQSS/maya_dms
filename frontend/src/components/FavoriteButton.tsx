@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { FAVORITE_STAR_FILLED_CHAR, FAVORITE_STAR_OUTLINE_CHAR } from '@maya/shared-ui-react';
+import { FAVORITE_STAR_FILLED_CHAR, FAVORITE_STAR_OUTLINE_CHAR } from '@ceedcv-maya/shared-ui-react';
 import {
   addDocumentFavorite,
   addTemplateFavorite,

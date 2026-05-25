@@ -13,7 +13,7 @@ import {
   statusBadgeClass,
   visibilityBadgeClass,
   type ColumnDef,
-} from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-ui-react';
 import type { Document, DocumentStatus } from '../../../types/documents';
 import { FAVORITES_FILTER_OPTIONS } from '../../templates/constants';
 import type { TemplateVisibilityLevel } from '../../../types/templates';

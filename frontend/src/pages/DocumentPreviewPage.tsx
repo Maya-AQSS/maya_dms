@@ -23,7 +23,7 @@ import { normalizeBlockContentForEditor } from '../features/documents/lib/normal
 import type { BlockState } from '../types/blocks';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { visibilityLabel } from '../features/templates/constants';
-import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -44,7 +44,7 @@ import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock } from '../utils/blockComments';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
-// Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
+// Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',

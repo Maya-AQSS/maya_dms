@@ -1,5 +1,5 @@
 import { Navigate, useParams } from 'react-router-dom';
-import { useUserProfile } from '@maya/shared-profile-react';
+import { useUserProfile } from '@ceedcv-maya/shared-profile-react';
 import { canUpdateTheme } from '../../../permissions';
 import { ThemeWizard } from '../components/ThemeWizard';
 import { useTheme } from '../hooks/useTheme';

@@ -17,7 +17,7 @@ import {
   syncDocumentReviewers,
 } from '../../../api/templates';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
-import { Button, ConfirmDialog } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { useTemplateVersionSummariesQuery } from '../hooks/useTemplateVersionSummaries';
 import {

@@ -10,7 +10,7 @@ import {
   paginate,
   useTablePreferences,
   type ColumnDef,
-} from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-ui-react';
 import { CascadeFilters } from './CascadeFilters';
 import {
   useDocuments,

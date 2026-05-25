@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { FieldLabel, Select, TextInput } from '@maya/shared-ui-react';
+import { FieldLabel, Select, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { useThemeFonts } from '../hooks/useThemeFonts';
 import { ThemeAssetsSection } from './ThemeAssetsSection';
 import type {

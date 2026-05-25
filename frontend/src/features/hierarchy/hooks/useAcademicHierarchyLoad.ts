@@ -1,4 +1,4 @@
-import { createDataHook } from '@maya/shared-auth-react';
+import { createDataHook } from '@ceedcv-maya/shared-auth-react';
 import { fetchAcademicHierarchy, type AcademicContextLoad } from '../../../api/academicHierarchy';
 import type { AcademicHierarchy } from '../../../types/hierarchy';
 import type { UserTeam } from '../../../api/users';

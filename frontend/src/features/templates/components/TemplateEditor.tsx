@@ -9,7 +9,7 @@ import React, {
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAutoSave } from '../../../hooks/useAutoSave';
-import { useDarkMode } from '@maya/shared-layout-react';
+import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,
   closestCenter,
@@ -24,7 +24,7 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, ErrorBoundary, FieldLabel, TextInput } from '@maya/shared-ui-react';
+import { Button, ErrorBoundary, FieldLabel, TextInput } from '@ceedcv-maya/shared-ui-react';
 import type { Template } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';

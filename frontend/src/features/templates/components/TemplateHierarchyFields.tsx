@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { FieldLabel, Select } from '@maya/shared-ui-react';
+import { FieldLabel, Select } from '@ceedcv-maya/shared-ui-react';
 import { useHierarchy } from '../../hierarchy';
 
 export type TemplateHierarchyFieldKey = 'study_type_id' | 'study_id' | 'module_id' | 'team_id';

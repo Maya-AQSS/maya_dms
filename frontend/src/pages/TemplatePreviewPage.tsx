@@ -20,7 +20,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { BlockState, TemplateBlock } from '../types/blocks';
-import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -37,7 +37,7 @@ import { getCommentsForBlock } from '../utils/blockComments';
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 type ReviewComment = BlockComment;
 
-// Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
+// Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',

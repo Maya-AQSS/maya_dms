@@ -2,7 +2,7 @@ import { useId, useState, type ChangeEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CascadeDocumentFilters } from '../features/documents';
 import { useHierarchy } from '../features/hierarchy';
-import { Button, Select } from '@maya/shared-ui-react';
+import { Button, Select } from '@ceedcv-maya/shared-ui-react';
 
 interface CascadeFiltersProps {
   onFilterChange: (filters: CascadeDocumentFilters) => void;

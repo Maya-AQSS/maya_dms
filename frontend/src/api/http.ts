@@ -1,12 +1,12 @@
 /**
- * Cliente HTTP autenticado — delegado al factory de @maya/shared-auth-react.
+ * Cliente HTTP autenticado — delegado al factory de @ceedcv-maya/shared-auth-react.
  * El Bearer lo añade la instancia Keycloak de {@link ../auth/oidcAdapter}.
  *
- * En tests, `@maya/shared-auth-react` resuelve al shim local que ofrece la
+ * En tests, `@ceedcv-maya/shared-auth-react` resuelve al shim local que ofrece la
  * misma superficie (`createApiClient`, `ApiHttpError`, `ApiFetchOptions`) pero
  * sin tocar la red.
  */
-import { createApiClient, ApiHttpError, type ApiFetchOptions } from '@maya/shared-auth-react'
+import { createApiClient, ApiHttpError, type ApiFetchOptions } from '@ceedcv-maya/shared-auth-react'
 import { oidcAuthService } from '../auth/oidcAdapter'
 import { peerOrigin } from '../lib/peerService'
 

@@ -40,7 +40,7 @@ import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard'
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
-import { useDarkMode } from '@maya/shared-layout-react';
+import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
 import type { Study, CourseModule } from '../../../types/hierarchy';
@@ -57,7 +57,7 @@ import {
   FieldLabel,
   Select,
   TextInput,
-} from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock } from '../../../utils/blockComments';

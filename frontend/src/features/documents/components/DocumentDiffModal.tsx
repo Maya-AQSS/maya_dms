@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import type { DocumentDisplayBlock } from '../../../types/documents';

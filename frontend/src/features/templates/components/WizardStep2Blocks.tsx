@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense, lazy } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useDarkMode } from '@maya/shared-layout-react';
+import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,
   closestCenter,
@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, TextInput } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';

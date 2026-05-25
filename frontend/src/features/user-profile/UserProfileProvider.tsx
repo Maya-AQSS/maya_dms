@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { UserProfileProvider as SharedUserProfileProvider } from '@maya/shared-profile-react';
+import { UserProfileProvider as SharedUserProfileProvider } from '@ceedcv-maya/shared-profile-react';
 import { fetchMe } from '../../api/users';
 import type { MeProfile } from '../../types/users';
 

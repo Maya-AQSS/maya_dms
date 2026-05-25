@@ -15,11 +15,11 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "lcobucci/jwt": "^5.6",
-        "maya/shared-auth-laravel": "^0.1",
-        "maya/shared-http-laravel": "^0.1",
-        "maya/shared-messaging-laravel": "^0.1",
-        "maya/shared-platform-laravel": "^0.1",
-        "maya/shared-profile-laravel": "^0.1",
+        "ceedcv-maya/shared-auth-laravel": "^0.2",
+        "ceedcv-maya/shared-http-laravel": "^0.2",
+        "ceedcv-maya/shared-messaging-laravel": "^0.2",
+        "ceedcv-maya/shared-platform-laravel": "^0.2",
+        "ceedcv-maya/shared-profile-laravel": "^0.2",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "dev-master"
     },
     "require-dev": {
@@ -109,27 +109,27 @@
     "minimum-stability": "dev",
     "prefer-stable": true,
     "repositories": {
-        "maya-shared-auth": {
+        "ceedcv-maya-shared-auth": {
             "type": "vcs",
             "url": "https://github.com/Maya-AQSS/shared-auth-laravel",
             "no-api": true
         },
-        "maya-shared-http": {
+        "ceedcv-maya-shared-http": {
             "type": "vcs",
             "url": "https://github.com/Maya-AQSS/shared-http-laravel",
             "no-api": true
         },
-        "maya-shared-messaging": {
+        "ceedcv-maya-shared-messaging": {
             "type": "vcs",
             "url": "https://github.com/Maya-AQSS/shared-messaging-laravel",
             "no-api": true
         },
-        "maya-shared-platform": {
+        "ceedcv-maya-shared-platform": {
             "type": "vcs",
             "url": "https://github.com/Maya-AQSS/shared-platform-laravel",
             "no-api": true
         },
-        "maya-shared-profile": {
+        "ceedcv-maya-shared-profile": {
             "type": "vcs",
             "url": "https://github.com/Maya-AQSS/shared-profile-laravel",
             "no-api": true

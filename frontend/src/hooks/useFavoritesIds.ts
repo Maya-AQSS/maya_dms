@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import { createDataHook } from '@maya/shared-auth-react';
+import { createDataHook } from '@ceedcv-maya/shared-auth-react';
 import { fetchFavorites } from '../api/favorites';
 
 /**
  * Favoritos a nivel ENTIDAD (templates + documents) dentro de DMS.
  * Coexiste intencionalmente con `useSharedFavorites` (paquete shared
- * `@maya/shared-sidebar-react`), que gestiona favoritos a nivel APLICACIÓN
+ * `@ceedcv-maya/shared-sidebar-react`), que gestiona favoritos a nivel APLICACIÓN
  * en el sidebar del ecosistema. No son duplicados: backends distintos
  * (este → `dms-api/api/v1/favorites`; shared → `dashboard-api/api/v1/dashboard/user/{sub}/favorites`),
  * dominios distintos y rutas de mutación distintas.
@@ -34,7 +34,7 @@ const useFavoritesIdsQuery = createDataHook<void, FavoritesIds>({
  * IDs de plantillas y documentos favoritos del usuario (GET /favorites).
  * TanStack Query refresca al recuperar el foco de la ventana automáticamente.
  *
- * NOTA: este hook es local a DMS y NO duplica `@maya/shared-sidebar-react`
+ * NOTA: este hook es local a DMS y NO duplica `@ceedcv-maya/shared-sidebar-react`
  * `useSharedFavorites`. Ese es para favoritos de aplicaciones (sidebar
  * cross-app, datos del backend maya_dashboard). Éste maneja favoritos de
  * plantillas/documentos (entidad-nivel, backend maya_dms).

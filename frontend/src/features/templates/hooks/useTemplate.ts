@@ -1,4 +1,4 @@
-import { createDataHook } from '@maya/shared-auth-react';
+import { createDataHook } from '@ceedcv-maya/shared-auth-react';
 import { fetchTemplate } from '../../../api/templates';
 import type { Template } from '../../../types/templates';
 

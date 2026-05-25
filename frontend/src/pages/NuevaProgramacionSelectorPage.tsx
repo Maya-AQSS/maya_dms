@@ -27,7 +27,7 @@ import {
   useTablePreferences,
   visibilityBadgeClass,
   type ColumnDef,
-} from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-ui-react';
 
 /** Orden local solo en columnas con `sortable: true` (nombre y fecha de publicación). */
 const SORTABLE_SELECTOR_COLUMN_IDS = new Set(['name', 'latest_published_at']);

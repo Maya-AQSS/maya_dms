@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { DocumentPreviewPage } from './DocumentPreviewPage';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { useUserProfile } from '../features/user-profile';
 import { DMS_PERMISSIONS } from '../permissions';
 

@@ -13,7 +13,7 @@ import {
   statusBadgeClass,
   visibilityBadgeClass,
   type ColumnDef,
-} from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
 import { FAVORITES_FILTER_OPTIONS, STATUS_OPTIONS } from '../constants';
@@ -42,7 +42,7 @@ function templateStatusLabel(status: string | null | undefined): string {
   return STATUS_LABEL[status as TemplateStatus] ?? status;
 }
 
-// Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
+// Estado y visibilidad: clases en `@ceedcv-maya/shared-ui-react/badges`.
 
 type Props = {
   /** Filtra el listado por proceso. No se expone en el panel de filtros. */

@@ -1,6 +1,6 @@
 import { useState, useEffect, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { canEditOwnBlockComment } from '../../../permissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────

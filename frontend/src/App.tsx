@@ -1,11 +1,11 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { AppLayout } from '@maya/shared-layout-react';
-import { NotificationsBell, SidebarFavorites } from '@maya/shared-sidebar-react';
-import { useKeycloakLocaleSync } from '@maya/shared-i18n-react';
-import { useOidcSession } from '@maya/shared-auth-react';
-import { useRequireAppAccess } from '@maya/shared-profile-react';
+import { AppLayout } from '@ceedcv-maya/shared-layout-react';
+import { NotificationsBell, SidebarFavorites } from '@ceedcv-maya/shared-sidebar-react';
+import { useKeycloakLocaleSync } from '@ceedcv-maya/shared-i18n-react';
+import { useOidcSession } from '@ceedcv-maya/shared-auth-react';
+import { useRequireAppAccess } from '@ceedcv-maya/shared-profile-react';
 import { ProcessesDrawer } from './components/layout/ProcessesDrawer';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';

@@ -1,4 +1,4 @@
-import { FAVORITE_STAR_FILLED_CHAR } from '@maya/shared-ui-react';
+import { FAVORITE_STAR_FILLED_CHAR } from '@ceedcv-maya/shared-ui-react';
 
 /** Marca de favorito en listados DMS; misma estética que maya_dashboard (glifo ★). */
 export function FavoriteInlineMark() {

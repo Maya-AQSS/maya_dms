@@ -1,5 +1,5 @@
 /**
- * Shim de `@maya/shared-profile-react` para Vitest.
+ * Shim de `@ceedcv-maya/shared-profile-react` para Vitest.
  *
  * Resuelve el problema "dual-react" del monorepo (el package real bundle su
  * propia copia de React, lo que rompe el context en tests). Esta versión usa
@@ -23,7 +23,7 @@ export type SharedUserTeam = {
   is_department?: boolean;
 };
 
-// Alias para compatibilidad con import { UserTeam } from '@maya/shared-profile-react'.
+// Alias para compatibilidad con import { UserTeam } from '@ceedcv-maya/shared-profile-react'.
 export type UserTeam = SharedUserTeam;
 
 /**
@@ -139,7 +139,7 @@ export function createProfileApi<TProfile extends BaseMeProfile>(
   void _apiClient;
   return {
     fetchMe: async () => {
-      throw new Error('@maya/shared-profile-react (shim): fetchMe sin mock');
+      throw new Error('@ceedcv-maya/shared-profile-react (shim): fetchMe sin mock');
     },
     updateLocale: async () => undefined,
     updateEmployee: async () => undefined,

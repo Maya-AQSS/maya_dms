@@ -27,10 +27,10 @@ export default defineConfig({
       'use-sync-external-store/shim',
     ],
     exclude: [
-      '@maya/shared-auth-react',
-      '@maya/shared-i18n-react',
-      '@maya/shared-layout-react',
-      '@maya/shared-sidebar-react',
+      '@ceedcv-maya/shared-auth-react',
+      '@ceedcv-maya/shared-i18n-react',
+      '@ceedcv-maya/shared-layout-react',
+      '@ceedcv-maya/shared-sidebar-react',
     ],
   },
   resolve: {

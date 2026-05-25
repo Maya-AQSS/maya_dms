@@ -1,4 +1,4 @@
-import type { LayoutItem, WidgetRegistry } from '@maya/shared-dashboard-react';
+import type { LayoutItem, WidgetRegistry } from '@ceedcv-maya/shared-dashboard-react';
 import RecentDocumentsWidget from './RecentDocumentsWidget';
 import PendingValidationsWidget from './PendingValidationsWidget';
 
