@@ -20,7 +20,7 @@ Sistema de gestión documental (Document Management System) del ecosistema Maya 
 - Traefik:   http://localhost:8888/dashboard/
 
 ## Paquetes compartidos
-Provienen del mono-repo `Maya-AQSS/maya-platform` y se distribuyen vía repos split
+Provienen del mono-repo `Maya-AQSS/maya_platform` y se distribuyen vía repos split
 (read-only) por paquete. Los servicios los consumen con Composer VCS y npm github:.
 
 - Backend: `maya/shared-*-laravel` (Composer, `https://github.com/Maya-AQSS/shared-*-laravel`, `^0.1`)
