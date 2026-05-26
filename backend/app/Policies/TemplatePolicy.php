@@ -275,7 +275,11 @@ class TemplatePolicy
             return false;
         }
 
-        return $isCreator || $user->hasPermission('template.update');
+        if($isCreator || $user->hasPermission('template.update')){
+            return true;
+        }else{
+            return false;
+        }
     }
 
     /**
