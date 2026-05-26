@@ -12,6 +12,6 @@
 @source "../node_modules/@ceedcv-maya/shared-ui-react/src/**/*.{ts,tsx}";
 
 
-/* Tokens, animaciones y reset compartidos por las 4 apps Maya.
-   Editar en `maya_infra/configs/styles/index.css`. */
-@import "../../maya_infra/configs/styles/index.css";
+/* Tokens, custom utilities, animations and base reset.
+   Source: ceedcv-maya/maya_platform/packages/js/shared-styles. */
+@import "@ceedcv-maya/shared-styles";
