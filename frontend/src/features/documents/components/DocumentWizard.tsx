@@ -36,6 +36,7 @@ import { canDeleteBlockComment } from '../../../permissions';
 import { fetchProcesses } from '../../../api/processes';
 import { fetchTemplate } from '../../../api/templates';
 import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
+import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
@@ -68,6 +69,21 @@ const BlockNoteEditorPanel = lazy(() =>
     (m) => ({ default: m.BlockNoteEditorPanel }),
   )
 );
+
+const ContinuousDocumentEditor = lazy(() =>
+  import('./ContinuousDocumentEditor').then(
+    (m) => ({ default: m.ContinuousDocumentEditor }),
+  )
+);
+
+type BlocksViewMode = 'per-block' | 'continuous';
+const VIEW_MODE_STORAGE_KEY = 'dms.document-edit-view-mode';
+
+function readStoredViewMode(): BlocksViewMode {
+  if (typeof window === 'undefined') return 'per-block';
+  const raw = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  return raw === 'continuous' ? 'continuous' : 'per-block';
+}
 
 import {
   type Step,
@@ -841,6 +857,42 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   const { saveStatus, triggerSave } = useAutoSave(doSave, 1500);
 
+  // Preferencia de UI para el step `blocks`:
+  // - 'per-block': sidebar + un editor a la vez (vista clásica).
+  // - 'continuous': documento entero estilo Word con edición inline del bloque clicado.
+  const [blocksViewMode, setBlocksViewMode] = useState<BlocksViewMode>(readStoredViewMode);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, blocksViewMode);
+  }, [blocksViewMode]);
+
+  // Ayuda visual de finalización por bloque (sin restricciones funcionales).
+  // Persistencia por documento en localStorage; indexada por template_block_id.
+  const completedBlocks = useCompletedBlocks(documentId ?? null);
+
+  // Sidebar de DESCRIPCIÓN en modo continuo: si está definido, el sidebar
+  // muestra la descripción del bloque indicado en lugar de los comentarios.
+  const [descriptionBlockKey, setDescriptionBlockKey] = useState<string | null>(null);
+  // Si cambia el documento o el modo, resetear panel de descripción.
+  useEffect(() => {
+    setDescriptionBlockKey(null);
+  }, [documentId, blocksViewMode]);
+
+  // Modo "focus" para la vista continua: oculta el wizard shell y deja el
+  // documento a pantalla completa. Solo aplica con blocksViewMode === 'continuous'.
+  const [isContinuousFullscreen, setIsContinuousFullscreen] = useState(false);
+  useEffect(() => {
+    if (blocksViewMode !== 'continuous') setIsContinuousFullscreen(false);
+  }, [blocksViewMode]);
+  useEffect(() => {
+    if (!isContinuousFullscreen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsContinuousFullscreen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isContinuousFullscreen]);
+
   useEffect(() => {
     activeBlockRef.current = activeBlock;
     if (activeBlock) {
@@ -1582,7 +1634,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       {!isValidateMode && step === 'blocks' && (
         <div className={isEditorFullscreen
           ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col'
-          : 'flex-1 overflow-visible flex flex-col md:flex-row min-h-0'
+          : 'flex-1 overflow-visible flex flex-col min-h-0'
         }>
           {/* Compact fullscreen header */}
           {isEditorFullscreen && activeBlock && (
@@ -1608,6 +1660,260 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </Button>
             </div>
           )}
+          {/* View-mode toggle: por bloque | continuo. Solo cuando NO está en fullscreen
+              y solo en desktop (md:); en mobile la vista continua no es óptima. */}
+          {!isEditorFullscreen && (
+            <div className="hidden md:flex shrink-0 px-5 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card items-center justify-end gap-2">
+              <span className="text-xs font-medium text-text-muted">Vista:</span>
+              <div className="flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setBlocksViewMode('per-block')}
+                  className={[
+                    'rounded-full px-2.5 py-1 font-medium transition-colors',
+                    blocksViewMode === 'per-block'
+                      ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card'
+                      : 'text-text-muted',
+                  ].join(' ')}
+                  aria-pressed={blocksViewMode === 'per-block'}
+                >
+                  {t('documents:wizard.viewMode.perBlock', 'Por bloque')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBlocksViewMode('continuous')}
+                  className={[
+                    'rounded-full px-2.5 py-1 font-medium transition-colors',
+                    blocksViewMode === 'continuous'
+                      ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card'
+                      : 'text-text-muted',
+                  ].join(' ')}
+                  aria-pressed={blocksViewMode === 'continuous'}
+                  title={t('documents:wizard.viewMode.continuousHint', 'Documento completo con edición inline')}
+                >
+                  {t('documents:wizard.viewMode.continuous', 'Continuo')}
+                </button>
+              </div>
+              {blocksViewMode === 'continuous' && (
+                <button
+                  type="button"
+                  onClick={() => setIsContinuousFullscreen((v) => !v)}
+                  className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card px-3 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:border-odoo-purple/40 transition-colors"
+                  title={isContinuousFullscreen
+                    ? t('documents:wizard.viewMode.exitFullscreenTitle', 'Salir de pantalla completa (Esc)')
+                    : t('documents:wizard.viewMode.enterFullscreenTitle', 'Pantalla completa')}
+                  aria-pressed={isContinuousFullscreen}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    {isContinuousFullscreen ? (
+                      <>
+                        <polyline points="4 14 10 14 10 20" />
+                        <polyline points="20 10 14 10 14 4" />
+                        <line x1="14" y1="10" x2="21" y2="3" />
+                        <line x1="3" y1="21" x2="10" y2="14" />
+                      </>
+                    ) : (
+                      <>
+                        <polyline points="15 3 21 3 21 9" />
+                        <polyline points="9 21 3 21 3 15" />
+                        <line x1="21" y1="3" x2="14" y2="10" />
+                        <line x1="3" y1="21" x2="10" y2="14" />
+                      </>
+                    )}
+                  </svg>
+                  <span>{isContinuousFullscreen
+                    ? t('documents:wizard.viewMode.exitFullscreen', 'Reducir')
+                    : t('documents:wizard.viewMode.enterFullscreen', 'Pantalla completa')}</span>
+                </button>
+              )}
+            </div>
+          )}
+          {/* Continuous mode body — only when NOT block-editor fullscreen. Fullscreen always uses the per-block editor. */}
+          {!isEditorFullscreen && blocksViewMode === 'continuous' ? (
+            <div className={isContinuousFullscreen
+              ? 'fixed inset-y-0 right-0 left-0 md:left-[var(--sidebar-w,0px)] z-[80] overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg animate-in fade-in'
+              : 'flex-1 overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg'
+            }>
+              {/* Floating action stack — only in fullscreen. Esc también sale. */}
+              {isContinuousFullscreen && (
+                <div className="fixed top-4 right-4 z-[90] flex flex-col items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsContinuousFullscreen(false)}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-md hover:text-text-primary hover:border-odoo-purple/40 transition-colors"
+                    title={t('documents:wizard.viewMode.exitFullscreenTitle', 'Salir de pantalla completa (Esc)')}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <polyline points="4 14 10 14 10 20" />
+                      <polyline points="20 10 14 10 14 4" />
+                      <line x1="14" y1="10" x2="21" y2="3" />
+                      <line x1="3" y1="21" x2="10" y2="14" />
+                    </svg>
+                    <span>{t('documents:wizard.viewMode.exitFullscreen', 'Reducir')}</span>
+                  </button>
+                  {activeBlock && activeBlock.document_block_id && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDocumentCommentPanel((v) => !v)}
+                      className={[
+                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-md transition-colors',
+                        showDocumentCommentPanel
+                          ? 'border-odoo-purple/40 bg-odoo-purple/10 text-odoo-purple'
+                          : 'border-ui-border bg-white dark:bg-ui-dark-card text-text-secondary hover:text-text-primary hover:border-odoo-purple/40',
+                      ].join(' ')}
+                      title={showDocumentCommentPanel
+                        ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
+                        : t('documents:wizard.viewMode.showComments', 'Mostrar comentarios')}
+                      aria-pressed={showDocumentCommentPanel}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                      </svg>
+                      <span>
+                        {showDocumentCommentPanel
+                          ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
+                          : t('documents:wizard.viewMode.showComments', 'Comentarios')}
+                      </span>
+                      {!showDocumentCommentPanel && getCommentsForBlock(activeBlock.document_block_id, reviewComments).length > 0 && (
+                        <span className="ml-0.5 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none">
+                          {getCommentsForBlock(activeBlock.document_block_id, reviewComments).length}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+              <div className="flex flex-row flex-nowrap items-start gap-8 px-6 py-6">
+                <div className="shrink-0 mx-auto">
+                  <article
+                    className="bg-white dark:bg-ui-dark-card shadow-xl preview-content"
+                    style={{ maxWidth: '760px', minHeight: 'calc(100vh - 14rem)', padding: '56px 72px' }}
+                  >
+                    <Suspense fallback={<p className="text-xs text-text-muted">Cargando vista continua…</p>}>
+                      <ContinuousDocumentEditor
+                        blocks={sortedBlocks}
+                        activeBlockKey={activeBlockKey}
+                        documentTitle={detail?.title ?? (documentId ? 'Documento' : 'Nuevo documento')}
+                        isDark={isDark}
+                        canEdit={isDraft}
+                        saveStatus={saveStatus}
+                        blockSaveError={blockSaveError}
+                        switching={isSaving}
+                        onSelectBlock={(key) => handleBlockClick(key)}
+                        onContentChange={(content) => {
+                          setLocalContent(content);
+                          triggerSave();
+                        }}
+                        uploadFile={(file: File) =>
+                          uploadMedia(
+                            file,
+                            activeBlock?.document_block_id
+                              ? { type: 'block', id: activeBlock.document_block_id }
+                              : undefined,
+                          )
+                        }
+                        isBlockCompleted={(key) => {
+                          // `key` puede ser document_block_id o template_block_id; convertimos a tpl id para indexar.
+                          const b = sortedBlocks.find((x) => (x.document_block_id ?? x.template_block_id) === key);
+                          return !!b && completedBlocks.isCompleted(b.template_block_id);
+                        }}
+                        onToggleCompleted={(key) => {
+                          const b = sortedBlocks.find((x) => (x.document_block_id ?? x.template_block_id) === key);
+                          if (b) completedBlocks.toggle(b.template_block_id);
+                        }}
+                        onOpenDescription={(block) => {
+                          setDescriptionBlockKey((prev) =>
+                            prev === block.template_block_id ? null : block.template_block_id,
+                          );
+                        }}
+                        openDescriptionBlockKey={descriptionBlockKey}
+                        getCommentCount={(block) =>
+                          getCommentsForBlock(block.document_block_id, reviewComments).length
+                        }
+                      />
+                    </Suspense>
+                  </article>
+                </div>
+                {/* Sidebar derecho — prioridad: descripción > comentarios. */}
+                {(() => {
+                  const descriptionBlock = descriptionBlockKey
+                    ? sortedBlocks.find((b) => b.template_block_id === descriptionBlockKey)
+                    : null;
+                  const showDescriptionSidebar = !!descriptionBlock;
+                  const showCommentsSidebar =
+                    !showDescriptionSidebar &&
+                    showDocumentCommentPanel &&
+                    !!activeBlock &&
+                    !!activeBlock.document_block_id;
+                  if (!showDescriptionSidebar && !showCommentsSidebar) return null;
+                  return (
+                    <div
+                      className="hidden lg:block flex-1 min-w-0 sticky top-4 self-start z-30"
+                      style={{ minWidth: '320px', maxWidth: '420px', height: 'calc(100vh - 12rem)' }}
+                    >
+                      <div className="h-full flex flex-col bg-white dark:bg-ui-dark-card shadow-xl rounded-xl overflow-hidden border border-ui-border dark:border-ui-dark-border">
+                        {showDescriptionSidebar && descriptionBlock ? (
+                          <>
+                            <div className="shrink-0 px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between bg-ui-body/50 dark:bg-ui-dark-bg">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                                  Descripción · #{descriptionBlock.sort_order ?? '?'}
+                                </span>
+                                <span className="text-xs font-medium text-text-muted truncate">
+                                  {descriptionBlock.title || ''}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setDescriptionBlockKey(null)}
+                                className="shrink-0 p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors"
+                                aria-label="Cerrar descripción"
+                                title="Cerrar descripción"
+                              >
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                                  <line x1="18" y1="6" x2="6" y2="18" />
+                                  <line x1="6" y1="6" x2="18" y2="18" />
+                                </svg>
+                              </button>
+                            </div>
+                            <div className="flex-1 overflow-y-auto p-6">
+                              {descriptionBlock.description != null && descriptionBlock.description !== '' ? (
+                                <DocumentBlockDescriptionView description={descriptionBlock.description} />
+                              ) : (
+                                <p className="text-sm text-text-muted italic">
+                                  Este bloque no tiene descripción / instrucciones.
+                                </p>
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          activeBlock && activeBlock.document_block_id && (
+                            <BlockCommentsCard
+                              mode="creator-edit"
+                              blockSortOrder={activeBlock.sort_order ?? '?'}
+                              blockComments={getCommentsForBlock(activeBlock.document_block_id, reviewComments)}
+                              allComments={reviewComments}
+                              onSendMessage={handleDocumentCommentSend}
+                              onClose={() => setShowDocumentCommentPanel(false)}
+                              canAddComments={detail?.status !== 'published'}
+                              currentUserId={currentUserId ?? undefined}
+                              canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
+                              onEditComment={handleDocumentCommentEdit}
+                              onDeleteComment={handleDocumentCommentDelete}
+                            />
+                          )
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          ) : (
+          <div className={isEditorFullscreen
+            ? 'flex-1 flex flex-col min-h-0'
+            : 'flex-1 overflow-visible flex flex-col md:flex-row min-h-0'
+          }>
           {/* Block tree — hidden when editor is in fullscreen */}
           {!isEditorFullscreen && (
             <div className="relative shrink-0 z-30 flex flex-col overflow-visible">
@@ -1638,6 +1944,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                           stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
                           hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
                           isEmpty={isEmptyEditable}
+                          isCompleted={completedBlocks.isCompleted(b.template_block_id)}
                           onClick={() => handleBlockClick(key)}
                         />
                       );
@@ -1675,6 +1982,30 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
+                    {(() => {
+                      const tplKey = activeBlock.template_block_id;
+                      const isDone = completedBlocks.isCompleted(tplKey);
+                      return (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="outline"
+                          className={isDone
+                            ? 'text-success-dark border-success/60 bg-success/10 hover:bg-success/15'
+                            : 'text-text-secondary border-ui-border hover:text-success-dark hover:border-success/60'}
+                          onClick={() => completedBlocks.toggle(tplKey)}
+                          aria-pressed={isDone}
+                          title={isDone ? 'Marcar como pendiente' : 'Marcar bloque como finalizado'}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                            {isDone ? 'Finalizado' : 'Finalizar'}
+                          </span>
+                        </Button>
+                      );
+                    })()}
                     {!showDocumentCommentPanel && activeBlock.document_block_id && (
                       <Button
                         type="button"
@@ -1811,6 +2142,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 onDeleteComment={handleDocumentCommentDelete}
               />
             </div>
+          )}
+          </div>
           )}
         </div>
       )}

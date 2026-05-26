@@ -14,7 +14,18 @@
     "exitFullscreenAria": "Exit fullscreen",
     "exitFullscreenTitle": "Exit fullscreen (Esc)",
     "unfilledBlocksTitle": "Editable blocks not filled",
-    "loadingValidation": "Loading validation data…"
+    "loadingValidation": "Loading validation data…",
+    "viewMode": {
+      "perBlock": "Per block",
+      "continuous": "Continuous",
+      "continuousHint": "Whole document with inline editing on block click",
+      "enterFullscreen": "Fullscreen",
+      "enterFullscreenTitle": "Expand the document to 100% (Esc to exit)",
+      "exitFullscreen": "Shrink",
+      "exitFullscreenTitle": "Exit fullscreen (Esc)",
+      "showComments": "Comments",
+      "hideComments": "Hide comments"
+    }
   },
   "table": {
     "columns": {

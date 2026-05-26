@@ -15,6 +15,8 @@ type Props = {
   stateLabel?: string | null;
   dragHandle?: ReactNode;
   isEmpty?: boolean;
+  /** Ayuda visual: el usuario lo ha marcado como finalizado (no bloquea nada). */
+  isCompleted?: boolean;
   onClick: () => void;
 };
 
@@ -55,6 +57,7 @@ export function BlockListItem({
   stateLabel,
   dragHandle,
   isEmpty = false,
+  isCompleted = false,
   onClick,
 }: Props) {
   const titleColor =
@@ -69,6 +72,7 @@ export function BlockListItem({
         hasReviewComments && variant === 'default'
           ? 'bg-warning-light/20 dark:bg-warning/10 border-warning/40 dark:border-warning/30 hover:border-warning/60'
           : VARIANT_CLS[variant],
+        isCompleted ? 'ring-2 ring-success/60 ring-offset-1 dark:ring-offset-ui-dark-card' : '',
       ].join(' ')}
       onClick={onClick}
     >
@@ -101,6 +105,22 @@ export function BlockListItem({
               className="w-2 h-2 rounded-full bg-danger shadow-[0_0_6px_rgba(220,38,38,0.5)]"
               title="Obligatorio — este bloque debe rellenarse"
             />
+          )}
+          {isCompleted && (
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="shrink-0 text-success-dark"
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
           )}
         </span>
         {stateLabel && (

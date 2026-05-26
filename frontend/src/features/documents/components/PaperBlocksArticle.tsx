@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml'
 
 export interface PaperArticleBlock {
@@ -25,6 +25,19 @@ interface Props {
   blockEmptyMessage?: ReactNode
   /** Slot opcional sobre el H1 (por ejemplo loading/error states). */
   topSlot?: ReactNode
+  /**
+   * Render override opcional para el cuerpo de un bloque concreto. Si devuelve
+   * `undefined`, se usa el render por defecto (BlockContentHtml). Permite a
+   * la vista continua editable swappear el body de un bloque por un editor.
+   */
+  renderBlockBody?: (block: PaperArticleBlock) => ReactNode | undefined
+  /**
+   * Render override opcional para el contenedor `<section>` de un bloque
+   * (badges, título, body). Recibe el body ya resuelto. Si devuelve
+   * `undefined` se usa el contenedor por defecto. Permite a la vista continua
+   * editable envolver el bloque con interactividad (click handler, ring).
+   */
+  renderBlockSection?: (block: PaperArticleBlock, body: ReactNode) => ReactNode | undefined
 }
 
 /**
@@ -38,6 +51,8 @@ export function PaperBlocksArticle({
   emptyMessage = 'Este documento no tiene bloques.',
   blockEmptyMessage = 'Sin contenido.',
   topSlot,
+  renderBlockBody,
+  renderBlockSection,
 }: Props) {
   return (
     <>
@@ -54,6 +69,20 @@ export function PaperBlocksArticle({
         <div className="space-y-10">
           {blocks.map((block) => {
             const hasContent = block.nodes.length > 0
+            const overrideBody = renderBlockBody?.(block)
+            const body = overrideBody !== undefined
+              ? overrideBody
+              : hasContent ? (
+                <BlockContentHtml content={block.nodes} />
+              ) : (
+                <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                  {blockEmptyMessage}
+                </p>
+              )
+            const overrideSection = renderBlockSection?.(block, body)
+            if (overrideSection !== undefined) {
+              return <Fragment key={block.id}>{overrideSection}</Fragment>
+            }
             return (
               <section
                 key={block.id}
@@ -76,13 +105,7 @@ export function PaperBlocksArticle({
                     </span>
                   )}
                 </div>
-                {hasContent ? (
-                  <BlockContentHtml content={block.nodes} />
-                ) : (
-                  <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                    {blockEmptyMessage}
-                  </p>
-                )}
+                {body}
               </section>
             )
           })}

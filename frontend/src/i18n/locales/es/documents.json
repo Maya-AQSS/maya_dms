@@ -14,7 +14,18 @@
     "exitFullscreenAria": "Salir de pantalla completa",
     "exitFullscreenTitle": "Salir de pantalla completa (Esc)",
     "unfilledBlocksTitle": "Bloques editables sin rellenar",
-    "loadingValidation": "Cargando datos de validación…"
+    "loadingValidation": "Cargando datos de validación…",
+    "viewMode": {
+      "perBlock": "Por bloque",
+      "continuous": "Continuo",
+      "continuousHint": "Documento completo con edición inline al hacer click en un bloque",
+      "enterFullscreen": "Pantalla completa",
+      "enterFullscreenTitle": "Ampliar el documento al 100% (Esc para salir)",
+      "exitFullscreen": "Reducir",
+      "exitFullscreenTitle": "Salir de pantalla completa (Esc)",
+      "showComments": "Comentarios",
+      "hideComments": "Ocultar comentarios"
+    }
   },
   "table": {
     "columns": {

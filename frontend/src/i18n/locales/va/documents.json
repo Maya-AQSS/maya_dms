@@ -14,7 +14,18 @@
     "exitFullscreenAria": "Eixir de pantalla completa",
     "exitFullscreenTitle": "Eixir de pantalla completa (Esc)",
     "unfilledBlocksTitle": "Blocs editables sense omplir",
-    "loadingValidation": "Carregant dades de validació…"
+    "loadingValidation": "Carregant dades de validació…",
+    "viewMode": {
+      "perBlock": "Per bloc",
+      "continuous": "Continu",
+      "continuousHint": "Document complet amb edició inline al fer clic en un bloc",
+      "enterFullscreen": "Pantalla completa",
+      "enterFullscreenTitle": "Ampliar el document al 100% (Esc per a eixir)",
+      "exitFullscreen": "Reduir",
+      "exitFullscreenTitle": "Eixir de pantalla completa (Esc)",
+      "showComments": "Comentaris",
+      "hideComments": "Amagar comentaris"
+    }
   },
   "table": {
     "columns": {
