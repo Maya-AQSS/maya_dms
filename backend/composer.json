@@ -15,11 +15,11 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "lcobucci/jwt": "^5.6",
-        "ceedcv-maya/shared-auth-laravel": "^0.3",
-        "ceedcv-maya/shared-http-laravel": "^0.3",
-        "ceedcv-maya/shared-messaging-laravel": "^0.3",
-        "ceedcv-maya/shared-platform-laravel": "^0.3",
-        "ceedcv-maya/shared-profile-laravel": "^0.3",
+        "ceedcv-maya/shared-auth-laravel": "^0.2",
+        "ceedcv-maya/shared-http-laravel": "^0.2",
+        "ceedcv-maya/shared-messaging-laravel": "^0.2",
+        "ceedcv-maya/shared-platform-laravel": "^0.2",
+        "ceedcv-maya/shared-profile-laravel": "^0.2",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "dev-master"
     },
     "require-dev": {
