@@ -232,6 +232,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [deleteModal, setDeleteModal] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [tabIsDirty, setTabIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (activeSingleId && !formName.trim()) {
@@ -320,7 +321,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   // Convenience wrapper used by saveIfPending and manual saves
   const saveCurrentTab = useCallback(async () => {
     if (!tabIsDirty || !activeSingleId) return;
-    await forceSave();
+    try {
+      await forceSave();
+      return true;
+    } catch {
+      return false;
+    }
   }, [tabIsDirty, activeSingleId, forceSave]);
 
   const handleBlockClick = (blockId: string) => {
@@ -335,7 +341,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
           return;
         }
       }
-      if (tabIsDirty && activeSingleId) await saveCurrentTab();
+      if (tabIsDirty && activeSingleId) {
+        setIsSaving(true);
+
+        try {
+          const success = await saveCurrentTab();
+
+          if (!success) return;
+        } finally {
+          setIsSaving(false);
+        }
+      } 
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
       setSelectedBlockIds([blockId]);
@@ -373,7 +389,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   useImperativeHandle(ref, () => ({
     saveIfPending: async () => {
-      if (tabIsDirty) await forceSave();
+      if (tabIsDirty) {
+        setIsSaving(true);
+        try {
+          const success = await saveCurrentTab();
+          if (!success) return success;
+        }catch{
+          return false
+        } finally {
+          setIsSaving(false);
+        }
+      } 
     },
     discardInvalidBlocks: async () => {
       const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
@@ -396,6 +422,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         setActiveTab('properties');
         return;
       }
+      if (tabIsDirty) {
+        setIsSaving(true);
+
+        try {
+          const success = await saveCurrentTab();
+
+          if (!success) return;
+        } finally {
+          setIsSaving(false);
+        }
+      } 
     }
     setBusy(true);
     try {
@@ -514,6 +551,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     return null;
   };
 
+  const handleSaveAndContinue = async () => {
+  setIsSaving(true);
+    try {
+      const success = await saveCurrentTab();
+      if (!success) return;
+      onContinue?.();
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className={[
       isEditorFullscreen ? 'fixed inset-0 z-[100] bg-white dark:bg-ui-dark-card flex flex-col' : 'flex-1 min-h-0 flex flex-col md:flex-row relative overflow-visible',
@@ -612,7 +660,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 </h3>
                 {renderSaveStatus()}
                 {onContinue && (
-                  <Button variant="primary" size="xs" onClick={onContinue} className="shrink-0">
+                  <Button variant="primary" size="xs" onClick={handleSaveAndContinue} className="shrink-0">
                     Guardar y continuar →
                   </Button>
                 )}
@@ -718,7 +766,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       <div className="flex-1 min-h-0 flex flex-col gap-2">
                         {formUiState === 'modifiable'  && !formContent && (
                           <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
-                            Los bloques tipo {formUiState} deben tener contenido predeterminado (obligatorio).
+                            Los bloques tipo modificable deben tener contenido predeterminado (obligatorio).
                           </p>
                         )}
                         {formUiState === 'locked' && !formContent && (
@@ -732,6 +780,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           </p>
                         )}
                         <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                          {isSaving && (
+                            <div className="p-4 flex items-center justify-center min-h-[100px]">
+                              <div className="flex items-center gap-2">
+                                <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
+                                <span>Guardando cambios...</span>
+                              </div>
+                            </div>
+                          )}
+                          {!isSaving && (
                           <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
                             <BlockNoteEditorPanel
                               key={`content-${activeSingleId ?? 'none'}`}
@@ -746,6 +803,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
                             />
                           </Suspense>
+                        )}
                         </div>
                       </div>
                     )}
