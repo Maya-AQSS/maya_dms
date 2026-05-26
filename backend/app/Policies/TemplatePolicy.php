@@ -275,7 +275,7 @@ class TemplatePolicy
             return false;
         }
 
-        if($isCreator || $user->hasPermission('template.update')){
+        if($isCreator || $user->hasPermission('template.clone')){
             return true;
         }else{
             return false;
