@@ -208,6 +208,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   // DocumentPreviewPage and the wizard reuse the same in-memory comments.
   const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const lastSavedContentRef = useRef<unknown>(null);
 
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
     setIsEditorFullscreen(v);
@@ -231,7 +233,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const forcePropertiesStep = locationState?.step === 'properties';
   const locationProcessId = locationState?.processId;
   const locationModuleId = locationState?.moduleId;
-  const fromTemplateSelection = locationState?.fromTemplateSelection === true;
   const selectedTemplateVersionId = locationState?.templateVersionId ?? null;
   const selectedTemplateVersionUuid = isUuidLike(selectedTemplateVersionId)
     ? selectedTemplateVersionId
@@ -847,9 +848,38 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         ? activeBlock.content
         : activeBlock.default_content
       );
+      lastSavedContentRef.current = activeBlock.content;
       setShowDocumentCommentPanel(true); // re-show comment panel on block change
     }
   }, [activeBlock]);
+
+  useEffect(() => {
+    if (saveStatus === 'saved') {
+      lastSavedContentRef.current = localContent;
+    }
+  }, [saveStatus, localContent]);
+
+  const handleBlockClick = async (key: string) => {
+    if (isSaving) return;
+
+    try {
+      setIsSaving(true);
+      const hasChanged =
+      JSON.stringify(localContent) !==
+      JSON.stringify(lastSavedContentRef.current);
+
+      if (hasChanged && saveStatus !== 'saved') {
+        await triggerSave();
+      }
+      setActiveBlockKey(key);
+
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Error al guardar bloque');
+
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const handleGoToStep = async(s: Step) => {
     if (step === 'properties'){
@@ -861,6 +891,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         )();
       });
       if (!valid) return;
+    }else if (step === 'blocks'){
+      setIsSaving(true);
+      const hasChanged =
+      JSON.stringify(localContent) !==
+      JSON.stringify(lastSavedContentRef.current);
+
+      if (hasChanged && saveStatus !== 'saved') {
+        await triggerSave();
+        setIsSaving(false);
+      }
     }
     if (s === 'properties'){
       setStep(s);
@@ -962,6 +1002,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'blocks') {
+      setIsSaving(true);
+      const hasChanged =
+      JSON.stringify(localContent) !==
+      JSON.stringify(lastSavedContentRef.current);
+
+      if (hasChanged && saveStatus !== 'saved') {
+        await triggerSave();
+        setIsSaving(false);
+      }
       if (detail) {
         const emptyEditable = detail.blocks.filter(
           (b: DocumentDisplayBlock) => b.block_state === 'editable' && !b.is_filled && !b.is_deleted,
@@ -1569,7 +1618,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                           stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
                           hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
                           isEmpty={isEmptyEditable}
-                          onClick={() => setActiveBlockKey(key)}
+                          onClick={() => handleBlockClick(key)}
                         />
                       );
                     })
@@ -1666,19 +1715,24 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
                         <div className="flex-1 min-h-0 p-6 flex flex-col">
                           <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                            <Suspense
-                              fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
-                              key={activeBlockKey ?? 'none'}
-                            >
-                              <BlockNoteEditorPanel
-                                initialContent={blockEditorContent(activeBlock)}
-                                editable
-                                isDark={isDark}
-                                onChange={(content) => { setLocalContent(content); triggerSave(); }}
-                                onFullscreenChange={handleEditorFullscreenChange}
-                                uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
-                              />
-                            </Suspense>
+                            {isSaving && (
+                              <div className="p-4">Guardando cambios...</div>
+                            )}
+                            {!isSaving && (
+                              <Suspense
+                                fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
+                                key={activeBlockKey ?? 'none'}
+                              >
+                                <BlockNoteEditorPanel
+                                  initialContent={blockEditorContent(activeBlock)}
+                                  editable
+                                  isDark={isDark}
+                                  onChange={(content) => { setLocalContent(content); triggerSave(); }}
+                                  onFullscreenChange={handleEditorFullscreenChange}
+                                  uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
+                                />
+                              </Suspense>
+                            )}
                           </div>
                         </div>
                       </ErrorBoundary>
