@@ -422,6 +422,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         setActiveTab('properties');
         return;
       }
+      if (tabIsDirty) {
+        setIsSaving(true);
+
+        try {
+          const success = await saveCurrentTab();
+
+          if (!success) return;
+        } finally {
+          setIsSaving(false);
+        }
+      } 
     }
     setBusy(true);
     try {
