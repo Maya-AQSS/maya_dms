@@ -46,9 +46,20 @@ RUN mkdir -p /usr/share/fonts/google \
 
 # Redis + pcov via PECL. pcov se usa para coverage en `php artisan test --coverage`.
 # Es mucho más rápido que xdebug en modo coverage y no afecta a runs normales.
+# Redis + pcov: descargados desde GitHub directamente.
+# pecl.php.net tiene caídas frecuentes (HTTP 504 con redirect roto en 2026-05).
+# Las versiones se fijan aquí para builds reproducibles.
+ENV PHPREDIS_VERSION=6.2.0
+ENV PCOV_VERSION=1.0.12
 RUN apk add --no-cache $PHPIZE_DEPS \
-    && pecl install redis pcov \
+    && curl -fsSL "https://github.com/phpredis/phpredis/archive/refs/tags/${PHPREDIS_VERSION}.tar.gz" | tar -xz -C /tmp \
+    && cd /tmp/phpredis-${PHPREDIS_VERSION} \
+    && phpize && ./configure --enable-redis && make -j$(nproc) && make install \
+    && curl -fsSL "https://github.com/krakjoe/pcov/archive/refs/tags/v${PCOV_VERSION}.tar.gz" | tar -xz -C /tmp \
+    && cd /tmp/pcov-${PCOV_VERSION} \
+    && phpize && ./configure --enable-pcov && make -j$(nproc) && make install \
     && docker-php-ext-enable redis pcov \
+    && rm -rf /tmp/phpredis-${PHPREDIS_VERSION} /tmp/pcov-${PCOV_VERSION} \
     && apk del $PHPIZE_DEPS
 
 COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
