@@ -1,7 +1,17 @@
 /* Tailwind v4 + fuentes resueltos desde el `node_modules` local de la app. */
 @import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;500;700;900&family=Manrope:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
+/* Scan shared @ceedcv-maya packages so their utility classes
+   (used in Button.tsx, DataTable.tsx, etc.) land in the bundle. */
+@source "../node_modules/@ceedcv-maya/shared-auth-react/src/**/*.{ts,tsx}";
+@source "../node_modules/@ceedcv-maya/shared-dashboard-react/src/**/*.{ts,tsx}";
+@source "../node_modules/@ceedcv-maya/shared-i18n-react/src/**/*.{ts,tsx}";
+@source "../node_modules/@ceedcv-maya/shared-layout-react/src/**/*.{ts,tsx}";
+@source "../node_modules/@ceedcv-maya/shared-profile-react/src/**/*.{ts,tsx}";
+@source "../node_modules/@ceedcv-maya/shared-sidebar-react/src/**/*.{ts,tsx}";
+@source "../node_modules/@ceedcv-maya/shared-ui-react/src/**/*.{ts,tsx}";
 
-/* Tokens, animaciones y reset compartidos por las 4 apps Maya.
-   Editar en `maya_infra/configs/styles/index.css`. */
-@import "../../maya_infra/configs/styles/index.css";
+
+/* Tokens, custom utilities, animations and base reset.
+   Source: ceedcv-maya/maya_platform/packages/js/shared-styles. */
+@import "@ceedcv-maya/shared-styles";

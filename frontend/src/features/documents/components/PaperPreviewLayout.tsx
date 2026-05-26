@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode, type CSSProperties, type RefObject } from 'react'
-import { Button, PageTitle } from '@maya/shared-ui-react'
+import { Button, PageTitle } from '@ceedcv-maya/shared-ui-react'
 
 interface Props {
   /** Título grande centrado (mismo lugar en plantilla y documento). */

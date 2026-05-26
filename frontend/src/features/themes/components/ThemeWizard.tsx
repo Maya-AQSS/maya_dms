@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { ThemeWizardStepIdentity, type ThemeIdentityValue } from './ThemeWizardStepIdentity';
 import { ThemeGridEditor } from './ThemeGridEditor';

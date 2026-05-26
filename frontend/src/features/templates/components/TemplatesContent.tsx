@@ -15,7 +15,7 @@ import {
   statusBadgeClass,
   visibilityBadgeClass,
   type ColumnDef,
-} from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-ui-react';
 import { useTemplates } from '../hooks/useTemplates';
 import { buildTemplatesListMeta, sliceTemplatesPage } from '../clientTemplatePagination';
 import { STATUS_OPTIONS } from '../constants';
@@ -37,7 +37,7 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
   rejected: 'Rechazada',
 };
 
-// Estado y visibilidad: clases en `@maya/shared-ui-react/badges`.
+// Estado y visibilidad: clases en `@ceedcv-maya/shared-ui-react/badges`.
 
 /**
  * Gestión de plantillas normativas: datos vía {@link useTemplates}.

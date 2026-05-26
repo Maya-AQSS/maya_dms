@@ -42,8 +42,8 @@ vi.mock('../../../../features/hierarchy', () => ({
   HierarchyProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-vi.mock('@maya/shared-ui-react', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@maya/shared-ui-react')>();
+vi.mock('@ceedcv-maya/shared-ui-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@ceedcv-maya/shared-ui-react')>();
   return {
     ...actual,
     DatePicker: ({

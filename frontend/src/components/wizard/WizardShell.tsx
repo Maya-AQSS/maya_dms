@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { PageTitle } from '@maya/shared-ui-react';
+import { PageTitle } from '@ceedcv-maya/shared-ui-react';
 
 export type WizardStepDef<Id extends string = string> = {
   id: Id;

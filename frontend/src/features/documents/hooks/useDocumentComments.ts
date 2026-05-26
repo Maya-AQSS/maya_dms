@@ -1,4 +1,4 @@
-import { createDataHook } from '@maya/shared-auth-react';
+import { createDataHook } from '@ceedcv-maya/shared-auth-react';
 import { apiFetchJson } from '../../../api/http';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 

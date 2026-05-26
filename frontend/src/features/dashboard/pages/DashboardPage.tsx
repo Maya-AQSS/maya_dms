@@ -8,8 +8,8 @@ import {
   useDashboardLayoutLocal,
   type LayoutItem,
   type SkeletonBlock,
-} from '@maya/shared-dashboard-react';
-import { Alert, PageTitle } from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-dashboard-react';
+import { Alert, PageTitle } from '@ceedcv-maya/shared-ui-react';
 import { useUserProfile } from '../../user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { WIDGET_REGISTRY, DEFAULT_LAYOUT } from '../widgets/registry';

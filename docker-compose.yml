@@ -61,7 +61,6 @@ services:
       - ./backend:/var/www/html
       # Laravel resuelve .env en basePath (/var/www/html); el symlink ../.env no siempre existe o se rompe en bind mount.
       - ./.env:/var/www/html/.env
-      - ../maya_infra/packages:/var/maya_infra/packages
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health/live || exit 1"]
       interval: 15s
@@ -116,7 +115,6 @@ services:
     command: []
     volumes:
       - ./backend:/var/www/html
-      - ../maya_infra/packages:/var/maya_infra/packages
       - ../maya_infra/scripts:/maya_infra/scripts:ro
     networks:
       - maya_network
@@ -144,7 +142,6 @@ services:
       VITE_REVERB_PORT: ${VITE_REVERB_PORT:-8082}
     volumes:
       - ./frontend:/app
-      - ../maya_infra/packages:/maya_infra/packages
       - ../maya_infra/configs:/maya_infra/configs:ro
       - /app/node_modules
     ports:

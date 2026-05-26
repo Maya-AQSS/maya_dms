@@ -1,4 +1,4 @@
-import type { BaseMeProfile, UserTeam as SharedUserTeam } from '@maya/shared-profile-react';
+import type { BaseMeProfile, UserTeam as SharedUserTeam } from '@ceedcv-maya/shared-profile-react';
 
 export type User = {
   id: string;

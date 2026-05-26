@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { NavItem } from '@maya/shared-layout-react';
-import { FolderIcon, HomeIcon, TemplateIcon } from '@maya/shared-layout-react';
-import { useUserProfile } from '@maya/shared-profile-react';
+import type { NavItem } from '@ceedcv-maya/shared-layout-react';
+import { FolderIcon, HomeIcon, TemplateIcon } from '@ceedcv-maya/shared-layout-react';
+import { useUserProfile } from '@ceedcv-maya/shared-profile-react';
 import { canManageThemesCatalog, DMS_PERMISSIONS } from '../../permissions';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 

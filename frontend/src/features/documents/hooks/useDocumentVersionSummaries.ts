@@ -1,4 +1,4 @@
-import { createDataHook } from '@maya/shared-auth-react';
+import { createDataHook } from '@ceedcv-maya/shared-auth-react';
 import {
   fetchDocumentVersionSummaries,
   type DocumentVersionSummary,

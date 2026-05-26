@@ -20,7 +20,7 @@ import { BlockContentHtml } from '../features/templates/components/BlockContentH
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { BlockState, TemplateBlock } from '../types/blocks';
-import { Button, ConfirmDialog, statusBadgeClass } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -37,13 +37,14 @@ import { getCommentsForBlock } from '../utils/blockComments';
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 type ReviewComment = BlockComment;
 
-// Estado: clases en `statusBadgeClass` (módulo `@maya/shared-ui-react/badges`).
+// Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
 
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Borrador',
   in_review: 'En revisión',
   published: 'Publicada',
   archived: 'Archivada',
+  rejected: 'Rechazada',
 };
 
 function blockContentNodes(block: TemplateBlock): unknown[] {
@@ -407,13 +408,13 @@ export function TemplatePreviewPage() {
   };
 
   const viewToggle = template && id ? (
-    <div className="flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
+    <div className="flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs dark:bg-ui-body/20 dark:border-ui-dark-border">
       <button
         type="button"
         onClick={() => setViewMode('edit')}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'edit' ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card' : 'text-text-muted',
+          viewMode === 'edit' ? 'bg-white shadow-sm text-text-primary dark:bg-dark' : 'text-text-mutted',
         ].join(' ')}
         aria-pressed={viewMode === 'edit'}
       >
@@ -424,7 +425,7 @@ export function TemplatePreviewPage() {
         onClick={() => setViewMode('themed')}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'themed' ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card' : 'text-text-muted',
+          viewMode === 'themed' ? 'bg-white shadow-sm text-text-primary dark:bg-dark' : 'text-text-mutted',
         ].join(' ')}
         aria-pressed={viewMode === 'themed'}
       >
@@ -695,11 +696,11 @@ export function TemplatePreviewPage() {
                               onClick={(e) => { e.stopPropagation(); setActiveView({ blockId: block.id, mode: 'comments' }); }}
                               className={[
                                 'shrink-0 px-3 py-1.5 rounded-full border flex items-center gap-1.5 transition-all cursor-pointer text-xs font-black uppercase tracking-wider',
-                                commentsActive
+                                isSelected && activeView?.mode === 'comments'
                                   ? 'border-odoo-purple text-odoo-purple bg-odoo-purple/10 shadow-sm'
-                                  : 'border-ui-border dark:border-ui-dark-border text-text-muted bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
+                                  : 'border-ui-border dark:border-ui-dark-border text-text bg-ui-body/30 hover:text-odoo-purple hover:border-odoo-purple/50 hover:bg-odoo-purple/5',
                               ].join(' ')}
-                            >
+                              >
                               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                               </svg>

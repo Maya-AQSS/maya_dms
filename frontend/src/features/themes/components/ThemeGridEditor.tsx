@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
-import { Button, FieldLabel, Select, TextInput } from '@maya/shared-ui-react';
+import { Button, FieldLabel, Select, TextInput } from '@ceedcv-maya/shared-ui-react';
 import type { Theme, ThemeBlockType, ThemeLayoutRegion } from '../../../types/themes';
 import './theme-grid.css';
 

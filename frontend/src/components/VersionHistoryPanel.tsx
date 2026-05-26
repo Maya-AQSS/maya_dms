@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { ApiHttpError } from '../api/http';
 import type { DocumentVersionSummary } from '../api/documents';
 import type { TemplateVersionSummary } from '../api/templates';

@@ -9,7 +9,7 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
-import { Button, ConfirmDialog } from '@maya/shared-ui-react';
+import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../../../permissions';
 import { apiFetchJson, ApiHttpError } from '../../../api/http';

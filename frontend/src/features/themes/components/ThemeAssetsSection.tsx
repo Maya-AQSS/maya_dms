@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import {
   uploadThemeAsset,
   type ThemeAssetKind,

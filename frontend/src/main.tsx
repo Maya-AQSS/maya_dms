@@ -7,7 +7,7 @@ import 'react-resizable/css/styles.css'
 import './index.css'
 import './i18n'
 import App from './App.tsx'
-import { AuthProvider } from '@maya/shared-auth-react'
+import { AuthProvider } from '@ceedcv-maya/shared-auth-react'
 import { oidcAuthService } from './auth/oidcAdapter'
 import { UserProfileProvider } from './features/user-profile'
 

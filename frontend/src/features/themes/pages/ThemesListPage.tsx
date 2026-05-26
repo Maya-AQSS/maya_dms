@@ -8,8 +8,8 @@ import {
   PageTitle,
   useConfirm,
   type ColumnDef,
-} from '@maya/shared-ui-react';
-import { useUserProfile } from '@maya/shared-profile-react';
+} from '@ceedcv-maya/shared-ui-react';
+import { useUserProfile } from '@ceedcv-maya/shared-profile-react';
 import {
   canCloneTheme,
   canCreateTheme,

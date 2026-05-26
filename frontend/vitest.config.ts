@@ -14,8 +14,8 @@ export default mergeConfig(
   defineConfig({
     resolve: {
       alias: {
-        '@maya/shared-auth-react': sharedAuthShim,
-        '@maya/shared-profile-react': sharedProfileShim,
+        '@ceedcv-maya/shared-auth-react': sharedAuthShim,
+        '@ceedcv-maya/shared-profile-react': sharedProfileShim,
       },
     },
     test: {

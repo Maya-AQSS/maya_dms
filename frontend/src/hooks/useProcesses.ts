@@ -1,4 +1,4 @@
-import { createDataHook } from '@maya/shared-auth-react';
+import { createDataHook } from '@ceedcv-maya/shared-auth-react';
 import { fetchProcesses } from '../api/processes';
 import { useUserProfile } from '../features/user-profile';
 import { DMS_PERMISSIONS } from '../permissions';

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "806254c6bf0bbfd1fd58ad5e4c7a79c3",
+    "content-hash": "d0bf459162b5112f658c93cdafa0719c",
     "packages": [
         {
             "name": "brick/math",
@@ -134,6 +134,320 @@
                 }
             ],
             "time": "2024-02-09T16:56:22+00:00"
+        },
+        {
+            "name": "ceedcv-maya/shared-auth-laravel",
+            "version": "v0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Maya-AQSS/shared-auth-laravel.git",
+                "reference": "b4515256965fb3e746f79355b2088e66f23b867f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-auth-laravel/zipball/b4515256965fb3e746f79355b2088e66f23b867f",
+                "reference": "b4515256965fb3e746f79355b2088e66f23b867f",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "lcobucci/jwt": "^5.0",
+                "php": "^8.4",
+                "phpseclib/phpseclib": "^3.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Maya\\Auth\\Providers\\SharedAuthServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Auth\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CEEDCV",
+                    "email": "info@ceedcv.es",
+                    "homepage": "https://ceedcv.es"
+                }
+            ],
+            "description": "Keycloak/OIDC JWT authentication middleware for Laravel: JWKS caching, RequirePermissionMiddleware, AppToAppAuthenticator, configurable user resolver.",
+            "homepage": "https://github.com/Maya-AQSS/shared-auth-laravel",
+            "keywords": [
+                "Authentication",
+                "JWKS",
+                "Maya",
+                "authorization",
+                "ceedcv",
+                "jwt",
+                "keycloak",
+                "laravel",
+                "middleware",
+                "oidc"
+            ],
+            "support": {
+                "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
+                "source": "https://github.com/Maya-AQSS/shared-auth-laravel"
+            },
+            "time": "2026-05-25T20:50:26+00:00"
+        },
+        {
+            "name": "ceedcv-maya/shared-http-laravel",
+            "version": "v0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Maya-AQSS/shared-http-laravel.git",
+                "reference": "2807017994753da3aaf5534b6208371095e77afe"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-http-laravel/zipball/2807017994753da3aaf5534b6208371095e77afe",
+                "reference": "2807017994753da3aaf5534b6208371095e77afe",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Http\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CEEDCV",
+                    "email": "info@ceedcv.es",
+                    "homepage": "https://ceedcv.es"
+                }
+            ],
+            "description": "Reusable HTTP utilities for Laravel APIs: standardized JSON response envelope, health endpoint, app metadata controller, exception handler.",
+            "homepage": "https://github.com/Maya-AQSS/shared-http-laravel",
+            "keywords": [
+                "Maya",
+                "api",
+                "ceedcv",
+                "health",
+                "http",
+                "laravel",
+                "response"
+            ],
+            "support": {
+                "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
+                "source": "https://github.com/Maya-AQSS/shared-http-laravel"
+            },
+            "time": "2026-05-25T20:50:23+00:00"
+        },
+        {
+            "name": "ceedcv-maya/shared-messaging-laravel",
+            "version": "v0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Maya-AQSS/shared-messaging-laravel.git",
+                "reference": "e0b8db42546314469e9e12c6dd1db6d044fccaaa"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-messaging-laravel/zipball/e0b8db42546314469e9e12c6dd1db6d044fccaaa",
+                "reference": "e0b8db42546314469e9e12c6dd1db6d044fccaaa",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/log": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/queue": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "monolog/monolog": "^3.0",
+                "php": "^8.4",
+                "php-amqplib/php-amqplib": "^3.5",
+                "ramsey/uuid": "^4.7"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.6",
+                "orchestra/testbench": "^9.0 || ^10.0",
+                "pestphp/pest": "^3.0",
+                "pestphp/pest-plugin-laravel": "^3.0"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Maya\\Messaging\\Providers\\MessagingServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Messaging\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CEEDCV",
+                    "email": "info@ceedcv.es",
+                    "homepage": "https://ceedcv.es"
+                }
+            ],
+            "description": "RabbitMQ messaging layer for Laravel: typed event publishers (audit, logs, notifications, alerts), reusable consumer base, retry/DLX handling.",
+            "homepage": "https://github.com/Maya-AQSS/shared-messaging-laravel",
+            "keywords": [
+                "AMQP",
+                "Maya",
+                "ceedcv",
+                "events",
+                "laravel",
+                "messaging",
+                "queue",
+                "rabbitmq"
+            ],
+            "support": {
+                "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
+                "source": "https://github.com/Maya-AQSS/shared-messaging-laravel"
+            },
+            "time": "2026-05-25T20:50:24+00:00"
+        },
+        {
+            "name": "ceedcv-maya/shared-platform-laravel",
+            "version": "v0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Maya-AQSS/shared-platform-laravel.git",
+                "reference": "eaffa60f335660a87eb2ed6234b7a289a7987fad"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-platform-laravel/zipball/eaffa60f335660a87eb2ed6234b7a289a7987fad",
+                "reference": "eaffa60f335660a87eb2ed6234b7a289a7987fad",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/database": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Platform\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CEEDCV",
+                    "email": "info@ceedcv.es",
+                    "homepage": "https://ceedcv.es"
+                }
+            ],
+            "description": "Cross-cutting platform utilities for Laravel microservices: PostgreSQL FDW migrations helpers, locale providers, shared contracts.",
+            "homepage": "https://github.com/Maya-AQSS/shared-platform-laravel",
+            "keywords": [
+                "Maya",
+                "ceedcv",
+                "fdw",
+                "laravel",
+                "microservices",
+                "platform",
+                "postgres"
+            ],
+            "support": {
+                "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
+                "source": "https://github.com/Maya-AQSS/shared-platform-laravel"
+            },
+            "time": "2026-05-25T20:50:24+00:00"
+        },
+        {
+            "name": "ceedcv-maya/shared-profile-laravel",
+            "version": "v0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/Maya-AQSS/shared-profile-laravel.git",
+                "reference": "b72932b69926dcf94359d7b771d0fa8e2161e77f"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/b72932b69926dcf94359d7b771d0fa8e2161e77f",
+                "reference": "b72932b69926dcf94359d7b771d0fa8e2161e77f",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "illuminate/validation": "^11.0 || ^12.0 || ^13.0",
+                "php": "^8.4"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Maya\\Profile\\Providers\\SharedProfileServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Maya\\Profile\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "CEEDCV",
+                    "email": "info@ceedcv.es",
+                    "homepage": "https://ceedcv.es"
+                }
+            ],
+            "description": "User profile endpoints for Laravel + Keycloak: GET /me, PUT /me/locale, configurable resolvers, FormRequest validation.",
+            "homepage": "https://github.com/Maya-AQSS/shared-profile-laravel",
+            "keywords": [
+                "Maya",
+                "ceedcv",
+                "keycloak",
+                "laravel",
+                "locale",
+                "me",
+                "profile"
+            ],
+            "support": {
+                "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
+                "source": "https://github.com/Maya-AQSS/shared-profile-laravel"
+            },
+            "time": "2026-05-25T20:50:23+00:00"
         },
         {
             "name": "clue/redis-protocol",
@@ -2352,212 +2666,6 @@
                 }
             ],
             "time": "2026-03-08T20:05:35+00:00"
-        },
-        {
-            "name": "maya/shared-auth-laravel",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../../maya_infra/packages/maya-shared-auth-laravel",
-                "reference": "c4be42e1cc0e043ca14d2d96646b1860e0264766"
-            },
-            "require": {
-                "illuminate/cache": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
-                "lcobucci/jwt": "^5.0",
-                "php": "^8.4",
-                "phpseclib/phpseclib": "^3.0"
-            },
-            "require-dev": {
-                "mockery/mockery": "^1.6",
-                "orchestra/testbench": "^9.0 || ^10.0",
-                "pestphp/pest": "^3.0",
-                "pestphp/pest-plugin-laravel": "^3.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Maya\\Auth\\Providers\\SharedAuthServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Maya\\Auth\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "pest --colors=always"
-                ],
-                "test-coverage": [
-                    "pest --coverage --min=80"
-                ]
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Shared JWT Authentication logic for MAyA Laravel microservices.",
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
-            "name": "maya/shared-http-laravel",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../../maya_infra/packages/maya-shared-http-laravel",
-                "reference": "568637370d72ab3212ac530255c4ea68c299d0b4"
-            },
-            "require": {
-                "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
-                "php": "^8.4"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Maya\\Http\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Shared HTTP utilities for MAyA Laravel microservices: response envelope, health checks, base resources.",
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
-            "name": "maya/shared-messaging-laravel",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../../maya_infra/packages/maya-shared-messaging-laravel",
-                "reference": "9fb825014abe2eca88a7694d1376e3637b60aed7"
-            },
-            "require": {
-                "illuminate/log": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/queue": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
-                "monolog/monolog": "^3.0",
-                "php": "^8.4",
-                "php-amqplib/php-amqplib": "^3.5",
-                "ramsey/uuid": "^4.7"
-            },
-            "require-dev": {
-                "mockery/mockery": "^1.6",
-                "orchestra/testbench": "^9.0 || ^10.0",
-                "pestphp/pest": "^3.0",
-                "pestphp/pest-plugin-laravel": "^3.0"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Maya\\Messaging\\Providers\\MessagingServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Maya\\Messaging\\": "src/"
-                }
-            },
-            "autoload-dev": {
-                "psr-4": {
-                    "Tests\\": "tests/"
-                }
-            },
-            "scripts": {
-                "test": [
-                    "pest --colors=always"
-                ],
-                "test-coverage": [
-                    "pest --coverage --min=80"
-                ]
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Shared RabbitMQ messaging layer for MAyA Laravel microservices: log publisher, notification publisher, alert publisher, and Monolog rabbit handler.",
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
-            "name": "maya/shared-platform-laravel",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../../maya_infra/packages/maya-shared-platform-laravel",
-                "reference": "4be2ebdd2c9b80dbb480629a332e93b83ec7b849"
-            },
-            "require": {
-                "illuminate/database": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
-                "php": "^8.4"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "Maya\\Platform\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Platform-level utilities shared by Maya Laravel microservices: PostgreSQL FDW migration helpers and other infrastructure primitives that are not specific to a single domain.",
-            "transport-options": {
-                "relative": true
-            }
-        },
-        {
-            "name": "maya/shared-profile-laravel",
-            "version": "dev-main",
-            "dist": {
-                "type": "path",
-                "url": "../../maya_infra/packages/maya-shared-profile-laravel",
-                "reference": "9baf3de7c35fe14cb27b3958778f3e55281e481b"
-            },
-            "require": {
-                "illuminate/contracts": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/http": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/routing": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/support": "^11.0 || ^12.0 || ^13.0",
-                "illuminate/validation": "^11.0 || ^12.0 || ^13.0",
-                "php": "^8.4"
-            },
-            "type": "library",
-            "extra": {
-                "laravel": {
-                    "providers": [
-                        "Maya\\Profile\\Providers\\SharedProfileServiceProvider"
-                    ]
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "Maya\\Profile\\": "src/"
-                }
-            },
-            "license": [
-                "MIT"
-            ],
-            "description": "Shared user profile endpoints (GET /me, PUT /me/locale) for Maya Laravel microservices. Provides Controller, FormRequest, Service, Repository contracts, DTO and Resource. Apps extend behaviour via UserProfileResolverInterface and LocaleWriterInterface.",
-            "transport-options": {
-                "relative": true
-            }
         },
         {
             "name": "monolog/monolog",
@@ -10736,16 +10844,67 @@
                 "source": "https://github.com/webmozarts/assert/tree/2.3.0"
             },
             "time": "2026-04-11T10:33:05+00:00"
+        },
+        {
+            "name": "wikimedia/composer-merge-plugin",
+            "version": "v2.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/wikimedia/composer-merge-plugin.git",
+                "reference": "a03d426c8e9fb2c9c569d9deeb31a083292788bc"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/wikimedia/composer-merge-plugin/zipball/a03d426c8e9fb2c9c569d9deeb31a083292788bc",
+                "reference": "a03d426c8e9fb2c9c569d9deeb31a083292788bc",
+                "shasum": ""
+            },
+            "require": {
+                "composer-plugin-api": "^1.1||^2.0",
+                "php": ">=7.2.0"
+            },
+            "require-dev": {
+                "composer/composer": "^1.1||^2.0",
+                "ext-json": "*",
+                "mediawiki/mediawiki-phan-config": "0.11.1",
+                "php-parallel-lint/php-parallel-lint": "~1.3.1",
+                "phpspec/prophecy": "~1.15.0",
+                "phpunit/phpunit": "^8.5||^9.0",
+                "squizlabs/php_codesniffer": "~3.7.1"
+            },
+            "type": "composer-plugin",
+            "extra": {
+                "class": "Wikimedia\\Composer\\Merge\\V2\\MergePlugin",
+                "branch-alias": {
+                    "dev-master": "2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Wikimedia\\Composer\\Merge\\V2\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Bryan Davis",
+                    "email": "bd808@wikimedia.org"
+                }
+            ],
+            "description": "Composer plugin to merge multiple composer.json files",
+            "support": {
+                "issues": "https://github.com/wikimedia/composer-merge-plugin/issues",
+                "source": "https://github.com/wikimedia/composer-merge-plugin/tree/v2.1.0"
+            },
+            "time": "2023-04-15T19:07:00+00:00"
         }
     ],
     "aliases": [],
     "minimum-stability": "dev",
     "stability-flags": {
-        "maya/shared-auth-laravel": 20,
-        "maya/shared-http-laravel": 20,
-        "maya/shared-messaging-laravel": 20,
-        "maya/shared-platform-laravel": 20,
-        "maya/shared-profile-laravel": 20,
         "vladimir-yuldashev/laravel-queue-rabbitmq": 20
     },
     "prefer-stable": true,

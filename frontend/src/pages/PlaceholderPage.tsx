@@ -1,4 +1,4 @@
-import { Card } from '@maya/shared-ui-react';
+import { Card } from '@ceedcv-maya/shared-ui-react';
 
 /**
  * Secciones del menú aún sin implementar (subir, búsqueda, etc.).

@@ -1,4 +1,4 @@
-import { commonResources, deepMerge } from '@maya/shared-i18n-react';
+import { commonResources, deepMerge } from '@ceedcv-maya/shared-i18n-react';
 
 import esAuth from './locales/es/auth.json';
 import esCommon from './locales/es/common.json';

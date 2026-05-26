@@ -37,18 +37,28 @@ export function useAutoSave(
       setSaveStatus('saved');
       if (savedClearRef.current) clearTimeout(savedClearRef.current);
       savedClearRef.current = setTimeout(() => setSaveStatus('idle'), 3000);
-    } catch {
+    } catch (error) {
       setSaveStatus('error');
+      throw error;
     }
   }, []);
 
   /** Reinicia el debounce cada vez que se llama. */
-  const triggerSave = useCallback(() => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setSaveStatus('idle');
-    timerRef.current = setTimeout(() => {
-      void executeSave();
-    }, delay);
+  const triggerSave = useCallback((): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+
+      setSaveStatus('idle');
+
+      timerRef.current = setTimeout(async () => {
+        try {
+          await executeSave();
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      }, delay);
+    });
   }, [delay, executeSave]);
 
   /** Ejecuta el guardado inmediatamente, cancelando el debounce pendiente. */

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { fetchTemplate, type Template } from '../api/templates';
 import { TemplateReviewView } from '../features/templates';
 import { useUserProfile } from '../features/user-profile';

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { createReactBlockSpec } from "@blocknote/react";
-import { Button, TextInput } from '@maya/shared-ui-react';
+import { Button, TextInput } from '@ceedcv-maya/shared-ui-react';
 
 export const createIframeBlock = createReactBlockSpec(
   {

@@ -40,7 +40,7 @@ import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard'
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave } from '../../../hooks/useAutoSave';
-import { useDarkMode } from '@maya/shared-layout-react';
+import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
 import type { Study, CourseModule } from '../../../types/hierarchy';
@@ -57,7 +57,7 @@ import {
   FieldLabel,
   Select,
   TextInput,
-} from '@maya/shared-ui-react';
+} from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock } from '../../../utils/blockComments';
@@ -208,6 +208,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   // DocumentPreviewPage and the wizard reuse the same in-memory comments.
   const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const lastSavedContentRef = useRef<unknown>(null);
 
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
     setIsEditorFullscreen(v);
@@ -231,7 +233,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const forcePropertiesStep = locationState?.step === 'properties';
   const locationProcessId = locationState?.processId;
   const locationModuleId = locationState?.moduleId;
-  const fromTemplateSelection = locationState?.fromTemplateSelection === true;
   const selectedTemplateVersionId = locationState?.templateVersionId ?? null;
   const selectedTemplateVersionUuid = isUuidLike(selectedTemplateVersionId)
     ? selectedTemplateVersionId
@@ -847,14 +848,72 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         ? activeBlock.content
         : activeBlock.default_content
       );
+      lastSavedContentRef.current = activeBlock.content;
       setShowDocumentCommentPanel(true); // re-show comment panel on block change
     }
   }, [activeBlock]);
 
-  const handleGoToStep = (s: Step) => {
-    if (s === 'properties') setStep(s);
-    else if (s === 'blocks' && completedSteps.includes('properties')) setStep(s);
-    else if (s === 'summary' && completedSteps.includes('blocks')) setStep(s);
+  useEffect(() => {
+    if (saveStatus === 'saved') {
+      lastSavedContentRef.current = localContent;
+    }
+  }, [saveStatus, localContent]);
+
+  const handleBlockClick = async (key: string) => {
+    if (isSaving) return;
+
+    try {
+      setIsSaving(true);
+      const hasChanged =
+      JSON.stringify(localContent) !==
+      JSON.stringify(lastSavedContentRef.current);
+
+      if (hasChanged && saveStatus !== 'saved') {
+        await triggerSave();
+      }
+      setActiveBlockKey(key);
+
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Error al guardar bloque');
+
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleGoToStep = async(s: Step) => {
+    if (step === 'properties'){
+      // First run zod schema validation; if it fails, errors are set automatically.
+      const valid = await new Promise<DocumentStep1Input | false>((resolve) => {
+        void handleStep1Submit(
+          (values) => resolve(values),
+          () => resolve(false),
+        )();
+      });
+      if (!valid) return;
+    }else if (step === 'blocks'){
+      try {
+        setIsSaving(true);
+        const hasChanged =
+        JSON.stringify(localContent) !==
+        JSON.stringify(lastSavedContentRef.current);
+
+        if (hasChanged && saveStatus !== 'saved') {
+          await triggerSave();
+        }
+      }finally{
+        setIsSaving(false);
+      }
+    }
+    if (s === 'properties'){
+      setStep(s);
+    } 
+    else if (s === 'blocks' && completedSteps.includes('properties')){
+      setStep(s);
+    } 
+    else if (s === 'summary' && completedSteps.includes('blocks')){
+      setStep(s);
+    }
   };
 
   const handleContinue = async () => {
@@ -946,6 +1005,18 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'blocks') {
+      try {
+        setIsSaving(true);
+        const hasChanged =
+        JSON.stringify(localContent) !==
+        JSON.stringify(lastSavedContentRef.current);
+
+        if (hasChanged && saveStatus !== 'saved') {
+          await triggerSave();
+        }
+      }finally{
+        setIsSaving(false)
+      }
       if (detail) {
         const emptyEditable = detail.blocks.filter(
           (b: DocumentDisplayBlock) => b.block_state === 'editable' && !b.is_filled && !b.is_deleted,
@@ -1206,7 +1277,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     </p>
   ) : null;
 
-  const handleWizardBack = () => {
+  const handleWizardBack = async () => {
     const order: Step[] = ['properties', 'blocks', 'summary'];
     const idx = order.indexOf(step);
     if (isValidateMode) {
@@ -1214,6 +1285,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (idx > 0) {
+      if (step === "blocks"){
+        try {
+          setIsSaving(true);
+          const hasChanged =
+          JSON.stringify(localContent) !==
+          JSON.stringify(lastSavedContentRef.current);
+
+          if (hasChanged && saveStatus !== 'saved') {
+            await triggerSave();
+          }
+        }finally{
+          setIsSaving(false)
+        }
+      }
       setStep(order[idx - 1]!);
     } else {
       if (window.history.length <= 1) {
@@ -1553,7 +1638,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                           stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
                           hasReviewComments={reviewComments.some(c => c.blockable_id === b.document_block_id)}
                           isEmpty={isEmptyEditable}
-                          onClick={() => setActiveBlockKey(key)}
+                          onClick={() => handleBlockClick(key)}
                         />
                       );
                     })
@@ -1650,19 +1735,29 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
                         <div className="flex-1 min-h-0 p-6 flex flex-col">
                           <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                            <Suspense
-                              fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
-                              key={activeBlockKey ?? 'none'}
-                            >
-                              <BlockNoteEditorPanel
-                                initialContent={blockEditorContent(activeBlock)}
-                                editable
-                                isDark={isDark}
-                                onChange={(content) => { setLocalContent(content); triggerSave(); }}
-                                onFullscreenChange={handleEditorFullscreenChange}
-                                uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
-                              />
-                            </Suspense>
+                            {isSaving && (
+                              <div className="p-4 flex items-center justify-center min-h-[100px]">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
+                                  <span>Guardando cambios...</span>
+                                </div>
+                              </div>
+                            )}
+                            {!isSaving && (
+                              <Suspense
+                                fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
+                                key={activeBlockKey ?? 'none'}
+                              >
+                                <BlockNoteEditorPanel
+                                  initialContent={blockEditorContent(activeBlock)}
+                                  editable
+                                  isDark={isDark}
+                                  onChange={(content) => { setLocalContent(content); triggerSave(); }}
+                                  onFullscreenChange={handleEditorFullscreenChange}
+                                  uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
+                                />
+                              </Suspense>
+                            )}
                           </div>
                         </div>
                       </ErrorBoundary>

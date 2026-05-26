@@ -1,6 +1,6 @@
 import { useState, useEffect, type RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@maya/shared-ui-react';
+import { Button } from '@ceedcv-maya/shared-ui-react';
 import { canEditOwnBlockComment } from '../../../permissions';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -443,10 +443,10 @@ export function BlockCommentsCard({
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-4 pb-4 space-y-5">
         {activeComments.length === 0 && deletedComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
-            <svg className="w-10 h-10 mb-3 text-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <svg className="w-10 h-10 mb-3 text-text-muted dark:text-text-dark-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
             </svg>
-            <p className="text-sm font-medium text-text-muted leading-relaxed">
+            <p className="text-sm font-medium text-text-muted dark:text-text-dark-muted leading-relaxed">
               No hay mensajes en este bloque.
             </p>
           </div>
