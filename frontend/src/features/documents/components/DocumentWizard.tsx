@@ -892,13 +892,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       });
       if (!valid) return;
     }else if (step === 'blocks'){
-      setIsSaving(true);
-      const hasChanged =
-      JSON.stringify(localContent) !==
-      JSON.stringify(lastSavedContentRef.current);
+      try {
+        setIsSaving(true);
+        const hasChanged =
+        JSON.stringify(localContent) !==
+        JSON.stringify(lastSavedContentRef.current);
 
-      if (hasChanged && saveStatus !== 'saved') {
-        await triggerSave();
+        if (hasChanged && saveStatus !== 'saved') {
+          await triggerSave();
+        }
+      }finally{
         setIsSaving(false);
       }
     }
@@ -1002,14 +1005,17 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (step === 'blocks') {
-      setIsSaving(true);
-      const hasChanged =
-      JSON.stringify(localContent) !==
-      JSON.stringify(lastSavedContentRef.current);
+      try {
+        setIsSaving(true);
+        const hasChanged =
+        JSON.stringify(localContent) !==
+        JSON.stringify(lastSavedContentRef.current);
 
-      if (hasChanged && saveStatus !== 'saved') {
-        await triggerSave();
-        setIsSaving(false);
+        if (hasChanged && saveStatus !== 'saved') {
+          await triggerSave();
+        }
+      }finally{
+        setIsSaving(false)
       }
       if (detail) {
         const emptyEditable = detail.blocks.filter(
@@ -1271,7 +1277,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     </p>
   ) : null;
 
-  const handleWizardBack = () => {
+  const handleWizardBack = async () => {
     const order: Step[] = ['properties', 'blocks', 'summary'];
     const idx = order.indexOf(step);
     if (isValidateMode) {
@@ -1279,6 +1285,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       return;
     }
     if (idx > 0) {
+      if (step === "blocks"){
+        try {
+          setIsSaving(true);
+          const hasChanged =
+          JSON.stringify(localContent) !==
+          JSON.stringify(lastSavedContentRef.current);
+
+          if (hasChanged && saveStatus !== 'saved') {
+            await triggerSave();
+          }
+        }finally{
+          setIsSaving(false)
+        }
+      }
       setStep(order[idx - 1]!);
     } else {
       if (window.history.length <= 1) {
@@ -1716,7 +1736,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         <div className="flex-1 min-h-0 p-6 flex flex-col">
                           <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                             {isSaving && (
-                              <div className="p-4">Guardando cambios...</div>
+                              <div className="p-4 flex items-center justify-center min-h-[100px]">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
+                                  <span>Guardando cambios...</span>
+                                </div>
+                              </div>
                             )}
                             {!isSaving && (
                               <Suspense

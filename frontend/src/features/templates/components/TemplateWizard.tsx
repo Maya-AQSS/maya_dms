@@ -179,7 +179,8 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     const hasEditable = blocksList.some(b => b.block_state === 'editable' || b.block_state === 'modifiable');
     if (!hasEditable) return 'La plantilla debe tener al menos un bloque editable o modificable.';
     const isEmpty = (content: unknown) =>
-      content === null || (Array.isArray(content) && content.length === 0);
+      content === null || 
+      (Array.isArray(content) && content.length === 0);
     const hasEmptyModifiable = blocksList.some(b =>
       b.block_state === 'modifiable' && isEmpty(b.default_content)
     );
@@ -191,10 +192,13 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     return null;
   };
 
-  const handleBackArrow = () => {
+  const handleBackArrow = async () => {
     const order: Step[] = ['properties', 'blocks', 'users', 'summary'];
     const idx = order.indexOf(step);
     if (idx > 0) {
+      if (step === 'blocks'){
+        await saveBlocks()
+      }
       setStep(order[idx - 1]!);
     } else {
       if (window.history.length <= 1) {
@@ -410,7 +414,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   };
 
-  const validateBlocksStep = (onInvalid?: (remaining: Block[]) => void) => {
+  const validateBlocksStep = async (onInvalid?: (remaining: Block[]) => void) => {
     if (blocksLoading || blocksCount < 1) {
       setErrors({ blocks: 'Añade al menos un bloque antes de continuar.' });
       return false;
@@ -434,9 +438,6 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     setSaving(true);
     try {
       await blocksRef.current?.saveIfPending();
-      setCompletedSteps(prev =>
-        Array.from(new Set([...prev, 'blocks'])) as Step[]
-      );
     } finally {
       setSaving(false);
     }
@@ -447,20 +448,16 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       const ok = await saveProperties();
       if (!ok) return;
     } else if (step === 'blocks') {
-      if (!validateBlocksStep(async (remaining) => {
-        const err = validateBlocksInvariants(remaining);
-        if (err) return setBlockInvariantModal(err);
-
-        await saveBlocks();
-        setStep('users');
-      })) return;
-
-      await saveBlocks();
+      await saveBlocks()
+      if (!(await validateBlocksStep())) return;
+      setCompletedSteps(prev =>
+        Array.from(new Set([...prev, 'blocks'])) as Step[]
+      );
       setStep('users');
-      return;
-    }
-      else if (step === 'users') {
+
+    }else if (step === 'users') {
       void saveUsers();
+
     } else if (step === 'summary') {
       navigate(processBackTo);
     }
@@ -470,11 +467,12 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     if (step === 'properties') {
       const ok = await saveProperties();
       if (!ok) return;
+    }else if (step === 'blocks') {
+      await saveBlocks()
+      if (!(await validateBlocksStep())) return;
     }
     if (s === 'users' && completedSteps.includes('blocks')) {
-      if (!validateBlocksStep(() => setStep('blocks'))) return;
-      setStep('users');
-      return;
+      if (!(await validateBlocksStep())) return;
     }
 
     setStep(s);

@@ -342,16 +342,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         }
       }
       if (tabIsDirty && activeSingleId) {
-          setIsSaving(true);
+        setIsSaving(true);
 
-          try {
-            const success = await saveCurrentTab();
+        try {
+          const success = await saveCurrentTab();
 
-            if (!success) return;
-          } finally {
-            setIsSaving(false);
-          }
-        } 
+          if (!success) return;
+        } finally {
+          setIsSaving(false);
+        }
+      } 
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
       setSelectedBlockIds([blockId]);
@@ -389,7 +389,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   useImperativeHandle(ref, () => ({
     saveIfPending: async () => {
-      if (tabIsDirty) await forceSave();
+      if (tabIsDirty) {
+        setIsSaving(true);
+        try {
+          const success = await saveCurrentTab();
+          if (!success) return success;
+        }catch{
+          return false
+        } finally {
+          setIsSaving(false);
+        }
+      } 
     },
     discardInvalidBlocks: async () => {
       const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
@@ -760,7 +770,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         )}
                         <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                           {isSaving && (
-                            <div className="p-4">Guardando cambios...</div>
+                            <div className="p-4 flex items-center justify-center min-h-[100px]">
+                              <div className="flex items-center gap-2">
+                                <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
+                                <span>Guardando cambios...</span>
+                              </div>
+                            </div>
                           )}
                           {!isSaving && (
                           <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
