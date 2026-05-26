@@ -1,5 +1,5 @@
 {
-    "_comment": "Plantilla de override para desarrollo local contra un checkout de maya_platform. Copiar a composer.local.json (gitignored) y ejecutar composer update maya/* para activar.",
+    "_comment": "Plantilla de override para desarrollo local contra un checkout de maya_platform. Copiar a composer.local.json (gitignored) y ejecutar 'composer update ceedcv-maya/*' para activar. El composer-merge-plugin combinará estos repositorios sobre los publicados en Packagist — Composer prefiere path > vcs/dist automáticamente.",
     "repositories": {
         "shared-auth-local": {
             "type": "path",
