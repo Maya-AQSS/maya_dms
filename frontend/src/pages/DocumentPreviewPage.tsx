@@ -630,7 +630,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   };
 
   const viewToggle = detail && documentId && !isValidateMode ? (
-    <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 dark:bg-transparent dark:border-ui-dark-border p-0.5 text-xs hover:border-odoo-purple/80">
+    <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 dark:bg-transparent dark:border-ui-dark-border p-0.5 text-xs hover:border-odoo-purple/80 hover:bg-black/10">
        <button
         type="button"
         onClick={() => setViewMode(prev => (prev === 'edit' ? 'themed' : 'edit'))}

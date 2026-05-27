@@ -1665,13 +1665,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           {!isEditorFullscreen && (
             <div className="hidden md:flex shrink-0 px-5 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card items-center justify-end gap-2 ">
               <span className="text-xs font-medium text-text-muted">Vista:</span>
-              <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 dark:bg-transparent dark:border-ui-dark-border p-0.5 text-xs hover:border-odoo-purple/80">
+              <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 dark:bg-transparent dark:border-ui-dark-border p-0.5 text-xs hover:border-odoo-purple/80 hover:bg-black/10">
                 <button
                   type="button"
                   onClick={() => setBlocksViewMode(prev => (prev === 'per-block' ? 'continuous' : 'per-block'))}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'per-block' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-mutted',
+                    blocksViewMode === 'per-block' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 dark:bg-dark' : 'text-text-mutted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'per-block'}
                 >
@@ -1682,7 +1682,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   onClick={() => setBlocksViewMode(prev => (prev === 'continuous' ? 'per-block' : 'continuous'))}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'continuous' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-mutted',
+                    blocksViewMode === 'continuous' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 dark:bg-dark' : 'text-text-mutted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'continuous'}
                   title={t('documents:wizard.viewMode.continuousHint', 'Documento completo con edición inline')}
