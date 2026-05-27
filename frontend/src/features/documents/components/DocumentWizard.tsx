@@ -1663,15 +1663,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           {/* View-mode toggle: por bloque | continuo. Solo cuando NO está en fullscreen
               y solo en desktop (md:); en mobile la vista continua no es óptima. */}
           {!isEditorFullscreen && (
-            <div className="hidden md:flex shrink-0 px-5 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card items-center justify-end gap-2">
+            <div className="hidden md:flex shrink-0 px-5 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card items-center justify-end gap-2 ">
               <span className="text-xs font-medium text-text-muted">Vista:</span>
-              <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
+              <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 dark:bg-transparent dark:border-ui-dark-border p-0.5 text-xs hover:border-odoo-purple/80">
                 <button
                   type="button"
-                  onClick={() => setBlocksViewMode('per-block')}
+                  onClick={() => setBlocksViewMode(prev => (prev === 'per-block' ? 'continuous' : 'per-block'))}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'per-block' ? 'bg-white shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 dark:bg-dark' : 'text-text-mutted',
+                    blocksViewMode === 'per-block' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-mutted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'per-block'}
                 >
@@ -1679,10 +1679,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 </button>
                 <button
                   type="button"
-                  onClick={() => setBlocksViewMode('continuous')}
+                  onClick={() => setBlocksViewMode(prev => (prev === 'continuous' ? 'per-block' : 'continuous'))}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'continuous' ? 'bg-white shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 dark:bg-dark' : 'text-text-mutted',
+                    blocksViewMode === 'continuous' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-mutted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'continuous'}
                   title={t('documents:wizard.viewMode.continuousHint', 'Documento completo con edición inline')}
@@ -1694,7 +1694,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 <button
                   type="button"
                   onClick={() => setIsContinuousFullscreen((v) => !v)}
-                  className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card px-3 py-1 text-xs font-medium text-text-secondary hover:text-text-primary hover:border-odoo-purple/40 transition-colors"
+                  className="ml-2 inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card dark:text-light px-3 py-1 text-xs font-medium hover:text-text-secondary hover:border-odoo-purple/80 transition-colors dark:border-ui-dark-border"
                   title={isContinuousFullscreen
                     ? t('documents:wizard.viewMode.exitFullscreenTitle', 'Salir de pantalla completa (Esc)')
                     : t('documents:wizard.viewMode.enterFullscreenTitle', 'Pantalla completa')}

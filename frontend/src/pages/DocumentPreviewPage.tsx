@@ -630,13 +630,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   };
 
   const viewToggle = detail && documentId && !isValidateMode ? (
-    <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
-      <button
+    <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 dark:bg-transparent dark:border-ui-dark-border p-0.5 text-xs hover:border-odoo-purple/80">
+       <button
         type="button"
         onClick={() => setViewMode(prev => (prev === 'edit' ? 'themed' : 'edit'))}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'edit' ? 'bg-white shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 dark:bg-dark' : 'text-text-mutted',
+          viewMode === 'edit' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 group-hover:opacity-100 dark:bg-dark' : 'text-text-mutted',
         ].join(' ')}
         aria-pressed={viewMode === 'edit'}
       >
@@ -647,7 +647,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         onClick={() => setViewMode(prev => (prev === 'themed' ? 'edit' : 'themed'))}
         className={[
           'rounded-full px-2.5 py-1 font-medium transition-colors',
-          viewMode === 'themed' ? 'bg-white shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 dark:bg-dark' : 'text-text-mutted',
+          viewMode === 'themed' ? 'bg-white dark:opacity-60 shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 group-hover:opacity-100 dark:bg-dark ' : 'text-text-mutted',
         ].join(' ')}
         aria-pressed={viewMode === 'themed'}
       >
