@@ -1665,15 +1665,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           {!isEditorFullscreen && (
             <div className="hidden md:flex shrink-0 px-5 py-2 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card items-center justify-end gap-2">
               <span className="text-xs font-medium text-text-muted">Vista:</span>
-              <div className="flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
+              <div className="group flex items-center gap-1 rounded-full border border-ui-border bg-ui-body/60 p-0.5 text-xs">
                 <button
                   type="button"
                   onClick={() => setBlocksViewMode('per-block')}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'per-block'
-                      ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card'
-                      : 'text-text-muted',
+                    blocksViewMode === 'per-block' ? 'bg-white shadow-sm text-text-primary duration-900 group-hover:translate-x-2 group-hover:animate-slide group-hover:pl-0 group-hover:pr-5 dark:bg-dark' : 'text-text-mutted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'per-block'}
                 >
@@ -1684,9 +1682,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   onClick={() => setBlocksViewMode('continuous')}
                   className={[
                     'rounded-full px-2.5 py-1 font-medium transition-colors',
-                    blocksViewMode === 'continuous'
-                      ? 'bg-white shadow-sm text-text-primary dark:bg-ui-dark-card'
-                      : 'text-text-muted',
+                    blocksViewMode === 'continuous' ? 'bg-white shadow-sm text-text-primary duration-900 group-hover:-translate-x-2 group-hover:animate-slide group-hover:pr-0 group-hover:pl-5 dark:bg-dark' : 'text-text-mutted',
                   ].join(' ')}
                   aria-pressed={blocksViewMode === 'continuous'}
                   title={t('documents:wizard.viewMode.continuousHint', 'Documento completo con edición inline')}
@@ -1740,7 +1736,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                   <button
                     type="button"
                     onClick={() => setIsContinuousFullscreen(false)}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-md hover:text-text-primary hover:border-odoo-purple/40 transition-colors"
+                    className=
+                    "inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-md hover:text-text-primary hover:border-odoo-purple/40 transition-colors"
                     title={t('documents:wizard.viewMode.exitFullscreenTitle', 'Salir de pantalla completa (Esc)')}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
