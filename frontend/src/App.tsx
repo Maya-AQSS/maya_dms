@@ -60,6 +60,7 @@ function AppRoutes() {
         <Route path="/themes/:id/edit" element={<ThemeEditPage />} />
         <Route path="/themes/:id/layout" element={<ThemeLayoutPage />} />
         <Route path="/admin/procesos" element={<ProcessesManagePage />} />
+        <Route path="/admin/procesos/new" element={<ProcessShowPage />} />
         <Route path="/admin/procesos/:processId" element={<ProcessShowPage />} />
         <Route path="*" element={<PlaceholderPage />} />
       </Routes>

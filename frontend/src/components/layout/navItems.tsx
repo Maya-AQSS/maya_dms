@@ -15,7 +15,10 @@ export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}):
   const { hasPermission } = useUserProfile();
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const canIndexProcesses = hasPermission(DMS_PERMISSIONS.processIndex);
-  const canCreateProcesses = hasPermission(DMS_PERMISSIONS.processCreate);
+  const canManageProcesses =
+    hasPermission(DMS_PERMISSIONS.processCreate) ||
+    hasPermission(DMS_PERMISSIONS.processUpdate) ||
+    hasPermission(DMS_PERMISSIONS.processDelete);
 
   return useMemo<NavItem[]>(() => {
     const items: NavItem[] = [
@@ -41,7 +44,7 @@ export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}):
       });
     }
 
-    if (canCreateProcesses) {
+    if (canManageProcesses) {
       items.push({
         id: 'admin-procesos',
         label: t('adminProcesos', { defaultValue: 'Gestión Procesos' }),
@@ -51,5 +54,5 @@ export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}):
     }
 
     return items;
-  }, [t, hasPermission, canIndexProcesses, canCreateProcesses, isDesktop, onOpenProcessesDrawer]);
+  }, [t, hasPermission, canIndexProcesses, canManageProcesses, isDesktop, onOpenProcessesDrawer]);
 }
