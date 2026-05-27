@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Processes;
 
 use App\Models\Process;
-use App\Services\Contracts\ProcessServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -33,6 +32,6 @@ class ShowProcessRequest extends FormRequest
     {
         $id = (string) $this->route('process');
 
-        return app(ProcessServiceInterface::class)->findModelOrFail($id);
+        return Process::findOrFail($id);
     }
 }

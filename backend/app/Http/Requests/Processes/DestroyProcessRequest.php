@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Processes;
 
 use App\Models\Process;
-use App\Services\Contracts\ProcessServiceInterface;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DestroyProcessRequest extends FormRequest
@@ -27,6 +26,6 @@ class DestroyProcessRequest extends FormRequest
     {
         $id = (string) $this->route('process');
 
-        return app(ProcessServiceInterface::class)->findModelOrFail($id);
+        return Process::findOrFail($id);
     }
 }

@@ -28,26 +28,14 @@ class ProcessRepository implements ProcessRepositoryInterface
             ->all();
     }
 
-    public function findModel(string $id): ?Process
-    {
-        return Process::query()->find($id);
-    }
-
     /**
-     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}|null
      */
-    public function toRow(Process $process): array
+    public function find(string $id): ?array
     {
-        return [
-            'id' => (string) $process->id,
-            'code' => (string) $process->code,
-            'name' => (string) $process->name,
-            'alias' => (string) $process->alias,
-            'icon' => $process->icon,
-            'color' => $process->color,
-            'description' => $process->description,
-            'process_parent_id' => $process->process_parent_id,
-        ];
+        $process = $this->findModel($id);
+
+        return $process !== null ? $this->toRow($process) : null;
     }
 
     /**
@@ -55,14 +43,18 @@ class ProcessRepository implements ProcessRepositoryInterface
      */
     public function create(CreateProcessDto $dto): array
     {
-        $process = Process::query()->create([
-            'id' => (string) Str::uuid(),
-            'code' => $dto->code,
-            'name' => $dto->name,
-            'alias' => $dto->alias,
-            'description' => $dto->description,
+        $process = new Process();
+        $process->id = (string) Str::uuid();
+        $process->fill([
+            'code'              => $dto->code,
+            'name'              => $dto->name,
+            'alias'             => $dto->alias,
+            'description'       => $dto->description,
             'process_parent_id' => $dto->processParentId,
+            'color'             => $dto->color,
+            'icon'              => $dto->icon,
         ]);
+        $process->save();
 
         return $this->toRow($process);
     }
@@ -70,23 +62,43 @@ class ProcessRepository implements ProcessRepositoryInterface
     /**
      * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
      */
-    public function update(Process $process, UpdateProcessDto $dto): array
+    public function update(string $id, UpdateProcessDto $dto): array
     {
+        $process = $this->findModel($id);
+
+        if ($process === null) {
+            throw new \Illuminate\Database\Eloquent\ModelNotFoundException;
+        }
+
         $process->fill([
-            'code' => $dto->code,
-            'name' => $dto->name,
-            'alias' => $dto->alias,
-            'description' => $dto->description,
+            'code'              => $dto->code,
+            'name'              => $dto->name,
+            'alias'             => $dto->alias,
+            'description'       => $dto->description,
             'process_parent_id' => $dto->processParentId,
+            'color'             => $dto->color,
+            'icon'              => $dto->icon,
         ]);
         $process->save();
 
-        return $this->toRow($process->fresh() ?? $process);
+        return $this->toRow($process);
     }
 
-    public function delete(Process $process): void
+    public function delete(string $id): void
     {
-        $process->delete();
+        Process::destroy($id);
+    }
+
+    public function hasDependents(string $processId): bool
+    {
+        return Process::query()
+            ->whereKey($processId)
+            ->where(function ($q) {
+                $q->whereHas('children')
+                  ->orWhereHas('templates')
+                  ->orWhereHas('documents');
+            })
+            ->exists();
     }
 
     /**
@@ -126,22 +138,31 @@ class ProcessRepository implements ProcessRepositoryInterface
             perPage: $page->perPage(),
             currentPage: $page->currentPage(),
             options: [
-                'path' => $page->path(),
+                'path'     => $page->path(),
                 'pageName' => $page->getPageName(),
             ],
         );
     }
 
-    public function hasDependents(string $processId): bool
+    private function findModel(string $id): ?Process
     {
-        $process = Process::query()->find($processId);
+        return Process::query()->find($id);
+    }
 
-        if ($process === null) {
-            return false;
-        }
-
-        return $process->children()->exists()
-            || $process->templates()->exists()
-            || $process->documents()->exists();
+    /**
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
+     */
+    private function toRow(Process $process): array
+    {
+        return [
+            'id'                => (string) $process->id,
+            'code'              => (string) $process->code,
+            'name'              => (string) $process->name,
+            'alias'             => (string) $process->alias,
+            'icon'              => $process->icon,
+            'color'             => $process->color,
+            'description'       => $process->description,
+            'process_parent_id' => $process->process_parent_id,
+        ];
     }
 }

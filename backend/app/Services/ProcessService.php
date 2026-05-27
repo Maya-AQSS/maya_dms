@@ -20,7 +20,7 @@ class ProcessService implements ProcessServiceInterface
     ) {}
 
     /**
-     * @return list<array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}>
+     * @return list<array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}>
      */
     public function list(): array
     {
@@ -28,32 +28,21 @@ class ProcessService implements ProcessServiceInterface
     }
 
     /**
-     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
      */
     public function findOrFail(string $id): array
     {
-        $process = $this->repository->findModel($id);
+        $row = $this->repository->find($id);
 
-        if ($process === null) {
+        if ($row === null) {
             throw (new ModelNotFoundException)->setModel(Process::class, [$id]);
         }
 
-        return $this->repository->toRow($process);
-    }
-
-    public function findModelOrFail(string $id): Process
-    {
-        $process = $this->repository->findModel($id);
-
-        if ($process === null) {
-            throw (new ModelNotFoundException)->setModel(Process::class, [$id]);
-        }
-
-        return $process;
+        return $row;
     }
 
     /**
-     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
      */
     public function create(CreateProcessDto $dto): array
     {
@@ -61,13 +50,11 @@ class ProcessService implements ProcessServiceInterface
     }
 
     /**
-     * @return array{id: string, code: string, name: string, alias: string, description: string|null, process_parent_id: string|null}
+     * @return array{id: string, code: string, name: string, alias: string, icon: string|null, color: string|null, description: string|null, process_parent_id: string|null}
      */
     public function update(string $id, UpdateProcessDto $dto): array
     {
-        $process = $this->findModelOrFail($id);
-
-        return $this->repository->update($process, $dto);
+        return $this->repository->update($id, $dto);
     }
 
     /**
@@ -80,12 +67,14 @@ class ProcessService implements ProcessServiceInterface
 
     public function delete(string $id): void
     {
+        $this->findOrFail($id);
+
         if ($this->repository->hasDependents($id)) {
             throw new ConflictHttpException(
                 'No se puede eliminar un proceso con subprocesos, plantillas o documentos asociados.',
             );
         }
 
-        $this->repository->delete($this->findModelOrFail($id));
+        $this->repository->delete($id);
     }
 }
