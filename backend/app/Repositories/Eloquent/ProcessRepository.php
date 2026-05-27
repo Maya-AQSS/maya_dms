@@ -8,6 +8,8 @@ use App\DTOs\Processes\CreateProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\LengthAwarePaginator as ConcretePaginator;
 use Illuminate\Support\Str;
 
 class ProcessRepository implements ProcessRepositoryInterface
@@ -85,6 +87,49 @@ class ProcessRepository implements ProcessRepositoryInterface
     public function delete(Process $process): void
     {
         $process->delete();
+    }
+
+    /**
+     * @param  array{search?: string, parent_id?: string}  $filters
+     */
+    public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
+    {
+        $query = Process::query()
+            ->select(['id', 'code', 'name', 'alias', 'icon', 'color', 'description', 'process_parent_id'])
+            ->orderBy('code');
+
+        if (! empty($filters['search'])) {
+            $needle = '%'.$filters['search'].'%';
+            $query->where(function ($w) use ($needle) {
+                $w->where('name', 'ilike', $needle)
+                    ->orWhere('code', 'ilike', $needle)
+                    ->orWhere('alias', 'ilike', $needle);
+            });
+        }
+
+        if (isset($filters['parent_id']) && $filters['parent_id'] !== '') {
+            if ($filters['parent_id'] === 'root') {
+                $query->whereNull('process_parent_id');
+            } else {
+                $query->where('process_parent_id', $filters['parent_id']);
+            }
+        }
+
+        /** @var LengthAwarePaginator<int, Process> $page */
+        $page = $query->paginate($perPage);
+
+        $items = $page->getCollection()->map(fn (Process $p) => $this->toRow($p))->values()->all();
+
+        return new ConcretePaginator(
+            items: $items,
+            total: $page->total(),
+            perPage: $page->perPage(),
+            currentPage: $page->currentPage(),
+            options: [
+                'path' => $page->path(),
+                'pageName' => $page->getPageName(),
+            ],
+        );
     }
 
     public function hasDependents(string $processId): bool

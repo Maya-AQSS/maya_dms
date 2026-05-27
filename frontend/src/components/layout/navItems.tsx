@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { NavItem } from '@ceedcv-maya/shared-layout-react';
-import { FolderIcon, HomeIcon, TemplateIcon } from '@ceedcv-maya/shared-layout-react';
+import { FolderIcon, GridIcon, HomeIcon, TemplateIcon } from '@ceedcv-maya/shared-layout-react';
 import { useUserProfile } from '@ceedcv-maya/shared-profile-react';
 import { canManageThemesCatalog, DMS_PERMISSIONS } from '../../permissions';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -15,6 +15,7 @@ export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}):
   const { hasPermission } = useUserProfile();
   const isDesktop = useMediaQuery('(min-width: 768px)');
   const canIndexProcesses = hasPermission(DMS_PERMISSIONS.processIndex);
+  const canCreateProcesses = hasPermission(DMS_PERMISSIONS.processCreate);
 
   return useMemo<NavItem[]>(() => {
     const items: NavItem[] = [
@@ -40,6 +41,15 @@ export function useNavItems({ onOpenProcessesDrawer }: UseNavItemsOptions = {}):
       });
     }
 
+    if (canCreateProcesses) {
+      items.push({
+        id: 'admin-procesos',
+        label: t('adminProcesos', { defaultValue: 'Gestión Procesos' }),
+        icon: GridIcon,
+        path: '/admin/procesos',
+      });
+    }
+
     return items;
-  }, [t, hasPermission, canIndexProcesses, isDesktop, onOpenProcessesDrawer]);
+  }, [t, hasPermission, canIndexProcesses, canCreateProcesses, isDesktop, onOpenProcessesDrawer]);
 }

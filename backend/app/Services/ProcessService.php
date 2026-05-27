@@ -9,6 +9,7 @@ use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use App\Services\Contracts\ProcessServiceInterface;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 
@@ -67,6 +68,14 @@ class ProcessService implements ProcessServiceInterface
         $process = $this->findModelOrFail($id);
 
         return $this->repository->update($process, $dto);
+    }
+
+    /**
+     * @param  array{search?: string, parent_id?: string}  $filters
+     */
+    public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->repository->paginate($filters, $perPage);
     }
 
     public function delete(string $id): void

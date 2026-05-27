@@ -7,6 +7,7 @@ namespace App\Services\Contracts;
 use App\DTOs\Processes\CreateProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 interface ProcessServiceInterface
 {
@@ -33,4 +34,9 @@ interface ProcessServiceInterface
     public function update(string $id, UpdateProcessDto $dto): array;
 
     public function delete(string $id): void;
+
+    /**
+     * @param  array{search?: string, parent_id?: string}  $filters
+     */
+    public function paginate(array $filters, int $perPage = 20): LengthAwarePaginator;
 }

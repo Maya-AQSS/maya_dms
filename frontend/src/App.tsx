@@ -28,6 +28,8 @@ const ThemesListPage = lazy(() => import('./features/themes/pages/ThemesListPage
 const ThemeNewPage = lazy(() => import('./features/themes/pages/ThemeNewPage').then(m => ({ default: m.ThemeNewPage })));
 const ThemeEditPage = lazy(() => import('./features/themes/pages/ThemeEditPage').then(m => ({ default: m.ThemeEditPage })));
 const ThemeLayoutPage = lazy(() => import('./features/themes/pages/ThemeLayoutPage').then(m => ({ default: m.ThemeLayoutPage })));
+const ProcessesManagePage = lazy(() => import('./features/processes/pages/ProcessesManagePage').then(m => ({ default: m.ProcessesManagePage })));
+const ProcessShowPage = lazy(() => import('./features/processes/pages/ProcessShowPage').then(m => ({ default: m.ProcessShowPage })));
 const PlaceholderPage = lazy(() => import('./pages/PlaceholderPage').then(m => ({ default: m.PlaceholderPage })));
 
 const DASHBOARD_API_URL = resolveServiceUrl(
@@ -57,6 +59,8 @@ function AppRoutes() {
         <Route path="/themes/new" element={<ThemeNewPage />} />
         <Route path="/themes/:id/edit" element={<ThemeEditPage />} />
         <Route path="/themes/:id/layout" element={<ThemeLayoutPage />} />
+        <Route path="/admin/procesos" element={<ProcessesManagePage />} />
+        <Route path="/admin/procesos/:processId" element={<ProcessShowPage />} />
         <Route path="*" element={<PlaceholderPage />} />
       </Routes>
     </Suspense>

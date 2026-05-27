@@ -35,4 +35,9 @@ interface ProcessRepositoryInterface
     public function delete(Process $process): void;
 
     public function hasDependents(string $processId): bool;
+
+    /**
+     * @param  array{search?: string, parent_id?: string}  $filters
+     */
+    public function paginate(array $filters, int $perPage = 20): \Illuminate\Contracts\Pagination\LengthAwarePaginator;
 }

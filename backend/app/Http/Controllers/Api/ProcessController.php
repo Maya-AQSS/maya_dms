@@ -24,6 +24,13 @@ class ProcessController extends Controller
 
     public function index(IndexProcessRequest $request): AnonymousResourceCollection
     {
+        $filters = $request->only(['search', 'parent_id']);
+        $perPage = (int) $request->input('per_page', 20);
+
+        if ($request->anyFilled(['search', 'parent_id']) || $request->has('page')) {
+            return ProcessResource::collection($this->processService->paginate($filters, $perPage));
+        }
+
         return ProcessResource::collection($this->processService->list());
     }
 
