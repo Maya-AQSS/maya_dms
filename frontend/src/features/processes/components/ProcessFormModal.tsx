@@ -1,32 +1,47 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, type MutableRefObject } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from '@ceedcv-maya/shared-ui-react';
+import { getProcessIcon, PROCESS_ICON_SLUGS } from '../../../components/layout/processIcons';
 import type { Process } from '../../../types/processes';
-import type { ProcessPayload } from '../hooks/useProcessesCrud';
+import type { ProcessPayload } from '../../../api/processes';
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+
+const processSchema = z.object({
+  code: z.string().trim().min(1, 'El código es obligatorio.').max(50),
+  name: z.string().trim().min(1, 'El nombre es obligatorio.').max(255),
+  alias: z.string().trim().min(1, 'El alias es obligatorio.').max(100),
+  description: z.string().trim().nullable().optional(),
+  process_parent_id: z.string().nullable().optional(),
+  color: z
+    .string()
+    .regex(HEX_COLOR_RE, 'Color inválido (formato #RRGGBB).')
+    .nullable()
+    .optional(),
+  icon: z.string().nullable().optional(),
+});
+
+type ProcessFormValues = z.infer<typeof processSchema>;
 
 interface ProcessFormModalProps {
   open: boolean;
   onClose: () => void;
   onSave: (payload: ProcessPayload) => Promise<void>;
   initial?: Process | null;
-  /** Lista de procesos disponibles para el select de padre. */
   processes: Process[];
 }
 
-const EMPTY_FORM: ProcessPayload = {
-  code: '',
-  name: '',
-  alias: '',
-  description: null,
-  process_parent_id: null,
-};
-
-function formFromProcess(process: Process): ProcessPayload {
+function defaultValues(initial?: Process | null): ProcessFormValues {
   return {
-    code: process.code,
-    name: process.name,
-    alias: process.alias,
-    description: process.description ?? null,
-    process_parent_id: process.process_parent_id ?? null,
+    code: initial?.code ?? '',
+    name: initial?.name ?? '',
+    alias: initial?.alias ?? '',
+    description: initial?.description ?? null,
+    process_parent_id: initial?.process_parent_id ?? null,
+    color: initial?.color ?? null,
+    icon: initial?.icon ?? null,
   };
 }
 
@@ -37,60 +52,60 @@ export function ProcessFormModal({
   initial,
   processes,
 }: ProcessFormModalProps) {
-  const [form, setForm] = useState<ProcessPayload>(
-    initial ? formFromProcess(initial) : EMPTY_FORM,
-  );
-  const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-  const firstInputRef = useRef<HTMLInputElement>(null);
+  const firstInputRef = useRef<HTMLInputElement | null>(null) as MutableRefObject<HTMLInputElement | null>;
 
-  // Sync form when initial changes (open different item)
-  useEffect(() => {
-    setForm(initial ? formFromProcess(initial) : EMPTY_FORM);
-    setFormError(null);
-  }, [initial, open]);
+  const form = useForm<ProcessFormValues>({
+    resolver: zodResolver(processSchema),
+    defaultValues: defaultValues(initial),
+  });
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting }, setError, setValue, control } = form;
+  const watchColor = useWatch({ control, name: 'color' });
+  const watchIcon = useWatch({ control, name: 'icon' });
 
-  // Focus first input on open
   useEffect(() => {
-    if (open) {
-      setTimeout(() => firstInputRef.current?.focus(), 50);
-    }
+    reset(defaultValues(initial));
+  }, [initial, open, reset]);
+
+  useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => firstInputRef.current?.focus(), 50);
+    return () => clearTimeout(timer);
   }, [open]);
 
   if (!open) return null;
 
-  const set = (patch: Partial<ProcessPayload>) => setForm((f) => ({ ...f, ...patch }));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (saving) return;
-
+  const onSubmit = async (values: ProcessFormValues) => {
     try {
-      setSaving(true);
-      setFormError(null);
       await onSave({
-        ...form,
-        description: form.description?.trim() || null,
-        process_parent_id: form.process_parent_id || null,
+        ...values,
+        description: values.description?.trim() || null,
+        process_parent_id: values.process_parent_id || null,
+        color: values.color || null,
+        icon: values.icon || null,
       });
       onClose();
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Error al guardar el proceso.');
-    } finally {
-      setSaving(false);
+      setError('root', {
+        message: err instanceof Error ? err.message : 'Error al guardar el proceso.',
+      });
     }
   };
 
-  // Only top-level processes can be parents (exclude the process being edited)
   const parentCandidates = processes.filter(
     (p) => p.process_parent_id === null && p.id !== initial?.id,
   );
 
   const isEditing = !!initial;
 
+  const inputClass =
+    'w-full border border-ui-border dark:border-ui-dark-border rounded-lg px-3 py-2 text-sm bg-ui-card dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary placeholder:text-text-muted dark:placeholder:text-text-dark-muted focus:outline-none focus:ring-2 focus:ring-odoo-purple/40 focus:border-odoo-purple transition-colors';
+  const labelClass =
+    'block text-sm font-medium text-text-primary dark:text-text-dark-primary mb-1';
+
+  const { ref: codeRef, ...codeRest } = register('code');
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
@@ -98,7 +113,6 @@ export function ProcessFormModal({
       />
 
       <div className="relative bg-ui-card dark:bg-ui-dark-card w-full max-w-lg rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-ui-border dark:border-ui-dark-border">
           <h2 className="text-sm font-black uppercase tracking-widest text-text-primary dark:text-text-dark-primary">
             {isEditing ? 'Editar proceso' : 'Nuevo proceso'}
@@ -113,107 +127,70 @@ export function ProcessFormModal({
           </button>
         </div>
 
-        {/* Form */}
-        <form onSubmit={(e) => void handleSubmit(e)}>
+        <form onSubmit={(e) => void handleSubmit(onSubmit)(e)}>
           <div className="px-5 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
-            {formError && (
+            {errors.root && (
               <div className="rounded border border-danger bg-danger-light p-3 text-sm text-danger-dark">
-                {formError}
+                {errors.root.message}
               </div>
             )}
 
-            {/* Código */}
             <div>
-              <label
-                htmlFor="process-code"
-                className="block text-sm font-medium text-text-primary dark:text-text-dark-primary mb-1"
-              >
+              <label className={labelClass}>
                 Código <span className="text-danger">*</span>
               </label>
               <input
-                ref={firstInputRef}
-                id="process-code"
+                {...codeRest}
+                ref={(el) => {
+                  codeRef(el);
+                  firstInputRef.current = el;
+                }}
                 type="text"
-                value={form.code}
-                onChange={(e) => set({ code: e.target.value })}
-                required
-                maxLength={100}
                 placeholder="Ej. PE01"
-                className="w-full border border-ui-border dark:border-ui-dark-border rounded-lg px-3 py-2 text-sm bg-ui-card dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary placeholder:text-text-muted dark:placeholder:text-text-dark-muted focus:outline-none focus:ring-2 focus:ring-odoo-purple/40 focus:border-odoo-purple transition-colors"
+                className={inputClass}
               />
+              {errors.code && <p className="mt-1 text-xs text-danger">{errors.code.message}</p>}
             </div>
 
-            {/* Nombre */}
             <div>
-              <label
-                htmlFor="process-name"
-                className="block text-sm font-medium text-text-primary dark:text-text-dark-primary mb-1"
-              >
+              <label className={labelClass}>
                 Nombre <span className="text-danger">*</span>
               </label>
               <input
-                id="process-name"
+                {...register('name')}
                 type="text"
-                value={form.name}
-                onChange={(e) => set({ name: e.target.value })}
-                required
                 placeholder="Nombre completo del proceso"
-                className="w-full border border-ui-border dark:border-ui-dark-border rounded-lg px-3 py-2 text-sm bg-ui-card dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary placeholder:text-text-muted dark:placeholder:text-text-dark-muted focus:outline-none focus:ring-2 focus:ring-odoo-purple/40 focus:border-odoo-purple transition-colors"
+                className={inputClass}
               />
+              {errors.name && <p className="mt-1 text-xs text-danger">{errors.name.message}</p>}
             </div>
 
-            {/* Alias */}
             <div>
-              <label
-                htmlFor="process-alias"
-                className="block text-sm font-medium text-text-primary dark:text-text-dark-primary mb-1"
-              >
+              <label className={labelClass}>
                 Alias <span className="text-danger">*</span>
               </label>
               <input
-                id="process-alias"
+                {...register('alias')}
                 type="text"
-                value={form.alias}
-                onChange={(e) => set({ alias: e.target.value })}
-                required
-                maxLength={255}
-                placeholder="Etiqueta corta (máx. 255 caracteres)"
-                className="w-full border border-ui-border dark:border-ui-dark-border rounded-lg px-3 py-2 text-sm bg-ui-card dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary placeholder:text-text-muted dark:placeholder:text-text-dark-muted focus:outline-none focus:ring-2 focus:ring-odoo-purple/40 focus:border-odoo-purple transition-colors"
+                placeholder="Etiqueta corta"
+                className={inputClass}
               />
+              {errors.alias && <p className="mt-1 text-xs text-danger">{errors.alias.message}</p>}
             </div>
 
-            {/* Descripción */}
             <div>
-              <label
-                htmlFor="process-description"
-                className="block text-sm font-medium text-text-primary dark:text-text-dark-primary mb-1"
-              >
-                Descripción
-              </label>
+              <label className={labelClass}>Descripción</label>
               <textarea
-                id="process-description"
-                value={form.description ?? ''}
-                onChange={(e) => set({ description: e.target.value || null })}
+                {...register('description')}
                 rows={3}
                 placeholder="Descripción opcional"
-                className="w-full border border-ui-border dark:border-ui-dark-border rounded-lg px-3 py-2 text-sm bg-ui-card dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary placeholder:text-text-muted dark:placeholder:text-text-dark-muted focus:outline-none focus:ring-2 focus:ring-odoo-purple/40 focus:border-odoo-purple transition-colors resize-none"
+                className={`${inputClass} resize-none`}
               />
             </div>
 
-            {/* Proceso padre */}
             <div>
-              <label
-                htmlFor="process-parent"
-                className="block text-sm font-medium text-text-primary dark:text-text-dark-primary mb-1"
-              >
-                Proceso padre
-              </label>
-              <select
-                id="process-parent"
-                value={form.process_parent_id ?? ''}
-                onChange={(e) => set({ process_parent_id: e.target.value || null })}
-                className="w-full border border-ui-border dark:border-ui-dark-border rounded-lg px-3 py-2 text-sm bg-ui-card dark:bg-ui-dark-card text-text-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-odoo-purple/40 focus:border-odoo-purple transition-colors"
-              >
+              <label className={labelClass}>Proceso padre</label>
+              <select {...register('process_parent_id')} className={inputClass}>
                 <option value="">Sin padre (proceso raíz)</option>
                 {parentCandidates.map((p) => (
                   <option key={p.id} value={p.id}>
@@ -222,15 +199,95 @@ export function ProcessFormModal({
                 ))}
               </select>
             </div>
+
+            <div>
+              <label className={labelClass}>Color</label>
+              <div className="flex items-center gap-3">
+                {watchColor ? (
+                  <>
+                    <input
+                      type="color"
+                      value={watchColor}
+                      onChange={(e) => setValue('color', e.target.value, { shouldValidate: true })}
+                      className="h-9 w-14 cursor-pointer rounded border border-ui-border dark:border-ui-dark-border bg-transparent p-0.5"
+                    />
+                    <span className="font-mono text-xs text-text-secondary dark:text-text-dark-secondary">
+                      {watchColor}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setValue('color', null, { shouldValidate: true })}
+                      className="text-xs text-text-muted dark:text-text-dark-muted underline hover:text-danger transition-colors"
+                    >
+                      Quitar color
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setValue('color', '#6366f1', { shouldValidate: true })}
+                    className="text-xs text-text-muted dark:text-text-dark-muted underline hover:text-text-primary dark:hover:text-text-dark-primary transition-colors"
+                  >
+                    + Asignar color
+                  </button>
+                )}
+              </div>
+              {errors.color && <p className="mt-1 text-xs text-danger">{errors.color.message}</p>}
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className={labelClass}>Icono</label>
+                {watchIcon && (
+                  <button
+                    type="button"
+                    onClick={() => setValue('icon', null)}
+                    className="text-xs text-text-muted dark:text-text-dark-muted underline hover:text-danger transition-colors"
+                  >
+                    Quitar icono
+                  </button>
+                )}
+              </div>
+              <div className="grid grid-cols-10 gap-1 p-2 rounded-lg border border-ui-border dark:border-ui-dark-border bg-ui-body dark:bg-ui-dark-bg max-h-40 overflow-y-auto">
+                {PROCESS_ICON_SLUGS.map((slug) => {
+                  const isSelected = watchIcon === slug;
+                  const bgStyle = watchColor
+                    ? { backgroundColor: watchColor + '33' }
+                    : { backgroundColor: isSelected ? 'rgba(99,102,241,0.15)' : 'rgba(0,0,0,0.06)' };
+                  const iconStyle = watchColor ? { color: watchColor } : undefined;
+                  return (
+                    <button
+                      key={slug}
+                      type="button"
+                      title={slug}
+                      onClick={() => setValue('icon', isSelected ? null : slug)}
+                      className={[
+                        'w-7 h-7 flex items-center justify-center rounded-full transition-all',
+                        isSelected
+                          ? 'ring-2 ring-odoo-purple ring-offset-1'
+                          : 'hover:ring-1 hover:ring-ui-border dark:hover:ring-ui-dark-border',
+                      ].join(' ')}
+                      style={bgStyle}
+                    >
+                      <span
+                        className={iconStyle ? '' : 'text-text-secondary dark:text-text-dark-secondary'}
+                        style={iconStyle}
+                      >
+                        {getProcessIcon(slug)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
-          {/* Footer */}
           <div className="flex justify-end gap-2 px-5 py-3 border-t border-ui-border dark:border-ui-dark-border">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={saving}>
+            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit" variant="primary" size="sm" disabled={saving}>
-              {saving ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear proceso'}
+            <Button type="submit" variant="primary" size="sm" disabled={isSubmitting}>
+              {isSubmitting ? 'Guardando…' : isEditing ? 'Guardar cambios' : 'Crear proceso'}
             </Button>
           </div>
         </form>
