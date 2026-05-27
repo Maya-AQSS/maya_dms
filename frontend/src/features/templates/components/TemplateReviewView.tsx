@@ -477,8 +477,8 @@ export function TemplateReviewView({ template }: Props) {
       actions={
         <div className="flex items-center gap-2">
           <SequentialValidatorBadge
-            reviewMode={template.review_mode}
-            reviewers={(template.reviewers ?? []).map((r) => ({ stage: r.stage ?? 0, status: r.status, name: r.user_name }))}
+            reviewMode={template?.review_mode}
+            reviewers={(template?.reviewers ?? []).map((r) => ({ stage: r.stage, status: r.status, name: r.user_name }))}
           />
           {isActiveValidator ? (
             <>
