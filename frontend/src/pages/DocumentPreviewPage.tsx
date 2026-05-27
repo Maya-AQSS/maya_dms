@@ -982,11 +982,10 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   )
                 : diffBlockId !== null
                   ? (
-                      <DocumentBlockHistoryPanel
-                        blockId={diffBlockId}
-                        blockNumber={(validateBlocks.indexOf(diffBlockId) + 1) || '?'}
-                        history={detail?.review_history ?? []}
-                        onClose={() => setHistoryBlockId(null)}
+                      <DocumentDiffPanel
+                        blocks={diffPanelBlocks}
+                        allBlocks={detail?.blocks}
+                        onClose={() => setDiffBlockId(null)}
                       />
                     )
                   : undefined
