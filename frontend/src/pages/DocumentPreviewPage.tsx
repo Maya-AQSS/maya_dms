@@ -893,7 +893,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                     disabled={validationReviewLoading}
                     onClick={() => { setValidationModalError(null); setValidateConfirm('reject'); }}
                     className="text-xs font-black uppercase tracking-wider hover:text-warning">
-                  >
+                  
                     Rechazar validación
                   </Button>
                   <Button
