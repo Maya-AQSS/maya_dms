@@ -70,7 +70,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
         $theme = $this->resolveTheme($document);
         $blockHtmlParts = [];
             foreach ($document->blocks as $block) {
-                $title = (string) ($block->title ?? '');
+                $title = (string) ($block->templateBlock?->title ?? '');
                 if ($title !== '') {
                     $blockHtmlParts[] = '<h2>'.e($title).'</h2>';
                 }
@@ -90,7 +90,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
             'document' => [
                 'id' => (string) $document->id,
                 'title' => (string) ($document->title ?? 'Document title not found'),
-                'subject' => $document->description ?? 'Description not found',
+                'subject' => $document->template?->description ?? 'Description not found',
                 'lang' => $theme['accessibility']['language'] ?? 'es',
                 'body_html' => $body,
             ],
