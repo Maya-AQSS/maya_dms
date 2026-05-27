@@ -75,7 +75,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
         return View::make('documents.render', [
             'document' => [
                 'id' => (string) $document->id,
-                'title' => (string) ($document->name ?? 'Documento'),
+                'title' => (string) ($document->title ?? 'Documento'),
                 'subject' => $document->description,
                 'lang' => $theme['accessibility']['language'] ?? 'es',
                 'body_html' => $body,
