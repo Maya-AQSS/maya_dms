@@ -1212,6 +1212,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         metaInfo={headerMetaInfo}
         actions={headerActions}
         headerRef={pageHeaderRef}
+        viewMode={viewMode}
         sidebar={
           diffBlockId !== null && !selectedReviewView
             ? (

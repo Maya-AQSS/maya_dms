@@ -292,7 +292,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     if (Array.isArray(parsedContent) && parsedContent.length > 0) {
       type BlockNoteNode = { type?: string; content?: Array<{ text?: unknown }> };
       const isBlank = (parsedContent as BlockNoteNode[]).every((b) =>
-        b.type !== 'image' && (
+        b.type !== 'image' &&
+        b.type !== 'table' && (
           !Array.isArray(b.content) ||
           b.content.length === 0 ||
           b.content.every((c) => typeof c.text !== 'string' || !c.text.trim())

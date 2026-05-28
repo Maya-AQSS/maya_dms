@@ -1591,7 +1591,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </div>
             </div>
 
-            {isDraft && !!detail && !!currentUserId && detail.owner_id === currentUserId && (
+            {(isDraft && detail?.owner_id === currentUserId )|| (!detail?.owner_id ) && (
               <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in space-y-3">
                 <p className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
                   Propietario
@@ -1599,7 +1599,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-secondary dark:text-text-dark-secondary">Actual:</span>
                   <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
-                    {newOwnerForDoc ? newOwnerForDoc.name : (detail.owner_name ?? '—')}
+                    {newOwnerForDoc ? newOwnerForDoc.name : (detail?.owner_name ?? '—')}
                   </span>
                   {newOwnerForDoc && (
                     <button
