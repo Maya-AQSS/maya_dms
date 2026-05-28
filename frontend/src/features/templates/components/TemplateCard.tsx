@@ -6,6 +6,7 @@ import { useUserProfile } from '../../../features/user-profile';
 import { DMS_PERMISSIONS } from '../../../permissions';
 import { useHierarchy } from '../../../features/hierarchy';
 import { formatListRowVisibilityCaption } from '../../../utils/academicContextSearch';
+import { shouldOpenTemplateEditorFromList } from '../templateListNavigation';
 
 const STATUS_LABEL: Record<TemplateStatus, string> = {
   draft: 'Borrador',
@@ -36,7 +37,9 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
   const [dialog, setDialog] = useState<'delete' | 'clone' | null>(null);
   const [dialogLoading, setDialogLoading] = useState(false);
   const canClone = t.can_clone === true;
-  const canEdit = (t.status === 'draft' || t.status === 'rejected') && profile?.id === t.created_by;
+  const isOwner = profile?.id === t.created_by;
+  const canEdit = isOwner && (t.status === 'draft' || t.status === 'rejected');
+  const openEditorFromList = shouldOpenTemplateEditorFromList(t, isOwner);
   const isAuthorized =
     profile?.id === t.created_by || hasPermission(DMS_PERMISSIONS.templateDelete);
   const hasDiscardableDraft = !!(t.working_version_id && (t.status === 'draft' || t.status === 'in_review'));
@@ -102,8 +105,10 @@ export function TemplateCard({ template: t, onDelete, onClone }: Props) {
             ? () => navigate(`/templates/${t.id}/review`)
             : isRejected
               ? () => navigate(`/templates/${t.id}`)  // rejected → preview with readonly comments first
-              : canEdit
+              : openEditorFromList
                 ? () => navigate(`/templates/${t.id}/edit`)
+              : canEdit
+                ? () => navigate(`/templates/${t.id}`)
                 : undefined
           : undefined
       }

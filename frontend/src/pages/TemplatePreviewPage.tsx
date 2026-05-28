@@ -25,6 +25,7 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { canListBlocks, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
+import { canDeleteUnpublishedEntity, isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
 import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -293,12 +294,14 @@ export function TemplatePreviewPage() {
     && (isOwner || hasPermission(DMS_PERMISSIONS.templateHistoryView));
 
   const canEdit = isOwner && isDraft && !viewingPublishedSnapshot;
-  /** Solo se permite eliminar plantillas que nunca han sido publicadas. */
+  /** Eliminar solo si nunca hubo versión publicada (alta o clon sin publicar). */
   const canDelete =
     !viewingPublishedSnapshot &&
     template != null &&
-    !template.latest_published_version_id &&
-    (isOwner || hasPermission(DMS_PERMISSIONS.templateDelete));
+    canDeleteUnpublishedEntity(
+      template.latest_published_version_id,
+      isOwner || hasPermission(DMS_PERMISSIONS.templateDelete),
+    );
   /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
   const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
   const canSubmit =
@@ -314,9 +317,12 @@ export function TemplatePreviewPage() {
     !viewingPublishedSnapshot &&
     template != null &&
     isOwner &&
-    (template.status === 'draft' || template.status === 'in_review') &&
-    !!template.latest_published_version_id &&
-    !!template.working_version_id;
+    isDiscardWorkingVersionAllowed(
+      template.latest_published_version_id,
+      template.working_version_id,
+      template.status,
+      ['draft', 'in_review'],
+    );
 
   const processesQuery = useProcessesQuery(undefined, {
     enabled: !!template?.process_id,

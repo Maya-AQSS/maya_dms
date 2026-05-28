@@ -110,6 +110,7 @@ class DocumentController extends Controller
             }
             $resolved->setRelation('headVersion', $latestPublished);
             $this->attachCanCloneMeta($resolved, $request);
+            $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
             $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
             $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
             $resolved->loadMissing(['owner']);
@@ -130,6 +131,7 @@ class DocumentController extends Controller
         );
         $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
         $this->attachCanCloneMeta($resolved, $request);
+        $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
         $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
         $resolved->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);

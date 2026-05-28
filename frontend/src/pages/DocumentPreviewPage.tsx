@@ -28,6 +28,7 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
+import { canDeleteUnpublishedEntity, isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
 import { useDocumentPdfExport } from '../features/documents/hooks/useDocumentPdfExport';
@@ -292,15 +293,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       detail.share_permission === 'edit' ||
       hasPermission(DMS_PERMISSIONS.documentUpdate));
   const canMutatePublished = canUpdate;
-  /** Paridad con `DocumentPolicy::delete`: titular/creador o `document.delete` (API valida contexto). */
-  const canDelete =
-    !!detail &&
-    isDraft &&
-    !detail.latest_published_version_id &&
-    (isOwner || hasPermission(DMS_PERMISSIONS.documentDelete));
-  const canEditDraft = isDraft && canUpdate;
   const canReviewDocument = hasPermission(DMS_PERMISSIONS.documentReview);
   const isHistoricalSnapshot = versionSnapshot !== null;
+  /** Paridad con plantillas: eliminar solo si nunca hubo versión publicada. */
+  const canDelete =
+    !!detail &&
+    !isHistoricalSnapshot &&
+    canDeleteUnpublishedEntity(
+      detail.latest_published_version_id,
+      isOwner || hasPermission(DMS_PERMISSIONS.documentDelete),
+    );
+  const canEditDraft = isDraft && canUpdate;
   const showVersionHistory =
     isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView);
   const canStartNewVersion =
@@ -315,10 +318,13 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const canDiscardWorkingVersion =
     !isValidateMode &&
     !isHistoricalSnapshot &&
-    (detail?.status === 'draft' || detail?.status === 'in_review' || detail?.status === 'rejected') &&
     canMutatePublished &&
-    !!detail?.latest_published_version_id &&
-    !!detail?.working_version_id;
+    isDiscardWorkingVersionAllowed(
+      detail?.latest_published_version_id,
+      detail?.working_version_id,
+      detail?.status,
+      ['draft', 'in_review', 'rejected'],
+    );
 
   useEffect(() => {
     if (!isValidateMode) {
