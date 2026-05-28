@@ -231,7 +231,23 @@ class DocumentPolicy
      */
     public function clone(JwtUser $user, Document $document): bool
     {
-        if ($document->status !== 'published' || ! $this->view($user, $document)) {
+        if (! $this->view($user, $document)) {
+            return false;
+        }
+
+        $documentId = (string) $document->getKey();
+        if ($documentId === '') {
+            return false;
+        }
+
+        $hasPublishedSnapshot = EntityVersion::query()
+            ->where('versionable_type', Document::class)
+            ->where('versionable_id', $documentId)
+            ->where('version_number', '>', 0)
+            ->where('status', 'published')
+            ->exists();
+
+        if (! $hasPublishedSnapshot) {
             return false;
         }
 
