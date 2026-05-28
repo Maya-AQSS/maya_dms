@@ -68,15 +68,29 @@ class DocumentRenderService implements DocumentRenderServiceInterface
         }
 
         $theme = $this->resolveTheme($document);
-        $body = BlockNoteHtmlRenderer::renderBlocks(
-            $document->blocks->map(fn ($block) => (array) $block->content)->all()
-        );
+        $blockHtmlParts = [];
+            foreach ($document->blocks as $block) {
+                $title = (string) ($block->templateBlock?->title ?? '');
+                if ($title !== '') {
+                    $blockHtmlParts[] = '<h2>'.e($title).'</h2>';
+                }
+                $default = $block->content;
+                if (is_array($default) && count($default) > 0) {
+                    $blockHtmlParts[] = BlockNoteHtmlRenderer::renderBlocks($default);
+                } elseif (is_string($default) && $default !== '') {
+                    // Backwards-compat: algún seed legacy guardaba string en lugar de array.
+                    $blockHtmlParts[] = '<p>'.e($default).'</p>';
+                } else {
+                    $blockHtmlParts[] = '<p><em>—</em></p>';
+                }
+            }
+        $body = implode("\n", $blockHtmlParts);
 
         return View::make('documents.render', [
             'document' => [
                 'id' => (string) $document->id,
-                'title' => (string) ($document->name ?? 'Documento'),
-                'subject' => $document->description,
+                'title' => (string) ($document->title ?? 'Document title not found'),
+                'subject' => $document->template?->description ?? 'Description not found',
                 'lang' => $theme['accessibility']['language'] ?? 'es',
                 'body_html' => $body,
             ],
