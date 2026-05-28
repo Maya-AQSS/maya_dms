@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
-import type { DocumentReviewCycleSnapshot } from '../../../types/documents';
+import type { DocumentReviewCycleSnapshot, DocumentReviewCycleBlock } from '../../../types/documents';
 
 // ─── Diff utilities ───────────────────────────────────────────────────────────
 
@@ -111,6 +111,7 @@ function DiffLines({ lines }: { lines: DiffLine[] }) {
 type CycleEntry = {
   cycle: number;
   submitted_at: string;
+  block: DocumentReviewCycleBlock;
   diffContent: DiffLine[];
 };
 
@@ -135,21 +136,30 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
         const prevBlock =
           i > 0 ? (history[i - 1].blocks.find((b) => b.document_block_id === blockId) ?? null) : null;
 
-        const cur = extractTextLines(block.content);
+        const mkDiff = (getCurrent: (b: DocumentReviewCycleBlock) => unknown, getPrev: (b: DocumentReviewCycleBlock) => unknown) => {
+          const cur = extractTextLines(getCurrent(block));
+          const prev = prevBlock ? extractTextLines(getPrev(prevBlock)) : [];
+          return prevBlock
+            ? computeLineDiff(prev, cur).filter((l) => l.type !== 'unchanged')
+            : cur.map((text) => ({ type: 'added' as const, text }));
+        };
+
+        const diffContent = mkDiff((b) => b.content, (b) => b.content);
+
+        /*const cur = extractTextLines(block.content);
         const diff = prevBlock
           ? computeLineDiff(extractTextLines(prevBlock.content), cur).filter((l) => l.type !== 'unchanged')
-          : cur.map((text) => ({ type: 'added' as const, text }));
+          : cur.map((text) => ({ type: 'added' as const, text }));*/
 
-        if (diff.length === 0) return null;
-        return { cycle: cycle.cycle, submitted_at: cycle.submitted_at, diffContent: diff };
+        if (diffContent.length === 0) return null;
+        return { cycle: cycle.cycle, submitted_at: cycle.submitted_at, block, diffContent};
       })
       .filter((e): e is CycleEntry => e !== null);
   }, [history, blockId]);
 
-  const entries = useMemo(
-    () => (ascending ? entriesChron : [...entriesChron].reverse()),
-    [entriesChron, ascending],
-  );
+  const entries = useMemo(() => {
+    return ascending ? entriesChron : [...entriesChron].reverse();
+  }, [entriesChron, ascending]);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">

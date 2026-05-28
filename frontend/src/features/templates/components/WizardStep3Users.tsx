@@ -179,7 +179,9 @@ function ValidatorSection({
 
       {validationType === 'ordenada' && (
         <div className="px-4 py-1 border-b border-warning/20 bg-warning-light/10 shrink-0">
-          <p className="text-xs text-warning-dark font-bold">Validación ordenada — arrastra para reordenar.</p>
+          <p className="text-xs text-warning-dark font-bold dark:text-warning-light">
+            Validación ordenada — arrastra para reordenar.
+            </p>
         </div>
       )}
 

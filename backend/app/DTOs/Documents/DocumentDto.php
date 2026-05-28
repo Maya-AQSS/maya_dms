@@ -45,6 +45,7 @@ final readonly class DocumentDto
         public ?string $latestPublishedTitle,
         public ?string $reviewMode,
         public bool $isAssignedReviewer = false,
+        public ?array $reviewHistory,
     ) {}
 
     public static function fromModel(Document $m): self
@@ -56,6 +57,18 @@ final readonly class DocumentDto
             ? $m->template->visibility_level->value
             : null;
         $templateVersionNumber = self::resolveTemplateVersionNumber($m);
+
+        $reviewHistory = null;
+        if ($m->relationLoaded('headVersion') && $m->headVersion !== null) {
+            $snap = $m->headVersion->snapshot_data;
+            if (is_array($snap) && isset($snap['blocks_at_previous_submission']) && is_array($snap['blocks_at_previous_submission'])) {
+                $blocksAtPreviousSubmission = $snap['blocks_at_previous_submission'];
+            }
+            $changeSet = $m->headVersion->change_set;
+            if (is_array($changeSet) && count($changeSet) > 0) {
+                $reviewHistory = $changeSet;
+            }
+        }
 
         return new self(
             id: (string) $m->id,
@@ -91,6 +104,7 @@ final readonly class DocumentDto
             latestPublishedTitle: $m->getAttribute('latest_published_title'),
             reviewMode: $m->review_mode !== null ? (string) $m->review_mode : null,
             isAssignedReviewer: (bool) ($m->getAttribute('is_assigned_reviewer') ?? false),
+            reviewHistory: $reviewHistory,
         );
     }
 

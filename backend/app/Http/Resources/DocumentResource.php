@@ -50,6 +50,7 @@ class DocumentResource extends JsonResource
             'latest_published_title' => $dto->latestPublishedTitle,
             'review_mode' => $dto->reviewMode,
             'is_assigned_reviewer' => $dto->isAssignedReviewer,
+            'review_history' => $dto->reviewHistory,
         ];
     }
 }
