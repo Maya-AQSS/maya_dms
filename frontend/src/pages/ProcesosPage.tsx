@@ -7,6 +7,7 @@ import { TemplatesTable } from '../features/templates/components/TemplatesTable'
 import { TemplatesTableBoundary } from '../features/templates/components/TemplatesTableBoundary';
 import { DocumentsTable } from '../features/documents/components/DocumentsTable';
 import { useUserProfile } from '../features/user-profile';
+import { refreshDmsDashboardQuery } from '../features/dashboard/hooks/useDmsDashboard';
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { DMS_PERMISSIONS } from '../permissions';
 import type { Process } from '../types/processes';
@@ -40,7 +41,10 @@ export function ProcesosPage() {
     if (!banner) return;
     setValidationBanner(banner);
     if (locationState?.tab) setActiveTab(locationState.tab);
-    void queryClient.invalidateQueries({ queryKey: ['documents'] });
+    void (async () => {
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
+    })();
     navigate(location.pathname, { replace: true, state: {} });
   }, [location.state, location.pathname, navigate, queryClient]);
   
