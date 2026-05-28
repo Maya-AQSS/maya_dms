@@ -18,7 +18,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, TextInput } from '@ceedcv-maya/shared-ui-react';
+import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, Spinner, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
@@ -789,7 +789,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             </div>
                           )}
                           {!isSaving && (
-                          <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                          <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                             <BlockNoteEditorPanel
                               key={`content-${activeSingleId ?? 'none'}`}
                               initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
@@ -822,7 +822,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     ) : (
                       <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
-                        <Suspense fallback={<div className="p-4">Cargando editor...</div>}>
+                        <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                           <BlockNoteEditorPanel
                             key={`description-${activeSingleId ?? 'none'}`}
                             initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}

@@ -57,6 +57,7 @@ import {
   ErrorBoundary,
   FieldLabel,
   Select,
+  Spinner,
   TextInput,
 } from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
@@ -1786,7 +1787,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     className="bg-white dark:bg-ui-dark-card shadow-xl preview-content"
                     style={{ maxWidth: '760px', minHeight: 'calc(100vh - 14rem)', padding: '56px 72px' }}
                   >
-                    <Suspense fallback={<p className="text-xs text-text-muted">Cargando vista continua…</p>}>
+                    <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                       <ContinuousDocumentEditor
                         blocks={sortedBlocks}
                         activeBlockKey={activeBlockKey}
@@ -2073,7 +2074,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                             )}
                             {!isSaving && (
                               <Suspense
-                                fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
+                                fallback={<div className="p-4 flex justify-center"><Spinner /></div>}
                                 key={activeBlockKey ?? 'none'}
                               >
                                 <BlockNoteEditorPanel

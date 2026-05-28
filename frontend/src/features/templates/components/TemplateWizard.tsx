@@ -401,7 +401,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'users'])) as Step[]);
       setStep('summary');
     } catch (e) {
-      console.error('[saveUsers]', e);
+      // TODO: send to error tracker
       const detail =
         e instanceof ApiHttpError
           ? e.message

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
@@ -44,6 +44,7 @@ const STATUS_LABEL: Record<TemplateStatus, string> = {
  */
 export function TemplatesContent() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation(['templates', 'common']);
   const { profile } = useUserProfile();
   const { hierarchy } = useHierarchy();
@@ -67,12 +68,63 @@ export function TemplatesContent() {
     cloneTemplate,
   } = useTemplates(undefined, sortBy);
 
-  const [authorInput, setAuthorInput] = useState(filters.author_name ?? '');
+  const [authorInput, setAuthorInput] = useState(filters.author_name ?? searchParams.get('author_name') ?? '');
   const authorDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [academicContextInput, setAcademicContextInput] = useState('');
-  const [academicContextFilter, setAcademicContextFilter] = useState('');
+  const [academicContextInput, setAcademicContextInput] = useState(searchParams.get('context') ?? '');
+  const [academicContextFilter, setAcademicContextFilter] = useState(searchParams.get('context') ?? '');
   const academicContextDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Inicializar filtros desde URL params al montar.
+  // Solo se ejecuta una vez (array vacío), los cambios posteriores van a través de applyFiltersWithUrl.
+  const initializedFromUrlRef = useRef(false);
+  useEffect(() => {
+    if (initializedFromUrlRef.current) return;
+    initializedFromUrlRef.current = true;
+    const patch: Partial<import('../../../types/templates').TemplateListFilters> = {};
+    const status = searchParams.get('status');
+    const studyTypeId = searchParams.get('studyTypeId');
+    const studyId = searchParams.get('studyId');
+    const moduleId = searchParams.get('moduleId');
+    const teamId = searchParams.get('teamId');
+    const authorName = searchParams.get('author_name');
+    const deliveryDeadline = searchParams.get('delivery_deadline');
+    if (status) patch.status = status as import('../../../types/templates').TemplateStatus;
+    if (studyTypeId) patch.study_type_id = studyTypeId;
+    if (studyId) patch.study_id = studyId;
+    if (moduleId) patch.module_id = moduleId;
+    if (teamId) patch.team_id = teamId;
+    if (authorName) { patch.author_name = authorName; setAuthorInput(authorName); }
+    if (deliveryDeadline) patch.delivery_deadline = deliveryDeadline;
+    if (Object.keys(patch).length > 0) applyFilters(patch);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** Wrapper que aplica filtros en el hook Y sincroniza la URL. */
+  const applyFiltersWithUrl = (patch: Partial<import('../../../types/templates').TemplateListFilters>) => {
+    applyFilters(patch);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      const urlKeyMap: Record<string, string> = {
+        status: 'status',
+        study_type_id: 'studyTypeId',
+        study_id: 'studyId',
+        module_id: 'moduleId',
+        team_id: 'teamId',
+        author_name: 'author_name',
+        delivery_deadline: 'delivery_deadline',
+      };
+      for (const [k, v] of Object.entries(patch)) {
+        const urlKey = urlKeyMap[k];
+        if (!urlKey) continue;
+        if (v !== undefined && v !== '') next.set(urlKey, String(v));
+        else next.delete(urlKey);
+      }
+      // Reset page on filter change
+      if (!Object.prototype.hasOwnProperty.call(patch, 'page')) next.delete('page');
+      return next;
+    });
+  };
 
   const listPage = filters.page ?? 1;
   const listPerPage = filters.per_page ?? pageSize;
@@ -117,7 +169,7 @@ export function TemplatesContent() {
     setAuthorInput(value);
     if (authorDebounceRef.current) clearTimeout(authorDebounceRef.current);
     authorDebounceRef.current = setTimeout(() => {
-      applyFilters({ author_name: value || undefined });
+      applyFiltersWithUrl({ author_name: value || undefined });
     }, 400);
   };
 
@@ -127,6 +179,13 @@ export function TemplatesContent() {
     if (academicContextDebounceRef.current) clearTimeout(academicContextDebounceRef.current);
     academicContextDebounceRef.current = setTimeout(() => {
       setAcademicContextFilter(value);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value) next.set('context', value);
+        else next.delete('context');
+        next.delete('page');
+        return next;
+      });
     }, 400);
   };
 
@@ -169,6 +228,11 @@ export function TemplatesContent() {
       team_id: undefined,
       author_name: undefined,
       delivery_deadline: undefined,
+    });
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      ['status', 'studyTypeId', 'studyId', 'moduleId', 'teamId', 'author_name', 'delivery_deadline', 'context', 'page'].forEach(k => next.delete(k));
+      return next;
     });
   };
 
@@ -396,7 +460,7 @@ export function TemplatesContent() {
               <Select
                 fieldSize="sm"
                 value={filterUi.status}
-                onChange={(e) => applyFilters({ status: e.target.value || undefined })}
+                onChange={(e) => applyFiltersWithUrl({ status: (e.target.value || undefined) as import('../../../types/templates').TemplateStatus | undefined })}
               >
                 {STATUS_OPTIONS.map((o) => (
                   <option key={o.value || 'all'} value={o.value}>
@@ -416,7 +480,7 @@ export function TemplatesContent() {
             <FilterField label="Fecha de validación (hasta)">
               <DatePicker
                 value={filterUi.deliveryDeadline || null}
-                onChange={(d) => applyFilters({ delivery_deadline: d ?? undefined })}
+                onChange={(d) => applyFiltersWithUrl({ delivery_deadline: d ?? undefined })}
                 placeholder={t('templates:table.deadlinePlaceholder')}
                 ariaLabel="Plantillas no publicadas cuya fecha límite de validación sea esta fecha o anterior (las publicadas no aplican)"
               />
@@ -431,7 +495,7 @@ export function TemplatesContent() {
                   team_id: filterUi.teamId,
                 }}
                 onFieldChange={(key, value) =>
-                  applyFilters({ [key]: value.trim() === '' ? undefined : value.trim() })
+                  applyFiltersWithUrl({ [key]: value.trim() === '' ? undefined : value.trim() })
                 }
                 gridClassName="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3"
                 filterMode={true}

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { AppLayout } from '@ceedcv-maya/shared-layout-react';
@@ -39,7 +40,7 @@ const DASHBOARD_API_URL = resolveServiceUrl(
 
 function AppRoutes() {
   return (
-    <Suspense fallback={<div className="p-8">Cargando...</div>}>
+    <Suspense fallback={<div className="p-8 flex justify-center"><Spinner /></div>}>
       <Routes>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />

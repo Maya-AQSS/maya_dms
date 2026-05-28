@@ -438,8 +438,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         },
       });
       appendCommentToCache(documentId, res.data);
-    } catch (e) {
-      console.error('Error sending message', e);
+    } catch {
+      // TODO: send to error tracker
     } finally {
       setReviewCommentsLoading(false);
     }

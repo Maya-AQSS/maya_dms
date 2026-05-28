@@ -275,8 +275,8 @@ export function TemplateEditor({ template }: Props) {
       setLocalUiState(blockToUiState(block));
       setLocalContent(block.default_content);
       setIsDirty(false);
-    } catch (e) {
-      console.error('Error al crear el bloque:', e);
+    } catch {
+      // TODO: send to error tracker
     } finally {
       setCreatingBlock(false);
     }

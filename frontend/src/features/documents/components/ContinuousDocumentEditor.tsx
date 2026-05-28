@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useMemo, type ReactNode } from 'react';
+import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 import { PaperBlocksArticle, type PaperArticleBlock } from './PaperBlocksArticle';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
@@ -104,7 +105,7 @@ export function ContinuousDocumentEditor({
       if (ui === 'locked' || !canEdit) return undefined;
       return (
         <Suspense
-          fallback={<p className="p-2 text-xs text-text-muted">Cargando editor…</p>}
+          fallback={<div className="p-2 flex justify-center"><Spinner size="sm" /></div>}
           key={`${block.id}-editor`}
         >
           <BlockNoteEditorPanel

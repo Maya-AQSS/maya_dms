@@ -174,7 +174,7 @@ export function useTemplateBlocks(templateId: string) {
           // fallback below
         }
 
-        console.error('Failed to persist reorder:', e);
+        // TODO: send to error tracker
         setBlocks(snapshot); // revert on failure
         setError(formatError(e));
       }

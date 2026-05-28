@@ -200,7 +200,7 @@ export function TemplatePreviewPage() {
             if (t.has_review_comments) {
               void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
                 .then((res) => { if (!cancelled) setReviewComments(res.data); })
-                .catch((err) => { console.error('Error loading review comments', err); });
+                .catch(() => { /* TODO: send to error tracker */ });
             }
           }
         }
@@ -228,8 +228,8 @@ export function TemplatePreviewPage() {
         body: { body, parent_id: parentId, blockable_id: activeView.blockId },
       });
       setReviewComments(prev => [...prev, res.data]);
-    } catch (e) {
-      console.error('Error sending message', e);
+    } catch {
+      // TODO: send to error tracker
     } finally {
       setReviewCommentsLoading(false);
     }

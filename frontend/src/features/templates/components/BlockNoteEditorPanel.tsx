@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '@ceedcv-maya/shared-ui-react';
 import { BlockNoteEditor, BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { FormattingToolbar } from '@blocknote/react';
 import { BlockNoteView } from '@blocknote/ariakit';
@@ -105,6 +106,7 @@ function cleanHtmlForPaste(html: string): string {
 
 export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChange, onFullscreenChange, uploadFile }: Props) {
   const { t } = useTranslation('documents');
+  const { addToast } = useToast();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -191,8 +193,8 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       try {
         parsedBlocks = (editor as any).tryParseHTMLToBlocks(cleaned);
         if (parsedBlocks?.length) handled = true;
-      } catch (err) {
-        console.warn('Failed to parse pasted HTML:', err);
+      } catch {
+        // Fallback to plain text below
       }
     }
 
@@ -200,8 +202,8 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       try {
         parsedBlocks = (editor as any).tryParseMarkdownToBlocks(plain);
         if (parsedBlocks?.length) handled = true;
-      } catch (err) {
-        console.warn('Failed to parse pasted text/markdown:', err);
+      } catch {
+        addToast({ message: t('blocks.pasteError', 'No se pudo pegar el contenido'), tone: 'danger' });
       }
     }
 
@@ -227,7 +229,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     // Use capture phase to ensure we intercept before the default handler.
     dom.addEventListener('paste', handlePaste, true);
     return () => dom.removeEventListener('paste', handlePaste, true);
-  }, [editor, onChange]);
+  }, [editor, onChange, addToast]);
 
   // Click anywhere in the empty editor area focuses the editor at the end.
   const handleUndo = () => {
@@ -430,8 +432,8 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       try {
         const blocks = await editor.tryParseMarkdownToBlocks(markdown);
         editor.replaceBlocks(editor.document, blocks);
-      } catch (err) {
-        console.warn("Error parsing Markdown:", err);
+      } catch {
+        addToast({ message: t('blocks.pasteError', 'No se pudo pegar el contenido'), tone: 'danger' });
       }
       setShowMarkdown(false);
     }
