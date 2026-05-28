@@ -581,6 +581,7 @@ export function TemplatePreviewPage() {
         backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
         metaInfo={headerMeta}
         actions={headerToolbar}
+        viewMode={viewMode}
         sidebar={activeView && (() => {
           const block = blocks.find((b) => b.id === activeView.blockId);
           if (!block) return null;
