@@ -19,6 +19,12 @@ interface DocumentRepositoryInterface
     public function findOrFail(string $id): Document;
 
     /**
+     * Localiza un documento con bloques y theme cargados para renderizado HTML/PDF.
+     * Lanza NotFoundHttpException si no existe.
+     */
+    public function findWithBlocksAndThemeOrFail(string $id): Document;
+
+    /**
      * Recarga el documento sin el scope `user_access` (cabezal unido).
      *
      * Tras mutar el cabezal, el actor puede dejar de cumplir visibilidad (p. ej. revisor tras rechazo → borrador).
@@ -235,4 +241,18 @@ interface DocumentRepositoryInterface
      * Ejecuta una operación dentro de transacción.
      */
     public function transaction(callable $callback): mixed;
+
+    /**
+     * IDs de documentos (de entre los indicados) en los que el usuario es revisor asignado.
+     *
+     * @param  list<string>  $documentIds
+     * @return list<string>
+     */
+    public function findAssignedReviewerDocumentIds(array $documentIds, string $reviewerId): array;
+
+    /**
+     * Indica si el usuario tiene una fila en document_reviews para el documento dado,
+     * sin importar el estado de la revisión (pending, approved, rejected).
+     */
+    public function isReviewerAssignedToDocument(string $documentId, string $reviewerId): bool;
 }

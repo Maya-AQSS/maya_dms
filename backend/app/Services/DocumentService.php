@@ -1340,17 +1340,51 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $assignedDocIds = array_flip(
-            DocumentReview::query()
-                ->whereIn('document_id', $ids)
-                ->where('reviewer_id', $viewerId)
-                ->pluck('document_id')
-                ->map(fn ($id) => (string) $id)
-                ->all(),
+            $this->documentRepository->findAssignedReviewerDocumentIds($ids, $viewerId),
         );
 
         foreach ($documents as $document) {
             $document->setAttribute('is_assigned_reviewer', array_key_exists((string) $document->id, $assignedDocIds));
         }
+    }
+
+    /**
+     * Resuelve el contexto de visibilidad para el endpoint `show` de Document.
+     *
+     * Determina si el viewer debe recibir el snapshot publicado o el contenido vivo,
+     * y si es revisor asignado activo. Encapsula la lógica de branching que antes
+     * vivía directamente en DocumentController::show().
+     *
+     * @return array{serve_published_snapshot: bool, is_assigned_reviewer: bool}
+     */
+    public function resolveDocumentViewerContext(Document $resolved, string $documentId, string $viewerId): array
+    {
+        $servePublishedSnapshot = false;
+
+        try {
+            $this->documentRepository->findOrFail($documentId);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $servePublishedSnapshot = true;
+        }
+
+        $isCreator = (string) $resolved->created_by === $viewerId || (string) $resolved->owner_id === $viewerId;
+        $isAssignedReviewer = false;
+
+        if (! $servePublishedSnapshot && ! $isCreator && in_array($resolved->status, ['draft', 'in_review'], true)) {
+            $isAssignedReviewer = $resolved->status === 'in_review'
+                && $this->documentRepository->isReviewerAssignedToDocument($documentId, $viewerId);
+
+            if (! $isAssignedReviewer) {
+                $servePublishedSnapshot = true;
+            }
+        } elseif (! $servePublishedSnapshot && $resolved->status === 'in_review') {
+            $isAssignedReviewer = $this->documentRepository->isReviewerAssignedToDocument($documentId, $viewerId);
+        }
+
+        return [
+            'serve_published_snapshot' => $servePublishedSnapshot,
+            'is_assigned_reviewer' => $isAssignedReviewer,
+        ];
     }
 
     private function extractPublishedTitleFromSnapshot(mixed $snapshot): ?string

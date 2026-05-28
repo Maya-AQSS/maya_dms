@@ -8,6 +8,7 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -146,9 +147,9 @@ final class TemplateHeadSnapshot
             return $deadline->format('Y-m-d H:i:s');
         }
         if ($deadline instanceof \DateTimeInterface) {
-            return Carbon::parse($deadline)->format('Y-m-d H:i:s');
+            return Date::parse($deadline)->format('Y-m-d H:i:s');
         }
 
-        return Carbon::parse((string) $deadline)->format('Y-m-d H:i:s');
+        return Date::parse((string) $deadline)->format('Y-m-d H:i:s');
     }
 }

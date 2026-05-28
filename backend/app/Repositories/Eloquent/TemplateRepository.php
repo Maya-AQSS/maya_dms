@@ -14,6 +14,7 @@ use App\Support\TemplateHeadSnapshot;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -546,13 +547,13 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'author_user.name as author_name',
             ]);
 
-        $today = Carbon::today();
+        $today = Date::today();
 
         return $rows->map(function (object $row) use ($today): array {
             $deadlineIso = null;
             $daysRemaining = null;
             if ($row->delivery_deadline !== null) {
-                $deadline = Carbon::parse((string) $row->delivery_deadline);
+                $deadline = Date::parse((string) $row->delivery_deadline);
                 $deadlineIso = $deadline->toIso8601String();
                 $daysRemaining = (int) round((float) $today->diffInDays($deadline, false));
             }

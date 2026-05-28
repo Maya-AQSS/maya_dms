@@ -11,7 +11,8 @@ use App\Enums\TemplateVisibilityLevel;
 use App\Models\Concerns\HasCommentingStatus;
 use App\Policies\TemplatePolicy;
 use App\Support\TemplateHeadSnapshot;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -350,7 +351,7 @@ class Template extends Model
                 ? TemplateVisibilityLevel::from((string) $raw)
                 : TemplateVisibilityLevel::Personal,
             'delivery_deadline' => $raw !== null && $raw !== ''
-                ? Carbon::parse((string) $raw)
+                ? Date::parse((string) $raw)
                 : null,
             'review_stages' => (int) ($raw ?? 0),
             default => $raw,

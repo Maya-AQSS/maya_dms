@@ -112,33 +112,11 @@ class DocumentController extends Controller
         $viewerId = (string) $request->user()->getAuthIdentifier();
         $resolved = $request->resolveDocument();
 
-        $servePublishedSnapshot = false;
-        try {
-            $this->documentService->findModelOrFail($document);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
-            $servePublishedSnapshot = true;
-        }
-
         $this->assertOptionalProcessContextMatches((string) $resolved->process_id);
 
-        $isCreator = (string) $resolved->created_by === $viewerId || (string) $resolved->owner_id === $viewerId;
-        $isAssignedReviewer = false;
-
-        if (! $servePublishedSnapshot && ! $isCreator && in_array($resolved->status, ['draft', 'in_review'], true)) {
-            // Any assigned reviewer (pending, approved, or rejected) can see real content while in_review.
-            $isAssignedReviewer = $resolved->status === 'in_review'
-                && $resolved->reviews()
-                    ->where('reviewer_id', $viewerId)
-                    ->exists();
-
-            if (! $isAssignedReviewer) {
-                $servePublishedSnapshot = true;
-            }
-        } elseif (! $servePublishedSnapshot && $resolved->status === 'in_review') {
-            $isAssignedReviewer = $resolved->reviews()
-                ->where('reviewer_id', $viewerId)
-                ->exists();
-        }
+        $viewerContext = $this->documentService->resolveDocumentViewerContext($resolved, $document, $viewerId);
+        $servePublishedSnapshot = $viewerContext['serve_published_snapshot'];
+        $isAssignedReviewer = $viewerContext['is_assigned_reviewer'];
 
         if ($servePublishedSnapshot) {
             $latestPublished = $this->documentService->findLatestPublishedVersion($resolved->id);
@@ -169,10 +147,7 @@ class DocumentController extends Controller
         $this->attachCanCloneMeta($resolved, $request);
         $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
         $resolved->loadMissing(['owner']);
-        $this->apiTeamEmbedService->embedOnDocument(
-            $resolved,
-            $viewerId,
-        );
+        $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
         $blocks = $this->documentService->blocksForDisplay($resolved);
 
         return response()->json([

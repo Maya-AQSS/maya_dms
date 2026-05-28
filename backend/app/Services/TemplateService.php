@@ -199,14 +199,10 @@ class TemplateService implements TemplateServiceInterface
         }
 
         // Batch-load the latest published EntityVersion per template.
-        $publishedByTemplate = EntityVersion::query()
-            ->whereIn('versionable_id', $nonOwnerIds)
-            ->where('versionable_type', Template::class)
-            ->where('version_number', '>', 0)
-            ->where('status', 'published')
-            ->orderByDesc('version_number')
-            ->get()
-            ->keyBy('versionable_id');
+        $publishedByTemplate = $this->entityVersionRepository->findLatestPublishedEntityVersionsByVersionableIds(
+            Template::class,
+            $nonOwnerIds,
+        );
 
         foreach ($candidates as $template) {
             $id = (string) $template->getKey();

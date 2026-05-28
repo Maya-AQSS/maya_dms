@@ -265,4 +265,14 @@ interface DocumentServiceInterface
      * @param  Collection<int, Document>  $documents
      */
     public function attachIsAssignedReviewerMeta(Collection $documents, string $viewerId): void;
+
+    /**
+     * Resuelve el contexto de visibilidad para el endpoint `show` de Document.
+     *
+     * Determina si el viewer debe recibir el snapshot publicado o el contenido vivo,
+     * y si es revisor asignado activo.
+     *
+     * @return array{serve_published_snapshot: bool, is_assigned_reviewer: bool}
+     */
+    public function resolveDocumentViewerContext(Document $resolved, string $documentId, string $viewerId): array;
 }

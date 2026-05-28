@@ -4,12 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Template;
+use App\Constants\DocumentConstants;
 use App\Models\Theme;
+use App\Models\Template;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\TemplateRenderServiceInterface;
 use App\Support\BlockNoteHtmlRenderer;
 use Illuminate\Support\Facades\View;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Genera el HTML themed de una plantilla para mostrar cómo se verá un
@@ -20,50 +21,13 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class TemplateRenderService implements TemplateRenderServiceInterface
 {
-    /**
-     * Theme por defecto cuando la plantilla no tiene theme asignado. Mismo
-     * shape que `DocumentRenderService::DEFAULT_THEME` para que el Blade
-     * funcione sin ramas adicionales.
-     *
-     * @var array<string, mixed>
-     */
-    private const DEFAULT_THEME = [
-        'palette' => [
-            'primary' => '#0b5394', 'secondary' => '#666666', 'text' => '#1a1a1a',
-            'background' => '#ffffff', 'accent' => '#f59e0b',
-        ],
-        'typography' => [
-            'heading_font' => 'DejaVu Sans, Liberation Sans, sans-serif',
-            'body_font' => 'DejaVu Sans, Liberation Sans, sans-serif',
-            'base_size_pt' => 11,
-            'line_height' => 1.5,
-        ],
-        'layout' => [
-            'regions' => [],
-            'page' => ['size' => 'A4', 'margin_cm' => ['top' => 2.5, 'right' => 2, 'bottom' => 2.5, 'left' => 2]],
-        ],
-        'assets' => [
-            'logo_path' => null,
-            'background_image_path' => null,
-            'watermark_path' => null,
-        ],
-        'accessibility' => [
-            'language' => 'es', 'title' => null, 'subject' => null, 'author' => 'CEEDCV',
-        ],
-        'brand_name' => 'CEEDCV',
-    ];
+    public function __construct(
+        private readonly TemplateRepositoryInterface $templateRepository,
+    ) {}
 
     public function renderHtml(string $templateId, bool $previewMode = false): string
     {
-        /** @var Template|null $template */
-        $template = Template::query()
-            ->withoutGlobalScopes(['user_access'])
-            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order'), 'theme'])
-            ->find($templateId);
-
-        if ($template === null) {
-            throw new NotFoundHttpException('Plantilla no encontrada.');
-        }
+        $template = $this->templateRepository->findOrFailWithBlocksOrderedWithoutCatalogScope($templateId);
 
         $theme = $this->resolveTheme($template);
 
@@ -111,15 +75,15 @@ class TemplateRenderService implements TemplateRenderServiceInterface
         $theme = $template->theme ?? null;
 
         if ($theme === null) {
-            return self::DEFAULT_THEME;
+            return DocumentConstants::DEFAULT_THEME;
         }
 
         return [
-            'palette' => (array) ($theme->palette ?? self::DEFAULT_THEME['palette']),
-            'typography' => (array) ($theme->typography ?? self::DEFAULT_THEME['typography']),
-            'layout' => (array) ($theme->layout ?? self::DEFAULT_THEME['layout']),
-            'assets' => (array) ($theme->assets ?? self::DEFAULT_THEME['assets']),
-            'accessibility' => (array) ($theme->accessibility ?? self::DEFAULT_THEME['accessibility']),
+            'palette' => (array) ($theme->palette ?? DocumentConstants::DEFAULT_THEME['palette']),
+            'typography' => (array) ($theme->typography ?? DocumentConstants::DEFAULT_THEME['typography']),
+            'layout' => (array) ($theme->layout ?? DocumentConstants::DEFAULT_THEME['layout']),
+            'assets' => (array) ($theme->assets ?? DocumentConstants::DEFAULT_THEME['assets']),
+            'accessibility' => (array) ($theme->accessibility ?? DocumentConstants::DEFAULT_THEME['accessibility']),
             'brand_name' => (string) ($theme->name ?? 'CEEDCV'),
         ];
     }

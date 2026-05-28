@@ -14,9 +14,10 @@ use App\Models\EntityVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
-use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Illuminate\Support\Str;
 use JsonException;
 use RuntimeException;
@@ -46,6 +47,21 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
             ->whereKey($id)
             ->firstOrFail();
+    }
+
+    public function findWithBlocksAndThemeOrFail(string $id): Document
+    {
+        $document = Document::query()
+            ->withoutGlobalScope('user_access')
+            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order'), 'template.theme'])
+            ->whereKey($id)
+            ->first();
+
+        if ($document === null) {
+            throw new NotFoundHttpException('Documento no encontrado.');
+        }
+
+        return $document;
     }
 
     /**
@@ -403,13 +419,13 @@ class DocumentRepository implements DocumentRepositoryInterface
                 'owner_user.name as owner_name',
             ]);
 
-        $today = Carbon::today();
+        $today = Date::today();
 
         return $rows->map(function (object $row) use ($today): array {
             $deadlineIso = null;
             $daysRemaining = null;
             if ($row->delivery_deadline !== null) {
-                $deadline = Carbon::parse((string) $row->delivery_deadline);
+                $deadline = Date::parse((string) $row->delivery_deadline);
                 $deadlineIso = $deadline->toIso8601String();
                 $daysRemaining = (int) round((float) $today->diffInDays($deadline, false));
             }
@@ -699,5 +715,28 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function transaction(callable $callback): mixed
     {
         return DB::transaction($callback);
+    }
+
+    public function findAssignedReviewerDocumentIds(array $documentIds, string $reviewerId): array
+    {
+        if ($documentIds === []) {
+            return [];
+        }
+
+        return DocumentReview::query()
+            ->whereIn('document_id', $documentIds)
+            ->where('reviewer_id', $reviewerId)
+            ->pluck('document_id')
+            ->map(fn ($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    public function isReviewerAssignedToDocument(string $documentId, string $reviewerId): bool
+    {
+        return DocumentReview::query()
+            ->where('document_id', $documentId)
+            ->where('reviewer_id', $reviewerId)
+            ->exists();
     }
 }

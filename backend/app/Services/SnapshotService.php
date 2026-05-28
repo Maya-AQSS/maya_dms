@@ -9,7 +9,7 @@ use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
-use Carbon\Carbon;
+use Illuminate\Support\Facades\Date;
 
 class SnapshotService implements SnapshotServiceInterface
 {
@@ -141,7 +141,7 @@ class SnapshotService implements SnapshotServiceInterface
         $reviewFirst = $this->documentRepository->firstReviewCreatedAt((string) $document->id);
 
         $submitted = $reviewFirst !== null
-            ? Carbon::parse($reviewFirst)->toIso8601String()
+            ? Date::parse($reviewFirst)->toIso8601String()
             : now()->toIso8601String();
 
         return [

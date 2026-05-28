@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Document;
+use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
+use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-use Symfony\Component\Process\Process;
 
 /**
  * Genera PDF/UA-1 tagged usando el binario WeasyPrint instalado en el container
@@ -34,19 +34,16 @@ class DocumentPdfService implements DocumentPdfServiceInterface
     private const PREFIX = 'documents';
 
     /** Timeout duro del proceso WeasyPrint, segundos. */
-    private const PROCESS_TIMEOUT = 60.0;
+    private const PROCESS_TIMEOUT = 60;
 
     public function __construct(
         private readonly DocumentRenderServiceInterface $renderer,
+        private readonly DocumentRepositoryInterface $documentRepository,
     ) {}
 
     public function generate(string $documentId): string
     {
-        /** @var Document|null $document */
-        $document = Document::query()->find($documentId);
-        if ($document === null) {
-            throw new NotFoundHttpException('Documento no encontrado.');
-        }
+        $document = $this->documentRepository->findOrFail($documentId);
 
         $html = $this->renderer->renderHtml($documentId);
         // current_version (alias seleccionado en el join del head EV) o 1 como fallback.
@@ -54,25 +51,26 @@ class DocumentPdfService implements DocumentPdfServiceInterface
         $relative = sprintf('%s/%s/v%d/document.pdf', self::PREFIX, $documentId, $version);
         $absolute = Storage::disk(self::DISK)->path($relative);
 
-        @mkdir(dirname($absolute), 0775, true);
+        Storage::disk(self::DISK)->makeDirectory(
+            sprintf('%s/%s/v%d', self::PREFIX, $documentId, $version),
+        );
 
         // weasyprint - <out> : lee HTML por stdin y escribe a $absolute.
         // --pdf-variant pdf/ua-1 fuerza estructura tagged + metadatos PDF/UA.
-        $process = new Process([
-            'weasyprint',
-            '--encoding', 'utf-8',
-            '--pdf-variant', 'pdf/ua-1',
-            '-',
-            $absolute,
-        ]);
-        $process->setInput($html);
-        $process->setTimeout(self::PROCESS_TIMEOUT);
-        $process->run();
+        $result = Process::input($html)
+            ->timeout(self::PROCESS_TIMEOUT)
+            ->run([
+                'weasyprint',
+                '--encoding', 'utf-8',
+                '--pdf-variant', 'pdf/ua-1',
+                '-',
+                $absolute,
+            ]);
 
-        if (! $process->isSuccessful()) {
+        if ($result->failed()) {
             throw new RuntimeException(
                 'WeasyPrint falló al generar PDF para documento '.$documentId.': '
-                    .$process->getErrorOutput()
+                    .$result->errorOutput()
             );
         }
 

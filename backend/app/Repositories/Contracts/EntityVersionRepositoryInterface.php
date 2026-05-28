@@ -167,4 +167,16 @@ interface EntityVersionRepositoryInterface
      * @return array<string, int>
      */
     public function findVersionNumbersByIds(array $entityVersionIds): array;
+
+    /**
+     * Última versión publicada (version_number > 0, status=published) para cada versionable ID,
+     * keyed by versionable_id. Devuelve Collection de EntityVersion completos (con snapshot_data).
+     *
+     * @param  list<string>  $versionableIds
+     * @return \Illuminate\Support\Collection<string, EntityVersion>
+     */
+    public function findLatestPublishedEntityVersionsByVersionableIds(
+        string $versionableType,
+        array $versionableIds,
+    ): \Illuminate\Support\Collection;
 }

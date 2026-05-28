@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
 use App\Models\Concerns\HasCommentingStatus;
 use App\Support\DocumentHeadSnapshot;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -306,7 +307,7 @@ class Document extends Model
     {
         return match ($key) {
             'delivery_deadline' => $raw !== null && $raw !== ''
-                ? Carbon::parse((string) $raw)
+                ? Date::parse((string) $raw)
                 : null,
             default => $raw,
         };
@@ -347,7 +348,7 @@ class Document extends Model
     public function getSubmittedAtAttribute(mixed $value): ?Carbon
     {
         if (array_key_exists('submitted_at', $this->attributes)) {
-            return $this->attributes['submitted_at'] !== null ? Carbon::parse($this->attributes['submitted_at']) : null;
+            return $this->attributes['submitted_at'] !== null ? Date::parse($this->attributes['submitted_at']) : null;
         }
 
         if ($this->status === 'draft') {
@@ -359,7 +360,7 @@ class Document extends Model
             ->min('created_at');
 
         if ($reviewFirst !== null) {
-            return Carbon::parse($reviewFirst);
+            return Date::parse($reviewFirst);
         }
 
         if ($this->status === 'published') {
@@ -384,7 +385,7 @@ class Document extends Model
     public function getPublishedAtAttribute(mixed $value): ?Carbon
     {
         if (array_key_exists('published_at', $this->attributes)) {
-            return $this->attributes['published_at'] !== null ? Carbon::parse($this->attributes['published_at']) : null;
+            return $this->attributes['published_at'] !== null ? Date::parse($this->attributes['published_at']) : null;
         }
 
         if ($this->status !== 'published') {

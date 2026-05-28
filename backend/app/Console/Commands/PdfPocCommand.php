@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Process;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\View;
-use Symfony\Component\Process\Process;
 
 /**
  * POC Phase 0: renderiza una Blade view con CSS Paged Media y la pasa por
@@ -25,7 +26,10 @@ final class PdfPocCommand extends Command
     {
         $relative = (string) $this->option('out');
         $outAbs = storage_path('app/'.ltrim($relative, '/'));
-        @mkdir(dirname($outAbs), 0775, true);
+
+        Storage::disk('local')->makeDirectory(
+            ltrim(dirname($relative), '/'),
+        );
 
         $theme = [
             'brand_name' => 'CEEDCV',
@@ -59,19 +63,18 @@ final class PdfPocCommand extends Command
 
         // WeasyPrint lee HTML por stdin y escribe PDF en stdout (-) → archivo via redirección.
         // --pdf-variant pdf/ua-1 fuerza estructura tagged + metadatos PDF/UA.
-        $process = new Process([
-            'weasyprint',
-            '--encoding', 'utf-8',
-            '--pdf-variant', 'pdf/ua-1',
-            '-',     // stdin
-            $outAbs, // out path
-        ]);
-        $process->setInput($html);
-        $process->setTimeout(60.0);
-        $process->run();
+        $result = Process::input($html)
+            ->timeout(60)
+            ->run([
+                'weasyprint',
+                '--encoding', 'utf-8',
+                '--pdf-variant', 'pdf/ua-1',
+                '-',     // stdin
+                $outAbs, // out path
+            ]);
 
-        if (! $process->isSuccessful()) {
-            $this->error('WeasyPrint falló: '.$process->getErrorOutput());
+        if ($result->failed()) {
+            $this->error('WeasyPrint falló: '.$result->errorOutput());
 
             return self::FAILURE;
         }
