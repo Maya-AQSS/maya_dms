@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,

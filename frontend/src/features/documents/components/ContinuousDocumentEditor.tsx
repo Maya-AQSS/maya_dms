@@ -5,7 +5,7 @@ import { PaperBlocksArticle, type PaperArticleBlock } from './PaperBlocksArticle
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { blockEditorContent } from './documentWizardUtils';
 import { blockToUiState } from '../../templates/blockUiState';
-import type { SaveStatus } from '../../../hooks/useAutoSave';
+import type { SaveStatus } from '@ceedcv-maya/shared-hooks-react';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then((m) => ({

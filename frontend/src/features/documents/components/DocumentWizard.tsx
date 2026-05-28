@@ -40,7 +40,7 @@ import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
-import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';

@@ -25,7 +25,7 @@ import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
-import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
