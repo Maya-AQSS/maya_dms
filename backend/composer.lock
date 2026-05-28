@@ -389,16 +389,16 @@
         },
         {
             "name": "ceedcv-maya/shared-profile-laravel",
-            "version": "v0.4.0",
+            "version": "v0.4.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-profile-laravel.git",
-                "reference": "b72932b69926dcf94359d7b771d0fa8e2161e77f"
+                "reference": "5a9930e023a4085418dd2fc3a853cdb5f05dd502"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/b72932b69926dcf94359d7b771d0fa8e2161e77f",
-                "reference": "b72932b69926dcf94359d7b771d0fa8e2161e77f",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-profile-laravel/zipball/5a9930e023a4085418dd2fc3a853cdb5f05dd502",
+                "reference": "5a9930e023a4085418dd2fc3a853cdb5f05dd502",
                 "shasum": ""
             },
             "require": {
@@ -448,7 +448,7 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-profile-laravel"
             },
-            "time": "2026-05-25T20:50:23+00:00"
+            "time": "2026-05-28T22:19:02+00:00"
         },
         {
             "name": "clue/redis-protocol",
@@ -11012,6 +11012,6 @@
     "platform": {
         "php": "^8.4"
     },
-    "platform-dev": [],
-    "plugin-api-version": "2.6.0"
+    "platform-dev": {},
+    "plugin-api-version": "2.9.0"
 }
