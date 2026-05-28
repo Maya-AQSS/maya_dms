@@ -677,7 +677,12 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->documentStateService->transition($documentId, 'draft', $actorId);
+        return $this->documentStateService->transition($documentId, 'draft', $actorId, [
+            // Igual que en plantillas: quien abre la nueva versión pasa a ser el
+            // editor titular del ciclo en curso, evitando dobles editores en borrador.
+            'owner_id' => $actorId,
+            'created_by' => $actorId,
+        ]);
     }
 
     /**

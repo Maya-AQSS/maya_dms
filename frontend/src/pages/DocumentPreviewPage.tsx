@@ -310,7 +310,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     (isOwner || hasPermission(DMS_PERMISSIONS.documentVersion));
   const canClone =
     !isValidateMode &&
-    !isHistoricalSnapshot &&
     detail?.can_clone === true;
   const canDiscardWorkingVersion =
     !isValidateMode &&
