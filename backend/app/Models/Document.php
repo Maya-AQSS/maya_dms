@@ -82,10 +82,21 @@ class Document extends Model
                             });
                     })
                     ->orWhere(function (Builder $pub) use ($userId) {
-                        $pub->where('document_head_ev.snapshot_data->document->status', 'published')
-                            ->where(function ($inner) use ($userId) {
-                                self::applyAcademicOverlapOnDocumentsTable($inner, $userId);
-                            });
+                        // Catálogo publicado: visible aunque el head esté en draft/in_review.
+                        // El contexto se evalúa sobre el snapshot publicado (pub_snap), no
+                        // sobre el head en curso, para no ocultar la versión publicada cuando
+                        // alguien está editando una nueva versión.
+                        $pub->whereExists(function ($sub) use ($userId) {
+                            $sub->select(DB::raw(1))
+                                ->from('entity_versions as pub_snap')
+                                ->whereColumn('pub_snap.versionable_id', 'documents.id')
+                                ->where('pub_snap.versionable_type', self::class)
+                                ->where('pub_snap.version_number', '>', 0)
+                                ->where('pub_snap.status', 'published')
+                                ->where(function ($ctx) use ($userId) {
+                                    self::applyAcademicOverlapOnDocumentSnapshotAlias($ctx, $userId, 'pub_snap');
+                                });
+                        });
                     });
             });
         });
@@ -276,6 +287,43 @@ class Document extends Model
                                 'user_course_modules.module_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('entity_versions', 'module_id')
                             );
                     });
+            });
+        });
+    }
+
+    /**
+     * Solape académico usando el JSON snapshot de una fila publicada
+     * (alias de entity_versions) en lugar del head actual del documento.
+     */
+    private static function applyAcademicOverlapOnDocumentSnapshotAlias(
+        Builder|QueryBuilder $query,
+        string $userId,
+        string $snapshotAlias
+    ): void {
+        $s = rtrim($snapshotAlias, '.');
+
+        $query->where(function ($w) use ($userId, $s) {
+            $w->whereExists(function ($sub) use ($userId, $s) {
+                $sub->select(DB::raw(1))
+                    ->from('user_study_types')
+                    ->where('user_study_types.user_id', $userId)
+                    ->whereRaw(
+                        'user_study_types.study_type_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression($s, 'study_type_id')
+                    );
+            })->orWhereExists(function ($sub) use ($userId, $s) {
+                $sub->select(DB::raw(1))
+                    ->from('user_studies')
+                    ->where('user_studies.user_id', $userId)
+                    ->whereRaw(
+                        'user_studies.study_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression($s, 'study_id')
+                    );
+            })->orWhereExists(function ($sub) use ($userId, $s) {
+                $sub->select(DB::raw(1))
+                    ->from('user_course_modules')
+                    ->where('user_course_modules.user_id', $userId)
+                    ->whereRaw(
+                        'user_course_modules.module_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression($s, 'module_id')
+                    );
             });
         });
     }

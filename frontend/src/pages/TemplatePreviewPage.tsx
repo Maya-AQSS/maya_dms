@@ -25,7 +25,7 @@ import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
 import { canListBlocks, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
-import { canDeleteUnpublishedEntity, isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
+import { isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
 import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
@@ -298,12 +298,10 @@ export function TemplatePreviewPage() {
   const canDelete =
     !viewingPublishedSnapshot &&
     template != null &&
-    canDeleteUnpublishedEntity(
-      template.latest_published_version_id,
-      isOwner || hasPermission(DMS_PERMISSIONS.templateDelete),
-    );
-  /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API. */
-  const canClone = !viewingPublishedSnapshot && template?.can_clone === true;
+    !template.latest_published_version_id &&
+    (isOwner || hasPermission(DMS_PERMISSIONS.templateDelete));
+  /** Coincide con `TemplatePolicy::clone` y `data.can_clone` de la API, también en vista de snapshot publicado. */
+  const canClone = template?.can_clone === true;
   const canSubmit =
     !viewingPublishedSnapshot && isOwner && isDraft && hasReviewers && !template.has_review_comments;
   /** Alineado con `TemplatePolicy::startRevision`: creador o `template.version` en publicada. */

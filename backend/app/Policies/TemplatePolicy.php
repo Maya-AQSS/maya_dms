@@ -257,7 +257,23 @@ class TemplatePolicy
      */
     public function clone(JwtUser $user, Template $template): bool
     {
-        if ($template->status !== 'published' || ! $this->view($user, $template)) {
+        if (! $this->view($user, $template)) {
+            return false;
+        }
+
+        $templateId = (string) $template->getKey();
+        if ($templateId === '') {
+            return false;
+        }
+
+        $hasPublishedSnapshot = EntityVersion::query()
+            ->where('versionable_type', Template::class)
+            ->where('versionable_id', $templateId)
+            ->where('version_number', '>', 0)
+            ->where('status', 'published')
+            ->exists();
+
+        if (! $hasPublishedSnapshot) {
             return false;
         }
 

@@ -11,6 +11,7 @@ import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayou
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
 import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
+import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
 import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../../../permissions';
 import { apiFetchJson, ApiHttpError } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
@@ -428,6 +429,7 @@ export function TemplateReviewView({ template }: Props) {
     try {
       await approveTemplateReview(template.id);
       await queryClient.invalidateQueries({ queryKey: ['templates'] });
+      await refreshDmsDashboardQuery(queryClient);
       navigate(backTo);
     } catch (e) {
       setError(e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al aprobar la plantilla');
@@ -451,6 +453,7 @@ export function TemplateReviewView({ template }: Props) {
     try {
       await rejectTemplateReview(template.id);
       await queryClient.invalidateQueries({ queryKey: ['templates'] });
+      await refreshDmsDashboardQuery(queryClient);
       navigate(backTo);
     } catch (e) {
       setError(e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al rechazar la plantilla');

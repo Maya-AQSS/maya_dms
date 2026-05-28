@@ -26,6 +26,7 @@ import { visibilityLabel } from '../features/templates/constants';
 import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
+import { refreshDmsDashboardQuery } from '../features/dashboard/hooks/useDmsDashboard';
 import { useUserProfile } from '../features/user-profile';
 import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { canDeleteUnpublishedEntity, isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
@@ -313,7 +314,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     (isOwner || hasPermission(DMS_PERMISSIONS.documentVersion));
   const canClone =
     !isValidateMode &&
-    !isHistoricalSnapshot &&
     detail?.can_clone === true;
   const canDiscardWorkingVersion =
     !isValidateMode &&
@@ -600,6 +600,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setValidationActionLoading(true);
     try {
       const updated = await approveDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(backTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
@@ -623,6 +625,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setValidationActionLoading(true);
     try {
       const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(backTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },

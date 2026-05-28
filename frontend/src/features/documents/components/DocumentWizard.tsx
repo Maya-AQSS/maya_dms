@@ -30,6 +30,7 @@ import {
   type DocumentReview,
 } from '../../../api/documents';
 import { useQueryClient } from '@tanstack/react-query';
+import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { canDeleteBlockComment } from '../../../permissions';
@@ -1151,6 +1152,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setValidationActionLoading(true);
     try {
       const updated = await approveDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(processBackTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
@@ -1177,6 +1180,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setValidationActionLoading(true);
     try {
       const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(processBackTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },
