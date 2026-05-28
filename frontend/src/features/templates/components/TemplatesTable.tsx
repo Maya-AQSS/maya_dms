@@ -25,6 +25,7 @@ import { useFavoritesIds } from '../../../hooks/useFavoritesIds';
 import { FavoriteInlineMark } from '../../../components/FavoriteInlineMark';
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 import { normalizeForSearch } from '../../../utils/normalizeForSearch';
+import { shouldOpenTemplateEditorFromList } from '../templateListNavigation';
 
 function templateStatusLabel(
   status: string | null | undefined,
@@ -292,7 +293,7 @@ export function TemplatesTable({ processId }: Props = {}) {
       return;
     }
     const isOwner = profile?.id != null && t.created_by === profile.id;
-    if (isOwner && t.status === 'draft') {
+    if (shouldOpenTemplateEditorFromList(t, isOwner)) {
       navigate(`/templates/${t.id}/edit`, { state: { backTo, processId } });
       return;
     }
