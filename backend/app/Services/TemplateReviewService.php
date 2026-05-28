@@ -7,13 +7,16 @@ namespace App\Services;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Publishers\NotificationPublisher;
 
 class TemplateReviewService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly TemplatePublishingService $templatePublishingService,
+        private readonly NotificationPublisher $notificationPublisher,
     ) {}
 
     /**
@@ -133,7 +136,35 @@ class TemplateReviewService
                 $headEv->save();
             }
 
-            return $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
+            $inReview = $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
+
+            // Notify assigned reviewers.
+            $inReview->loadMissing('reviewers');
+            foreach ($inReview->reviewers as $reviewer) {
+                $reviewerId = is_string($reviewer->user_id) && $reviewer->user_id !== '' ? $reviewer->user_id : null;
+                if ($reviewerId === null) {
+                    continue;
+                }
+                try {
+                    $this->notificationPublisher->send(
+                        type: 'template.validation_requested',
+                        recipientId: $reviewerId,
+                        title: 'Nueva solicitud de revisión de plantilla',
+                        body: 'La plantilla "' . $inReview->name . '" requiere tu revisión',
+                        channels: ['app'],
+                        metadata: ['template_id' => (string) $inReview->id],
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('notification.publish_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'template.validation_requested',
+                        'template_id' => (string) $inReview->id,
+                        'reviewer_id' => $reviewerId,
+                    ]);
+                }
+            }
+
+            return $inReview;
         });
     }
 
@@ -169,7 +200,29 @@ class TemplateReviewService
                 ->where('user_id', $actorId)
                 ->update(['status' => 'rejected']);
 
-            return $this->templatePublishingService->transitionStatus($template, 'rejected', $actorId);
+            $rejected = $this->templatePublishingService->transitionStatus($template, 'rejected', $actorId);
+
+            $createdBy = is_string($rejected->created_by) && $rejected->created_by !== '' ? $rejected->created_by : null;
+            if ($createdBy !== null) {
+                try {
+                    $this->notificationPublisher->send(
+                        type: 'template.rejected',
+                        recipientId: $createdBy,
+                        title: 'Revisión de plantilla rechazada',
+                        body: 'La revisión de la plantilla "' . $rejected->name . '" ha sido rechazada',
+                        channels: ['app'],
+                        metadata: ['template_id' => (string) $rejected->id],
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('notification.publish_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'template.rejected',
+                        'template_id' => (string) $rejected->id,
+                    ]);
+                }
+            }
+
+            return $rejected;
         });
     }
 

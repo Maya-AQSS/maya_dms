@@ -11,7 +11,9 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Support\TemplateHeadSnapshot;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Publishers\NotificationPublisher;
 
 class TemplatePublishingService
 {
@@ -21,6 +23,7 @@ class TemplatePublishingService
         private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
         private readonly TemplateVersionBlockLayerWriter $templateVersionBlockLayerWriter,
         private readonly UserFavoriteRepositoryInterface $userFavoriteRepository,
+        private readonly NotificationPublisher $notificationPublisher,
     ) {}
 
     /**
@@ -222,6 +225,26 @@ class TemplatePublishingService
                 newStatus: 'published',
                 actorId: $actorId,
             ));
+
+            $createdBy = is_string($updated->created_by) && $updated->created_by !== '' ? $updated->created_by : null;
+            if ($createdBy !== null) {
+                try {
+                    $this->notificationPublisher->send(
+                        type: 'template.published',
+                        recipientId: $createdBy,
+                        title: 'Plantilla publicada',
+                        body: 'La plantilla "' . $updated->name . '" ha sido publicada correctamente',
+                        channels: ['app'],
+                        metadata: ['template_id' => (string) $updated->id],
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('notification.publish_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'template.published',
+                        'template_id' => (string) $updated->id,
+                    ]);
+                }
+            }
 
             return $updated;
         });

@@ -28,9 +28,11 @@ use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Maya\Http\Pagination\PaginatedDto;
+use Maya\Messaging\Publishers\NotificationPublisher;
 
 class DocumentService implements DocumentServiceInterface
 {
@@ -48,6 +50,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly TemplateContextResolver $contextResolver,
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
         private readonly TeamReadRepositoryInterface $teamReadRepository,
+        private readonly NotificationPublisher $notificationPublisher,
     ) {}
 
     /**
@@ -1028,7 +1031,32 @@ class DocumentService implements DocumentServiceInterface
                     notes: $autoChangelog,
                 ));
 
-                return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+                $autoPublished = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+
+                $recipientId = is_string($autoPublished->owner_id) && $autoPublished->owner_id !== ''
+                    ? $autoPublished->owner_id
+                    : (is_string($autoPublished->created_by) ? $autoPublished->created_by : null);
+
+                if ($recipientId !== null && $recipientId !== '') {
+                    try {
+                        $this->notificationPublisher->send(
+                            type: 'document.published',
+                            recipientId: $recipientId,
+                            title: 'Documento publicado',
+                            body: 'El documento "' . $autoPublished->title . '" ha sido publicado correctamente',
+                            channels: ['app'],
+                            metadata: ['document_id' => (string) $autoPublished->id],
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('notification.publish_failed', [
+                            'error' => $e->getMessage(),
+                            'type' => 'document.published',
+                            'document_id' => (string) $autoPublished->id,
+                        ]);
+                    }
+                }
+
+                return $autoPublished;
             }
 
             $document->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
@@ -1055,8 +1083,43 @@ class DocumentService implements DocumentServiceInterface
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, ['review_mode' => $reviewMode]);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 
+            $this->notifyReviewersOfValidationRequest($document, $candidates);
+
             return $document;
         });
+    }
+
+    /**
+     * Notifica a los revisores asignados que hay un documento pendiente de revisión.
+     *
+     * @param  list<array{reviewer_id: string, stage: int}>  $candidates
+     */
+    private function notifyReviewersOfValidationRequest(Document $document, array $candidates): void
+    {
+        foreach ($candidates as $candidate) {
+            $reviewerId = $candidate['reviewer_id'] ?? '';
+            if (! is_string($reviewerId) || $reviewerId === '') {
+                continue;
+            }
+
+            try {
+                $this->notificationPublisher->send(
+                    type: 'document.validation_requested',
+                    recipientId: $reviewerId,
+                    title: 'Nueva solicitud de revisión',
+                    body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    channels: ['app'],
+                    metadata: ['document_id' => (string) $document->id],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('notification.publish_failed', [
+                    'error' => $e->getMessage(),
+                    'type' => 'document.validation_requested',
+                    'document_id' => (string) $document->id,
+                    'reviewer_id' => $reviewerId,
+                ]);
+            }
+        }
     }
 
     /**
@@ -1194,7 +1257,32 @@ class DocumentService implements DocumentServiceInterface
                 notes: $resolvedChangelog,
             ));
 
-            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+            $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+
+            $recipientId = is_string($refreshed->owner_id) && $refreshed->owner_id !== ''
+                ? $refreshed->owner_id
+                : (is_string($refreshed->created_by) ? $refreshed->created_by : null);
+
+            if ($recipientId !== null && $recipientId !== '') {
+                try {
+                    $this->notificationPublisher->send(
+                        type: 'document.published',
+                        recipientId: $recipientId,
+                        title: 'Documento publicado',
+                        body: 'El documento "' . $refreshed->title . '" ha sido publicado correctamente',
+                        channels: ['app'],
+                        metadata: ['document_id' => (string) $refreshed->id],
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('notification.publish_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'document.published',
+                        'document_id' => (string) $refreshed->id,
+                    ]);
+                }
+            }
+
+            return $refreshed;
         });
     }
 

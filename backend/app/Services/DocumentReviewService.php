@@ -17,7 +17,9 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Publishers\NotificationPublisher;
 
 class DocumentReviewService
 {
@@ -26,6 +28,7 @@ class DocumentReviewService
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly SnapshotServiceInterface $snapshotService,
         private readonly DocumentStateService $stateService,
+        private readonly NotificationPublisher $notificationPublisher,
     ) {}
 
     /**
@@ -86,11 +89,70 @@ class DocumentReviewService
                     notes: $changelog,
                 ));
 
-                return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+                $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+                $this->notifyDocumentPublished($refreshed);
+
+                return $refreshed;
             }
 
             return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
         });
+    }
+
+    private function notifyDocumentPublished(Document $document): void
+    {
+        $recipientId = is_string($document->owner_id) && $document->owner_id !== ''
+            ? $document->owner_id
+            : (is_string($document->created_by) ? $document->created_by : null);
+
+        if ($recipientId === null || $recipientId === '') {
+            return;
+        }
+
+        try {
+            $this->notificationPublisher->send(
+                type: 'document.published',
+                recipientId: $recipientId,
+                title: 'Documento publicado',
+                body: 'El documento "' . $document->title . '" ha sido publicado correctamente',
+                channels: ['app'],
+                metadata: ['document_id' => (string) $document->id],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('notification.publish_failed', [
+                'error' => $e->getMessage(),
+                'type' => 'document.published',
+                'document_id' => (string) $document->id,
+            ]);
+        }
+    }
+
+    private function notifyDocumentRejected(Document $document, ?string $reason): void
+    {
+        $recipientId = is_string($document->owner_id) && $document->owner_id !== ''
+            ? $document->owner_id
+            : (is_string($document->created_by) ? $document->created_by : null);
+
+        if ($recipientId === null || $recipientId === '') {
+            return;
+        }
+
+        try {
+            $this->notificationPublisher->send(
+                type: 'document.rejected',
+                recipientId: $recipientId,
+                title: 'Revisión rechazada',
+                body: 'La revisión del documento "' . $document->title . '" ha sido rechazada' . ($reason !== null && $reason !== '' ? ': ' . $reason : ''),
+                channels: ['app'],
+                metadata: ['document_id' => (string) $document->id, 'reason' => $reason],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('notification.publish_failed', [
+                'error' => $e->getMessage(),
+                'type' => 'document.rejected',
+                'document_id' => (string) $document->id,
+            ]);
+        }
     }
 
     /**
@@ -135,7 +197,10 @@ class DocumentReviewService
 
             $this->documentRepository->deletePendingReviewsForDocument($documentId);
 
-            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+            $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+            $this->notifyDocumentRejected($refreshed, $reason);
+
+            return $refreshed;
         });
     }
 
