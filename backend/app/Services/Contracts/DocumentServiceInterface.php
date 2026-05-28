@@ -7,6 +7,7 @@ namespace App\Services\Contracts;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
@@ -14,6 +15,7 @@ use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
+use Maya\Http\Pagination\PaginatedDto;
 
 /**
  * Excepción B4 documentada: la mayoría de métodos de mutación devuelven el
@@ -174,6 +176,13 @@ interface DocumentServiceInterface
      * Rechaza una revisión del documento. Devuelve Model.
      */
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document;
+
+    /**
+     * Listado paginado de documentos con filtros de dominio (ADR-C).
+     *
+     * @return PaginatedDto<DocumentDto>
+     */
+    public function paginate(DocumentFilterDto $filter): PaginatedDto;
 
     /**
      * Lista documentos visibles para el usuario actual. Devuelve Collection<Document>

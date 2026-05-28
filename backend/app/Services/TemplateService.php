@@ -8,6 +8,7 @@ use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
+use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Maya\Http\Pagination\PaginatedDto;
 use RuntimeException;
 
 class TemplateService implements TemplateServiceInterface
@@ -147,6 +149,21 @@ class TemplateService implements TemplateServiceInterface
     public function listPublishedVersions(string $templateId): Collection
     {
         return $this->entityVersionRepository->listPublishedForEntityOrdered(Template::class, $templateId);
+    }
+
+    /**
+     * Listado paginado de plantillas con filtros de dominio (ADR-C).
+     *
+     * @return PaginatedDto<TemplateDto>
+     */
+    public function paginateFiltered(TemplateFilterDto $filter): PaginatedDto
+    {
+        $paginator = $this->templateRepository->paginateFiltered($filter);
+
+        return PaginatedDto::fromPaginator(
+            $paginator,
+            static fn (Template $template) => TemplateDto::fromModel($template),
+        );
     }
 
     /**

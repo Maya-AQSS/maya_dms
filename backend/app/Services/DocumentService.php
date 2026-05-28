@@ -8,6 +8,7 @@ use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
@@ -25,9 +26,11 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Maya\Http\Pagination\PaginatedDto;
 
 class DocumentService implements DocumentServiceInterface
 {
@@ -617,6 +620,23 @@ class DocumentService implements DocumentServiceInterface
     public function attachShareMetadataForViewer(Collection $documents, string $viewerId): void
     {
         $this->documentShareService->attachShareMetadataForViewer($documents, $viewerId);
+    }
+
+    /**
+     * Listado paginado de documentos con filtros de dominio (ADR-C).
+     *
+     * Devuelve un PaginatedDto<DocumentDto> listo para serializar desde el Controller.
+     *
+     * @return PaginatedDto<DocumentDto>
+     */
+    public function paginate(DocumentFilterDto $filter): PaginatedDto
+    {
+        $paginator = $this->documentRepository->paginate($filter);
+
+        return PaginatedDto::fromPaginator(
+            $paginator,
+            static fn (Document $doc) => DocumentDto::fromModel($doc),
+        );
     }
 
     /**

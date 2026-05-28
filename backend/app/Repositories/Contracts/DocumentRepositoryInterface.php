@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\Documents\DocumentFilterDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Support\DocumentHeadSnapshot;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface DocumentRepositoryInterface
@@ -130,6 +132,15 @@ interface DocumentRepositoryInterface
      * Guarda una revisión del documento.
      */
     public function saveReview(DocumentReview $review): void;
+
+    /**
+     * Listado paginado de documentos con filtros de dominio (ADR-C).
+     *
+     * Aplica el scope global `user_access` del modelo para garantizar visibilidad.
+     *
+     * @return LengthAwarePaginator<Document>
+     */
+    public function paginate(DocumentFilterDto $filter): LengthAwarePaginator;
 
     /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.

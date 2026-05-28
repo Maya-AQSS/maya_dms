@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\DTOs\Documents\DocumentFilterDto;
 use App\Models\BlockVersion;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -14,6 +15,7 @@ use App\Models\EntityVersion;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
@@ -335,6 +337,74 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function saveReview(DocumentReview $review): void
     {
         $review->save();
+    }
+
+    /**
+     * Listado paginado de documentos visibles para el usuario actual con filtros de dominio.
+     *
+     * El scope global `user_access` del modelo garantiza que solo se devuelven
+     * documentos accesibles para el usuario autenticado.
+     *
+     * @return LengthAwarePaginator<Document>
+     */
+    public function paginate(DocumentFilterDto $filter): LengthAwarePaginator
+    {
+        $allowedSortColumns = ['created_at', 'updated_at', 'title'];
+        $sortBy = in_array($filter->sortBy, $allowedSortColumns, true)
+            ? 'documents.'.$filter->sortBy
+            : 'documents.created_at';
+
+        $query = Document::withoutGlobalScopes(['join_head_document_entity_version'])
+            ->join('entity_versions as document_head_ev', 'document_head_ev.id', '=', 'documents.head_entity_version_id')
+            ->select(['documents.*', 'owner_user.name as owner_name'])
+            ->leftJoin('users as owner_user', function ($join) {
+                $join->whereRaw(
+                    'owner_user.id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id')
+                );
+            })
+            ->withExists(['reviews as has_review_comments' => fn ($q) => $q->where('status', 'rejected')])
+            ->with(['template', 'templateVersion']);
+
+        if ($filter->processId !== null) {
+            $query->where('documents.process_id', $filter->processId);
+        }
+
+        if ($filter->status !== null) {
+            $query->whereRaw(
+                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status').' = ?',
+                [$filter->status]
+            );
+        }
+
+        if ($filter->templateId !== null) {
+            $query->where('documents.template_id', $filter->templateId);
+        }
+
+        if ($filter->createdBy !== null) {
+            $query->whereRaw(
+                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'created_by').' = ?',
+                [$filter->createdBy]
+            );
+        }
+
+        if ($filter->from !== null) {
+            $query->whereDate('documents.created_at', '>=', $filter->from);
+        }
+
+        if ($filter->to !== null) {
+            $query->whereDate('documents.created_at', '<=', $filter->to);
+        }
+
+        if ($filter->search !== null && trim($filter->search) !== '') {
+            $query->whereRaw(
+                DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'title').' ILIKE ?',
+                ['%'.str_replace(['%', '_'], ['\\%', '\\_'], $filter->search).'%']
+            );
+        }
+
+        return $query
+            ->orderBy($sortBy, $filter->sortDir)
+            ->paginate($filter->perPage, ['*'], 'page', $filter->page);
     }
 
     /**

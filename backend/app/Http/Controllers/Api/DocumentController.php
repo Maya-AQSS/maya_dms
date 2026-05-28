@@ -10,7 +10,7 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\CloneDocumentRequest;
 use App\Http\Requests\Documents\DestroyDocumentRequest;
-use App\Http\Requests\Documents\IndexDocumentRequest;
+use App\Http\Requests\Documents\ListDocumentsRequest;
 use App\Http\Requests\Documents\ShowDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
@@ -21,7 +21,6 @@ use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * CRUD canónico de Document (index/store/show/update/destroy/clone).
@@ -40,27 +39,13 @@ class DocumentController extends Controller
     ) {}
 
     /**
-     * Listar documentos.
+     * Listar documentos con paginación server-side (ADR-C).
      */
-    public function index(IndexDocumentRequest $request): AnonymousResourceCollection
+    public function index(ListDocumentsRequest $request): JsonResponse
     {
-        $viewerId = (string) $request->user()->getAuthIdentifier();
-        $processId = $request->validated('process_id');
-        $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
+        $page = $this->documentService->paginate($request->toFilterDto());
 
-        $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
-        $this->documentService->attachLatestPublishedVersionMeta($documents);
-        $this->documentService->attachTemplateVersionNumbers($documents);
-        $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
-        $this->documentService->attachIsAssignedReviewerMeta($documents, $viewerId);
-        $this->apiTeamEmbedService->embedOnDocuments(
-            $documents,
-            $viewerId,
-        );
-
-        return DocumentResource::collection(
-            $documents->map(static fn (Document $doc) => DocumentDto::fromModel($doc)),
-        );
+        return response()->json($page);
     }
 
     /**
