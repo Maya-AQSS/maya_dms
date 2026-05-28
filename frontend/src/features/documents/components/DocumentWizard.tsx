@@ -78,11 +78,16 @@ const ContinuousDocumentEditor = lazy(() =>
 );
 
 type BlocksViewMode = 'per-block' | 'continuous';
-const VIEW_MODE_STORAGE_KEY = 'dms.document-edit-view-mode';
 
-function readStoredViewMode(): BlocksViewMode {
+/** Devuelve la clave de localStorage para el modo de vista de un documento concreto.
+ *  Escopar por documentId evita que la preferencia de un documento contamine a otro. */
+function viewModeStorageKey(id: string | null | undefined): string {
+  return id ? `dms.document-edit-view-mode.${id}` : 'dms.document-edit-view-mode';
+}
+
+function readStoredViewMode(id: string | null | undefined): BlocksViewMode {
   if (typeof window === 'undefined') return 'per-block';
-  const raw = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  const raw = window.localStorage.getItem(viewModeStorageKey(id));
   return raw === 'continuous' ? 'continuous' : 'per-block';
 }
 
@@ -861,11 +866,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   // Preferencia de UI para el step `blocks`:
   // - 'per-block': sidebar + un editor a la vez (vista clásica).
   // - 'continuous': documento entero estilo Word con edición inline del bloque clicado.
-  const [blocksViewMode, setBlocksViewMode] = useState<BlocksViewMode>(readStoredViewMode);
+  const [blocksViewMode, setBlocksViewMode] = useState<BlocksViewMode>(() =>
+    readStoredViewMode(documentId),
+  );
+
+  // Re-leer la preferencia guardada cuando cambia el documento cargado.
+  useEffect(() => {
+    setBlocksViewMode(readStoredViewMode(documentId));
+  }, [documentId]);
+
+  // Persistir la preferencia scoped al documento actual.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, blocksViewMode);
-  }, [blocksViewMode]);
+    window.localStorage.setItem(viewModeStorageKey(documentId), blocksViewMode);
+  }, [documentId, blocksViewMode]);
 
   // Ayuda visual de finalización por bloque (sin restricciones funcionales).
   // Persistencia por documento en localStorage; indexada por template_block_id.
