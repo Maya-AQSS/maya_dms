@@ -20,5 +20,9 @@ else
     echo "[entrypoint] Dependencies up to date, skipping npm install"
 fi
 
+# Clear Vite's dep-optimization cache so live-mounted @ceedcv-maya/* packages
+# are always picked up fresh on container start.
+rm -rf node_modules/.vite
+
 echo "[entrypoint] Starting Vite dev server..."
 exec npm run dev -- --host 0.0.0.0

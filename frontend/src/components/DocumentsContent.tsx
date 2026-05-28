@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Button,
   Card,
@@ -68,12 +68,13 @@ export function DocumentsContent() {
   const { t } = useTranslation('documents');
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showSubmittedForReviewBanner, setShowSubmittedForReviewBanner] = useState(false);
-  const [activeFilters, setActiveFilters] = useState<CascadeDocumentFilters>({
-    studyTypeId: '',
-    studyId: '',
-    moduleId: '',
-  });
+  const activeFilters: CascadeDocumentFilters = {
+    studyTypeId: searchParams.get('studyTypeId') ?? '',
+    studyId: searchParams.get('studyId') ?? '',
+    moduleId: searchParams.get('moduleId') ?? '',
+  };
   const [creationOptions, setCreationOptions] = useState<DocumentCreationOption[]>([]);
   const [creationMode, setCreationMode] = useState<'none' | 'auto' | 'select' | null>(null);
   const [creationMessage, setCreationMessage] = useState<string | null>(null);
@@ -230,13 +231,30 @@ export function DocumentsContent() {
 
   const handleClear = () =>
     startTransition(() => {
-      setActiveFilters({ studyTypeId: '', studyId: '', moduleId: '' });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('studyTypeId');
+        next.delete('studyId');
+        next.delete('moduleId');
+        next.delete('page');
+        return next;
+      });
       setPage(1);
     });
 
   const handleChange = (filters: CascadeDocumentFilters) =>
     startTransition(() => {
-      setActiveFilters(filters);
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (filters.studyTypeId) next.set('studyTypeId', filters.studyTypeId);
+        else next.delete('studyTypeId');
+        if (filters.studyId) next.set('studyId', filters.studyId);
+        else next.delete('studyId');
+        if (filters.moduleId) next.set('moduleId', filters.moduleId);
+        else next.delete('moduleId');
+        next.delete('page');
+        return next;
+      });
       setPage(1);
     });
 

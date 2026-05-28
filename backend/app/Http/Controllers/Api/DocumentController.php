@@ -10,7 +10,7 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\CloneDocumentRequest;
 use App\Http\Requests\Documents\DestroyDocumentRequest;
-use App\Http\Requests\Documents\IndexDocumentRequest;
+use App\Http\Requests\Documents\ListDocumentsRequest;
 use App\Http\Requests\Documents\ShowDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
@@ -21,7 +21,6 @@ use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * CRUD canónico de Document (index/store/show/update/destroy/clone).
@@ -40,27 +39,13 @@ class DocumentController extends Controller
     ) {}
 
     /**
-     * Listar documentos.
+     * Listar documentos con paginación server-side (ADR-C).
      */
-    public function index(IndexDocumentRequest $request): AnonymousResourceCollection
+    public function index(ListDocumentsRequest $request): JsonResponse
     {
-        $viewerId = (string) $request->user()->getAuthIdentifier();
-        $processId = $request->validated('process_id');
-        $processIdFilter = is_string($processId) && $processId !== '' ? $processId : null;
+        $page = $this->documentService->paginate($request->toFilterDto());
 
-        $documents = $this->documentService->listOrderedByCreatedAtDesc($processIdFilter);
-        $this->documentService->attachLatestPublishedVersionMeta($documents);
-        $this->documentService->attachTemplateVersionNumbers($documents);
-        $this->documentService->attachShareMetadataForViewer($documents, $viewerId);
-        $this->documentService->attachIsAssignedReviewerMeta($documents, $viewerId);
-        $this->apiTeamEmbedService->embedOnDocuments(
-            $documents,
-            $viewerId,
-        );
-
-        return DocumentResource::collection(
-            $documents->map(static fn (Document $doc) => DocumentDto::fromModel($doc)),
-        );
+        return response()->json($page);
     }
 
     /**
@@ -112,33 +97,11 @@ class DocumentController extends Controller
         $viewerId = (string) $request->user()->getAuthIdentifier();
         $resolved = $request->resolveDocument();
 
-        $servePublishedSnapshot = false;
-        try {
-            $this->documentService->findModelOrFail($document);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
-            $servePublishedSnapshot = true;
-        }
-
         $this->assertOptionalProcessContextMatches((string) $resolved->process_id);
 
-        $isCreator = (string) $resolved->created_by === $viewerId || (string) $resolved->owner_id === $viewerId;
-        $isAssignedReviewer = false;
-
-        if (! $servePublishedSnapshot && ! $isCreator && in_array($resolved->status, ['draft', 'in_review'], true)) {
-            // Any assigned reviewer (pending, approved, or rejected) can see real content while in_review.
-            $isAssignedReviewer = $resolved->status === 'in_review'
-                && $resolved->reviews()
-                    ->where('reviewer_id', $viewerId)
-                    ->exists();
-
-            if (! $isAssignedReviewer) {
-                $servePublishedSnapshot = true;
-            }
-        } elseif (! $servePublishedSnapshot && $resolved->status === 'in_review') {
-            $isAssignedReviewer = $resolved->reviews()
-                ->where('reviewer_id', $viewerId)
-                ->exists();
-        }
+        $viewerContext = $this->documentService->resolveDocumentViewerContext($resolved, $document, $viewerId);
+        $servePublishedSnapshot = $viewerContext['serve_published_snapshot'];
+        $isAssignedReviewer = $viewerContext['is_assigned_reviewer'];
 
         if ($servePublishedSnapshot) {
             $latestPublished = $this->documentService->findLatestPublishedVersion($resolved->id);
@@ -147,6 +110,7 @@ class DocumentController extends Controller
             }
             $resolved->setRelation('headVersion', $latestPublished);
             $this->attachCanCloneMeta($resolved, $request);
+            $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
             $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
             $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
             $resolved->loadMissing(['owner']);
@@ -167,12 +131,10 @@ class DocumentController extends Controller
         );
         $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
         $this->attachCanCloneMeta($resolved, $request);
+        $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
         $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
         $resolved->loadMissing(['owner']);
-        $this->apiTeamEmbedService->embedOnDocument(
-            $resolved,
-            $viewerId,
-        );
+        $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
         $blocks = $this->documentService->blocksForDisplay($resolved);
 
         return response()->json([

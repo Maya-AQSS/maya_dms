@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Repositories\Contracts;
 
 use App\DTOs\Templates\FilterTemplatesDto;
+use App\DTOs\Templates\TemplateFilterDto;
 use App\Models\Template;
 use App\Policies\TemplatePolicy;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface TemplateRepositoryInterface
@@ -38,6 +40,15 @@ interface TemplateRepositoryInterface
      * Para definición de bloques de documento cuando no hay snapshot de versión usable.
      */
     public function findOrFailWithBlocksOrderedWithoutCatalogScope(string $id): Template;
+
+    /**
+     * Listado paginado de plantillas con filtros de dominio (ADR-C).
+     *
+     * Aplica el scope global `user_access` del modelo para garantizar visibilidad.
+     *
+     * @return LengthAwarePaginator<Template>
+     */
+    public function paginateFiltered(TemplateFilterDto $filter): LengthAwarePaginator;
 
     /**
      * Listado con filtros (sin cargar bloques); sin paginación en servidor.

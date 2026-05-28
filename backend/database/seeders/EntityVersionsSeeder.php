@@ -19,36 +19,34 @@ class EntityVersionsSeeder extends Seeder
         }
 
         $rows = $this->mockRows();
-        if ($rows === []) {
-            return;
-        }
+        if ($rows !== []) {
+            $now = Carbon::now();
 
-        $now = Carbon::now();
+            $normalizedRows = [];
+            foreach ($rows as $row) {
+                $type = (string) ($row['versionable_type'] ?? '');
+                $id = (string) ($row['versionable_id'] ?? '');
+                if ($type === '' || $id === '') {
+                    continue;
+                }
 
-        $normalizedRows = [];
-        foreach ($rows as $row) {
-            $type = (string) ($row['versionable_type'] ?? '');
-            $id = (string) ($row['versionable_id'] ?? '');
-            if ($type === '' || $id === '') {
-                continue;
+                if (! $this->versionableExists($type, $id)) {
+                    continue;
+                }
+
+                $row['change_set'] = $this->asJsonString($row['change_set'] ?? null);
+                $row['snapshot_data'] = $this->asJsonString($row['snapshot_data'] ?? null);
+                $row['is_snapshot_immutable'] = (bool) ($row['is_snapshot_immutable'] ?? false);
+                $row['status'] ??= 'draft';
+                $row['created_at'] ??= $now;
+                $row['updated_at'] ??= $now;
+
+                $normalizedRows[] = $row;
             }
 
-            if (! $this->versionableExists($type, $id)) {
-                continue;
+            if ($normalizedRows !== []) {
+                DB::table('entity_versions')->insertOrIgnore($normalizedRows);
             }
-
-            $row['change_set'] = $this->asJsonString($row['change_set'] ?? null);
-            $row['snapshot_data'] = $this->asJsonString($row['snapshot_data'] ?? null);
-            $row['is_snapshot_immutable'] = (bool) ($row['is_snapshot_immutable'] ?? false);
-            $row['status'] ??= 'draft';
-            $row['created_at'] ??= $now;
-            $row['updated_at'] ??= $now;
-
-            $normalizedRows[] = $row;
-        }
-
-        if ($normalizedRows !== []) {
-            DB::table('entity_versions')->insertOrIgnore($normalizedRows);
         }
 
         $this->backfillMissingDocumentPublishedSnapshots();

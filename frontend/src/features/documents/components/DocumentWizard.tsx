@@ -30,6 +30,7 @@ import {
   type DocumentReview,
 } from '../../../api/documents';
 import { useQueryClient } from '@tanstack/react-query';
+import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
 import { useUserProfile } from '../../user-profile';
 import { canDeleteBlockComment } from '../../../permissions';
@@ -40,7 +41,7 @@ import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
-import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
@@ -57,6 +58,7 @@ import {
   ErrorBoundary,
   FieldLabel,
   Select,
+  Spinner,
   TextInput,
 } from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
@@ -77,11 +79,16 @@ const ContinuousDocumentEditor = lazy(() =>
 );
 
 type BlocksViewMode = 'per-block' | 'continuous';
-const VIEW_MODE_STORAGE_KEY = 'dms.document-edit-view-mode';
 
-function readStoredViewMode(): BlocksViewMode {
+/** Devuelve la clave de localStorage para el modo de vista de un documento concreto.
+ *  Escopar por documentId evita que la preferencia de un documento contamine a otro. */
+function viewModeStorageKey(id: string | null | undefined): string {
+  return id ? `dms.document-edit-view-mode.${id}` : 'dms.document-edit-view-mode';
+}
+
+function readStoredViewMode(id: string | null | undefined): BlocksViewMode {
   if (typeof window === 'undefined') return 'per-block';
-  const raw = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+  const raw = window.localStorage.getItem(viewModeStorageKey(id));
   return raw === 'continuous' ? 'continuous' : 'per-block';
 }
 
@@ -860,11 +867,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   // Preferencia de UI para el step `blocks`:
   // - 'per-block': sidebar + un editor a la vez (vista clásica).
   // - 'continuous': documento entero estilo Word con edición inline del bloque clicado.
-  const [blocksViewMode, setBlocksViewMode] = useState<BlocksViewMode>(readStoredViewMode);
+  const [blocksViewMode, setBlocksViewMode] = useState<BlocksViewMode>(() =>
+    readStoredViewMode(documentId),
+  );
+
+  // Re-leer la preferencia guardada cuando cambia el documento cargado.
+  useEffect(() => {
+    setBlocksViewMode(readStoredViewMode(documentId));
+  }, [documentId]);
+
+  // Persistir la preferencia scoped al documento actual.
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(VIEW_MODE_STORAGE_KEY, blocksViewMode);
-  }, [blocksViewMode]);
+    window.localStorage.setItem(viewModeStorageKey(documentId), blocksViewMode);
+  }, [documentId, blocksViewMode]);
 
   // Ayuda visual de finalización por bloque (sin restricciones funcionales).
   // Persistencia por documento en localStorage; indexada por template_block_id.
@@ -1136,6 +1152,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setValidationActionLoading(true);
     try {
       const updated = await approveDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(processBackTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
@@ -1162,6 +1180,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setValidationActionLoading(true);
     try {
       const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(processBackTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },
@@ -1571,7 +1591,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </div>
             </div>
 
-            {isDraft && !!detail && !!currentUserId && detail.owner_id === currentUserId && (
+            {(isDraft && detail?.owner_id === currentUserId )|| (!detail?.owner_id ) && (
               <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in space-y-3">
                 <p className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
                   Propietario
@@ -1579,7 +1599,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-secondary dark:text-text-dark-secondary">Actual:</span>
                   <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
-                    {newOwnerForDoc ? newOwnerForDoc.name : (detail.owner_name ?? '—')}
+                    {newOwnerForDoc ? newOwnerForDoc.name : (detail?.owner_name ?? '—')}
                   </span>
                   {newOwnerForDoc && (
                     <button
@@ -1786,7 +1806,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     className="bg-white dark:bg-ui-dark-card shadow-xl preview-content"
                     style={{ maxWidth: '760px', minHeight: 'calc(100vh - 14rem)', padding: '56px 72px' }}
                   >
-                    <Suspense fallback={<p className="text-xs text-text-muted">Cargando vista continua…</p>}>
+                    <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                       <ContinuousDocumentEditor
                         blocks={sortedBlocks}
                         activeBlockKey={activeBlockKey}
@@ -2073,7 +2093,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                             )}
                             {!isSaving && (
                               <Suspense
-                                fallback={<p className="p-4 text-xs text-text-muted">Cargando editor…</p>}
+                                fallback={<div className="p-4 flex justify-center"><Spinner /></div>}
                                 key={activeBlockKey ?? 'none'}
                               >
                                 <BlockNoteEditorPanel

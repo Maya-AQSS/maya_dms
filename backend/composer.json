@@ -15,11 +15,11 @@
         "laravel/reverb": "^1.10",
         "laravel/tinker": "^3.0",
         "lcobucci/jwt": "^5.6",
-        "ceedcv-maya/shared-auth-laravel": "^0.2",
-        "ceedcv-maya/shared-http-laravel": "^0.2",
-        "ceedcv-maya/shared-messaging-laravel": "^0.2",
-        "ceedcv-maya/shared-platform-laravel": "^0.2",
-        "ceedcv-maya/shared-profile-laravel": "^0.2",
+        "ceedcv-maya/shared-auth-laravel": "^0.4",
+        "ceedcv-maya/shared-http-laravel": "^0.4",
+        "ceedcv-maya/shared-messaging-laravel": "^0.4",
+        "ceedcv-maya/shared-platform-laravel": "^0.4",
+        "ceedcv-maya/shared-profile-laravel": "^0.4",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "dev-master"
     },
     "require-dev": {
@@ -106,6 +106,16 @@
             "wikimedia/composer-merge-plugin": true
         }
     },
+    "repositories": [
+        {
+            "type": "package",
+            "package": {
+                "name": "illuminate/foundation",
+                "version": "13.0.0",
+                "type": "metapackage"
+            }
+        }
+    ],
     "minimum-stability": "dev",
     "prefer-stable": true
 }

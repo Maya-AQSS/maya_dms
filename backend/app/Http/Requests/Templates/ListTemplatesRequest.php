@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests\Templates;
+
+use App\DTOs\Templates\TemplateFilterDto;
+use App\Enums\TemplateVisibilityLevel;
+use App\Models\Template;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Validation\Rule;
+use Maya\Http\Http\Requests\PaginatedFilterRequest;
+
+/**
+ * FormRequest para el listado paginado de plantillas.
+ *
+ * Extiende PaginatedFilterRequest (shared-http-laravel) añadiendo
+ * las reglas de filtrado propias del dominio DMS. Reemplaza a
+ * {@see IndexTemplateRequest} añadiendo soporte de paginación server-side.
+ */
+class ListTemplatesRequest extends PaginatedFilterRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('viewAny', Template::class);
+    }
+
+    protected function failedAuthorization(): void
+    {
+        throw new AuthorizationException('Se requiere permiso para listar plantillas.');
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    protected function filterRules(): array
+    {
+        return [
+            'process_id'          => ['nullable', 'uuid', 'exists:processes,id'],
+            'status'              => ['nullable', 'string', 'in:draft,in_review,published,archived'],
+            'visibility_level'    => ['nullable', Rule::enum(TemplateVisibilityLevel::class)],
+            'study_type_id'       => ['nullable', 'string', 'max:255'],
+            'study_id'            => ['nullable', 'string', 'max:255'],
+            'module_id'           => ['nullable', 'string', 'max:255'],
+            'team_id'             => ['nullable', 'uuid', 'exists:teams,id'],
+            'usable_for_documents'=> ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * Convierte los parámetros validados en un DTO de filtros tipado.
+     */
+    public function toFilterDto(): TemplateFilterDto
+    {
+        return new TemplateFilterDto(
+            processId: $this->input('process_id'),
+            status: $this->input('status'),
+            visibilityLevel: $this->input('visibility_level'),
+            studyTypeId: $this->input('study_type_id'),
+            studyId: $this->input('study_id'),
+            moduleId: $this->input('module_id'),
+            teamId: $this->input('team_id'),
+            usableForDocuments: (bool) $this->input('usable_for_documents', false),
+            page: $this->getPage(),
+            perPage: $this->getPerPage(),
+            sortBy: $this->getSortBy() ?? 'updated_at',
+            sortDir: $this->getSortDir(),
+            search: $this->input('search'),
+        );
+    }
+}

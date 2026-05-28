@@ -26,8 +26,10 @@ import { visibilityLabel } from '../features/templates/constants';
 import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
+import { refreshDmsDashboardQuery } from '../features/dashboard/hooks/useDmsDashboard';
 import { useUserProfile } from '../features/user-profile';
 import { canCreateBlockComment, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
+import { canDeleteUnpublishedEntity, isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
 import { PaperPreviewLayout } from '../features/documents/components/PaperPreviewLayout';
 import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
 import { useDocumentPdfExport } from '../features/documents/hooks/useDocumentPdfExport';
@@ -292,15 +294,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       detail.share_permission === 'edit' ||
       hasPermission(DMS_PERMISSIONS.documentUpdate));
   const canMutatePublished = canUpdate;
-  /** Paridad con `DocumentPolicy::delete`: titular/creador o `document.delete` (API valida contexto). */
-  const canDelete =
-    !!detail &&
-    isDraft &&
-    !detail.latest_published_version_id &&
-    (isOwner || hasPermission(DMS_PERMISSIONS.documentDelete));
-  const canEditDraft = isDraft && canUpdate;
   const canReviewDocument = hasPermission(DMS_PERMISSIONS.documentReview);
   const isHistoricalSnapshot = versionSnapshot !== null;
+  /** Paridad con plantillas: eliminar solo si nunca hubo versión publicada. */
+  const canDelete =
+    !!detail &&
+    !isHistoricalSnapshot &&
+    canDeleteUnpublishedEntity(
+      detail.latest_published_version_id,
+      isOwner || hasPermission(DMS_PERMISSIONS.documentDelete),
+    );
+  const canEditDraft = isDraft && canUpdate;
   const showVersionHistory =
     isOwner || hasPermission(DMS_PERMISSIONS.documentHistoryView);
   const canStartNewVersion =
@@ -310,15 +314,17 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     (isOwner || hasPermission(DMS_PERMISSIONS.documentVersion));
   const canClone =
     !isValidateMode &&
-    !isHistoricalSnapshot &&
     detail?.can_clone === true;
   const canDiscardWorkingVersion =
     !isValidateMode &&
     !isHistoricalSnapshot &&
-    (detail?.status === 'draft' || detail?.status === 'in_review' || detail?.status === 'rejected') &&
     canMutatePublished &&
-    !!detail?.latest_published_version_id &&
-    !!detail?.working_version_id;
+    isDiscardWorkingVersionAllowed(
+      detail?.latest_published_version_id,
+      detail?.working_version_id,
+      detail?.status,
+      ['draft', 'in_review', 'rejected'],
+    );
 
   useEffect(() => {
     if (!isValidateMode) {
@@ -438,8 +444,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         },
       });
       appendCommentToCache(documentId, res.data);
-    } catch (e) {
-      console.error('Error sending message', e);
+    } catch {
+      // TODO: send to error tracker
     } finally {
       setReviewCommentsLoading(false);
     }
@@ -594,6 +600,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setValidationActionLoading(true);
     try {
       const updated = await approveDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(backTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'approve'), tab: 'documents' },
@@ -617,6 +625,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setValidationActionLoading(true);
     try {
       const updated = await rejectDocumentReview(documentId, actionableReviewId, null);
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+      await refreshDmsDashboardQuery(queryClient);
       setValidateConfirm(null);
       navigate(backTo, {
         state: { documentValidationBanner: validationSuccessBannerMessage(updated, 'reject'), tab: 'documents' },
@@ -1202,6 +1212,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
         metaInfo={headerMetaInfo}
         actions={headerActions}
         headerRef={pageHeaderRef}
+        viewMode={viewMode}
         sidebar={
           diffBlockId !== null && !selectedReviewView
             ? (

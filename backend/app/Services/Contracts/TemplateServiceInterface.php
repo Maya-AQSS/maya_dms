@@ -8,12 +8,14 @@ use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
+use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Http\Controllers\Api\TemplateController;
 use App\Models\EntityVersion;
 use App\Models\Template;
 use App\Policies\TemplatePolicy;
 use Illuminate\Support\Collection;
+use Maya\Http\Pagination\PaginatedDto;
 
 /**
  * Excepción B4 documentada: análoga a {@see DocumentServiceInterface} —
@@ -85,6 +87,13 @@ interface TemplateServiceInterface
      * @return Collection<int, EntityVersion>
      */
     public function listPublishedVersions(string $templateId): Collection;
+
+    /**
+     * Listado paginado de plantillas con filtros de dominio (ADR-C).
+     *
+     * @return PaginatedDto<TemplateDto>
+     */
+    public function paginateFiltered(TemplateFilterDto $filter): PaginatedDto;
 
     /**
      * Listado con filtros visible para el usuario (sin paginación en servidor).

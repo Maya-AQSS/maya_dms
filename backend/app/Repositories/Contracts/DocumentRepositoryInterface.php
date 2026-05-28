@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Repositories\Contracts;
 
+use App\DTOs\Documents\DocumentFilterDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Support\DocumentHeadSnapshot;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 
 interface DocumentRepositoryInterface
@@ -17,6 +19,12 @@ interface DocumentRepositoryInterface
      * Localiza un documento por su ID o lanza ModelNotFoundException.
      */
     public function findOrFail(string $id): Document;
+
+    /**
+     * Localiza un documento con bloques y theme cargados para renderizado HTML/PDF.
+     * Lanza NotFoundHttpException si no existe.
+     */
+    public function findWithBlocksAndThemeOrFail(string $id): Document;
 
     /**
      * Recarga el documento sin el scope `user_access` (cabezal unido).
@@ -124,6 +132,15 @@ interface DocumentRepositoryInterface
      * Guarda una revisión del documento.
      */
     public function saveReview(DocumentReview $review): void;
+
+    /**
+     * Listado paginado de documentos con filtros de dominio (ADR-C).
+     *
+     * Aplica el scope global `user_access` del modelo para garantizar visibilidad.
+     *
+     * @return LengthAwarePaginator<Document>
+     */
+    public function paginate(DocumentFilterDto $filter): LengthAwarePaginator;
 
     /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
@@ -235,4 +252,18 @@ interface DocumentRepositoryInterface
      * Ejecuta una operación dentro de transacción.
      */
     public function transaction(callable $callback): mixed;
+
+    /**
+     * IDs de documentos (de entre los indicados) en los que el usuario es revisor asignado.
+     *
+     * @param  list<string>  $documentIds
+     * @return list<string>
+     */
+    public function findAssignedReviewerDocumentIds(array $documentIds, string $reviewerId): array;
+
+    /**
+     * Indica si el usuario tiene una fila en document_reviews para el documento dado,
+     * sin importar el estado de la revisión (pending, approved, rejected).
+     */
+    public function isReviewerAssignedToDocument(string $documentId, string $reviewerId): bool;
 }

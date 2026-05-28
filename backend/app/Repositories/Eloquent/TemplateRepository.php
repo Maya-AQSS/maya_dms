@@ -5,15 +5,18 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\DTOs\Templates\FilterTemplatesDto;
+use App\DTOs\Templates\TemplateFilterDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\SearchAccentFold;
 use App\Support\TemplateHeadSnapshot;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -83,6 +86,88 @@ class TemplateRepository implements TemplateRepositoryInterface
             ->withoutGlobalScopes(['user_access'])
             ->with(['headVersion', 'theme', 'blocks' => fn ($q) => $q->orderBy('sort_order')])
             ->findOrFail($id);
+    }
+
+    /**
+     * Listado paginado de plantillas con filtros de dominio (ADR-C).
+     *
+     * Aplica el scope global `user_access` del modelo para garantizar visibilidad.
+     *
+     * @return LengthAwarePaginator<Template>
+     */
+    public function paginateFiltered(TemplateFilterDto $filter): LengthAwarePaginator
+    {
+        $allowedSortColumns = ['updated_at', 'created_at'];
+        $sortBy = in_array($filter->sortBy, $allowedSortColumns, true)
+            ? 'templates.'.$filter->sortBy
+            : 'templates.updated_at';
+
+        $query = Template::withoutGlobalScopes(['join_head_entity_version'])
+            ->join('entity_versions as template_head_ev', 'template_head_ev.id', '=', 'templates.head_entity_version_id')
+            ->select('templates.*')
+            ->addSelect(DB::raw('users.name as author_name'))
+            ->leftJoin('users', function ($join) {
+                $join->whereRaw(
+                    'users.id = '.TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'created_by')
+                );
+            });
+
+        if ($filter->processId !== null) {
+            $query->where('templates.process_id', $filter->processId);
+        }
+
+        if ($filter->status !== null) {
+            $query->where('template_head_ev.snapshot_data->template->status', $filter->status);
+        }
+
+        if ($filter->visibilityLevel !== null) {
+            $query->where('template_head_ev.snapshot_data->template->visibility_level', $filter->visibilityLevel);
+        }
+
+        if ($filter->usableForDocuments) {
+            $query->where('template_head_ev.snapshot_data->template->status', '!=', 'archived')
+                ->whereExists(function ($q) {
+                    $q->select(DB::raw(1))
+                        ->from('entity_versions as published_ev')
+                        ->whereColumn('published_ev.versionable_id', 'templates.id')
+                        ->where('published_ev.versionable_type', Template::class)
+                        ->where('published_ev.status', 'published')
+                        ->where('published_ev.version_number', '>', 0);
+                });
+        }
+
+        if ($filter->studyTypeId !== null) {
+            $query->where('template_head_ev.snapshot_data->template->study_type_id', $filter->studyTypeId);
+        }
+
+        if ($filter->studyId !== null) {
+            $query->where('template_head_ev.snapshot_data->template->study_id', $filter->studyId);
+        }
+
+        if ($filter->moduleId !== null) {
+            $query->where('template_head_ev.snapshot_data->template->module_id', $filter->moduleId);
+        }
+
+        if ($filter->teamId !== null) {
+            $query->where('template_head_ev.snapshot_data->template->team_id', $filter->teamId);
+        }
+
+        if ($filter->search !== null && trim($filter->search) !== '') {
+            $needle = SearchAccentFold::fold($filter->search);
+            if ($needle !== '') {
+                [$expr, $tr] = SearchAccentFold::sqlFoldedLowerColumn('users.name');
+                $like = '%'.SearchAccentFold::escapeLike($needle).'%';
+                $query->whereRaw("{$expr} LIKE ?", [$tr[0], $tr[1], $like]);
+            }
+        }
+
+        return $query
+            ->with(['headVersion'])
+            ->withExists(['comments as has_review_comments' => fn ($q) => $q])
+            ->with('reviewers')
+            ->orderBy($sortBy, $filter->sortDir)
+            ->distinct()
+            ->paginate($filter->perPage, ['*'], 'page', $filter->page);
     }
 
     /**
@@ -546,13 +631,13 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'author_user.name as author_name',
             ]);
 
-        $today = Carbon::today();
+        $today = Date::today();
 
         return $rows->map(function (object $row) use ($today): array {
             $deadlineIso = null;
             $daysRemaining = null;
             if ($row->delivery_deadline !== null) {
-                $deadline = Carbon::parse((string) $row->delivery_deadline);
+                $deadline = Date::parse((string) $row->delivery_deadline);
                 $deadlineIso = $deadline->toIso8601String();
                 $daysRemaining = (int) round((float) $today->diffInDays($deadline, false));
             }

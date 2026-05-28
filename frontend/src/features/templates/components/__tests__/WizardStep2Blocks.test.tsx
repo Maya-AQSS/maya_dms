@@ -52,7 +52,7 @@ vi.mock('../../../../features/user-profile', () => ({
   UserProfileProvider: ({ children }: any) => <>{children}</>,
 }));
 
-vi.mock('../../../../hooks/useAutoSave', () => ({
+vi.mock('@ceedcv-maya/shared-hooks-react', () => ({
   useAutoSave: vi.fn(() => ({
     saveStatus: 'idle' as const,
     isSaving: false,
@@ -279,7 +279,7 @@ describe('WizardStep2Blocks', () => {
     });
 
     it('doSave blocks API call and shows error when title is empty', async () => {
-      const { useAutoSave } = await import('../../../../hooks/useAutoSave');
+      const { useAutoSave } = await import('@ceedcv-maya/shared-hooks-react');
       const updateBlock = vi.fn();
       mockUseTemplateBlocks.mockReturnValue({
         blocks: [...mockBlocks, newBlockStub],

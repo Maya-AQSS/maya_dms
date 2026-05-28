@@ -7,6 +7,7 @@ namespace App\DTOs\Templates;
 use App\Models\Template;
 use App\Support\ApiEmbeddedTeamResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 
 final readonly class TemplateDto
 {
@@ -182,7 +183,7 @@ final readonly class TemplateDto
         }
         if (is_string($value) && $value !== '') {
             try {
-                return Carbon::parse($value)->toIso8601String();
+                return Date::parse($value)->toIso8601String();
             } catch (\Throwable) {
                 return null;
             }

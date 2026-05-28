@@ -335,4 +335,31 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
             ->map(static fn ($value): int => (int) $value)
             ->all();
     }
+
+    public function findLatestPublishedEntityVersionsByVersionableIds(
+        string $versionableType,
+        array $versionableIds,
+    ): Collection {
+        if ($versionableIds === []) {
+            return collect();
+        }
+
+        $maxVersions = EntityVersion::query()
+            ->where('versionable_type', $versionableType)
+            ->whereIn('versionable_id', $versionableIds)
+            ->where('version_number', '>', 0)
+            ->where('status', 'published')
+            ->groupBy('versionable_id')
+            ->select('versionable_id', DB::raw('MAX(version_number) as max_version'));
+
+        return EntityVersion::query()->from('entity_versions as ev')
+            ->joinSub($maxVersions, 'mv', function ($join): void {
+                $join->on('ev.versionable_id', '=', 'mv.versionable_id')
+                    ->on('ev.version_number', '=', 'mv.max_version');
+            })
+            ->where('ev.versionable_type', $versionableType)
+            ->where('ev.status', 'published')
+            ->get()
+            ->keyBy('versionable_id');
+    }
 }

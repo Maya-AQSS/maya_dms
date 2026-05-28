@@ -8,6 +8,7 @@ use App\DTOs\Templates\CreateTemplateDto;
 use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\SyncUsersDto;
 use App\DTOs\Templates\TemplateDto;
+use App\DTOs\Templates\TemplateFilterDto;
 use App\DTOs\Templates\UpdateTemplateDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\EntityVersion;
@@ -24,6 +25,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Maya\Http\Pagination\PaginatedDto;
 use RuntimeException;
 
 class TemplateService implements TemplateServiceInterface
@@ -150,6 +152,21 @@ class TemplateService implements TemplateServiceInterface
     }
 
     /**
+     * Listado paginado de plantillas con filtros de dominio (ADR-C).
+     *
+     * @return PaginatedDto<TemplateDto>
+     */
+    public function paginateFiltered(TemplateFilterDto $filter): PaginatedDto
+    {
+        $paginator = $this->templateRepository->paginateFiltered($filter);
+
+        return PaginatedDto::fromPaginator(
+            $paginator,
+            static fn (Template $template) => TemplateDto::fromModel($template),
+        );
+    }
+
+    /**
      * Listado con filtros (sin paginación en servidor; el front pagina en cliente).
      * Enriquece cada plantilla con metadatos de la última versión publicada para el API.
      */
@@ -199,14 +216,10 @@ class TemplateService implements TemplateServiceInterface
         }
 
         // Batch-load the latest published EntityVersion per template.
-        $publishedByTemplate = EntityVersion::query()
-            ->whereIn('versionable_id', $nonOwnerIds)
-            ->where('versionable_type', Template::class)
-            ->where('version_number', '>', 0)
-            ->where('status', 'published')
-            ->orderByDesc('version_number')
-            ->get()
-            ->keyBy('versionable_id');
+        $publishedByTemplate = $this->entityVersionRepository->findLatestPublishedEntityVersionsByVersionableIds(
+            Template::class,
+            $nonOwnerIds,
+        );
 
         foreach ($candidates as $template) {
             $id = (string) $template->getKey();

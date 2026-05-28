@@ -25,7 +25,8 @@ export async function uploadMedia(file: File, context?: MediaContext): Promise<s
   });
 
   if (!response.ok) {
-    throw new Error(`Upload failed: HTTP ${response.status}`);
+    const errorBody = await response.json().catch(() => null) as { message?: string } | null;
+    throw new Error(errorBody?.message ?? `Upload failed: ${response.status}`);
   }
 
   const data = (await response.json()) as { url: string };

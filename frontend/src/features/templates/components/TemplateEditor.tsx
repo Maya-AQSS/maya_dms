@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAutoSave } from '../../../hooks/useAutoSave';
+import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,
@@ -275,8 +275,8 @@ export function TemplateEditor({ template }: Props) {
       setLocalUiState(blockToUiState(block));
       setLocalContent(block.default_content);
       setIsDirty(false);
-    } catch (e) {
-      console.error('Error al crear el bloque:', e);
+    } catch {
+      // TODO: send to error tracker
     } finally {
       setCreatingBlock(false);
     }

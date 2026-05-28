@@ -9,7 +9,7 @@ use App\Http\Concerns\AttachesTemplateCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\CloneTemplateRequest;
-use App\Http\Requests\Templates\IndexTemplateRequest;
+use App\Http\Requests\Templates\ListTemplatesRequest;
 use App\Http\Requests\Templates\StoreTemplateRequest;
 use App\Http\Requests\Templates\UpdateTemplateRequest;
 use App\Http\Resources\TemplateResource;
@@ -18,7 +18,6 @@ use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
@@ -44,27 +43,13 @@ class TemplateController extends Controller
     ) {}
 
     /**
-     * Listar plantillas (filtros en query; sin paginación en servidor, como documentos).
+     * Listar plantillas con paginación server-side (ADR-C).
      */
-    public function index(IndexTemplateRequest $request): AnonymousResourceCollection
+    public function index(ListTemplatesRequest $request): JsonResponse
     {
-        $templates = $this->templateService->listFiltered($request->toFilterDto());
-        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $page = $this->templateService->paginateFiltered($request->toFilterDto());
 
-        // Overlay published snapshot for non-owner/non-reviewer viewing a draft template,
-        // so the list shows published metadata instead of draft content.
-        $this->templateService->overlayPublishedSnapshotForNonOwners($templates, $viewerId);
-
-        $this->attachCanCloneMeta($templates, $request);
-
-        $this->apiTeamEmbedService->embedOnTemplates(
-            $templates,
-            $viewerId,
-        );
-
-        return TemplateResource::collection(
-            $templates->map(static fn (Template $template) => TemplateDto::fromModel($template)),
-        );
+        return response()->json($page);
     }
 
     /**

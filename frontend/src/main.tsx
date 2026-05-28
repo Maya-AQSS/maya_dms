@@ -8,6 +8,8 @@ import './index.css'
 import './i18n'
 import App from './App.tsx'
 import { AuthProvider } from '@ceedcv-maya/shared-auth-react'
+import { NotificationProvider } from '@ceedcv-maya/shared-sidebar-react'
+import { ErrorBoundary, ToastProvider } from '@ceedcv-maya/shared-ui-react'
 import { oidcAuthService } from './auth/oidcAdapter'
 import { UserProfileProvider } from './features/user-profile'
 
@@ -32,7 +34,13 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <AuthProvider keycloak={oidcAuthService.keycloak} enableLogging={import.meta.env.DEV}>
-        <RouterProvider router={router} />
+        <ErrorBoundary>
+          <NotificationProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </NotificationProvider>
+        </ErrorBoundary>
       </AuthProvider>
     </QueryClientProvider>
   </StrictMode>,

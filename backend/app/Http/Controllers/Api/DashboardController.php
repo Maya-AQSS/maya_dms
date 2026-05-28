@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\DashboardResource;
 use App\Services\Contracts\DashboardServiceInterface;
-use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
@@ -19,12 +20,12 @@ class DashboardController extends Controller
      *
      * Muestra las métricas y documentos recientes.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): DashboardResource
     {
-        return response()->json([
-            'data' => $this->dashboardService->buildForUser(
-                (string) request()->user()->getAuthIdentifier(),
-            ),
-        ]);
+        $data = $this->dashboardService->buildForUser(
+            (string) $request->user()->getAuthIdentifier(),
+        );
+
+        return new DashboardResource($data);
     }
 }

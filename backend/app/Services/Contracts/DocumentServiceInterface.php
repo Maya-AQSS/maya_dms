@@ -7,6 +7,7 @@ namespace App\Services\Contracts;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
@@ -14,6 +15,7 @@ use App\Models\DocumentReview;
 use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
+use Maya\Http\Pagination\PaginatedDto;
 
 /**
  * Excepción B4 documentada: la mayoría de métodos de mutación devuelven el
@@ -176,6 +178,13 @@ interface DocumentServiceInterface
     public function rejectReview(string $documentId, string $reviewId, string $actorId, ?string $reason = null): Document;
 
     /**
+     * Listado paginado de documentos con filtros de dominio (ADR-C).
+     *
+     * @return PaginatedDto<DocumentDto>
+     */
+    public function paginate(DocumentFilterDto $filter): PaginatedDto;
+
+    /**
      * Lista documentos visibles para el usuario actual. Devuelve Collection<Document>
      * (Eloquent) porque el Controller adjunta `can_clone`, `is_shared_with_me`,
      * `team`, etc. a cada item antes de presentar como DTO.
@@ -265,4 +274,14 @@ interface DocumentServiceInterface
      * @param  Collection<int, Document>  $documents
      */
     public function attachIsAssignedReviewerMeta(Collection $documents, string $viewerId): void;
+
+    /**
+     * Resuelve el contexto de visibilidad para el endpoint `show` de Document.
+     *
+     * Determina si el viewer debe recibir el snapshot publicado o el contenido vivo,
+     * y si es revisor asignado activo.
+     *
+     * @return array{serve_published_snapshot: bool, is_assigned_reviewer: bool}
+     */
+    public function resolveDocumentViewerContext(Document $resolved, string $documentId, string $viewerId): array;
 }

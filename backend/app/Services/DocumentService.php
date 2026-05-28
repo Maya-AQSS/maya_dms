@@ -8,6 +8,7 @@ use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
@@ -25,9 +26,13 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Maya\Http\Pagination\PaginatedDto;
+use Maya\Messaging\Publishers\NotificationPublisher;
 
 class DocumentService implements DocumentServiceInterface
 {
@@ -45,6 +50,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly TemplateContextResolver $contextResolver,
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
         private readonly TeamReadRepositoryInterface $teamReadRepository,
+        private readonly NotificationPublisher $notificationPublisher,
     ) {}
 
     /**
@@ -620,6 +626,23 @@ class DocumentService implements DocumentServiceInterface
     }
 
     /**
+     * Listado paginado de documentos con filtros de dominio (ADR-C).
+     *
+     * Devuelve un PaginatedDto<DocumentDto> listo para serializar desde el Controller.
+     *
+     * @return PaginatedDto<DocumentDto>
+     */
+    public function paginate(DocumentFilterDto $filter): PaginatedDto
+    {
+        $paginator = $this->documentRepository->paginate($filter);
+
+        return PaginatedDto::fromPaginator(
+            $paginator,
+            static fn (Document $doc) => DocumentDto::fromModel($doc),
+        );
+    }
+
+    /**
      * Lista documentos visibles para el usuario actual ordenados por fecha de creación descendente.
      *
      * @return Collection<int, Document>
@@ -677,7 +700,12 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        return $this->documentStateService->transition($documentId, 'draft', $actorId);
+        return $this->documentStateService->transition($documentId, 'draft', $actorId, [
+            // Igual que en plantillas: quien abre la nueva versión pasa a ser el
+            // editor titular del ciclo en curso, evitando dobles editores en borrador.
+            'owner_id' => $actorId,
+            'created_by' => $actorId,
+        ]);
     }
 
     /**
@@ -1008,7 +1036,32 @@ class DocumentService implements DocumentServiceInterface
                     notes: $autoChangelog,
                 ));
 
-                return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+                $autoPublished = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+
+                $recipientId = is_string($autoPublished->owner_id) && $autoPublished->owner_id !== ''
+                    ? $autoPublished->owner_id
+                    : (is_string($autoPublished->created_by) ? $autoPublished->created_by : null);
+
+                if ($recipientId !== null && $recipientId !== '') {
+                    try {
+                        $this->notificationPublisher->send(
+                            type: 'document.published',
+                            recipientId: $recipientId,
+                            title: 'Documento publicado',
+                            body: 'El documento "' . $autoPublished->title . '" ha sido publicado correctamente',
+                            channels: ['app'],
+                            metadata: ['document_id' => (string) $autoPublished->id],
+                        );
+                    } catch (\Throwable $e) {
+                        Log::warning('notification.publish_failed', [
+                            'error' => $e->getMessage(),
+                            'type' => 'document.published',
+                            'document_id' => (string) $autoPublished->id,
+                        ]);
+                    }
+                }
+
+                return $autoPublished;
             }
 
             $document->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
@@ -1035,8 +1088,43 @@ class DocumentService implements DocumentServiceInterface
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, ['review_mode' => $reviewMode]);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 
+            $this->notifyReviewersOfValidationRequest($document, $candidates);
+
             return $document;
         });
+    }
+
+    /**
+     * Notifica a los revisores asignados que hay un documento pendiente de revisión.
+     *
+     * @param  list<array{reviewer_id: string, stage: int}>  $candidates
+     */
+    private function notifyReviewersOfValidationRequest(Document $document, array $candidates): void
+    {
+        foreach ($candidates as $candidate) {
+            $reviewerId = $candidate['reviewer_id'] ?? '';
+            if (! is_string($reviewerId) || $reviewerId === '') {
+                continue;
+            }
+
+            try {
+                $this->notificationPublisher->send(
+                    type: 'document.validation_requested',
+                    recipientId: $reviewerId,
+                    title: 'Nueva solicitud de revisión',
+                    body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    channels: ['app'],
+                    metadata: ['document_id' => (string) $document->id],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('notification.publish_failed', [
+                    'error' => $e->getMessage(),
+                    'type' => 'document.validation_requested',
+                    'document_id' => (string) $document->id,
+                    'reviewer_id' => $reviewerId,
+                ]);
+            }
+        }
     }
 
     /**
@@ -1174,7 +1262,32 @@ class DocumentService implements DocumentServiceInterface
                 notes: $resolvedChangelog,
             ));
 
-            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+            $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+
+            $recipientId = is_string($refreshed->owner_id) && $refreshed->owner_id !== ''
+                ? $refreshed->owner_id
+                : (is_string($refreshed->created_by) ? $refreshed->created_by : null);
+
+            if ($recipientId !== null && $recipientId !== '') {
+                try {
+                    $this->notificationPublisher->send(
+                        type: 'document.published',
+                        recipientId: $recipientId,
+                        title: 'Documento publicado',
+                        body: 'El documento "' . $refreshed->title . '" ha sido publicado correctamente',
+                        channels: ['app'],
+                        metadata: ['document_id' => (string) $refreshed->id],
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('notification.publish_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'document.published',
+                        'document_id' => (string) $refreshed->id,
+                    ]);
+                }
+            }
+
+            return $refreshed;
         });
     }
 
@@ -1340,17 +1453,51 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $assignedDocIds = array_flip(
-            DocumentReview::query()
-                ->whereIn('document_id', $ids)
-                ->where('reviewer_id', $viewerId)
-                ->pluck('document_id')
-                ->map(fn ($id) => (string) $id)
-                ->all(),
+            $this->documentRepository->findAssignedReviewerDocumentIds($ids, $viewerId),
         );
 
         foreach ($documents as $document) {
             $document->setAttribute('is_assigned_reviewer', array_key_exists((string) $document->id, $assignedDocIds));
         }
+    }
+
+    /**
+     * Resuelve el contexto de visibilidad para el endpoint `show` de Document.
+     *
+     * Determina si el viewer debe recibir el snapshot publicado o el contenido vivo,
+     * y si es revisor asignado activo. Encapsula la lógica de branching que antes
+     * vivía directamente en DocumentController::show().
+     *
+     * @return array{serve_published_snapshot: bool, is_assigned_reviewer: bool}
+     */
+    public function resolveDocumentViewerContext(Document $resolved, string $documentId, string $viewerId): array
+    {
+        $servePublishedSnapshot = false;
+
+        try {
+            $this->documentRepository->findOrFail($documentId);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $servePublishedSnapshot = true;
+        }
+
+        $isCreator = (string) $resolved->created_by === $viewerId || (string) $resolved->owner_id === $viewerId;
+        $isAssignedReviewer = false;
+
+        if (! $servePublishedSnapshot && ! $isCreator && in_array($resolved->status, ['draft', 'in_review'], true)) {
+            $isAssignedReviewer = $resolved->status === 'in_review'
+                && $this->documentRepository->isReviewerAssignedToDocument($documentId, $viewerId);
+
+            if (! $isAssignedReviewer) {
+                $servePublishedSnapshot = true;
+            }
+        } elseif (! $servePublishedSnapshot && $resolved->status === 'in_review') {
+            $isAssignedReviewer = $this->documentRepository->isReviewerAssignedToDocument($documentId, $viewerId);
+        }
+
+        return [
+            'serve_published_snapshot' => $servePublishedSnapshot,
+            'is_assigned_reviewer' => $isAssignedReviewer,
+        ];
     }
 
     private function extractPublishedTitleFromSnapshot(mixed $snapshot): ?string

@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 
 use App\Models\Concerns\HasCommentingStatus;
 use App\Support\DocumentHeadSnapshot;
-use Carbon\Carbon;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -81,10 +82,21 @@ class Document extends Model
                             });
                     })
                     ->orWhere(function (Builder $pub) use ($userId) {
-                        $pub->where('document_head_ev.snapshot_data->document->status', 'published')
-                            ->where(function ($inner) use ($userId) {
-                                self::applyAcademicOverlapOnDocumentsTable($inner, $userId);
-                            });
+                        // Catálogo publicado: visible aunque el head esté en draft/in_review.
+                        // El contexto se evalúa sobre el snapshot publicado (pub_snap), no
+                        // sobre el head en curso, para no ocultar la versión publicada cuando
+                        // alguien está editando una nueva versión.
+                        $pub->whereExists(function ($sub) use ($userId) {
+                            $sub->select(DB::raw(1))
+                                ->from('entity_versions as pub_snap')
+                                ->whereColumn('pub_snap.versionable_id', 'documents.id')
+                                ->where('pub_snap.versionable_type', self::class)
+                                ->where('pub_snap.version_number', '>', 0)
+                                ->where('pub_snap.status', 'published')
+                                ->where(function ($ctx) use ($userId) {
+                                    self::applyAcademicOverlapOnDocumentSnapshotAlias($ctx, $userId, 'pub_snap');
+                                });
+                        });
                     });
             });
         });
@@ -279,6 +291,43 @@ class Document extends Model
         });
     }
 
+    /**
+     * Solape académico usando el JSON snapshot de una fila publicada
+     * (alias de entity_versions) en lugar del head actual del documento.
+     */
+    private static function applyAcademicOverlapOnDocumentSnapshotAlias(
+        Builder|QueryBuilder $query,
+        string $userId,
+        string $snapshotAlias
+    ): void {
+        $s = rtrim($snapshotAlias, '.');
+
+        $query->where(function ($w) use ($userId, $s) {
+            $w->whereExists(function ($sub) use ($userId, $s) {
+                $sub->select(DB::raw(1))
+                    ->from('user_study_types')
+                    ->where('user_study_types.user_id', $userId)
+                    ->whereRaw(
+                        'user_study_types.study_type_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression($s, 'study_type_id')
+                    );
+            })->orWhereExists(function ($sub) use ($userId, $s) {
+                $sub->select(DB::raw(1))
+                    ->from('user_studies')
+                    ->where('user_studies.user_id', $userId)
+                    ->whereRaw(
+                        'user_studies.study_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression($s, 'study_id')
+                    );
+            })->orWhereExists(function ($sub) use ($userId, $s) {
+                $sub->select(DB::raw(1))
+                    ->from('user_course_modules')
+                    ->where('user_course_modules.user_id', $userId)
+                    ->whereRaw(
+                        'user_course_modules.module_id = '.DocumentHeadSnapshot::jsonDocumentFieldExpression($s, 'module_id')
+                    );
+            });
+        });
+    }
+
     protected $keyType = 'string';
 
     public $incrementing = false;
@@ -306,7 +355,7 @@ class Document extends Model
     {
         return match ($key) {
             'delivery_deadline' => $raw !== null && $raw !== ''
-                ? Carbon::parse((string) $raw)
+                ? Date::parse((string) $raw)
                 : null,
             default => $raw,
         };
@@ -347,7 +396,7 @@ class Document extends Model
     public function getSubmittedAtAttribute(mixed $value): ?Carbon
     {
         if (array_key_exists('submitted_at', $this->attributes)) {
-            return $this->attributes['submitted_at'] !== null ? Carbon::parse($this->attributes['submitted_at']) : null;
+            return $this->attributes['submitted_at'] !== null ? Date::parse($this->attributes['submitted_at']) : null;
         }
 
         if ($this->status === 'draft') {
@@ -359,7 +408,7 @@ class Document extends Model
             ->min('created_at');
 
         if ($reviewFirst !== null) {
-            return Carbon::parse($reviewFirst);
+            return Date::parse($reviewFirst);
         }
 
         if ($this->status === 'published') {
@@ -384,7 +433,7 @@ class Document extends Model
     public function getPublishedAtAttribute(mixed $value): ?Carbon
     {
         if (array_key_exists('published_at', $this->attributes)) {
-            return $this->attributes['published_at'] !== null ? Carbon::parse($this->attributes['published_at']) : null;
+            return $this->attributes['published_at'] !== null ? Date::parse($this->attributes['published_at']) : null;
         }
 
         if ($this->status !== 'published') {

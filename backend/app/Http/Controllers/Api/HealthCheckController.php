@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api;
 
 use Maya\Http\Controllers\AbstractHealthCheckController;
 use Maya\Http\Health\DatabaseHealthCheck;
-use Maya\Http\Health\FdwHealthCheck;
 use Maya\Http\Health\HealthCheck;
 use Maya\Http\Health\RedisHealthCheck;
 use Maya\Http\Health\TcpHealthCheck;
@@ -32,16 +31,10 @@ class HealthCheckController extends AbstractHealthCheckController
         return [
             new DatabaseHealthCheck,
             new RedisHealthCheck,
-            new FdwHealthCheck(table: 'users_fdw'),
             new TcpHealthCheck(
                 checkName: 'rabbitmq',
                 host: (string) config('services.rabbitmq.host'),
                 port: (int) config('services.rabbitmq.port'),
-            ),
-            new TcpHealthCheck(
-                checkName: 'websocket',
-                host: (string) config('services.health.websocket_host'),
-                port: (int) config('services.health.websocket_port'),
             ),
         ];
     }

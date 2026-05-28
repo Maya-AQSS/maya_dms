@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { DocumentWizard } from '../features/documents/components/DocumentWizard';
-import { Button } from '@ceedcv-maya/shared-ui-react';
+import { Button, ErrorBoundary } from '@ceedcv-maya/shared-ui-react';
 
 /**
  * Editor de programación: asistente de 3 pasos (propiedades, bloques, resumen), sin paso de usuarios.
@@ -19,5 +19,9 @@ export function DocumentEditorPage() {
     );
   }
 
-  return <DocumentWizard documentId={documentId} templateId={templateId} mode="edit" />;
+  return (
+    <ErrorBoundary>
+      <DocumentWizard documentId={documentId} templateId={templateId} mode="edit" />
+    </ErrorBoundary>
+  );
 }
