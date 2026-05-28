@@ -6,7 +6,6 @@ namespace App\Http\Requests\Processes;
 
 use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
-use App\Services\Contracts\ProcessServiceInterface;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -30,6 +29,8 @@ class UpdateProcessRequest extends FormRequest
             'alias' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'process_parent_id' => ['nullable', 'uuid', 'exists:processes,id', Rule::notIn([$processId])],
+            'color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'icon' => ['nullable', 'string', 'max:100'],
         ];
     }
 
@@ -43,6 +44,8 @@ class UpdateProcessRequest extends FormRequest
             alias: $v['alias'],
             description: $v['description'] ?? null,
             processParentId: $v['process_parent_id'] ?? null,
+            color: $v['color'] ?? null,
+            icon: $v['icon'] ?? null,
         );
     }
 
@@ -50,6 +53,6 @@ class UpdateProcessRequest extends FormRequest
     {
         $id = (string) $this->route('process');
 
-        return app(ProcessServiceInterface::class)->findModelOrFail($id);
+        return Process::findOrFail($id);
     }
 }

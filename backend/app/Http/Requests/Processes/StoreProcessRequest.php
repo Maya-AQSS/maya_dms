@@ -27,6 +27,8 @@ class StoreProcessRequest extends FormRequest
             'alias' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'process_parent_id' => ['nullable', 'uuid', 'exists:processes,id'],
+            'color' => ['nullable', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'icon' => ['nullable', 'string', 'max:100'],
         ];
     }
 
@@ -40,6 +42,8 @@ class StoreProcessRequest extends FormRequest
             alias: $v['alias'],
             description: $v['description'] ?? null,
             processParentId: $v['process_parent_id'] ?? null,
+            color: $v['color'] ?? null,
+            icon: $v['icon'] ?? null,
         );
     }
 }

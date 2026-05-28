@@ -12,5 +12,7 @@ readonly class CreateProcessDto
         public string $alias,
         public ?string $description,
         public ?string $processParentId,
+        public ?string $color = null,
+        public ?string $icon = null,
     ) {}
 }

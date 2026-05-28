@@ -25,6 +25,10 @@ class IndexProcessRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [];
+        return [
+            'search'    => ['nullable', 'string', 'max:255'],
+            'parent_id' => ['nullable', 'string'],
+            'per_page'  => ['nullable', 'integer', 'min:5', 'max:100'],
+        ];
     }
 }

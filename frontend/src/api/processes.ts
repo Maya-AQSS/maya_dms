@@ -17,6 +17,8 @@ export type ProcessPayload = {
   alias: string;
   description?: string | null;
   process_parent_id?: string | null;
+  color?: string | null;
+  icon?: string | null;
 };
 
 /** POST /api/v1/processes */
