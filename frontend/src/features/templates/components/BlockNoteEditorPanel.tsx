@@ -231,10 +231,10 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
 
   // Click anywhere in the empty editor area focuses the editor at the end.
   const handleUndo = () => {
-    try { (editor as any)._tiptapEditor?.chain().focus().undo().run(); } catch { /* noop */ }
+    try { (editor as any).undo(); } catch { /* noop */ }
   };
   const handleRedo = () => {
-    try { (editor as any)._tiptapEditor?.chain().focus().redo().run(); } catch { /* noop */ }
+    try { (editor as any).redo(); } catch { /* noop */ }
   };
 
   const handleAreaClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -260,6 +260,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
         editor.insertBlocks(
           [
             {
+              name: "Crear tabla",
               type: "table",
               content: {
                 type: "tableContent",
@@ -279,7 +280,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Imagen",
       icon: "🖼",
-      color: "#EC4899",
       desc: "Insertar imagen",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -307,7 +307,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Código",
       icon: "</>",
-      color: "#1E293B",
       desc: "Bloque de código",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -321,7 +320,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Cita",
       icon: "❝",
-      color: "#8B5CF6",
       desc: "Cita en bloque",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -335,7 +333,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Separador",
       icon: "—",
-      color: "#9CA3AF",
       desc: "Línea divisoria",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -349,7 +346,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Info",
       icon: "ℹ",
-      color: "#3B82F6",
       desc: "Alerta informativa",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -367,7 +363,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Aviso",
       icon: "⚠",
-      color: "#F59E0B",
       desc: "Alerta de advertencia",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -385,7 +380,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Error",
       icon: "✕",
-      color: "#EF4444",
       desc: "Mensaje de error",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -402,7 +396,6 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     {
       name: "Embed Vídeo",
       icon: "<->",
-      color: "#EC4899",
       desc: "Insertar vídeo youtube",
       run: () => {
         const currentBlock = editor.getTextCursorPosition().block;
@@ -477,7 +470,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                     onClick={handleUndo}
                     aria-label={t('blocks.undoAria')}
                     title={t('blocks.undoTitle')}
-                    className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
+                    className="p-1 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
@@ -488,7 +481,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                     onClick={handleRedo}
                     aria-label={t('blocks.redoAria')}
                     title={t('blocks.redoTitle')}
-                    className="p-1 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
+                    className="p-1 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50 focus:outline-none"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                       <path d="M21 7v6h-6" /><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
@@ -511,19 +504,22 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
                   
                 <button
                   type="button"
+                  aria-label="Markdown"
                   onClick={toggleMarkdownView}
+                  title="Markdown mode"
                   className="bn-fullscreen-btn shrink-0 p-1.5 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
                 >
-                  Markdown
+                  M ↓
                 </button>
                 </div>
                 <div className="flex items-end gap-0.5 shrink-0 pl-1 border-l border-ui-border dark:border-ui-dark-border ml-auto">
                   <button
                     type="button"
-                    aria-label={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+                    aria-label={'Pantalla'}
                     aria-pressed={isFullscreen}
+                    title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
                     onClick={(e) => { e.stopPropagation(); applyFullscreen(!isFullscreen); }}
-                    className="bn-fullscreen-btn shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
+                    className="bn-fullscreen-btn shrink-0 p-1.5 rounded hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus:outline-none"
                   >
                     <FullscreenIcon expanded={isFullscreen} />
                   </button>

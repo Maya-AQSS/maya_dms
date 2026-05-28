@@ -25,6 +25,7 @@ interface Props {
   /** Sidebar opcional (usado para comentarios/info) que ocupa el 35% de la pantalla. */
   sidebar?: ReactNode
   children: ReactNode
+  viewMode: string
 }
 
 function FullscreenIcon({ on }: { on: boolean }) {
@@ -75,6 +76,7 @@ export function PaperPreviewLayout({
   headerRef,
   sidebar,
   children,
+  viewMode
 }: Props) {
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -116,8 +118,17 @@ export function PaperPreviewLayout({
   // - Modo fullscreen: 100% del contenedor disponible (sin aside) con un
   //   max razonable para legibilidad en pantallas muy anchas.
   const articleStyle: CSSProperties = isFullscreen
-    ? { width: '100%', maxWidth: 'none', minHeight: 'calc(100vh - 14rem)', padding: '64px 96px' }
-    : { maxWidth: '760px', minHeight: 'calc(100vh - 12rem)', padding: '56px 72px' }
+  ? {
+      width: '100%',
+      maxWidth: 'none',
+      minHeight: 'calc(100vh - 14rem)',
+      padding: viewMode === 'themed' ? 0 : '64px 96px',
+    }
+  : {
+      maxWidth: '760px',
+      minHeight: 'calc(100vh - 12rem)',
+      padding: viewMode === 'themed' ? 0 : '56px 72px',
+    }
 
   const fullscreenButton = (
     <Button
