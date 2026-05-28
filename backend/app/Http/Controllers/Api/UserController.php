@@ -6,10 +6,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\DTOs\Users\ReviewerCandidateFilterDto;
+use App\Http\Resources\UserDirectoryResource;
 use App\Models\JwtUser;
 use App\Services\Contracts\UserDirectoryServiceInterface;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class UserController extends Controller
 {
@@ -27,7 +28,7 @@ class UserController extends Controller
      *
      * `exclude_user_id`: opcional; excluye ese id del resultado (p. ej. creador de plantilla en pickers).
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
@@ -39,12 +40,12 @@ class UserController extends Controller
         $excludeUserId = $this->optionalExcludeUserId($request);
 
         if (mb_strlen($search) < 2) {
-            return response()->json(['data' => []]);
+            return UserDirectoryResource::collection([]);
         }
 
         $users = $this->userDirectoryService->searchUsers($search, $perPage, $excludeUserId);
 
-        return response()->json(['data' => $users]);
+        return UserDirectoryResource::collection($users);
     }
 
     /**
@@ -61,7 +62,7 @@ class UserController extends Controller
      * Contexto académico opcional (según visibilidad de la plantilla):
      * `visibility_level`, `study_type_id`, `study_id`, `module_id`, `team_id`.
      */
-    public function reviewerCandidates(Request $request): JsonResponse
+    public function reviewerCandidates(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || ! $user->hasPermission('template.show')) {
@@ -80,7 +81,7 @@ class UserController extends Controller
             $academicFilter,
         );
 
-        return response()->json(['data' => $users]);
+        return UserDirectoryResource::collection($users);
     }
 
     /**
@@ -97,7 +98,7 @@ class UserController extends Controller
      * Contexto académico opcional (según visibilidad de la plantilla):
      * `visibility_level`, `study_type_id`, `study_id`, `module_id`, `team_id`.
      */
-    public function documentReviewerCandidates(Request $request): JsonResponse
+    public function documentReviewerCandidates(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || ! $user->hasPermission('document.show')) {
@@ -116,7 +117,7 @@ class UserController extends Controller
             $academicFilter,
         );
 
-        return response()->json(['data' => $users]);
+        return UserDirectoryResource::collection($users);
     }
 
     /**
@@ -126,7 +127,7 @@ class UserController extends Controller
      * Requiere `template.show` (permiso que tiene el creador de la plantilla/documento).
      * Devuelve todos los usuarios del directorio que coincidan con la búsqueda.
      */
-    public function ownerCandidates(Request $request): JsonResponse
+    public function ownerCandidates(Request $request): AnonymousResourceCollection
     {
         $user = $request->user();
         if (! $user instanceof JwtUser || (! $user->hasPermission('template.show') && ! $user->hasPermission('document.show'))) {
@@ -138,12 +139,12 @@ class UserController extends Controller
         $excludeUserId = $this->optionalExcludeUserId($request);
 
         if (mb_strlen($search) < 2) {
-            return response()->json(['data' => []]);
+            return UserDirectoryResource::collection([]);
         }
 
         $users = $this->userDirectoryService->searchUsers($search, $perPage, $excludeUserId);
 
-        return response()->json(['data' => $users]);
+        return UserDirectoryResource::collection($users);
     }
 
     /**
