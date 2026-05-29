@@ -52,8 +52,11 @@ services:
       REVERB_APP_ID: ${REVERB_APP_ID:-maya-dms}
       REVERB_APP_KEY: ${REVERB_APP_KEY:-}
       REVERB_APP_SECRET: ${REVERB_APP_SECRET:-}
-      REVERB_HOST: 0.0.0.0
-      REVERB_PORT: 8082
+      # Internal addressing for the Pusher HTTP API — backend → reverb container
+      # over the maya_network bridge. Frontend gets its own VITE_REVERB_HOST (public).
+      REVERB_HOST: reverb
+      REVERB_PORT: 8080
+      REVERB_SCHEME: http
       BROADCAST_CONNECTION: reverb
       # ─── CORS ───────────────────────────────────────────────────────
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
