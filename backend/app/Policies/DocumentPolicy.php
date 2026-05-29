@@ -79,16 +79,13 @@ class DocumentPolicy
             return false;
         }
 
+        // Catálogo visible (scope user_access): compartidos en contexto académico; excluye
+        // documentos personales ajenos (visibilidad heredada de plantilla personal).
         if (Document::query()->whereKey($documentId)->exists()) {
             return true;
         }
 
-        return EntityVersion::query()
-            ->where('versionable_type', Document::class)
-            ->where('versionable_id', (string) $documentId)
-            ->where('version_number', '>', 0)
-            ->where('status', 'published')
-            ->exists();
+        return false;
     }
 
     /**

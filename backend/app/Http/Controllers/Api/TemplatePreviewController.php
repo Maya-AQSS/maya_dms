@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Template;
 use App\Services\Contracts\TemplateRenderServiceInterface;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Devuelve el HTML themed de una plantilla. Construye un "preview document"
@@ -28,7 +29,9 @@ class TemplatePreviewController extends Controller
         $model = Template::query()
             ->withoutGlobalScopes(['user_access'])
             ->findOrFail($template);
-        $this->authorize('view', $model);
+        if (! Gate::forUser(request()->user())->allows('view', $model)) {
+            abort(404);
+        }
 
         $html = $this->renderer->renderHtml($template, previewMode: true);
 

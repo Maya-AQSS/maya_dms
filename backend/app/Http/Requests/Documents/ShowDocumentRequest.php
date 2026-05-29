@@ -6,7 +6,6 @@ namespace App\Http\Requests\Documents;
 
 use App\Models\Document;
 use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -19,7 +18,7 @@ class ShowDocumentRequest extends FormRequest
 
     protected function failedAuthorization(): void
     {
-        throw new AuthorizationException('Se requiere permiso para ver este documento.');
+        abort(404);
     }
 
     /**

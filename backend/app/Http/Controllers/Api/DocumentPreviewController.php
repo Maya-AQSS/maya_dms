@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Document;
 use App\Services\Contracts\DocumentRenderServiceInterface;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 
 /**
  * Devuelve el HTML themed del documento. Sirve tanto como vista previa en
@@ -21,7 +22,12 @@ class DocumentPreviewController extends Controller
 
     public function show(string $document): Response
     {
-        $this->authorize('view', Document::query()->findOrFail($document));
+        $model = Document::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->findOrFail($document);
+        if (! Gate::forUser(request()->user())->allows('view', $model)) {
+            abort(404);
+        }
 
         // previewMode = true → el Blade carga paged.js para paginación A4 en
         // el navegador. El export PDF (DocumentPdfService) sigue invocando
