@@ -179,12 +179,13 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
   };
 
   const handleZDown = (id: string) => {
-    updateRegions((prev) => {
-      const minZ = prev.reduce((m, r) => Math.min(m, r.grid?.z ?? 0), 0);
-      return prev.map((r) =>
-        r.id === id && r.grid ? { ...r, grid: { ...r.grid, z: minZ - 1 } } : r,
-      );
-    });
+    updateRegions((prev) =>
+      prev.map((r) =>
+        r.id === id && r.grid
+          ? { ...r, grid: { ...r.grid, z: Math.max(0, (r.grid.z ?? 0) - 1) } }
+          : r,
+      ),
+    );
   };
 
   const handleUpdateProps = (id: string, propsPatch: Record<string, unknown>) => {
