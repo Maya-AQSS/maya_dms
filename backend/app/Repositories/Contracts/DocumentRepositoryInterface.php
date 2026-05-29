@@ -206,6 +206,13 @@ interface DocumentRepositoryInterface
     public function findModuleContext(string $moduleId): ?array;
 
     /**
+     * Obtiene los owner_id únicos de documentos activos creados desde una plantilla.
+     *
+     * @return list<string>
+     */
+    public function ownerIdsByTemplate(string $templateId, string $status = 'active'): array;
+
+    /**
      * Crea o actualiza un compartido (document_id, user_id) único.
      */
     public function upsertDocumentShare(

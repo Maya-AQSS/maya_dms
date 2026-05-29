@@ -7,6 +7,7 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Events\DocumentReviewApproved;
 use App\Events\DocumentReviewRejected;
+use App\Events\NotificationCreated;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\Template;
@@ -109,17 +110,38 @@ class DocumentReviewService
             return;
         }
 
+        $title = 'Documento publicado';
+        $body = 'El documento "' . $document->title . '" ha sido publicado correctamente';
+        $metadata = ['document_id' => (string) $document->id];
+
         try {
             $this->notificationPublisher->send(
                 type: 'document.published',
                 recipientId: $recipientId,
-                title: 'Documento publicado',
-                body: 'El documento "' . $document->title . '" ha sido publicado correctamente',
+                title: $title,
+                body: $body,
                 channels: ['app'],
-                metadata: ['document_id' => (string) $document->id],
+                metadata: $metadata,
             );
         } catch (\Throwable $e) {
             Log::warning('notification.publish_failed', [
+                'error' => $e->getMessage(),
+                'type' => 'document.published',
+                'document_id' => (string) $document->id,
+            ]);
+        }
+
+        try {
+            NotificationCreated::dispatch(
+                recipientId: $recipientId,
+                app: 'maya-dms',
+                type: 'document.published',
+                title: $title,
+                body: $body,
+                metadata: $metadata,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('broadcast.dispatch_failed', [
                 'error' => $e->getMessage(),
                 'type' => 'document.published',
                 'document_id' => (string) $document->id,
@@ -137,17 +159,38 @@ class DocumentReviewService
             return;
         }
 
+        $title = 'Revisión rechazada';
+        $body = 'La revisión del documento "' . $document->title . '" ha sido rechazada' . ($reason !== null && $reason !== '' ? ': ' . $reason : '');
+        $metadata = ['document_id' => (string) $document->id, 'reason' => $reason];
+
         try {
             $this->notificationPublisher->send(
                 type: 'document.rejected',
                 recipientId: $recipientId,
-                title: 'Revisión rechazada',
-                body: 'La revisión del documento "' . $document->title . '" ha sido rechazada' . ($reason !== null && $reason !== '' ? ': ' . $reason : ''),
+                title: $title,
+                body: $body,
                 channels: ['app'],
-                metadata: ['document_id' => (string) $document->id, 'reason' => $reason],
+                metadata: $metadata,
             );
         } catch (\Throwable $e) {
             Log::warning('notification.publish_failed', [
+                'error' => $e->getMessage(),
+                'type' => 'document.rejected',
+                'document_id' => (string) $document->id,
+            ]);
+        }
+
+        try {
+            NotificationCreated::dispatch(
+                recipientId: $recipientId,
+                app: 'maya-dms',
+                type: 'document.rejected',
+                title: $title,
+                body: $body,
+                metadata: $metadata,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('broadcast.dispatch_failed', [
                 'error' => $e->getMessage(),
                 'type' => 'document.rejected',
                 'document_id' => (string) $document->id,

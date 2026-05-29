@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Events\NotificationCreated;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
+use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
@@ -19,6 +21,7 @@ class TemplatePublishingService
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly DocumentRepositoryInterface $documentRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly EntityVersionLifecycleServiceInterface $entityVersionLifecycleService,
         private readonly TemplateVersionBlockLayerWriter $templateVersionBlockLayerWriter,
@@ -228,20 +231,85 @@ class TemplatePublishingService
 
             $createdBy = is_string($updated->created_by) && $updated->created_by !== '' ? $updated->created_by : null;
             if ($createdBy !== null) {
+                $createdByTitle = 'Plantilla publicada';
+                $createdByBody = 'La plantilla "' . $updated->name . '" ha sido publicada correctamente';
+                $createdByMetadata = ['template_id' => (string) $updated->id];
+
                 try {
                     $this->notificationPublisher->send(
                         type: 'template.published',
                         recipientId: $createdBy,
-                        title: 'Plantilla publicada',
-                        body: 'La plantilla "' . $updated->name . '" ha sido publicada correctamente',
+                        title: $createdByTitle,
+                        body: $createdByBody,
                         channels: ['app'],
-                        metadata: ['template_id' => (string) $updated->id],
+                        metadata: $createdByMetadata,
                     );
                 } catch (\Throwable $e) {
                     Log::warning('notification.publish_failed', [
                         'error' => $e->getMessage(),
                         'type' => 'template.published',
                         'template_id' => (string) $updated->id,
+                    ]);
+                }
+
+                try {
+                    NotificationCreated::dispatch(
+                        recipientId: $createdBy,
+                        app: 'maya-dms',
+                        type: 'template.published',
+                        title: $createdByTitle,
+                        body: $createdByBody,
+                        metadata: $createdByMetadata,
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('broadcast.dispatch_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'template.published',
+                        'template_id' => (string) $updated->id,
+                    ]);
+                }
+            }
+
+            // Notificar a owners de documentos activos que usan esta plantilla
+            $affectedOwnerIds = $this->documentRepository->ownerIdsByTemplate((string) $updated->id);
+            foreach ($affectedOwnerIds as $ownerId) {
+                $ownerTitle = 'Plantilla actualizada';
+                $ownerBody = 'Una plantilla que afecta a tus documentos "' . $updated->name . '" ha sido actualizada';
+                $ownerMetadata = ['template_id' => (string) $updated->id, 'version' => $next];
+
+                try {
+                    $this->notificationPublisher->send(
+                        type: 'template.version.affects_my_document',
+                        recipientId: $ownerId,
+                        title: $ownerTitle,
+                        body: $ownerBody,
+                        channels: ['app'],
+                        metadata: $ownerMetadata,
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('notification.publish_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'template.version.affects_my_document',
+                        'template_id' => (string) $updated->id,
+                        'owner_id' => $ownerId,
+                    ]);
+                }
+
+                try {
+                    NotificationCreated::dispatch(
+                        recipientId: $ownerId,
+                        app: 'maya-dms',
+                        type: 'template.version.affects_my_document',
+                        title: $ownerTitle,
+                        body: $ownerBody,
+                        metadata: $ownerMetadata,
+                    );
+                } catch (\Throwable $e) {
+                    Log::warning('broadcast.dispatch_failed', [
+                        'error' => $e->getMessage(),
+                        'type' => 'template.version.affects_my_document',
+                        'template_id' => (string) $updated->id,
+                        'owner_id' => $ownerId,
                     ]);
                 }
             }
