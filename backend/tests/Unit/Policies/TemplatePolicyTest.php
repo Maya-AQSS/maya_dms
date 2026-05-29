@@ -130,6 +130,40 @@ class TemplatePolicyTest extends TestCase
         $this->assertFalse($this->policy->view($user, $template));
     }
 
+    public function test_view_denied_for_foreign_personal_template_with_published_snapshot(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $peerId = 'dddddddd-dddd-dddd-dddd-dddddddddddd';
+        auth()->setUser($this->makeJwtUser($peerId, ['template.show']));
+        $template = $this->makeTemplate(
+            createdBy: $creatorId,
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Personal->value,
+        );
+
+        \Illuminate\Support\Facades\DB::table('entity_versions')->insert([
+            'id' => (string) \Illuminate\Support\Str::uuid(),
+            'versionable_type' => Template::class,
+            'versionable_id' => $template->id,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $creatorId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => json_encode(['template' => ['id' => $template->id]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $peer = $this->makeJwtUser($peerId, ['template.show']);
+
+        $this->assertFalse($this->policy->view($peer, $template));
+    }
+
     public function test_creator_without_templates_review_permission_cannot_review_template(): void
     {
         $creatorId = '11111111-1111-1111-1111-111111111111';
