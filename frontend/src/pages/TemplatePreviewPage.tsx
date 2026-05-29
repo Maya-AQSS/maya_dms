@@ -637,7 +637,7 @@ export function TemplatePreviewPage() {
           <p className="text-sm text-warning-dark dark:text-warning-light">{error}</p>
         )}
         {viewMode === 'themed' && !loading && !error && template && id ? (
-          <div className="h-[calc(100vh-16rem)] min-h-[600px] rounded border border-ui-border bg-white dark:border-ui-dark-border">
+          <div className="h-[100vh] min-h-[600px] rounded border border-ui-border bg-white dark:border-ui-dark-border">
             <PagedThemedPreview kind="template" id={id} />
           </div>
         ) : null}
