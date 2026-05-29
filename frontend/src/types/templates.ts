@@ -121,7 +121,7 @@ export type TemplatesListMeta = {
   total: number;
 };
 
-/** El backend devuelve solo `data`; la `meta` de paginación se calcula en cliente. */
+/** Listado de plantillas: `data` agregada de todas las páginas; `meta` para paginación en cliente. */
 export type TemplatesListResponse = {
   data: Template[];
   meta?: TemplatesListMeta;

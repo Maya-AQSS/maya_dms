@@ -42,7 +42,7 @@ export type TemplatesTableSort = { columnId: string; direction: 'asc' | 'desc' }
 
 /**
  * Listado y mutaciones de plantillas normativas.
- * La API devuelve el catálogo completo (filtrado); la paginación es en cliente.
+ * La API pagina en servidor (ADR-C); el cliente agrega páginas y pagina/filtra en tabla.
  *
  * @param processId Si se aporta, se aplica como filtro `process_id` permanente
  *   (no se expone en el panel de filtros — viene del contexto de la URL).
@@ -60,7 +60,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
   const [actionInfo, setActionInfo] = useState<string | null>(null);
 
   const filtersForApi = useMemo(() => {
-    const { page: _page, per_page: _perPage, ...rest } = filters;
+    const { page: _page, ...rest } = filters;
     return {
       ...rest,
       ...(processId ? { process_id: processId } : {}),
@@ -75,6 +75,7 @@ export function useTemplates(processId?: string, sortBy?: TemplatesTableSort) {
     filters.author_name,
     filters.delivery_deadline,
     filters.published_on,
+    filters.per_page,
     filters.process_id,
     processId,
   ]);
