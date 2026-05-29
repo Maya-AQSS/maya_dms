@@ -21,6 +21,7 @@ use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Maya\Http\Concerns\RespondsWithEnvelope;
 
 /**
  * CRUD canónico de Document (index/store/show/update/destroy/clone).
@@ -30,6 +31,7 @@ use Illuminate\Http\Request;
 class DocumentController extends Controller
 {
     use AttachesDocumentCanCloneMeta;
+    use RespondsWithEnvelope;
     use ValidatesOptionalProcessContext;
 
     public function __construct(
@@ -45,7 +47,7 @@ class DocumentController extends Controller
     {
         $page = $this->documentService->paginate($request->toFilterDto());
 
-        return response()->json($page);
+        return $this->paginated($page, DocumentResource::class, $request);
     }
 
     /**
