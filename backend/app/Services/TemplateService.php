@@ -154,11 +154,29 @@ class TemplateService implements TemplateServiceInterface
     /**
      * Listado paginado de plantillas con filtros de dominio (ADR-C).
      *
+     * Enriquece los modelos de la página actual antes de mapear a DTO (p. ej.
+     * `latest_published_*`). El controller puede pasar un callback para presentación
+     * (`can_clone`, `team`, …) antes del mapeo.
+     *
+     * @param  callable(Collection<int, Template>): void|null  $beforeMap
      * @return PaginatedDto<TemplateDto>
      */
-    public function paginateFiltered(TemplateFilterDto $filter): PaginatedDto
-    {
+    public function paginateFiltered(
+        TemplateFilterDto $filter,
+        string $viewerId,
+        ?callable $beforeMap = null,
+    ): PaginatedDto {
         $paginator = $this->templateRepository->paginateFiltered($filter);
+        /** @var Collection<int, Template> $templates */
+        $templates = collect($paginator->items());
+
+        if ($templates->isNotEmpty()) {
+            $this->attachLatestPublishedVersionMeta($templates);
+            $this->overlayPublishedSnapshotForNonOwners($templates, $viewerId);
+            if ($beforeMap !== null) {
+                $beforeMap($templates);
+            }
+        }
 
         return PaginatedDto::fromPaginator(
             $paginator,

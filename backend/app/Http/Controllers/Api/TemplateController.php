@@ -49,7 +49,15 @@ class TemplateController extends Controller
      */
     public function index(ListTemplatesRequest $request): JsonResponse
     {
-        $page = $this->templateService->paginateFiltered($request->toFilterDto());
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $page = $this->templateService->paginateFiltered(
+            $request->toFilterDto(),
+            $viewerId,
+            function ($templates) use ($request, $viewerId): void {
+                $this->attachCanCloneMeta($templates, $request);
+                $this->apiTeamEmbedService->embedOnTemplates($templates, $viewerId);
+            },
+        );
 
         return $this->paginated($page, TemplateResource::class, $request);
     }

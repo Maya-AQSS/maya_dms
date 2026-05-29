@@ -45,7 +45,15 @@ class DocumentController extends Controller
      */
     public function index(ListDocumentsRequest $request): JsonResponse
     {
-        $page = $this->documentService->paginate($request->toFilterDto());
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $page = $this->documentService->paginate(
+            $request->toFilterDto(),
+            $viewerId,
+            function ($documents) use ($request, $viewerId): void {
+                $this->attachCanCloneMeta($documents, $request);
+                $this->apiTeamEmbedService->embedOnDocuments($documents, $viewerId);
+            },
+        );
 
         return $this->paginated($page, DocumentResource::class, $request);
     }

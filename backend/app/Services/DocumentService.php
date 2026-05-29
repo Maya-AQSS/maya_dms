@@ -628,13 +628,31 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Listado paginado de documentos con filtros de dominio (ADR-C).
      *
-     * Devuelve un PaginatedDto<DocumentDto> listo para serializar desde el Controller.
+     * Enriquece los modelos de la página actual antes de mapear a DTO (metadatos de
+     * publicación, compartición, revisor, etc.). El controller puede pasar un callback
+     * para adjuntar presentación (`can_clone`, `team`, …) antes del mapeo.
      *
+     * @param  callable(Collection<int, Document>): void|null  $beforeMap
      * @return PaginatedDto<DocumentDto>
      */
-    public function paginate(DocumentFilterDto $filter): PaginatedDto
-    {
+    public function paginate(
+        DocumentFilterDto $filter,
+        string $viewerId,
+        ?callable $beforeMap = null,
+    ): PaginatedDto {
         $paginator = $this->documentRepository->paginate($filter);
+        /** @var Collection<int, Document> $documents */
+        $documents = collect($paginator->items());
+
+        if ($documents->isNotEmpty()) {
+            $this->attachLatestPublishedVersionMeta($documents);
+            $this->attachTemplateVersionNumbers($documents);
+            $this->attachShareMetadataForViewer($documents, $viewerId);
+            $this->attachIsAssignedReviewerMeta($documents, $viewerId);
+            if ($beforeMap !== null) {
+                $beforeMap($documents);
+            }
+        }
 
         return PaginatedDto::fromPaginator(
             $paginator,
