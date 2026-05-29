@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
-use App\Events\NotificationCreated;
+use Maya\Messaging\Events\BroadcastNotificationCreated;
 use App\Models\Template;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -217,7 +217,7 @@ class TemplateReviewerAssignmentService
         }
 
         try {
-            NotificationCreated::dispatch(
+            BroadcastNotificationCreated::dispatch(
                 recipientId: $reviewerId,
                 app: 'maya-dms',
                 type: 'template.reviewer.assigned',
@@ -261,7 +261,7 @@ class TemplateReviewerAssignmentService
         }
 
         try {
-            NotificationCreated::dispatch(
+            BroadcastNotificationCreated::dispatch(
                 recipientId: $validatorId,
                 app: 'maya-dms',
                 type: 'document.validator.assigned',

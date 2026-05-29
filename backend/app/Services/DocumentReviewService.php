@@ -7,7 +7,7 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Events\DocumentReviewApproved;
 use App\Events\DocumentReviewRejected;
-use App\Events\NotificationCreated;
+use Maya\Messaging\Events\BroadcastNotificationCreated;
 use App\Models\Document;
 use App\Models\DocumentReview;
 use App\Models\Template;
@@ -132,7 +132,7 @@ class DocumentReviewService
         }
 
         try {
-            NotificationCreated::dispatch(
+            BroadcastNotificationCreated::dispatch(
                 recipientId: $recipientId,
                 app: 'maya-dms',
                 type: 'document.published',
@@ -181,7 +181,7 @@ class DocumentReviewService
         }
 
         try {
-            NotificationCreated::dispatch(
+            BroadcastNotificationCreated::dispatch(
                 recipientId: $recipientId,
                 app: 'maya-dms',
                 type: 'document.rejected',

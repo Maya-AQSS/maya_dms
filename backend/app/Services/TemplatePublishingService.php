@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Events\NotificationCreated;
+use Maya\Messaging\Events\BroadcastNotificationCreated;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
@@ -253,7 +253,7 @@ class TemplatePublishingService
                 }
 
                 try {
-                    NotificationCreated::dispatch(
+                    BroadcastNotificationCreated::dispatch(
                         recipientId: $createdBy,
                         app: 'maya-dms',
                         type: 'template.published',
@@ -296,7 +296,7 @@ class TemplatePublishingService
                 }
 
                 try {
-                    NotificationCreated::dispatch(
+                    BroadcastNotificationCreated::dispatch(
                         recipientId: $ownerId,
                         app: 'maya-dms',
                         type: 'template.version.affects_my_document',
