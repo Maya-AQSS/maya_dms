@@ -481,7 +481,8 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
           {(p.format as string) === 'long' ? '1 de enero de 2026' : '01/01/2026'}
         </div>
       );
-    case 'watermark':
+    case 'watermark':{
+      const url = theme.assets.watermark_path || null;
       return (
         <div
           className="theme-grid-slot theme-grid-slot--watermark"
@@ -490,9 +491,14 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
             transform: `rotate(${(p.rotate as number) ?? -30}deg)`,
           }}
         >
-          {(p.text as string) ?? 'BORRADOR'}
+          {url ? (
+            <img src={url} alt={(p.alt as string) ?? 'Marca de agua'} className="max-h-full max-w-full object-contain" />
+          ) : (
+            <span className="text-text-muted">BORRADOR</span>
+          )}
         </div>
       );
+    }
     default:
       return (
         <div className="theme-grid-slot theme-grid-slot--legacy">
