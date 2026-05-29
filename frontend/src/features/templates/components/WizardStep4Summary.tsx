@@ -50,7 +50,10 @@ export function WizardStep4Summary({
   onBlocksLoadingChange,
   onBlocksChange,
 }: Props) {
-  const { blocks, loading } = useTemplateBlocks(template.id);
+  const { blocks, loading } = useTemplateBlocks(template.id, {
+    created_by: template.created_by,
+    status: template.status,
+  });
 
   useEffect(() => {
     onBlocksLoadingChange?.(loading);

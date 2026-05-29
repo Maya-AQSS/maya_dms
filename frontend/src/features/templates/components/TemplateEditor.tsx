@@ -171,7 +171,10 @@ export function TemplateEditor({ template }: Props) {
   const navigate = useNavigate();
   const { t } = useTranslation('documents');
   const { blocks, loading, createBlock, updateBlock, reorderBlocks } =
-    useTemplateBlocks(template.id);
+    useTemplateBlocks(template.id, {
+      created_by: template.created_by,
+      status: template.status,
+    });
   const { isDark } = useDarkMode();
   const sensors = useSensors(useSensor(PointerSensor));
 

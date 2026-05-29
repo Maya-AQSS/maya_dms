@@ -12,8 +12,11 @@ use App\Models\Template;
  * Permisos transversales de bloques (plantilla, documento y snapshots de versión).
  *
  * - `block.index` / `block.show`: compañero global (cualquier mutación plantilla o documento).
- * - `block.create` / `block.update` / `block.delete` en plantilla: compañero de plantilla
- *   + {@see TemplatePolicy::update} sobre el padre.
+ * - `block.create` / `block.update` / `block.delete` en plantilla: slug `block.*` +
+ *   {@see TemplatePolicy::update} sobre el padre (p. ej. creador en borrador personal sin
+ *   `template.create`/`template.update`).
+ * - Listado/detalle en plantilla: slug `block.index`/`block.show` +
+ *   {@see TemplatePolicy::view} sobre el padre (sin compañero global de catálogo).
  * - `block.update` / `block.delete` en documento: compañero de documento +
  *   {@see DocumentPolicy::update} (quien edita el borrador, p. ej. titular o share `edit`).
  */
@@ -40,7 +43,7 @@ class BlockPolicy
      */
     public function listForTemplate(JwtUser $user, Template $template): bool
     {
-        if (! $this->viewAny($user)) {
+        if (! $user->hasPermission('block.index')) {
             return false;
         }
 
@@ -52,7 +55,7 @@ class BlockPolicy
      */
     public function showForTemplate(JwtUser $user, Template $template): bool
     {
-        if (! $this->view($user)) {
+        if (! $user->hasPermission('block.show')) {
             return false;
         }
 
@@ -76,7 +79,7 @@ class BlockPolicy
      */
     public function createForTemplate(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('block.create') || ! $this->hasTemplateCompanionSlug($user)) {
+        if (! $user->hasPermission('block.create')) {
             return false;
         }
 
@@ -88,7 +91,7 @@ class BlockPolicy
      */
     public function updateForTemplate(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('block.update') || ! $this->hasTemplateCompanionSlug($user)) {
+        if (! $user->hasPermission('block.update')) {
             return false;
         }
 
@@ -100,7 +103,7 @@ class BlockPolicy
      */
     public function deleteForTemplate(JwtUser $user, Template $template): bool
     {
-        if (! $user->hasPermission('block.delete') || ! $this->hasTemplateCompanionSlug($user)) {
+        if (! $user->hasPermission('block.delete')) {
             return false;
         }
 

@@ -11,8 +11,9 @@ import { useUserProfile } from '../../user-profile';
 import {
   canCreateTemplateBlock,
   canDeleteTemplateBlock,
-  canListBlocks,
+  canListTemplateBlocks,
   canUpdateTemplateBlock,
+  type TemplateBlockPermissionContext,
 } from '../../../permissions';
 import type {
   CreateBlockPayload,
@@ -29,12 +30,15 @@ function formatError(err: unknown): string {
   return err instanceof Error ? err.message : 'Error desconocido';
 }
 
-export function useTemplateBlocks(templateId: string) {
-  const { hasPermission } = useUserProfile();
-  const mayListBlocks = canListBlocks(hasPermission);
-  const mayCreateBlock = canCreateTemplateBlock(hasPermission);
-  const mayUpdateBlock = canUpdateTemplateBlock(hasPermission);
-  const mayDeleteBlock = canDeleteTemplateBlock(hasPermission);
+export function useTemplateBlocks(
+  templateId: string,
+  templateContext?: TemplateBlockPermissionContext,
+) {
+  const { hasPermission, profile } = useUserProfile();
+  const mayListBlocks = canListTemplateBlocks(hasPermission, profile?.id, templateContext);
+  const mayCreateBlock = canCreateTemplateBlock(hasPermission, profile?.id, templateContext);
+  const mayUpdateBlock = canUpdateTemplateBlock(hasPermission, profile?.id, templateContext);
+  const mayDeleteBlock = canDeleteTemplateBlock(hasPermission, profile?.id, templateContext);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

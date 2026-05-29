@@ -24,7 +24,7 @@ import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
-import { canListBlocks, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
+import { canListTemplateBlocks, canDeleteBlockComment, DMS_PERMISSIONS } from '../permissions';
 import { isDiscardWorkingVersionAllowed } from '../utils/versionableEntityActions';
 import { useHierarchy } from '../features/hierarchy';
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
@@ -108,7 +108,6 @@ export function TemplatePreviewPage() {
   };
 
   const { profile, hasPermission } = useUserProfile();
-  const mayListBlocks = canListBlocks(hasPermission);
 
   const [template, setTemplate] = useState<Template | null>(null);
   const [blocks, setBlocks] = useState<TemplateBlock[]>([]);
@@ -189,7 +188,8 @@ export function TemplatePreviewPage() {
           if (cancelled) return;
           const t = tRes.data;
           setTemplate(t);
-          if (mayListBlocks) {
+          const canListBlocks = canListTemplateBlocks(hasPermission, profile?.id, t);
+          if (canListBlocks) {
             const bRes = await fetchBlocks(id);
             if (!cancelled) {
               setBlocks(bRes.data.slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)));
@@ -215,10 +215,7 @@ export function TemplatePreviewPage() {
     };
     void load();
     return () => { cancelled = true; };
-  // profile?.id was previously used in the loading condition but is no longer needed here;
-  // the backend handles authorization. Keeping it out of deps avoids a double-load flash.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, templateVersionId, mayListBlocks]);
+  }, [id, templateVersionId, hasPermission, profile?.id]);
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
     if (!activeView?.blockId || !id) return;

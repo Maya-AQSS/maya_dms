@@ -63,8 +63,8 @@ class BlockPolicyTest extends TestCase
 
     public function test_list_for_template_requires_view_on_parent(): void
     {
-        $ownerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
-        $user = $this->makeJwtUser(['block.index', 'template.update']);
+        $ownerId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser(['block.index'], $ownerId);
         auth()->setUser($user);
         $template = $this->makeTemplate($ownerId);
 
@@ -73,6 +73,16 @@ class BlockPolicyTest extends TestCase
         $stranger = $this->makeJwtUser(['block.index', 'template.update']);
         auth()->setUser($stranger);
         $this->assertFalse($this->policy->listForTemplate($stranger, $template));
+    }
+
+    public function test_list_for_template_allowed_for_owner_without_template_catalog_slugs(): void
+    {
+        $ownerId = '11111111-1111-1111-1111-111111111111';
+        $user = $this->makeJwtUser(['block.index'], $ownerId);
+        auth()->setUser($user);
+        $template = $this->makeTemplate($ownerId);
+
+        $this->assertTrue($this->policy->listForTemplate($user, $template));
     }
 
     public function test_list_for_document_requires_view_on_parent(): void
@@ -85,20 +95,21 @@ class BlockPolicyTest extends TestCase
         $this->assertTrue($this->policy->listForDocument($user, $document));
     }
 
-    public function test_create_for_template_requires_block_create_and_template_companion(): void
+    public function test_create_for_template_requires_block_create_and_parent_update(): void
     {
-        $ownerId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $ownerId = '11111111-1111-1111-1111-111111111111';
         $template = $this->makeTemplate($ownerId);
+
+        $owner = $this->makeJwtUser(['block.create'], $ownerId);
+        auth()->setUser($owner);
+        $this->assertTrue($this->policy->createForTemplate($owner, $template));
 
         $user = $this->makeJwtUser(['block.create', 'template.update']);
         auth()->setUser($user);
-        $this->assertTrue($this->policy->createForTemplate($user, $template));
+        $this->assertFalse($this->policy->createForTemplate($user, $template));
 
-        $noSlug = $this->makeJwtUser(['template.update']);
+        $noSlug = $this->makeJwtUser(['template.update'], $ownerId);
         $this->assertFalse($this->policy->createForTemplate($noSlug, $template));
-
-        $docOnly = $this->makeJwtUser(['block.create', 'document.update']);
-        $this->assertFalse($this->policy->createForTemplate($docOnly, $template));
     }
 
     public function test_update_for_document_requires_document_companion(): void
@@ -132,10 +143,10 @@ class BlockPolicyTest extends TestCase
     /**
      * @param  list<string>  $permissions
      */
-    private function makeJwtUser(array $permissions): JwtUser
+    private function makeJwtUser(array $permissions, ?string $id = null): JwtUser
     {
         return new JwtUser([
-            'id' => '11111111-1111-1111-1111-111111111111',
+            'id' => $id ?? '11111111-1111-1111-1111-111111111111',
             'email' => null,
             'name' => null,
             'department' => null,

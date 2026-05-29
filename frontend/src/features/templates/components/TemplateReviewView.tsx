@@ -312,7 +312,10 @@ export function TemplateReviewView({ template }: Props) {
   const location = useLocation();
   const backTo = (location.state as { backTo?: string } | null)?.backTo ?? '/dashboard';
   const { profile, hasPermission } = useUserProfile();
-  const { blocks } = useTemplateBlocks(template.id);
+  const { blocks } = useTemplateBlocks(template.id, {
+    created_by: template.created_by,
+    status: template.status,
+  });
   const queryClient = useQueryClient();
 
   const [activeView, setActiveView] = useState<ActiveView | null>(null);
