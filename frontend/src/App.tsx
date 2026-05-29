@@ -7,9 +7,9 @@ import { NotificationsBell, SidebarFavorites } from '@ceedcv-maya/shared-sidebar
 import { useKeycloakLocaleSync } from '@ceedcv-maya/shared-i18n-react';
 import { useOidcSession } from '@ceedcv-maya/shared-auth-react';
 import { useRequireAppAccess } from '@ceedcv-maya/shared-profile-react';
+import { useRealtimeNotifications } from '@ceedcv-maya/shared-realtime-react';
 import { ProcessesDrawer } from './components/layout/ProcessesDrawer';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
-import { useRealtimeNotifications } from './features/notifications/hooks/useRealtimeNotifications';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
 import { useNavItems } from './components/layout/navItems';
 import { resolveServiceUrl } from './lib/peerService';
