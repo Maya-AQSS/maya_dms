@@ -215,16 +215,16 @@ services:
       - /app/node_modules
       # Live source mounts (equivalent to composer.local.json) — overrides installed
       # npm package with the working tree so changes are visible without rebuild.
-      - ../maya_platform/packages/js/shared-auth-react:/app/node_modules/@ceedcv-maya/shared-auth-react:ro
-      - ../maya_platform/packages/js/shared-dashboard-react:/app/node_modules/@ceedcv-maya/shared-dashboard-react:ro
-      - ../maya_platform/packages/js/shared-hooks-react:/app/node_modules/@ceedcv-maya/shared-hooks-react:ro
-      - ../maya_platform/packages/js/shared-i18n-react:/app/node_modules/@ceedcv-maya/shared-i18n-react:ro
-      - ../maya_platform/packages/js/shared-layout-react:/app/node_modules/@ceedcv-maya/shared-layout-react:ro
-      - ../maya_platform/packages/js/shared-profile-react:/app/node_modules/@ceedcv-maya/shared-profile-react:ro
-      - ../maya_platform/packages/js/shared-realtime-react:/app/node_modules/@ceedcv-maya/shared-realtime-react:ro
-      - ../maya_platform/packages/js/shared-sidebar-react:/app/node_modules/@ceedcv-maya/shared-sidebar-react:ro
-      - ../maya_platform/packages/js/shared-styles:/app/node_modules/@ceedcv-maya/shared-styles:ro
-      - ../maya_platform/packages/js/shared-ui-react:/app/node_modules/@ceedcv-maya/shared-ui-react:ro
+      #- ../maya_platform/packages/js/shared-auth-react:/app/node_modules/@ceedcv-maya/shared-auth-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      #- ../maya_platform/packages/js/shared-dashboard-react:/app/node_modules/@ceedcv-maya/shared-dashboard-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      #- ../maya_platform/packages/js/shared-hooks-react:/app/node_modules/@ceedcv-maya/shared-hooks-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      # - ../maya_platform/packages/js/shared-i18n-react:/app/node_modules/@ceedcv-maya/shared-i18n-react:ro  # disabled F4
+      #- ../maya_platform/packages/js/shared-layout-react:/app/node_modules/@ceedcv-maya/shared-layout-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      #- ../maya_platform/packages/js/shared-profile-react:/app/node_modules/@ceedcv-maya/shared-profile-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      #- ../maya_platform/packages/js/shared-realtime-react:/app/node_modules/@ceedcv-maya/shared-realtime-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      #- ../maya_platform/packages/js/shared-sidebar-react:/app/node_modules/@ceedcv-maya/shared-sidebar-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      #- ../maya_platform/packages/js/shared-styles:/app/node_modules/@ceedcv-maya/shared-styles:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
+      #- ../maya_platform/packages/js/shared-ui-react:/app/node_modules/@ceedcv-maya/shared-ui-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
     ports:
       - "${FRONTEND_PORT:-5174}:5173"
     depends_on:
