@@ -809,4 +809,17 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('reviewer_id', $reviewerId)
             ->exists();
     }
+
+    public function ownerIdsByTemplate(string $templateId, string $status = 'active'): array
+    {
+        return Document::query()
+            ->where('template_id', $templateId)
+            ->where('status', $status)
+            ->whereNotNull('owner_id')
+            ->pluck('owner_id')
+            ->map(fn ($id) => (string) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
 }

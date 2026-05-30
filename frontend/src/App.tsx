@@ -7,6 +7,7 @@ import { NotificationsBell, SidebarFavorites } from '@ceedcv-maya/shared-sidebar
 import { useKeycloakLocaleSync } from '@ceedcv-maya/shared-i18n-react';
 import { useOidcSession } from '@ceedcv-maya/shared-auth-react';
 import { useRequireAppAccess } from '@ceedcv-maya/shared-profile-react';
+import { useRealtimeNotifications } from '@ceedcv-maya/shared-realtime-react';
 import { ProcessesDrawer } from './components/layout/ProcessesDrawer';
 import { useUserProfile, profileDisplayInitials } from './features/user-profile';
 import { HierarchyProvider } from './features/hierarchy/context/HierarchyContext';
@@ -70,7 +71,7 @@ function AppRoutes() {
 }
 
 function AppWithLayout() {
-  const { logout, isOidcSignedIn } = useOidcSession();
+  const { logout, user, isOidcSignedIn } = useOidcSession();
   const { profile } = useUserProfile();
   const [processesDrawerOpen, setProcessesDrawerOpen] = useState(false);
   const openProcessesDrawer = useCallback(() => setProcessesDrawerOpen(true), []);
@@ -81,6 +82,7 @@ function AppWithLayout() {
   const wasAuthenticatedRef = useRef(false);
   const previousPathRef = useRef<string | null>(null);
   useKeycloakLocaleSync();
+  useRealtimeNotifications({ userId: (user?.sub as string | undefined) ?? null });
 
   useEffect(() => {
     previousPathRef.current = location.pathname;

@@ -94,6 +94,7 @@ use App\Services\UserDirectoryService;
 use App\Services\UserFavoriteService;
 use App\Services\UserProfileService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Broadcast;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Maya\Profile\Migrations as ProfileMigrations;
@@ -157,6 +158,14 @@ class AppServiceProvider extends ServiceProvider
         // `maya/shared-profile-laravel`). dms consume la vista resuelta de
         // permisos vía FDW (`v_dms_user_permissions` en maya_authorization)
         // — eliminada la tabla local `user_permissions`.
+                // Broadcasting auth endpoint protegido por JWT y bajo prefijo /api/v1 para
+        // consistencia con el resto de la API. Anula el `/broadcasting/auth` que
+        // Laravel registra por defecto con middleware `web` (basado en sesión).
+        Broadcast::routes([
+            'prefix' => 'api/v1',
+            'middleware' => ['api', 'jwt'],
+        ]);
+
         $this->loadMigrationsFrom(ProfileMigrations::users());
         $this->loadMigrationsFrom(ProfileMigrations::academicAssignments());
         $this->loadMigrationsFrom(ProfileMigrations::academicCatalogs());

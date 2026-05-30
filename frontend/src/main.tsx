@@ -12,6 +12,9 @@ import { NotificationProvider } from '@ceedcv-maya/shared-sidebar-react'
 import { ErrorBoundary, ToastProvider } from '@ceedcv-maya/shared-ui-react'
 import { oidcAuthService } from './auth/oidcAdapter'
 import { UserProfileProvider } from './features/user-profile'
+import { bootstrapRealtime } from './lib/realtimeBootstrap'
+
+bootstrapRealtime()
 
 const queryClient = new QueryClient({
   defaultOptions: {
