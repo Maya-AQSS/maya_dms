@@ -7,6 +7,22 @@ import { fileURLToPath } from 'node:url';
 const _require = createRequire(import.meta.url);
 const appRoot = fileURLToPath(new URL('.', import.meta.url));
 
+// Dev override: si MAYA_DEV_OVERRIDE_DIR está set, los paquetes @ceedcv-maya/shared-*
+// se resuelven desde el monorepo en disco en lugar de node_modules. Vite los carga
+// vía resolve.alias (no requiere bind mount sobre node_modules — funciona limpio).
+const _sharedOverrideDir = process.env.MAYA_DEV_OVERRIDE_DIR
+const _sharedPackageAliases: Record<string, string> = _sharedOverrideDir
+  ? Object.fromEntries(
+      [
+        'shared-auth-react', 'shared-dashboard-react', 'shared-hooks-react',
+        'shared-i18n-react', 'shared-layout-react', 'shared-profile-react',
+        'shared-realtime-react', 'shared-sidebar-react', 'shared-styles',
+        'shared-ui-react',
+      ].map((pkg) => [`@ceedcv-maya/${pkg}`, path.resolve(_sharedOverrideDir!, pkg, 'src')])
+    )
+  : {}
+
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
@@ -41,6 +57,7 @@ export default defineConfig({
     dedupe: ['react', 'react-dom', 'react-router-dom'],
     alias: {
       '@tanstack/react-query': _require.resolve('@tanstack/react-query', { paths: [appRoot] }),
+      ..._sharedPackageAliases,
     },
   },
   test: {
