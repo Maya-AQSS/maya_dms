@@ -1,5 +1,6 @@
 import type { DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import type { DocumentReview } from '../../../api/documents';
+import type { Template } from '../../../types/templates';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 
 export type Step = 'properties' | 'blocks' | 'summary';
@@ -54,6 +55,14 @@ export function validationSuccessBannerMessage(
     return `Validación realizada. El documento «${updated.title}» ha sido publicado.`;
   }
   return 'Validación realizada. Este documento se ha pasado al siguiente validador.';
+}
+
+export function effectiveDocumentReviewMode(
+  template: Pick<Template, 'review_mode' | 'document_review_mode'>,
+): ReviewModeView {
+  const mode = template.document_review_mode ?? template.review_mode;
+
+  return mode === 'sequential' ? 'sequential' : 'parallel';
 }
 
 export function pickActionableDocumentReview(

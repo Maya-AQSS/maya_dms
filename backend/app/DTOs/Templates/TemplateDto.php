@@ -6,6 +6,7 @@ namespace App\DTOs\Templates;
 
 use App\Models\Template;
 use App\Support\ApiEmbeddedTeamResponse;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Date;
 
@@ -54,6 +55,7 @@ final readonly class TemplateDto
         public ?string $themeId = null,
         /** @var array<string, mixed>|null Mini-payload del theme cuando la relación está cargada. */
         public ?array $themeMini = null,
+        public ?string $documentReviewMode = null,
     ) {}
 
     public static function fromModel(Template $m): self
@@ -170,7 +172,16 @@ final readonly class TemplateDto
             reviewHistory: $reviewHistory,
             themeId: $m->theme_id !== null ? (string) $m->theme_id : null,
             themeMini: $themeMini,
+            documentReviewMode: self::storedDocumentReviewModeFrom($m),
         );
+    }
+
+    private static function storedDocumentReviewModeFrom(Template $m): ?string
+    {
+        $m->loadMissing('headVersion');
+        $fields = data_get($m->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
+
+        return is_array($fields) ? TemplateHeadSnapshot::storedDocumentReviewMode($fields) : null;
     }
 
     private static function formatOptionalIso(mixed $value): ?string

@@ -9,8 +9,9 @@ use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 
 /**
- * Modo de revisión de documentos: un único `review_mode` en plantilla (parallel | sequential).
- * Prioriza la plantilla live (config actual) frente al snapshot de la versión publicada anclada.
+ * Modo de revisión de documentos: `document_review_mode` en plantilla (parallel | sequential),
+ * con fallback a `review_mode` para plantillas legacy.
+ * Prioriza la plantilla live frente al snapshot de la versión publicada anclada.
  */
 final class DocumentReviewModeResolver
 {
@@ -20,11 +21,15 @@ final class DocumentReviewModeResolver
 
     public function resolve(Document $document): string
     {
-        $document->loadMissing('template');
+        $document->loadMissing('template.headVersion');
 
-        $live = $document->template?->review_mode;
-        if (is_string($live) && in_array($live, ['sequential', 'parallel'], true)) {
-            return $live;
+        $liveFields = data_get(
+            $document->template?->headVersion?->snapshot_data,
+            TemplateHeadSnapshot::JSON_TEMPLATE_KEY,
+        );
+
+        if (is_array($liveFields)) {
+            return TemplateHeadSnapshot::resolveDocumentReviewMode($liveFields);
         }
 
         $anchored = $this->resolveFromAnchoredTemplateVersion($document);
@@ -50,14 +55,14 @@ final class DocumentReviewModeResolver
             $templateId,
         );
 
-        $mode = is_array($anchor?->snapshot_data)
-            ? data_get($anchor->snapshot_data, 'template.review_mode')
+        $templateFields = is_array($anchor?->snapshot_data)
+            ? data_get($anchor->snapshot_data, 'template')
             : null;
 
-        if (is_string($mode) && in_array($mode, ['sequential', 'parallel'], true)) {
-            return $mode;
+        if (! is_array($templateFields)) {
+            return null;
         }
 
-        return null;
+        return TemplateHeadSnapshot::resolveDocumentReviewMode($templateFields);
     }
 }

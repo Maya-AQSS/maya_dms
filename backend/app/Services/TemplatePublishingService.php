@@ -164,6 +164,10 @@ class TemplatePublishingService
                 $resolvedChangelog = $trimmedChangelog;
             }
 
+            $template->loadMissing('headVersion');
+            $templateFields = data_get($template->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
+            $templateFields = is_array($templateFields) ? $templateFields : [];
+
             $snapshotPayload = [
                 'template' => [
                     'id' => $template->id,
@@ -179,6 +183,7 @@ class TemplatePublishingService
                     'team_id' => $template->team_id,
                     'review_stages' => (int) $template->review_stages,
                     'review_mode' => (string) $template->review_mode,
+                    'document_review_mode' => TemplateHeadSnapshot::resolveDocumentReviewMode($templateFields),
                     'status' => 'published',
                     'version' => $next,
                 ],

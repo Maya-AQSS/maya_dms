@@ -38,10 +38,17 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         );
     }
 
-    public function test_prefers_live_template_parallel_over_anchored_sequential(): void
+    public function test_prefers_live_document_review_mode_over_anchored_sequential(): void
     {
         $headEv = new EntityVersion;
-        $headEv->forceFill(['snapshot_data' => [TemplateHeadSnapshot::JSON_TEMPLATE_KEY => ['review_mode' => 'parallel']]]);
+        $headEv->forceFill([
+            'snapshot_data' => [
+                TemplateHeadSnapshot::JSON_TEMPLATE_KEY => [
+                    'review_mode' => 'sequential',
+                    'document_review_mode' => 'parallel',
+                ],
+            ],
+        ]);
 
         $template = new Template;
         $template->setRelation('headVersion', $headEv);
@@ -52,12 +59,6 @@ class DocumentReviewServiceReviewModeTest extends TestCase
             'template_id'         => 'tpl-uuid',
         ]);
         $doc->setRelation('template', $template);
-
-        $entityVersion = new EntityVersion;
-        $entityVersion->forceFill([
-            'id'            => 'ev-uuid',
-            'snapshot_data' => ['template' => ['review_mode' => 'sequential']],
-        ]);
 
         $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
         $evRepo->shouldReceive('findPublishedByIdForVersionable')
@@ -81,7 +82,12 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $entityVersion = new EntityVersion;
         $entityVersion->forceFill([
             'id'            => 'ev-uuid',
-            'snapshot_data' => ['template' => ['review_mode' => 'sequential']],
+            'snapshot_data' => [
+                'template' => [
+                    'review_mode' => 'parallel',
+                    'document_review_mode' => 'sequential',
+                ],
+            ],
         ]);
 
         $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
@@ -124,10 +130,14 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $this->assertSame('parallel', $service->resolveReviewMode($doc));
     }
 
-    public function test_falls_back_to_live_template_when_no_version_anchor(): void
+    public function test_falls_back_to_live_template_review_mode_when_document_mode_unset(): void
     {
         $headEv = new EntityVersion;
-        $headEv->forceFill(['snapshot_data' => [TemplateHeadSnapshot::JSON_TEMPLATE_KEY => ['review_mode' => 'sequential']]]);
+        $headEv->forceFill([
+            'snapshot_data' => [
+                TemplateHeadSnapshot::JSON_TEMPLATE_KEY => ['review_mode' => 'sequential'],
+            ],
+        ]);
 
         $template = new Template;
         $template->setRelation('headVersion', $headEv);
@@ -152,7 +162,14 @@ class DocumentReviewServiceReviewModeTest extends TestCase
     public function test_falls_back_to_live_template_when_entity_version_not_found(): void
     {
         $headEv = new EntityVersion;
-        $headEv->forceFill(['snapshot_data' => [TemplateHeadSnapshot::JSON_TEMPLATE_KEY => ['review_mode' => 'sequential']]]);
+        $headEv->forceFill([
+            'snapshot_data' => [
+                TemplateHeadSnapshot::JSON_TEMPLATE_KEY => [
+                    'review_mode' => 'parallel',
+                    'document_review_mode' => 'sequential',
+                ],
+            ],
+        ]);
 
         $template = new Template;
         $template->setRelation('headVersion', $headEv);

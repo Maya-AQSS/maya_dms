@@ -103,6 +103,7 @@ import {
   dateIsoToInput,
   blockEditorContent,
   validationSuccessBannerMessage,
+  effectiveDocumentReviewMode,
   pickActionableDocumentReview,
   isUuidLike,
 } from './documentWizardUtils';
@@ -481,7 +482,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         if (cancelled) return;
         const userId = meRes.data.id;
         setCurrentUserId(userId);
-        const reviewMode = templateResp.data.review_mode === 'sequential' ? 'sequential' : 'parallel';
+        const reviewMode = effectiveDocumentReviewMode(templateResp.data);
         const actionable = pickActionableDocumentReview(reviews, userId, reviewMode);
         if (!actionable) {
           setValidationSetupError(
@@ -689,7 +690,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           team_id: templateResp.data.team_id ?? undefined,
         });
         if (cancelled) return;
-        setDocumentReviewMode(templateResp.data.review_mode ?? 'parallel');
+        setDocumentReviewMode(effectiveDocumentReviewMode(templateResp.data));
 
         const docIds = templateResp.data.document_reviewers ?? [];
         const tplRows = templateResp.data.reviewers ?? [];

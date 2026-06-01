@@ -23,6 +23,7 @@ export type CreateTemplatePayload = {
   team_id?: string | null;
   review_stages?: number;
   review_mode?: ReviewMode;
+  document_review_mode?: ReviewMode;
 };
 
 export type UpdateTemplatePayload = {
@@ -37,6 +38,7 @@ export type UpdateTemplatePayload = {
   status?: TemplateStatus;
   review_stages?: number;
   review_mode?: ReviewMode;
+  document_review_mode?: ReviewMode;
   created_by?: string;
 };
 

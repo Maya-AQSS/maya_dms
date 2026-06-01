@@ -104,18 +104,25 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
     () => reviewModeLabel(initial?.review_mode),
   );
-  /** Mismo `review_mode` de plantilla que usa el backend para validar documentos (un solo campo). */
   const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>(
-    () => reviewModeLabel(initial?.review_mode),
+    () => reviewModeLabel(initial?.document_review_mode ?? initial?.review_mode),
   );
 
-  const handleValidationModeChange = (mode: 'libre' | 'ordenada') => {
+  const handleTemplateValidationModeChange = (mode: 'libre' | 'ordenada') => {
     setValidationType(mode);
-    setDocumentValidationType(mode);
     setUsersDirty(true);
     if (template?.id) {
       const reviewMode: ReviewMode = mode === 'ordenada' ? 'sequential' : 'parallel';
       void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch(() => {/* non-blocking */ });
+    }
+  };
+
+  const handleDocumentValidationModeChange = (mode: 'libre' | 'ordenada') => {
+    setDocumentValidationType(mode);
+    setUsersDirty(true);
+    if (template?.id) {
+      const documentReviewMode: ReviewMode = mode === 'ordenada' ? 'sequential' : 'parallel';
+      void apiUpdateTemplate(template.id, { document_review_mode: documentReviewMode }).catch(() => {/* non-blocking */ });
     }
   };
 
@@ -403,11 +410,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     try {
       if (usersDirty) {
         const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
-        // In sequential mode each reviewer occupies exactly one stage, so review_stages
-        // must equal the reviewer count before syncing — otherwise the backend rejects
-        // the sync with a 422 when the count exceeds the previous review_stages value.
+        const documentReviewMode: ReviewMode = documentValidationType === 'ordenada' ? 'sequential' : 'parallel';
         await apiUpdateTemplate(template.id, {
           review_mode: reviewMode,
+          document_review_mode: documentReviewMode,
           ...(reviewMode === 'sequential' ? { review_stages: validators.length } : {}),
         });
         await syncTemplateValidators(template.id, validators.map((v) => v.userId));
@@ -682,11 +688,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
               validators={validators}
               onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
               validationType={validationType}
-              onValidationTypeChange={handleValidationModeChange}
+              onValidationTypeChange={handleTemplateValidationModeChange}
               documentValidators={documentValidators}
               onDocumentValidatorsChange={(v) => { setDocumentValidators(v); setUsersDirty(true); }}
               documentValidationType={documentValidationType}
-              onDocumentValidationTypeChange={handleValidationModeChange}
+              onDocumentValidationTypeChange={handleDocumentValidationModeChange}
             />
           )}
           {step === 'summary' && template && (

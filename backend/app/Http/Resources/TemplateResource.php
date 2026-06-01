@@ -41,6 +41,7 @@ class TemplateResource extends JsonResource
             'version' => $dto->version,
             'review_stages' => $dto->reviewStages,
             'review_mode' => $dto->reviewMode,
+            'document_review_mode' => $dto->documentReviewMode,
             'created_at' => $dto->createdAt,
             'updated_at' => $dto->updatedAt,
             'has_review_comments' => $dto->hasReviewComments,
