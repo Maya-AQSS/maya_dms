@@ -225,12 +225,13 @@ class TemplateVersionsSeeder extends Seeder
 
         return DB::table('template_document_reviewers')
             ->where('template_id', $templateId)
-            ->orderBy('created_at')
+            ->orderBy('stage')
             ->orderBy('user_id')
             ->get()
             ->map(static function (object $r): array {
                 return [
                     'user_id' => (string) $r->user_id,
+                    'stage' => (int) $r->stage,
                 ];
             })
             ->values()

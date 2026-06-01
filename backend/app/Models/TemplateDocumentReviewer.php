@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  *
  * PK compuesta (template_id, user_id) — no hay identidad propia por fila.
  * Esta tabla define quiénes pueden ser elegidos como revisores al crear un
- * documento desde la plantilla.
+ * documento desde la plantilla. El `stage` fija el orden en validación secuencial.
  *
  * NOTA: NO se ata observer aquí — Eloquent no soporta nativamente PK
  * compuestas y los events.created/updated rompen el flow. Tabla M2N de
@@ -30,7 +30,15 @@ class TemplateDocumentReviewer extends Model
     protected $fillable = [
         'template_id',
         'user_id',
+        'stage',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'stage' => 'integer',
+        ];
+    }
 
     public function template(): BelongsTo
     {

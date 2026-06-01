@@ -94,7 +94,7 @@ class TemplatePublishingService
             $template->load([
                 'blocks' => fn ($q) => $q->orderBy('sort_order'),
                 'reviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
-                'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+                'documentReviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
             ]);
 
             if ($template->blocks->isEmpty()) {
@@ -148,6 +148,7 @@ class TemplatePublishingService
             $documentReviewersSnapshot = $template->documentReviewers
                 ->map(fn ($r): array => [
                     'user_id' => (string) $r->user_id,
+                    'stage' => (int) $r->stage,
                 ])
                 ->values()
                 ->all();

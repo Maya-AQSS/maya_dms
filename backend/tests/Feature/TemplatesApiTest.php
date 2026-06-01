@@ -892,6 +892,7 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $reviewerDocumentLive,
+            'stage' => 1,
         ]);
         TemplateBlock::query()->forceCreate([
             'id' => $liveOnlyBlockId,
@@ -1031,6 +1032,7 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $reviewerDocumentLive,
+            'stage' => 1,
         ]);
 
         DB::table('entity_versions')->insert([
@@ -1639,6 +1641,7 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $reviewerId,
+            'stage' => 1,
         ]);
 
         $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersReviewer)
@@ -1864,6 +1867,7 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $reviewerId,
+            'stage' => 1,
         ]);
 
         $this->postJson("/api/v1/templates/{$tid}/submit-review", [], $headersCreator)
@@ -2306,6 +2310,7 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $docReviewerId,
+            'stage' => 1,
         ]);
 
         // Publicacion v1
@@ -2402,6 +2407,7 @@ class TemplatesApiTest extends TestCase
         TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $tid,
             'user_id' => $reviewerV1Id,
+            'stage' => 1,
         ]);
 
         // Publicacion v1 con configuracion inicial.

@@ -664,14 +664,17 @@ return (static function (): array {
         [
             'template_id' => $T0,
             'user_id' => $uDir,
+            'stage' => 1,
         ],
         [
             'template_id' => $T1,
             'user_id' => $uDir,
+            'stage' => 1,
         ],
         [
             'template_id' => $T2,
             'user_id' => $uDir,
+            'stage' => 1,
         ],
     ];
 

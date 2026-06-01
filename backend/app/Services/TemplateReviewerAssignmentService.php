@@ -97,9 +97,10 @@ class TemplateReviewerAssignmentService
             // TemplateDocumentReviewer no usa SoftDeletes: delete() es borrado físico.
             $template->documentReviewers()->delete();
 
-            foreach ($uniqueUserIds as $userId) {
+            foreach ($uniqueUserIds as $index => $userId) {
                 $template->documentReviewers()->create([
                     'user_id' => $userId,
+                    'stage' => $index + 1,
                 ]);
             }
         });

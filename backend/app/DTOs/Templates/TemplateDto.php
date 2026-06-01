@@ -16,7 +16,7 @@ final readonly class TemplateDto
      * @param  array<string, mixed>|null  $team
      * @param  list<array{user_id: string, user_name: ?string, stage: int|null, status: string|null}>|null  $reviewers
      * @param  list<string>|null  $documentReviewers
-     * @param  list<array{user_id: string, user_name: ?string}>|null  $documentReviewerUsers
+     * @param  list<array{user_id: string, user_name: ?string, stage?: int|null}>|null  $documentReviewerUsers
      */
     public function __construct(
         public string $id,
@@ -103,6 +103,7 @@ final readonly class TemplateDto
                 ->map(fn ($v) => [
                     'user_id' => (string) $v->user_id,
                     'user_name' => optional($v->user)->name,
+                    'stage' => (int) $v->stage,
                 ])
                 ->values()
                 ->all();

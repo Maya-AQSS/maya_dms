@@ -576,12 +576,15 @@ class TemplateService implements TemplateServiceInterface
         }
 
         $template->documentReviewers()->delete();
-        foreach ($documentReviewers as $row) {
+        foreach ($documentReviewers as $index => $row) {
             if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                 continue;
             }
             $template->documentReviewers()->create([
                 'user_id' => $row['user_id'],
+                'stage' => isset($row['stage']) && (int) $row['stage'] > 0
+                    ? (int) $row['stage']
+                    : $index + 1,
             ]);
         }
     }
@@ -642,12 +645,15 @@ class TemplateService implements TemplateServiceInterface
                         'status' => 'pending',
                     ]);
                 }
-                foreach ($published['document_reviewers'] as $row) {
+                foreach ($published['document_reviewers'] as $index => $row) {
                     if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                         continue;
                     }
                     $target->documentReviewers()->create([
                         'user_id' => $row['user_id'],
+                        'stage' => isset($row['stage']) && (int) $row['stage'] > 0
+                            ? (int) $row['stage']
+                            : $index + 1,
                     ]);
                 }
             } else {
@@ -662,6 +668,7 @@ class TemplateService implements TemplateServiceInterface
                 foreach ($source->documentReviewers as $docReviewer) {
                     $target->documentReviewers()->create([
                         'user_id' => $docReviewer->user_id,
+                        'stage' => (int) $docReviewer->stage,
                     ]);
                 }
             }
@@ -713,6 +720,7 @@ class TemplateService implements TemplateServiceInterface
             foreach ($source->documentReviewers as $docReviewer) {
                 $target->documentReviewers()->create([
                     'user_id' => $docReviewer->user_id,
+                    'stage' => (int) $docReviewer->stage,
                 ]);
             }
 

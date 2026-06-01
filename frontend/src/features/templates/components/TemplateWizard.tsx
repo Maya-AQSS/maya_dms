@@ -97,7 +97,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
   const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>(
-    initial?.document_reviewer_users?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
+    initial?.document_reviewer_users
+      ?.slice()
+      .sort((a, b) => (a.stage ?? 0) - (b.stage ?? 0))
+      .map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
   const reviewModeLabel = (mode?: string): 'libre' | 'ordenada' =>
     mode === 'sequential' ? 'ordenada' : 'libre';

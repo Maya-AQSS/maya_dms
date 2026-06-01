@@ -37,6 +37,7 @@ export type TemplateReviewer = {
 export type TemplateDocumentReviewerUser = {
   user_id: string;
   user_name?: string | null;
+  stage?: number | null;
 };
 
 export type Template = {

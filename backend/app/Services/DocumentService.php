@@ -1186,16 +1186,17 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $candidates = [];
-        $stage = 1;
+        $fallbackStage = 1;
         foreach ($documentReviewers as $row) {
             if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                 continue;
             }
+            $resolvedStage = $this->resolveDocumentReviewerStage($row['stage'] ?? null, $fallbackStage);
             $candidates[] = [
                 'reviewer_id' => $row['user_id'],
-                'stage' => $stage,
+                'stage' => $resolvedStage,
             ];
-            $stage++;
+            $fallbackStage++;
         }
 
         return $candidates;
@@ -1214,16 +1215,26 @@ class DocumentService implements DocumentServiceInterface
         }
 
         $candidates = [];
-        $stage = 1;
+        $fallbackStage = 1;
         foreach ($template->documentReviewers as $dr) {
             $candidates[] = [
                 'reviewer_id' => (string) $dr->user_id,
-                'stage' => $stage,
+                'stage' => $this->resolveDocumentReviewerStage($dr->stage, $fallbackStage),
             ];
-            $stage++;
+            $fallbackStage++;
         }
 
         return $candidates;
+    }
+
+    /**
+     * Etapa desde fila persistida; fallback para snapshots legacy sin `stage`.
+     */
+    private function resolveDocumentReviewerStage(mixed $stageValue, int $fallbackStage): int
+    {
+        return is_numeric($stageValue) && (int) $stageValue > 0
+            ? (int) $stageValue
+            : $fallbackStage;
     }
 
     /**

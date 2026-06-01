@@ -229,9 +229,20 @@ class TemplateReviewerSyncValidationApiTest extends TestCase
 
         // REVIEWER_A already has documents.review from UserPermissionsSeeder
         $this->postJson("/api/v1/templates/{$templateId}/document-reviewers", [
-            'user_ids' => [self::REVIEWER_A],
+            'user_ids' => [self::REVIEWER_A, self::REVIEWER_B],
         ], $headers)
             ->assertOk();
+
+        $this->assertDatabaseHas('template_document_reviewers', [
+            'template_id' => $templateId,
+            'user_id' => self::REVIEWER_A,
+            'stage' => 1,
+        ]);
+        $this->assertDatabaseHas('template_document_reviewers', [
+            'template_id' => $templateId,
+            'user_id' => self::REVIEWER_B,
+            'stage' => 2,
+        ]);
     }
 
     /**

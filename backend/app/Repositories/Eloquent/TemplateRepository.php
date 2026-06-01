@@ -576,7 +576,7 @@ class TemplateRepository implements TemplateRepositoryInterface
             ->with(['headVersion'])
             ->with([
                 'reviewers' => fn ($q) => $q->orderBy('stage'),
-                'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+                'documentReviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
             ])
             ->find($templateId);
     }

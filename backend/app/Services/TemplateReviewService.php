@@ -267,7 +267,7 @@ class TemplateReviewService
             }
 
             $fresh = $template->fresh();
-            if ($fresh !== null) {
+            if ($fresh !== null && $fresh->review_mode === 'sequential') {
                 $this->notifyTemplateValidationRequested($fresh);
             }
 

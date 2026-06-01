@@ -11,7 +11,7 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 /**
  * Modo de revisión de documentos: `document_review_mode` en plantilla (parallel | sequential),
  * con fallback a `review_mode` para plantillas legacy.
- * Prioriza la plantilla live frente al snapshot de la versión publicada anclada.
+ * Si el documento está en revisión, usa el `review_mode` congelado en su cabecera al enviar.
  */
 final class DocumentReviewModeResolver
 {
@@ -21,7 +21,12 @@ final class DocumentReviewModeResolver
 
     public function resolve(Document $document): string
     {
-        $document->loadMissing('template.headVersion');
+        $document->loadMissing('headVersion', 'template.headVersion');
+
+        $frozen = $this->resolveFrozenFromDocumentHead($document);
+        if ($frozen !== null) {
+            return $frozen;
+        }
 
         $liveFields = data_get(
             $document->template?->headVersion?->snapshot_data,
@@ -38,6 +43,27 @@ final class DocumentReviewModeResolver
         }
 
         return 'parallel';
+    }
+
+    private function resolveFrozenFromDocumentHead(Document $document): ?string
+    {
+        $documentFields = data_get(
+            $document->headVersion?->snapshot_data,
+            DocumentHeadSnapshot::JSON_DOCUMENT_KEY,
+        );
+
+        if (! is_array($documentFields)) {
+            return null;
+        }
+
+        $status = $documentFields['status'] ?? null;
+        $mode = $documentFields['review_mode'] ?? null;
+
+        if ($status !== 'in_review' || ! is_string($mode) || ! in_array($mode, ['sequential', 'parallel'], true)) {
+            return null;
+        }
+
+        return $mode;
     }
 
     private function resolveFromAnchoredTemplateVersion(Document $document): ?string

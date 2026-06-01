@@ -100,7 +100,9 @@ class DocumentReviewService
             }
 
             $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
-            $this->notifyPendingValidationRequest($refreshed);
+            if ($this->resolveReviewMode($refreshed) === 'sequential') {
+                $this->notifyPendingValidationRequest($refreshed);
+            }
 
             return $refreshed;
         });

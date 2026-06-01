@@ -109,4 +109,18 @@ final class DocumentHeadSnapshot
 
         return $snapshotData;
     }
+
+    /**
+     * Modo efectivo para un documento en revisión: congelado en cabecera del documento
+     * o, si no existe, el de la plantilla ({@see TemplateHeadSnapshot::effectiveDocumentReviewModeExpression}).
+     */
+    public static function effectiveReviewModeExpression(
+        string $documentHeadAlias,
+        string $templateHeadAlias,
+    ): string {
+        $documentMode = self::jsonDocumentFieldExpression($documentHeadAlias, 'review_mode');
+        $templateMode = TemplateHeadSnapshot::effectiveDocumentReviewModeExpression($templateHeadAlias);
+
+        return "COALESCE(NULLIF({$documentMode}, ''), {$templateMode}, 'parallel')";
+    }
 }
