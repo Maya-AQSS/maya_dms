@@ -338,16 +338,16 @@
         },
         {
             "name": "ceedcv-maya/shared-platform-laravel",
-            "version": "v0.5.2",
+            "version": "v0.5.3",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-platform-laravel.git",
-                "reference": "a9dbb09bf58f0f87e2e57fde2027f829096da948"
+                "reference": "c8f81b90f7cf7d7a67713f2cc622ee6f1c75cf4e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-platform-laravel/zipball/a9dbb09bf58f0f87e2e57fde2027f829096da948",
-                "reference": "a9dbb09bf58f0f87e2e57fde2027f829096da948",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-platform-laravel/zipball/c8f81b90f7cf7d7a67713f2cc622ee6f1c75cf4e",
+                "reference": "c8f81b90f7cf7d7a67713f2cc622ee6f1c75cf4e",
                 "shasum": ""
             },
             "require": {
@@ -387,7 +387,7 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-platform-laravel"
             },
-            "time": "2026-06-01T15:18:39+00:00"
+            "time": "2026-06-01T21:44:47+00:00"
         },
         {
             "name": "ceedcv-maya/shared-profile-laravel",
