@@ -7,6 +7,7 @@ namespace App\Services;
 use Maya\Messaging\Events\BroadcastNotificationCreated;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
+use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -78,18 +79,7 @@ class TemplatePublishingService
 
             $reviewer = $template->reviewers()->where('user_id', $actorId)->first();
 
-            if ($reviewer && $template->review_mode === 'sequential') {
-                $pendingPreviousStage = $template->reviewers()
-                    ->where('stage', '<', $reviewer->stage)
-                    ->where('status', '!=', 'approved')
-                    ->exists();
-
-                if ($pendingPreviousStage) {
-                    throw ValidationException::withMessages([
-                        'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
-                    ]);
-                }
-            }
+            $this->assertSequentialReviewerMayPublish($template, $reviewer);
 
             $template->load([
                 'blocks' => fn ($q) => $q->orderBy('sort_order'),
@@ -322,5 +312,26 @@ class TemplatePublishingService
 
             return $updated;
         });
+    }
+
+    /**
+     * En revisión secuencial, solo publica el revisor de la etapa pendiente activa.
+     */
+    private function assertSequentialReviewerMayPublish(Template $template, ?TemplateReviewer $reviewer): void
+    {
+        if ($reviewer === null || $template->review_mode !== 'sequential') {
+            return;
+        }
+
+        $minStage = $this->templateRepository->minPendingReviewStageForTemplate($template->id);
+        if ($minStage === null) {
+            return;
+        }
+
+        if ((int) $reviewer->stage !== $minStage) {
+            throw ValidationException::withMessages([
+                'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
+            ]);
+        }
     }
 }

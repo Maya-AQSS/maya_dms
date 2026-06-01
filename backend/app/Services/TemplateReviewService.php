@@ -63,8 +63,6 @@ class TemplateReviewService
                 $headVersion->update(['change_set' => $cycles]);
             }
 
-            $template->reviewers()->update(['status' => 'pending']);
-
             $hasEditableBlock = $template->blocks->contains(
                 fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
             );
@@ -148,6 +146,8 @@ class TemplateReviewService
 
     /**
      * Rechaza la revisión de la plantilla.
+     *
+     * En modo secuencial solo puede actuar el revisor de la etapa pendiente activa.
      */
     public function rejectReview(string $templateId, string $actorId): Template
     {
@@ -173,6 +173,8 @@ class TemplateReviewService
                     'status' => ['No puedes rechazar una plantilla que ya has aprobado.'],
                 ]);
             }
+
+            $this->assertSequentialReviewAllowsActing($template, $reviewer);
 
             $template->reviewers()
                 ->where('user_id', $actorId)
@@ -237,18 +239,7 @@ class TemplateReviewService
                 ]);
             }
 
-            if ($template->review_mode === 'sequential') {
-                $pendingPreviousStage = $template->reviewers()
-                    ->where('stage', '<', $reviewer->stage)
-                    ->where('status', '!=', 'approved')
-                    ->exists();
-
-                if ($pendingPreviousStage) {
-                    throw ValidationException::withMessages([
-                        'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
-                    ]);
-                }
-            }
+            $this->assertSequentialReviewAllowsActing($template, $reviewer);
 
             $template->reviewers()
                 ->where('user_id', $actorId)
@@ -273,6 +264,27 @@ class TemplateReviewService
 
             return $fresh ?? $template;
         });
+    }
+
+    /**
+     * En revisión secuencial, solo actúa el revisor cuya etapa no tiene pendientes anteriores.
+     */
+    private function assertSequentialReviewAllowsActing(Template $template, TemplateReviewer $reviewer): void
+    {
+        if ($template->review_mode !== 'sequential') {
+            return;
+        }
+
+        $minStage = $this->templateRepository->minPendingReviewStageForTemplate($template->id);
+        if ($minStage === null) {
+            return;
+        }
+
+        if ((int) $reviewer->stage !== $minStage) {
+            throw ValidationException::withMessages([
+                'stage' => ['Debes esperar a que los revisores de etapas anteriores aprueben primero.'],
+            ]);
+        }
     }
 
     private function notifyTemplateValidationRequested(Template $template): void

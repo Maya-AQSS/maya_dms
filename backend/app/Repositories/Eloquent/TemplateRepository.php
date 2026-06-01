@@ -8,6 +8,7 @@ use App\DTOs\Templates\FilterTemplatesDto;
 use App\DTOs\Templates\TemplateFilterDto;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Models\TemplateReviewer;
 use App\Policies\TemplatePolicy;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\SearchAccentFold;
@@ -656,6 +657,16 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'review_stage' => (int) $row->stage,
             ];
         })->values();
+    }
+
+    public function minPendingReviewStageForTemplate(string $templateId): ?int
+    {
+        $min = TemplateReviewer::query()
+            ->where('template_id', $templateId)
+            ->where('status', 'pending')
+            ->min('stage');
+
+        return $min !== null ? (int) $min : null;
     }
 
     public function transaction(callable $callback): mixed
