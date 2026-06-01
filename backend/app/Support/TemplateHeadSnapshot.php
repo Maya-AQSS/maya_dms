@@ -37,6 +37,7 @@ final class TemplateHeadSnapshot
         'status',
         'review_stages',
         'review_mode',
+        'document_review_mode',
     ];
 
     /**
@@ -75,8 +76,59 @@ final class TemplateHeadSnapshot
                 'status' => (string) ($r['status'] ?? 'draft'),
                 'review_stages' => (int) ($r['review_stages'] ?? 0),
                 'review_mode' => (string) ($r['review_mode'] ?? 'parallel'),
+                'document_review_mode' => (string) ($r['document_review_mode'] ?? $r['review_mode'] ?? 'parallel'),
             ],
         ];
+    }
+
+    /**
+     * Modo efectivo de validación de documentos (fallback a review_mode de plantilla).
+     *
+     * @param  array<string, mixed>  $templateFields
+     */
+    public static function resolveDocumentReviewMode(array $templateFields): string
+    {
+        $mode = $templateFields['document_review_mode'] ?? null;
+        if (is_string($mode) && in_array($mode, ['sequential', 'parallel'], true)) {
+            return $mode;
+        }
+
+        $fallback = $templateFields['review_mode'] ?? null;
+        if (is_string($fallback) && in_array($fallback, ['sequential', 'parallel'], true)) {
+            return $fallback;
+        }
+
+        return 'parallel';
+    }
+
+    /**
+     * Valor almacenado de document_review_mode (null si no está definido en el snapshot).
+     *
+     * @param  array<string, mixed>  $templateFields
+     */
+    public static function storedDocumentReviewMode(array $templateFields): ?string
+    {
+        $mode = $templateFields['document_review_mode'] ?? null;
+
+        return is_string($mode) && in_array($mode, ['sequential', 'parallel'], true)
+            ? $mode
+            : null;
+    }
+
+    /**
+     * Expresión SQL: document_review_mode con fallback a review_mode.
+     */
+    public static function effectiveDocumentReviewModeExpression(string $entityVersionsAlias): string
+    {
+        $docMode = self::jsonTemplateFieldExpression($entityVersionsAlias, 'document_review_mode');
+        $tplMode = self::jsonTemplateFieldExpression($entityVersionsAlias, 'review_mode');
+        $driver = DB::getDriverName();
+
+        return match ($driver) {
+            'mysql' => "COALESCE(NULLIF({$docMode}, ''), NULLIF({$tplMode}, ''), 'parallel')",
+            'pgsql' => "COALESCE(NULLIF({$docMode}, ''), NULLIF({$tplMode}, ''), 'parallel')",
+            default => "COALESCE(NULLIF({$docMode}, ''), NULLIF({$tplMode}, ''), 'parallel')",
+        };
     }
 
     /**

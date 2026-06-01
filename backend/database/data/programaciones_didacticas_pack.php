@@ -691,12 +691,21 @@ return (static function (): array {
     // ============================================================
 
     $template_document_reviewers = [
-        ['template_id' => $T0, 'user_id' => $uJefeDI],
-        ['template_id' => $T0, 'user_id' => $uDir],
-        ['template_id' => $T1, 'user_id' => $uJefeEFp],
-        ['template_id' => $T1, 'user_id' => $uFp],
-        ['template_id' => $T2, 'user_id' => $uJefeEBach],
-        ['template_id' => $T2, 'user_id' => $uBach],
+        [
+            'template_id' => $T0,
+            'user_id' => $uDir,
+            'stage' => 1,
+        ],
+        [
+            'template_id' => $T1,
+            'user_id' => $uDir,
+            'stage' => 1,
+        ],
+        [
+            'template_id' => $T2,
+            'user_id' => $uDir,
+            'stage' => 1,
+        ],
     ];
 
     return [

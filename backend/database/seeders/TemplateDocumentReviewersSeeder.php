@@ -24,12 +24,13 @@ class TemplateDocumentReviewersSeeder extends Seeder
 
         $now = Carbon::now();
 
-        $rows = array_map(static function (array $row) use ($now): array {
+        $rows = [];
+        foreach ($reviewers as $index => $row) {
             $row['created_at'] ??= $now;
             $row['updated_at'] ??= $now;
-
-            return $row;
-        }, $reviewers);
+            $row['stage'] ??= $index + 1;
+            $rows[] = $row;
+        }
 
         DB::table('template_document_reviewers')->insertOrIgnore($rows);
     }

@@ -19,5 +19,6 @@ readonly class CreateTemplateDto
         public string $reviewMode,
         public string $processId,
         public ?string $themeId = null,
+        public ?string $documentReviewMode = null,
     ) {}
 }

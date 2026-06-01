@@ -94,7 +94,7 @@ class TemplatePublishingService
             $template->load([
                 'blocks' => fn ($q) => $q->orderBy('sort_order'),
                 'reviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
-                'documentReviewers' => fn ($q) => $q->orderBy('created_at')->orderBy('user_id'),
+                'documentReviewers' => fn ($q) => $q->orderBy('stage')->orderBy('user_id'),
             ]);
 
             if ($template->blocks->isEmpty()) {
@@ -148,6 +148,7 @@ class TemplatePublishingService
             $documentReviewersSnapshot = $template->documentReviewers
                 ->map(fn ($r): array => [
                     'user_id' => (string) $r->user_id,
+                    'stage' => (int) $r->stage,
                 ])
                 ->values()
                 ->all();
@@ -164,6 +165,10 @@ class TemplatePublishingService
                 $resolvedChangelog = $trimmedChangelog;
             }
 
+            $template->loadMissing('headVersion');
+            $templateFields = data_get($template->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
+            $templateFields = is_array($templateFields) ? $templateFields : [];
+
             $snapshotPayload = [
                 'template' => [
                     'id' => $template->id,
@@ -179,6 +184,7 @@ class TemplatePublishingService
                     'team_id' => $template->team_id,
                     'review_stages' => (int) $template->review_stages,
                     'review_mode' => (string) $template->review_mode,
+                    'document_review_mode' => TemplateHeadSnapshot::resolveDocumentReviewMode($templateFields),
                     'status' => 'published',
                     'version' => $next,
                 ],

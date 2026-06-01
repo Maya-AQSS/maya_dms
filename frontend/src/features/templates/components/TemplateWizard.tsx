@@ -97,12 +97,38 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     initial?.reviewers?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
   const [documentValidators, setDocumentValidators] = useState<ValidatorEntry[]>(
-    initial?.document_reviewer_users?.map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
+    initial?.document_reviewer_users
+      ?.slice()
+      .sort((a, b) => (a.stage ?? 0) - (b.stage ?? 0))
+      .map((r) => ({ userId: r.user_id, name: r.user_name ?? '—' })) ?? [],
   );
+  const reviewModeLabel = (mode?: string): 'libre' | 'ordenada' =>
+    mode === 'sequential' ? 'ordenada' : 'libre';
   const [validationType, setValidationType] = useState<'libre' | 'ordenada'>(
-    initial?.review_mode === 'sequential' ? 'ordenada' : 'libre',
+    () => reviewModeLabel(initial?.review_mode),
   );
-  const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>('libre');
+  const [documentValidationType, setDocumentValidationType] = useState<'libre' | 'ordenada'>(
+    () => reviewModeLabel(initial?.document_review_mode ?? initial?.review_mode),
+  );
+
+  const handleTemplateValidationModeChange = (mode: 'libre' | 'ordenada') => {
+    setValidationType(mode);
+    setUsersDirty(true);
+    if (template?.id) {
+      const reviewMode: ReviewMode = mode === 'ordenada' ? 'sequential' : 'parallel';
+      void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch(() => {/* non-blocking */ });
+    }
+  };
+
+  const handleDocumentValidationModeChange = (mode: 'libre' | 'ordenada') => {
+    setDocumentValidationType(mode);
+    setUsersDirty(true);
+    if (template?.id) {
+      const documentReviewMode: ReviewMode = mode === 'ordenada' ? 'sequential' : 'parallel';
+      void apiUpdateTemplate(template.id, { document_review_mode: documentReviewMode }).catch(() => {/* non-blocking */ });
+    }
+  };
+
   // Dirty flag: only sync reviewers to API if the user actually changed them in Step 3
   const [usersDirty, setUsersDirty] = useState(false);
 
@@ -387,11 +413,10 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     try {
       if (usersDirty) {
         const reviewMode: ReviewMode = validationType === 'ordenada' ? 'sequential' : 'parallel';
-        // In sequential mode each reviewer occupies exactly one stage, so review_stages
-        // must equal the reviewer count before syncing — otherwise the backend rejects
-        // the sync with a 422 when the count exceeds the previous review_stages value.
+        const documentReviewMode: ReviewMode = documentValidationType === 'ordenada' ? 'sequential' : 'parallel';
         await apiUpdateTemplate(template.id, {
           review_mode: reviewMode,
+          document_review_mode: documentReviewMode,
           ...(reviewMode === 'sequential' ? { review_stages: validators.length } : {}),
         });
         await syncTemplateValidators(template.id, validators.map((v) => v.userId));
@@ -666,18 +691,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
               validators={validators}
               onValidatorsChange={(v) => { setValidators(v); setUsersDirty(true); }}
               validationType={validationType}
-              onValidationTypeChange={(t) => {
-                setValidationType(t);
-                setUsersDirty(true);
-                if (template?.id) {
-                  const reviewMode: ReviewMode = t === 'ordenada' ? 'sequential' : 'parallel';
-                  void apiUpdateTemplate(template.id, { review_mode: reviewMode }).catch(() => {/* non-blocking */ });
-                }
-              }}
+              onValidationTypeChange={handleTemplateValidationModeChange}
               documentValidators={documentValidators}
               onDocumentValidatorsChange={(v) => { setDocumentValidators(v); setUsersDirty(true); }}
               documentValidationType={documentValidationType}
-              onDocumentValidationTypeChange={(t) => { setDocumentValidationType(t); setUsersDirty(true); }}
+              onDocumentValidationTypeChange={handleDocumentValidationModeChange}
             />
           )}
           {step === 'summary' && template && (

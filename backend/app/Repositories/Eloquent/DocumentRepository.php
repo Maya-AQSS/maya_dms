@@ -463,10 +463,10 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->where('dr.status', 'pending')
             ->whereRaw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status').' = ?', ['in_review'])
             ->where(function ($q) {
-                $q->whereNull('template_head_ev.snapshot_data->template->review_mode')
-                    ->orWhere('template_head_ev.snapshot_data->template->review_mode', 'parallel')
-                    ->orWhere(function ($q2) {
-                        $q2->where('template_head_ev.snapshot_data->template->review_mode', 'sequential')
+                $effectiveMode = DocumentHeadSnapshot::effectiveReviewModeExpression('document_head_ev', 'template_head_ev');
+                $q->whereRaw("{$effectiveMode} = ?", ['parallel'])
+                    ->orWhere(function ($q2) use ($effectiveMode) {
+                        $q2->whereRaw("{$effectiveMode} = ?", ['sequential'])
                             ->whereColumn('dr.stage', 'ps.min_stage');
                     });
             });
@@ -485,7 +485,7 @@ class DocumentRepository implements DocumentRepositoryInterface
                 DB::raw(DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status').' as status'),
                 'dr.id as review_id',
                 'dr.stage',
-                DB::raw(TemplateHeadSnapshot::jsonTemplateFieldExpression('template_head_ev', 'review_mode').' as review_mode'),
+                DB::raw(DocumentHeadSnapshot::effectiveReviewModeExpression('document_head_ev', 'template_head_ev').' as review_mode'),
                 'owner_user.name as owner_name',
             ]);
 

@@ -20,6 +20,7 @@ use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionRepositoryInterface;
 use App\Services\Contracts\TemplateServiceInterface;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -281,6 +282,7 @@ class TemplateService implements TemplateServiceInterface
             'status' => 'draft',
             'review_stages' => $dto->reviewStages,
             'review_mode' => $dto->reviewMode,
+            'document_review_mode' => $dto->documentReviewMode ?? $dto->reviewMode,
         ]);
     }
 
@@ -321,6 +323,9 @@ class TemplateService implements TemplateServiceInterface
         }
         if ($dto->setReviewMode) {
             $attributes['review_mode'] = $dto->reviewMode;
+        }
+        if ($dto->setDocumentReviewMode) {
+            $attributes['document_review_mode'] = $dto->documentReviewMode;
         }
         if ($dto->setThemeId) {
             $attributes['theme_id'] = $dto->themeId;
@@ -571,12 +576,15 @@ class TemplateService implements TemplateServiceInterface
         }
 
         $template->documentReviewers()->delete();
-        foreach ($documentReviewers as $row) {
+        foreach ($documentReviewers as $index => $row) {
             if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                 continue;
             }
             $template->documentReviewers()->create([
                 'user_id' => $row['user_id'],
+                'stage' => isset($row['stage']) && (int) $row['stage'] > 0
+                    ? (int) $row['stage']
+                    : $index + 1,
             ]);
         }
     }
@@ -621,6 +629,7 @@ class TemplateService implements TemplateServiceInterface
                 'status' => 'draft',
                 'review_stages' => $this->cloneTemplateReviewStages($kind, $templateMeta, $source),
                 'review_mode' => $this->cloneTemplateReviewMode($kind, $templateMeta, $source),
+                'document_review_mode' => $this->cloneTemplateDocumentReviewMode($kind, $templateMeta, $source),
             ]);
 
             $this->templateRepository->insertBlocksFromPublishedSnapshot((string) $target->getKey(), $published['blocks']);
@@ -636,12 +645,15 @@ class TemplateService implements TemplateServiceInterface
                         'status' => 'pending',
                     ]);
                 }
-                foreach ($published['document_reviewers'] as $row) {
+                foreach ($published['document_reviewers'] as $index => $row) {
                     if (! is_array($row) || ! isset($row['user_id']) || ! is_string($row['user_id']) || $row['user_id'] === '') {
                         continue;
                     }
                     $target->documentReviewers()->create([
                         'user_id' => $row['user_id'],
+                        'stage' => isset($row['stage']) && (int) $row['stage'] > 0
+                            ? (int) $row['stage']
+                            : $index + 1,
                     ]);
                 }
             } else {
@@ -656,6 +668,7 @@ class TemplateService implements TemplateServiceInterface
                 foreach ($source->documentReviewers as $docReviewer) {
                     $target->documentReviewers()->create([
                         'user_id' => $docReviewer->user_id,
+                        'stage' => (int) $docReviewer->stage,
                     ]);
                 }
             }
@@ -692,6 +705,7 @@ class TemplateService implements TemplateServiceInterface
                 'status' => 'draft',
                 'review_stages' => $source->review_stages,
                 'review_mode' => $source->review_mode,
+                'document_review_mode' => $this->resolveStoredDocumentReviewModeForClone($source),
             ]);
 
             $this->templateRepository->replicateBlocks($source, $target);
@@ -706,6 +720,7 @@ class TemplateService implements TemplateServiceInterface
             foreach ($source->documentReviewers as $docReviewer) {
                 $target->documentReviewers()->create([
                     'user_id' => $docReviewer->user_id,
+                    'stage' => (int) $docReviewer->stage,
                 ]);
             }
 
@@ -906,6 +921,44 @@ class TemplateService implements TemplateServiceInterface
             && in_array($templateMeta['review_mode'], ['sequential', 'parallel'], true)
         ) {
             return $templateMeta['review_mode'];
+        }
+
+        return (string) $source->review_mode;
+    }
+
+    /**
+     * @param  array<string, mixed>  $templateMeta
+     */
+    private function cloneTemplateDocumentReviewMode(string $kind, array $templateMeta, Template $source): string
+    {
+        if (
+            $kind === 'entity'
+            && isset($templateMeta['document_review_mode'])
+            && is_string($templateMeta['document_review_mode'])
+            && in_array($templateMeta['document_review_mode'], ['sequential', 'parallel'], true)
+        ) {
+            return $templateMeta['document_review_mode'];
+        }
+
+        if (
+            $kind === 'entity'
+            && isset($templateMeta['review_mode'])
+            && is_string($templateMeta['review_mode'])
+            && in_array($templateMeta['review_mode'], ['sequential', 'parallel'], true)
+        ) {
+            return $templateMeta['review_mode'];
+        }
+
+        return $this->resolveStoredDocumentReviewModeForClone($source);
+    }
+
+    private function resolveStoredDocumentReviewModeForClone(Template $source): string
+    {
+        $source->loadMissing('headVersion');
+        $fields = data_get($source->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
+
+        if (is_array($fields)) {
+            return TemplateHeadSnapshot::resolveDocumentReviewMode($fields);
         }
 
         return (string) $source->review_mode;

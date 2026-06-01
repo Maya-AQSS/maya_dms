@@ -6,6 +6,7 @@ namespace App\DTOs\Templates;
 
 use App\Models\Template;
 use App\Support\ApiEmbeddedTeamResponse;
+use App\Support\TemplateHeadSnapshot;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Date;
 
@@ -15,7 +16,7 @@ final readonly class TemplateDto
      * @param  array<string, mixed>|null  $team
      * @param  list<array{user_id: string, user_name: ?string, stage: int|null, status: string|null}>|null  $reviewers
      * @param  list<string>|null  $documentReviewers
-     * @param  list<array{user_id: string, user_name: ?string}>|null  $documentReviewerUsers
+     * @param  list<array{user_id: string, user_name: ?string, stage?: int|null}>|null  $documentReviewerUsers
      */
     public function __construct(
         public string $id,
@@ -54,6 +55,7 @@ final readonly class TemplateDto
         public ?string $themeId = null,
         /** @var array<string, mixed>|null Mini-payload del theme cuando la relación está cargada. */
         public ?array $themeMini = null,
+        public ?string $documentReviewMode = null,
     ) {}
 
     public static function fromModel(Template $m): self
@@ -101,6 +103,7 @@ final readonly class TemplateDto
                 ->map(fn ($v) => [
                     'user_id' => (string) $v->user_id,
                     'user_name' => optional($v->user)->name,
+                    'stage' => (int) $v->stage,
                 ])
                 ->values()
                 ->all();
@@ -170,7 +173,16 @@ final readonly class TemplateDto
             reviewHistory: $reviewHistory,
             themeId: $m->theme_id !== null ? (string) $m->theme_id : null,
             themeMini: $themeMini,
+            documentReviewMode: self::storedDocumentReviewModeFrom($m),
         );
+    }
+
+    private static function storedDocumentReviewModeFrom(Template $m): ?string
+    {
+        $m->loadMissing('headVersion');
+        $fields = data_get($m->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
+
+        return is_array($fields) ? TemplateHeadSnapshot::storedDocumentReviewMode($fields) : null;
     }
 
     private static function formatOptionalIso(mixed $value): ?string

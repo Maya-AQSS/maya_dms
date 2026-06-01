@@ -6,7 +6,9 @@ namespace App\Services;
 
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
+use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Support\ReviewValidationNotificationRecipients;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maya\Messaging\Publishers\NotificationPublisher;
@@ -138,31 +140,7 @@ class TemplateReviewService
 
             $inReview = $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
 
-            // Notify assigned reviewers.
-            $inReview->loadMissing('reviewers');
-            foreach ($inReview->reviewers as $reviewer) {
-                $reviewerId = is_string($reviewer->user_id) && $reviewer->user_id !== '' ? $reviewer->user_id : null;
-                if ($reviewerId === null) {
-                    continue;
-                }
-                try {
-                    $this->notificationPublisher->send(
-                        type: 'template.validation_requested',
-                        recipientId: $reviewerId,
-                        title: 'Nueva solicitud de revisión de plantilla',
-                        body: 'La plantilla "' . $inReview->name . '" requiere tu revisión',
-                        channels: ['app'],
-                        metadata: ['template_id' => (string) $inReview->id],
-                    );
-                } catch (\Throwable $e) {
-                    Log::warning('notification.publish_failed', [
-                        'error' => $e->getMessage(),
-                        'type' => 'template.validation_requested',
-                        'template_id' => (string) $inReview->id,
-                        'reviewer_id' => $reviewerId,
-                    ]);
-                }
-            }
+            $this->notifyTemplateValidationRequested($inReview);
 
             return $inReview;
         });
@@ -288,7 +266,54 @@ class TemplateReviewService
                 );
             }
 
-            return $template->fresh();
+            $fresh = $template->fresh();
+            if ($fresh !== null && $fresh->review_mode === 'sequential') {
+                $this->notifyTemplateValidationRequested($fresh);
+            }
+
+            return $fresh ?? $template;
         });
+    }
+
+    private function notifyTemplateValidationRequested(Template $template): void
+    {
+        $template->loadMissing('reviewers');
+
+        $pending = $template->reviewers
+            ->filter(static fn (TemplateReviewer $r): bool => ($r->status ?? 'pending') === 'pending')
+            ->map(static fn (TemplateReviewer $r): array => [
+                'user_id' => (string) $r->user_id,
+                'stage' => (int) $r->stage,
+            ])
+            ->values()
+            ->all();
+
+        $reviewMode = is_string($template->review_mode) ? $template->review_mode : 'parallel';
+        $recipients = ReviewValidationNotificationRecipients::filterForReviewMode($reviewMode, $pending);
+
+        foreach ($recipients as $row) {
+            $reviewerId = $row['user_id'] ?? '';
+            if ($reviewerId === '') {
+                continue;
+            }
+
+            try {
+                $this->notificationPublisher->send(
+                    type: 'template.validation_requested',
+                    recipientId: $reviewerId,
+                    title: 'Nueva solicitud de revisión de plantilla',
+                    body: 'La plantilla "' . $template->name . '" requiere tu revisión',
+                    channels: ['app'],
+                    metadata: ['template_id' => (string) $template->id],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('notification.publish_failed', [
+                    'error' => $e->getMessage(),
+                    'type' => 'template.validation_requested',
+                    'template_id' => (string) $template->id,
+                    'reviewer_id' => $reviewerId,
+                ]);
+            }
+        }
     }
 }

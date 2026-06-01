@@ -30,6 +30,8 @@ readonly class UpdateTemplateDto
         public bool $setReviewStages = false,
         public ?string $reviewMode = null,
         public bool $setReviewMode = false,
+        public ?string $documentReviewMode = null,
+        public bool $setDocumentReviewMode = false,
         public ?string $themeId = null,
         public bool $setThemeId = false,
         public ?string $createdBy = null,

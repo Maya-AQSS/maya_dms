@@ -37,6 +37,7 @@ export type TemplateReviewer = {
 export type TemplateDocumentReviewerUser = {
   user_id: string;
   user_name?: string | null;
+  stage?: number | null;
 };
 
 export type Template = {
@@ -62,6 +63,8 @@ export type Template = {
   version: number;
   review_stages: number;
   review_mode: ReviewMode;
+  /** Modo de validación de documentos; si no está definido, el frontend usa review_mode. */
+  document_review_mode?: ReviewMode | null;
   reviewers?: TemplateReviewer[];
   document_reviewers?: string[];
   document_reviewer_users?: TemplateDocumentReviewerUser[];

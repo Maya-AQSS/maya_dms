@@ -99,6 +99,7 @@ class UpdateTemplateRequest extends FormRequest
             'status' => ['prohibited'],
             'review_stages' => ['sometimes', 'integer', 'min:0'],
             'review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
+            'document_review_mode' => ['sometimes', 'string', 'in:sequential,parallel'],
             'theme_id' => ['sometimes', 'nullable', 'uuid', 'exists:themes,id'],
             'created_by' => ['sometimes', 'string', 'uuid'],
         ];
@@ -132,6 +133,8 @@ class UpdateTemplateRequest extends FormRequest
             setReviewStages: $this->has('review_stages'),
             reviewMode: $this->input('review_mode'),
             setReviewMode: $this->has('review_mode'),
+            documentReviewMode: $this->input('document_review_mode'),
+            setDocumentReviewMode: $this->has('document_review_mode'),
             themeId: $this->input('theme_id'),
             setThemeId: $this->has('theme_id'),
             createdBy: $this->input('created_by'),

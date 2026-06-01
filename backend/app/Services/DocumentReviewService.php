@@ -14,6 +14,8 @@ use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Support\DocumentReviewModeResolver;
+use App\Support\ReviewValidationNotificationRecipients;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
@@ -30,6 +32,7 @@ class DocumentReviewService
         private readonly SnapshotServiceInterface $snapshotService,
         private readonly DocumentStateService $stateService,
         private readonly NotificationPublisher $notificationPublisher,
+        private readonly DocumentReviewModeResolver $documentReviewModeResolver,
     ) {}
 
     /**
@@ -96,8 +99,55 @@ class DocumentReviewService
                 return $refreshed;
             }
 
-            return $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+            $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+            if ($this->resolveReviewMode($refreshed) === 'sequential') {
+                $this->notifyPendingValidationRequest($refreshed);
+            }
+
+            return $refreshed;
         });
+    }
+
+    private function notifyPendingValidationRequest(Document $document): void
+    {
+        $documentId = (string) $document->id;
+        $mode = $this->resolveReviewMode($document);
+
+        $pending = $this->documentRepository->listReviewsForDocument($documentId)
+            ->filter(static fn (DocumentReview $r): bool => ($r->status ?? 'pending') === 'pending')
+            ->map(static fn (DocumentReview $r): array => [
+                'reviewer_id' => (string) $r->reviewer_id,
+                'stage' => (int) $r->stage,
+            ])
+            ->values()
+            ->all();
+
+        $recipients = ReviewValidationNotificationRecipients::filterForReviewMode($mode, $pending);
+
+        foreach ($recipients as $row) {
+            $reviewerId = $row['reviewer_id'] ?? '';
+            if ($reviewerId === '') {
+                continue;
+            }
+
+            try {
+                $this->notificationPublisher->send(
+                    type: 'document.validation_requested',
+                    recipientId: $reviewerId,
+                    title: 'Nueva solicitud de revisión',
+                    body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    channels: ['app'],
+                    metadata: ['document_id' => $documentId],
+                );
+            } catch (\Throwable $e) {
+                Log::warning('notification.publish_failed', [
+                    'error' => $e->getMessage(),
+                    'type' => 'document.validation_requested',
+                    'document_id' => $documentId,
+                    'reviewer_id' => $reviewerId,
+                ]);
+            }
+        }
     }
 
     private function notifyDocumentPublished(Document $document): void
@@ -270,29 +320,10 @@ class DocumentReviewService
     }
 
     /**
-     * Resuelve el modo de revisión del documento desde el snapshot anclado, con fallback a la plantilla live.
+     * Modo de revisión: plantilla live primero, luego snapshot anclado ({@see DocumentReviewModeResolver}).
      */
     public function resolveReviewMode(Document $document): string
     {
-        $templateVersionId = is_string($document->template_version_id) ? trim($document->template_version_id) : '';
-        $templateId = is_string($document->template_id) ? trim($document->template_id) : '';
-
-        if ($templateVersionId !== '' && $templateId !== '') {
-            $anchor = $this->entityVersionRepository->findPublishedByIdForVersionable(
-                $templateVersionId,
-                Template::class,
-                $templateId,
-            );
-            $anchoredMode = is_array($anchor?->snapshot_data)
-                ? data_get($anchor->snapshot_data, 'template.review_mode')
-                : null;
-            if (is_string($anchoredMode) && in_array($anchoredMode, ['sequential', 'parallel'], true)) {
-                return $anchoredMode;
-            }
-        }
-
-        $document->loadMissing('template');
-
-        return (string) ($document->template?->review_mode ?? 'parallel');
+        return $this->documentReviewModeResolver->resolve($document);
     }
 }
