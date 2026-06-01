@@ -126,6 +126,11 @@ interface TemplateRepositoryInterface
     public function listPendingReviewInboxForUser(string $userId): Collection;
 
     /**
+     * Etapa mínima entre revisores de plantilla con status pending, o null si no hay pendientes.
+     */
+    public function minPendingReviewStageForTemplate(string $templateId): ?int;
+
+    /**
      * Ejecuta una operación dentro de transacción.
      */
     public function transaction(callable $callback): mixed;

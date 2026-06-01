@@ -30,6 +30,7 @@ use Tests\TestCase;
  *   - submitForReview: repeated submit updates blocks_submission_history
  *   - rejectReview: template not in_review but reviewer is assigned → 422 (service guards)
  *   - rejectReview: reviewer already approved → 422
+ *   - rejectReview: sequential mode, previous stage not yet approved → 422
  *   - approveReview: template not in_review but reviewer is assigned → 422
  *   - approveReview: reviewer already approved → 422
  *   - approveReview: sequential mode, previous stage not yet approved → 422
@@ -334,6 +335,52 @@ class TemplateReviewServiceEdgeCasesApiTest extends TestCase
         $this->postJson("/api/v1/templates/{$templateId}/reject-review", [], $headersReviewer)
             ->assertUnprocessable()
             ->assertJsonPath('errors.status.0', fn ($v) => str_contains($v, 'aprobado'));
+    }
+
+    public function test_reject_review_returns_422_in_sequential_mode_when_previous_stage_not_approved(): void
+    {
+        $ownerId     = (string) Str::uuid();
+        $reviewer1Id = (string) Str::uuid();
+        $reviewer2Id = (string) Str::uuid();
+
+        auth()->forgetUser();
+        $this->assignUserPermissions($ownerId, ['template.show']);
+        $this->assignUserPermissions($reviewer1Id, ['template.show', 'template.review']);
+        $this->assignUserPermissions($reviewer2Id, ['template.show', 'template.review']);
+
+        [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
+
+        $this->mock(JwksServiceInterface::class)
+            ->shouldReceive('getPublicKey')
+            ->andReturn($publicPem);
+
+        $tokenOwner     = $this->buildJwtForSub($privatePem, $publicPem, 'kid-o-'.substr($ownerId, 0, 8), $ownerId, 'test-issuer', 'test-audience');
+        $tokenReviewer2 = $this->buildJwtForSub($privatePem, $publicPem, 'kid-r2-'.substr($reviewer2Id, 0, 8), $reviewer2Id, 'test-issuer', 'test-audience');
+
+        $headersOwner     = ['Authorization' => 'Bearer '.$tokenOwner];
+        $headersReviewer2 = ['Authorization' => 'Bearer '.$tokenReviewer2];
+
+        $templateId = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id'               => $templateId,
+            'name'             => 'Sequential Template Reject',
+            'description'      => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'created_by'       => $ownerId,
+            'status'           => 'draft',
+            'review_stages'    => 0,
+            'review_mode'      => 'sequential',
+        ]);
+
+        $this->addEditableBlock($templateId);
+        $this->addReviewer($templateId, $reviewer1Id, stage: 1);
+        $this->addReviewer($templateId, $reviewer2Id, stage: 2);
+
+        $this->postJson("/api/v1/templates/{$templateId}/submit-review", [], $headersOwner)->assertOk();
+
+        $this->postJson("/api/v1/templates/{$templateId}/reject-review", [], $headersReviewer2)
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.stage.0', fn ($v) => str_contains($v, 'etapas anteriores'));
     }
 
     // ─── approveReview — error paths ──────────────────────────────────────────
