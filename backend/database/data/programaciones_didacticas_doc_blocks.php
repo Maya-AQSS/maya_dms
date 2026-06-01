@@ -25,10 +25,15 @@ declare(strict_types=1);
  */
 
 return (static function (): array {
-    // -- Owners reales (deben coincidir con `documents` del pack) --
-    $uDir = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';   // D0 (Ciclo ASIR)
-    $uFp  = '50f503c6-cb63-466c-852d-0b30ae130e98';   // D1, D2, D3 (módulos FP)
-    $uBach = '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f';  // D4 (Bachillerato)
+    // -- Owners (maya_dev_users.php + documents del pack) --
+    $devUsers = require __DIR__ . '/maya_dev_users.php';
+    $u = static fn (string $key): string => $devUsers[$key]
+        ?? throw new \InvalidArgumentException("Usuario dev desconocido: {$key}");
+
+    $uJefeDI = $u('jefe_d_i');       // D0 (Ciclo ASIR)
+    $uFp = $u('docente_i');          // D1, D2 (módulos FP informática)
+    $uJefeEFp = $u('jefe_e_fp');     // D3 (LAP / TIL)
+    $uBach = $u('docente_b');        // D4 (Bachillerato)
 
     // -- Documentos --
     $D0 = 'dd000000-0000-4000-8000-000000000000'; // Ciclo ASIR
@@ -134,14 +139,14 @@ return (static function (): array {
     // ============================================================
 
     // T0 / Block 1 — Cabecera (modifiable) — sustituye placeholders
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(1), 0, 1, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(1), 0, 1, [
         $heading(1, 'CICLO FORMATIVO DE ADMINISTRACIÓN DE SISTEMAS INFORMÁTICOS EN RED'),
         $paraBold('Departamento: Informática y Comunicaciones'),
         $paraBold('Jefe de departamento: Óscar Villar Fernández'),
     ]);
 
     // T0 / Block 2 — Identificación del título (editable)
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(2), 0, 2, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(2), 0, 2, [
         $heading(2, 'Identificación del título'),
         $para('La formación en general y la formación profesional en particular, constituyen hoy en día objetivos prioritarios de cualquier país que se plantee estrategias de crecimiento económico, de desarrollo tecnológico y de mejora de la calidad de vida de sus ciudadanos ante una realidad que manifiesta claros síntomas de cambio acelerado, especialmente en el campo tecnológico.'),
         $para('Esta formación de tipo polivalente debe permitir a los ciudadanos adaptarse a los cambios en la normativa laboral que puedan producirse a lo largo de su vida. La estructura y organización de las enseñanzas profesionales, sus objetivos y contenidos, así como los criterios de evaluación, son enfocados en la ordenación de la formación profesional desde la perspectiva de la adquisición de la competencia profesional.'),
@@ -162,7 +167,7 @@ return (static function (): array {
     ]);
 
     // T0 / Block 5 — Objetivos del ciclo (editable)
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(5), 0, 5, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(5), 0, 5, [
         $heading(2, 'Objetivos del ciclo'),
         $para('El presente elemento curricular se encuentra regulado en el RD 1629/2009, de 4 de noviembre. De manera más concreta, en el artículo 9, Capítulo III "Enseñanzas del ciclo formativo y parámetros básicos de contexto".'),
         $para('Los objetivos generales se refieren a la totalidad del ciclo formativo, ya que son objetivos estratégicos comunes a todos los módulos. Así, estos sirven de guía y orientación para la acción docente.'),
@@ -191,7 +196,7 @@ return (static function (): array {
     ]);
 
     // T0 / Block 6 — Competencias (editable)
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(6), 0, 6, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(6), 0, 6, [
         $heading(2, 'Competencias'),
         $para('Las competencias son un "conjunto complejo de conocimientos, habilidades, actitudes, valores, emociones y motivaciones que cada individuo o cada grupo pone en acción en un contexto concreto para hacer frente a las demandas peculiares de cada situación".'),
         $para('En concreto, el capítulo II del título de Técnico Superior en Administración de Sistemas Informáticos en Red, diferencia entre competencia general y competencias profesionales, personales y sociales. La competencia general toma como referente el conjunto de cualificaciones profesionales y las unidades de competencia incluidas en el Catálogo Nacional de Cualificaciones Profesionales.'),
@@ -223,7 +228,7 @@ return (static function (): array {
     ]);
 
     // T0 / Block 8 — Evaluación (modifiable) — sustituye fechas reales del calendario ASIR
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(8), 0, 8, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(8), 0, 8, [
         $heading(2, 'EVALUACIÓN'),
         $heading(3, 'Tipos de evaluación'),
         $para('La primera evaluación se realizará en formato "a distancia" y la segunda evaluación y evaluaciones ordinaria y extraordinaria se realizarán de forma presencial, en el CEEDCV en las aulas asignadas para tal efecto, de las cuales se informará tanto en el aula de tutoría como en las aulas de los módulos correspondientes.'),
@@ -239,13 +244,13 @@ return (static function (): array {
     ]);
 
     // T0 / Block 9 — Actividades complementarias y extraescolares (optional)
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(9), 0, 9, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(9), 0, 9, [
         $heading(2, 'Actividades complementarias y extraescolares'),
         $para('No se contemplan actividades extraescolares en este ciclo, aunque a lo largo del curso se indicarán a los alumnos jornadas (p.ej., jornadas de empleabilidad, jornadas de talento), cursos y seminarios que puedan servir de interés para su desarrollo profesional.'),
     ]);
 
     // T0 / Block 13 — Plan de dualización (editable)
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(13), 0, 13, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(13), 0, 13, [
         $heading(2, 'Plan de dualización'),
         $para('La FP Dual permite al estudiante recibir una formación en el centro educativo y al mismo tiempo poner en práctica lo aprendido en un centro de trabajo. El periodo que se llevará en el centro de trabajo se desarrollará en el segundo curso del ciclo debido a las características específicas del CEEDCV.'),
         $para('En las siguientes tablas se muestran las horas que los alumnos realizarán en el centro de trabajo de cada módulo, así como los totales por curso.'),
@@ -284,7 +289,7 @@ return (static function (): array {
     ]);
 
     // T0 / Block 14 — Programaciones módulos del ciclo (editable)
-    $blocks[] = $mkBlock($D0, $uDir, $T0B(14), 0, 14, [
+    $blocks[] = $mkBlock($D0, $uJefeDI, $T0B(14), 0, 14, [
         $heading(2, 'Programaciones módulos del ciclo'),
         $heading(3, 'CFGS Administración de Sistemas Informáticos en Red — Primer Curso'),
         $tableAsPara(
@@ -791,7 +796,7 @@ return (static function (): array {
     // ============================================================
 
     // T1 / Block 1 — Cabecera LAP
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(1), 3, 1, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(1), 3, 1, [
         $heading(1, 'Logística de Aprovisionamiento (0626)'),
         $paraBold('Ciclo formativo: Transporte y Logística (2º CFGS — Comercio y Marketing)'),
         $paraBold('Horas totales: 100 horas (3 horas/semana)'),
@@ -799,14 +804,14 @@ return (static function (): array {
     ]);
 
     // T1 / Block 2 — Introducción LAP
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(2), 3, 2, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(2), 3, 2, [
         $heading(2, 'Introducción'),
         $heading(3, 'Justificación de la programación'),
         $para('El módulo de Logística de aprovisionamiento (LAP) se incluye en el segundo curso del ciclo formativo de grado superior de Transporte y Logística, con una carga lectiva de 3 horas semanales y 100 horas anuales en la modalidad de enseñanza presencial. La carga lectiva expuesta se corresponde con las horas de clase, a las que tenemos que añadir las horas dedicadas al estudio personal y a realizar actividades, lo que deberemos tener en cuenta a la hora de planificar el módulo. El resto de normativa por el cual se regula esta programación queda recogida en la programación de ciclo.'),
     ]);
 
     // T1 / Block 3 — Competencias LAP
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(3), 3, 3, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(3), 3, 3, [
         $heading(2, 'Competencias profesionales, personales y sociales'),
         $heading(3, 'Competencia general'),
         $para('Siguiendo el artículo 4 del RD 1572/2011, de 4 de noviembre, la competencia general de este título consiste en "gestionar las operaciones comerciales de compraventa y distribución de productos y servicios, y organizar la implantación y animación de espacios comerciales según criterios de calidad, seguridad y prevención de riesgos", aplicando la normativa vigente.'),
@@ -831,7 +836,7 @@ return (static function (): array {
     ]);
 
     // T1 / Block 4 — Resultados de aprendizaje LAP
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(4), 3, 4, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(4), 3, 4, [
         $heading(2, 'Resultados de aprendizaje'),
         $para('El RD 1572/2011 indica cuáles deben ser los objetivos específicos de este módulo y lo hace en base a los resultados del aprendizaje a alcanzar por el alumnado. A continuación, se desglosan los resultados de aprendizaje junto al porcentaje del criterio de calificación que se le asigna:'),
         $tableAsPara(
@@ -849,7 +854,7 @@ return (static function (): array {
     ]);
 
     // T1 / Block 5 — Criterios de evaluación LAP (resumen)
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(5), 3, 5, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(5), 3, 5, [
         $heading(2, 'Criterios de evaluación'),
         $para('Los criterios de evaluación se ponderan dentro de cada RA con los porcentajes establecidos en la normativa. Se reflejan a continuación en forma resumida los criterios principales por RA:'),
         $heading(3, 'RA1 (20%) — Necesidades de materiales y plazos'),
@@ -907,7 +912,7 @@ return (static function (): array {
     ]);
 
     // T1 / Block 6 — Contenidos LAP
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(6), 3, 6, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(6), 3, 6, [
         $heading(2, 'Contenidos'),
         $para('Los contenidos generales establecidos en el RD 1572/2011, de 4 de noviembre, y ampliados en la Orden 39/2015, de 31 de marzo, están divididos en seis bloques curriculares relacionados directamente con cada uno de los resultados de aprendizaje.'),
         $heading(3, 'Bloque 1 — Políticas de aprovisionamiento y organización de la producción (RA1)'),
@@ -944,7 +949,7 @@ return (static function (): array {
     ]);
 
     // T1 / Block 7 — Unidades didácticas LAP
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(7), 3, 7, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(7), 3, 7, [
         $heading(2, 'Unidades didácticas'),
         $heading(3, 'Relación entre unidades de trabajo y resultados de aprendizaje'),
         $tableAsPara(
@@ -981,7 +986,7 @@ return (static function (): array {
     ]);
 
     // T1 / Block 9 — Evaluación LAP (modifiable)
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(9), 3, 9, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(9), 3, 9, [
         $heading(2, 'Evaluación'),
         $heading(3, 'Características de la evaluación'),
         $para('La evaluación se realizará en base a los Resultados de Aprendizaje y Criterios de Evaluación. Para que se considere apto el módulo es necesario que todos los RA estén superados. La nota de cada RA se calculará como media ponderada de cada uno de los CE que lo componen. La nota del módulo se calculará como la media ponderada de cada uno de los RA del módulo.'),
@@ -1020,7 +1025,7 @@ return (static function (): array {
     ]);
 
     // T1 / Block 10 — Actividades complementarias LAP (optional)
-    $blocks[] = $mkBlock($D3, $uFp, $T1B(10), 3, 10, [
+    $blocks[] = $mkBlock($D3, $uJefeEFp, $T1B(10), 3, 10, [
         $heading(2, 'Actividades didácticas complementarias'),
         $para('No se contemplan actividades extraescolares en este módulo, aunque a lo largo del curso se indicarán a los alumnos jornadas (p.ej., jornadas de empleabilidad, jornadas de talento), cursos y seminarios que puedan servir de interés para su desarrollo profesional.'),
     ]);
