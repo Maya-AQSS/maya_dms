@@ -87,6 +87,7 @@ function AppWithLayout() {
   }, [location.pathname]);
 
   useEffect(() => {
+    setProcessesDrawerOpen(false);
     const wasAuthenticated = wasAuthenticatedRef.current;
     if (!wasAuthenticated && isOidcSignedIn) {
       if (previousPathRef.current === '/templates/new' || previousPathRef.current === '/documentos/nuevo') {
