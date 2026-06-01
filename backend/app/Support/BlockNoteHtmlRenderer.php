@@ -89,7 +89,7 @@ final class BlockNoteHtmlRenderer
 
     /**
      * Renderiza una tabla con marcado accesible exigido por PDF/UA:
-     *   - Primera fila → `<th scope="col" id="col-{n}">`
+     *   - Primera fila si existe → `<th scope="col" id="col-{n}">`
      *   - Resto       → `<td headers="col-{n}">`
      *
      * `$ctx` es un sufijo único por tabla (UUID corto) para que los `id` no
@@ -99,47 +99,48 @@ final class BlockNoteHtmlRenderer
      */
     private static function renderTable(array $content): string
     {
-        // BlockNote table: { type: "tableContent", rows: [{ cells: [[inline]] }] }
         $rows = $content['rows'] ?? null;
-        if (! is_array($rows) || $rows === []) {
+
+        if (!is_array($rows) || $rows === []) {
             return '';
         }
-
-        $ctx = substr(bin2hex(random_bytes(4)), 0, 6);
-
-        $html = '<table>';
+        $html = '<table><tbody>';
         $isHeader = true;
+
         foreach ($rows as $row) {
-            if (! is_array($row) || ! isset($row['cells'])) {
-                continue;
-            }
-
-            if ($isHeader) {
-                $html .= '<thead><tr>';
-                $colIdx = 0;
-                foreach ((array) $row['cells'] as $cell) {
-                    $colId = sprintf('col-%s-%d', $ctx, $colIdx);
-                    $html .= '<th id="'.$colId.'" scope="col">'
-                        .self::renderInline((array) $cell)
-                        .'</th>';
-                    $colIdx++;
-                }
-                $html .= '</tr></thead><tbody>';
-                $isHeader = false;
-
+            if (!isset($row['cells']) || !is_array($row['cells'])) {
                 continue;
             }
 
             $html .= '<tr>';
-            $colIdx = 0;
-            foreach ((array) $row['cells'] as $cell) {
-                $colId = sprintf('col-%s-%d', $ctx, $colIdx);
-                $html .= '<td headers="'.$colId.'">'
-                    .self::renderInline((array) $cell)
-                    .'</td>';
-                $colIdx++;
+            foreach ($row['cells'] as $cell) {
+
+                $colspan = $cell['props']['colspan'] ?? 1;
+                $rowspan = $cell['props']['rowspan'] ?? 1;
+
+                $cellContent = '';
+
+                if (!empty($cell['content']) && is_array($cell['content'])) {
+                    foreach ($cell['content'] as $inline) {
+                        if (($inline['type'] ?? '') === 'text') {
+                            $cellContent .= htmlspecialchars($inline['text'] ?? '');
+                        }
+                    }
+                }
+
+                // detectar header
+                if ($isHeader) {
+                    $html .= '<th colspan="'.$colspan.'" rowspan="'.$rowspan.'">'
+                        . $cellContent
+                        . '</th>';
+                } else {
+                    $html .= '<td colspan="'.$colspan.'" rowspan="'.$rowspan.'">'
+                        . $cellContent
+                        . '</td>';
+                }
             }
             $html .= '</tr>';
+            $isHeader = false;
         }
         $html .= '</tbody></table>';
 

@@ -179,12 +179,13 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
   };
 
   const handleZDown = (id: string) => {
-    updateRegions((prev) => {
-      const minZ = prev.reduce((m, r) => Math.min(m, r.grid?.z ?? 0), 0);
-      return prev.map((r) =>
-        r.id === id && r.grid ? { ...r, grid: { ...r.grid, z: minZ - 1 } } : r,
-      );
-    });
+    updateRegions((prev) =>
+      prev.map((r) =>
+        r.id === id && r.grid
+          ? { ...r, grid: { ...r.grid, z: Math.max(0, (r.grid.z ?? 0) - 1) } }
+          : r,
+      ),
+    );
   };
 
   const handleUpdateProps = (id: string, propsPatch: Record<string, unknown>) => {
@@ -481,7 +482,8 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
           {(p.format as string) === 'long' ? '1 de enero de 2026' : '01/01/2026'}
         </div>
       );
-    case 'watermark':
+    case 'watermark':{
+      const url = theme.assets.watermark_path || null;
       return (
         <div
           className="theme-grid-slot theme-grid-slot--watermark"
@@ -490,9 +492,14 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
             transform: `rotate(${(p.rotate as number) ?? -30}deg)`,
           }}
         >
-          {(p.text as string) ?? 'BORRADOR'}
+          {url ? (
+            <img src={url} alt={(p.alt as string) ?? 'Marca de agua'} className="max-h-full max-w-full object-contain" />
+          ) : (
+            <span className="text-text-muted">BORRADOR</span>
+          )}
         </div>
       );
+    }
     default:
       return (
         <div className="theme-grid-slot theme-grid-slot--legacy">

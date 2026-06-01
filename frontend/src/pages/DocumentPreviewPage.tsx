@@ -1301,7 +1301,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           </p>
         )}
         {viewMode === 'themed' && !loading && !error && detail && documentId ? (
-          <div className="h-[calc(100vh-16rem)] min-h-[600px] rounded border border-ui-border bg-white dark:border-ui-dark-border">
+          <div className="h-[100vh] min-h-[600px] rounded border border-ui-border bg-white dark:border-ui-dark-border">
             <PagedThemedPreview kind="document" id={documentId} />
           </div>
         ) : null}

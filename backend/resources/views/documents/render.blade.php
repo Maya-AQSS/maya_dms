@@ -88,7 +88,7 @@
     $isPreview = ! empty($preview_mode);
     $assetUrl = function (?string $relativePath) use ($isPreview): ?string {
         if (! $relativePath) return null;
-        $absolute = storage_path('app/themes/'.ltrim($relativePath, '/'));
+        $absolute = storage_path('app/media/'.ltrim($relativePath, '/'));
         if (! file_exists($absolute)) return null;
 
         if ($isPreview) {
@@ -195,6 +195,8 @@
                 box-shadow: 0 0 8px rgba(0,0,0,.08);
                 border-radius: 4px;
                 position: relative;
+                display: flex;
+                justify-content: center;
             }
         }
 
@@ -298,12 +300,18 @@
             .theme-overlay { display: none; }
             .pagedjs_pages {
                 background: #e8e8ec;
-                padding: 16px 0;
             }
             .pagedjs_page {
-                background: white !important;
+                background: var(--color-bg);
+                @if ($backgroundFileUrl)
+                    background-image: url('{{ $backgroundFileUrl }}');
+                    background-size: cover;
+                    background-position: center;
+                    background-repeat: no-repeat;
+                @endif
                 box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
-                margin: 16px auto !important;
+                margin: 1px auto ;
+                margin-bottom: 32px !important
             }
             /* Overlay clonado por JS dentro de cada página. `.pagedjs_pagebox`
                representa el área completa de la página (incluye márgenes),
@@ -437,11 +445,40 @@
                     @break
 
                 @case('watermark')
-                    <div class="blk blk-watermark"
-                         style="left:{{ $left }};top:{{ $top }};width:{{ $width }};height:{{ $height }};z-index:{{ $z }};
-                                opacity:{{ max(0, min(1, (float) ($p['opacity'] ?? 0.15))) }};
-                                transform:rotate({{ (int) ($p['rotate'] ?? -30) }}deg);">
-                        {{ $p['text'] ?? 'BORRADOR' }}
+                    @php
+                        $url = $watermarkFileUrl ?? null;
+                        $opacity = (float) ($p['opacity'] ?? 0.15);
+                        $rotate = (int) ($p['rotate'] ?? -30);
+                        $alt = $p['alt'] ?? 'Marca de agua';
+                    @endphp
+
+                    <div
+                        class="blk blk-watermark"
+                        style="
+                            left:{{ $left }};
+                            top:{{ $top }};
+                            width:{{ $width }};
+                            height:{{ $height }};
+                            z-index:{{ $z }};
+                            opacity:{{ max(0, min(1, $opacity)) }};
+                            transform:rotate({{ $rotate }}deg);
+                        "
+                    >
+                        @if($url)
+                            <img
+                                src="{{ $url }}"
+                                alt="{{ $alt }}"
+                                style="
+                                    max-width:100%;
+                                    max-height:100%;
+                                    object-fit:contain;
+                                "
+                            >
+                        @else
+                            <span style="color:#9ca3af;">
+                                BORRADOR
+                            </span>
+                        @endif
                     </div>
                     @break
             @endswitch
@@ -541,9 +578,8 @@
                         if (pagesContainer) {
                             function fitToIframe() {
                                 var available = document.documentElement.clientWidth;
-                                /* Ancho real de la hoja: 21cm + ~32px de margen
-                                   visual a cada lado (sombra + padding). */
-                                var pageWidthPx = 21 * 37.795275591 + 64;
+                                /* Ancho real de la hoja: 21cm. */
+                                var pageWidthPx = 21 * 37.795275591;
                                 var scale = Math.min(1, available / pageWidthPx);
                                 pagesContainer.style.zoom = scale;
                             }
