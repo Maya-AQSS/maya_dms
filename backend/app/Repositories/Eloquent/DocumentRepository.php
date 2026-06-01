@@ -812,10 +812,23 @@ class DocumentRepository implements DocumentRepositoryInterface
 
     public function ownerIdsByTemplate(string $templateId, string $status = 'active'): array
     {
-        return Document::query()
-            ->where('template_id', $templateId)
-            ->where('status', $status)
-            ->whereNotNull('owner_id')
+        $ownerExpr = DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'owner_id');
+        $statusExpr = DocumentHeadSnapshot::jsonDocumentFieldExpression('document_head_ev', 'status');
+
+        $query = Document::query()
+            ->withoutGlobalScope('user_access')
+            ->where('documents.template_id', $templateId)
+            ->whereRaw("{$ownerExpr} IS NOT NULL")
+            ->whereRaw("{$ownerExpr} <> ''");
+
+        if ($status === 'active') {
+            $query->whereRaw("{$statusExpr} IN (?, ?)", ['draft', 'in_review']);
+        } else {
+            $query->whereRaw("{$statusExpr} = ?", [$status]);
+        }
+
+        return $query
+            ->selectRaw("{$ownerExpr} as owner_id")
             ->pluck('owner_id')
             ->map(fn ($id) => (string) $id)
             ->unique()
