@@ -25,7 +25,7 @@ declare(strict_types=1);
  *                      eea* entity_versions head, eeb* entity_versions published,
  *                      dd* documents, doc-blocks dd<doc>NNNN-....
  *
- * Usuarios: {@see maya_dev_users.php} (13 dev users del realm Keycloak / Odoo).
+ * Usuarios: {@see maya_dev_users.php} (requiere MAYA_SLOT en .env tras reset-all).
  *
  * @return array{
  *   templates: list<array<string, mixed>>,

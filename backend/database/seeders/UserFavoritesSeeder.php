@@ -19,10 +19,10 @@ class UserFavoritesSeeder extends Seeder
             if ($templates !== []) {
                 $rows = array_map(static function (array $row) use ($now): array {
                     return [
-                        'user_id'       => $row['user_id'],
-                        'template_id'   => $row['template_id'],
-                        'created_at'    => $now,
-                        'updated_at'    => $now,
+                        'user_id' => $row['user_id'],
+                        'template_version_id' => $row['template_version_id'],
+                        'created_at' => $now,
+                        'updated_at' => $now,
                     ];
                 }, $templates);
 
