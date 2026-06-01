@@ -65,6 +65,12 @@ return [
             'name'   => 'maya-dms-rabbit',
         ],
 
+        'blocknote-migration' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/blocknote-migration.log'),
+            'level' => 'debug',
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

@@ -16,6 +16,7 @@
         "laravel/tinker": "^3.0",
         "lcobucci/jwt": "^5.6",
         "ceedcv-maya/shared-auth-laravel": "^0.5",
+        "ceedcv-maya/shared-editor-laravel": "^0.5",
         "ceedcv-maya/shared-http-laravel": "^0.5",
         "ceedcv-maya/shared-messaging-laravel": "^0.5",
         "ceedcv-maya/shared-platform-laravel": "^0.5",
