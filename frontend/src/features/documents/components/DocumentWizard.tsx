@@ -1659,23 +1659,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           {/* Compact fullscreen header */}
           {isEditorFullscreen && activeBlock && (
             <div className="shrink-0 h-11 px-4 flex items-center gap-3 border-b border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-card">
-              <button
-                type="button"
-                aria-label={t('documents:wizard.exitFullscreenAria')}
-                title={t('documents:wizard.exitFullscreenTitle')}
-                onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))}
-                className="shrink-0 p-1.5 rounded text-text-muted hover:text-text-primary hover:bg-ui-body dark:hover:bg-ui-dark-border transition-colors focus-visible:ring-2 focus-visible:ring-odoo-purple/50"
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M8 3v3a2 2 0 0 1-2 2H3" /><path d="M21 8h-3a2 2 0 0 1-2-2V3" />
-                  <path d="M3 16h3a2 2 0 0 1 2 2v3" /><path d="M16 21v-3a2 2 0 0 1 2-2h3" />
-                </svg>
-              </button>
               <h3 className="flex-1 text-sm font-bold truncate uppercase tracking-widest">{activeBlock.title || 'Bloque'}</h3>
               {saveStatus === 'saving' && <span className="text-xs text-text-muted italic animate-pulse">Guardando…</span>}
               {saveStatus === 'saved' && <span className="text-xs text-success-dark font-bold">✓ Guardado</span>}
               {saveStatus === 'error' && <span className="text-xs text-danger-dark font-bold">Error al guardar</span>}
-              <Button type="button" variant="primary" size="xs" onClick={() => void handleContinue()} className="shrink-0">
+              <Button type="button" variant="primary" size="xs" onClick={() => {setIsEditorFullscreen(false); void handleContinue()}} className="shrink-0">
                 Continuar →
               </Button>
             </div>
@@ -1753,21 +1741,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               {/* Floating action stack — only in fullscreen. Esc también sale. */}
               {isContinuousFullscreen && (
                 <div className="fixed top-4 right-4 z-[90] flex flex-col items-end gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsContinuousFullscreen(false)}
-                    className=
-                    "inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card px-3 py-1.5 text-xs font-medium text-text-secondary shadow-md hover:text-text-primary hover:border-odoo-purple/40 transition-colors"
-                    title={t('documents:wizard.viewMode.exitFullscreenTitle', 'Salir de pantalla completa (Esc)')}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <polyline points="4 14 10 14 10 20" />
-                      <polyline points="20 10 14 10 14 4" />
-                      <line x1="14" y1="10" x2="21" y2="3" />
-                      <line x1="3" y1="21" x2="10" y2="14" />
-                    </svg>
-                    <span>{t('documents:wizard.viewMode.exitFullscreen', 'Reducir')}</span>
-                  </button>
                   {activeBlock && activeBlock.document_block_id && (
                     <button
                       type="button"
