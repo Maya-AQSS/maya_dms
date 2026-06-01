@@ -180,9 +180,14 @@ interface DocumentServiceInterface
     /**
      * Listado paginado de documentos con filtros de dominio (ADR-C).
      *
+     * @param  callable(\Illuminate\Support\Collection<int, \App\Models\Document>): void|null  $beforeMap
      * @return PaginatedDto<DocumentDto>
      */
-    public function paginate(DocumentFilterDto $filter): PaginatedDto;
+    public function paginate(
+        DocumentFilterDto $filter,
+        string $viewerId,
+        ?callable $beforeMap = null,
+    ): PaginatedDto;
 
     /**
      * Lista documentos visibles para el usuario actual. Devuelve Collection<Document>

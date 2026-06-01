@@ -1,7 +1,12 @@
 import type { Document, DocumentDetail } from '../types/documents';
 import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
+import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
 
-type DocumentsApiResponse = { data: Document[] };
+export type DocumentListFilters = {
+  process_id?: string;
+  page?: number;
+  per_page?: number;
+};
 type DocumentDetailApiResponse = { data: DocumentDetail };
 type CreationMode = 'none' | 'auto' | 'select';
 
@@ -28,17 +33,27 @@ export type DocumentCreationOptionsResponse = {
 type CreateFromModuleResponse = { data: Document };
 
 /**
- * GET /api/v1/documents — listado de documentos del usuario autenticado.
+ * GET /api/v1/documents — listado del usuario; agrega todas las páginas (ADR-C).
  *
- * @param filters Filtros opcionales (e.g. process_id para acotar al proceso activo).
- * @returns Lista de documentos del usuario autenticado.
+ * @param filters Filtros opcionales (p. ej. `process_id` para acotar al proceso activo).
  */
-export async function fetchDocuments(filters: { process_id?: string } = {}): Promise<Document[]> {
-  const params = new URLSearchParams();
-  if (filters.process_id) params.set('process_id', filters.process_id);
-  const qs = params.toString();
-  const body = await apiGetJson<DocumentsApiResponse>(qs ? `documents?${qs}` : 'documents');
-  return body.data;
+export async function fetchDocuments(filters: DocumentListFilters = {}): Promise<Document[]> {
+  const { page: _page, per_page, process_id } = filters;
+  const pageSize = per_page ?? 100;
+  const result = await fetchAllPaginatedPages<Document>(
+    async (page, perPage) => {
+      const params = new URLSearchParams();
+      if (process_id) params.set('process_id', process_id);
+      params.set('page', String(page));
+      params.set('per_page', String(perPage));
+      const qs = params.toString();
+      const body = await apiGetJson<unknown>(qs ? `documents?${qs}` : 'documents');
+      return normalizePaginatedResponse<Document>(body);
+    },
+    pageSize,
+  );
+
+  return result.data;
 }
 
 /**

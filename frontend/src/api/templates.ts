@@ -7,6 +7,7 @@ import type {
   TemplateVisibilityLevel,
 } from '../types/templates';
 import { apiFetchJson, apiGetJson } from './http';
+import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
 
 export type { Template, TemplateListFilters, TemplatesListResponse } from '../types/templates';
 
@@ -74,19 +75,39 @@ function buildListQuery(filters: TemplateListFilters): string {
   if (filters.process_id) {
     q.set('process_id', filters.process_id);
   }
+  if (filters.page) {
+    q.set('page', String(filters.page));
+  }
+  if (filters.per_page) {
+    q.set('per_page', String(filters.per_page));
+  }
   const s = q.toString();
   return s ? `?${s}` : '';
 }
 
-/** GET /api/v1/templates */
+/** GET /api/v1/templates — agrega todas las páginas del listado paginado (ADR-C). */
 export async function fetchTemplates(filters: TemplateListFilters = {}): Promise<TemplatesListResponse> {
-  const body = await apiGetJson<TemplatesListResponse | Template[]>(
-    `templates${buildListQuery(filters)}`,
+  const { page: _page, per_page, ...rest } = filters;
+  const pageSize = per_page ?? 100;
+  const result = await fetchAllPaginatedPages<Template>(
+    async (page, perPage) => {
+      const body = await apiGetJson<unknown>(
+        `templates${buildListQuery({ ...rest, page, per_page: perPage })}`,
+      );
+      return normalizePaginatedResponse<Template>(body);
+    },
+    pageSize,
   );
-  if (Array.isArray(body)) {
-    return { data: body };
-  }
-  return { data: Array.isArray(body?.data) ? body.data : [] };
+
+  return {
+    data: result.data,
+    meta: {
+      current_page: result.current_page,
+      last_page: result.last_page,
+      per_page: result.per_page,
+      total: result.total,
+    },
+  };
 }
 
 /** GET /api/v1/templates/{id} */

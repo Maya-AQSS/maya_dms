@@ -21,6 +21,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Maya\Http\Concerns\RespondsWithEnvelope;
 
 /**
  * CRUD canónico de Template (index/store/show/update/destroy/clone). Las
@@ -35,6 +36,7 @@ use Illuminate\Support\Facades\Gate;
 class TemplateController extends Controller
 {
     use AttachesTemplateCanCloneMeta;
+    use RespondsWithEnvelope;
     use ValidatesOptionalProcessContext;
 
     public function __construct(
@@ -47,9 +49,17 @@ class TemplateController extends Controller
      */
     public function index(ListTemplatesRequest $request): JsonResponse
     {
-        $page = $this->templateService->paginateFiltered($request->toFilterDto());
+        $viewerId = (string) $request->user()->getAuthIdentifier();
+        $page = $this->templateService->paginateFiltered(
+            $request->toFilterDto(),
+            $viewerId,
+            function ($templates) use ($request, $viewerId): void {
+                $this->attachCanCloneMeta($templates, $request);
+                $this->apiTeamEmbedService->embedOnTemplates($templates, $viewerId);
+            },
+        );
 
-        return response()->json($page);
+        return $this->paginated($page, TemplateResource::class, $request);
     }
 
     /**
