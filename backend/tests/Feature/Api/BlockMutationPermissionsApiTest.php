@@ -77,6 +77,17 @@ it('denies template block store without block.create', function () {
     ])->assertForbidden();
 });
 
+it('allows template block store for owner with block.create only on personal draft', function () {
+    grantBlockMutationPermissions('block.create');
+
+    $ctx = seedPersonalTemplateWithBlock(test()->userId);
+
+    $this->postJson("/api/v1/templates/{$ctx['templateId']}/blocks", [
+        'title' => 'Nuevo',
+        'block_state' => 'editable',
+    ])->assertCreated();
+});
+
 it('allows template block store for owner with block.create and template.update', function () {
     grantBlockMutationPermissions('block.create', 'template.update');
 

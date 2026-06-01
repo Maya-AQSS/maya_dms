@@ -93,6 +93,12 @@ export function canDeleteTheme(
   return hasPermission(DMS_PERMISSIONS.themeDelete);
 }
 
+/** Contexto de plantilla padre para permisos de bloques (alineado con TemplatePolicy). */
+export type TemplateBlockPermissionContext = {
+  created_by?: string;
+  status?: string;
+};
+
 /** `block.index` / `block.show` requieren además mutación de plantilla o documento (catálogo). */
 export function canAccessBlockCatalog(hasPermission: (slug: string) => boolean): boolean {
   const hasMutation =
@@ -108,11 +114,53 @@ export function canListBlocks(hasPermission: (slug: string) => boolean): boolean
   return hasPermission(DMS_PERMISSIONS.blockIndex) && canAccessBlockCatalog(hasPermission);
 }
 
+/**
+ * Listar bloques de una plantilla concreta: `block.index` + vista sobre el padre.
+ * El creador de la plantilla no necesita slugs de catálogo de plantilla.
+ */
+export function canListTemplateBlocks(
+  hasPermission: (slug: string) => boolean,
+  profileId: string | undefined,
+  template?: TemplateBlockPermissionContext,
+): boolean {
+  if (!hasPermission(DMS_PERMISSIONS.blockIndex)) {
+    return false;
+  }
+
+  if (!template) {
+    return canAccessBlockCatalog(hasPermission);
+  }
+
+  if (profileId && template.created_by && profileId === template.created_by) {
+    return true;
+  }
+
+  return (
+    canAccessBlockCatalog(hasPermission) ||
+    hasPermission(DMS_PERMISSIONS.templateShow) ||
+    hasPermission(DMS_PERMISSIONS.documentCreate)
+  );
+}
+
 export function canShowBlockDetail(hasPermission: (slug: string) => boolean): boolean {
   return hasPermission(DMS_PERMISSIONS.blockShow) && canAccessBlockCatalog(hasPermission);
 }
 
-export function canMutateTemplateBlocks(hasPermission: (slug: string) => boolean): boolean {
+export function canMutateTemplateBlocks(
+  hasPermission: (slug: string) => boolean,
+  profileId?: string,
+  template?: TemplateBlockPermissionContext,
+): boolean {
+  if (
+    profileId &&
+    template?.created_by &&
+    profileId === template.created_by &&
+    template.status &&
+    (template.status === 'draft' || template.status === 'rejected')
+  ) {
+    return true;
+  }
+
   return (
     hasPermission(DMS_PERMISSIONS.templateCreate) || hasPermission(DMS_PERMISSIONS.templateUpdate)
   );
@@ -124,16 +172,37 @@ export function canMutateDocumentBlocks(hasPermission: (slug: string) => boolean
   );
 }
 
-export function canCreateTemplateBlock(hasPermission: (slug: string) => boolean): boolean {
-  return hasPermission(DMS_PERMISSIONS.blockCreate) && canMutateTemplateBlocks(hasPermission);
+export function canCreateTemplateBlock(
+  hasPermission: (slug: string) => boolean,
+  profileId?: string,
+  template?: TemplateBlockPermissionContext,
+): boolean {
+  return (
+    hasPermission(DMS_PERMISSIONS.blockCreate) &&
+    canMutateTemplateBlocks(hasPermission, profileId, template)
+  );
 }
 
-export function canUpdateTemplateBlock(hasPermission: (slug: string) => boolean): boolean {
-  return hasPermission(DMS_PERMISSIONS.blockUpdate) && canMutateTemplateBlocks(hasPermission);
+export function canUpdateTemplateBlock(
+  hasPermission: (slug: string) => boolean,
+  profileId?: string,
+  template?: TemplateBlockPermissionContext,
+): boolean {
+  return (
+    hasPermission(DMS_PERMISSIONS.blockUpdate) &&
+    canMutateTemplateBlocks(hasPermission, profileId, template)
+  );
 }
 
-export function canDeleteTemplateBlock(hasPermission: (slug: string) => boolean): boolean {
-  return hasPermission(DMS_PERMISSIONS.blockDelete) && canMutateTemplateBlocks(hasPermission);
+export function canDeleteTemplateBlock(
+  hasPermission: (slug: string) => boolean,
+  profileId?: string,
+  template?: TemplateBlockPermissionContext,
+): boolean {
+  return (
+    hasPermission(DMS_PERMISSIONS.blockDelete) &&
+    canMutateTemplateBlocks(hasPermission, profileId, template)
+  );
 }
 
 export function canUpdateDocumentBlock(hasPermission: (slug: string) => boolean): boolean {

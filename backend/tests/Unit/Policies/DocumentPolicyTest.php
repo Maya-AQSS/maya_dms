@@ -11,6 +11,7 @@ use App\Models\JwtUser;
 use App\Models\Template;
 use App\Policies\DocumentPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -75,6 +76,42 @@ class DocumentPolicyTest extends TestCase
         );
 
         $this->assertFalse($this->policy->view($user, $doc));
+    }
+
+    public function test_view_denied_for_foreign_personal_document_with_published_snapshot(): void
+    {
+        $creatorId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
+        $ownerId = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
+        $peerId = '22222222-2222-2222-2222-222222222222';
+        auth()->setUser($this->makeJwtUser($peerId, ['document.show']));
+        $doc = $this->makeDocument(
+            createdBy: $creatorId,
+            ownerId: $ownerId,
+            status: 'published',
+            visibilityLevel: TemplateVisibilityLevel::Personal->value,
+        );
+
+        DB::table('entity_versions')->insert([
+            'id' => (string) Str::uuid(),
+            'versionable_type' => Document::class,
+            'versionable_id' => $doc->id,
+            'version_number' => 1,
+            'base_version_id' => null,
+            'change_set' => null,
+            'status' => 'published',
+            'created_by' => $creatorId,
+            'published_by' => $ownerId,
+            'published_at' => now(),
+            'changelog' => 'v1',
+            'snapshot_data' => json_encode(['document' => ['id' => $doc->id]], JSON_THROW_ON_ERROR),
+            'is_snapshot_immutable' => 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $peer = $this->makeJwtUser($peerId, ['document.show']);
+
+        $this->assertFalse($this->policy->view($peer, $doc));
     }
 
     public function test_review_denied_without_documents_review_permission(): void

@@ -1273,6 +1273,61 @@ class DocumentsTemplateVersionApiTest extends TestCase
         $create->assertJsonPath('data.module_id', null);
     }
 
+    public function test_peer_cannot_view_others_personal_published_document_via_show_or_preview(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $peerId = (string) Str::uuid();
+        $this->grantPermissionsForUser($creatorId);
+        $this->grantPermissionsForUser($peerId);
+        $headersCreator = $this->authHeaders($creatorId);
+        $headersPeer = $this->authHeaders($peerId);
+
+        $tid = (string) Str::uuid();
+        $b1 = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Plantilla personal doc',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+        TemplateBlock::query()->forceCreate([
+            'id' => $b1,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)->assertOk();
+
+        $createDoc = $this->postJson('/api/v1/documents', [
+            'template_id' => $tid,
+            'title' => 'doc personal ajeno',
+            'delivery_deadline' => now()->addDay()->toDateString(),
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+        ], $headersCreator)->assertCreated();
+
+        $docId = (string) $createDoc->json('data.id');
+
+        $this->postJson("/api/v1/documents/{$docId}/publish", [], $headersCreator)
+            ->assertOk()
+            ->assertJsonPath('data.status', 'published');
+
+        $this->getJson("/api/v1/documents/{$docId}", $headersPeer)->assertNotFound();
+        $this->get("/api/v1/documents/{$docId}/preview", $headersPeer)->assertNotFound();
+    }
+
     public function test_store_document_from_personal_template_rejects_academic_context_override(): void
     {
         $creatorId = (string) Str::uuid();

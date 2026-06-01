@@ -119,18 +119,9 @@ class TemplatePolicy
             return false;
         }
 
+        // Catálogo visible (scope user_access): incluye compartidas con snapshot publicado aunque el
+        // cabezal esté en borrador; excluye plantillas personales ajenas.
         if (Template::query()->whereKey($templateId)->exists()) {
-            return true;
-        }
-
-        // Non-creator can view even when the head is in draft/in_review/rejected, as long as a published
-        // snapshot exists. The controller will serve that published snapshot instead of draft data.
-        if (EntityVersion::query()
-            ->where('versionable_type', Template::class)
-            ->where('versionable_id', (string) $templateId)
-            ->where('version_number', '>', 0)
-            ->where('status', 'published')
-            ->exists()) {
             return true;
         }
 

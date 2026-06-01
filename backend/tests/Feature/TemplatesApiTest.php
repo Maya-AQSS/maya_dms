@@ -1300,6 +1300,48 @@ class TemplatesApiTest extends TestCase
         $this->getJson("/api/v1/templates/{$tid}", $headersB)->assertNotFound();
     }
 
+    public function test_peer_cannot_view_others_personal_published_template_via_show_or_preview(): void
+    {
+        $creatorId = (string) Str::uuid();
+        $peerId = (string) Str::uuid();
+        $headersCreator = $this->authHeaders($creatorId, []);
+        $this->assignUserPermissions($creatorId, ['template.show', 'template.create']);
+        $headersPeer = $this->authHeaders($peerId, ['teacher']);
+
+        $tid = (string) Str::uuid();
+        $bid = (string) Str::uuid();
+        Template::query()->forceCreate([
+            'id' => $tid,
+            'process_id' => '00000000-0000-0000-0000-000000000001',
+            'name' => 'Personal publicada ajena',
+            'description' => null,
+            'visibility_level' => TemplateVisibilityLevel::Personal->value,
+            'delivery_deadline' => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
+            'created_by' => $creatorId,
+            'status' => 'draft',
+            'review_stages' => 0,
+            'review_mode' => 'sequential',
+        ]);
+
+        TemplateBlock::query()->forceCreate([
+            'id' => $bid,
+            'template_id' => $tid,
+            'title' => 'Bloque',
+            'default_content' => ['x' => 1],
+            'block_state' => 'editable',
+            'sort_order' => 0,
+        ]);
+
+        $this->postJson("/api/v1/templates/{$tid}/publish", [], $headersCreator)->assertOk();
+
+        $this->getJson("/api/v1/templates/{$tid}", $headersPeer)->assertNotFound();
+        $this->get("/api/v1/templates/{$tid}/preview", $headersPeer)->assertNotFound();
+    }
+
     public function test_creator_can_view_own_template_without_templates_read_permission(): void
     {
         $creatorId = (string) Str::uuid();

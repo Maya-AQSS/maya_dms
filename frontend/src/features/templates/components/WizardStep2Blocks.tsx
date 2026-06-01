@@ -168,7 +168,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     updateBlock,
     deleteBlock,
     reorderBlocks
-  } = useTemplateBlocks(template.id);
+  } = useTemplateBlocks(template.id, {
+    created_by: template.created_by,
+    status: template.status,
+  });
 
   const { isDark: globalIsDark } = useDarkMode();
   const effectiveIsDark = isDark || globalIsDark;
