@@ -25,6 +25,8 @@ declare(strict_types=1);
  *                      eea* entity_versions head, eeb* entity_versions published,
  *                      dd* documents, doc-blocks dd<doc>NNNN-....
  *
+ * Usuarios: {@see maya_dev_users.php} (13 dev users del realm Keycloak / Odoo).
+ *
  * @return array{
  *   templates: list<array<string, mixed>>,
  *   template_reviewers: list<array<string, mixed>>,
@@ -38,11 +40,18 @@ declare(strict_types=1);
  */
 
 return (static function (): array {
-    // --- Usuarios reales (UUIDs estables del seed) ---
-    $uDir = 'ed568442-ece5-4c90-97ca-12c8969bb3a2';   // Director / Jefe departamento
-    $uSec = '2ead4bf3-574c-41b4-95ca-cac7daed0664';   // Secretaría
-    $uFp  = '50f503c6-cb63-466c-852d-0b30ae130e98';   // Docente FP
-    $uBach = '53bc5feb-cf5a-4e0b-ba08-f7f21fe9ea8f';  // Docente Bachillerato
+    // --- Usuarios dev (realm Keycloak + seed-user-academic-assignments.sh) ---
+    $devUsers = require __DIR__ . '/maya_dev_users.php';
+    $u = static fn (string $key): string => $devUsers[$key]
+        ?? throw new \InvalidArgumentException("Usuario dev desconocido: {$key}");
+
+    $uDir = $u('direccion');
+    $uSec = $u('secretaria');
+    $uFp = $u('docente_i');
+    $uBach = $u('docente_b');
+    $uJefeDI = $u('jefe_d_i');
+    $uJefeEFp = $u('jefe_e_fp');
+    $uJefeEBach = $u('jefe_e_bach');
 
     // --- Helpers BlockNote ---
     $baseParaProps = [
@@ -199,8 +208,8 @@ return (static function (): array {
             'study_id' => '8',           // ASIR
             'module_id' => null,         // Ciclo completo, sin módulo
             'delivery_deadline' => '2026-09-30 14:00:00',
-            'created_by' => $uDir,
-            'owner_id' => $uDir,
+            'created_by' => $uJefeDI,
+            'owner_id' => $uJefeDI,
             'status' => 'published',
         ],
         [
@@ -238,8 +247,8 @@ return (static function (): array {
             'study_id' => '15',          // TIL
             'module_id' => '15_8',       // LAP
             'delivery_deadline' => '2026-09-30 14:00:00',
-            'created_by' => $uFp,
-            'owner_id' => $uFp,
+            'created_by' => $uJefeEFp,
+            'owner_id' => $uJefeEFp,
             'status' => 'published',
         ],
         [
@@ -594,7 +603,7 @@ return (static function (): array {
             'template_id' => $T0,
             'version_number' => 1,
             'blocks_snapshot' => $snapshotFor($T0),
-            'published_by' => $uDir,
+            'published_by' => $uJefeDI,
             'published_at' => '2025-09-01 09:00:00',
             'changelog' => 'Publicación inicial — plantilla de programación de ciclo (CEEDCV).',
         ],
@@ -604,7 +613,7 @@ return (static function (): array {
             'template_id' => $T1,
             'version_number' => 1,
             'blocks_snapshot' => $snapshotFor($T1),
-            'published_by' => $uDir,
+            'published_by' => $uJefeEFp,
             'published_at' => '2025-09-01 09:00:00',
             'changelog' => 'Publicación inicial — plantilla de programación didáctica de módulo (CEEDCV).',
         ],
@@ -614,7 +623,7 @@ return (static function (): array {
             'template_id' => $T2,
             'version_number' => 1,
             'blocks_snapshot' => $snapshotFor($T2),
-            'published_by' => $uDir,
+            'published_by' => $uJefeEBach,
             'published_at' => '2025-09-01 09:00:00',
             'changelog' => 'Publicación inicial — plantilla de programación didáctica de asignatura de Bachillerato (CEEDCV).',
         ],
@@ -629,50 +638,65 @@ return (static function (): array {
     $document_blocks = require __DIR__ . '/programaciones_didacticas_doc_blocks.php';
 
     // ============================================================
-    // TEMPLATE REVIEWERS — Dirección (Keycloak / maya_infra: ed568442…)
+    // TEMPLATE REVIEWERS — 2 etapas secuenciales, usuarios dev del realm
     // ============================================================
 
     $template_reviewers = [
         [
             'id' => 'ff000000-0000-4000-8000-000000000000',
             'template_id' => $T0,
-            'user_id' => $uDir,
+            'user_id' => $uJefeDI,
             'stage' => 1,
-            'status' => 'pending',
+            'status' => 'approved',
         ],
         [
-            'id' => 'ff000001-0000-4000-8000-000000000000',
-            'template_id' => $T1,
+            'id' => 'ff000001-0000-4000-8000-000000000001',
+            'template_id' => $T0,
             'user_id' => $uDir,
-            'stage' => 1,
-            'status' => 'pending',
+            'stage' => 2,
+            'status' => 'approved',
         ],
         [
             'id' => 'ff000002-0000-4000-8000-000000000000',
+            'template_id' => $T1,
+            'user_id' => $uJefeEFp,
+            'stage' => 1,
+            'status' => 'approved',
+        ],
+        [
+            'id' => 'ff000003-0000-4000-8000-000000000001',
+            'template_id' => $T1,
+            'user_id' => $uSec,
+            'stage' => 2,
+            'status' => 'approved',
+        ],
+        [
+            'id' => 'ff000004-0000-4000-8000-000000000000',
+            'template_id' => $T2,
+            'user_id' => $uJefeEBach,
+            'stage' => 1,
+            'status' => 'approved',
+        ],
+        [
+            'id' => 'ff000005-0000-4000-8000-000000000001',
             'template_id' => $T2,
             'user_id' => $uDir,
-            'stage' => 1,
-            'status' => 'pending',
+            'stage' => 2,
+            'status' => 'approved',
         ],
     ];
 
     // ============================================================
-    // TEMPLATE DOCUMENT REVIEWERS — Dirección (Keycloak / maya_infra: ed568442…)
+    // TEMPLATE DOCUMENT REVIEWERS — jefaturas + dirección por ámbito
     // ============================================================
 
     $template_document_reviewers = [
-        [
-            'template_id' => $T0,
-            'user_id' => $uDir,
-        ],
-        [
-            'template_id' => $T1,
-            'user_id' => $uDir,
-        ],
-        [
-            'template_id' => $T2,
-            'user_id' => $uDir,
-        ],
+        ['template_id' => $T0, 'user_id' => $uJefeDI],
+        ['template_id' => $T0, 'user_id' => $uDir],
+        ['template_id' => $T1, 'user_id' => $uJefeEFp],
+        ['template_id' => $T1, 'user_id' => $uFp],
+        ['template_id' => $T2, 'user_id' => $uJefeEBach],
+        ['template_id' => $T2, 'user_id' => $uBach],
     ];
 
     return [
