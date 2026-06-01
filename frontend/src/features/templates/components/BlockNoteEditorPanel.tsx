@@ -169,7 +169,7 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
     }
     if (!dom) return;
 
-    const handlePaste = (e: ClipboardEvent) => {
+  const handlePaste = (e: ClipboardEvent) => {
     const selection = editor.getTextCursorPosition();
     const currentBlock = editor.document.find((b: any) => b.id === selection.block.id);
     const activeElement = document.activeElement;
@@ -211,12 +211,15 @@ export function BlockNoteEditorPanel({ initialContent, editable, isDark, onChang
       // Inserción de bloques como antes
       const currentBlocks = editor.document;
       const blockIdx = currentBlocks.findIndex((b: any) => b.id === selection.block.id);
-      if (blockIdx !== -1) {
+      if (blockIdx !== -1 && currentBlock.type !== 'table') {
         editor.insertBlocks(parsedBlocks, currentBlocks[blockIdx].id, 'after');
         const isEmpty = !currentBlocks[blockIdx].content?.length || 
           (currentBlocks[blockIdx].content.length === 1 && !currentBlocks[blockIdx].content[0].text);
-        if (isEmpty) editor.removeBlocks([currentBlocks[blockIdx].id]);
-      } else {
+        if (isEmpty && currentBlock.type !== 'table') editor.removeBlocks([currentBlocks[blockIdx].id]);
+      }else if (currentBlock.type === 'table'){
+        editor.updateBlock(currentBlocks[blockIdx].id, { ...currentBlocks[blockIdx], content: parsedBlocks[0].content });
+      } 
+      else {
         editor.insertBlocks(parsedBlocks, currentBlocks[currentBlocks.length - 1].id, 'after');
       }
 
