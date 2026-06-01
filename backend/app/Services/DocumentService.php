@@ -25,6 +25,8 @@ use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Support\DocumentReviewModeResolver;
+use App\Support\ReviewValidationNotificationRecipients;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -51,6 +53,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
         private readonly TeamReadRepositoryInterface $teamReadRepository,
         private readonly NotificationPublisher $notificationPublisher,
+        private readonly DocumentReviewModeResolver $documentReviewModeResolver,
     ) {}
 
     /**
@@ -1102,11 +1105,11 @@ class DocumentService implements DocumentServiceInterface
                 $this->entityVersionRepository->update($headVersion, ['change_set' => $cycles]);
             }
 
-            $reviewMode = $this->resolveReviewModeFromDocument($document);
+            $reviewMode = $this->documentReviewModeResolver->resolve($document);
             $document = $this->documentStateService->transition($documentId, 'in_review', $actorId, ['review_mode' => $reviewMode]);
             $this->documentRepository->createPendingReviews($documentId, $candidates);
 
-            $this->notifyReviewersOfValidationRequest($document, $candidates);
+            $this->notifyReviewersOfValidationRequest($document, $candidates, $reviewMode);
 
             return $document;
         });
@@ -1117,9 +1120,14 @@ class DocumentService implements DocumentServiceInterface
      *
      * @param  list<array{reviewer_id: string, stage: int}>  $candidates
      */
-    private function notifyReviewersOfValidationRequest(Document $document, array $candidates): void
+    private function notifyReviewersOfValidationRequest(Document $document, array $candidates, string $reviewMode): void
     {
-        foreach ($candidates as $candidate) {
+        $recipients = ReviewValidationNotificationRecipients::filterForReviewMode(
+            $reviewMode,
+            $candidates,
+        );
+
+        foreach ($recipients as $candidate) {
             $reviewerId = $candidate['reviewer_id'] ?? '';
             if (! is_string($reviewerId) || $reviewerId === '') {
                 continue;
@@ -1216,26 +1224,6 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $candidates;
-    }
-
-    private function resolveReviewModeFromDocument(Document $document): string
-    {
-        $versionId = is_string($document->template_version_id) ? trim($document->template_version_id) : '';
-        if ($versionId !== '') {
-            $entityVersion = $this->entityVersionRepository->findPublishedByIdForVersionable(
-                $versionId, Template::class, (string) $document->template_id,
-            );
-            $mode = is_array($entityVersion?->snapshot_data)
-                ? data_get($entityVersion->snapshot_data, 'template.review_mode')
-                : null;
-            if (is_string($mode) && in_array($mode, ['sequential', 'parallel'], true)) {
-                return $mode;
-            }
-        }
-
-        $document->loadMissing('template');
-
-        return (string) ($document->template?->review_mode ?? 'parallel');
     }
 
     /**

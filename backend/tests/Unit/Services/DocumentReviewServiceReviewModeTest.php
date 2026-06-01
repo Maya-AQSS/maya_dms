@@ -11,6 +11,8 @@ use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentStateService;
+use App\Support\DocumentReviewModeResolver;
+use Maya\Messaging\Publishers\NotificationPublisher;
 use Mockery;
 use Tests\TestCase;
 
@@ -31,10 +33,44 @@ class DocumentReviewServiceReviewModeTest extends TestCase
             $evRepo,
             Mockery::mock(SnapshotServiceInterface::class),
             Mockery::mock(DocumentStateService::class),
+            Mockery::mock(NotificationPublisher::class),
+            new DocumentReviewModeResolver($evRepo),
         );
     }
 
-    public function test_resolves_sequential_mode_from_anchored_entity_version_snapshot(): void
+    public function test_prefers_live_template_parallel_over_anchored_sequential(): void
+    {
+        $headEv = new EntityVersion;
+        $headEv->forceFill(['snapshot_data' => [TemplateHeadSnapshot::JSON_TEMPLATE_KEY => ['review_mode' => 'parallel']]]);
+
+        $template = new Template;
+        $template->setRelation('headVersion', $headEv);
+
+        $doc = new Document;
+        $doc->forceFill([
+            'template_version_id' => 'ev-uuid',
+            'template_id'         => 'tpl-uuid',
+        ]);
+        $doc->setRelation('template', $template);
+
+        $entityVersion = new EntityVersion;
+        $entityVersion->forceFill([
+            'id'            => 'ev-uuid',
+            'snapshot_data' => ['template' => ['review_mode' => 'sequential']],
+        ]);
+
+        $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
+        $evRepo->shouldReceive('findPublishedByIdForVersionable')
+            ->never();
+
+        $docRepo = Mockery::mock(DocumentRepositoryInterface::class);
+
+        $service = $this->makeService($docRepo, $evRepo);
+
+        $this->assertSame('parallel', $service->resolveReviewMode($doc));
+    }
+
+    public function test_resolves_sequential_mode_from_anchored_entity_version_when_live_unset(): void
     {
         $doc = new Document;
         $doc->forceFill([
@@ -61,7 +97,7 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $this->assertSame('sequential', $service->resolveReviewMode($doc));
     }
 
-    public function test_resolves_parallel_mode_from_anchored_entity_version_snapshot(): void
+    public function test_resolves_parallel_mode_from_anchored_entity_version_when_live_unset(): void
     {
         $doc = new Document;
         $doc->forceFill([
