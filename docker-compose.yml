@@ -209,10 +209,16 @@ services:
       VITE_REVERB_APP_KEY: ${REVERB_APP_KEY}
       VITE_REVERB_PORT: 443
       VITE_REVERB_SCHEME: https
+      # Vite alias (see vite.config.ts) resolves @ceedcv-maya/shared-* to this path.
+      MAYA_DEV_OVERRIDE_DIR: /maya_platform/packages/js
     volumes:
       - ./frontend:/app
       - ../maya_infra/configs:/maya_infra/configs:ro
       - /app/node_modules
+      # shared-editor-react only exists in maya_platform/ working tree (not on any
+      # registry yet) — mount maya_platform so the vite alias (driven by
+      # MAYA_DEV_OVERRIDE_DIR, ADR-001 F4) resolves the import.
+      - ../maya_platform/packages/js:/maya_platform/packages/js
       # Live source mounts (equivalent to composer.local.json) — overrides installed
       # npm package with the working tree so changes are visible without rebuild.
       #- ../maya_platform/packages/js/shared-auth-react:/app/node_modules/@ceedcv-maya/shared-auth-react:ro  # disabled: usar MAYA_DEV_OVERRIDE_DIR via vite alias (ADR-001 F4)
