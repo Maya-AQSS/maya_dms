@@ -523,6 +523,57 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     onCommentAdded?.(res.data);
   }, [activeSingleId, template.id, onCommentAdded]);
 
+  /**
+   * Anchored comment on a text selection from inside the editor.
+   *
+   * Two-step flow:
+   *   1. POST templates/{id}/comments  → creates the comment row used as
+   *      the right-rail entry (visible in BLOQUE #N comments).
+   *   2. POST template/{id}/anchored-comments → records the position
+   *      range so the editor's CommentMark can survive concurrent edits.
+   *
+   * Returns the comment id so MayaEditor applies the mark to the
+   * selected range.
+   */
+  const handleCreateAnchoredComment = useCallback(
+    async (range: { from: number; to: number; text: string }): Promise<string | null> => {
+      if (!activeSingleId) return null;
+      const body = window.prompt(
+        `Comentario sobre la selección "${range.text.slice(0, 80)}${range.text.length > 80 ? '…' : ''}"`,
+        '',
+      );
+      if (!body || !body.trim()) return null;
+      try {
+        const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
+          method: 'POST',
+          body: { body: body.trim(), parent_id: null, blockable_id: activeSingleId },
+        });
+        const commentId = res.data.id;
+        // Anchor record — failures here don't roll back the comment; the
+        // anchor can be re-attached later if needed.
+        try {
+          await apiFetchJson(`template/${template.id}/anchored-comments`, {
+            method: 'POST',
+            body: {
+              comment_id: commentId,
+              anchor_from: range.from,
+              anchor_to: range.to,
+              anchor_text_snapshot: range.text.slice(0, 1000),
+            },
+          });
+        } catch (e) {
+          console.warn('[WizardStep2Blocks] anchor save failed', e);
+        }
+        onCommentAdded?.(res.data);
+        return commentId;
+      } catch (e) {
+        console.error('[WizardStep2Blocks] comment create failed', e);
+        return null;
+      }
+    },
+    [activeSingleId, template.id, onCommentAdded],
+  );
+
   const handleEditComment = useCallback(async (commentId: string, newBody: string) => {
     const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
       method: 'PATCH',
@@ -793,6 +844,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               isDark={effectiveIsDark}
                               onFullscreenChange={handleEditorFullscreenChange}
                               uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
+                              onCreateComment={handleCreateAnchoredComment}
                             />
                           </Suspense>
                         )}
@@ -823,6 +875,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}
                             uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
+                            onCreateComment={handleCreateAnchoredComment}
                           />
                         </Suspense>
                       </div>
