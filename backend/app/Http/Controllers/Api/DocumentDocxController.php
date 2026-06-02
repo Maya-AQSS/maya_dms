@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Documents\ImportDocxRequest;
 use App\Models\Document;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
 use Maya\Editor\Renderers\TiptapHtmlRenderer;
 use Maya\Editor\Support\DocxExporter;
 use Symfony\Component\HttpFoundation\Response;
@@ -23,6 +22,7 @@ use ZipArchive;
  *     uncompressed size or count exceeds sane limits (zip-bomb guard).
  *   - Imports go through phpoffice/phpword with libxml entity loading
  *     disabled (handled inside `DocxExporter`/import side).
+ *   - Authorization via policy on target document.
  */
 final class DocumentDocxController extends Controller
 {
@@ -30,12 +30,9 @@ final class DocumentDocxController extends Controller
     private const MAX_UNCOMPRESSED_BYTES = 200 * 1024 * 1024; // 200 MB
     private const MAX_ENTRIES = 1000;
 
-    public function import(Request $request): \Illuminate\Http\JsonResponse
+    public function import(ImportDocxRequest $request, Document $document): \Illuminate\Http\JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'file' => ['required', 'file', 'max:51200'], // KB → 50 MB
-        ]);
-        $validator->validate();
+        $this->authorize('update', $document);
 
         /** @var \Illuminate\Http\UploadedFile $file */
         $file = $request->file('file');
@@ -57,7 +54,7 @@ final class DocumentDocxController extends Controller
         ]);
     }
 
-    public function export(Request $request, Document $document): Response
+    public function export(Document $document): Response
     {
         $this->authorize('view', $document);
 

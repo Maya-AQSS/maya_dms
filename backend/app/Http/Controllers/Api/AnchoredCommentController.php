@@ -6,16 +6,16 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnchoredCommentRequest;
-use App\Models\AnchoredComment;
+use App\Http\Resources\AnchoredCommentResource;
 use App\Models\Document;
 use App\Models\Template;
+use App\Services\Contracts\AnchoredCommentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Manages anchored comments — comments pinned to a ProseMirror position
- * range inside a TipTap document.
+ * Manages anchored comments — comments pinned to a TipTap position range.
  *
  * Authorization model: the route binds `{resource_type}` (string key
  * resolved via morph_map) and `{resource_id}` (UUID). EVERY mutation
@@ -38,18 +38,17 @@ final class AnchoredCommentController extends Controller
         'document' => Document::class,
     ];
 
+    public function __construct(
+        private readonly AnchoredCommentServiceInterface $anchoredCommentService,
+    ) {}
+
     public function index(Request $request, string $resourceType, string $resourceId): JsonResponse
     {
         $resource = $this->resolveAndAuthorize($resourceType, $resourceId, 'view');
 
-        $anchors = AnchoredComment::query()
-            ->where('resource_type', $resourceType)
-            ->where('resource_id', $resource->getKey())
-            ->with('comment')
-            ->orderBy('anchor_from')
-            ->get();
+        $anchors = $this->anchoredCommentService->listForResource($resourceType, (string) $resource->getKey());
 
-        return response()->json(['data' => $anchors]);
+        return response()->json(['data' => AnchoredCommentResource::collection($anchors)]);
     }
 
     public function store(
@@ -59,58 +58,57 @@ final class AnchoredCommentController extends Controller
     ): JsonResponse {
         $resource = $this->resolveAndAuthorize($resourceType, $resourceId, 'update');
 
-        $anchor = AnchoredComment::create([
-            'comment_id' => $request->validated('comment_id'),
-            'resource_type' => $resourceType,
-            'resource_id' => $resource->getKey(),
-            'anchor_from' => $request->validated('anchor_from'),
-            'anchor_to' => $request->validated('anchor_to'),
-            'anchor_text_snapshot' => $request->validated('anchor_text_snapshot'),
-            'anchor_is_valid' => true,
-            'anchor_last_synced_at' => now(),
-        ]);
+        $anchor = $this->anchoredCommentService->createForResource(
+            $resourceType,
+            (string) $resource->getKey(),
+            $request->validated('comment_id'),
+            $request->validated('anchor_from'),
+            $request->validated('anchor_to'),
+            $request->validated('anchor_text_snapshot'),
+        );
 
-        return response()->json(['data' => $anchor], 201);
+        return response()->json(['data' => new AnchoredCommentResource($anchor)], 201);
     }
 
     public function update(
         AnchoredCommentRequest $request,
         string $resourceType,
         string $resourceId,
-        AnchoredComment $anchoredComment,
+        string $anchorId,
     ): JsonResponse {
         $resource = $this->resolveAndAuthorize($resourceType, $resourceId, 'update');
 
-        if ($anchoredComment->resource_type !== $resourceType
-            || (string) $anchoredComment->resource_id !== (string) $resource->getKey()) {
+        // Verify the anchor belongs to this resource
+        $anchor = $this->anchoredCommentService->getForResource($resourceType, (string) $resource->getKey(), $anchorId);
+        if ($anchor === null) {
             throw new NotFoundHttpException();
         }
 
-        $anchoredComment->update([
-            'anchor_from' => $request->validated('anchor_from'),
-            'anchor_to' => $request->validated('anchor_to'),
-            'anchor_text_snapshot' => $request->validated('anchor_text_snapshot') ?? $anchoredComment->anchor_text_snapshot,
-            'anchor_is_valid' => $request->validated('anchor_to') > $request->validated('anchor_from'),
-            'anchor_last_synced_at' => now(),
-        ]);
+        $updated = $this->anchoredCommentService->updateAnchor(
+            $anchorId,
+            $request->validated('anchor_from'),
+            $request->validated('anchor_to'),
+            $request->validated('anchor_text_snapshot'),
+        );
 
-        return response()->json(['data' => $anchoredComment]);
+        return response()->json(['data' => new AnchoredCommentResource($updated)]);
     }
 
     public function destroy(
         Request $request,
         string $resourceType,
         string $resourceId,
-        AnchoredComment $anchoredComment,
+        string $anchorId,
     ): JsonResponse {
         $resource = $this->resolveAndAuthorize($resourceType, $resourceId, 'update');
 
-        if ($anchoredComment->resource_type !== $resourceType
-            || (string) $anchoredComment->resource_id !== (string) $resource->getKey()) {
+        // Verify the anchor belongs to this resource
+        $anchor = $this->anchoredCommentService->getForResource($resourceType, (string) $resource->getKey(), $anchorId);
+        if ($anchor === null) {
             throw new NotFoundHttpException();
         }
 
-        $anchoredComment->delete();
+        $this->anchoredCommentService->deleteAnchor($anchorId);
 
         return response()->json(null, 204);
     }

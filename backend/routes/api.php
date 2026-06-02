@@ -228,15 +228,19 @@ Route::prefix('v1')->group(function () {
         Route::post('{resource_type}/{resource_id}/anchored-comments', [AnchoredCommentController::class, 'store'])
             ->whereIn('resource_type', ['template', 'document'])
             ->whereUuid('resource_id');
-        Route::put('{resource_type}/{resource_id}/anchored-comments/{anchoredComment}', [AnchoredCommentController::class, 'update'])
+        Route::put('{resource_type}/{resource_id}/anchored-comments/{anchorId}', [AnchoredCommentController::class, 'update'])
             ->whereIn('resource_type', ['template', 'document'])
-            ->whereUuid('resource_id');
-        Route::delete('{resource_type}/{resource_id}/anchored-comments/{anchoredComment}', [AnchoredCommentController::class, 'destroy'])
+            ->whereUuid('resource_id')
+            ->whereUuid('anchorId');
+        Route::delete('{resource_type}/{resource_id}/anchored-comments/{anchorId}', [AnchoredCommentController::class, 'destroy'])
             ->whereIn('resource_type', ['template', 'document'])
-            ->whereUuid('resource_id');
+            ->whereUuid('resource_id')
+            ->whereUuid('anchorId');
 
         // .docx import/export — secured by `update`/`view` on the target document.
-        Route::post('documents/import-docx', [DocumentDocxController::class, 'import']);
+        Route::post('documents/{document}/import-docx', [DocumentDocxController::class, 'import'])
+            ->middleware('throttle:10,1')
+            ->whereUuid('document');
         Route::get('documents/{document}/export.docx', [DocumentDocxController::class, 'export'])
             ->whereUuid('document');
         // Usuarios — búsqueda para asignación de revisores y compartición
