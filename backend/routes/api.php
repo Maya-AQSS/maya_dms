@@ -237,10 +237,8 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('resource_id')
             ->whereUuid('anchorId');
 
-        // .docx import/export — secured by `update`/`view` on the target document.
-        Route::post('documents/{document}/import-docx', [DocumentDocxController::class, 'import'])
-            ->middleware('throttle:10,1')
-            ->whereUuid('document');
+        // .docx export — secured by `view` on the target document.
+        // (Import is client-side via the wizard's DocxBlockSplitter; no server endpoint.)
         Route::get('documents/{document}/export.docx', [DocumentDocxController::class, 'export'])
             ->whereUuid('document');
         // Usuarios — búsqueda para asignación de revisores y compartición
