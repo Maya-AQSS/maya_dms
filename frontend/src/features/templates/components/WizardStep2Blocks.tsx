@@ -23,6 +23,7 @@ import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
 import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
@@ -80,11 +81,13 @@ function SortableBlockItem({
   itemState,
   onClick,
   hasReviewComments,
+  isCompleted,
 }: {
   block: TemplateBlock;
   itemState: 'default' | 'selected' | 'multi-queued' | 'multi-current' | 'multi-saved';
   onClick: () => void;
   hasReviewComments?: boolean;
+  isCompleted?: boolean;
 }) {
   const { t } = useTranslation('documents');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
@@ -107,6 +110,7 @@ function SortableBlockItem({
         variant={itemState}
         locked={isLocked}
         hasReviewComments={hasReviewComments}
+        isCompleted={isCompleted}
         stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
         onClick={onClick}
         dragHandle={
@@ -172,6 +176,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     created_by: template.created_by,
     status: template.status,
   });
+
+  // Visual-only "finalizado" marker, persisted in localStorage and namespaced
+  // by template id so it survives reloads and doesn't bleed across templates.
+  // Mirrors the documents wizard UX — does not affect server-side validations.
+  const completedBlocks = useCompletedBlocks(`tpl-${template.id}`);
 
   const { isDark: globalIsDark } = useDarkMode();
   const effectiveIsDark = isDark || globalIsDark;
@@ -673,6 +682,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
                             onClick={() => handleBlockClick(block.id)}
                             hasReviewComments={reviewComments.some(c => c.blockable_id === block.id)}
+                            isCompleted={completedBlocks.isCompleted(block.id)}
                           />
                         ))}
                       </SortableContext>
@@ -762,6 +772,29 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             {blockCommentsCount > 99 ? '99+' : blockCommentsCount}
                           </span>
                         )}
+                      </Button>
+                    );
+                  })()}
+                  {activeSingleId && (() => {
+                    const isDone = completedBlocks.isCompleted(activeSingleId);
+                    return (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        className={isDone
+                          ? 'text-success-dark border-success/60 bg-success/10 hover:bg-success/15'
+                          : 'text-text-secondary border-ui-border hover:text-success-dark hover:border-success/60'}
+                        onClick={() => completedBlocks.toggle(activeSingleId)}
+                        aria-pressed={isDone}
+                        title={isDone ? 'Marcar como pendiente' : 'Marcar bloque como finalizado'}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          {isDone ? 'Finalizado' : 'Finalizar'}
+                        </span>
                       </Button>
                     );
                   })()}
