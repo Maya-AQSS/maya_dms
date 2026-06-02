@@ -12,7 +12,6 @@
 import { useMemo } from 'react';
 import {
   EditorContentHtml,
-  convertBlockNoteToTiptap,
   type TiptapDoc,
 } from '@ceedcv-maya/shared-editor-react';
 import { BlockNoteEditor } from '@blocknote/core';
@@ -102,7 +101,7 @@ export function BlockContentHtml({ content }: { content: unknown[] | unknown }) 
 function jsonDocToHtml(doc: TiptapDoc): string {
   const renderInline = (nodes: TiptapDoc['content']): string =>
     nodes
-      .map((n) => {
+      .map((n: TiptapDoc['content'][number]) => {
         if (n.type === 'text') {
           let t = escapeHtml(n.text ?? '');
           for (const mark of n.marks ?? []) {

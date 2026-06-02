@@ -5,8 +5,6 @@
  * Tabs: Properties, Content, Description, Comments
  */
 import { useTranslation } from 'react-i18next';
-import { Button, TextInput, FieldLabel } from '@ceedcv-maya/shared-ui-react';
-import type { BlockUiState } from '../blockUiState';
 
 type TabId = 'properties' | 'content' | 'description' | 'comments';
 
@@ -21,7 +19,6 @@ interface BlockEditorTabsProps {
 export function BlockEditorTabs({
   activeTab,
   onTabChange,
-  isDark = false,
   hasComments = false,
   isSaving = false,
 }: BlockEditorTabsProps) {

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import type { TemplateBlock } from '../../../types/blocks';
 
 type PanelMode = 'empty' | 'create' | 'edit' | 'multi';

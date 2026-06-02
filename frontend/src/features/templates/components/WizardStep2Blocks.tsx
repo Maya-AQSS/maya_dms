@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, Suspense, lazy } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, withTranslation } from 'react-i18next';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,
@@ -43,6 +43,9 @@ const BlockNoteEditorPanel = lazy(() =>
     default: m.BlockNoteEditorPanel
   }))
 );
+
+// Wrapper to provide i18n props to ErrorBoundary
+const ErrorBoundaryWrapper = withTranslation('common')(ErrorBoundary) as React.FC<{ children: React.ReactNode }>;
 
 type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';
@@ -415,13 +418,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         setIsSaving(true);
         try {
           const success = await saveCurrentTab();
-          if (!success) return success;
+          if (!success) return;
         }catch{
-          return false
+          return;
         } finally {
           setIsSaving(false);
         }
-      } 
+      }
     },
     discardInvalidBlocks: async () => {
       const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
@@ -945,7 +948,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 </div>
               )}
               {activeTab === 'content' && (
-                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
+                <ErrorBoundaryWrapper>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
                     {!formName.trim() ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
@@ -1002,10 +1005,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </ErrorBoundaryWrapper>
               )}
               {activeTab === 'description' && (
-                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de descripción.</div>}>
+                <ErrorBoundaryWrapper>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
                     {!formName.trim() ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
@@ -1032,7 +1035,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </ErrorBoundaryWrapper>
               )}
             </div>
           </div>

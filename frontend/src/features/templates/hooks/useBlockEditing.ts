@@ -129,7 +129,7 @@ export function useBlockEditing({ activeSingleId, updateBlock }: UseBlockEditing
     activeTab,
     tabIsDirty,
     isSaving,
-    saveStatus,
+    saveStatus: saveStatus as 'idle' | 'pending' | 'success' | 'error',
   };
 
   const actions: BlockEditingActions = {

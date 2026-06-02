@@ -75,7 +75,7 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
     setFilename(file.name);
     try {
       const { html, messages } = await docxToHtmlResult(file);
-      const parsed = splitHtmlIntoBlocks(html).filter((c) => !c.isEmpty);
+      const parsed = splitHtmlIntoBlocks(html).filter((c: BlockChunk) => !c.isEmpty);
       setChunks(parsed);
       setSelected(new Set());
       setAssignments(new Map());
@@ -83,7 +83,7 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
       blockCounter.current = 0;
       setStatus('ready');
       if (parsed.length === 0) setError('El documento no contiene contenido importable.');
-      const warns = messages.filter((m) => m.type === 'warning' || m.type === 'error');
+      const warns = messages.filter((m: { type: string }) => m.type === 'warning' || m.type === 'error');
       if (warns.length > 0) {
         setWarning(
           `Word generó ${warns.length} aviso(s) de conversión. Algún formato (control de cambios, estilos no estándar) puede no haberse importado.`,
