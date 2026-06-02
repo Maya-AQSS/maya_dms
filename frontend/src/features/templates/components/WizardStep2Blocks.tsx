@@ -26,6 +26,8 @@ import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
 import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
+import { htmlToTiptapDoc } from '@ceedcv-maya/shared-editor-react';
+import { DocxBlockSplitter } from './DocxBlockSplitter';
 import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
@@ -242,6 +244,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [docxSplitterOpen, setDocxSplitterOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [tabIsDirty, setTabIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -468,6 +471,31 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     }
   };
 
+  const handleImportDocx = async (imported: Array<{ name: string; html: string }>) => {
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
+    let firstBlock: Awaited<ReturnType<typeof createBlock>> | null = null;
+    for (const { name, html } of imported) {
+      const doc = htmlToTiptapDoc(html);
+      const created = await createBlock({
+        title: name,
+        type: 'paragraph',
+        block_state,
+        mandatory,
+        default_content: doc.content,
+      });
+      if (!firstBlock) firstBlock = created;
+    }
+    if (firstBlock) {
+      setSelectedBlockIds([firstBlock.id]);
+      setActiveSingleId(firstBlock.id);
+      setPanelMode('edit');
+      loadFormFromBlock(firstBlock);
+      setActiveTab('properties');
+      setShowCommentPanel(false);
+    }
+    setDocxSplitterOpen(false);
+  };
+
   const handleDelete = async () => {
     setBusy(true);
     try {
@@ -690,7 +718,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     </DndContext>
                   )}
                 </div>
-                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0 flex flex-col gap-2">
                   <Button
                     variant="outline"
                     className="w-full border-dashed"
@@ -698,6 +726,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     disabled={busy}
                   >
                     + Añadir bloque
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="w-full border-dashed"
+                    onClick={() => setDocxSplitterOpen(true)}
+                    disabled={busy}
+                  >
+                    ↥ Importar Word
                   </Button>
                 </div>
               </div>
@@ -1016,6 +1052,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal(false)}
         loading={busy}
+      />
+
+      <DocxBlockSplitter
+        open={docxSplitterOpen}
+        onCancel={() => setDocxSplitterOpen(false)}
+        onConfirm={handleImportDocx}
+        isDark={effectiveIsDark}
       />
     </div>
   );
