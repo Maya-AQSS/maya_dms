@@ -28,6 +28,7 @@ import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsRes
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
 import { htmlToTiptapDoc } from '@ceedcv-maya/shared-editor-react';
 import { DocxBlockSplitter } from './DocxBlockSplitter';
+import { AddBlockMenu } from './AddBlockMenu';
 import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
@@ -729,23 +730,15 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     </DndContext>
                   )}
                 </div>
-                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0 flex flex-col gap-2">
-                  <Button
-                    variant="outline"
-                    className="w-full border-dashed"
-                    onClick={() => void handleAddBlock()}
+                <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
+                  <AddBlockMenu
                     disabled={busy}
-                  >
-                    + Añadir bloque
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="w-full border-dashed"
-                    onClick={() => setDocxSplitterOpen(true)}
-                    disabled={busy}
-                  >
-                    ↥ Importar Word
-                  </Button>
+                    ctx={{
+                      addSimpleBlock: () => void handleAddBlock(),
+                      openDocxSplitter: () => setDocxSplitterOpen(true),
+                      hasPermission,
+                    }}
+                  />
                 </div>
               </div>
             )}
