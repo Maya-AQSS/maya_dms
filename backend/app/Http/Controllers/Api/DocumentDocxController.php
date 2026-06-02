@@ -34,12 +34,14 @@ final class DocumentDocxController extends Controller
         $this->authorize('view', $document);
 
         $headBlocks = $document->blocks()
-            ->orderBy('order')
-            ->get(['content', 'default_content']);
+            ->orderBy('sort_order')
+            ->get(['content', 'sort_order']);
 
         $htmlParts = [];
         foreach ($headBlocks as $block) {
-            $payload = $block->content ?? $block->default_content;
+            // document_blocks only stores `content` (cast to array); there is no
+            // `default_content` here — that column lives on template_blocks.
+            $payload = $block->content;
             if ($payload === null) {
                 continue;
             }
