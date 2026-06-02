@@ -32,6 +32,18 @@ interface Props {
   onChange?: (content: unknown) => void;
   onFullscreenChange?: (isFullscreen: boolean) => void;
   uploadFile?: (file: File) => Promise<string>;
+  /**
+   * Optional anchored-comment hook. Receives `{from, to, text}` and is
+   * expected to POST to /api/v1/{template|document}/{id}/anchored-comments
+   * and return the new commentId so MayaEditor can apply the mark.
+   */
+  onCreateComment?: (range: {
+    from: number;
+    to: number;
+    text: string;
+  }) => Promise<string | number | null | undefined>;
+  /** Optional .docx export action — usually fetches the export endpoint. */
+  onExportDocx?: () => void;
 }
 
 function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
@@ -77,6 +89,8 @@ export function MayaEditorPanel({
   onChange,
   onFullscreenChange,
   uploadFile,
+  onCreateComment,
+  onExportDocx,
 }: Props) {
   const initialDoc = useMemo(() => normaliseToDoc(initialContent), [initialContent]);
 
@@ -104,6 +118,8 @@ export function MayaEditorPanel({
       }
       onFullscreenChange={onFullscreenChange}
       uploadFile={uploadFile}
+      onCreateComment={onCreateComment}
+      onExportDocx={onExportDocx}
     />
   );
 }
