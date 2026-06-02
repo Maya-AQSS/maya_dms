@@ -514,6 +514,30 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     // setMultiIndex(0);
   };
 
+  // Comments dict keyed by id, fed to MayaEditor so hovering over a
+  // CommentMark span shows the author + body in a portal popover.
+  const commentsById = useMemo(() => {
+    const out: Record<string, { author?: string; createdAt?: string; body: string }> = {};
+    for (const c of reviewComments) {
+      out[c.id] = {
+        author: c.author?.name ?? undefined,
+        createdAt: c.created_at
+          ? new Date(c.created_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
+          : undefined,
+        body: c.body
+          .replace(/<br\s*\/?\s*>/gi, '\n')
+          .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+          .replace(/<\/?p[^>]*>/gi, '')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .trim(),
+      };
+    }
+    return out;
+  }, [reviewComments]);
+
   const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
     if (!activeSingleId) return;
     const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
@@ -845,6 +869,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               onFullscreenChange={handleEditorFullscreenChange}
                               uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
                               onCreateComment={handleCreateAnchoredComment}
+                              commentsById={commentsById}
                             />
                           </Suspense>
                         )}
@@ -876,6 +901,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             onFullscreenChange={handleEditorFullscreenChange}
                             uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
                             onCreateComment={handleCreateAnchoredComment}
+                            commentsById={commentsById}
                           />
                         </Suspense>
                       </div>

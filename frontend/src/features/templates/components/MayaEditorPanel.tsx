@@ -3,6 +3,7 @@ import {
   MayaEditor,
   convertBlockNoteToTiptap,
   type TiptapDoc,
+  type CommentHoverData,
 } from '@ceedcv-maya/shared-editor-react';
 
 /**
@@ -44,6 +45,8 @@ interface Props {
   }) => Promise<string | number | null | undefined>;
   /** Optional .docx export action — usually fetches the export endpoint. */
   onExportDocx?: () => void;
+  /** Optional comments dictionary keyed by id for hover-preview popovers. */
+  commentsById?: Record<string, CommentHoverData>;
 }
 
 function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
@@ -91,6 +94,7 @@ export function MayaEditorPanel({
   uploadFile,
   onCreateComment,
   onExportDocx,
+  commentsById,
 }: Props) {
   const initialDoc = useMemo(() => normaliseToDoc(initialContent), [initialContent]);
 
@@ -120,6 +124,7 @@ export function MayaEditorPanel({
       uploadFile={uploadFile}
       onCreateComment={onCreateComment}
       onExportDocx={onExportDocx}
+      commentsById={commentsById}
     />
   );
 }
