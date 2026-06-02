@@ -8,15 +8,22 @@ import {
 /**
  * DMS template/document editor panel.
  *
- * Replaces the legacy BlockNote-backed `BlockNoteEditorPanel`. Accepts the
- * same prop shape so consumers don't need to change; the `initialContent`
- * may still be a legacy BlockNote JSON array until the data migration
- * (`php artisan blocknote:migrate-to-tiptap`) has run — in which case it
- * is converted on the fly at mount time.
+ * Replaces the legacy BlockNote-backed `BlockNoteEditorPanel` with TipTap
+ * while keeping the storage shape callers expect:
  *
- * `onChange` now receives the TipTap doc (ProseMirror JSON) rather than a
- * BlockNote block array. Callers persist whatever object they receive
- * back to `content` / `default_content` — the schema accepts both shapes.
+ *   - `initialContent`  may arrive as:
+ *       · legacy BlockNote block array `[{type, props, content, children}, …]`
+ *       · TipTap doc `{ type: 'doc', content: […] }`
+ *       · TipTap content array (the `content` field of a doc, what we emit)
+ *       · raw HTML string
+ *     The component normalises to a TipTap doc internally.
+ *
+ *   - `onChange` emits the **content array** (the `content` field of the
+ *     TipTap doc) — same JSON shape (array of nodes) that the backend
+ *     stored under BlockNote. The validation rule `array` on
+ *     `template_blocks.content` / `template_blocks.description` keeps
+ *     working without backend changes, and the `blocknote:migrate-to-tiptap`
+ *     command's parity check still operates on equivalent structures.
  */
 interface Props {
   initialContent: unknown;
@@ -38,13 +45,29 @@ function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
 }
 
 function looksLikeBlockNote(value: unknown): value is unknown[] {
-  return (
-    Array.isArray(value) &&
-    value.length > 0 &&
-    typeof value[0] === 'object' &&
-    !!value[0] &&
-    'type' in (value[0] as object)
-  );
+  if (!Array.isArray(value) || value.length === 0) return false;
+  const first = value[0] as { type?: unknown; props?: unknown; children?: unknown };
+  if (!first || typeof first !== 'object') return false;
+  // BlockNote blocks always carry `type` and usually `props`/`children`.
+  // ProseMirror node arrays use `type` too but lack `props`.
+  return 'type' in first && ('props' in first || 'children' in first);
+}
+
+function isTiptapContentArray(value: unknown): value is TiptapDoc['content'] {
+  return Array.isArray(value) && value.every((n) => !!n && typeof n === 'object');
+}
+
+function normaliseToDoc(value: unknown): TiptapDoc | string | undefined {
+  if (value == null) return undefined;
+  if (typeof value === 'string') return value;
+  if (looksLikeTiptapDoc(value)) return value;
+  if (looksLikeBlockNote(value)) {
+    return convertBlockNoteToTiptap(value as Parameters<typeof convertBlockNoteToTiptap>[0]);
+  }
+  if (isTiptapContentArray(value)) {
+    return { type: 'doc', content: value as TiptapDoc['content'] };
+  }
+  return undefined;
 }
 
 export function MayaEditorPanel({
@@ -55,23 +78,30 @@ export function MayaEditorPanel({
   onFullscreenChange,
   uploadFile,
 }: Props) {
-  const initialDoc = useMemo<TiptapDoc | string | undefined>(() => {
-    if (initialContent == null) return undefined;
-    if (typeof initialContent === 'string') return initialContent;
-    if (looksLikeTiptapDoc(initialContent)) return initialContent;
-    if (looksLikeBlockNote(initialContent)) {
-      return convertBlockNoteToTiptap(initialContent as Parameters<typeof convertBlockNoteToTiptap>[0]);
-    }
-    return undefined;
-  }, [initialContent]);
+  const initialDoc = useMemo(() => normaliseToDoc(initialContent), [initialContent]);
 
   return (
     <MayaEditor
       mode="full"
+      output="json"
       initialContent={initialDoc}
       editable={editable}
       isDark={isDark}
-      onChange={onChange ? (html) => onChange(html) : undefined}
+      onChange={
+        onChange
+          ? (payload) => {
+              // payload is a TipTap doc when output='json'. Flatten to its
+              // `content` array so the wire shape matches what the backend
+              // already validates (legacy BlockNote was an array).
+              if (typeof payload === 'string') {
+                onChange(payload);
+                return;
+              }
+              const doc = payload as TiptapDoc;
+              onChange(doc.content);
+            }
+          : undefined
+      }
       onFullscreenChange={onFullscreenChange}
       uploadFile={uploadFile}
     />
