@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense, lazy } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, Suspense, lazy } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
