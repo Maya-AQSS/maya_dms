@@ -37,4 +37,19 @@ php artisan package:discover --ansi 2>/dev/null || true
 # Ensure public storage symlink exists for media file serving
 php artisan storage:link --force 2>/dev/null || true
 
+# Devolver al UID/GID del host los archivos generados por composer (que corre
+# como root en este entrypoint). Detectamos el UID del host mirando el owner
+# del composer.json bind-mounted (siempre presente, conserva UID original).
+# Sin esto, `composer update` desde el host falla con "Permission denied"
+# porque vendor/ y composer.lock quedan root:root tras este script.
+HOST_UID="$(stat -c %u /var/www/html/composer.json 2>/dev/null || echo 0)"
+HOST_GID="$(stat -c %g /var/www/html/composer.json 2>/dev/null || echo 0)"
+if [ "$HOST_UID" != "0" ]; then
+    chown -R "${HOST_UID}:${HOST_GID}" \
+        /var/www/html/vendor \
+        /var/www/html/composer.lock \
+        /var/www/html/bootstrap/cache \
+        2>/dev/null || true
+fi
+
 exec "$@"
