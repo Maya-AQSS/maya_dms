@@ -38,6 +38,24 @@ function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
   );
 }
 
+// A legacy BlockNote block array. ProseMirror node arrays also carry `type`
+// but never `props`/`children`, so those keys are the discriminator.
+// Mirror of the helper in MayaEditorPanel so reader and editor agree on shape.
+function looksLikeBlockNote(value: unknown): value is unknown[] {
+  if (!Array.isArray(value) || value.length === 0) return false;
+  const first = value[0] as { type?: unknown; props?: unknown; children?: unknown };
+  if (!first || typeof first !== 'object') return false;
+  return 'type' in first && ('props' in first || 'children' in first);
+}
+
+// A bare TipTap content array — the `content` field of a doc, which is the
+// wire shape MayaEditorPanel emits (`onChange(doc.content)`) and the backend
+// stores in `template_blocks.default_content`. Must be checked AFTER
+// looksLikeBlockNote, as any array of objects matches this.
+function looksLikeTiptapContentArray(value: unknown): value is TiptapDoc['content'] {
+  return Array.isArray(value) && value.length > 0 && value.every((n) => !!n && typeof n === 'object');
+}
+
 export function BlockContentHtml({ content }: { content: unknown[] | unknown }) {
   const html = useMemo(() => {
     if (content == null) return '';
@@ -46,17 +64,27 @@ export function BlockContentHtml({ content }: { content: unknown[] | unknown }) 
     // call) handle it. For now, the legacy headless editor still drives
     // BlockNote-shaped data; once Fase 5 has flipped the column to
     // TipTap shape, the BlockNote branch becomes dead and can go.
-    if (looksLikeTiptapDoc(content)) {
-      // ProseMirror → HTML via a lightweight client conversion.
-      // We don't ship the schema here; emit a permissive HTML serialisation.
-      return jsonDocToHtml(content);
-    }
-
-    const blocks = Array.isArray(content) ? content : [];
-    if (blocks.length === 0) return '';
-    const repaired = repairBlockNoteBlocks(blocks);
     try {
-      return getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
+      // ProseMirror → HTML via a lightweight client conversion. We don't ship
+      // the schema here; emit a permissive HTML serialisation. Accept both the
+      // wrapped doc and the bare content array (the shape MayaEditorPanel emits
+      // and the backend persists for TipTap blocks).
+      if (looksLikeTiptapDoc(content)) {
+        return jsonDocToHtml(content);
+      }
+
+      // Legacy BlockNote content still drives the headless editor until the
+      // data migration flips the column to TipTap shape.
+      if (looksLikeBlockNote(content)) {
+        const repaired = repairBlockNoteBlocks(content);
+        return getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
+      }
+
+      if (looksLikeTiptapContentArray(content)) {
+        return jsonDocToHtml({ type: 'doc', content });
+      }
+
+      return '';
     } catch {
       return '<p><em>Error al renderizar el contenido.</em></p>';
     }

@@ -41,6 +41,21 @@ describe('BlockContentHtml', () => {
     expect(screen.queryByText(/Error al renderizar/)).toBeNull();
   });
 
+  it('renders a bare TipTap content array without falling back to BlockNote', async () => {
+    // Shape emitted by MayaEditorPanel and stored in default_content:
+    // a bare array of ProseMirror nodes (no `props`/`children`).
+    const tiptapContentArray = [
+      { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Introducción' }] },
+      { type: 'paragraph', content: [{ type: 'text', text: 'Contenido importado.' }] },
+    ];
+    render(<BlockContentHtml content={tiptapContentArray} />);
+    await waitFor(() => expect(screen.getByText('Introducción')).toBeTruthy());
+    expect(screen.getByText('Contenido importado.')).toBeTruthy();
+    // Must NOT be routed to the BlockNote headless editor.
+    expect(blocksToHTMLLossyMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/Error al renderizar/)).toBeNull();
+  });
+
   it('calls blocksToHTMLLossy for non-empty content', () => {
     blocksToHTMLLossyMock.mockReturnValue('<p>hello</p>');
     const block = {
