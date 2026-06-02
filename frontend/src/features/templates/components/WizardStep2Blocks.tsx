@@ -221,7 +221,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
-  const [showCommentPanel, setShowCommentPanel] = useState(true);
+  const [showCommentPanel, setShowCommentPanel] = useState(false);
 
   // const [multiIndex, setMultiIndex] = useState(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -744,16 +744,27 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   {renderSaveStatus()}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  {!showCommentPanel && selectedBlock?.title && (
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={() => setShowCommentPanel(true)}
-                      className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
-                    >
-                      Comentarios ({getCommentsForBlock(activeSingleId, reviewComments).length})
-                    </Button>
-                  )}
+                  {!showCommentPanel && selectedBlock?.title && (() => {
+                    const blockCommentsCount = getCommentsForBlock(activeSingleId, reviewComments).length;
+                    return (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setShowCommentPanel(true)}
+                        className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                      >
+                        Comentarios
+                        {blockCommentsCount > 0 && (
+                          <span
+                            aria-label={`${blockCommentsCount} comentarios`}
+                            className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none"
+                          >
+                            {blockCommentsCount > 99 ? '99+' : blockCommentsCount}
+                          </span>
+                        )}
+                      </Button>
+                    );
+                  })()}
                   <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
                   <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>{t('common:actions.delete')}</Button>
                   <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>{t('common:actions.cancel')}</Button>
