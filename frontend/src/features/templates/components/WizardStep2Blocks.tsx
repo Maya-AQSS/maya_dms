@@ -370,7 +370,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setSelectedBlockIds([blockId]);
       setActiveSingleId(blockId);
       setPanelMode('edit');
-      setShowCommentPanel(true);
+      // Comment panel stays in whatever state the user left it; the badge
+      // on the toggle button signals new activity without grabbing space.
       loadFormFromBlock(block);
       setActiveTab('properties');
     }, 200);
@@ -744,16 +745,20 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               </div>
             )}
 
-            {/* Regular header — hidden in fullscreen */}
+            {/* Regular header — hidden in fullscreen.
+                Responsive: row on >=sm, stacked column on mobile. Action
+                buttons wrap (flex-wrap) so they drop to a second row when
+                the title is long. Destructive/secondary actions collapse
+                to icon-only on small screens to keep the row compact. */}
             {!isEditorFullscreen && (
-              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
+              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0 bg-white dark:bg-ui-dark-card">
                 <div className="flex items-center gap-3 min-w-0">
                   <h3 className="text-sm font-bold truncate uppercase tracking-widest">
                     Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
                   </h3>
                   {renderSaveStatus()}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
                   {!showCommentPanel && selectedBlock?.title && (() => {
                     const blockCommentsCount = getCommentsForBlock(activeSingleId, reviewComments).length;
                     return (
@@ -762,8 +767,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         size="xs"
                         onClick={() => setShowCommentPanel(true)}
                         className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                        title="Comentarios de revisión"
                       >
-                        Comentarios
+                        <span className="hidden sm:inline">Comentarios</span>
+                        <span className="sm:hidden" aria-hidden>💬</span>
                         {blockCommentsCount > 0 && (
                           <span
                             aria-label={`${blockCommentsCount} comentarios`}
@@ -793,21 +800,34 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
-                          {isDone ? 'Finalizado' : 'Finalizar'}
+                          <span className="hidden sm:inline">{isDone ? 'Finalizado' : 'Finalizar'}</span>
                         </span>
                       </Button>
                     );
                   })()}
-                  <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
-                  <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>{t('common:actions.delete')}</Button>
-                  <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>{t('common:actions.cancel')}</Button>
+                  <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy} title="Duplicar">
+                    <span className="hidden sm:inline">Duplicar</span>
+                    <span className="sm:hidden" aria-hidden>⎘</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="text-danger hover:bg-danger/5 hover:border-danger/40"
+                    onClick={() => setDeleteModal(true)}
+                    title={t('common:actions.delete')}
+                  >
+                    <span className="hidden sm:inline">{t('common:actions.delete')}</span>
+                    <span className="sm:hidden" aria-hidden>🗑</span>
+                  </Button>
                 </div>
               </div>
             )}
 
-            {/* Tabs — hidden in fullscreen */}
+            {/* Tabs — hidden in fullscreen. "Cancelar" lives at the right
+                edge of the tab strip so the header row above has more
+                breathing room on narrow viewports. */}
             {!isEditorFullscreen && (
-              <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+              <div className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
                 {(['properties', 'content', 'description'] as TabId[]).map(tab => {
                   const isTabDisabled = (tab === 'content' || tab === 'description') && validateBlockName(formName) !== '';
 
@@ -829,6 +849,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     </button>
                   );
                 })}
+                <div className="ml-auto flex items-center pr-3">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="hover:text-text-primary"
+                    onClick={() => void handleCancel()}
+                  >
+                    {t('common:actions.cancel')}
+                  </Button>
+                </div>
               </div>
             )}
 
