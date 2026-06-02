@@ -38,7 +38,11 @@ import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
 import { useQueryClient } from '@tanstack/react-query';
 
-const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
+const BlockNoteEditorPanel = lazy(() =>
+  import('./BlockNoteEditorPanel').then(m => ({
+    default: m.BlockNoteEditorPanel
+  }))
+);
 
 type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';

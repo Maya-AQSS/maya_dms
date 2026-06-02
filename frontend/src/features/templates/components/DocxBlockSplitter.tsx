@@ -511,7 +511,7 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
         <div className="flex items-center justify-between border-t border-ui-border px-5 py-3 dark:border-ui-dark-border">
           <div className="text-xs text-text-muted dark:text-text-dark-muted">
             {status === 'creating' && progress
-              ? `Creando ${progress.total} bloque(s)…`
+              ? `Creando bloque ${progress.current}/${progress.total}…`
               : status === 'ready' && !canConfirm && targets.length > 0
                 ? 'Cada bloque debe tener al menos un elemento.'
                 : ''}
@@ -521,7 +521,7 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
               Cancelar
             </Button>
             <Button variant="primary" onClick={() => void handleConfirm()} disabled={!canConfirm}>
-              {status === 'creating' ? 'Creando…' : `Crear ${targets.length || ''} bloque${targets.length === 1 ? '' : 's'}`}
+              {status === 'creating' ? 'Creando…' : `Crear ${targets.length} bloque${targets.length === 1 ? '' : 's'}`}
             </Button>
           </div>
         </div>
