@@ -18,8 +18,10 @@ final class AnchoredCommentRequest extends FormRequest
      */
     public function rules(): array
     {
+        $isUpdate = $this->getMethod() === 'PUT' || $this->getMethod() === 'PATCH';
+
         return [
-            'comment_id' => ['required', 'uuid', 'exists:comments,id'],
+            'comment_id' => $isUpdate ? ['nullable', 'uuid', 'exists:comments,id'] : ['required', 'uuid', 'exists:comments,id'],
             'anchor_from' => ['required', 'integer', 'min:0'],
             'anchor_to' => ['required', 'integer', 'gt:anchor_from'],
             'anchor_text_snapshot' => ['nullable', 'string', 'max:1000'],

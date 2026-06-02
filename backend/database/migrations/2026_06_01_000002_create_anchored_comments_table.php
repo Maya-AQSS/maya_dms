@@ -31,7 +31,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('anchored_comments', function (Blueprint $t) {
-            $t->id();
+            $t->uuid('id')->primary();
             $t->foreignUuid('comment_id')
                 ->unique()
                 ->constrained('comments')

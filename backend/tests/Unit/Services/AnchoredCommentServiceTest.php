@@ -52,7 +52,7 @@ final class AnchoredCommentServiceTest extends TestCase
         $repo->shouldReceive('findByResource')
             ->once()
             ->with(Document::class, 'doc-uuid')
-            ->andReturn(collect([$anchor]));
+            ->andReturn(new \Illuminate\Database\Eloquent\Collection([$anchor]));
 
         $service = $this->makeService($repo);
         $result = $service->listForResource(Document::class, 'doc-uuid');

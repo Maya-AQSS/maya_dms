@@ -19,7 +19,7 @@ class AnchoredCommentService implements AnchoredCommentServiceInterface
     {
         $anchors = $this->anchoredCommentRepository->findByResource($resourceType, $resourceId);
 
-        return $anchors->map(static fn ($anchor) => AnchoredCommentDto::fromModel($anchor));
+        return new Collection($anchors->map(static fn ($anchor) => AnchoredCommentDto::fromModel($anchor))->all());
     }
 
     public function getForResource(string $resourceType, string $resourceId, string $anchorId): ?AnchoredCommentDto
