@@ -21,6 +21,7 @@
     "@blocknote/react": "^0.49.0",
     "@ceedcv-maya/shared-auth-react": "^0.5.0",
     "@ceedcv-maya/shared-dashboard-react": "^0.5.0",
+    "@ceedcv-maya/shared-editor-react": "^0.5.0",
     "@ceedcv-maya/shared-hooks-react": "^0.5.0",
     "@ceedcv-maya/shared-i18n-react": "^0.5.0",
     "@ceedcv-maya/shared-layout-react": "^0.5.0",

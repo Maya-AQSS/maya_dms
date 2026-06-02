@@ -1,3 +1,9 @@
+/**
+ * LEGACY: BlockNote HTML renderer — kept for rollback during TipTap migration (Fase 3).
+ * Do not use. Will be removed in Fase 5 after all data is confirmed migrated to TipTap.
+ * If rollback is needed: revert imports in BlockContentHtml.tsx.
+ */
+
 import { useMemo } from 'react';
 import DOMPurify from 'dompurify';
 import { BlockNoteEditor } from '@blocknote/core';

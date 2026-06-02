@@ -26,7 +26,7 @@ import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
 import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
-import { htmlToTiptapDoc } from '@ceedcv-maya/shared-editor-react';
+import { htmlToTiptapDoc, buildMayaEditorExtensions } from '@ceedcv-maya/shared-editor-react';
 import { DocxBlockSplitter } from './DocxBlockSplitter';
 import { AddBlockMenu } from './AddBlockMenu';
 import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
@@ -431,7 +431,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     },
   }));
 
-  const handleAddBlock = async () => {
+  const handleAddBlock = async (block?: Partial<{ name: string; description: string; content: any }>) => {
     // Block creation if the current block still has an invalid name.
     if (activeSingleId) {
       const nameErr = validateBlockName(formName);
@@ -450,16 +450,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         } finally {
           setIsSaving(false);
         }
-      } 
+      }
     }
     setBusy(true);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
       const newBlock = await createBlock({
-        title: null,
+        title: block?.name ?? null,
+        description: block?.description ?? null,
         type: 'paragraph',
         block_state,
         mandatory,
+        default_content: block?.content ?? null,
       });
       setSelectedBlockIds([newBlock.id]);
       setActiveSingleId(newBlock.id);
@@ -480,7 +482,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     let createdCount = 0;
     for (const { name, html } of imported) {
       try {
-        const doc = htmlToTiptapDoc(html);
+        const doc = htmlToTiptapDoc(html, buildMayaEditorExtensions('full'));
         const created = await createBlock({
           title: name,
           type: 'paragraph',
@@ -734,8 +736,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   <AddBlockMenu
                     disabled={busy}
                     ctx={{
-                      addSimpleBlock: () => void handleAddBlock(),
+                      templateId: template.id,
+                      createBlock: (block) => void handleAddBlock(block),
                       openDocxSplitter: () => setDocxSplitterOpen(true),
+                      setActiveDialog: (id) => {
+                        if (id === 'docx-splitter') setDocxSplitterOpen(true);
+                        else if (id === null) setDocxSplitterOpen(false);
+                      },
                       hasPermission,
                     }}
                   />

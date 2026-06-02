@@ -1,3 +1,9 @@
+/**
+ * LEGACY: BlockNote editor panel — kept for rollback during TipTap migration (Fase 3).
+ * Do not use. Will be removed in Fase 5 after all data is confirmed migrated to TipTap.
+ * If rollback is needed: revert imports in WizardStep2Blocks.tsx line 41 and BlockNoteEditorPanel.tsx.
+ */
+
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useToast } from '@ceedcv-maya/shared-ui-react';
