@@ -10,17 +10,18 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
-        "guzzlehttp/guzzle": "^7.10",
-        "laravel/framework": "^13.0",
-        "laravel/reverb": "^1.10",
-        "laravel/tinker": "^3.0",
-        "lcobucci/jwt": "^5.6",
         "ceedcv-maya/shared-auth-laravel": "^0.5",
         "ceedcv-maya/shared-editor-laravel": "^0.5",
         "ceedcv-maya/shared-http-laravel": "^0.5",
         "ceedcv-maya/shared-messaging-laravel": "^0.5",
         "ceedcv-maya/shared-platform-laravel": "^0.5",
         "ceedcv-maya/shared-profile-laravel": "^0.5",
+        "guzzlehttp/guzzle": "^7.10",
+        "laravel/framework": "^13.0",
+        "laravel/reverb": "^1.10",
+        "laravel/tinker": "^3.0",
+        "lcobucci/jwt": "^5.6",
+        "phpoffice/phpword": "^1.1",
         "vladimir-yuldashev/laravel-queue-rabbitmq": "dev-master"
     },
     "require-dev": {
