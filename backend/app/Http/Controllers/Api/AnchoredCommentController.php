@@ -7,8 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnchoredCommentRequest;
 use App\Http\Resources\AnchoredCommentResource;
-use App\Models\Document;
-use App\Models\Template;
+use App\Repositories\Resolvers\PolymorphicResourceResolver;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,19 +26,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 final class AnchoredCommentController extends Controller
 {
-    /**
-     * Whitelist of polymorphic targets. Extend deliberately — passing an
-     * arbitrary class name through the URL would be an IDOR vector.
-     *
-     * @var array<string, class-string>
-     */
-    private const RESOURCE_MAP = [
-        'template' => Template::class,
-        'document' => Document::class,
-    ];
-
     public function __construct(
         private readonly AnchoredCommentServiceInterface $anchoredCommentService,
+        private readonly PolymorphicResourceResolver $resourceResolver,
     ) {}
 
     public function index(Request $request, string $resourceType, string $resourceId): JsonResponse
@@ -115,13 +104,7 @@ final class AnchoredCommentController extends Controller
 
     private function resolveAndAuthorize(string $resourceType, string $resourceId, string $ability): \Illuminate\Database\Eloquent\Model
     {
-        $class = self::RESOURCE_MAP[$resourceType] ?? null;
-        if ($class === null) {
-            throw new NotFoundHttpException();
-        }
-
-        /** @var \Illuminate\Database\Eloquent\Model $resource */
-        $resource = $class::findOrFail($resourceId);
+        $resource = $this->resourceResolver->resolve($resourceType, $resourceId);
 
         $this->authorize($ability, $resource);
 
