@@ -115,6 +115,10 @@
                 "version": "13.0.0",
                 "type": "metapackage"
             }
+        },
+        {
+            "type": "vcs",
+            "url": "https://github.com/Maya-AQSS/shared-editor-laravel.git"
         }
     ],
     "minimum-stability": "dev",
