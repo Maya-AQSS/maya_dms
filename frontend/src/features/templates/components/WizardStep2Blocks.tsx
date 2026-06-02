@@ -471,19 +471,29 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     }
   };
 
-  const handleImportDocx = async (imported: Array<{ name: string; html: string }>) => {
+  const handleImportDocx = async (
+    imported: Array<{ name: string; html: string }>,
+  ): Promise<{ createdCount: number }> => {
     const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
     let firstBlock: Awaited<ReturnType<typeof createBlock>> | null = null;
+    let createdCount = 0;
     for (const { name, html } of imported) {
-      const doc = htmlToTiptapDoc(html);
-      const created = await createBlock({
-        title: name,
-        type: 'paragraph',
-        block_state,
-        mandatory,
-        default_content: doc.content,
-      });
-      if (!firstBlock) firstBlock = created;
+      try {
+        const doc = htmlToTiptapDoc(html);
+        const created = await createBlock({
+          title: name,
+          type: 'paragraph',
+          block_state,
+          mandatory,
+          default_content: doc.content,
+        });
+        if (!firstBlock) firstBlock = created;
+        createdCount++;
+      } catch (e) {
+        // Para en el primer fallo: el modal deja el resto para reintentar.
+        console.error('[WizardStep2Blocks] createBlock failed during import', e);
+        break;
+      }
     }
     if (firstBlock) {
       setSelectedBlockIds([firstBlock.id]);
@@ -493,7 +503,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setActiveTab('properties');
       setShowCommentPanel(false);
     }
-    setDocxSplitterOpen(false);
+    if (createdCount >= imported.length) setDocxSplitterOpen(false);
+    return { createdCount };
   };
 
   const handleDelete = async () => {

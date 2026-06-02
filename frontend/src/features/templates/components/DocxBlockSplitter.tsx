@@ -8,11 +8,11 @@
  * que recibe `{ name, html }[]` — el wizard convierte cada `html` a doc TipTap
  * y llama `createBlock`.
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   EditorContentHtml,
-  docxToHtml,
+  docxToHtmlResult,
   splitHtmlIntoBlocks,
   type BlockChunk,
   type BlockChunkType,
@@ -22,8 +22,12 @@ import { Button } from '@ceedcv-maya/shared-ui-react';
 export interface DocxBlockSplitterProps {
   open: boolean;
   onCancel: () => void;
-  /** Llamado con la lista final de bloques al pulsar "Crear". */
-  onConfirm: (blocks: Array<{ name: string; html: string }>) => Promise<void>;
+  /**
+   * Crea los bloques (secuencialmente, en orden) y devuelve cuántos se
+   * crearon. Un `createdCount < blocks.length` indica fallo parcial: el modal
+   * deja los bloques no creados para reintentar.
+   */
+  onConfirm: (blocks: Array<{ name: string; html: string }>) => Promise<{ createdCount: number }>;
   isDark?: boolean;
 }
 
@@ -67,6 +71,7 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
   const [status, setStatus] = useState<Status>('idle');
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
   const blockCounter = useRef(0);
   const lastClicked = useRef<number | null>(null);
@@ -81,6 +86,7 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
     setStatus('idle');
     setProgress(null);
     setError(null);
+    setWarning(null);
     blockCounter.current = 0;
     lastClicked.current = null;
   }, []);
@@ -93,9 +99,10 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
   const handlePickFile = useCallback(async (file: File) => {
     setStatus('parsing');
     setError(null);
+    setWarning(null);
     setFilename(file.name);
     try {
-      const html = await docxToHtml(file);
+      const { html, messages } = await docxToHtmlResult(file);
       const parsed = splitHtmlIntoBlocks(html).filter((c) => !c.isEmpty);
       setChunks(parsed);
       setSelected(new Set());
@@ -104,6 +111,12 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
       blockCounter.current = 0;
       setStatus('ready');
       if (parsed.length === 0) setError('El documento no contiene contenido importable.');
+      const warns = messages.filter((m) => m.type === 'warning' || m.type === 'error');
+      if (warns.length > 0) {
+        setWarning(
+          `Word generó ${warns.length} aviso(s) de conversión. Algún formato (control de cambios, estilos no estándar) puede no haberse importado.`,
+        );
+      }
     } catch (e) {
       console.error('[DocxBlockSplitter] parse failed', e);
       setStatus('error');
@@ -175,6 +188,37 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
     });
   }, []);
 
+  const selectAll = useCallback(() => {
+    setSelected(new Set(chunks.map((c) => c.index)));
+  }, [chunks]);
+
+  const hasHeadings = useMemo(() => chunks.some((c) => c.type === 'heading'), [chunks]);
+
+  /**
+   * Agrupa chunks consecutivos usando los encabezados de nivel `level` (o
+   * superior) como separadores. Cada bloque toma el texto del encabezado como
+   * nombre. Los chunks anteriores al primer encabezado quedan sin asignar.
+   */
+  const autoSplitByHeading = useCallback(
+    (level: number) => {
+      const newTargets: TargetBlock[] = [];
+      const newAssignments = new Map<number, string>();
+      let currentId: string | null = null;
+      let n = 0;
+      for (const c of chunks) {
+        if (c.type === 'heading' && (c.level ?? 99) <= level) {
+          currentId = `tb-${++blockCounter.current}`;
+          newTargets.push({ id: currentId, name: c.text.slice(0, 60) || `Bloque ${++n}` });
+        }
+        if (currentId) newAssignments.set(c.index, currentId);
+      }
+      setTargets(newTargets);
+      setAssignments(newAssignments);
+      setSelected(new Set());
+    },
+    [chunks],
+  );
+
   const chunksByTarget = useCallback(
     (targetId: string): BlockChunk[] =>
       chunks
@@ -192,30 +236,69 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
   );
 
   const handleConfirm = useCallback(async () => {
-    const payload = targets
-      .map((t) => ({
-        name: t.name.trim() || 'Bloque',
-        html: chunksByTarget(t.id)
-          .map((c) => c.html)
-          .join('\n'),
-      }))
-      .filter((b) => b.html.length > 0);
+    // payload sigue el orden de `targets` (filter solo descarta vacíos, que
+    // canConfirm ya impide), así los primeros `createdCount` mapean 1:1.
+    const ordered = targets.filter((t) => chunksByTarget(t.id).length > 0);
+    const payload = ordered.map((t) => ({
+      name: t.name.trim() || 'Bloque',
+      html: chunksByTarget(t.id)
+        .map((c) => c.html)
+        .join('\n'),
+    }));
     if (payload.length === 0) return;
     setStatus('creating');
+    setError(null);
     setProgress({ current: 0, total: payload.length });
     try {
-      // onConfirm crea secuencialmente; el progreso real lo refleja el wizard,
-      // aquí mostramos el total mientras corre.
-      await onConfirm(payload);
-      reset();
-      onCancel();
+      const { createdCount } = await onConfirm(payload);
+      if (createdCount >= payload.length) {
+        reset();
+        onCancel();
+        return;
+      }
+      // Fallo parcial: quita los bloques ya creados (los primeros), deja el
+      // resto para reintentar.
+      const createdTargets = ordered.slice(0, createdCount);
+      const createdIds = new Set(createdTargets.map((t) => t.id));
+      setTargets((prev) => prev.filter((t) => !createdIds.has(t.id)));
+      setAssignments((prev) => {
+        const next = new Map(prev);
+        for (const [idx, tid] of prev) if (createdIds.has(tid)) next.delete(idx);
+        return next;
+      });
+      setStatus('ready');
+      setProgress(null);
+      setError(
+        `${createdCount} bloque(s) creados. ${payload.length - createdCount} fallaron — revisa y pulsa "Crear" para reintentar.`,
+      );
     } catch (e) {
       console.error('[DocxBlockSplitter] create failed', e);
       setStatus('ready');
       setProgress(null);
-      setError('Falló la creación de bloques. Revisa los que se hayan creado.');
+      setError('Falló la creación de bloques. Revisa los que se hayan creado y reintenta.');
     }
   }, [targets, chunksByTarget, onConfirm, reset, onCancel]);
+
+  // Atajos de teclado: Esc cierra, Ctrl/Cmd+A selecciona todo, Enter crea.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const typing =
+        target && ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName);
+      if (e.key === 'Escape') {
+        if (status !== 'creating') handleCancel();
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !typing && status === 'ready') {
+        e.preventDefault();
+        selectAll();
+      } else if (e.key === 'Enter' && !typing && canConfirm) {
+        e.preventDefault();
+        void handleConfirm();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, status, canConfirm, handleCancel, selectAll, handleConfirm]);
 
   if (!open) return null;
 
@@ -276,13 +359,32 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
             />
           </div>
         ) : (
-          <div className="flex min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col">
+            {warning && (
+              <div className="border-b border-warning-dark/30 bg-warning-dark/10 px-4 py-2 text-xs text-warning-dark">
+                ⚠ {warning}
+              </div>
+            )}
+            <div className="flex min-h-0 flex-1">
             {/* Columna izquierda — elementos */}
             <div className="flex w-3/5 flex-col border-r border-ui-border dark:border-ui-dark-border">
               <div className="flex flex-wrap items-center gap-2 border-b border-ui-border px-4 py-2 dark:border-ui-dark-border">
                 <span className="text-xs text-text-muted dark:text-text-dark-muted">
                   {chunks.length} elementos · {selected.size} seleccionados
                 </span>
+                <Button variant="outline" disabled={chunks.length === 0} onClick={selectAll}>
+                  Todos
+                </Button>
+                {hasHeadings && (
+                  <>
+                    <Button variant="outline" onClick={() => autoSplitByHeading(1)} title="Un bloque por cada H1">
+                      Auto H1
+                    </Button>
+                    <Button variant="outline" onClick={() => autoSplitByHeading(2)} title="Un bloque por cada H1/H2">
+                      Auto H2
+                    </Button>
+                  </>
+                )}
                 <div className="ml-auto flex gap-2">
                   <Button variant="outline" disabled={selected.size === 0} onClick={() => assignSelection('new')}>
                     + Nuevo bloque
@@ -400,6 +502,7 @@ export function DocxBlockSplitter({ open, onCancel, onConfirm, isDark = false }:
                   })
                 )}
               </div>
+            </div>
             </div>
           </div>
         )}
