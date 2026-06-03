@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useImperativeHandle, useRef, useState, Suspense, lazy } from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, Suspense, lazy } from 'react';
+import { useTranslation, withTranslation } from 'react-i18next';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,
@@ -23,8 +23,12 @@ import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import type { TemplateBlock } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
 import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
+import { htmlToTiptapDoc, buildMayaEditorExtensions } from '@ceedcv-maya/shared-editor-react';
+import { DocxBlockSplitter } from './DocxBlockSplitter';
+import { AddBlockMenu } from './AddBlockMenu';
 import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
@@ -34,7 +38,14 @@ import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
 import { useQueryClient } from '@tanstack/react-query';
 
-const BlockNoteEditorPanel = lazy(() => import('./BlockNoteEditorPanel').then(m => ({ default: m.BlockNoteEditorPanel })));
+const BlockNoteEditorPanel = lazy(() =>
+  import('./BlockNoteEditorPanel').then(m => ({
+    default: m.BlockNoteEditorPanel
+  }))
+);
+
+// Wrapper to provide i18n props to ErrorBoundary
+const ErrorBoundaryWrapper = withTranslation('common')(ErrorBoundary) as React.FC<{ children: React.ReactNode }>;
 
 type PanelMode = 'empty' | 'create' | 'edit' | 'multi';
 type TabId = 'properties' | 'content' | 'description' | 'comments';
@@ -80,11 +91,13 @@ function SortableBlockItem({
   itemState,
   onClick,
   hasReviewComments,
+  isCompleted,
 }: {
   block: TemplateBlock;
   itemState: 'default' | 'selected' | 'multi-queued' | 'multi-current' | 'multi-saved';
   onClick: () => void;
   hasReviewComments?: boolean;
+  isCompleted?: boolean;
 }) {
   const { t } = useTranslation('documents');
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
@@ -107,6 +120,7 @@ function SortableBlockItem({
         variant={itemState}
         locked={isLocked}
         hasReviewComments={hasReviewComments}
+        isCompleted={isCompleted}
         stateLabel={BLOCK_UI_STATE_CONFIG[ui].label}
         onClick={onClick}
         dragHandle={
@@ -173,6 +187,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     status: template.status,
   });
 
+  // Visual-only "finalizado" marker, persisted in localStorage and namespaced
+  // by template id so it survives reloads and doesn't bleed across templates.
+  // Mirrors the documents wizard UX — does not affect server-side validations.
+  const completedBlocks = useCompletedBlocks(`tpl-${template.id}`);
+
   const { isDark: globalIsDark } = useDarkMode();
   const effectiveIsDark = isDark || globalIsDark;
 
@@ -221,7 +240,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([]);
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
-  const [showCommentPanel, setShowCommentPanel] = useState(true);
+  const [showCommentPanel, setShowCommentPanel] = useState(false);
 
   // const [multiIndex, setMultiIndex] = useState(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -233,6 +252,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
+  const [docxSplitterOpen, setDocxSplitterOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('properties');
   const [tabIsDirty, setTabIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -361,7 +381,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       setSelectedBlockIds([blockId]);
       setActiveSingleId(blockId);
       setPanelMode('edit');
-      setShowCommentPanel(true);
+      // Comment panel stays in whatever state the user left it; the badge
+      // on the toggle button signals new activity without grabbing space.
       loadFormFromBlock(block);
       setActiveTab('properties');
     }, 200);
@@ -397,13 +418,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         setIsSaving(true);
         try {
           const success = await saveCurrentTab();
-          if (!success) return success;
+          if (!success) return;
         }catch{
-          return false
+          return;
         } finally {
           setIsSaving(false);
         }
-      } 
+      }
     },
     discardInvalidBlocks: async () => {
       const invalidIds = blocks.filter(b => !b.title?.trim()).map(b => b.id);
@@ -417,7 +438,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     },
   }));
 
-  const handleAddBlock = async () => {
+  const handleAddBlock = async (block?: Partial<{ name: string; description: string; content: any }>) => {
     // Block creation if the current block still has an invalid name.
     if (activeSingleId) {
       const nameErr = validateBlockName(formName);
@@ -436,16 +457,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         } finally {
           setIsSaving(false);
         }
-      } 
+      }
     }
     setBusy(true);
     try {
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
       const newBlock = await createBlock({
-        title: null,
+        title: block?.name ?? null,
+        description: block?.description ?? null,
         type: 'paragraph',
         block_state,
         mandatory,
+        default_content: block?.content ?? null,
       });
       setSelectedBlockIds([newBlock.id]);
       setActiveSingleId(newBlock.id);
@@ -456,6 +479,42 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleImportDocx = async (
+    imported: Array<{ name: string; html: string }>,
+  ): Promise<{ createdCount: number }> => {
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
+    let firstBlock: Awaited<ReturnType<typeof createBlock>> | null = null;
+    let createdCount = 0;
+    for (const { name, html } of imported) {
+      try {
+        const doc = htmlToTiptapDoc(html, buildMayaEditorExtensions('full'));
+        const created = await createBlock({
+          title: name,
+          type: 'paragraph',
+          block_state,
+          mandatory,
+          default_content: doc.content,
+        });
+        if (!firstBlock) firstBlock = created;
+        createdCount++;
+      } catch (e) {
+        // Para en el primer fallo: el modal deja el resto para reintentar.
+        console.error('[WizardStep2Blocks] createBlock failed during import', e);
+        break;
+      }
+    }
+    if (firstBlock) {
+      setSelectedBlockIds([firstBlock.id]);
+      setActiveSingleId(firstBlock.id);
+      setPanelMode('edit');
+      loadFormFromBlock(firstBlock);
+      setActiveTab('properties');
+      setShowCommentPanel(false);
+    }
+    if (createdCount >= imported.length) setDocxSplitterOpen(false);
+    return { createdCount };
   };
 
   const handleDelete = async () => {
@@ -514,6 +573,30 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     // setMultiIndex(0);
   };
 
+  // Comments dict keyed by id, fed to MayaEditor so hovering over a
+  // CommentMark span shows the author + body in a portal popover.
+  const commentsById = useMemo(() => {
+    const out: Record<string, { author?: string; createdAt?: string; body: string }> = {};
+    for (const c of reviewComments) {
+      out[c.id] = {
+        author: c.author?.name ?? undefined,
+        createdAt: c.created_at
+          ? new Date(c.created_at).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })
+          : undefined,
+        body: c.body
+          .replace(/<br\s*\/?\s*>/gi, '\n')
+          .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+          .replace(/<\/?p[^>]*>/gi, '')
+          .replace(/<[^>]+>/g, '')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&')
+          .trim(),
+      };
+    }
+    return out;
+  }, [reviewComments]);
+
   const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
     if (!activeSingleId) return;
     const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
@@ -522,6 +605,57 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     });
     onCommentAdded?.(res.data);
   }, [activeSingleId, template.id, onCommentAdded]);
+
+  /**
+   * Anchored comment on a text selection from inside the editor.
+   *
+   * Two-step flow:
+   *   1. POST templates/{id}/comments  → creates the comment row used as
+   *      the right-rail entry (visible in BLOQUE #N comments).
+   *   2. POST template/{id}/anchored-comments → records the position
+   *      range so the editor's CommentMark can survive concurrent edits.
+   *
+   * Returns the comment id so MayaEditor applies the mark to the
+   * selected range.
+   */
+  const handleCreateAnchoredComment = useCallback(
+    async (range: { from: number; to: number; text: string }): Promise<string | null> => {
+      if (!activeSingleId) return null;
+      const body = window.prompt(
+        `Comentario sobre la selección "${range.text.slice(0, 80)}${range.text.length > 80 ? '…' : ''}"`,
+        '',
+      );
+      if (!body || !body.trim()) return null;
+      try {
+        const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
+          method: 'POST',
+          body: { body: body.trim(), parent_id: null, blockable_id: activeSingleId },
+        });
+        const commentId = res.data.id;
+        // Anchor record — failures here don't roll back the comment; the
+        // anchor can be re-attached later if needed.
+        try {
+          await apiFetchJson(`template/${template.id}/anchored-comments`, {
+            method: 'POST',
+            body: {
+              comment_id: commentId,
+              anchor_from: range.from,
+              anchor_to: range.to,
+              anchor_text_snapshot: range.text.slice(0, 1000),
+            },
+          });
+        } catch (e) {
+          console.warn('[WizardStep2Blocks] anchor save failed', e);
+        }
+        onCommentAdded?.(res.data);
+        return commentId;
+      } catch (e) {
+        console.error('[WizardStep2Blocks] comment create failed', e);
+        return null;
+      }
+    },
+    [activeSingleId, template.id, onCommentAdded],
+  );
 
   const handleEditComment = useCallback(async (commentId: string, newBody: string) => {
     const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
@@ -598,6 +732,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             itemState={activeSingleId === block.id ? 'selected' : (selectedBlockIds.includes(block.id) ? 'multi-queued' : 'default')}
                             onClick={() => handleBlockClick(block.id)}
                             hasReviewComments={reviewComments.some(c => c.blockable_id === block.id)}
+                            isCompleted={completedBlocks.isCompleted(block.id)}
                           />
                         ))}
                       </SortableContext>
@@ -605,14 +740,19 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   )}
                 </div>
                 <div className="p-4 border-t border-ui-border dark:border-ui-dark-border shrink-0">
-                  <Button
-                    variant="outline"
-                    className="w-full border-dashed"
-                    onClick={() => void handleAddBlock()}
+                  <AddBlockMenu
                     disabled={busy}
-                  >
-                    + Añadir bloque
-                  </Button>
+                    ctx={{
+                      templateId: template.id,
+                      createBlock: (block) => void handleAddBlock(block),
+                      openDocxSplitter: () => setDocxSplitterOpen(true),
+                      setActiveDialog: (id) => {
+                        if (id === 'docx-splitter') setDocxSplitterOpen(true);
+                        else if (id === null) setDocxSplitterOpen(false);
+                      },
+                      hasPermission,
+                    }}
+                  />
                 </div>
               </div>
             )}
@@ -659,36 +799,89 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
               </div>
             )}
 
-            {/* Regular header — hidden in fullscreen */}
+            {/* Regular header — hidden in fullscreen.
+                Responsive: row on >=sm, stacked column on mobile. Action
+                buttons wrap (flex-wrap) so they drop to a second row when
+                the title is long. Destructive/secondary actions collapse
+                to icon-only on small screens to keep the row compact. */}
             {!isEditorFullscreen && (
-              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex items-center justify-between shrink-0 bg-white dark:bg-ui-dark-card">
+              <div className="px-5 py-3 border-b border-ui-border dark:border-ui-dark-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 shrink-0 bg-white dark:bg-ui-dark-card">
                 <div className="flex items-center gap-3 min-w-0">
                   <h3 className="text-sm font-bold truncate uppercase tracking-widest">
                     Bloque {blocks.indexOf(selectedBlock) + 1}: {selectedBlock.title}
                   </h3>
                   {renderSaveStatus()}
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  {!showCommentPanel && selectedBlock?.title && (
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={() => setShowCommentPanel(true)}
-                      className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
-                    >
-                      Comentarios ({getCommentsForBlock(activeSingleId, reviewComments).length})
-                    </Button>
-                  )}
-                  <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy}>Duplicar</Button>
-                  <Button variant="outline" size="xs" className="text-danger hover:bg-danger/5 hover:border-danger/40" onClick={() => setDeleteModal(true)}>{t('common:actions.delete')}</Button>
-                  <Button variant="ghost" size="xs" className="hover:text-text-primary" onClick={() => void handleCancel()}>{t('common:actions.cancel')}</Button>
+                <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
+                  {!showCommentPanel && selectedBlock?.title && (() => {
+                    const blockCommentsCount = getCommentsForBlock(activeSingleId, reviewComments).length;
+                    return (
+                      <Button
+                        variant="outline"
+                        size="xs"
+                        onClick={() => setShowCommentPanel(true)}
+                        className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                        title="Comentarios de revisión"
+                      >
+                        <span className="hidden sm:inline">Comentarios</span>
+                        <span className="sm:hidden" aria-hidden>💬</span>
+                        {blockCommentsCount > 0 && (
+                          <span
+                            aria-label={`${blockCommentsCount} comentarios`}
+                            className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none"
+                          >
+                            {blockCommentsCount > 99 ? '99+' : blockCommentsCount}
+                          </span>
+                        )}
+                      </Button>
+                    );
+                  })()}
+                  {activeSingleId && (() => {
+                    const isDone = completedBlocks.isCompleted(activeSingleId);
+                    return (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="xs"
+                        className={isDone
+                          ? 'text-success-dark border-success/60 bg-success/10 hover:bg-success/15'
+                          : 'text-text-secondary border-ui-border hover:text-success-dark hover:border-success/60'}
+                        onClick={() => completedBlocks.toggle(activeSingleId)}
+                        aria-pressed={isDone}
+                        title={isDone ? 'Marcar como pendiente' : 'Marcar bloque como finalizado'}
+                      >
+                        <span className="inline-flex items-center gap-1">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                          <span className="hidden sm:inline">{isDone ? 'Finalizado' : 'Finalizar'}</span>
+                        </span>
+                      </Button>
+                    );
+                  })()}
+                  <Button variant="outline" size="xs" onClick={handleDuplicate} disabled={busy} title="Duplicar">
+                    <span className="hidden sm:inline">Duplicar</span>
+                    <span className="sm:hidden" aria-hidden>⎘</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="text-danger hover:bg-danger/5 hover:border-danger/40"
+                    onClick={() => setDeleteModal(true)}
+                    title={t('common:actions.delete')}
+                  >
+                    <span className="hidden sm:inline">{t('common:actions.delete')}</span>
+                    <span className="sm:hidden" aria-hidden>🗑</span>
+                  </Button>
                 </div>
               </div>
             )}
 
-            {/* Tabs — hidden in fullscreen */}
+            {/* Tabs — hidden in fullscreen. "Cancelar" lives at the right
+                edge of the tab strip so the header row above has more
+                breathing room on narrow viewports. */}
             {!isEditorFullscreen && (
-              <div className="flex border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
+              <div className="flex items-stretch border-b border-ui-border dark:border-ui-dark-border shrink-0 bg-white dark:bg-ui-dark-card">
                 {(['properties', 'content', 'description'] as TabId[]).map(tab => {
                   const isTabDisabled = (tab === 'content' || tab === 'description') && validateBlockName(formName) !== '';
 
@@ -710,6 +903,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     </button>
                   );
                 })}
+                <div className="ml-auto flex items-center pr-3">
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="hover:text-text-primary"
+                    onClick={() => void handleCancel()}
+                  >
+                    {t('common:actions.cancel')}
+                  </Button>
+                </div>
               </div>
             )}
 
@@ -745,7 +948,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 </div>
               )}
               {activeTab === 'content' && (
-                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
+                <ErrorBoundaryWrapper>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
                     {!formName.trim() ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
@@ -793,6 +996,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               isDark={effectiveIsDark}
                               onFullscreenChange={handleEditorFullscreenChange}
                               uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
+                              onCreateComment={handleCreateAnchoredComment}
+                              commentsById={commentsById}
                             />
                           </Suspense>
                         )}
@@ -800,10 +1005,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </ErrorBoundaryWrapper>
               )}
               {activeTab === 'description' && (
-                <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de descripción.</div>}>
+                <ErrorBoundaryWrapper>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
                     {!formName.trim() ? (
                       <div className="flex-1 flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-ui-dark-card rounded-xl border border-dashed border-ui-border dark:border-ui-dark-border opacity-60">
@@ -823,12 +1028,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}
                             uploadFile={(file: File) => uploadMedia(file, activeSingleId ? { type: 'block', id: activeSingleId } : undefined)}
+                            onCreateComment={handleCreateAnchoredComment}
+                            commentsById={commentsById}
                           />
                         </Suspense>
                       </div>
                     )}
                   </div>
-                </ErrorBoundary>
+                </ErrorBoundaryWrapper>
               )}
             </div>
           </div>
@@ -863,6 +1070,13 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         onConfirm={handleDelete}
         onCancel={() => setDeleteModal(false)}
         loading={busy}
+      />
+
+      <DocxBlockSplitter
+        open={docxSplitterOpen}
+        onCancel={() => setDocxSplitterOpen(false)}
+        onConfirm={handleImportDocx}
+        isDark={effectiveIsDark}
       />
     </div>
   );

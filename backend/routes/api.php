@@ -1,6 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\AnchoredCommentController;
 use App\Http\Controllers\Api\CommentController;
+use App\Http\Controllers\Api\DocumentDocxController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\DocumentBlockController;
 use App\Http\Controllers\Api\DocumentController;
@@ -216,6 +218,29 @@ Route::prefix('v1')->group(function () {
             ->shallow()
             ->whereUuid('template')
             ->whereUuid('comment');
+
+        // Anchored comments — polymorphic on {resource_type}/{resource_id}.
+        // Authorization is enforced inside the controller against the
+        // resolved model's policy.
+        Route::get('{resource_type}/{resource_id}/anchored-comments', [AnchoredCommentController::class, 'index'])
+            ->whereIn('resource_type', ['template', 'document'])
+            ->whereUuid('resource_id');
+        Route::post('{resource_type}/{resource_id}/anchored-comments', [AnchoredCommentController::class, 'store'])
+            ->whereIn('resource_type', ['template', 'document'])
+            ->whereUuid('resource_id');
+        Route::put('{resource_type}/{resource_id}/anchored-comments/{anchorId}', [AnchoredCommentController::class, 'update'])
+            ->whereIn('resource_type', ['template', 'document'])
+            ->whereUuid('resource_id')
+            ->whereUuid('anchorId');
+        Route::delete('{resource_type}/{resource_id}/anchored-comments/{anchorId}', [AnchoredCommentController::class, 'destroy'])
+            ->whereIn('resource_type', ['template', 'document'])
+            ->whereUuid('resource_id')
+            ->whereUuid('anchorId');
+
+        // .docx export — secured by `view` on the target document.
+        // (Import is client-side via the wizard's DocxBlockSplitter; no server endpoint.)
+        Route::get('documents/{document}/export.docx', [DocumentDocxController::class, 'export'])
+            ->whereUuid('document');
         // Usuarios — búsqueda para asignación de revisores y compartición
         Route::get('/users', [UserController::class, 'index']);
         Route::get('/users/reviewer-candidates', [UserController::class, 'reviewerCandidates']);

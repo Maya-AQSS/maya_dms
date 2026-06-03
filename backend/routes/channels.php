@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Broadcast;
 
 /*
@@ -23,6 +24,13 @@ use Illuminate\Support\Facades\Broadcast;
  * con el userId del canal, evitando que un usuario pueda escuchar las
  * notificaciones de otro.
  */
-Broadcast::channel('notifications.{userId}', function (\App\Models\User $user, string $userId): bool {
-    return $user->id === $userId;
+/**
+ * Type-hint is `Authenticatable` (not `App\Models\User`) because the JWT
+ * middleware from shared-auth-laravel resolves authenticated users to
+ * `Maya\Auth\Models\BaseJwtUser` (or `App\Models\JwtUser` in maya_dms) —
+ * a DTO of JWT claims, NOT an Eloquent `User`. Strict-typing to `User`
+ * caused a TypeError 500 on every `/api/v1/broadcasting/auth` call.
+ */
+Broadcast::channel('notifications.{userId}', function (Authenticatable $user, string $userId): bool {
+    return $user->getAuthIdentifier() === $userId;
 });

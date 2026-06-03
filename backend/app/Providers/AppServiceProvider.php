@@ -21,6 +21,7 @@ use App\Policies\TemplateBlockPolicy;
 use App\Policies\TemplatePolicy;
 use App\Policies\ThemePolicy;
 use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
+use App\Repositories\Contracts\AnchoredCommentRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
@@ -39,6 +40,7 @@ use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
 use App\Repositories\Eloquent\AcademicHierarchyRepository;
+use App\Repositories\Eloquent\AnchoredCommentRepository;
 use App\Repositories\Eloquent\CommentRepository;
 use App\Repositories\Eloquent\DocumentBlockRepository;
 use App\Repositories\Eloquent\DocumentRepository;
@@ -57,8 +59,10 @@ use App\Repositories\Eloquent\UserDirectoryRepository;
 use App\Repositories\Eloquent\UserFavoriteRepository;
 use App\Repositories\Eloquent\UserProfileRepository;
 use App\Repositories\Resolvers\FdwUserProfileResolver;
+use App\Services\AnchoredCommentService;
 use App\Services\ApiTeamEmbedService;
 use App\Services\CommentService;
+use App\Services\Contracts\AnchoredCommentServiceInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DashboardServiceInterface;
@@ -123,6 +127,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(UserDirectoryRepositoryInterface::class, UserDirectoryRepository::class);
         $this->app->bind(ResolvedPermissionReaderInterface::class, ResolvedPermissionReader::class);
         $this->app->bind(AcademicHierarchyRepositoryInterface::class, AcademicHierarchyRepository::class);
+        $this->app->bind(AnchoredCommentRepositoryInterface::class, AnchoredCommentRepository::class);
 
         // Service bindings
         $this->app->bind(ApiTeamEmbedServiceInterface::class, ApiTeamEmbedService::class);
@@ -135,6 +140,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(ProcessServiceInterface::class, ProcessService::class);
         $this->app->bind(TeamReadServiceInterface::class, TeamReadService::class);
         $this->app->bind(CommentServiceInterface::class, CommentService::class);
+        $this->app->bind(AnchoredCommentServiceInterface::class, AnchoredCommentService::class);
         $this->app->bind(DashboardServiceInterface::class, DashboardService::class);
         $this->app->bind(TemplateServiceInterface::class, TemplateService::class);
         $this->app->bind(TemplateBlockServiceInterface::class, TemplateBlockService::class);

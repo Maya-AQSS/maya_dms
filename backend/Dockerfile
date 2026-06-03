@@ -1,11 +1,13 @@
 FROM php:8.4-fpm-alpine
 
 RUN apk add --no-cache \
-    bash git curl libpng-dev libxml2-dev zip unzip \
+    bash git curl libpng-dev libxml2-dev libzip-dev zip unzip \
     postgresql-dev oniguruma-dev linux-headers
 
+# `zip` (ext-zip / ZipArchive) is required by phpoffice/phpword to write .docx
+# files in DocumentDocxController::export.
 RUN docker-php-ext-install \
-    pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd sockets
+    pdo pdo_pgsql pgsql mbstring exif pcntl bcmath gd sockets zip
 
 # ─── WeasyPrint (Python) — PDF/UA tagged accessible PDF generation ─
 # Requisito legal de accesibilidad (UNE-EN 301549 / WCAG / PDF/UA).
