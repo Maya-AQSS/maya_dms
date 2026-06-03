@@ -19,7 +19,6 @@ vi.mock('@blocknote/ariakit', () => ({
 }));
 
 vi.mock('@blocknote/ariakit/style.css', () => ({}));
-vi.mock('../../styles/blocknote-panel.css', () => ({}));
 
 vi.mock('../../../utils/blockNoteRepair', () => ({
   repairBlockNoteBlocks: (b: any) => b,
