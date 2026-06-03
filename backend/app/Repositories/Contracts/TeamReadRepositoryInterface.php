@@ -7,6 +7,20 @@ namespace App\Repositories\Contracts;
 interface TeamReadRepositoryInterface
 {
     /**
+     * Devuelve todos los equipos sin filtros de acceso (uso interno).
+     *
+     * @return list<array{id: string, name: string, is_department: bool, owner_id: string}>
+     */
+    public function listAllTeams(): array;
+
+    /**
+     * Devuelve un equipo por ID sin filtros de acceso o null (uso interno).
+     *
+     * @return array{id: string, name: string, is_department: bool, owner_id: string}|null
+     */
+    public function findTeamById(string $teamId): ?array;
+
+    /**
      * Devuelve equipos visibles para el usuario.
      *
      * @return list<array{id: string, name: string, is_department: bool}>
