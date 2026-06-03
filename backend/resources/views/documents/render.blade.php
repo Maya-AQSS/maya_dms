@@ -511,7 +511,7 @@
         <p class="doc-subject">{{ $document['subject'] }}</p>
     @endif
 
-    {{-- Contenido del documento (HTML sanitizado por BlockNoteHtmlRenderer en backend) --}}
+    {{-- Contenido del documento (HTML producido por TiptapHtmlRenderer en backend) --}}
     {!! $document['body_html'] !!}
 </main>
 
