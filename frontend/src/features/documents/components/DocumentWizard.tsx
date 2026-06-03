@@ -1592,7 +1592,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </div>
             </div>
 
-            {(isDraft && detail?.owner_id === currentUserId )|| (!detail?.owner_id ) && (
+            {((isDraft && detail?.owner_id === currentUserId )|| (!detail?.owner_id)) && (
               <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in space-y-3">
                 <p className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
                   Propietario
