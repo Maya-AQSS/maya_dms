@@ -112,7 +112,7 @@ class CommentController extends Controller
         $this->authorize('update', $commentModel);
 
         $commentDto = $this->commentService->update(
-            $commentModel,
+            $comment,
             $request->commentBody(),
             (string) Auth::id(),
         );
@@ -127,7 +127,7 @@ class CommentController extends Controller
         $this->authorizeCommentAccess($commentModel, 'view');
         $this->authorize('delete', $commentModel);
 
-        $this->commentService->delete($commentModel, (string) Auth::id(), Auth::user()?->name ?? '');
+        $this->commentService->delete($comment, (string) Auth::id(), Auth::user()?->name ?? '');
 
         return response()->json([], 204);
     }

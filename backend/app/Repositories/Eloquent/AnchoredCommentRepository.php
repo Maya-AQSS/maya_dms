@@ -15,6 +15,9 @@ class AnchoredCommentRepository implements AnchoredCommentRepositoryInterface
         return AnchoredComment::findOrFail($id);
     }
 
+    /**
+     * @return Collection<int, AnchoredComment>
+     */
     public function findByResource(string $resourceType, string $resourceId): Collection
     {
         return AnchoredComment::query()

@@ -327,9 +327,38 @@ erDiagram
 - themes.cloned_from_id → No explicit FK in migration; model has `parent()` BelongsTo relation; will cause orphans if parent is deleted. Consider adding FK constraint in migration.
 - comments.parent_id → No explicit FK in migration; model has `parent()` BelongsTo relation; will cause orphans if parent is deleted. Consider adding FK constraint in migration.
 
-## Auditoría Odoo/FDW
+## Categoría de tablas
 
-### Consumo de entidades Odoo por mecanismo
+### Tablas FÍSICA (propias de maya_dms)
+
+- **processes** — Definición de flujos y procesos
+- **templates**, **template_blocks**, **template_reviewers**, **template_document_reviewers** — Gestión de plantillas
+- **template_version_block_layers** — Versionado de capas de bloques en plantillas
+- **documents**, **document_blocks**, **document_shares**, **document_versions**, **document_reviews** — Gestión de documentos
+- **document_version_block_layers** — Versionado de capas de bloques en documentos
+- **block_versions** — Historial de versiones de bloques
+- **comments**, **comment_edits**, **anchored_comments** — Sistema de comentarios
+- **entity_versions** — Base de versionado (polimórfica)
+- **themes** — Temas visuales
+- **permissions** — Definiciones de permisos
+- **user_favorite_templates**, **user_favorite_documents** — Favoritos del usuario
+
+### Tablas FDW Odoo (read-only, shared-profile)
+
+%% FDW Odoo (read-only) — shared-profile
+
+- **users** — FDW vivo (foreign table + pass-through view)
+- **teams** — FDW vivo (foreign table + pass-through view)
+- **team_members** — FDW vivo (foreign table + pass-through view)
+- **study_types** — FDW vivo (foreign table + view filtrada)
+- **studies** — FDW vivo (foreign table + view filtrada)
+- **course_modules** — FDW vivo (2 foreign tables + view JOIN cross-FDW)
+- **user_study_types** — FDW vivo (view materializada desde FDW res_company_users_rel)
+- **user_studies** — FDW vivo (view materializada desde FDW + maya_core_study)
+- **user_course_modules** — FDW vivo (view materializada desde FDW subject_employee_rel)
+- **user_resolved_permissions** — Vista FDW (materializada desde maya_authorization, read-only)
+
+### Auditoría de consumo FDW
 
 | Entidad | Mecanismo | Correcto? | Evidencia |
 |---------|-----------|----------|-----------|
@@ -342,6 +371,7 @@ erDiagram
 | user_study_types | FDW vivo (view materializada desde FDW res_company_users_rel) | ✓ | `shared-profile-laravel/database/migrations/academic-assignments/2026_05_18_000003_create_user_study_types_foreign_table.php:103-117` |
 | user_studies | FDW vivo (view materializada desde FDW + maya_core_study) | ✓ | `shared-profile-laravel/database/migrations/academic-assignments/2026_05_18_000004_create_user_studies_foreign_table.php:107-124` |
 | user_course_modules | FDW vivo (view materializada desde FDW subject_employee_rel) | ✓ | `shared-profile-laravel/database/migrations/academic-assignments/2026_05_18_000005_create_user_course_modules_foreign_table.php:111-125` |
+| user_resolved_permissions | Vista FDW (maya_authorization, permisos resueltos) | ✓ | AppServiceProvider:184 `loadMigrationsFrom(ProfileMigrations::userPermissions())` |
 
 ### Duplicaciones y discrepancias
 

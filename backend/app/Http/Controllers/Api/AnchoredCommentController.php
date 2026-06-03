@@ -37,7 +37,7 @@ final class AnchoredCommentController extends Controller
 
         $anchors = $this->anchoredCommentService->listForResource($resourceType, (string) $resource->getKey());
 
-        return response()->json(['data' => AnchoredCommentResource::collection($anchors)]);
+        return response()->json(['data' => array_map(fn ($dto) => new AnchoredCommentResource($dto), $anchors)]);
     }
 
     public function store(

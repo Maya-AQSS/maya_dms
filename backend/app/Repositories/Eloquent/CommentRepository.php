@@ -7,7 +7,9 @@ namespace App\Repositories\Eloquent;
 use App\Models\Comment;
 use App\Models\CommentEdit;
 use App\Models\Document;
+use App\Models\DocumentBlock;
 use App\Models\Template;
+use App\Models\TemplateBlock;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
@@ -54,8 +56,10 @@ class CommentRepository implements CommentRepositoryInterface
     /**
      * Actualiza el cuerpo del comentario y guarda la versión anterior en comment_edits.
      */
-    public function update(Comment $comment, string $newBody, string $editedBy): Comment
+    public function update(string $commentId, string $newBody, string $editedBy): Comment
     {
+        $comment = $this->findOrFail($commentId);
+
         CommentEdit::create([
             'comment_id' => $comment->id,
             'previous_body' => $comment->body,
@@ -77,12 +81,24 @@ class CommentRepository implements CommentRepositoryInterface
     }
 
     /**
+     * Marca un comentario como eliminado.
+     */
+    public function delete(string $commentId, string $deletedBy, string $deletedByName): void
+    {
+        $comment = $this->findOrFail($commentId);
+        $comment->deleted_by = $deletedBy;
+        $comment->deleted_by_name = $deletedByName;
+        $comment->save();
+        $comment->delete();
+    }
+
+    /**
      * Indica si el usuario es autor del comentario o propietario/creador
      * del documento padre. Usado para control de acceso al historial de auditoría.
      */
     public function isAuthorOrDocumentOwner(string $commentId, string $userId): bool
     {
-        $isAuthor = DB::table('comments')
+        $isAuthor = Comment::query()
             ->where('id', $commentId)
             ->where('author_id', $userId)
             ->exists();
@@ -91,7 +107,7 @@ class CommentRepository implements CommentRepositoryInterface
             return true;
         }
 
-        return DB::table('comments')
+        return Comment::query()
             ->leftJoin('documents', function ($join) {
                 $join->on('comments.commentable_id', '=', 'documents.id')
                     ->where('comments.commentable_type', '=', Document::class);
@@ -126,7 +142,7 @@ class CommentRepository implements CommentRepositoryInterface
      */
     public function existsTemplateBlockForTemplate(string $blockId, string $templateId): bool
     {
-        return DB::table('template_blocks')
+        return TemplateBlock::query()
             ->where('id', $blockId)
             ->where('template_id', $templateId)
             ->exists();
@@ -137,7 +153,7 @@ class CommentRepository implements CommentRepositoryInterface
      */
     public function existsDocumentBlockForDocument(string $blockId, string $documentId): bool
     {
-        return DB::table('document_blocks')
+        return DocumentBlock::query()
             ->where('id', $blockId)
             ->where('document_id', $documentId)
             ->exists();
