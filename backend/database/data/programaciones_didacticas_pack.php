@@ -53,64 +53,110 @@ return (static function (): array {
     $uJefeEFp = $u('jefe_e_fp');
     $uJefeEBach = $u('jefe_e_bach');
 
-    // --- Helpers BlockNote ---
-    $baseParaProps = [
-        'textColor' => 'default',
-        'backgroundColor' => 'default',
-        'textAlignment' => 'left',
-    ];
-
-    $para = static function (string $text) use ($baseParaProps): array {
+    // --- Helpers Tiptap (ProseMirror) ---
+    $para = static function (string $text): array {
+        $content = [];
+        if ($text !== '') {
+            $content[] = ['type' => 'text', 'text' => $text];
+        }
         return [
             'type' => 'paragraph',
-            'props' => $baseParaProps,
-            'content' => [['type' => 'text', 'text' => $text, 'styles' => []]],
-            'children' => [],
+            'attrs' => ['textAlign' => 'left'],
+            'content' => $content,
         ];
     };
 
-    $paraBold = static function (string $text) use ($baseParaProps): array {
+    $paraBold = static function (string $text): array {
+        $content = [];
+        if ($text !== '') {
+            $content[] = [
+                'type' => 'text',
+                'text' => $text,
+                'marks' => [['type' => 'bold']],
+            ];
+        }
         return [
             'type' => 'paragraph',
-            'props' => $baseParaProps,
-            'content' => [['type' => 'text', 'text' => $text, 'styles' => ['bold' => true]]],
-            'children' => [],
+            'attrs' => ['textAlign' => 'left'],
+            'content' => $content,
         ];
     };
 
-    $heading = static function (int $level, string $text) use ($baseParaProps): array {
+    $heading = static function (int $level, string $text): array {
+        $content = [];
+        if ($text !== '') {
+            $content[] = ['type' => 'text', 'text' => $text];
+        }
         return [
             'type' => 'heading',
-            'props' => array_merge($baseParaProps, ['level' => max(1, min(3, $level))]),
-            'content' => [['type' => 'text', 'text' => $text, 'styles' => []]],
-            'children' => [],
+            'attrs' => ['textAlign' => 'left', 'level' => max(1, min(3, $level))],
+            'content' => $content,
         ];
     };
 
-    $bullet = static function (string $text) use ($baseParaProps): array {
+    $bullet = static function (string $text): array {
+        $content = [];
+        if ($text !== '') {
+            $content[] = ['type' => 'text', 'text' => $text];
+        }
         return [
-            'type' => 'bulletListItem',
-            'props' => $baseParaProps,
-            'content' => [['type' => 'text', 'text' => $text, 'styles' => []]],
-            'children' => [],
+            'type' => 'listItem',
+            'attrs' => ['textAlign' => 'left'],
+            'content' => [
+                [
+                    'type' => 'paragraph',
+                    'content' => $content,
+                ],
+            ],
         ];
     };
 
     /**
      * Representa una tabla como párrafo único con saltos de línea y pipes.
-     * Mismo patrón que `dwes_official_programacion_blocknote.php` — funcional y robusto.
+     * Devuelve nodo Tiptap, no BlockNote.
      */
-    $tableAsPara = static function (array $headers, array $rows) use ($baseParaProps): array {
+    $tableAsPara = static function (array $headers, array $rows): array {
         $lines = [implode(' | ', $headers)];
         foreach ($rows as $row) {
             $lines[] = implode(' | ', array_map('strval', $row));
         }
+        $text = implode("\n", $lines);
+        $content = [];
+        if ($text !== '') {
+            $content[] = ['type' => 'text', 'text' => $text];
+        }
         return [
             'type' => 'paragraph',
-            'props' => $baseParaProps,
-            'content' => [['type' => 'text', 'text' => implode("\n", $lines), 'styles' => []]],
-            'children' => [],
+            'attrs' => ['textAlign' => 'left'],
+            'content' => $content,
         ];
+    };
+
+    /**
+     * Agrupa items listItem consecutivos en un bulletList Tiptap.
+     * Devuelve un doc Tiptap con content finalizador.
+     */
+    $finalizeDoc = static function (array $blocks): array {
+        $grouped = [];
+        $currentList = [];
+
+        foreach ($blocks as $block) {
+            if (($block['type'] ?? null) === 'listItem') {
+                $currentList[] = $block;
+            } else {
+                if ($currentList !== []) {
+                    $grouped[] = ['type' => 'bulletList', 'content' => $currentList];
+                    $currentList = [];
+                }
+                $grouped[] = $block;
+            }
+        }
+
+        if ($currentList !== []) {
+            $grouped[] = ['type' => 'bulletList', 'content' => $currentList];
+        }
+
+        return ['type' => 'doc', 'content' => $grouped];
     };
 
     // ============================================================
@@ -280,14 +326,14 @@ return (static function (): array {
         $T2 => 2,
     ];
 
-    $L = static function (string $tplId, int $idx, string $title, string $state, array $defaultContent, string $desc = '') use (&$blocks, $templateIndexMap): void {
+    $L = static function (string $tplId, int $idx, string $title, string $state, array $defaultContent, string $desc = '') use (&$blocks, $templateIndexMap, $finalizeDoc): void {
         $template_index = $templateIndexMap[$tplId] ?? 0;
         $blockId = sprintf('bb%06d-0000-4000-8000-%012d', $template_index, $idx);
         $blocks[] = [
             'id' => $blockId,
             'template_id' => $tplId,
             'title' => $title,
-            'default_content' => $defaultContent,
+            'default_content' => $finalizeDoc($defaultContent),
             'description' => $desc !== '' ? $desc
                 : "Guía para el revisor: verifica que «{$title}» esté completo, sea coherente con la programación y cumpla la normativa del centro antes de validar.",
             'block_state' => $state,
