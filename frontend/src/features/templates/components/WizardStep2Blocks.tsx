@@ -308,21 +308,41 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     let parsedDesc: unknown = null;
     try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
     try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
-    // Normalize whitespace-only BlockNote content to null so it is stored as empty
-    // and the UI shows "Este bloque no tiene contenido." instead of blank text nodes.
-    // Non-text blocks (image, etc.) carry content in `props`, not `content[]`, so they
-    // must never be treated as blank even when their `content` array is empty.
-    if (Array.isArray(parsedContent) && parsedContent.length > 0) {
-      type BlockNoteNode = { type?: string; content?: Array<{ text?: unknown }> };
-      const isBlank = (parsedContent as BlockNoteNode[]).every((b) =>
-        b.type !== 'image' &&
-        b.type !== 'table' && (
-          !Array.isArray(b.content) ||
-          b.content.length === 0 ||
-          b.content.every((c) => typeof c.text !== 'string' || !c.text.trim())
-        ),
+    type TiptapNode = {
+      type?: string;
+      text?: string;
+      content?: TiptapNode[];
+    };
+
+    const hasMeaningfulContent = (node: TiptapNode): boolean => {
+      // Texto real
+      if (node.type === 'text') {
+        return typeof node.text === 'string' && node.text.trim().length > 0;
+      }
+
+      // Nodos no textuales que deben considerarse contenido
+      if (
+        node.type === 'image' ||
+        node.type === 'table' ||
+        node.type === 'bulletList' ||
+        node.type === 'orderedList'
+      ) {
+        return true;
+      }
+
+      return Array.isArray(node.content)
+        ? node.content.some(hasMeaningfulContent)
+        : false;
+    };
+
+    if (Array.isArray(parsedContent)) {
+      const containsContent = parsedContent.some((node) =>
+        hasMeaningfulContent(node as TiptapNode),
       );
-      if (isBlank) parsedContent = null;
+
+      if (!containsContent) {
+        parsedContent = null;
+      }
     }
     await updateBlock(blockId, {
       title: formName.trim(),
