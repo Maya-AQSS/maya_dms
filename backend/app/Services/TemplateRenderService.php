@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Constants\DocumentConstants;
-use App\Models\Theme;
-use App\Models\Template;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\ThemeRepositoryInterface;
 use App\Services\Contracts\TemplateRenderServiceInterface;
 use App\Support\BlockNoteHtmlRenderer;
 use Illuminate\Support\Facades\View;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Genera el HTML themed de una plantilla para mostrar cómo se verá un
@@ -23,13 +23,17 @@ class TemplateRenderService implements TemplateRenderServiceInterface
 {
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
+        private readonly ThemeRepositoryInterface $themeRepository,
     ) {}
 
     public function renderHtml(string $templateId, bool $previewMode = false): string
     {
-        $template = $this->templateRepository->findOrFailWithBlocksOrderedWithoutCatalogScope($templateId);
+        $template = $this->templateRepository->findForRenderingWithoutCatalogScope($templateId);
+        if ($template === null) {
+            throw new NotFoundHttpException('Template no encontrado.');
+        }
 
-        $theme = $this->resolveTheme($template);
+        $theme = $this->resolveTheme($template->themeId);
 
         // El cuerpo del "preview document" se construye a partir de los
         // `default_content` de cada bloque, en orden. Cada bloque empieza
@@ -37,11 +41,11 @@ class TemplateRenderService implements TemplateRenderServiceInterface
         // si en algún momento alguien decide imprimir el preview.
         $blockHtmlParts = [];
         foreach ($template->blocks as $block) {
-            $title = (string) ($block->title ?? '');
+            $title = (string) ($block['title'] ?? '');
             if ($title !== '') {
                 $blockHtmlParts[] = '<h2>'.e($title).'</h2>';
             }
-            $default = $block->default_content;
+            $default = $block['default_content'];
             if (is_array($default) && count($default) > 0) {
                 $blockHtmlParts[] = BlockNoteHtmlRenderer::renderBlocks($default);
             } elseif (is_string($default) && $default !== '') {
@@ -67,24 +71,28 @@ class TemplateRenderService implements TemplateRenderServiceInterface
     }
 
     /**
+     * Resolve theme data by ID or return defaults.
+     *
      * @return array<string, mixed>
      */
-    private function resolveTheme(Template $template): array
+    private function resolveTheme(?string $themeId): array
     {
-        /** @var Theme|null $theme */
-        $theme = $template->theme ?? null;
+        if ($themeId === null) {
+            return DocumentConstants::DEFAULT_THEME;
+        }
 
-        if ($theme === null) {
+        $themeDto = $this->themeRepository->findThemeResolvedById($themeId);
+        if ($themeDto === null) {
             return DocumentConstants::DEFAULT_THEME;
         }
 
         return [
-            'palette' => (array) ($theme->palette ?? DocumentConstants::DEFAULT_THEME['palette']),
-            'typography' => (array) ($theme->typography ?? DocumentConstants::DEFAULT_THEME['typography']),
-            'layout' => (array) ($theme->layout ?? DocumentConstants::DEFAULT_THEME['layout']),
-            'assets' => (array) ($theme->assets ?? DocumentConstants::DEFAULT_THEME['assets']),
-            'accessibility' => (array) ($theme->accessibility ?? DocumentConstants::DEFAULT_THEME['accessibility']),
-            'brand_name' => (string) ($theme->name ?? 'CEEDCV'),
+            'palette' => $themeDto->palette ?: DocumentConstants::DEFAULT_THEME['palette'],
+            'typography' => $themeDto->typography ?: DocumentConstants::DEFAULT_THEME['typography'],
+            'layout' => $themeDto->layout ?: DocumentConstants::DEFAULT_THEME['layout'],
+            'assets' => $themeDto->assets ?: DocumentConstants::DEFAULT_THEME['assets'],
+            'accessibility' => $themeDto->accessibility ?: DocumentConstants::DEFAULT_THEME['accessibility'],
+            'brand_name' => $themeDto->brandName,
         ];
     }
 }

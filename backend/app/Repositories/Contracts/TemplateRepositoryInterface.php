@@ -185,4 +185,14 @@ interface TemplateRepositoryInterface
      * Limpia datos de submission del head version snapshot (cuando se publica).
      */
     public function cleanHeadVersionSubmissionData(string $templateId): void;
+
+    /**
+     * Fetch template data for rendering (HTML export/preview).
+     * Returns template ID, name, description, theme_id, and blocks ordered by sort_order.
+     * Blocks contain: id, title, default_content.
+     * Without global catalog scope; caller must authorize.
+     *
+     * @return \App\DTOs\Templates\TemplateRenderDto|null
+     */
+    public function findForRenderingWithoutCatalogScope(string $id): ?\App\DTOs\Templates\TemplateRenderDto;
 }

@@ -23,8 +23,8 @@ class ThemeAssetService implements ThemeAssetServiceInterface
 
     public function upload(string $themeId, string $assetKey, UploadedFile $file): ThemeDto
     {
-        $theme = $this->repository->findById($themeId);
-        if ($theme === null) {
+        $assets = $this->repository->findThemeAssetsById($themeId);
+        if ($assets === null) {
             throw new NotFoundHttpException('Theme no encontrado.');
         }
 
@@ -34,12 +34,12 @@ class ThemeAssetService implements ThemeAssetServiceInterface
         Storage::disk(self::DISK)->put($path, $file->getContent());
 
         // Delete previous asset of same kind if existed (housekeeping).
-        $previous = $theme->assets[$assetKey] ?? null;
+        $previous = $assets[$assetKey] ?? null;
         if (is_string($previous) && $previous !== '' && $previous !== $path) {
             Storage::disk(self::DISK)->delete($previous);
         }
 
-        $newAssets = array_replace($theme->assets, [$assetKey => $path]);
+        $newAssets = array_replace($assets, [$assetKey => $path]);
 
         return $this->repository->update($themeId, new UpdateThemeDto(assets: $newAssets));
     }

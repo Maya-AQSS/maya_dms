@@ -795,4 +795,40 @@ class TemplateRepository implements TemplateRepositoryInterface
             $ev->save();
         }
     }
+
+    /**
+     * Fetch template data for rendering (HTML export/preview).
+     * Returns template ID, name, description, theme_id, and blocks ordered by sort_order.
+     * Blocks contain: id, title, default_content.
+     * Without global catalog scope; caller must authorize.
+     *
+     * @return \App\DTOs\Templates\TemplateRenderDto|null
+     */
+    public function findForRenderingWithoutCatalogScope(string $id): ?\App\DTOs\Templates\TemplateRenderDto
+    {
+        $template = Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order')])
+            ->find($id);
+
+        if ($template === null) {
+            return null;
+        }
+
+        $blocks = $template->blocks
+            ->map(fn (TemplateBlock $b) => [
+                'id' => (string) $b->id,
+                'title' => $b->title,
+                'default_content' => $b->default_content,
+            ])
+            ->all();
+
+        return new \App\DTOs\Templates\TemplateRenderDto(
+            id: (string) $template->id,
+            name: $template->name,
+            description: $template->description,
+            themeId: $template->theme_id !== null ? (string) $template->theme_id : null,
+            blocks: $blocks,
+        );
+    }
 }
