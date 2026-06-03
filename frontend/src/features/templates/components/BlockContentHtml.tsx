@@ -1,10 +1,8 @@
 /**
  * Read-only renderer for stored editor content.
  *
- * Accepts either legacy BlockNote JSON blocks (array) OR a TipTap doc
- * (object with `type: 'doc'`). The conversion happens at render time;
- * the same component therefore works before and after the
- * `blocknote:migrate-to-tiptap` data migration has run.
+ * Accepts a TipTap doc (object with `type: 'doc'`) or a bare TipTap
+ * content array (the shape MayaEditorPanel emits).
  *
  * Sanitisation is delegated to `@ceedcv-maya/shared-editor-react` whose
  * DOMPurify config matches the server-side `TiptapHtmlRenderer` output.
@@ -14,18 +12,6 @@ import {
   EditorContentHtml,
   type TiptapDoc,
 } from '@ceedcv-maya/shared-editor-react';
-import { BlockNoteEditor } from '@blocknote/core';
-import type { PartialBlock } from '@blocknote/core';
-import { repairBlockNoteBlocks } from '../../../utils/blockNoteRepair';
-
-// Headless BlockNote editor — only used when a row still holds legacy
-// content and we need an HTML snapshot until the migration runs. Drop
-// this singleton along with the legacy file once Fase 5 completes.
-let _headlessEditor: BlockNoteEditor | null = null;
-function getHeadlessEditor(): BlockNoteEditor {
-  if (!_headlessEditor) _headlessEditor = BlockNoteEditor.create();
-  return _headlessEditor;
-}
 
 function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
   return (
@@ -37,15 +23,6 @@ function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
   );
 }
 
-// A legacy BlockNote block array. ProseMirror node arrays also carry `type`
-// but never `props`/`children`, so those keys are the discriminator.
-// Mirror of the helper in MayaEditorPanel so reader and editor agree on shape.
-function looksLikeBlockNote(value: unknown): value is unknown[] {
-  if (!Array.isArray(value) || value.length === 0) return false;
-  const first = value[0] as { type?: unknown; props?: unknown; children?: unknown };
-  if (!first || typeof first !== 'object') return false;
-  return 'type' in first && ('props' in first || 'children' in first);
-}
 
 // A bare TipTap content array — the `content` field of a doc, which is the
 // wire shape MayaEditorPanel emits (`onChange(doc.content)`) and the backend
@@ -59,10 +36,6 @@ export function BlockContentHtml({ content }: { content: unknown[] | unknown }) 
   const html = useMemo(() => {
     if (content == null) return '';
 
-    // TipTap stored payload — let the shared renderer (or future SSR
-    // call) handle it. For now, the legacy headless editor still drives
-    // BlockNote-shaped data; once Fase 5 has flipped the column to
-    // TipTap shape, the BlockNote branch becomes dead and can go.
     try {
       // ProseMirror → HTML via a lightweight client conversion. We don't ship
       // the schema here; emit a permissive HTML serialisation. Accept both the
@@ -70,13 +43,6 @@ export function BlockContentHtml({ content }: { content: unknown[] | unknown }) 
       // and the backend persists for TipTap blocks).
       if (looksLikeTiptapDoc(content)) {
         return jsonDocToHtml(content);
-      }
-
-      // Legacy BlockNote content still drives the headless editor until the
-      // data migration flips the column to TipTap shape.
-      if (looksLikeBlockNote(content)) {
-        const repaired = repairBlockNoteBlocks(content);
-        return getHeadlessEditor().blocksToHTMLLossy(repaired as PartialBlock[]);
       }
 
       if (looksLikeTiptapContentArray(content)) {
