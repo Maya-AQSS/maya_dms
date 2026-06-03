@@ -455,9 +455,9 @@ class TemplateService implements TemplateServiceInterface
                 ]);
             }
 
-            if (! in_array((string) $head->status, ['draft', 'in_review'], true)) {
+            if (! in_array((string) $head->status, ['draft', 'in_review', 'rejected'], true)) {
                 throw ValidationException::withMessages([
-                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review).'],
+                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review/rejected).'],
                 ]);
             }
 
