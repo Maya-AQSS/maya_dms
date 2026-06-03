@@ -1,7 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
-import { EditorContentHtml, MayaEditor } from '@ceedcv-maya/shared-editor-react';
+import { MayaEditor } from '@ceedcv-maya/shared-editor-react';
+import { ChangelogHtmlContent } from './ChangelogHtmlContent';
 import {
   normalizeChangelogHtml,
   plainTextFromChangelogHtml,
@@ -36,10 +37,7 @@ export function SubmissionChangelogReadonly({ text }: { text: string }) {
       <h2 className="text-2xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary mb-2">
         {t('versionChangelog.readOnlyTitle', { defaultValue: 'Cambios enviados por el autor' })}
       </h2>
-      <EditorContentHtml
-        html={trimmed}
-        className="text-sm text-text-primary dark:text-text-dark-primary leading-relaxed maya-editor-content"
-      />
+      <ChangelogHtmlContent html={trimmed} variant="default" />
     </section>
   );
 }
