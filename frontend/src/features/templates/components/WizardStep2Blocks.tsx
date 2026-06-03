@@ -248,6 +248,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formName, setFormName] = useState('');
   const [formDesc, setFormDesc] = useState('');
   const [formContent, setFormContent] = useState('');
+  const [meaningFullContent, setMeaningFullContent] = useState(false);
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
   const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -317,7 +318,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     const hasMeaningfulContent = (node: TiptapNode): boolean => {
       // Texto real
       if (node.type === 'text') {
+        setMeaningFullContent(true)
         return typeof node.text === 'string' && node.text.trim().length > 0;
+      }else{
+        setMeaningFullContent(false)
       }
 
       // Nodos no textuales que deben considerarse contenido
@@ -329,18 +333,19 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       ) {
         return true;
       }
-
       return Array.isArray(node.content)
         ? node.content.some(hasMeaningfulContent)
         : false;
     };
 
+
     if (Array.isArray(parsedContent)) {
       const containsContent = parsedContent.some((node) =>
         hasMeaningfulContent(node as TiptapNode),
       );
-
+      setMeaningFullContent(true)
       if (!containsContent) {
+        setMeaningFullContent(false)
         parsedContent = null;
       }
     }
@@ -979,17 +984,20 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                     ) : (
                       <div className="flex-1 min-h-0 flex flex-col gap-2">
-                        {formUiState === 'modifiable'  && !formContent && (
+                        {meaningFullContent && (
+                          <p>{meaningFullContent}</p>
+                        )}
+                        {formUiState === 'modifiable'  && !meaningFullContent && (
                           <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
                             Los bloques tipo modificable deben tener contenido predeterminado (obligatorio).
                           </p>
                         )}
-                        {formUiState === 'locked' && !formContent && (
+                        {formUiState === 'locked' && !meaningFullContent && (
                           <p className="bg-warning/10 text-warning-dark rounded px-3 py-1.5 dark:bg-warning-dark/30 dark:text-warning-light">
                             Los bloques tipo bloqueado deben tener contenido predeterminado (obligatorio).
                           </p>
                         )}
-                        {formUiState === 'editable' && !formContent && (
+                        {formUiState === 'editable' && !meaningFullContent && (
                           <p className="bg-info/10 text-info-dark rounded px-3 py-1.5 dark:bg-info-dark/30 dark:text-info-light">
                             Se recomienda añadir contenido predeterminado para los bloques editables.
                           </p>
