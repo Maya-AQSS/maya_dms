@@ -283,4 +283,18 @@ interface DocumentRepositoryInterface
      * sin importar el estado de la revisión (pending, approved, rejected).
      */
     public function isReviewerAssignedToDocument(string $documentId, string $reviewerId): bool;
+
+    /**
+     * Busca un documento por su ID con control de acceso (scope user_access),
+     * o lanza ModelNotFoundException. Para usar en operaciones que necesitan autorización.
+     */
+    public function findByIdWithAccessControl(string $id): Document;
+
+    /**
+     * Busca los bloques de un documento ordenados por sort_order, con solo columnas de contenido.
+     * Para uso en exportación/renderizado.
+     *
+     * @return Collection<int, DocumentBlock>
+     */
+    public function findBlocksForExport(string $documentId): Collection;
 }

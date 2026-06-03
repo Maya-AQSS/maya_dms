@@ -862,4 +862,29 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->values()
             ->all();
     }
+
+    /**
+     * Busca un documento por su ID con control de acceso (scope user_access),
+     * o lanza ModelNotFoundException. Para usar en operaciones que necesitan autorización.
+     */
+    public function findByIdWithAccessControl(string $id): Document
+    {
+        return Document::query()
+            ->whereKey($id)
+            ->firstOrFail();
+    }
+
+    /**
+     * Busca los bloques de un documento ordenados por sort_order, con solo columnas de contenido.
+     * Para uso en exportación/renderizado.
+     *
+     * @return Collection<int, DocumentBlock>
+     */
+    public function findBlocksForExport(string $documentId): Collection
+    {
+        return DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->orderBy('sort_order')
+            ->get(['content', 'sort_order']);
+    }
 }
