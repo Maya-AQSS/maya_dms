@@ -1359,8 +1359,14 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Localiza una versión de documento por su ID.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     * }
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): array
     {
         return $this->documentVersionService->findDocumentVersionOrFail($documentId, $versionId);
     }

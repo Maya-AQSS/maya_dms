@@ -26,12 +26,24 @@ class DocumentVersionService
 
     /**
      * Localiza una versión snapshot del documento por id.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     * }
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): array
     {
-        $document = $this->documentRepository->findOrFail($documentId);
+        $this->documentRepository->findOrFail($documentId);
 
-        return $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
+        $version = $this->documentRepository->findDocumentVersionInDocumentOrFail($documentId, $versionId);
+
+        return [
+            'id' => $version->id,
+            'document_id' => $version->document_id,
+            'version_number' => (int) $version->version_number,
+        ];
     }
 
     /**
@@ -168,9 +180,7 @@ class DocumentVersionService
             ];
         });
 
-        $legacyVersions = $document->versions()
-            ->orderByDesc('version_number')
-            ->get()
+        $legacyVersions = $this->documentRepository->findLegacyDocumentVersionsOrderedDesc($documentId)
             ->map(function (DocumentVersion $v): array {
                 $snapshot = $v->snapshot_data;
                 if (is_string($snapshot)) {

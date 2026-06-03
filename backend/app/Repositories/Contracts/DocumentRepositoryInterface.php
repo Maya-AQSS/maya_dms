@@ -209,6 +209,13 @@ interface DocumentRepositoryInterface
     public function findLatestPublishedDocumentVersion(string $documentId): ?DocumentVersion;
 
     /**
+     * Todas las filas de document_versions para un documento, ordenadas descendentemente por version_number.
+     *
+     * @return Collection<int, DocumentVersion>
+     */
+    public function findLegacyDocumentVersionsOrderedDesc(string $documentId): Collection;
+
+    /**
      * Contexto académico de módulo para creación documental.
      *
      * @return array{module_id: string, study_id: string, study_type_id: ?string}|null

@@ -655,6 +655,14 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->first();
     }
 
+    public function findLegacyDocumentVersionsOrderedDesc(string $documentId): Collection
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->orderByDesc('version_number')
+            ->get();
+    }
+
     /**
      * Contexto académico de módulo para creación documental.
      *
