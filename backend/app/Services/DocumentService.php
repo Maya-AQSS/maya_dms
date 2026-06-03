@@ -117,7 +117,7 @@ class DocumentService implements DocumentServiceInterface
             }
         }
 
-        $snapshot = $this->documentBlockService->templatePublicationDefinitionRowsFromEntityVersion($ev);
+        $snapshot = $this->documentBlockService->templatePublicationDefinitionRowsFromEntityVersion((string) $ev->id);
         if ($snapshot === []) {
             throw ValidationException::withMessages([
                 'template_id' => ['La versión de plantilla no contiene bloques.'],
@@ -680,7 +680,8 @@ class DocumentService implements DocumentServiceInterface
      */
     public function blocksForDisplay(Document $document): array
     {
-        return $this->documentBlockService->blocksForDisplay($document);
+        $dtos = $this->documentBlockService->blocksForDisplay((string) $document->id);
+        return array_map(fn ($dto) => $dto->toArray(), $dtos);
     }
 
     /**
@@ -1035,7 +1036,7 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
+        $this->documentBlockService->assertMandatoryBlocksAreFilled($documentId);
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
@@ -1258,7 +1259,7 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
 
-            $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
+            $this->documentBlockService->assertMandatoryBlocksAreFilled((string) $document->id);
         }
 
         if ($document->status === 'in_review' && $this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {

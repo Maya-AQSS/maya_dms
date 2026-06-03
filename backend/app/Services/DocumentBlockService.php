@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Documents\BlockDisplayDto;
+use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
@@ -21,21 +24,21 @@ class DocumentBlockService
 {
     public function __construct(
         private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly DocumentBlockRepositoryInterface $documentBlockRepository,
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly TemplateVersionBlockLayerResolver $templateVersionBlockLayerResolver,
     ) {}
 
     /**
-     * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
+     * Bloques para mostrar/editar: definición según document template_version_id y contenido en document_blocks.
      *
-     * @return list<array<string, mixed>>
+     * @return list<BlockDisplayDto>
      */
-    public function blocksForDisplay(Document $document): array
+    public function blocksForDisplay(string $documentId): array
     {
-        $document->loadMissing(['blocks', 'templateVersion']);
-
-        $byTemplateBlockId = $document->blocks->keyBy('template_block_id');
+        $document = $this->documentRepository->findOrFail($documentId);
+        $byTemplateBlockId = $this->documentBlockRepository->findBlocksForDocumentWithRelations($documentId);
         $definitions = $this->blockDefinitionsForDocument($document);
 
         $out = [];
@@ -53,20 +56,20 @@ class DocumentBlockService
             // Keep them in the response (with is_deleted: true) so the diff view can show them.
             $isDeleted = $state === 'optional' && $row === null;
 
-            $out[] = [
-                'document_block_id' => $row?->id,
-                'template_block_id' => $tid,
-                'type' => $def['type'] ?? '',
-                'title' => $def['title'] ?? null,
-                'description' => $def['description'] ?? null,
-                'default_content' => $def['default_content'] ?? null,
-                'block_state' => $state,
-                'mandatory' => $mandatory,
-                'sort_order' => (int) ($def['sort_order'] ?? 0),
-                'content' => $row?->content,
-                'is_filled' => (bool) ($row?->is_filled ?? false),
-                'is_deleted' => $isDeleted,
-            ];
+            $out[] = new BlockDisplayDto(
+                document_block_id: $row?->id,
+                template_block_id: $tid,
+                type: $def['type'] ?? '',
+                title: $def['title'] ?? null,
+                description: $def['description'] ?? null,
+                default_content: $def['default_content'] ?? null,
+                block_state: $state,
+                mandatory: $mandatory,
+                sort_order: (int) ($def['sort_order'] ?? 0),
+                content: $row?->content,
+                is_filled: (bool) ($row?->is_filled ?? false),
+                is_deleted: $isDeleted,
+            );
         }
 
         return $out;
@@ -74,12 +77,10 @@ class DocumentBlockService
 
     /**
      * Actualiza el contenido de un bloque de documento.
-     *
-     * @return array<string, mixed>
      */
-    public function updateBlock(UpdateDocumentBlockDto $dto): array
+    public function updateBlock(UpdateDocumentBlockDto $dto): BlockUpdateDto
     {
-        return DB::transaction(function () use ($dto) {
+        return DB::transaction(function () use ($dto): BlockUpdateDto {
             $document = $this->documentRepository->findOrFail($dto->documentId);
             if (! in_array($document->status, ['draft', 'rejected'], true)) {
                 throw new AuthorizationException('Solo se pueden editar bloques de documentos en borrador o rechazados.');
@@ -101,36 +102,35 @@ class DocumentBlockService
             }
 
             if ($this->documentBlockContentEquals($block->content, $dto->content)) {
-                return [
-                    'document_block_id' => (string) $block->id,
-                    'template_block_id' => (string) $block->template_block_id,
-                    'content' => $block->content,
-                    'is_filled' => (bool) $block->is_filled,
-                    'last_edited_by' => (string) $block->last_edited_by,
-                    'updated_at' => $block->updated_at?->toIso8601String(),
-                ];
+                return new BlockUpdateDto(
+                    document_block_id: (string) $block->id,
+                    template_block_id: (string) $block->template_block_id,
+                    content: $block->content,
+                    is_filled: (bool) $block->is_filled,
+                    last_edited_by: (string) $block->last_edited_by,
+                    updated_at: $block->updated_at?->toIso8601String(),
+                );
             }
 
             $this->appendModifiableBlockVersionSnapshotsIfNeeded($document, $block, $definition, $dto);
 
-            $block->content = $dto->content;
-            $block->is_filled = $this->isContentFilled($dto->content);
-            $block->last_edited_by = $dto->actorId;
-            $this->documentRepository->saveBlock($block);
+            $isFilled = $this->isContentFilled($dto->content);
+            $this->documentBlockRepository->updateBlock($block, $dto->content, $isFilled, $dto->actorId);
 
-            return [
-                'document_block_id' => (string) $block->id,
-                'template_block_id' => (string) $block->template_block_id,
-                'content' => $block->content,
-                'is_filled' => (bool) $block->is_filled,
-                'last_edited_by' => (string) $block->last_edited_by,
-                'updated_at' => $block->updated_at?->toIso8601String(),
-            ];
+            return new BlockUpdateDto(
+                document_block_id: (string) $block->id,
+                template_block_id: (string) $block->template_block_id,
+                content: $block->content,
+                is_filled: $isFilled,
+                last_edited_by: $dto->actorId,
+                updated_at: $block->updated_at?->toIso8601String(),
+            );
         });
     }
 
-    public function assertMandatoryBlocksAreFilled(Document $document): void
+    public function assertMandatoryBlocksAreFilled(string $documentId): void
     {
+        $document = $this->documentRepository->findOrFail($documentId);
         $definitions = collect($this->blockDefinitionsForDocument($document))
             ->filter(fn (array $def): bool => ($def['block_state'] ?? '') === 'editable');
 
@@ -138,8 +138,7 @@ class DocumentBlockService
             return;
         }
 
-        $document->loadMissing('blocks');
-        $blocksByTemplateBlockId = $document->blocks->keyBy('template_block_id');
+        $blocksByTemplateBlockId = $this->documentBlockRepository->findBlocksForDocumentWithRelations($documentId);
         $missing = [];
 
         foreach ($definitions as $definition) {
@@ -172,8 +171,9 @@ class DocumentBlockService
      * Valida que todos los bloques modificables tengan contenido diferente al predeterminado de la plantilla.
      * Debe llamarse después de {@see assertMandatoryBlocksAreFilled} (los bloques vacíos ya se detectaron allí).
      */
-    public function assertModifiableBlocksAreModified(Document $document): void
+    public function assertModifiableBlocksAreModified(string $documentId): void
     {
+        $document = $this->documentRepository->findOrFail($documentId);
         $definitions = collect($this->blockDefinitionsForDocument($document))
             ->filter(fn (array $def): bool => ($def['block_state'] ?? '') === 'modifiable');
 
@@ -181,8 +181,7 @@ class DocumentBlockService
             return;
         }
 
-        $document->loadMissing('blocks');
-        $blocksByTemplateBlockId = $document->blocks->keyBy('template_block_id');
+        $blocksByTemplateBlockId = $this->documentBlockRepository->findBlocksForDocumentWithRelations($documentId);
         $unmodified = [];
 
         foreach ($definitions as $def) {
@@ -265,8 +264,9 @@ class DocumentBlockService
      *
      * @return list<array<string, mixed>>
      */
-    public function templatePublicationDefinitionRowsFromEntityVersion(EntityVersion $entityVersion): array
+    public function templatePublicationDefinitionRowsFromEntityVersion(string $entityVersionId): array
     {
+        $entityVersion = $this->entityVersionRepository->findOrFail($entityVersionId);
         $rows = $this->sortedBlocksFromEntitySnapshot($entityVersion->snapshot_data);
         if ($rows !== []) {
             return $rows;
@@ -398,7 +398,6 @@ class DocumentBlockService
         }
 
         $blockId = (string) $block->id;
-        $documentId = (string) $document->id;
         $max = $this->documentRepository->maxBlockVersionNumberForDocumentBlock($blockId);
 
         if ($max === 0) {
@@ -406,7 +405,7 @@ class DocumentBlockService
             $baselineEditor = (string) ($document->created_by ?? $document->owner_id ?? $dto->actorId);
             $this->documentRepository->insertDocumentBlockVersion(
                 $blockId,
-                $documentId,
+                $dto->documentId,
                 1,
                 $baseline,
                 null,
@@ -417,7 +416,7 @@ class DocumentBlockService
 
         $this->documentRepository->insertDocumentBlockVersion(
             $blockId,
-            $documentId,
+            $dto->documentId,
             $max + 1,
             $this->normalizeBlockVersionPayload($dto->content),
             null,
@@ -454,7 +453,7 @@ class DocumentBlockService
                 throw new AuthorizationException('Solo se pueden eliminar bloques opcionales.');
             }
 
-            $block->delete();
+            $this->documentBlockRepository->deleteBlock($block);
         });
     }
 
