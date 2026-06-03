@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\DTOs\Users\JwtProfileDto;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -198,7 +199,7 @@ class AppServiceProvider extends ServiceProvider
             $userId = (string) $jwtProfile['id'];
 
             /** @var array<string, mixed> $fromDb Perfil unificado (FDW o fallback JWT vía {@see UserProfileService}). */
-            $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, $jwtProfile);
+            $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, JwtProfileDto::fromArray($jwtProfile));
 
             $profile = array_merge($jwtProfile, [
                 'study_type_ids' => $fromDb['study_type_ids'] ?? [],

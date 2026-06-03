@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Users\JwtProfileDto;
 use App\Models\JwtUser;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
 use App\Repositories\Contracts\UserProfileRepositoryInterface;
@@ -34,9 +35,9 @@ class UserProfileService implements UserProfileServiceInterface
      * 3. Si FDW falla o no responde, usa los datos mínimos del JWT como fallback.
      *
      * @param  string  $userId  ID del usuario (claim `sub` del JWT).
-     * @param  array  $jwtProfile  Datos mínimos extraídos del JWT para fallback.
+     * @param  JwtProfileDto  $jwtProfile  Datos mínimos extraídos del JWT para fallback.
      */
-    public function getProfile(string $userId, array $jwtProfile): array
+    public function getProfile(string $userId, JwtProfileDto $jwtProfile): array
     {
         $cacheKey = self::CACHE_PREFIX.$userId;
 
@@ -63,7 +64,7 @@ class UserProfileService implements UserProfileServiceInterface
                 'id' => $fdwUser['id'],
                 'email' => $fdwUser['email'] ?? null,
                 'name' => $fdwUser['name'] ?? null,
-                'department' => $fdwUser['department'] ?? $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+                'department' => $fdwUser['department'] ?? $jwtProfile->department ?? $jwtProfile->departamento ?? null,
                 'locale' => $fdwUser['locale'] ?? 'es',
                 'study_type_ids' => $this->repository->findStudyTypeIdsByUserId($userId),
                 'study_ids' => $this->repository->findStudyIdsByUserId($userId),
@@ -98,15 +99,15 @@ class UserProfileService implements UserProfileServiceInterface
     /**
      * Construye perfil parcial desde los datos del JWT cuando FDW no está disponible.
      */
-    private function buildFallbackProfile(string $userId, array $jwtProfile): array
+    private function buildFallbackProfile(string $userId, JwtProfileDto $jwtProfile): array
     {
         $scopes = $this->scopeListsFromJwtProfile($jwtProfile);
 
         return [
-            'id' => $jwtProfile['id'] ?? $userId,
-            'email' => $jwtProfile['email'] ?? null,
-            'name' => $jwtProfile['name'] ?? null,
-            'department' => $jwtProfile['department'] ?? $jwtProfile['departamento'] ?? null,
+            'id' => $jwtProfile->id ?? $userId,
+            'email' => $jwtProfile->email ?? null,
+            'name' => $jwtProfile->name ?? null,
+            'department' => $jwtProfile->department ?? $jwtProfile->departamento ?? null,
             'locale' => 'es', // MOCK — ver getProfile().
             'study_type_ids' => $scopes['study_type_ids'],
             'study_ids' => $scopes['study_ids'],
@@ -123,14 +124,14 @@ class UserProfileService implements UserProfileServiceInterface
      *
      * @return array{study_type_ids: list<string>, study_ids: list<string>, module_ids: list<string>}
      */
-    private function scopeListsFromJwtProfile(array $jwtProfile): array
+    private function scopeListsFromJwtProfile(JwtProfileDto $jwtProfile): array
     {
         return [
-            'study_type_ids' => JwtUser::mergeScopeIds($jwtProfile['study_type_ids'] ?? null, $jwtProfile['study_type_id'] ?? null),
-            'study_ids' => JwtUser::mergeScopeIds($jwtProfile['study_ids'] ?? null, $jwtProfile['study_id'] ?? null),
+            'study_type_ids' => JwtUser::mergeScopeIds($jwtProfile->studyTypeIds ?: null, null),
+            'study_ids' => JwtUser::mergeScopeIds($jwtProfile->studyIds ?: null, null),
             'module_ids' => array_values(array_unique(array_merge(
-                JwtUser::mergeScopeIds($jwtProfile['module_ids'] ?? null, $jwtProfile['module_id'] ?? null),
-                JwtUser::mergeScopeIds($jwtProfile['course_module_ids'] ?? null, $jwtProfile['course_module_id'] ?? null),
+                JwtUser::mergeScopeIds($jwtProfile->moduleIds ?: null, null),
+                JwtUser::mergeScopeIds($jwtProfile->courseModuleIds ?: null, null),
             ))),
         ];
     }
