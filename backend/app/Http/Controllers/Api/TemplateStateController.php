@@ -11,7 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\PublishTemplateRequest;
 use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
 use App\Http\Resources\TemplateResource;
-use App\Models\User;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -31,6 +31,7 @@ class TemplateStateController extends Controller
 
     public function __construct(
         private readonly TemplateServiceInterface $templateService,
+        private readonly TemplateRepositoryInterface $templateRepository,
         private readonly ApiTeamEmbedServiceInterface $apiTeamEmbedService,
     ) {}
 
@@ -123,7 +124,7 @@ class TemplateStateController extends Controller
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         if ($model->status !== 'published') {
-            $editorName = User::query()->where('id', $model->created_by)->value('name') ?? 'otro usuario';
+            $editorName = $this->templateRepository->getUserNameById((string) $model->created_by) ?? 'otro usuario';
 
             return response()->json([
                 'message' => "{$editorName} ya está editando esta plantilla.",

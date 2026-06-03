@@ -180,4 +180,9 @@ interface TemplateServiceInterface
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
      */
     public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void;
+
+    /**
+     * Verifica si un usuario es revisor activo para una plantilla en estado in_review.
+     */
+    public function isUserActiveReviewerForTemplate(string $templateId, string $userId): bool;
 }

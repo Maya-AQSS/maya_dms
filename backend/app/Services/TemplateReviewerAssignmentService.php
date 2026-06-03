@@ -64,14 +64,13 @@ class TemplateReviewerAssignmentService
 
             // TemplateReviewer usa SoftDeletes; forceDelete elimina filas físicamente
             // para no violar la restricción única (template_id, user_id) al reinsertar.
-            $template->reviewers()->withTrashed()->forceDelete();
-
-            foreach ($uniqueUserIds as $index => $userId) {
-                $template->reviewers()->create([
-                    'user_id' => $userId,
-                    'stage' => $index + 1,
-                ]);
-            }
+            // Usamos repository para encapsular esta lógica.
+            $reviewerData = array_map(
+                fn (string $userId, int $index) => ['user_id' => $userId, 'stage' => $index + 1],
+                $uniqueUserIds,
+                array_keys($uniqueUserIds)
+            );
+            $this->templateRepository->syncTemplateReviewers($templateId, $reviewerData);
         });
     }
 
@@ -95,14 +94,13 @@ class TemplateReviewerAssignmentService
             $this->assertUsersMatchTemplateAcademicScope($template, $uniqueUserIds, 'user_ids');
 
             // TemplateDocumentReviewer no usa SoftDeletes: delete() es borrado físico.
-            $template->documentReviewers()->delete();
-
-            foreach ($uniqueUserIds as $index => $userId) {
-                $template->documentReviewers()->create([
-                    'user_id' => $userId,
-                    'stage' => $index + 1,
-                ]);
-            }
+            // Usamos repository para encapsular esta lógica.
+            $reviewerData = array_map(
+                fn (string $userId, int $index) => ['user_id' => $userId, 'stage' => $index + 1],
+                $uniqueUserIds,
+                array_keys($uniqueUserIds)
+            );
+            $this->templateRepository->syncDocumentReviewers($templateId, $reviewerData);
         });
     }
 

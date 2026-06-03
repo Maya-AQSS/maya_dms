@@ -8,8 +8,10 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\SyncTemplateDocumentReviewersRequest;
 use App\Http\Requests\Templates\SyncTemplateUsersRequest;
+use App\Http\Resources\TemplateReviewersSyncMessageResource;
 use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Sincronización del set de revisores de Template (normativa) y del pool
@@ -27,26 +29,30 @@ class TemplateReviewersController extends Controller
     /**
      * Sincroniza los revisores de la plantilla normativa.
      */
-    public function syncReviewers(SyncTemplateUsersRequest $request, string $template): JsonResponse
+    public function syncReviewers(SyncTemplateUsersRequest $request, string $template): JsonResource
     {
         $model = $this->templateService->findModelOrFail($template);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $this->templateService->syncReviewers($model->id, $request->toDto());
 
-        return response()->json(['message' => 'Revisores de plantilla sincronizados correctamente.']);
+        return new TemplateReviewersSyncMessageResource([
+            'message' => 'Revisores de plantilla sincronizados correctamente.',
+        ]);
     }
 
     /**
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
      */
-    public function syncDocumentReviewers(SyncTemplateDocumentReviewersRequest $request, string $template): JsonResponse
+    public function syncDocumentReviewers(SyncTemplateDocumentReviewersRequest $request, string $template): JsonResource
     {
         $model = $this->templateService->findModelOrFail($template);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $this->templateService->syncDocumentReviewers($model->id, $request->toDto());
 
-        return response()->json(['message' => 'Validadores de documento sincronizados correctamente.']);
+        return new TemplateReviewersSyncMessageResource([
+            'message' => 'Validadores de documento sincronizados correctamente.',
+        ]);
     }
 }

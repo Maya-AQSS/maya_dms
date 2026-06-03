@@ -51,6 +51,7 @@ class TemplateReviewService
                 'block_state' => $b->block_state,
             ])->values()->all();
 
+            $template->loadMissing('headVersion');
             $headVersion = $template->headVersion;
             if ($headVersion !== null) {
                 $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
@@ -60,7 +61,8 @@ class TemplateReviewService
                     'submitted_by' => $actorId,
                     'blocks' => $blocksSnapshot,
                 ];
-                $headVersion->update(['change_set' => $cycles]);
+                // Repository update instead of direct model mutation
+                $this->templateRepository->updateHeadVersionSnapshot($templateId, ['change_set' => $cycles]);
             }
 
             $hasEditableBlock = $template->blocks->contains(
@@ -93,7 +95,7 @@ class TemplateReviewService
                 ]);
             }
 
-            if ($template->reviewers()->doesntExist()) {
+            if ($this->templateRepository->doesntHaveReviewers($templateId)) {
                 if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
                     throw ValidationException::withMessages([
                         'reviewers' => ['Las plantillas no personales requieren al menos un revisor asignado antes de enviarse a revisión.'],
@@ -104,24 +106,26 @@ class TemplateReviewService
             }
 
             if ($template->visibility_level !== TemplateVisibilityLevel::Personal
-                && $template->documentReviewers()->doesntExist()) {
+                && $this->templateRepository->doesntHaveDocumentReviewers($templateId)) {
                 throw ValidationException::withMessages([
                     'document_reviewers' => ['Las plantillas no personales requieren al menos un validador de documento asignado antes de enviarse a revisión.'],
                 ]);
             }
 
-            $template->reviewers()->update(['status' => 'pending']);
+            $this->templateRepository->updateReviewersStatus($templateId, 'pending');
+
+            // Use repository to update head version snapshot
+            $blocksSnapshot = $template->blocks->map(fn ($b) => [
+                'id' => $b->id,
+                'title' => $b->title,
+                'default_content' => $b->default_content,
+                'block_state' => (string) $b->block_state,
+                'sort_order' => (int) $b->sort_order,
+            ])->values()->all();
 
             $template->loadMissing('headVersion');
             $headEv = $template->headVersion;
             if ($headEv !== null) {
-                $blocksSnapshot = $template->blocks->map(fn ($b) => [
-                    'id' => $b->id,
-                    'title' => $b->title,
-                    'default_content' => $b->default_content,
-                    'block_state' => (string) $b->block_state,
-                    'sort_order' => (int) $b->sort_order,
-                ])->values()->all();
                 $existing = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : (array) ($headEv->snapshot_data ?? []);
                 if (isset($existing['blocks_at_submission']) && is_array($existing['blocks_at_submission'])) {
                     $history = isset($existing['blocks_submission_history']) && is_array($existing['blocks_submission_history'])
@@ -132,8 +136,7 @@ class TemplateReviewService
                     $existing['blocks_at_previous_submission'] = $existing['blocks_at_submission'];
                 }
                 $existing['blocks_at_submission'] = $blocksSnapshot;
-                $headEv->snapshot_data = $existing;
-                $headEv->save();
+                $this->templateRepository->updateHeadVersionSnapshot($templateId, $existing);
             }
 
             $inReview = $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);

@@ -673,4 +673,126 @@ class TemplateRepository implements TemplateRepositoryInterface
     {
         return DB::transaction($callback);
     }
+
+    /**
+     * Obtiene el nombre de un usuario por su ID.
+     */
+    public function getUserNameById(string $userId): ?string
+    {
+        return DB::table('users')
+            ->where('id', $userId)
+            ->value('name');
+    }
+
+    /**
+     * Verifica si una plantilla tiene revisores asignados.
+     */
+    public function templateHasReviewers(string $templateId): bool
+    {
+        return DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->exists();
+    }
+
+    /**
+     * Sincroniza revisores de plantilla via relación (forceDelete old, create new).
+     *
+     * @param  string  $templateId
+     * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
+     */
+    public function syncTemplateReviewers(string $templateId, array $reviewerData): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->reviewers()->withTrashed()->forceDelete();
+
+        foreach ($reviewerData as $reviewer) {
+            $template->reviewers()->create([
+                'user_id' => $reviewer['user_id'],
+                'stage' => $reviewer['stage'],
+            ]);
+        }
+    }
+
+    /**
+     * Sincroniza revisores de documentos via relación (delete old, create new).
+     *
+     * @param  string  $templateId
+     * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
+     */
+    public function syncDocumentReviewers(string $templateId, array $reviewerData): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->documentReviewers()->delete();
+
+        foreach ($reviewerData as $reviewer) {
+            $template->documentReviewers()->create([
+                'user_id' => $reviewer['user_id'],
+                'stage' => $reviewer['stage'],
+            ]);
+        }
+    }
+
+    /**
+     * Verifica si una plantilla no tiene revisores asignados.
+     */
+    public function doesntHaveReviewers(string $templateId): bool
+    {
+        return ! DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->exists();
+    }
+
+    /**
+     * Verifica si una plantilla no tiene validadores de documento asignados.
+     */
+    public function doesntHaveDocumentReviewers(string $templateId): bool
+    {
+        return ! DB::table('template_document_reviewers')
+            ->where('template_id', $templateId)
+            ->exists();
+    }
+
+    /**
+     * Actualiza el estado de todos los revisores de una plantilla.
+     */
+    public function updateReviewersStatus(string $templateId, string $status): void
+    {
+        DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->update(['status' => $status]);
+    }
+
+    /**
+     * Actualiza el snapshot de la versión cabezal (headVersion) con datos específicos.
+     */
+    public function updateHeadVersionSnapshot(string $templateId, array $snapshotData): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion !== null) {
+            $ev = $template->headVersion;
+            $existing = is_array($ev->snapshot_data) ? $ev->snapshot_data : (array) ($ev->snapshot_data ?? []);
+            $merged = array_merge($existing, $snapshotData);
+            $ev->snapshot_data = $merged;
+            $ev->save();
+        }
+    }
+
+    /**
+     * Limpia datos de submission del head version snapshot (cuando se publica).
+     */
+    public function cleanHeadVersionSubmissionData(string $templateId): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion !== null) {
+            $ev = $template->headVersion;
+            $headData = is_array($ev->snapshot_data) ? $ev->snapshot_data : [];
+            unset($headData['blocks_at_submission'], $headData['blocks_at_previous_submission'], $headData['blocks_submission_history']);
+            $ev->snapshot_data = $headData ?: null;
+            $ev->save();
+        }
+    }
 }

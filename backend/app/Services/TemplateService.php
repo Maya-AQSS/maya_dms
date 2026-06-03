@@ -1139,4 +1139,18 @@ class TemplateService implements TemplateServiceInterface
     {
         $this->templateReviewerAssignmentService->syncDocumentReviewers($templateId, $dto);
     }
+
+    /**
+     * Verifica si un usuario es revisor activo para una plantilla en estado in_review.
+     */
+    public function isUserActiveReviewerForTemplate(string $templateId, string $userId): bool
+    {
+        $template = $this->templateRepository->findOrFail($templateId);
+
+        return $template->status === 'in_review'
+            && DB::table('template_reviewers')
+                ->where('template_id', $templateId)
+                ->where('user_id', $userId)
+                ->exists();
+    }
 }
