@@ -1,6 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
+import { EditorContentHtml, MayaEditor } from '@ceedcv-maya/shared-editor-react';
+import {
+  normalizeChangelogHtml,
+  plainTextFromChangelogHtml,
+} from './versionChangelogHtml';
 
 export const VERSION_CHANGELOG_MAX_LENGTH = 5000;
 
@@ -18,6 +23,10 @@ type Props = {
 
 export function SubmissionChangelogReadonly({ text }: { text: string }) {
   const { t } = useTranslation('common');
+  const trimmed = text.trim();
+  if (trimmed === '') {
+    return null;
+  }
 
   return (
     <section
@@ -27,9 +36,10 @@ export function SubmissionChangelogReadonly({ text }: { text: string }) {
       <h2 className="text-2xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary mb-2">
         {t('versionChangelog.readOnlyTitle', { defaultValue: 'Cambios enviados por el autor' })}
       </h2>
-      <p className="text-sm text-text-primary dark:text-text-dark-primary leading-relaxed whitespace-pre-wrap">
-        {text}
-      </p>
+      <EditorContentHtml
+        html={trimmed}
+        className="text-sm text-text-primary dark:text-text-dark-primary leading-relaxed maya-editor-content"
+      />
     </section>
   );
 }
@@ -46,23 +56,26 @@ export function VersionChangelogModal({
   onConfirm,
 }: Props) {
   const { t } = useTranslation('common');
-  const [value, setValue] = useState('');
+  const [html, setHtml] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
 
   useEffect(() => {
     if (open) {
-      setValue((initialValue ?? '').trim() ? (initialValue ?? '').trim() : '');
+      const seed = (initialValue ?? '').trim();
+      setHtml(seed);
       setLocalError(null);
+      setEditorKey((k: number) => k + 1);
     }
   }, [open, initialValue]);
 
   const handleConfirm = () => {
-    const trimmed = value.trim();
-    if (trimmed === '') {
+    const normalized = normalizeChangelogHtml(html);
+    if (plainTextFromChangelogHtml(normalized) === '') {
       setLocalError(t('versionChangelog.required', { defaultValue: 'El changelog es obligatorio.' }));
       return false;
     }
-    if (trimmed.length > VERSION_CHANGELOG_MAX_LENGTH) {
+    if (normalized.length > VERSION_CHANGELOG_MAX_LENGTH) {
       setLocalError(
         t('versionChangelog.maxLength', {
           max: VERSION_CHANGELOG_MAX_LENGTH,
@@ -72,10 +85,11 @@ export function VersionChangelogModal({
       return false;
     }
     setLocalError(null);
-    return onConfirm(trimmed);
+    return onConfirm(normalized);
   };
 
   const displayError = localError ?? error;
+  const placeholder = t('versionChangelog.placeholder', { defaultValue: 'Descripción del cambio…' });
 
   return (
     <ConfirmDialog
@@ -90,21 +104,27 @@ export function VersionChangelogModal({
               defaultValue: 'Describe qué has modificado. Los validadores verán este texto.',
             })}
           </p>
-          <label className="block">
+          <div className="block">
             <span className="text-2xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
               {t('versionChangelog.label', { defaultValue: 'Cambios en esta versión' })}
             </span>
-            <textarea
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                if (localError) setLocalError(null);
-              }}
-              placeholder={t('versionChangelog.placeholder', { defaultValue: 'Descripción del cambio…' })}
-              maxLength={VERSION_CHANGELOG_MAX_LENGTH}
-              className="mt-1.5 w-full min-h-28 rounded-md border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm text-text-primary dark:text-text-dark-primary"
-            />
-          </label>
+            <div className="mt-1.5 min-h-28 rounded-md border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg overflow-hidden">
+              {open ? (
+                <MayaEditor
+                  key={editorKey}
+                  mode="lite"
+                  initialContent={html}
+                  onChange={(payload: string | object) => {
+                    if (typeof payload === 'string') {
+                      setHtml(payload);
+                      if (localError) setLocalError(null);
+                    }
+                  }}
+                  placeholder={placeholder}
+                />
+              ) : null}
+            </div>
+          </div>
         </div>
       }
       confirmLabel={confirmLabel}

@@ -15,6 +15,29 @@ import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
 
+vi.mock('@ceedcv-maya/shared-editor-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@ceedcv-maya/shared-editor-react')>();
+  return {
+    ...actual,
+    MayaEditor: ({
+      initialContent,
+      onChange,
+      placeholder,
+    }: {
+      initialContent?: string;
+      onChange?: (html: string) => void;
+      placeholder?: string;
+    }) => (
+      <textarea
+        data-testid="changelog-editor"
+        placeholder={placeholder}
+        defaultValue={typeof initialContent === 'string' ? initialContent : ''}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    ),
+  };
+});
+
 vi.mock('../../../../api/templates');
 vi.mock('../../../../api/blocks');
 vi.mock('../../../../api/users', () => ({
@@ -228,10 +251,10 @@ describe('TemplateWizard Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText(/Descripción del cambio/i)).toBeTruthy();
+      expect(screen.getByTestId('changelog-editor')).toBeTruthy();
     }, { timeout: 10000 });
 
-    fireEvent.change(screen.getByPlaceholderText(/Descripción del cambio/i), {
+    fireEvent.change(screen.getByTestId('changelog-editor'), {
       target: { value: 'Primera publicación con changelog.' },
     });
     fireEvent.click(screen.getByRole('button', { name: /Publicar/i }));
