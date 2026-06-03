@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use Database\Seeders\Support\SeedContentShape;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -23,8 +24,8 @@ class DocumentBlocksSeeder extends Seeder
         $now = Carbon::now();
 
         $rows = array_map(static function (array $row) use ($now): array {
-            if (isset($row['content']) && is_array($row['content'])) {
-                $row['content'] = json_encode($row['content']);
+            if (isset($row['content'])) {
+                $row['content'] = SeedContentShape::toTiptapJson($row['content']);
             }
 
             $row['created_at'] ??= $now;

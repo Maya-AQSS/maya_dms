@@ -8,8 +8,8 @@ use App\Constants\DocumentConstants;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\ThemeRepositoryInterface;
 use App\Services\Contracts\TemplateRenderServiceInterface;
-use App\Support\BlockNoteHtmlRenderer;
 use Illuminate\Support\Facades\View;
+use Maya\Editor\Renderers\TiptapHtmlRenderer;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
@@ -47,7 +47,7 @@ class TemplateRenderService implements TemplateRenderServiceInterface
             }
             $default = $block['default_content'];
             if (is_array($default) && count($default) > 0) {
-                $blockHtmlParts[] = BlockNoteHtmlRenderer::renderBlocks($default);
+                $blockHtmlParts[] = TiptapHtmlRenderer::renderDoc($default);
             } elseif (is_string($default) && $default !== '') {
                 // Backwards-compat: algún seed legacy guardaba string en lugar de array.
                 $blockHtmlParts[] = '<p>'.e($default).'</p>';

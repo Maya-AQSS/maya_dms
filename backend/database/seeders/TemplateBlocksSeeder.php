@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Support\TemplateBlockDescriptionNormalizer;
+use Database\Seeders\Support\SeedContentShape;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -24,11 +25,8 @@ class TemplateBlocksSeeder extends Seeder
         $now = Carbon::now();
 
         $rows = array_map(static function (array $row) use ($now): array {
-            if (isset($row['default_content']) && is_string($row['default_content'])) {
-                $decoded = json_decode($row['default_content'], true);
-                $row['default_content'] = json_last_error() === JSON_ERROR_NONE ? json_encode($decoded) : $row['default_content'];
-            } elseif (isset($row['default_content']) && is_array($row['default_content'])) {
-                $row['default_content'] = json_encode($row['default_content']);
+            if (isset($row['default_content'])) {
+                $row['default_content'] = SeedContentShape::toTiptapJson($row['default_content']);
             }
 
             unset($row['type'], $row['mandatory']);
