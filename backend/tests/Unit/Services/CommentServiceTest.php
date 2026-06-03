@@ -379,19 +379,14 @@ final class CommentServiceTest extends TestCase
 
     // ─── delete ──────────────────────────────────────────────────────────────
 
-    public function test_delete_calls_delete_on_model(): void
+    public function test_delete_delegates_to_repository(): void
     {
-        $repo    = Mockery::mock(CommentRepositoryInterface::class);
+        $repo = Mockery::mock(CommentRepositoryInterface::class);
+        $repo->shouldReceive('delete')
+            ->once()
+            ->with('comment-uuid', 'user-uuid', 'User Name');
+
         $service = $this->makeService($repo);
-
-        $deleted = false;
-        $comment = Mockery::mock(Comment::class);
-        $comment->shouldReceive('delete')->once()->andReturnUsing(function () use (&$deleted) {
-            $deleted = true;
-        });
-
-        $service->delete($comment);
-
-        $this->assertTrue($deleted, 'Comment::delete() was called');
+        $service->delete('comment-uuid', 'user-uuid', 'User Name');
     }
 }
