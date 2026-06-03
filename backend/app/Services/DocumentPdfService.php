@@ -47,7 +47,8 @@ class DocumentPdfService implements DocumentPdfServiceInterface
 
         $html = $this->renderer->renderHtml($documentId);
         // current_version (alias seleccionado en el join del head EV) o 1 como fallback.
-        $version = (int) ($document->getAttribute('current_version') ?? 1);
+        // Extract as scalar, not model attribute reference.
+        $version = (int) $this->extractCurrentVersion($document);
         $relative = sprintf('%s/%s/v%d/document.pdf', self::PREFIX, $documentId, $version);
         $absolute = Storage::disk(self::DISK)->path($relative);
 
@@ -75,5 +76,13 @@ class DocumentPdfService implements DocumentPdfServiceInterface
         }
 
         return $relative;
+    }
+
+    /**
+     * Extracts current version number from document model as scalar.
+     */
+    private function extractCurrentVersion(\App\Models\Document $document): int
+    {
+        return (int) ($document->getAttribute('current_version') ?? 1);
     }
 }

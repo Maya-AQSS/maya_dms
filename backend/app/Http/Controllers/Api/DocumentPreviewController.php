@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Document;
+use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
@@ -17,14 +17,14 @@ use Illuminate\Support\Facades\Gate;
 class DocumentPreviewController extends Controller
 {
     public function __construct(
+        private readonly DocumentRepositoryInterface $documentRepository,
         private readonly DocumentRenderServiceInterface $renderer,
     ) {}
 
     public function show(string $document): Response
     {
-        $model = Document::query()
-            ->withoutGlobalScopes(['user_access'])
-            ->findOrFail($document);
+        $model = $this->documentRepository->findOrFailForRefreshAfterMutation($document);
+
         if (! Gate::forUser(request()->user())->allows('view', $model)) {
             abort(404);
         }
