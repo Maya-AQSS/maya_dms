@@ -304,4 +304,14 @@ interface DocumentRepositoryInterface
      * @return Collection<int, DocumentBlock>
      */
     public function findBlocksForExport(string $documentId): Collection;
+
+    /**
+     * Persiste el changelog de envío a validación en la versión de trabajo (head).
+     */
+    public function updateHeadVersionChangelog(string $documentId, string $changelog): void;
+
+    /**
+     * Elimina el changelog de envío de la versión de trabajo (head).
+     */
+    public function clearHeadVersionChangelog(string $documentId): void;
 }

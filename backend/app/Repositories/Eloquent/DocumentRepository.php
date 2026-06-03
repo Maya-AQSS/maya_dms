@@ -921,4 +921,30 @@ class DocumentRepository implements DocumentRepositoryInterface
                 );
             });
     }
+
+    public function updateHeadVersionChangelog(string $documentId, string $changelog): void
+    {
+        $document = $this->findOrFail($documentId);
+        $document->loadMissing('headVersion');
+
+        if ($document->headVersion === null) {
+            throw new RuntimeException('Documento sin versión cabezal en entity_versions.');
+        }
+
+        $document->headVersion->changelog = $changelog;
+        $document->headVersion->save();
+    }
+
+    public function clearHeadVersionChangelog(string $documentId): void
+    {
+        $document = $this->findOrFail($documentId);
+        $document->loadMissing('headVersion');
+
+        if ($document->headVersion === null) {
+            return;
+        }
+
+        $document->headVersion->changelog = null;
+        $document->headVersion->save();
+    }
 }

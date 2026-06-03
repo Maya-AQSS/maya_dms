@@ -187,6 +187,16 @@ interface TemplateRepositoryInterface
     public function cleanHeadVersionSubmissionData(string $templateId): void;
 
     /**
+     * Persiste el changelog de envío a validación en la versión de trabajo (head).
+     */
+    public function updateHeadVersionChangelog(string $templateId, string $changelog): void;
+
+    /**
+     * Elimina el changelog de envío de la versión de trabajo (head).
+     */
+    public function clearHeadVersionChangelog(string $templateId): void;
+
+    /**
      * Fetch template data for rendering (HTML export/preview).
      * Returns template ID, name, description, theme_id, and blocks ordered by sort_order.
      * Blocks contain: id, title, default_content.

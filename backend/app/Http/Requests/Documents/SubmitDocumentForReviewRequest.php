@@ -8,13 +8,13 @@ use App\Models\Document;
 use App\Support\VersionSubmissionChangelog;
 use Illuminate\Foundation\Http\FormRequest;
 
-class PublishDocumentRequest extends FormRequest
+class SubmitDocumentForReviewRequest extends FormRequest
 {
     private ?Document $resolvedDocument = null;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->user()->can('submit', $this->resolveDocument());
     }
 
     protected function prepareForValidation(): void
@@ -40,8 +40,9 @@ class PublishDocumentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'changelog.required' => 'El changelog es obligatorio al publicar un documento.',
-            'changelog.min' => 'El changelog es obligatorio al publicar un documento.',
+            'changelog.required' => 'El changelog es obligatorio al enviar a validación.',
+            'changelog.min' => 'El changelog es obligatorio al enviar a validación.',
+            'changelog.max' => 'El changelog no puede superar '.VersionSubmissionChangelog::MAX_LENGTH.' caracteres.',
         ];
     }
 

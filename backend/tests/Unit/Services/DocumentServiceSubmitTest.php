@@ -94,6 +94,6 @@ class DocumentServiceSubmitTest extends TestCase
 
         $this->expectException(ValidationException::class);
 
-        $service->submitToReview('doc-uuid', 'actor-uuid');
+        $service->submitToReview('doc-uuid', 'actor-uuid', 'Cambios de la versión');
     }
 }

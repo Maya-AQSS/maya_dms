@@ -98,7 +98,7 @@ interface DocumentServiceInterface
     /**
      * Envia el documento a revisión. Devuelve Model.
      */
-    public function submitToReview(string $documentId, string $actorId): Document;
+    public function submitToReview(string $documentId, string $actorId, string $changelog): Document;
 
     /**
      * Publica el documento. Devuelve Model.

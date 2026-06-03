@@ -69,7 +69,7 @@ interface TemplateServiceInterface
     /**
      * Envía el borrador a revisión. Solo el creador puede ejecutar esta acción.
      */
-    public function submitForReview(string $templateId, string $actorId): Template;
+    public function submitForReview(string $templateId, string $actorId, string $changelog): Template;
 
     /**
      * Rechaza la revisión de la plantilla. Solo un revisor asignado puede ejecutar esta acción.

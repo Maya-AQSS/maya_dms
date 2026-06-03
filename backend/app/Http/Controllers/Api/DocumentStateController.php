@@ -10,6 +10,7 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
+use App\Http\Requests\Documents\SubmitDocumentForReviewRequest;
 use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
@@ -37,14 +38,17 @@ class DocumentStateController extends Controller
     /**
      * Enviar documento a revisión.
      */
-    public function submit(Request $request, string $id): JsonResponse
+    public function submit(SubmitDocumentForReviewRequest $request, string $document): JsonResponse
     {
-        $document = $this->documentService->findModelOrFail($id);
-        $this->authorize('submit', $document);
-        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+        $model = $this->documentService->findModelOrFail($document);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
         $actorId = (string) $request->user()->getAuthIdentifier();
-        $updated = $this->documentService->submitToReview($document->id, $actorId);
+        $updated = $this->documentService->submitToReview(
+            $model->id,
+            $actorId,
+            (string) $request->validated('changelog'),
+        );
         $this->attachCanCloneMeta($updated, $request);
 
         return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);

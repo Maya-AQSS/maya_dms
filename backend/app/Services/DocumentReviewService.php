@@ -83,16 +83,20 @@ class DocumentReviewService
             DocumentReviewApproved::dispatch($documentId, $review, $actorId);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
+                $document->loadMissing('headVersion');
+                $changelog = \App\Support\VersionSubmissionChangelog::requireNonEmpty(
+                    $publicationChangelog,
+                    $document->headVersion?->changelog,
+                );
+
                 $this->stateService->transition($documentId, 'published', $actorId);
-                $changelog = $publicationChangelog !== null && trim($publicationChangelog) !== ''
-                    ? trim($publicationChangelog)
-                    : 'Aprobado por todos los revisores.';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',
                     triggeredBy: $actorId,
                     notes: $changelog,
                 ));
+                $this->documentRepository->clearHeadVersionChangelog($documentId);
 
                 $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
                 $this->notifyDocumentPublished($refreshed);

@@ -792,8 +792,35 @@ class TemplateRepository implements TemplateRepositoryInterface
             $headData = is_array($ev->snapshot_data) ? $ev->snapshot_data : [];
             unset($headData['blocks_at_submission'], $headData['blocks_at_previous_submission'], $headData['blocks_submission_history']);
             $ev->snapshot_data = $headData ?: null;
+            $ev->changelog = null;
             $ev->save();
         }
+    }
+
+    public function updateHeadVersionChangelog(string $templateId, string $changelog): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion === null) {
+            throw new RuntimeException('Plantilla sin versión cabezal en entity_versions.');
+        }
+
+        $template->headVersion->changelog = $changelog;
+        $template->headVersion->save();
+    }
+
+    public function clearHeadVersionChangelog(string $templateId): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion === null) {
+            return;
+        }
+
+        $template->headVersion->changelog = null;
+        $template->headVersion->save();
     }
 
     /**

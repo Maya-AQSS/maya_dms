@@ -105,9 +105,9 @@ class TemplateService implements TemplateServiceInterface
      *   sucesivas: en draft post-rechazo los estados quedan visibles para el autor,
      *   y solo se limpian al reenviar) y transiciona a `in_review`.
      */
-    public function submitForReview(string $templateId, string $actorId): Template
+    public function submitForReview(string $templateId, string $actorId, string $changelog): Template
     {
-        return $this->templateReviewService->submitForReview($templateId, $actorId);
+        return $this->templateReviewService->submitForReview($templateId, $actorId, $changelog);
     }
 
     /**
@@ -475,6 +475,7 @@ class TemplateService implements TemplateServiceInterface
 
             $head->snapshot_data = $publishedSnapshot;
             $head->status = 'published';
+            $head->changelog = null;
             $head->updated_at = now();
             $head->save();
 

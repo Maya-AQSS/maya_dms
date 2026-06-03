@@ -14,6 +14,7 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Support\TemplateHeadSnapshot;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maya\Messaging\Publishers\NotificationPublisher;
@@ -144,18 +145,11 @@ class TemplatePublishingService
                 ->all();
 
             $next = $this->entityVersionRepository->nextVersionNumber(Template::class, $templateId);
-            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
-
-            // Sin changelog explícito (tras trim): texto por defecto en la fila publicada en entity_versions.
-            // El número de versión ($next) solo vive en entity_versions y en este snapshot, no en la tabla templates.
-            // El flujo POST /publish puede exigir changelog en republicaciones vía PublishTemplateRequest.
-            if ($trimmedChangelog === '') {
-                $resolvedChangelog = 'Publicación automática';
-            } else {
-                $resolvedChangelog = $trimmedChangelog;
-            }
-
             $template->loadMissing('headVersion');
+            $resolvedChangelog = VersionSubmissionChangelog::requireNonEmpty(
+                $changelog,
+                $template->headVersion?->changelog,
+            );
             $templateFields = data_get($template->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
             $templateFields = is_array($templateFields) ? $templateFields : [];
 

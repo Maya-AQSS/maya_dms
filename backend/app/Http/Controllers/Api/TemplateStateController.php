@@ -10,6 +10,7 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Templates\PublishTemplateRequest;
 use App\Http\Requests\Templates\StartNewTemplateRevisionRequest;
+use App\Http\Requests\Templates\SubmitTemplateForReviewRequest;
 use App\Http\Resources\TemplateResource;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
@@ -38,13 +39,16 @@ class TemplateStateController extends Controller
     /**
      * Borrador → en revisión (autor o quien puede editar).
      */
-    public function submitForReview(string $template): TemplateResource
+    public function submitForReview(SubmitTemplateForReviewRequest $request, string $template): TemplateResource
     {
         $model = $this->templateService->findModelOrFail($template);
-        $this->authorize('submitForReview', $model);
         $this->assertOptionalProcessContextMatches((string) $model->process_id);
 
-        $updated = $this->templateService->submitForReview($model->id, (string) Auth::id());
+        $updated = $this->templateService->submitForReview(
+            $model->id,
+            (string) Auth::id(),
+            (string) $request->validated('changelog'),
+        );
         $updated->setAttribute('can_clone', Gate::forUser(Auth::user())->allows('clone', $updated));
 
         return new TemplateResource(TemplateDto::fromModel($updated));

@@ -9,6 +9,7 @@ use App\Models\Template;
 use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\ReviewValidationNotificationRecipients;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maya\Messaging\Publishers\NotificationPublisher;
@@ -24,9 +25,11 @@ class TemplateReviewService
     /**
      * Envia el borrador a revisión.
      */
-    public function submitForReview(string $templateId, string $actorId): Template
+    public function submitForReview(string $templateId, string $actorId, string $changelog): Template
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
+        $normalizedChangelog = VersionSubmissionChangelog::normalize($changelog);
+
+        return $this->templateRepository->transaction(function () use ($templateId, $actorId, $normalizedChangelog) {
             $template = $this->templateRepository->findOrFail($templateId);
 
             if (! in_array($template->status, ['draft', 'rejected'], true)) {
@@ -95,6 +98,8 @@ class TemplateReviewService
                 ]);
             }
 
+            $this->templateRepository->updateHeadVersionChangelog($templateId, $normalizedChangelog);
+
             if ($this->templateRepository->doesntHaveReviewers($templateId)) {
                 if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
                     throw ValidationException::withMessages([
@@ -102,7 +107,7 @@ class TemplateReviewService
                     ]);
                 }
 
-                return $this->templatePublishingService->publishWithSnapshot($templateId, 'Publicación automática', $actorId);
+                return $this->templatePublishingService->publishWithSnapshot($templateId, $normalizedChangelog, $actorId);
             }
 
             if ($template->visibility_level !== TemplateVisibilityLevel::Personal
@@ -255,8 +260,8 @@ class TemplateReviewService
             if ($allApproved) {
                 return $this->templatePublishingService->publishWithSnapshot(
                     $templateId,
-                    'Aprobado por todos los revisores.',
-                    $actorId
+                    null,
+                    $actorId,
                 );
             }
 

@@ -947,6 +947,7 @@ class DocumentService implements DocumentServiceInterface
 
             $head->snapshot_data = $publishedSnapshot;
             $head->status = 'published';
+            $head->changelog = null;
             $head->updated_at = now();
             $head->save();
 
@@ -1026,8 +1027,9 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Envia el documento a revisión.
      */
-    public function submitToReview(string $documentId, string $actorId): Document
+    public function submitToReview(string $documentId, string $actorId, string $changelog): Document
     {
+        $normalizedChangelog = \App\Support\VersionSubmissionChangelog::normalize($changelog);
         $document = $this->documentRepository->findOrFail($documentId);
 
         if (! in_array($document->status, ['draft', 'rejected'], true)) {
@@ -1038,8 +1040,9 @@ class DocumentService implements DocumentServiceInterface
 
         $this->documentBlockService->assertMandatoryBlocksAreFilled($documentId);
 
-        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document) {
+        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document, $normalizedChangelog) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
+            $this->documentRepository->updateHeadVersionChangelog($documentId, $normalizedChangelog);
 
             $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
 
@@ -1049,14 +1052,13 @@ class DocumentService implements DocumentServiceInterface
                 // is a valid state (e.g. personal use, or a coordinator who skipped step 3).
                 $this->documentStateService->transition($documentId, 'published', $actorId);
 
-                // Misma convención que {@see TemplatePublishingService} (plantilla ya numerada en creación).
-                $autoChangelog = 'Publicación automática (sin revisores configurados)';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',
                     triggeredBy: $actorId,
-                    notes: $autoChangelog,
+                    notes: $normalizedChangelog,
                 ));
+                $this->documentRepository->clearHeadVersionChangelog($documentId);
 
                 $autoPublished = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
 
@@ -1269,8 +1271,12 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
-            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
-            $resolvedChangelog = $trimmedChangelog !== '' ? $trimmedChangelog : 'Publicación automática';
+            $document = $this->documentRepository->findOrFail($documentId);
+            $document->loadMissing('headVersion');
+            $resolvedChangelog = \App\Support\VersionSubmissionChangelog::requireNonEmpty(
+                $changelog,
+                $document->headVersion?->changelog,
+            );
 
             $this->documentStateService->transition($documentId, 'published', $actorId);
             $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
@@ -1279,6 +1285,7 @@ class DocumentService implements DocumentServiceInterface
                 triggeredBy: $actorId,
                 notes: $resolvedChangelog,
             ));
+            $this->documentRepository->clearHeadVersionChangelog($documentId);
 
             $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
 
