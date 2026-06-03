@@ -831,4 +831,28 @@ class TemplateRepository implements TemplateRepositoryInterface
             blocks: $blocks,
         );
     }
+
+    /**
+     * Fetch template blocks as DTOs, ordered by sort_order.
+     * Encapsulates model access; exposes only needed data as DTO.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\DTOs\Templates\TemplateBlockPayloadDto>
+     */
+    public function findBlocksAsPayloadDtosForTemplate(string $templateId): \Illuminate\Support\Collection
+    {
+        return \App\Models\TemplateBlock::query()
+            ->where('template_id', $templateId)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function (\App\Models\TemplateBlock $block) {
+                return new \App\DTOs\Templates\TemplateBlockPayloadDto(
+                    blockId: (string) $block->id,
+                    title: $block->title ?? '',
+                    description: $block->description,
+                    defaultContent: $block->default_content,
+                    blockState: $block->block_state,
+                    sortOrder: (int) $block->sort_order,
+                );
+            });
+    }
 }

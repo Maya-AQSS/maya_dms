@@ -62,10 +62,8 @@ class SnapshotService implements SnapshotServiceInterface
             $entityVersionId,
         );
 
-        $document = $this->documentRepository->findOrFailForRefreshAfterMutation($dto->documentId);
-
         $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($dto->documentId);
-        $this->documentVersionBlockLayerWriter->syncLayersForNewPublication($latestVersion, $document);
+        $this->documentVersionBlockLayerWriter->syncLayersForNewPublication((string) $latestVersion->id, $dto->documentId);
     }
 
     /**

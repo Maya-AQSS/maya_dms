@@ -4,41 +4,46 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\EntityVersion;
+use App\DTOs\Templates\TemplateBlockPayloadDto;
 use App\Models\Template;
-use App\Models\TemplateBlock;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 
 /**
  * Persistencia incremental de definición de bloques por publicación de plantilla.
+ * Accepts scalar IDs and DTOs, not Eloquent models.
  */
 final class TemplateVersionBlockLayerWriter
 {
     public function __construct(
+        private readonly TemplateRepositoryInterface $templateRepository,
         private readonly EntityVersionRepositoryInterface $entityVersionRepository,
         private readonly TemplateVersionBlockLayerRepositoryInterface $layerRepository,
     ) {}
 
-    public function syncLayersForNewPublication(EntityVersion $createdVersion, Template $template): void
+    /**
+     * Synchronize block layers for new version publication.
+     * Accepts scalar IDs, fetches models in repository layer only.
+     */
+    public function syncLayersForNewPublication(string $createdVersionId, string $templateId): void
     {
-        $template->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+        $createdVersion = $this->entityVersionRepository->findOrFailAsSnapshot($createdVersionId);
+        $draftBlocks = $this->templateRepository->findBlocksAsPayloadDtosForTemplate($templateId);
 
-        $previous = $this->entityVersionRepository->findPublishedByEntityAndNumber(
+        $previous = $this->entityVersionRepository->findPublishedByEntityAndNumberAsSnapshot(
             Template::class,
-            (string) $createdVersion->versionable_id,
-            (int) $createdVersion->version_number - 1,
+            $templateId,
+            $createdVersion->versionNumber - 1,
         );
-
-        $draftBlocks = $template->blocks;
 
         if ($previous === null) {
             foreach ($draftBlocks as $block) {
-                $payload = $this->blockPayloadFromTemplateBlock($block);
+                $payload = $block->toArray();
                 $this->layerRepository->create([
                     'entity_version_id' => $createdVersion->id,
-                    'template_block_id' => (string) $block->getKey(),
-                    'sort_order' => (int) $block->sort_order,
+                    'template_block_id' => $block->blockId,
+                    'sort_order' => $block->sortOrder,
                     'inherits_from_previous_publication' => false,
                     'removed' => false,
                     'override_payload' => $payload,
@@ -50,24 +55,24 @@ final class TemplateVersionBlockLayerWriter
 
         /** @var array<string, array<string, mixed>> $prevById */
         $prevById = [];
-        foreach ($previous->blocksSnapshotRows() as $row) {
+        foreach ($previous->blocksSnapshotRows as $row) {
             if (is_array($row) && isset($row['id']) && is_string($row['id'])) {
                 $prevById[$row['id']] = $row;
             }
         }
 
-        $draftIdStrings = $draftBlocks->map(static fn (TemplateBlock $b): string => (string) $b->getKey())->all();
+        $draftIdStrings = $draftBlocks->map(static fn (TemplateBlockPayloadDto $b): string => $b->blockId)->all();
 
         foreach ($draftBlocks as $block) {
-            $payload = $this->blockPayloadFromTemplateBlock($block);
-            $prev = $prevById[(string) $block->getKey()] ?? null;
+            $payload = $block->toArray();
+            $prev = $prevById[$block->blockId] ?? null;
 
             $inherits = $prev !== null && $this->payloadsEqual($prev, $payload);
 
             $this->layerRepository->create([
                 'entity_version_id' => $createdVersion->id,
-                'template_block_id' => (string) $block->getKey(),
-                'sort_order' => (int) $block->sort_order,
+                'template_block_id' => $block->blockId,
+                'sort_order' => $block->sortOrder,
                 'inherits_from_previous_publication' => $inherits,
                 'removed' => false,
                 'override_payload' => $inherits ? null : $payload,
@@ -75,10 +80,10 @@ final class TemplateVersionBlockLayerWriter
         }
 
         foreach ($prevById as $id => $_prevRow) {
-            if (! in_array((string) $id, $draftIdStrings, true)) {
+            if (! in_array($id, $draftIdStrings, true)) {
                 $this->layerRepository->create([
                     'entity_version_id' => $createdVersion->id,
-                    'template_block_id' => (string) $id,
+                    'template_block_id' => $id,
                     'sort_order' => 0,
                     'inherits_from_previous_publication' => false,
                     'removed' => true,
@@ -86,23 +91,6 @@ final class TemplateVersionBlockLayerWriter
                 ]);
             }
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function blockPayloadFromTemplateBlock(TemplateBlock $block): array
-    {
-        $state = $block->block_state;
-
-        return [
-            'id' => $block->getKey(),
-            'title' => $block->title,
-            'description' => $block->description,
-            'default_content' => $block->default_content,
-            'block_state' => $state instanceof \BackedEnum ? $state->value : $state,
-            'sort_order' => (int) $block->sort_order,
-        ];
     }
 
     /**

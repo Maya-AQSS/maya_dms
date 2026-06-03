@@ -895,4 +895,30 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->orderBy('sort_order')
             ->get(['content', 'sort_order']);
     }
+
+    /**
+     * Fetch document blocks as DTOs, ordered by sort_order.
+     * Encapsulates model access; exposes only needed data as DTO.
+     *
+     * @return Collection<int, \App\DTOs\Documents\DocumentBlockPayloadDto>
+     */
+    public function findBlocksAsPayloadDtosForDocument(string $documentId): Collection
+    {
+        return DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function (DocumentBlock $block) {
+                return new \App\DTOs\Documents\DocumentBlockPayloadDto(
+                    blockId: (string) $block->id,
+                    templateBlockId: $block->template_block_id ? (string) $block->template_block_id : null,
+                    content: $block->content,
+                    isFilled: (bool) $block->is_filled,
+                    sortOrder: (int) $block->sort_order,
+                    lastEditedBy: $block->last_edited_by ? (string) $block->last_edited_by : null,
+                    lockedBy: $block->locked_by ? (string) $block->locked_by : null,
+                    lockedAt: $block->locked_at ? $block->locked_at->toIso8601String() : null,
+                );
+            });
+    }
 }

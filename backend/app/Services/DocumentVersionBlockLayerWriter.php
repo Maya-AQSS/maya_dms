@@ -4,40 +4,44 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\Document;
-use App\Models\DocumentBlock;
-use App\Models\DocumentVersion;
+use App\DTOs\Documents\DocumentBlockPayloadDto;
+use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionBlockLayerRepositoryInterface;
 use App\Repositories\Contracts\DocumentVersionRepositoryInterface;
 
 /**
  * Capas incrementales por versión publicada de documento (convive con snapshot JSON completo).
+ * Accepts scalar IDs and DTOs, not Eloquent models.
  */
 final class DocumentVersionBlockLayerWriter
 {
     public function __construct(
+        private readonly DocumentRepositoryInterface $documentRepository,
         private readonly DocumentVersionRepositoryInterface $documentVersionRepository,
         private readonly DocumentVersionBlockLayerRepositoryInterface $layerRepository,
     ) {}
 
-    public function syncLayersForNewPublication(DocumentVersion $createdVersion, Document $document): void
+    /**
+     * Synchronize block layers for new version publication.
+     * Accepts scalar IDs, fetches models in repository layer only.
+     */
+    public function syncLayersForNewPublication(string $createdVersionId, string $documentId): void
     {
-        $document->loadMissing(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
+        $createdVersion = $this->documentVersionRepository->findOrFailAsSnapshot($createdVersionId);
+        $draftBlocks = $this->documentRepository->findBlocksAsPayloadDtosForDocument($documentId);
 
-        $previous = $this->documentVersionRepository->findByDocumentAndVersionNumber(
-            (string) $createdVersion->document_id,
-            (int) $createdVersion->version_number - 1,
+        $previous = $this->documentVersionRepository->findByDocumentAndVersionNumberAsSnapshot(
+            $documentId,
+            $createdVersion->versionNumber - 1,
         );
-
-        $draftBlocks = $document->blocks;
 
         if ($previous === null) {
             foreach ($draftBlocks as $block) {
-                $payload = $this->blockPayloadFromDocumentBlock($block);
+                $payload = $block->toArray();
                 $this->layerRepository->create([
                     'document_version_id' => $createdVersion->id,
-                    'document_block_id' => (string) $block->getKey(),
-                    'sort_order' => (int) $block->sort_order,
+                    'document_block_id' => $block->blockId,
+                    'sort_order' => $block->sortOrder,
                     'inherits_from_previous_publication' => false,
                     'removed' => false,
                     'override_payload' => $payload,
@@ -49,26 +53,27 @@ final class DocumentVersionBlockLayerWriter
 
         /** @var array<string, array<string, mixed>> $prevById */
         $prevById = [];
-        $snap = $previous->resolvedSnapshotData();
-        $prevBlocks = is_array($snap) && isset($snap['blocks']) && is_array($snap['blocks']) ? $snap['blocks'] : [];
+        $prevBlocks = isset($previous->snapshotData['blocks']) && is_array($previous->snapshotData['blocks'])
+            ? $previous->snapshotData['blocks']
+            : [];
         foreach ($prevBlocks as $row) {
             if (is_array($row) && isset($row['id']) && is_string($row['id'])) {
                 $prevById[$row['id']] = $row;
             }
         }
 
-        $draftIdStrings = $draftBlocks->map(static fn (DocumentBlock $b): string => (string) $b->getKey())->all();
+        $draftIdStrings = $draftBlocks->map(static fn (DocumentBlockPayloadDto $b): string => $b->blockId)->all();
 
         foreach ($draftBlocks as $block) {
-            $payload = $this->blockPayloadFromDocumentBlock($block);
-            $prev = $prevById[(string) $block->getKey()] ?? null;
+            $payload = $block->toArray();
+            $prev = $prevById[$block->blockId] ?? null;
 
             $inherits = $prev !== null && $this->payloadsEqual($prev, $payload);
 
             $this->layerRepository->create([
                 'document_version_id' => $createdVersion->id,
-                'document_block_id' => (string) $block->getKey(),
-                'sort_order' => (int) $block->sort_order,
+                'document_block_id' => $block->blockId,
+                'sort_order' => $block->sortOrder,
                 'inherits_from_previous_publication' => $inherits,
                 'removed' => false,
                 'override_payload' => $inherits ? null : $payload,
@@ -76,10 +81,10 @@ final class DocumentVersionBlockLayerWriter
         }
 
         foreach ($prevById as $id => $_prevRow) {
-            if (! in_array((string) $id, $draftIdStrings, true)) {
+            if (! in_array($id, $draftIdStrings, true)) {
                 $this->layerRepository->create([
                     'document_version_id' => $createdVersion->id,
-                    'document_block_id' => (string) $id,
+                    'document_block_id' => $id,
                     'sort_order' => 0,
                     'inherits_from_previous_publication' => false,
                     'removed' => true,
@@ -87,23 +92,6 @@ final class DocumentVersionBlockLayerWriter
                 ]);
             }
         }
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function blockPayloadFromDocumentBlock(DocumentBlock $block): array
-    {
-        return [
-            'id' => $block->getKey(),
-            'template_block_id' => $block->template_block_id,
-            'content' => $block->content,
-            'is_filled' => (bool) $block->is_filled,
-            'sort_order' => (int) $block->sort_order,
-            'last_edited_by' => $block->last_edited_by,
-            'locked_by' => $block->locked_by,
-            'locked_at' => $block->locked_at?->toIso8601String(),
-        ];
     }
 
     /**

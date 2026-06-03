@@ -194,7 +194,7 @@ class TemplatePublishingService
                 $resolvedChangelog,
             );
 
-            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($entityVersion, $template);
+            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication((string) $entityVersion->id, (string) $template->id);
 
             // Migrar favoritos: los que apuntaban a la versión publicada anterior pasan a la nueva.
             if ($entityVersion->base_version_id !== null) {
