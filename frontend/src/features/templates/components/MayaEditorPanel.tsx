@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import {
   MayaEditor,
-  convertBlockNoteToTiptap,
   type TiptapDoc,
   type CommentHoverData,
 } from '@ceedcv-maya/shared-editor-react';
@@ -59,15 +58,6 @@ function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
   );
 }
 
-function looksLikeBlockNote(value: unknown): value is unknown[] {
-  if (!Array.isArray(value) || value.length === 0) return false;
-  const first = value[0] as { type?: unknown; props?: unknown; children?: unknown };
-  if (!first || typeof first !== 'object') return false;
-  // BlockNote blocks always carry `type` and usually `props`/`children`.
-  // ProseMirror node arrays use `type` too but lack `props`.
-  return 'type' in first && ('props' in first || 'children' in first);
-}
-
 function isTiptapContentArray(value: unknown): value is TiptapDoc['content'] {
   return Array.isArray(value) && value.every((n) => !!n && typeof n === 'object');
 }
@@ -76,9 +66,6 @@ function normaliseToDoc(value: unknown): TiptapDoc | string | undefined {
   if (value == null) return undefined;
   if (typeof value === 'string') return value;
   if (looksLikeTiptapDoc(value)) return value;
-  if (looksLikeBlockNote(value)) {
-    return convertBlockNoteToTiptap(value as Parameters<typeof convertBlockNoteToTiptap>[0]);
-  }
   if (isTiptapContentArray(value)) {
     return { type: 'doc', content: value as TiptapDoc['content'] };
   }

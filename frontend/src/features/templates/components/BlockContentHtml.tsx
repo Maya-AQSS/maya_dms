@@ -26,8 +26,7 @@ function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
 
 // A bare TipTap content array — the `content` field of a doc, which is the
 // wire shape MayaEditorPanel emits (`onChange(doc.content)`) and the backend
-// stores in `template_blocks.default_content`. Must be checked AFTER
-// looksLikeBlockNote, as any array of objects matches this.
+// stores in `template_blocks.default_content`.
 function looksLikeTiptapContentArray(value: unknown): value is TiptapDoc['content'] {
   return Array.isArray(value) && value.length > 0 && value.every((n) => !!n && typeof n === 'object');
 }
