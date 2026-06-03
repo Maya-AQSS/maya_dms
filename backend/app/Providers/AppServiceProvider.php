@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\DTOs\Users\JwtProfileDto;
+use App\Support\FdwTeardown;
+use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Support\Facades\Event;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -185,6 +188,16 @@ class AppServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(ProfileMigrations::academicCatalogs());
         $this->loadMigrationsFrom(ProfileMigrations::teams());
         $this->loadMigrationsFrom(ProfileMigrations::userPermissions());
+
+        // db:wipe no elimina vistas ni foreign tables FDW (las crea el paquete
+        // shared-profile). Las limpiamos antes de migrate:fresh/db:wipe para que
+        // la reconstrucción sea reproducible (si no, el rewrite de la vista
+        // `teams` falla con «cannot drop columns from view»).
+        Event::listen(CommandStarting::class, static function (CommandStarting $event): void {
+            if (in_array($event->command, ['migrate:fresh', 'db:wipe'], true)) {
+                FdwTeardown::dropAllInPublicSchema();
+            }
+        });
 
         // Guard JWT stateless: resuelve el usuario desde el atributo 'jwt_user'
         // que JwtMiddleware deposita en el request tras validar el token.
