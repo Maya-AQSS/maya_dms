@@ -6,8 +6,7 @@ import {
   createTemplate,
   updateTemplate,
   syncTemplateValidators,
-  publishTemplate,
-  fetchTemplateVersionSummaries,
+  submitTemplateForReview,
 } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { fetchMe } from '../../../../api/users';
@@ -136,8 +135,9 @@ describe('TemplateWizard Integration', () => {
       data: fullTemplate({ name: payload.name ?? 'Existing' }),
     }));
     (syncTemplateValidators as any).mockResolvedValue({ data: [] });
-    (publishTemplate as any).mockResolvedValue({ data: { success: true } });
-    (fetchTemplateVersionSummaries as any).mockResolvedValue([]);
+    (submitTemplateForReview as any).mockResolvedValue({
+      data: fullTemplate({ status: 'published' }),
+    });
   });
 
   const renderWizard = async (props = {}) => {
@@ -228,6 +228,16 @@ describe('TemplateWizard Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
+      expect(screen.getByPlaceholderText(/Descripción del cambio/i)).toBeTruthy();
+    }, { timeout: 10000 });
+
+    fireEvent.change(screen.getByPlaceholderText(/Descripción del cambio/i), {
+      target: { value: 'Primera publicación con changelog.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }));
+
+    await waitFor(() => {
+      expect(submitTemplateForReview).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
       expect(mockNavigate).toHaveBeenCalledWith('/procesos/proc-test-1');
     }, { timeout: 10000 });
   }, 15000);

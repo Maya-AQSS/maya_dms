@@ -222,10 +222,10 @@ export async function delegateDocument(documentId: string, newOwnerId: string): 
 }
 
 /** POST /api/v1/documents/{id}/submit */
-export async function submitDocumentForReview(documentId: string): Promise<Document> {
+export async function submitDocumentForReview(documentId: string, changelog: string): Promise<Document> {
   const body = await apiFetchJson<DocumentSubmitApiResponse>(
     `documents/${encodeURIComponent(documentId)}/submit`,
-    { method: 'POST', body: {} },
+    { method: 'POST', body: { changelog } },
   );
   return body.data;
 }

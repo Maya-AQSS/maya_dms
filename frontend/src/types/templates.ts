@@ -92,6 +92,8 @@ export type Template = {
   theme_id?: string | null;
   /** Mini-payload del theme cuando viene incluido en la respuesta. */
   theme?: ThemeMini | null;
+  /** Changelog del envío a validación (versión de trabajo); precarga el modal al reenviar. */
+  submission_changelog?: string | null;
 };
 
 /**

@@ -43,6 +43,14 @@
     "publishedBy": "Publicado por",
     "versionAuthor": "Autor versión"
   },
+  "versionChangelog": {
+    "label": "Cambios en esta versión",
+    "hint": "Describe qué has modificado. Los validadores verán este texto.",
+    "placeholder": "Descripción del cambio…",
+    "required": "El changelog es obligatorio.",
+    "maxLength": "El changelog no puede superar {{max}} caracteres.",
+    "readOnlyTitle": "Cambios enviados por el autor"
+  },
   "filters": {
     "allModules": "Todos los módulos"
   }
