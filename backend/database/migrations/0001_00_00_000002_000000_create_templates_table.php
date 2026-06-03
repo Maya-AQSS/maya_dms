@@ -8,17 +8,11 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Ancla de plantilla en un proceso (`process_id`). Identidad estable del recurso en catálogo y FKs desde documentos.
  *
- * Dominio (modelo objetivo): nombre, descripción, {@see TemplateVisibilityLevel}, plazos, jerarquía académica,
- * equipo, estado del ciclo (draft / in_review / published / archived), configuración del flujo de revisión y la
- * autoría de esa **copia de trabajo** pertenecen al agregado **versión** ({@see \App\Models\EntityVersion}), no a la
- * plantilla como concepto abstracto.
+ * Estado final (consolidado): SOLO id, process_id, theme_id, head_entity_version_id + timestamps + softDeletes.
+ * Metadatos (nombre, descripción, etc.) viven en entity_versions.snapshot_data.
  *
- * Implementación actual: el borrador editable y el estado hasta publicar siguen persistiendo en esta tabla para no
- * duplicar todavía una fila {@code entity_versions} “cabezal” por plantilla; cada **publicación** canónica sí se
- * guarda en {@code entity_versions} con snapshot inmutable (changelog, {@code published_at}, {@code published_by}, …).
- * Trasladar también el borrador a {@code entity_versions} es un refactor amplio (repositorios, scopes, políticas, tests).
- *
- * `team_id`: catálogo lógico `teams`; sin FK física (FDW vista / testing tabla).
+ * head_entity_version_id FK: añadida en create_entity_versions (no aquí, porque entity_versions no existe aún).
+ * theme_id FK: añadida en create_themes (no aquí, porque themes no existe aún).
  */
 return new class extends Migration
 {
@@ -27,36 +21,13 @@ return new class extends Migration
         Schema::create('templates', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->foreignUuid('process_id')->constrained('processes')->restrictOnDelete();
-            $table->string('name');
-            $table->text('description')->nullable();
-
-            $table->enum('visibility_level', TemplateVisibilityLevel::values())
-                ->default(TemplateVisibilityLevel::Personal->value);
-
-            $table->timestamp('delivery_deadline')->nullable();
-
-            $table->string('study_id')->nullable();       // jerarquía académica (FDW)
-            $table->string('study_type_id')->nullable();
-            $table->string('module_id')->nullable();
-
-            // Sin FK física hacia `teams` (vista FDW o tabla en testing); validación exists:teams,id en Form Requests.
-            $table->uuid('team_id')->nullable()->index();
-
-            $table->string('created_by');                  // FK lógica → users (FDW)
-            $table->string('status')->default('draft');    // draft | published | archived
-
-            // Configuración del flujo de revisión
-            $table->integer('review_stages')->default(0);  // 0 = sin revisión
-            $table->string('review_mode')->default('parallel'); // sequential | parallel
-
+            $table->uuid('theme_id')->nullable();
+            $table->uuid('head_entity_version_id')->nullable();
             $table->timestamps();
             $table->softDeletes();
 
             $table->unique(['process_id', 'id']);
-            $table->index(['visibility_level', 'status'], 'templates_visibility_status_index');
-            $table->index('study_id');
-            $table->index('study_type_id');
-            $table->index('module_id');
+            $table->index('theme_id');
         });
     }
 

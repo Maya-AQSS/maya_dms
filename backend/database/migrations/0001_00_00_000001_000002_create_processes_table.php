@@ -15,6 +15,8 @@ return new class extends Migration
             $table->string('alias');
             $table->text('description')->nullable();
             $table->uuid('process_parent_id')->nullable();
+            $table->string('icon', 40)->nullable();
+            $table->string('color', 7)->nullable();
             $table->timestamps();
 
             $table->index('process_parent_id');
@@ -31,6 +33,14 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (Schema::hasTable('processes')) {
+            Schema::table('processes', function (Blueprint $table) {
+                try {
+                    $table->dropForeign(['process_parent_id']);
+                } catch (\Throwable) {
+                }
+            });
+        }
         Schema::dropIfExists('processes');
     }
 };
