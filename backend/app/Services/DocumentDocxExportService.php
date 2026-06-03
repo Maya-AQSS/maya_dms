@@ -44,9 +44,8 @@ class DocumentDocxExportService
             if (! is_array($doc)) {
                 continue;
             }
-            // Already a TipTap doc; if it's still legacy BlockNote, the
-            // migration command has not run yet — caller can run
-            // `php artisan blocknote:migrate-to-tiptap` first.
+            // Los bloques se persisten como documento TipTap (`{type:doc}`);
+            // el render produce el HTML que empaqueta el DOCX.
             $htmlParts[] = TiptapHtmlRenderer::renderDoc($doc);
         }
 

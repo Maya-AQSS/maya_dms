@@ -26,6 +26,7 @@ return new class extends Migration
             $table->timestamp('locked_at')->nullable();
             $table->integer('sort_order')->default(0);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['document_id', 'template_block_id']);
             $table->index(['document_id', 'sort_order']);

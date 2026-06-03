@@ -59,10 +59,29 @@ return new class extends Migration
             $table->index(['created_by']);
             $table->index('cloned_from_id');
         });
+
+        /* Añade FK desde templates.theme_id a themes.id */
+        if (Schema::hasTable('templates')) {
+            Schema::table('templates', function (Blueprint $table) {
+                $table->foreign('theme_id')
+                    ->references('id')
+                    ->on('themes')
+                    ->restrictOnDelete();
+            });
+        }
     }
 
     public function down(): void
     {
+        if (Schema::hasTable('templates')) {
+            Schema::table('templates', function (Blueprint $table) {
+                try {
+                    $table->dropForeign(['theme_id']);
+                } catch (\Throwable) {
+                }
+            });
+        }
+
         Schema::dropIfExists('themes');
     }
 };

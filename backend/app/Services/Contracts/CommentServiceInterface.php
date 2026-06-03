@@ -54,7 +54,8 @@ interface CommentServiceInterface
     public function update(string $commentId, string $body, string $editedBy): CommentDto;
 
     /**
-     * Elimina un comentario por id (la policy del controlador usa `findModelOrFail()` antes).
+     * Elimina un comentario por id. La autorización se resuelve en el Controller
+     * (`findModelOrFail()` + policy) antes de delegar; el Service trabaja solo con el id.
      */
     public function delete(string $commentId, string $deletedBy, string $deletedByName): void;
 }

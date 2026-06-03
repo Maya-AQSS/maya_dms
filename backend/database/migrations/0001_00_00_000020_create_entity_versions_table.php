@@ -55,6 +55,35 @@ return new class extends Migration
             });
         }
 
+        /* Añade FKs a entity_versions desde templates y documents (head_entity_version_id). */
+        if (Schema::hasTable('templates')) {
+            Schema::table('templates', function (Blueprint $table) {
+                $table->foreign('head_entity_version_id')
+                    ->references('id')
+                    ->on('entity_versions')
+                    ->restrictOnDelete();
+            });
+        }
+
+        if (Schema::hasTable('documents')) {
+            Schema::table('documents', function (Blueprint $table) {
+                $table->foreign('head_entity_version_id')
+                    ->references('id')
+                    ->on('entity_versions')
+                    ->restrictOnDelete();
+            });
+        }
+
+        /* Añade FK desde user_favorite_templates a entity_versions */
+        if (Schema::hasTable('user_favorite_templates')) {
+            Schema::table('user_favorite_templates', function (Blueprint $table) {
+                $table->foreign('template_version_id')
+                    ->references('id')
+                    ->on('entity_versions')
+                    ->cascadeOnDelete();
+            });
+        }
+
         if (Schema::getConnection()->getDriverName() === 'pgsql') {
             DB::unprepared(<<<'SQL'
 CREATE TRIGGER entity_versions_append_only_snapshots
@@ -72,18 +101,49 @@ SQL);
             DB::unprepared('DROP TRIGGER IF EXISTS entity_versions_append_only_snapshots ON entity_versions;');
         }
 
+        if (Schema::hasTable('user_favorite_templates')) {
+            Schema::table('user_favorite_templates', function (Blueprint $table) {
+                try {
+                    $table->dropForeign(['template_version_id']);
+                } catch (\Throwable) {
+                }
+            });
+        }
+
         if (Schema::hasTable('documents')) {
             Schema::table('documents', function (Blueprint $table) {
-                $table->dropForeign(['template_version_id']);
+                try {
+                    $table->dropForeign(['head_entity_version_id']);
+                } catch (\Throwable) {
+                }
+                try {
+                    $table->dropForeign(['template_version_id']);
+                } catch (\Throwable) {
+                }
+            });
+        }
+
+        if (Schema::hasTable('templates')) {
+            Schema::table('templates', function (Blueprint $table) {
+                try {
+                    $table->dropForeign(['head_entity_version_id']);
+                } catch (\Throwable) {
+                }
             });
         }
 
         Schema::table('document_versions', function (Blueprint $table) {
-            $table->dropForeign(['entity_version_id']);
+            try {
+                $table->dropForeign(['entity_version_id']);
+            } catch (\Throwable) {
+            }
         });
 
         Schema::table('entity_versions', function (Blueprint $table) {
-            $table->dropForeign(['base_version_id']);
+            try {
+                $table->dropForeign(['base_version_id']);
+            } catch (\Throwable) {
+            }
         });
 
         Schema::dropIfExists('entity_versions');

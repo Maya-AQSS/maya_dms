@@ -319,7 +319,7 @@ export function TemplatePreviewPage() {
       template.latest_published_version_id,
       template.working_version_id,
       template.status,
-      ['draft', 'in_review'],
+      ['draft', 'in_review', 'rejected'],
     );
 
   const processesQuery = useProcessesQuery(undefined, {

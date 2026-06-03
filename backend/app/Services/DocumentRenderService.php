@@ -8,8 +8,8 @@ use App\Constants\DocumentConstants;
 use App\Models\Document;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
-use App\Support\BlockNoteHtmlRenderer;
 use Illuminate\Support\Facades\View;
+use Maya\Editor\Renderers\TiptapHtmlRenderer;
 
 /**
  * Resuelve theme + bloques de un documento y produce HTML themed. El mismo
@@ -83,7 +83,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
             }
             $default = $block->content;
             if (is_array($default) && count($default) > 0) {
-                $blockHtmlParts[] = BlockNoteHtmlRenderer::renderBlocks($default);
+                $blockHtmlParts[] = TiptapHtmlRenderer::renderDoc($default);
             } elseif (is_string($default) && $default !== '') {
                 // Backwards-compat: algún seed legacy guardaba string en lugar de array.
                 $blockHtmlParts[] = '<p>'.e($default).'</p>';

@@ -135,6 +135,7 @@ interface DocumentServiceInterface
 
     /**
      * Localiza una versión snapshot del documento por id (legacy o polimórfico).
+     * Devuelve datos de render; la lógica de versión vive en el Service, no en el Controller.
      *
      * @return array{
      *   id: string,
