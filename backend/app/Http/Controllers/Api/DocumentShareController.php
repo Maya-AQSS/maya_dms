@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\StoreDocumentShareRequest;
+use App\Http\Resources\DocumentShareResource;
 use App\Policies\DocumentPolicy;
 use App\Services\Contracts\DocumentServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -43,7 +44,7 @@ class DocumentShareController extends Controller
             $actorId,
         );
 
-        return response()->json(['data' => $data], 201);
+        return response()->json(['data' => (new DocumentShareResource($data))->toArray($request)], 201);
     }
 
     /**

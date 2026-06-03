@@ -76,9 +76,10 @@ class DocumentReviewService
 
             $this->assertSequentialReviewAllowsActing($document, $review);
 
-            $review->status = 'approved';
-            $review->reviewed_at = now();
-            $this->documentRepository->saveReview($review);
+            $this->documentRepository->approveReview((string) $review->id);
+
+            // Recargar para tener timestamp actualizado
+            $review = $this->documentRepository->findReviewInDocument((string) $review->id, $documentId);
             DocumentReviewApproved::dispatch($documentId, $review, $actorId);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
@@ -280,10 +281,10 @@ class DocumentReviewService
 
             $this->assertSequentialReviewAllowsActing($document, $review);
 
-            $review->status = 'rejected';
-            $review->rejection_reason = $reason;
-            $review->reviewed_at = now();
-            $this->documentRepository->saveReview($review);
+            $this->documentRepository->rejectReview((string) $review->id, $reason);
+
+            // Recargar para tener datos actualizados
+            $review = $this->documentRepository->findReviewInDocument((string) $review->id, $documentId);
             DocumentReviewRejected::dispatch($documentId, $review, $actorId, $reason);
 
             $this->stateService->transition($documentId, 'rejected', $actorId);

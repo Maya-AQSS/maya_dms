@@ -1535,4 +1535,49 @@ class DocumentService implements DocumentServiceInterface
 
         return $title;
     }
+
+    /**
+     * Obtiene el nombre del usuario propietario del documento.
+     * Devuelve un nombre por defecto si el usuario no existe.
+     */
+    public function getOwnerNameForDocument(string $documentId): string
+    {
+        $document = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+
+        if ($document->owner_id === null) {
+            return 'otro usuario';
+        }
+
+        $ownerName = \App\Models\User::query()
+            ->where('id', $document->owner_id)
+            ->value('name');
+
+        return is_string($ownerName) && $ownerName !== '' ? $ownerName : 'otro usuario';
+    }
+
+    /**
+     * Prepara un documento para visualización, adjuntando relaciones y metadatos derivados.
+     * Centraliza la carga de relaciones y cálculo de metadatos que antes estaban dispersos
+     * en el controller.
+     */
+    public function prepareDocumentForDisplay(
+        Document $document,
+        ?EntityVersion $latestPublished = null,
+        bool $isAssignedReviewer = false,
+    ): void {
+        // Cargar propietario si no está cargado
+        $document->loadMissing(['owner']);
+
+        // Si se proporciona última versión publicada, establecerla como relación
+        if ($latestPublished !== null) {
+            $document->setRelation('headVersion', $latestPublished);
+        }
+
+        // Determinar si hay comentarios de revisión rechazada
+        $hasReviewComments = $document->comments()->exists();
+        $document->setAttribute('has_review_comments', $hasReviewComments);
+
+        // Establecer si es revisor asignado
+        $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
+    }
 }

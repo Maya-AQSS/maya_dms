@@ -19,7 +19,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 use JsonException;
 use RuntimeException;
@@ -60,7 +60,7 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->first();
 
         if ($document === null) {
-            throw new NotFoundHttpException('Documento no encontrado.');
+            throw (new ModelNotFoundException())->setModel(Document::class);
         }
 
         return $document;
@@ -337,6 +337,33 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function saveReview(DocumentReview $review): void
     {
         $review->save();
+    }
+
+    /**
+     * Aprueba una revisión (actualiza estado y timestamp).
+     */
+    public function approveReview(string $reviewId): void
+    {
+        DocumentReview::query()
+            ->where('id', $reviewId)
+            ->update([
+                'status' => 'approved',
+                'reviewed_at' => now(),
+            ]);
+    }
+
+    /**
+     * Rechaza una revisión (actualiza estado, timestamp y razón).
+     */
+    public function rejectReview(string $reviewId, ?string $rejectionReason = null): void
+    {
+        DocumentReview::query()
+            ->where('id', $reviewId)
+            ->update([
+                'status' => 'rejected',
+                'reviewed_at' => now(),
+                'rejection_reason' => $rejectionReason,
+            ]);
     }
 
     /**

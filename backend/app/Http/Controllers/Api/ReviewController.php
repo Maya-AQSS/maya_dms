@@ -55,7 +55,7 @@ class ReviewController extends Controller
             $request->validated('changelog'),
         );
 
-        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
+        return response()->json(['data' => new DocumentResource(DocumentDto::fromModel($updated))]);
     }
 
     /**
@@ -75,6 +75,6 @@ class ReviewController extends Controller
             $request->validated('rejection_reason'),
         );
 
-        return response()->json(['data' => (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request)]);
+        return response()->json(['data' => new DocumentResource(DocumentDto::fromModel($updated))]);
     }
 }

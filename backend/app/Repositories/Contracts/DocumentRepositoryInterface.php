@@ -134,6 +134,16 @@ interface DocumentRepositoryInterface
     public function saveReview(DocumentReview $review): void;
 
     /**
+     * Aprueba una revisión (actualiza estado y timestamp).
+     */
+    public function approveReview(string $reviewId): void;
+
+    /**
+     * Rechaza una revisión (actualiza estado, timestamp y razón).
+     */
+    public function rejectReview(string $reviewId, ?string $rejectionReason = null): void;
+
+    /**
      * Listado paginado de documentos con filtros de dominio (ADR-C).
      *
      * Aplica el scope global `user_access` del modelo para garantizar visibilidad.
