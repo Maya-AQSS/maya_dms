@@ -12,9 +12,9 @@ interface AnchoredCommentServiceInterface
     /**
      * List all anchored comments for a resource.
      *
-     * @return Collection<int, AnchoredCommentDto>
+     * @return array<int, AnchoredCommentDto>
      */
-    public function listForResource(string $resourceType, string $resourceId): Collection;
+    public function listForResource(string $resourceType, string $resourceId): array;
 
     /**
      * Get a specific anchored comment if it belongs to the resource.

@@ -34,7 +34,9 @@ interface CommentRepositoryInterface
     /**
      * Actualiza el cuerpo del comentario y guarda la versión anterior en comment_edits.
      */
-    public function update(Comment $comment, string $newBody, string $editedBy): Comment;
+    public function update(string $commentId, string $newBody, string $editedBy): Comment;
+
+    public function delete(string $commentId, string $deletedBy, string $deletedByName): void;
 
     /**
      * Busca un comentario por ID ignorando scopes globales.

@@ -135,10 +135,12 @@ interface DocumentServiceInterface
     public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document;
 
     /**
-     * Localiza una versión snapshot del documento por id. Devuelve Model —
-     * el Controller adjunta atributos derivados para la representación final.
+     * Localiza una versión snapshot del documento por id. Devuelve un array con
+     * los datos de render (la lógica de versión vive en el Service, no en el Controller).
+     *
+     * @return array<string, mixed>
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): array;
 
     /**
      * Detalle de versión del documento aceptando id legacy o id polimórfico.
