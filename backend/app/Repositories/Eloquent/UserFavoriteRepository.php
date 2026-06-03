@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\Models\UserFavoriteDocument;
+use App\Models\UserFavoriteTemplate;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
-use Illuminate\Support\Facades\DB;
 
 class UserFavoriteRepository implements UserFavoriteRepositoryInterface
 {
@@ -16,7 +17,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
      */
     public function listTemplateIdsForUser(string $userId): array
     {
-        return DB::table('user_favorite_templates')
+        return UserFavoriteTemplate::query()
             ->where('user_id', '=', $userId)
             ->orderBy('created_at', 'desc')
             ->pluck('template_version_id')
@@ -32,7 +33,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
      */
     public function listDocumentIdsForUser(string $userId): array
     {
-        return DB::table('user_favorite_documents')
+        return UserFavoriteDocument::query()
             ->where('user_id', '=', $userId)
             ->orderBy('created_at', 'desc')
             ->pluck('document_id')
@@ -46,12 +47,11 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
      */
     public function addTemplateFavorite(string $userId, string $templateVersionId): void
     {
-        $now = now();
-        DB::table('user_favorite_templates')->insertOrIgnore([
+        UserFavoriteTemplate::query()->insertOrIgnore([
             'user_id' => $userId,
             'template_version_id' => $templateVersionId,
-            'created_at' => $now,
-            'updated_at' => $now,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -60,7 +60,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
      */
     public function removeTemplateFavorite(string $userId, string $templateVersionId): void
     {
-        DB::table('user_favorite_templates')
+        UserFavoriteTemplate::query()
             ->where('user_id', '=', $userId)
             ->where('template_version_id', '=', $templateVersionId)
             ->delete();
@@ -71,12 +71,11 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
      */
     public function addDocumentFavorite(string $userId, string $documentId): void
     {
-        $now = now();
-        DB::table('user_favorite_documents')->insertOrIgnore([
+        UserFavoriteDocument::query()->insertOrIgnore([
             'user_id' => $userId,
             'document_id' => $documentId,
-            'created_at' => $now,
-            'updated_at' => $now,
+            'created_at' => now(),
+            'updated_at' => now(),
         ]);
     }
 
@@ -85,7 +84,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
      */
     public function removeDocumentFavorite(string $userId, string $documentId): void
     {
-        DB::table('user_favorite_documents')
+        UserFavoriteDocument::query()
             ->where('user_id', '=', $userId)
             ->where('document_id', '=', $documentId)
             ->delete();
@@ -96,7 +95,7 @@ class UserFavoriteRepository implements UserFavoriteRepositoryInterface
      */
     public function migrateFavoriteTemplateVersion(string $oldVersionId, string $newVersionId): void
     {
-        DB::table('user_favorite_templates')
+        UserFavoriteTemplate::query()
             ->where('template_version_id', '=', $oldVersionId)
             ->update(['template_version_id' => $newVersionId]);
     }
