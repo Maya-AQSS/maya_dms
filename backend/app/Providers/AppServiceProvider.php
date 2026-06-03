@@ -62,6 +62,7 @@ use App\Repositories\Resolvers\FdwUserProfileResolver;
 use App\Services\AnchoredCommentService;
 use App\Services\ApiTeamEmbedService;
 use App\Services\CommentService;
+use App\Services\MediaService;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
@@ -161,6 +162,7 @@ class AppServiceProvider extends ServiceProvider
         );
         $this->app->bind(UserFavoriteServiceInterface::class, UserFavoriteService::class);
         $this->app->bind(UserDirectoryServiceInterface::class, UserDirectoryService::class);
+        $this->app->singleton(MediaService::class);
     }
 
     public function boot(): void
