@@ -10,7 +10,10 @@ use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
+use App\Http\Resources\DocumentCreateFromModuleResource;
+use App\Http\Resources\DocumentCreationOptionsResource;
 use App\Http\Resources\DocumentResource;
+use App\Http\Resources\DocumentTemplateVersionStatusResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
@@ -41,25 +44,21 @@ class DocumentOptionsController extends Controller
         $options = $this->documentService->creationOptionsForModule($request->validated('module_id'));
         $count = count($options);
 
-        if ($count === 0) {
-            return response()->json([
-                'data' => [
-                    'can_create' => false,
-                    'mode' => 'none',
-                    'message' => 'No hay plantillas publicadas disponibles para este módulo.',
-                    'options' => [],
-                ],
-            ]);
-        }
-
-        return response()->json([
-            'data' => [
+        $responseData = $count === 0
+            ? [
+                'can_create' => false,
+                'mode' => 'none',
+                'message' => 'No hay plantillas publicadas disponibles para este módulo.',
+                'options' => [],
+            ]
+            : [
                 'can_create' => true,
                 'mode' => $count === 1 ? 'auto' : 'select',
                 'message' => null,
                 'options' => $options,
-            ],
-        ]);
+            ];
+
+        return (new DocumentCreationOptionsResource($responseData))->response();
     }
 
     /**
@@ -79,12 +78,12 @@ class DocumentOptionsController extends Controller
         $this->apiTeamEmbedService->embedOnDocument($document, $userId);
         $blocks = $this->documentService->blocksForDisplay($document);
 
-        return response()->json([
-            'data' => array_merge(
-                (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
-                ['blocks' => $blocks],
-            ),
-        ], 201);
+        $resourceData = [
+            'document' => DocumentDto::fromModel($document),
+            'blocks' => $blocks,
+        ];
+
+        return (new DocumentCreateFromModuleResource($resourceData))->response()->setStatusCode(201);
     }
 
     /**
@@ -98,8 +97,8 @@ class DocumentOptionsController extends Controller
         $this->authorize('view', $document);
         $this->assertOptionalProcessContextMatches((string) $document->process_id);
 
-        return response()->json([
-            'data' => $this->documentService->templateVersionStatus($document->id),
-        ]);
+        $statusData = $this->documentService->templateVersionStatus($document->id);
+
+        return (new DocumentTemplateVersionStatusResource($statusData))->response();
     }
 }
