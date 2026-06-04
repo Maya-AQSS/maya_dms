@@ -41,7 +41,7 @@ import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
-import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
+import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
@@ -885,7 +885,20 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   }, [documentId, isDraft, refreshDetail, localContent]);
 
-  const { saveStatus, triggerSave } = useAutoSave(doSave, 1500);
+  const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
+
+  const flushBlockSave = useCallback(async () => {
+    if (documentBlockContentUnchanged(localContent, lastSavedContentRef.current)) {
+      return;
+    }
+    await forceSave();
+  }, [forceSave, localContent]);
+
+  useFlushOnPageLeave(flushBlockSave, isDraft && step === 'blocks');
+
+  const handleEditorFlush = useCallback(() => {
+    void flushBlockSave();
+  }, [flushBlockSave]);
 
   // Preferencia de UI para el step `blocks`:
   // - 'per-block': sidebar + un editor a la vez (vista clásica).
@@ -970,8 +983,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         lastSavedContentRef.current,
       );
 
-      if (hasChanged && saveStatus !== 'saved') {
-        await triggerSave();
+      if (hasChanged) {
+        await forceSave();
       }
       setActiveBlockKey(key);
 
@@ -1001,8 +1014,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           lastSavedContentRef.current,
         );
 
-        if (hasChanged && saveStatus !== 'saved') {
-          await triggerSave();
+        if (hasChanged) {
+          await forceSave();
         }
       }finally{
         setIsSaving(false);
@@ -1122,8 +1135,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           lastSavedContentRef.current,
         );
 
-        if (hasChanged && saveStatus !== 'saved') {
-          await triggerSave();
+        if (hasChanged) {
+          await forceSave();
         }
       }finally{
         setIsSaving(false)
@@ -1443,8 +1456,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             lastSavedContentRef.current,
           );
 
-          if (hasChanged && saveStatus !== 'saved') {
-            await triggerSave();
+          if (hasChanged) {
+            await forceSave();
           }
         }finally{
           setIsSaving(false)
@@ -1875,6 +1888,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                             triggerSave();
                           }
                         }}
+                        onFlush={handleEditorFlush}
                         uploadFile={(file: File) =>
                           uploadMedia(
                             file,
@@ -2160,6 +2174,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                       triggerSave();
                                     }
                                   }}
+                                  onFlush={handleEditorFlush}
                                   onFullscreenChange={handleEditorFullscreenChange}
                                   uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
                                 />

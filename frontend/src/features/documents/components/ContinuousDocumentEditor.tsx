@@ -26,6 +26,8 @@ interface Props {
   onSelectBlock: (key: string) => void | Promise<void>;
   /** Llamado por el editor del bloque activo cuando cambia su contenido. */
   onContentChange: (content: unknown) => void;
+  /** Forzar autoguardado al perder foco del editor (blur, HTML/MD, destroy). */
+  onFlush?: () => void;
   uploadFile: (file: File) => Promise<string>;
   /** Pendiente de switch: bloquea interacciones mientras se hace flush. */
   switching: boolean;
@@ -70,6 +72,7 @@ export function ContinuousDocumentEditor({
   blockSaveError,
   onSelectBlock,
   onContentChange,
+  onFlush,
   uploadFile,
   switching,
   isBlockCompleted,
@@ -113,12 +116,13 @@ export function ContinuousDocumentEditor({
             editable
             isDark={isDark}
             onChange={onContentChange}
+            onFlush={onFlush}
             uploadFile={uploadFile}
           />
         </Suspense>
       );
     },
-    [activeBlockKey, blockByKey, canEdit, isDark, onContentChange, uploadFile],
+    [activeBlockKey, blockByKey, canEdit, isDark, onContentChange, onFlush, uploadFile],
   );
 
   const renderBlockSection = useCallback(
