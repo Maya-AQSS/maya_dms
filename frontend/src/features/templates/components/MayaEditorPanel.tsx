@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import {
   MayaEditor,
+  normalizeTiptapContentForCompare,
   type TiptapDoc,
   type CommentHoverData,
 } from '@ceedcv-maya/shared-editor-react';
@@ -46,6 +47,8 @@ interface Props {
   onExportDocx?: () => void;
   /** Optional comments dictionary keyed by id for hover-preview popovers. */
   commentsById?: Record<string, CommentHoverData>;
+  /** Flush autoguardado (p. ej. `forceSave`) al perder foco o cambiar modo HTML/MD. */
+  onFlush?: () => void;
 }
 
 function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
@@ -82,6 +85,7 @@ export function MayaEditorPanel({
   onCreateComment,
   onExportDocx,
   commentsById,
+  onFlush,
 }: Props) {
   const initialDoc = useMemo(() => normaliseToDoc(initialContent), [initialContent]);
 
@@ -103,7 +107,7 @@ export function MayaEditorPanel({
                 return;
               }
               const doc = payload as TiptapDoc;
-              onChange(doc.content);
+              onChange(normalizeTiptapContentForCompare(doc.content));
             }
           : undefined
       }
@@ -112,6 +116,7 @@ export function MayaEditorPanel({
       onCreateComment={onCreateComment}
       onExportDocx={onExportDocx}
       commentsById={commentsById}
+      onFlush={onFlush}
     />
   );
 }

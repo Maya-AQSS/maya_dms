@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Documents\BlockDisplayDto;
+use App\Support\TiptapContentSemantics;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
@@ -115,6 +116,12 @@ class DocumentBlockService
             $this->appendModifiableBlockVersionSnapshotsIfNeeded($document, $block, $definition, $dto);
 
             $isFilled = $this->isContentFilled($dto->content);
+            if ($state === 'editable') {
+                $default = $definition['default_content'] ?? null;
+                if ($this->documentBlockContentEquals($dto->content, $default)) {
+                    $isFilled = false;
+                }
+            }
             $this->documentBlockRepository->updateBlock($block, $dto->content, $isFilled, $dto->actorId);
 
             return new BlockUpdateDto(
@@ -154,7 +161,10 @@ class DocumentBlockService
                 continue;
             }
 
-            if (! ((bool) $block->is_filled) && ! $this->isContentFilled($block->content)) {
+            $default = $definition['default_content'] ?? null;
+            $stillPlaceholder = $this->documentBlockContentEquals($block->content, $default);
+
+            if ($stillPlaceholder || ! $this->isContentFilled($block->content)) {
                 $missing[] = $templateBlockId;
             }
         }
@@ -328,7 +338,8 @@ class DocumentBlockService
 
     private function documentBlockContentEquals(mixed $a, mixed $b): bool
     {
-        return $this->jsonEncodeCanonical($a) === $this->jsonEncodeCanonical($b);
+        return $this->jsonEncodeCanonical(TiptapContentSemantics::normalizeContentArray($a))
+            === $this->jsonEncodeCanonical(TiptapContentSemantics::normalizeContentArray($b));
     }
 
     private function jsonEncodeCanonical(mixed $value): string
@@ -366,25 +377,7 @@ class DocumentBlockService
 
     private function isContentFilled(mixed $content): bool
     {
-        if ($content === null) {
-            return false;
-        }
-
-        if (is_string($content)) {
-            return trim($content) !== '';
-        }
-
-        if (is_array($content)) {
-            if ($content === []) {
-                return false;
-            }
-
-            $encoded = json_encode($content);
-
-            return $encoded !== false && $encoded !== '[]' && $encoded !== '{}' && $encoded !== 'null';
-        }
-
-        return true;
+        return TiptapContentSemantics::isContentFilled($content);
     }
 
     private function appendModifiableBlockVersionSnapshotsIfNeeded(

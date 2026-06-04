@@ -4,18 +4,17 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
-use App\Services\DocumentBlockService;
+use App\DTOs\Documents\BlockDisplayDto;
+use App\DTOs\Documents\BlockUpdateDto;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use InvalidArgumentException;
 
 /**
- * Serializa un bloque tal y como lo expone
- * {@see DocumentBlockService::blocksForDisplay()}.
+ * Serializa bloques de documento desde DTOs de dominio.
  *
- * El service ya devuelve un array preparado para la vista (mezclando
- * definición del template + estado del documento); este Resource fija
- * el contrato de salida y aporta un único punto donde añadir/renombrar
- * campos públicos.
+ * - {@see BlockDisplayDto}: listados y payloads compuestos (documento + blocks).
+ * - {@see BlockUpdateDto}: respuesta de PUT /documents/{id}/blocks/{block}.
  */
 class DocumentBlockResource extends JsonResource
 {
@@ -24,24 +23,71 @@ class DocumentBlockResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        /** @var array<string, mixed> $row */
-        $row = $this->resource;
+        $resource = $this->resource;
 
+        if ($resource instanceof BlockDisplayDto) {
+            return $this->fromDisplayDto($resource);
+        }
+
+        if ($resource instanceof BlockUpdateDto) {
+            return $this->fromUpdateDto($resource);
+        }
+
+        throw new InvalidArgumentException(
+            'DocumentBlockResource expects BlockDisplayDto or BlockUpdateDto, got '.get_debug_type($resource),
+        );
+    }
+
+    /**
+     * Serializa bloques para respuestas compuestas (p. ej. documento + blocks en store/show).
+     *
+     * @param  list<BlockDisplayDto>  $blocks
+     * @return list<array<string, mixed>>
+     */
+    public static function resolveDisplayList(Request $request, array $blocks): array
+    {
+        return array_map(
+            fn (BlockDisplayDto $dto): array => (new self($dto))->toArray($request),
+            $blocks,
+        );
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fromDisplayDto(BlockDisplayDto $dto): array
+    {
         return [
-            'document_block_id' => $row['document_block_id'] ?? null,
-            'template_block_id' => $row['template_block_id'] ?? null,
-            'type' => $row['type'] ?? '',
-            'title' => $row['title'] ?? null,
-            'description' => $row['description'] ?? null,
-            'default_content' => $row['default_content'] ?? null,
-            'block_state' => $row['block_state'] ?? null,
-            'mandatory' => (bool) ($row['mandatory'] ?? false),
-            'content' => $row['content'] ?? null,
-            'sort_order' => $row['sort_order'] ?? null,
-            'is_filled' => array_key_exists('is_filled', $row) ? (bool) $row['is_filled'] : null,
-            'last_edited_by' => $row['last_edited_by'] ?? null,
-            'created_at' => $row['created_at'] ?? null,
-            'updated_at' => $row['updated_at'] ?? null,
+            'document_block_id' => $dto->document_block_id,
+            'template_block_id' => $dto->template_block_id,
+            'type' => $dto->type,
+            'title' => $dto->title,
+            'description' => $dto->description,
+            'default_content' => $dto->default_content,
+            'block_state' => $dto->block_state,
+            'mandatory' => $dto->mandatory,
+            'sort_order' => $dto->sort_order,
+            'content' => $dto->content,
+            'is_filled' => $dto->is_filled,
+            'is_deleted' => $dto->is_deleted,
+            'last_edited_by' => null,
+            'created_at' => null,
+            'updated_at' => null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function fromUpdateDto(BlockUpdateDto $dto): array
+    {
+        return [
+            'document_block_id' => $dto->document_block_id,
+            'template_block_id' => $dto->template_block_id,
+            'content' => $dto->content,
+            'is_filled' => $dto->is_filled,
+            'last_edited_by' => $dto->last_edited_by,
+            'updated_at' => $dto->updated_at,
         ];
     }
 }

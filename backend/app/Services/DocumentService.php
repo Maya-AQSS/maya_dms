@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
@@ -126,11 +127,16 @@ class DocumentService implements DocumentServiceInterface
 
         $blockRows = collect($snapshot)
             ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
-            ->map(fn (array $b) => [
-                'template_block_id' => (string) $b['id'],
-                'content' => $b['default_content'] ?? null,
-                'sort_order' => (int) ($b['sort_order'] ?? 0),
-            ])
+            ->map(function (array $b): array {
+                $state = (string) ($b['block_state'] ?? 'editable');
+
+                return [
+                    'template_block_id' => (string) $b['id'],
+                    // Editables: vacío en BD; el docente ve default_content solo como guía en UI.
+                    'content' => $state === 'editable' ? null : ($b['default_content'] ?? null),
+                    'sort_order' => (int) ($b['sort_order'] ?? 0),
+                ];
+            })
             ->values()
             ->all();
 
@@ -676,20 +682,17 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
      *
-     * @return list<array<string, mixed>>
+     * @return list<\App\DTOs\Documents\BlockDisplayDto>
      */
     public function blocksForDisplay(Document $document): array
     {
-        $dtos = $this->documentBlockService->blocksForDisplay((string) $document->id);
-        return array_map(fn ($dto) => $dto->toArray(), $dtos);
+        return $this->documentBlockService->blocksForDisplay((string) $document->id);
     }
 
     /**
      * Actualiza el contenido de un bloque de documento.
-     *
-     * @return array<string, mixed>
      */
-    public function updateBlock(UpdateDocumentBlockDto $dto): array
+    public function updateBlock(UpdateDocumentBlockDto $dto): BlockUpdateDto
     {
         return $this->documentBlockService->updateBlock($dto);
     }

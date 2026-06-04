@@ -29,7 +29,7 @@ import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blo
 import { htmlToTiptapDoc, buildMayaEditorExtensions } from '@ceedcv-maya/shared-editor-react';
 import { DocxBlockSplitter } from './DocxBlockSplitter';
 import { AddBlockMenu } from './AddBlockMenu';
-import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
+import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
@@ -377,6 +377,17 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       return false;
     }
   }, [tabIsDirty, activeSingleId, forceSave]);
+
+  const flushTemplateBlockSave = useCallback(() => {
+    if (tabIsDirty && activeSingleId) {
+      void forceSave();
+    }
+  }, [tabIsDirty, activeSingleId, forceSave]);
+
+  useFlushOnPageLeave(
+    flushTemplateBlockSave,
+    (panelMode === 'edit' || panelMode === 'multi') && !!activeSingleId,
+  );
 
   const handleBlockClick = (blockId: string) => {
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
@@ -1020,6 +1031,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                                 setFormContent(JSON.stringify(json));
                                 setTabIsDirty(true);
                               }}
+                              onFlush={flushTemplateBlockSave}
                               editable={true}
                               isDark={effectiveIsDark}
                               onFullscreenChange={handleEditorFullscreenChange}
@@ -1052,6 +1064,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             key={`description-${activeSingleId ?? 'none'}`}
                             initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
                             onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
+                            onFlush={flushTemplateBlockSave}
                             editable={true}
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}

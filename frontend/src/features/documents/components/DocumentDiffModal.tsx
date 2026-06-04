@@ -2,19 +2,17 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@ceedcv-maya/shared-ui-react';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
-import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
+import { documentBlockContentDiffersFromTemplateDefault } from '../lib/blockContentEquals';
 import type { DocumentDisplayBlock } from '../../../types/documents';
-
-function contentsDiffer(a: unknown, b: unknown): boolean {
-  const norm = (v: unknown) => JSON.stringify(normalizeBlockContentForEditor(v));
-  return norm(a) !== norm(b);
-}
 
 export function computeChangedBlocks(blocks: DocumentDisplayBlock[]): DocumentDisplayBlock[] {
   return blocks.filter((b) => {
     if (b.is_deleted) return true;
     if (b.block_state === 'locked') return false;
-    return contentsDiffer(b.content, b.default_content);
+    return documentBlockContentDiffersFromTemplateDefault(
+      b.content ?? null,
+      b.default_content ?? null,
+    );
   });
 }
 

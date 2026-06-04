@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useAutoSave } from '@ceedcv-maya/shared-hooks-react';
+import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import {
   DndContext,
@@ -237,6 +237,12 @@ export function TemplateEditor({ template }: Props) {
   const saveRef = useRef(forceSave);
   useEffect(() => { saveRef.current = forceSave; }, [forceSave]);
 
+  const flushTemplateEditor = useCallback(() => {
+    if (isDirty && activeBlockId) void forceSave();
+  }, [isDirty, activeBlockId, forceSave]);
+
+  useFlushOnPageLeave(flushTemplateEditor, rightMode === 'block' && !!activeBlockId);
+
   // ── Navigate to a block (saves current if dirty) ─────────────────────────────
   const navigateToBlock = useCallback(
     async (blockId: string) => {
@@ -457,6 +463,7 @@ export function TemplateEditor({ template }: Props) {
                   setLocalContent(content);
                   markDirty();
                 }}
+                onFlush={flushTemplateEditor}
                 editable={true} // Siempre editable en la plantilla
                 isDark={isDark}
                 uploadFile={uploadMedia}

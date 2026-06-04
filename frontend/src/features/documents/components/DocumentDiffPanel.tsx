@@ -1,56 +1,9 @@
 import { useMemo, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { computeChangedBlocks } from './DocumentDiffModal';
-import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
+import { documentBlockContentDiffersFromTemplateDefault } from '../lib/blockContentEquals';
+import { extractTiptapDiffLines } from '../lib/tiptapDiffLines';
 import type { DocumentDisplayBlock } from '../../../types/documents';
-
-// ── Text extraction ───────────────────────────────────────────────────────────
-
-function extractBlockText(block: unknown): string {
-  if (!block || typeof block !== 'object') return '';
-  const b = block as Record<string, unknown>;
-  const content = Array.isArray(b.content) ? b.content : [];
-  const inline = content
-    .map((c: unknown) => {
-      if (!c || typeof c !== 'object') return '';
-      const item = c as Record<string, unknown>;
-      if (item.type === 'text') return String(item.text ?? '');
-      if (item.type === 'link') {
-        const lc = Array.isArray(item.content) ? item.content : [];
-        return lc.map((x: unknown) => String((x as Record<string, unknown>).text ?? '')).join('');
-      }
-      return '';
-    })
-    .join('');
-  const type = String(b.type ?? '');
-  const props = (b.props ?? {}) as Record<string, unknown>;
-  let prefix = '';
-  if (type === 'heading') prefix = '#'.repeat(Number(props.level ?? 1)) + ' ';
-  else if (type === 'bulletListItem') prefix = '• ';
-  else if (type === 'numberedListItem') prefix = '1. ';
-  return prefix + inline;
-}
-
-function normalizeText(s: string): string {
-  return s.trim().replace(/\s+/g, ' ');
-}
-
-function extractTextLines(content: unknown): string[] {
-  const blocks = normalizeBlockContentForEditor(content);
-  if (!Array.isArray(blocks)) return [];
-  const lines: string[] = [];
-  for (const block of blocks) {
-    const text = normalizeText(extractBlockText(block));
-    if (text) lines.push(text);
-    const b = block as Record<string, unknown>;
-    const children = Array.isArray(b.children) ? b.children : [];
-    for (const child of children) {
-      const ct = normalizeText(extractBlockText(child));
-      if (ct) lines.push('  ' + ct);
-    }
-  }
-  return lines;
-}
 
 // ── LCS diff ─────────────────────────────────────────────────────────────────
 
@@ -151,14 +104,21 @@ export function DocumentDiffPanel({ blocks, allBlocks, onClose }: Props) {
     () =>
       changedBlocks.map((b): DiffLine[] => {
         if (b.is_deleted) {
-          const lines = extractTextLines(b.default_content);
+          const lines = extractTiptapDiffLines(b.default_content);
           return lines.length > 0
             ? lines.map(text => ({ type: 'removed' as const, text }))
             : [{ type: 'removed' as const, text: t('diff.emptyBlock') }];
         }
-        const original = extractTextLines(b.default_content);
-        const modified = extractTextLines(b.content);
-        return computeLineDiff(original, modified).filter(l => l.type !== 'unchanged');
+        const original = extractTiptapDiffLines(b.default_content);
+        const modified = extractTiptapDiffLines(b.content);
+        const lineDiff = computeLineDiff(original, modified).filter(l => l.type !== 'unchanged');
+        if (
+          lineDiff.length === 0 &&
+          documentBlockContentDiffersFromTemplateDefault(b.content, b.default_content)
+        ) {
+          return [{ type: 'added' as const, text: t('diff.richContentChanged') }];
+        }
+        return lineDiff;
       }),
     [changedBlocks, t],
   );
