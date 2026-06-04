@@ -198,6 +198,10 @@ class TemplateReviewService
                         recipientId: $createdBy,
                         title: 'Revisión de plantilla rechazada',
                         body: 'La revisión de la plantilla "' . $rejected->name . '" ha sido rechazada',
+                        titleKey: 'notifications.template.rejected.title',
+                        bodyKey: 'notifications.template.rejected.body',
+                        params: ['template_id' => (string) $rejected->id, 'template_name' => $rejected->name],
+                        severity: 'high',
                         channels: ['app'],
                         metadata: ['template_id' => (string) $rejected->id],
                     );
@@ -323,6 +327,10 @@ class TemplateReviewService
                     recipientId: $reviewerId,
                     title: 'Nueva solicitud de revisión de plantilla',
                     body: 'La plantilla "' . $template->name . '" requiere tu revisión',
+                    titleKey: 'notifications.template.validation_requested.title',
+                    bodyKey: 'notifications.template.validation_requested.body',
+                    params: ['template_id' => (string) $template->id, 'template_name' => $template->name],
+                    severity: 'high',
                     channels: ['app'],
                     metadata: ['template_id' => (string) $template->id],
                 );

@@ -1073,6 +1073,10 @@ class DocumentService implements DocumentServiceInterface
                             recipientId: $recipientId,
                             title: 'Documento publicado',
                             body: 'El documento "' . $autoPublished->title . '" ha sido publicado correctamente',
+                            titleKey: 'notifications.document.published.title',
+                            bodyKey: 'notifications.document.published.body',
+                            params: ['document_id' => (string) $autoPublished->id, 'document_title' => $autoPublished->title],
+                            severity: 'info',
                             channels: ['app'],
                             metadata: ['document_id' => (string) $autoPublished->id],
                         );
@@ -1142,6 +1146,10 @@ class DocumentService implements DocumentServiceInterface
                     recipientId: $reviewerId,
                     title: 'Nueva solicitud de revisión',
                     body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    titleKey: 'notifications.document.validation_requested.title',
+                    bodyKey: 'notifications.document.validation_requested.body',
+                    params: ['document_id' => (string) $document->id, 'document_title' => $document->title],
+                    severity: 'high',
                     channels: ['app'],
                     metadata: ['document_id' => (string) $document->id],
                 );
@@ -1300,6 +1308,10 @@ class DocumentService implements DocumentServiceInterface
                         recipientId: $recipientId,
                         title: 'Documento publicado',
                         body: 'El documento "' . $refreshed->title . '" ha sido publicado correctamente',
+                        titleKey: 'notifications.document.published.title',
+                        bodyKey: 'notifications.document.published.body',
+                        params: ['document_id' => (string) $refreshed->id, 'document_title' => $refreshed->title],
+                        severity: 'info',
                         channels: ['app'],
                         metadata: ['document_id' => (string) $refreshed->id],
                     );

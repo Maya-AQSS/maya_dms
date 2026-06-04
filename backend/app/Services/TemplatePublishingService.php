@@ -225,6 +225,10 @@ class TemplatePublishingService
                         recipientId: $createdBy,
                         title: $createdByTitle,
                         body: $createdByBody,
+                        titleKey: 'notifications.template.published.title',
+                        bodyKey: 'notifications.template.published.body',
+                        params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name],
+                        severity: 'info',
                         channels: ['app'],
                         metadata: $createdByMetadata,
                     );
@@ -267,6 +271,10 @@ class TemplatePublishingService
                         recipientId: $ownerId,
                         title: $ownerTitle,
                         body: $ownerBody,
+                        titleKey: 'notifications.template.version.affects_my_document.title',
+                        bodyKey: 'notifications.template.version.affects_my_document.body',
+                        params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name, 'version' => $next, 'document_id' => $ownerId],
+                        severity: 'medium',
                         channels: ['app'],
                         metadata: $ownerMetadata,
                     );
