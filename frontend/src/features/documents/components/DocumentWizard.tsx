@@ -49,6 +49,11 @@ import type { Study, CourseModule } from '../../../types/hierarchy';
 import type { Template } from '../../../types/templates';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
 import { applyBlockSaveToDetail } from '../lib/applyBlockSaveToDetail';
+import {
+  documentBlockContentUnchanged,
+  listUnresolvedEditableBlockTitles,
+  isUnresolvedEditableBlock,
+} from '../lib/blockContentEquals';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { visibilityLabel } from '../../templates/constants';
@@ -857,6 +862,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     if (!block || !isDraft || blockToUiState(block) === 'locked') return;
     const blockId = block.document_block_id;
     if (!blockId) return;
+    if (documentBlockContentUnchanged(localContent, lastSavedContentRef.current)) {
+      return;
+    }
+    // No persistir el texto guía de plantilla en bloques editables sin cambio real del usuario.
+    if (
+      block.block_state === 'editable' &&
+      documentBlockContentUnchanged(localContent, block.default_content)
+    ) {
+      return;
+    }
     setBlockSaveError(null);
     try {
       if (!documentId) return;
@@ -932,12 +947,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     );
     if (!block) return;
 
-    setLocalContent(
-      normalizeBlockContentForEditor(block.content).length > 0
-        ? block.content
-        : block.default_content,
-    );
-    lastSavedContentRef.current = block.content;
+    const editorBaseline = blockEditorContent(block);
+    setLocalContent(editorBaseline);
+    // Misma base que muestra el editor (content persistido o default_content de plantilla).
+    lastSavedContentRef.current = editorBaseline;
     setShowDocumentCommentPanel(true);
   }, [activeBlockKey, documentId, detail?.id]);
 
@@ -952,9 +965,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
     try {
       setIsSaving(true);
-      const hasChanged =
-      JSON.stringify(localContent) !==
-      JSON.stringify(lastSavedContentRef.current);
+      const hasChanged = !documentBlockContentUnchanged(
+        localContent,
+        lastSavedContentRef.current,
+      );
 
       if (hasChanged && saveStatus !== 'saved') {
         await triggerSave();
@@ -982,9 +996,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }else if (step === 'blocks'){
       try {
         setIsSaving(true);
-        const hasChanged =
-        JSON.stringify(localContent) !==
-        JSON.stringify(lastSavedContentRef.current);
+        const hasChanged = !documentBlockContentUnchanged(
+          localContent,
+          lastSavedContentRef.current,
+        );
 
         if (hasChanged && saveStatus !== 'saved') {
           await triggerSave();
@@ -1000,6 +1015,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       setStep(s);
     } 
     else if (s === 'summary' && completedSteps.includes('blocks')){
+      if (detail) {
+        const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
+        if (unresolvedEditable.length > 0) {
+          setEmptyEditableBlocksModal(unresolvedEditable);
+          return;
+        }
+      }
       setStep(s);
     }
   };
@@ -1095,9 +1117,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     if (step === 'blocks') {
       try {
         setIsSaving(true);
-        const hasChanged =
-        JSON.stringify(localContent) !==
-        JSON.stringify(lastSavedContentRef.current);
+        const hasChanged = !documentBlockContentUnchanged(
+          localContent,
+          lastSavedContentRef.current,
+        );
 
         if (hasChanged && saveStatus !== 'saved') {
           await triggerSave();
@@ -1105,14 +1128,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       }finally{
         setIsSaving(false)
       }
-      if (detail) {
-        const emptyEditable = detail.blocks.filter(
-          (b: DocumentDisplayBlock) => b.block_state === 'editable' && !b.is_filled && !b.is_deleted,
-        );
-        if (emptyEditable.length > 0) {
-          setEmptyEditableBlocksModal(emptyEditable.map((b: DocumentDisplayBlock) => b.title ?? 'Sin título'));
-          return;
-        }
+      if (!detail) {
+        setFormError('El documento aún se está cargando. Espera un momento e inténtalo de nuevo.');
+        return;
+      }
+      const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
+      if (unresolvedEditable.length > 0) {
+        setEmptyEditableBlocksModal(unresolvedEditable);
+        return;
       }
       if (reviewerListKind === 'none' && selectedTemplateVisibility != null && selectedTemplateVisibility !== 'personal') {
         setShowNoValidatorsDocModal(true);
@@ -1415,9 +1438,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       if (step === "blocks"){
         try {
           setIsSaving(true);
-          const hasChanged =
-          JSON.stringify(localContent) !==
-          JSON.stringify(lastSavedContentRef.current);
+          const hasChanged = !documentBlockContentUnchanged(
+            localContent,
+            lastSavedContentRef.current,
+          );
 
           if (hasChanged && saveStatus !== 'saved') {
             await triggerSave();
@@ -1847,7 +1871,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         onSelectBlock={(key) => handleBlockClick(key)}
                         onContentChange={(content) => {
                           setLocalContent(content);
-                          triggerSave();
+                          if (!documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
+                            triggerSave();
+                          }
                         }}
                         uploadFile={(file: File) =>
                           uploadMedia(
@@ -1979,7 +2005,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                       const key = b.document_block_id ?? b.template_block_id;
                       const selected = key === activeBlockKey;
                       const ui = blockToUiState(b);
-                      const isEmptyEditable = b.block_state === 'editable' && !b.is_filled && !b.is_deleted;
+                      const isEmptyEditable = isUnresolvedEditableBlock(b);
                       return (
                         <BlockListItem
                           key={key}
@@ -2128,7 +2154,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                   initialContent={blockEditorContent(activeBlock)}
                                   editable
                                   isDark={isDark}
-                                  onChange={(content) => { setLocalContent(content); triggerSave(); }}
+                                  onChange={(content) => {
+                                    setLocalContent(content);
+                                    if (!documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
+                                      triggerSave();
+                                    }
+                                  }}
                                   onFullscreenChange={handleEditorFullscreenChange}
                                   uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
                                 />
@@ -2507,6 +2538,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         cancelLabel="Cancelar"
         onConfirm={() => {
           setShowNoValidatorsDocModal(false);
+          if (!detail) {
+            setFormError('El documento aún se está cargando. Espera un momento e inténtalo de nuevo.');
+            return;
+          }
+          const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
+          if (unresolvedEditable.length > 0) {
+            setEmptyEditableBlocksModal(unresolvedEditable);
+            return;
+          }
           setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'blocks'] as Step[])));
           setStep('summary');
         }}

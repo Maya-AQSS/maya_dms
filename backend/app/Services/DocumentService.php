@@ -127,11 +127,16 @@ class DocumentService implements DocumentServiceInterface
 
         $blockRows = collect($snapshot)
             ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
-            ->map(fn (array $b) => [
-                'template_block_id' => (string) $b['id'],
-                'content' => $b['default_content'] ?? null,
-                'sort_order' => (int) ($b['sort_order'] ?? 0),
-            ])
+            ->map(function (array $b): array {
+                $state = (string) ($b['block_state'] ?? 'editable');
+
+                return [
+                    'template_block_id' => (string) $b['id'],
+                    // Editables: vacío en BD; el docente ve default_content solo como guía en UI.
+                    'content' => $state === 'editable' ? null : ($b['default_content'] ?? null),
+                    'sort_order' => (int) ($b['sort_order'] ?? 0),
+                ];
+            })
             ->values()
             ->all();
 

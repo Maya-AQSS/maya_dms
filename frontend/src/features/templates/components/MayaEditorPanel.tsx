@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import {
   MayaEditor,
+  normalizeTiptapContentForCompare,
   type TiptapDoc,
   type CommentHoverData,
 } from '@ceedcv-maya/shared-editor-react';
@@ -103,7 +104,7 @@ export function MayaEditorPanel({
                 return;
               }
               const doc = payload as TiptapDoc;
-              onChange(doc.content);
+              onChange(normalizeTiptapContentForCompare(doc.content));
             }
           : undefined
       }
