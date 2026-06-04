@@ -64,7 +64,7 @@ RUN apk add --no-cache $PHPIZE_DEPS \
     && rm -rf /tmp/phpredis-${PHPREDIS_VERSION} /tmp/pcov-${PCOV_VERSION} \
     && apk del $PHPIZE_DEPS
 
-COPY --from=composer:2.7 /usr/bin/composer /usr/bin/composer
+COPY --from=composer:2.9 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 COPY . .
