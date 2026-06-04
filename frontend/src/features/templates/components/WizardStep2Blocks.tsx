@@ -26,7 +26,13 @@ import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
 import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
-import { htmlToTiptapDoc, buildMayaEditorExtensions } from '@ceedcv-maya/shared-editor-react';
+import {
+  htmlToTiptapDoc,
+  buildMayaEditorExtensions,
+  normalizeTiptapContentForPersistence,
+  isSemanticallyEmptyTiptapContent,
+  type TiptapDoc,
+} from '@ceedcv-maya/shared-editor-react';
 import { DocxBlockSplitter } from './DocxBlockSplitter';
 import { AddBlockMenu } from './AddBlockMenu';
 import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
@@ -258,6 +264,48 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [tabIsDirty, setTabIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  const formContentRef = useRef('');
+  const formDescRef = useRef('');
+  const formNameRef = useRef('');
+  const formUiStateRef = useRef<BlockUiState>('editable');
+  const tabIsDirtyRef = useRef(false);
+  const editorFlushRef = useRef<(() => void | Promise<void>) | null>(null);
+  const blocksRef = useRef(blocks);
+  blocksRef.current = blocks;
+
+  const applyFormContent = useCallback((content: unknown) => {
+    const serialized =
+      typeof content === 'string' ? content : JSON.stringify(content ?? null);
+    formContentRef.current = serialized;
+    setFormContent(serialized);
+    tabIsDirtyRef.current = true;
+    setTabIsDirty(true);
+  }, []);
+
+  const applyFormDesc = useCallback((content: unknown) => {
+    const serialized =
+      typeof content === 'string' ? content : JSON.stringify(content ?? null);
+    formDescRef.current = serialized;
+    setFormDesc(serialized);
+    tabIsDirtyRef.current = true;
+    setTabIsDirty(true);
+  }, []);
+
+  const applyEditorFlushPayload = useCallback(
+    (field: 'content' | 'desc', payload?: string | TiptapDoc) => {
+      if (payload == null) return;
+      if (typeof payload === 'string') {
+        if (field === 'content') applyFormContent(payload);
+        else applyFormDesc(payload);
+        return;
+      }
+      const normalized = normalizeTiptapContentForPersistence(payload.content);
+      if (field === 'content') applyFormContent(normalized);
+      else applyFormDesc(normalized);
+    },
+    [applyFormContent, applyFormDesc],
+  );
+
   useEffect(() => {
     if (activeSingleId && !formName.trim()) {
       setShowCommentPanel(false);
@@ -280,11 +328,28 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   }, [activeTab]);
 
   const loadFormFromBlock = (block: TemplateBlock) => {
-    setFormName(block.title ?? '');
+    const name = block.title ?? '';
+    const uiState = blockToUiState(block);
+    formNameRef.current = name;
+    formUiStateRef.current = uiState;
+    setFormName(name);
     setNameError('');
-    setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
-    setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
-    setFormUiState(blockToUiState(block));
+    const desc = block.description
+      ? (typeof block.description === 'string'
+        ? block.description
+        : JSON.stringify(block.description))
+      : '';
+    const content = block.default_content
+      ? (typeof block.default_content === 'string'
+        ? block.default_content
+        : JSON.stringify(block.default_content))
+      : '';
+    formDescRef.current = desc;
+    formContentRef.current = content;
+    setFormDesc(desc);
+    setFormContent(content);
+    setFormUiState(uiState);
+    tabIsDirtyRef.current = false;
     setTabIsDirty(false);
   };
 
@@ -295,69 +360,47 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     return '';
   };
 
-  const doSave = useCallback(async () => {
+  const doSave = useCallback(async (): Promise<boolean> => {
     const blockId = activeSingleIdRef.current;
-    if (!blockId) return;
-    const nameErr = validateBlockName(formName);
+    if (!blockId) return false;
+    const nameErr = validateBlockName(formNameRef.current);
     if (nameErr) {
       setNameError(nameErr);
-      return;
+      return false;
     }
     setNameError('');
-    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiState].payload;
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[formUiStateRef.current].payload;
     let parsedContent: unknown = null;
     let parsedDesc: unknown = null;
-    try { parsedContent = formContent ? JSON.parse(formContent) : null; } catch { parsedContent = null; }
-    try { parsedDesc = formDesc ? JSON.parse(formDesc) : null; } catch { parsedDesc = null; }
-    type TiptapNode = {
-      type?: string;
-      text?: string;
-      content?: TiptapNode[];
-    };
-
-    const hasMeaningfulContent = (node: TiptapNode): boolean => {
-      // Texto real
-      if (node.type === 'text') {
-        setMeaningFullContent(true)
-        return typeof node.text === 'string' && node.text.trim().length > 0;
-      }else{
-        setMeaningFullContent(false)
-      }
-
-      // Nodos no textuales que deben considerarse contenido
-      if (
-        node.type === 'image' ||
-        node.type === 'table' ||
-        node.type === 'bulletList' ||
-        node.type === 'orderedList'
-      ) {
-        return true;
-      }
-      return Array.isArray(node.content)
-        ? node.content.some(hasMeaningfulContent)
-        : false;
-    };
-
-
-    if (Array.isArray(parsedContent)) {
-      const containsContent = parsedContent.some((node) =>
-        hasMeaningfulContent(node as TiptapNode),
-      );
-      setMeaningFullContent(true)
-      if (!containsContent) {
-        setMeaningFullContent(false)
-        parsedContent = null;
-      }
+    try {
+      parsedContent = formContentRef.current ? JSON.parse(formContentRef.current) : null;
+    } catch {
+      parsedContent = null;
     }
-    await updateBlock(blockId, {
-      title: formName.trim(),
+    try {
+      parsedDesc = formDescRef.current ? JSON.parse(formDescRef.current) : null;
+    } catch {
+      parsedDesc = null;
+    }
+
+    if (Array.isArray(parsedContent) && isSemanticallyEmptyTiptapContent(parsedContent)) {
+      setMeaningFullContent(false);
+      parsedContent = null;
+    } else if (Array.isArray(parsedContent)) {
+      setMeaningFullContent(true);
+    }
+    const updated = await updateBlock(blockId, {
+      title: formNameRef.current.trim(),
       description: parsedDesc,
       default_content: parsedContent,
       block_state,
       mandatory,
     });
-    setTabIsDirty(false);
-  }, [formName, formDesc, formContent, formUiState, updateBlock]);
+    if (activeSingleIdRef.current === blockId) {
+      loadFormFromBlock(updated);
+    }
+    return true;
+  }, [updateBlock]);
 
   const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
@@ -367,25 +410,46 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     triggerSave();
   }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Convenience wrapper used by saveIfPending and manual saves
-  const saveCurrentTab = useCallback(async () => {
-    if (!tabIsDirty || !activeSingleId) return;
+  const flushBlockSave = useCallback(async () => {
+    if (!activeSingleIdRef.current || !tabIsDirtyRef.current) return;
+    await forceSave();
+  }, [forceSave]);
+
+  const handleContentEditorFlush = useCallback(
+    async (payload?: string | TiptapDoc) => {
+      applyEditorFlushPayload('content', payload);
+      await flushBlockSave();
+    },
+    [applyEditorFlushPayload, flushBlockSave],
+  );
+
+  const handleDescEditorFlush = useCallback(
+    async (payload?: string | TiptapDoc) => {
+      applyEditorFlushPayload('desc', payload);
+      await flushBlockSave();
+    },
+    [applyEditorFlushPayload, flushBlockSave],
+  );
+
+  const flushActiveEditor = useCallback(async () => {
+    await editorFlushRef.current?.();
+  }, []);
+
+  const persistPendingBlockChanges = useCallback(async (): Promise<boolean> => {
+    await flushActiveEditor();
+    if (!tabIsDirtyRef.current) return true;
     try {
       await forceSave();
-      return true;
+      return !tabIsDirtyRef.current;
     } catch {
       return false;
     }
-  }, [tabIsDirty, activeSingleId, forceSave]);
-
-  const flushTemplateBlockSave = useCallback(() => {
-    if (tabIsDirty && activeSingleId) {
-      void forceSave();
-    }
-  }, [tabIsDirty, activeSingleId, forceSave]);
+  }, [flushActiveEditor, forceSave]);
 
   useFlushOnPageLeave(
-    flushTemplateBlockSave,
+    async () => {
+      await persistPendingBlockChanges();
+    },
     (panelMode === 'edit' || panelMode === 'multi') && !!activeSingleId,
   );
 
@@ -401,18 +465,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
           return;
         }
       }
-      if (tabIsDirty && activeSingleId) {
+      if (activeSingleId) {
         setIsSaving(true);
-
         try {
-          const success = await saveCurrentTab();
-
-          if (!success) return;
+          const saved = await persistPendingBlockChanges();
+          if (!saved) return;
         } finally {
           setIsSaving(false);
         }
-      } 
-      const block = blocks.find((b) => b.id === blockId);
+      }
+      const block = blocksRef.current.find((b) => b.id === blockId);
       if (!block) return;
       setSelectedBlockIds([blockId]);
       setActiveSingleId(blockId);
@@ -450,16 +512,11 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   useImperativeHandle(ref, () => ({
     saveIfPending: async () => {
-      if (tabIsDirty) {
-        setIsSaving(true);
-        try {
-          const success = await saveCurrentTab();
-          if (!success) return;
-        }catch{
-          return;
-        } finally {
-          setIsSaving(false);
-        }
+      setIsSaving(true);
+      try {
+        await persistPendingBlockChanges();
+      } finally {
+        setIsSaving(false);
       }
     },
     discardInvalidBlocks: async () => {
@@ -483,16 +540,12 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         setActiveTab('properties');
         return;
       }
-      if (tabIsDirty) {
-        setIsSaving(true);
-
-        try {
-          const success = await saveCurrentTab();
-
-          if (!success) return;
-        } finally {
-          setIsSaving(false);
-        }
+      setIsSaving(true);
+      try {
+        const saved = await persistPendingBlockChanges();
+        if (!saved) return;
+      } finally {
+        setIsSaving(false);
       }
     }
     setBusy(true);
@@ -726,14 +779,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   };
 
   const handleSaveAndContinue = async () => {
-  setIsSaving(true);
+    setIsSaving(true);
+    let ok = true;
     try {
-      const success = await saveCurrentTab();
-      if (!success) return;
+      ok = await persistPendingBlockChanges();
     } finally {
       setIsSaving(false);
-      onContinue?.();
     }
+    if (ok) onContinue?.();
   };
 
   return (
@@ -925,8 +978,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                     <button
                       key={tab}
                       onClick={() => {
-                      if (!isTabDisabled) {
-                        setActiveTab(tab);
+                      if (!isTabDisabled && tab !== activeTab) {
+                        void (async () => {
+                          setIsSaving(true);
+                          try {
+                            await persistPendingBlockChanges();
+                          } finally {
+                            setIsSaving(false);
+                            setActiveTab(tab);
+                          }
+                        })();
                       }
                     }}
                       disabled={isTabDisabled}
@@ -964,8 +1025,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           placeholder={t('documents:blocks.newBlockPlaceholder')}
                           error={!!nameError}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                            formNameRef.current = e.target.value;
                             setFormName(e.target.value);
                             setNameError(validateBlockName(e.target.value));
+                            tabIsDirtyRef.current = true;
                             setTabIsDirty(true);
                           }}
                           onBlur={() => setNameError(validateBlockName(formName))}
@@ -974,7 +1037,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                       <div>
                         <FieldLabel>Estado</FieldLabel>
-                        <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
+                        <BlockUiStateToggle value={formUiState} onChange={s => { formUiStateRef.current = s; setFormUiState(s); tabIsDirtyRef.current = true; setTabIsDirty(true); }} />
                       </div>
                       <p className="text-xs text-text-muted italic">
                         Se guarda automáticamente tras 1500 ms de inactividad o al cambiar de pestaña.
@@ -1013,25 +1076,24 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                             Se recomienda añadir contenido predeterminado para los bloques editables.
                           </p>
                         )}
-                        <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                        <div className="relative flex-1 min-h-0 flex flex-col">
                           {isSaving && (
-                            <div className="p-4 flex items-center justify-center min-h-[100px]">
+                            <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-ui-dark-card/70">
                               <div className="flex items-center gap-2">
                                 <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
                                 <span>Guardando cambios...</span>
                               </div>
                             </div>
                           )}
-                          {!isSaving && (
                           <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                             <BlockNoteEditorPanel
                               key={`content-${activeSingleId ?? 'none'}`}
                               initialContent={(() => { try { return JSON.parse(formContent); } catch { return undefined; } })()}
                               onChange={json => {
-                                setFormContent(JSON.stringify(json));
-                                setTabIsDirty(true);
+                                applyFormContent(json);
                               }}
-                              onFlush={flushTemplateBlockSave}
+                              onFlush={handleContentEditorFlush}
+                              editorFlushRef={editorFlushRef}
                               editable={true}
                               isDark={effectiveIsDark}
                               onFullscreenChange={handleEditorFullscreenChange}
@@ -1040,7 +1102,6 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                               commentsById={commentsById}
                             />
                           </Suspense>
-                        )}
                         </div>
                       </div>
                     )}
@@ -1063,8 +1124,9 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                           <BlockNoteEditorPanel
                             key={`description-${activeSingleId ?? 'none'}`}
                             initialContent={(() => { try { return JSON.parse(formDesc); } catch { return undefined; } })()}
-                            onChange={json => { setFormDesc(JSON.stringify(json)); setTabIsDirty(true); }}
-                            onFlush={flushTemplateBlockSave}
+                            onChange={json => { applyFormDesc(json); }}
+                            onFlush={handleDescEditorFlush}
+                            editorFlushRef={editorFlushRef}
                             editable={true}
                             isDark={effectiveIsDark}
                             onFullscreenChange={handleEditorFullscreenChange}

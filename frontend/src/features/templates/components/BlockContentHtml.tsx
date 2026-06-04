@@ -55,7 +55,22 @@ export function BlockContentHtml({ content }: { content: unknown[] | unknown }) 
   }, [content]);
 
   if (!html) return null;
-  return <EditorContentHtml html={html} className="bn-doc-content" />;
+  return (
+    <EditorContentHtml
+      html={html}
+      className={[
+        'bn-doc-content maya-editor-content text-sm leading-relaxed text-text-primary dark:text-text-dark-primary',
+        '[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0',
+        '[&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-2 [&_li]:my-0.5',
+        '[&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm',
+        '[&_th]:border [&_td]:border [&_th]:border-ui-border [&_td]:border-ui-border',
+        '[&_th]:px-3 [&_td]:px-3 [&_th]:py-2 [&_td]:py-2 [&_th]:text-left [&_th]:font-semibold',
+        '[&_th]:bg-black/[0.04] dark:[&_th]:bg-white/[0.06] [&_td]:align-top',
+        '[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded',
+        '[&_blockquote]:border-l-4 [&_blockquote]:border-ui-border [&_blockquote]:pl-4 [&_blockquote]:my-2',
+      ].join(' ')}
+    />
+  );
 }
 
 /**
@@ -90,9 +105,32 @@ function jsonDocToHtml(doc: TiptapDoc): string {
       })
       .join('');
 
+  const renderNodes = (nodes: TiptapDoc['content']): string =>
+    nodes.map((child) => renderNode(child)).join('');
+
+  const renderTable = (node: TiptapDoc['content'][number]): string => {
+    const rows = (node.content ?? []).filter((r) => r.type === 'tableRow');
+    if (rows.length === 0) return '';
+    let html = '<table><tbody>';
+    let isHeaderRow = true;
+    for (const row of rows) {
+      html += '<tr>';
+      for (const cell of row.content ?? []) {
+        if (cell.type !== 'tableCell' && cell.type !== 'tableHeader') continue;
+        const tag = cell.type === 'tableHeader' || isHeaderRow ? 'th' : 'td';
+        html += `<${tag}>${renderNodes((cell.content ?? []) as TiptapDoc['content'])}</${tag}>`;
+      }
+      html += '</tr>';
+      isHeaderRow = false;
+    }
+    return `${html}</tbody></table>`;
+  };
+
   const renderNode = (node: TiptapDoc['content'][number]): string => {
     const inner = renderInline(node.content ?? []);
     switch (node.type) {
+      case 'table':
+        return renderTable(node);
       case 'paragraph': return `<p>${inner}</p>`;
       case 'heading': {
         const lvl = Math.max(1, Math.min(6, Number(node.attrs?.level ?? 2) || 2));

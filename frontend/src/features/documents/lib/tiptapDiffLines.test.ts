@@ -9,7 +9,7 @@ describe('extractTiptapDiffLines', () => {
     ];
     expect(extractTiptapDiffLines(content)).toEqual([
       'Intro',
-      '[Imagen: photo.png]',
+      '[Imagen: media/photo.png]',
     ]);
   });
 
@@ -25,7 +25,7 @@ describe('extractTiptapDiffLines', () => {
       },
     ];
     expect(extractTiptapDiffLines(content)).toEqual([
-      'Antes [Imagen: a.jpg] después',
+      'Antes [Imagen: uploads/a.jpg] después',
     ]);
   });
 
@@ -89,6 +89,6 @@ describe('extractTiptapDiffLines', () => {
     const a = extractTiptapDiffLines(base);
     const b = extractTiptapDiffLines(withImage);
     expect(b).not.toEqual(a);
-    expect(b).toContain('[Imagen: nueva.png]');
+    expect(b.some((l) => l.includes('nueva.png'))).toBe(true);
   });
 });

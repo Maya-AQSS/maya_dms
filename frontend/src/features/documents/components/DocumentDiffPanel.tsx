@@ -2,41 +2,14 @@ import { useMemo, useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { computeChangedBlocks } from './DocumentDiffModal';
 import { documentBlockContentDiffersFromTemplateDefault } from '../lib/blockContentEquals';
-import { extractTiptapDiffLines } from '../lib/tiptapDiffLines';
+import {
+  diffTiptapAgainstTemplateDefault,
+  diffTiptapRemovedContent,
+  type TiptapDiffLine,
+} from '../lib/tiptapLineDiff';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 
-// ── LCS diff ─────────────────────────────────────────────────────────────────
-
-type DiffLine = { type: 'removed' | 'added' | 'unchanged'; text: string };
-
-function computeLineDiff(original: string[], modified: string[]): DiffLine[] {
-  const m = original.length;
-  const n = modified.length;
-  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] =
-        original[i - 1] === modified[j - 1]
-          ? dp[i - 1][j - 1] + 1
-          : Math.max(dp[i - 1][j], dp[i][j - 1]);
-  const result: DiffLine[] = [];
-  let i = m;
-  let j = n;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && original[i - 1] === modified[j - 1]) {
-      result.unshift({ type: 'unchanged', text: original[i - 1] });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.unshift({ type: 'added', text: modified[j - 1] });
-      j--;
-    } else {
-      result.unshift({ type: 'removed', text: original[i - 1] });
-      i--;
-    }
-  }
-  return result;
-}
+type DiffLine = TiptapDiffLine;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -104,21 +77,15 @@ export function DocumentDiffPanel({ blocks, allBlocks, onClose }: Props) {
     () =>
       changedBlocks.map((b): DiffLine[] => {
         if (b.is_deleted) {
-          const lines = extractTiptapDiffLines(b.default_content);
-          return lines.length > 0
-            ? lines.map(text => ({ type: 'removed' as const, text }))
-            : [{ type: 'removed' as const, text: t('diff.emptyBlock') }];
+          return diffTiptapRemovedContent(b.default_content, t('diff.emptyBlock'));
         }
-        const original = extractTiptapDiffLines(b.default_content);
-        const modified = extractTiptapDiffLines(b.content);
-        const lineDiff = computeLineDiff(original, modified).filter(l => l.type !== 'unchanged');
-        if (
-          lineDiff.length === 0 &&
-          documentBlockContentDiffersFromTemplateDefault(b.content, b.default_content)
-        ) {
-          return [{ type: 'added' as const, text: t('diff.richContentChanged') }];
-        }
-        return lineDiff;
+        return diffTiptapAgainstTemplateDefault(b.default_content, b.content, {
+          fallbackLine: t('diff.richContentChanged'),
+          hasNonTextDiff: documentBlockContentDiffersFromTemplateDefault(
+            b.content,
+            b.default_content,
+          ),
+        });
       }),
     [changedBlocks, t],
   );

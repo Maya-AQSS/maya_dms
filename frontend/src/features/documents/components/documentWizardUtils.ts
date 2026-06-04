@@ -1,3 +1,4 @@
+import { isSemanticallyEmptyTiptapContent } from '@ceedcv-maya/shared-editor-react';
 import type { DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import type { DocumentReview } from '../../../api/documents';
 import type { Template } from '../../../types/templates';
@@ -40,7 +41,9 @@ export function dateIsoToInput(value: string | null | undefined): string {
 
 export function blockEditorContent(block: DocumentDisplayBlock): unknown[] {
   const fromDoc = normalizeBlockContentForEditor(block.content);
-  if (fromDoc.length > 0) return fromDoc;
+  if (fromDoc.length > 0 && !isSemanticallyEmptyTiptapContent(fromDoc)) {
+    return fromDoc;
+  }
   return normalizeBlockContentForEditor(block.default_content);
 }
 

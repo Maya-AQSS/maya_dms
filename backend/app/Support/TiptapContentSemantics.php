@@ -48,12 +48,121 @@ final class TiptapContentSemantics
 
     public static function normalizeContentArray(mixed $content): array
     {
-        $nodes = self::toContentArray($content);
+        $nodes = [];
+        foreach (self::toContentArray($content) as $node) {
+            $canonical = self::canonicalizeNode($node);
+            if ($canonical !== null) {
+                $nodes[] = $canonical;
+            }
+        }
+
+        return self::stripTrailingEmptyBlocks($nodes);
+    }
+
+    /**
+     * @param  array<int, mixed>  $nodes
+     * @return array<int, mixed>
+     */
+    private static function stripTrailingEmptyBlocks(array $nodes): array
+    {
         while ($nodes !== [] && self::isEmptyBlockNode($nodes[array_key_last($nodes)])) {
             array_pop($nodes);
         }
 
         return $nodes;
+    }
+
+    /**
+     * Elimina atributos volátiles y nodos vacíos fantasma en cualquier profundidad.
+     *
+     * @return array<string, mixed>|null
+     */
+    private static function canonicalizeNode(mixed $node): ?array
+    {
+        if (! is_array($node)) {
+            return null;
+        }
+
+        $rawType = (string) ($node['type'] ?? '');
+        if ($rawType === '') {
+            return null;
+        }
+
+        if ($rawType === 'text') {
+            $text = is_string($node['text'] ?? null) ? $node['text'] : '';
+            $marks = $node['marks'] ?? null;
+            $hasMarks = is_array($marks) && $marks !== [];
+            if (trim(str_replace("\u{00A0}", ' ', $text)) === '' && ! $hasMarks) {
+                return null;
+            }
+            $out = ['type' => 'text'];
+            if (is_string($node['text'] ?? null)) {
+                $out['text'] = $node['text'];
+            }
+            if ($hasMarks) {
+                $out['marks'] = $marks;
+            }
+
+            return $out;
+        }
+
+        $type = $rawType === 'tableHeader' ? 'tableCell' : $rawType;
+        $out = ['type' => $type];
+
+        if (isset($node['attrs']) && is_array($node['attrs'])) {
+            $attrs = $node['attrs'];
+            if ($type === 'image') {
+                $picked = [];
+                foreach (['src', 'alt'] as $key) {
+                    $value = $attrs[$key] ?? null;
+                    if (is_string($value) && trim($value) !== '') {
+                        $picked[$key] = $value;
+                    }
+                }
+                if ($picked !== []) {
+                    $out['attrs'] = $picked;
+                }
+            } else {
+                foreach (['colwidth', 'columnSizing', 'data-colwidth', 'width', 'height', 'style', 'class', 'title'] as $key) {
+                    unset($attrs[$key]);
+                }
+                if ($type === 'tableCell') {
+                    if (($attrs['colspan'] ?? null) === 1) {
+                        unset($attrs['colspan']);
+                    }
+                    if (($attrs['rowspan'] ?? null) === 1) {
+                        unset($attrs['rowspan']);
+                    }
+                }
+                if ($attrs !== []) {
+                    $out['attrs'] = $attrs;
+                }
+            }
+        }
+
+        if (isset($node['content']) && is_array($node['content'])) {
+            $children = [];
+            foreach ($node['content'] as $child) {
+                $canonicalChild = self::canonicalizeNode($child);
+                if ($canonicalChild !== null) {
+                    $children[] = $canonicalChild;
+                }
+            }
+
+            if (in_array($rawType, ['bulletList', 'orderedList', 'taskList'], true)) {
+                $children = array_values(array_filter(
+                    $children,
+                    static fn ($child): bool => ! self::isEmptyBlockNode($child),
+                ));
+            }
+
+            $children = self::stripTrailingEmptyBlocks($children);
+            if ($children !== []) {
+                $out['content'] = $children;
+            }
+        }
+
+        return self::isEmptyBlockNode($out) ? null : $out;
     }
 
     public static function contentEquals(mixed $a, mixed $b): bool
@@ -114,7 +223,38 @@ final class TiptapContentSemantics
             return $inner === [] || self::everyBlockEmpty($inner);
         }
 
-        return self::inlineTextLength($node['content'] ?? []) === 0;
+        return ! self::blockChildrenHaveMeaningfulContent($node['content'] ?? []);
+    }
+
+    /**
+     * @param  array<int, mixed>  $nodes
+     */
+    private static function blockChildrenHaveMeaningfulContent(array $nodes): bool
+    {
+        foreach ($nodes as $node) {
+            if (! is_array($node)) {
+                continue;
+            }
+            $type = $node['type'] ?? '';
+            if ($type === 'text' && is_string($node['text'] ?? null)) {
+                if (trim(str_replace("\u{00A0}", ' ', $node['text'])) !== '') {
+                    return true;
+                }
+                continue;
+            }
+            if ($type === 'hardBreak') {
+                continue;
+            }
+            if (in_array($type, self::MEANINGFUL_BLOCK_TYPES, true) && ! self::isEmptyBlockNode($node)) {
+                return true;
+            }
+            $inner = $node['content'] ?? null;
+            if (is_array($inner) && self::blockChildrenHaveMeaningfulContent($inner)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

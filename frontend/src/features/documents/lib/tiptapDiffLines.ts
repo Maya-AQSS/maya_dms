@@ -10,20 +10,19 @@ function normalizeLineText(text: string): string {
   return text.trim().replace(/\s+/g, ' ');
 }
 
-/** Etiqueta estable para el diff cuando el nodo es una imagen TipTap. */
+/** Etiqueta para diff; usa ruta completa (no solo el nombre) para distinguir medias clonadas. */
 export function tiptapImageDiffLabel(attrs: unknown): string {
   const a = asRecord(attrs);
   const src = String(a?.src ?? '').trim();
   if (!src) return '[Imagen vacía]';
   try {
-    const path = new URL(src, 'https://local.invalid').pathname;
-    const tail = path.split('/').filter(Boolean).pop();
-    if (tail) return `[Imagen: ${tail}]`;
+    const path = new URL(src, 'https://local.invalid').pathname.replace(/^\/+/, '');
+    if (path) return `[Imagen: ${path}]`;
   } catch {
-    const tail = src.split('/').pop();
-    if (tail) return `[Imagen: ${tail}]`;
+    /* blob: o rutas relativas */
   }
-  return '[Imagen]';
+  if (src.length <= 96) return `[Imagen: ${src}]`;
+  return `[Imagen: …${src.slice(-48)}]`;
 }
 
 function inlineDiffParts(nodes: unknown[]): string[] {
