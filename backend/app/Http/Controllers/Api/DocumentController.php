@@ -14,6 +14,7 @@ use App\Http\Requests\Documents\ListDocumentsRequest;
 use App\Http\Requests\Documents\ShowDocumentRequest;
 use App\Http\Requests\Documents\StoreDocumentRequest;
 use App\Http\Requests\Documents\UpdateDocumentRequest;
+use App\Http\Resources\DocumentBlockResource;
 use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
@@ -72,7 +73,7 @@ class DocumentController extends Controller
         return response()->json([
             'data' => array_merge(
                 (new DocumentResource(DocumentDto::fromModel($document)))->toArray($request),
-                ['blocks' => $blocks],
+                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ], 201);
     }
@@ -94,7 +95,7 @@ class DocumentController extends Controller
         return response()->json([
             'data' => array_merge(
                 (new DocumentResource(DocumentDto::fromModel($copy)))->toArray($request),
-                ['blocks' => $blocks],
+                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ], 201);
     }
@@ -128,7 +129,7 @@ class DocumentController extends Controller
             return response()->json([
                 'data' => array_merge(
                     (new DocumentResource(DocumentDto::fromModel($resolved)))->toArray($request),
-                    ['blocks' => $blocks],
+                    ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
                 ),
             ]);
         }
@@ -143,7 +144,7 @@ class DocumentController extends Controller
         return response()->json([
             'data' => array_merge(
                 (new DocumentResource(DocumentDto::fromModel($resolved)))->toArray($request),
-                ['blocks' => $blocks],
+                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ]);
     }
