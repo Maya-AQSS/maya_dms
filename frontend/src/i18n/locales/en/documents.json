@@ -78,6 +78,7 @@
     "modalTitle": "Changes view",
     "noChangesInSubmission": "No changes in this submission.",
     "noChangesVsTemplate": "No changes from the original template.",
+    "richContentChanged": "Changes in images or other non-text content (check the block preview).",
     "sortAscendingTitle": "Show latest first",
     "sortDescendingTitle": "Show earliest first",
     "blockLabel": "Block {{n}}: {{title}}",

@@ -77,6 +77,7 @@
     "modalTitle": "Vista de canvis",
     "noChangesInSubmission": "Sense canvis en aquest enviament.",
     "noChangesVsTemplate": "No hi ha canvis respecte a la plantilla original.",
+    "richContentChanged": "Canvis en imatges o altre contingut no textual (revisa la previsualització del bloc).",
     "sortAscendingTitle": "Mostrar últims primer",
     "sortDescendingTitle": "Mostrar primers primer",
     "blockLabel": "Bloc {{n}}: {{title}}",

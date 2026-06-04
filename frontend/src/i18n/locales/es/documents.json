@@ -78,6 +78,7 @@
     "modalTitle": "Vista de cambios",
     "noChangesInSubmission": "Sin cambios en este envío.",
     "noChangesVsTemplate": "No hay cambios respecto a la plantilla original.",
+    "richContentChanged": "Cambios en imágenes u otro contenido no textual (revisa la vista previa del bloque).",
     "sortAscendingTitle": "Mostrar últimos primero",
     "sortDescendingTitle": "Mostrar primeros primero",
     "blockLabel": "Bloque {{n}}: {{title}}",
