@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
@@ -80,7 +81,7 @@ interface DocumentServiceInterface
     /**
      * Actualiza el contenido de un bloque de documento.
      */
-    public function updateBlock(UpdateDocumentBlockDto $dto): array;
+    public function updateBlock(UpdateDocumentBlockDto $dto): BlockUpdateDto;
 
     /**
      * Elimina un bloque opcional de un documento en borrador.

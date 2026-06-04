@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
@@ -686,10 +687,8 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Actualiza el contenido de un bloque de documento.
-     *
-     * @return array<string, mixed>
      */
-    public function updateBlock(UpdateDocumentBlockDto $dto): array
+    public function updateBlock(UpdateDocumentBlockDto $dto): BlockUpdateDto
     {
         return $this->documentBlockService->updateBlock($dto);
     }
