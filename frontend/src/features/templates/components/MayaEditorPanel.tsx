@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, type MutableRefObject } from 'react';
 import {
   MayaEditor,
-  normalizeTiptapContentForCompare,
+  normalizeTiptapContentForPersistence,
   type TiptapDoc,
   type CommentHoverData,
 } from '@ceedcv-maya/shared-editor-react';
@@ -48,7 +48,9 @@ interface Props {
   /** Optional comments dictionary keyed by id for hover-preview popovers. */
   commentsById?: Record<string, CommentHoverData>;
   /** Flush autoguardado (p. ej. `forceSave`) al perder foco o cambiar modo HTML/MD. */
-  onFlush?: () => void;
+  onFlush?: (payload?: string | TiptapDoc) => void | Promise<void>;
+  /** Ref para flush+sync imperativo antes de cambiar de bloque. */
+  editorFlushRef?: MutableRefObject<(() => void | Promise<void>) | null>;
 }
 
 function looksLikeTiptapDoc(value: unknown): value is TiptapDoc {
@@ -86,6 +88,7 @@ export function MayaEditorPanel({
   onExportDocx,
   commentsById,
   onFlush,
+  editorFlushRef,
 }: Props) {
   const initialDoc = useMemo(() => normaliseToDoc(initialContent), [initialContent]);
 
@@ -107,7 +110,7 @@ export function MayaEditorPanel({
                 return;
               }
               const doc = payload as TiptapDoc;
-              onChange(normalizeTiptapContentForCompare(doc.content));
+              onChange(normalizeTiptapContentForPersistence(doc.content));
             }
           : undefined
       }
@@ -117,6 +120,7 @@ export function MayaEditorPanel({
       onExportDocx={onExportDocx}
       commentsById={commentsById}
       onFlush={onFlush}
+      editorFlushRef={editorFlushRef}
     />
   );
 }

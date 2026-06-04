@@ -83,4 +83,111 @@ class TiptapContentSemanticsTest extends TestCase
 
         $this->assertTrue(TiptapContentSemantics::contentEquals($fromTemplate, $afterEditor));
     }
+
+    #[Test]
+    public function image_width_height_from_editor_does_not_change_content_equals(): void
+    {
+        $fromTemplate = [
+            ['type' => 'image', 'attrs' => ['src' => 'https://example.com/x.png', 'alt' => 'Logo']],
+        ];
+        $afterEditor = [
+            ['type' => 'image', 'attrs' => ['src' => 'https://example.com/x.png', 'alt' => 'Logo', 'width' => 400]],
+        ];
+
+        $this->assertTrue(TiptapContentSemantics::contentEquals($fromTemplate, $afterEditor));
+    }
+
+    #[Test]
+    public function paragraph_with_nested_image_is_filled(): void
+    {
+        $content = [
+            ['type' => 'paragraph', 'content' => [['type' => 'image', 'attrs' => ['src' => 'https://x.test/a.png']]]],
+        ];
+
+        $this->assertTrue(TiptapContentSemantics::isContentFilled($content));
+    }
+
+    #[Test]
+    public function phantom_empty_paragraph_inside_table_cell_does_not_change_content_equals(): void
+    {
+        $fromTemplate = [
+            [
+                'type' => 'table',
+                'content' => [
+                    [
+                        'type' => 'tableRow',
+                        'content' => [
+                            [
+                                'type' => 'tableCell',
+                                'content' => [
+                                    ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'c']]],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+        $afterEditor = [
+            [
+                'type' => 'table',
+                'content' => [
+                    [
+                        'type' => 'tableRow',
+                        'content' => [
+                            [
+                                'type' => 'tableCell',
+                                'attrs' => ['colwidth' => [100]],
+                                'content' => [
+                                    ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'c']]],
+                                    ['type' => 'paragraph', 'content' => []],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->assertTrue(TiptapContentSemantics::contentEquals($fromTemplate, $afterEditor));
+    }
+
+    #[Test]
+    public function empty_list_item_does_not_change_content_equals(): void
+    {
+        $fromTemplate = [
+            [
+                'type' => 'bulletList',
+                'content' => [
+                    [
+                        'type' => 'listItem',
+                        'content' => [
+                            ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Uno']]],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+        $afterEditor = [
+            [
+                'type' => 'bulletList',
+                'content' => [
+                    [
+                        'type' => 'listItem',
+                        'content' => [
+                            ['type' => 'paragraph', 'content' => []],
+                        ],
+                    ],
+                    [
+                        'type' => 'listItem',
+                        'content' => [
+                            ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Uno']]],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->assertTrue(TiptapContentSemantics::contentEquals($fromTemplate, $afterEditor));
+    }
 }

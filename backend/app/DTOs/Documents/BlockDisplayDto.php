@@ -15,7 +15,8 @@ readonly class BlockDisplayDto
         public string $template_block_id,
         public string $type,
         public ?string $title,
-        public ?string $description,
+        /** TipTap JSON from template block definition, or legacy plain text. */
+        public mixed $description,
         public mixed $default_content,
         public string $block_state,
         public bool $mandatory,

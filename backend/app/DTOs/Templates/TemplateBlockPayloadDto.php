@@ -13,7 +13,8 @@ readonly class TemplateBlockPayloadDto
     public function __construct(
         public string $blockId,
         public string $title,
-        public ?string $description,
+        /** TipTap JSON ({@see TemplateBlock::$casts}) or legacy plain text. */
+        public mixed $description,
         public mixed $defaultContent,
         public mixed $blockState,
         public int $sortOrder,

@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useMemo, type MutableRefObject, type ReactNode } from 'react';
 import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 import { PaperBlocksArticle, type PaperArticleBlock } from './PaperBlocksArticle';
@@ -27,7 +27,9 @@ interface Props {
   /** Llamado por el editor del bloque activo cuando cambia su contenido. */
   onContentChange: (content: unknown) => void;
   /** Forzar autoguardado al perder foco del editor (blur, HTML/MD, destroy). */
-  onFlush?: () => void;
+  onFlush?: (payload?: unknown) => void | Promise<void>;
+  /** Flush+sync imperativo del editor activo (antes de cambiar de bloque). */
+  editorFlushRef?: MutableRefObject<(() => void | Promise<void>) | null>;
   uploadFile: (file: File) => Promise<string>;
   /** Pendiente de switch: bloquea interacciones mientras se hace flush. */
   switching: boolean;
@@ -73,6 +75,7 @@ export function ContinuousDocumentEditor({
   onSelectBlock,
   onContentChange,
   onFlush,
+  editorFlushRef,
   uploadFile,
   switching,
   isBlockCompleted,
@@ -117,12 +120,13 @@ export function ContinuousDocumentEditor({
             isDark={isDark}
             onChange={onContentChange}
             onFlush={onFlush}
+            editorFlushRef={editorFlushRef}
             uploadFile={uploadFile}
           />
         </Suspense>
       );
     },
-    [activeBlockKey, blockByKey, canEdit, isDark, onContentChange, onFlush, uploadFile],
+    [activeBlockKey, blockByKey, canEdit, isDark, onContentChange, onFlush, editorFlushRef, uploadFile],
   );
 
   const renderBlockSection = useCallback(

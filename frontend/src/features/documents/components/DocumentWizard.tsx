@@ -42,6 +42,10 @@ import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard'
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
 import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
+import {
+  normalizeTiptapContentForPersistence,
+  type TiptapDoc,
+} from '@ceedcv-maya/shared-editor-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
 import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
@@ -246,6 +250,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const lastSavedContentRef = useRef<unknown>(null);
+  const localContentRef = useRef<unknown>(null);
+  const editorFlushRef = useRef<(() => void | Promise<void>) | null>(null);
+
+  const applyLocalContent = useCallback((content: unknown) => {
+    localContentRef.current = content;
+    setLocalContent(content);
+  }, []);
 
   const handleEditorFullscreenChange = useCallback((v: boolean) => {
     setIsEditorFullscreen(v);
@@ -865,7 +876,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     if (!blockId) return false;
 
     const plan = planDocumentBlockSave(
-      localContent,
+      localContentRef.current,
       lastSavedContentRef.current,
       block.content ?? null,
       block.default_content ?? null,
@@ -873,7 +884,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     );
 
     if (plan.action === 'skip') {
-      lastSavedContentRef.current = localContent;
+      lastSavedContentRef.current = localContentRef.current;
       return false;
     }
 
@@ -882,29 +893,59 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       if (!documentId) return false;
       const saved = await updateDocumentBlock(documentId, blockId, plan.payload);
       setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
-      lastSavedContentRef.current = localContent;
+      lastSavedContentRef.current = localContentRef.current;
       return true;
     } catch (e) {
       const msg = e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al guardar el bloque.';
       setBlockSaveError(msg);
       throw e;
     }
-  }, [documentId, isDraft, localContent]);
+  }, [documentId, isDraft]);
 
   const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
+  const handleDocumentContentChange = useCallback(
+    (content: unknown) => {
+      applyLocalContent(content);
+      if (documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
+        return;
+      }
+      triggerSave();
+    },
+    [applyLocalContent, triggerSave],
+  );
+
   const flushBlockSave = useCallback(async () => {
-    if (documentBlockContentUnchanged(localContent, lastSavedContentRef.current)) {
+    if (documentBlockContentUnchanged(localContentRef.current, lastSavedContentRef.current)) {
       return;
     }
     await forceSave();
-  }, [forceSave, localContent]);
+  }, [forceSave]);
 
-  useFlushOnPageLeave(flushBlockSave, isDraft && step === 'blocks');
+  const handleEditorFlush = useCallback(
+    async (payload?: string | TiptapDoc) => {
+      if (payload != null) {
+        if (typeof payload === 'string') {
+          applyLocalContent(payload);
+        } else {
+          applyLocalContent(normalizeTiptapContentForPersistence(payload.content));
+        }
+      }
+      await flushBlockSave();
+    },
+    [applyLocalContent, flushBlockSave],
+  );
 
-  const handleEditorFlush = useCallback(() => {
-    void flushBlockSave();
-  }, [flushBlockSave]);
+  const flushActiveEditor = useCallback(async () => {
+    await editorFlushRef.current?.();
+  }, []);
+
+  const persistDocumentBlockChanges = useCallback(async () => {
+    await flushActiveEditor();
+    await flushBlockSave();
+  }, [flushActiveEditor, flushBlockSave]);
+
+  useFlushOnPageLeave(persistDocumentBlockChanges, isDraft && step === 'blocks');
 
   // Preferencia de UI para el step `blocks`:
   // - 'per-block': sidebar + un editor a la vez (vista clásica).
@@ -967,31 +1008,24 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     if (!block) return;
 
     const editorBaseline = blockEditorContent(block);
-    setLocalContent(editorBaseline);
+    applyLocalContent(editorBaseline);
     // Misma base que muestra el editor (content persistido o default_content de plantilla).
     lastSavedContentRef.current = editorBaseline;
     setShowDocumentCommentPanel(true);
-  }, [activeBlockKey, documentId, detail?.id]);
+  }, [activeBlockKey, documentId, detail?.id, applyLocalContent]);
 
   useEffect(() => {
     if (saveStatus === 'saved') {
-      lastSavedContentRef.current = localContent;
+      lastSavedContentRef.current = localContentRef.current;
     }
-  }, [saveStatus, localContent]);
+  }, [saveStatus]);
 
   const handleBlockClick = async (key: string) => {
     if (isSaving) return;
 
     try {
       setIsSaving(true);
-      const hasChanged = !documentBlockContentUnchanged(
-        localContent,
-        lastSavedContentRef.current,
-      );
-
-      if (hasChanged) {
-        await forceSave();
-      }
+      await persistDocumentBlockChanges();
       setActiveBlockKey(key);
 
     } catch (e) {
@@ -1015,14 +1049,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }else if (step === 'blocks'){
       try {
         setIsSaving(true);
-        const hasChanged = !documentBlockContentUnchanged(
-          localContent,
-          lastSavedContentRef.current,
-        );
-
-        if (hasChanged) {
-          await forceSave();
-        }
+        await persistDocumentBlockChanges();
       }finally{
         setIsSaving(false);
       }
@@ -1136,14 +1163,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     if (step === 'blocks') {
       try {
         setIsSaving(true);
-        const hasChanged = !documentBlockContentUnchanged(
-          localContent,
-          lastSavedContentRef.current,
-        );
-
-        if (hasChanged) {
-          await forceSave();
-        }
+        await persistDocumentBlockChanges();
       }finally{
         setIsSaving(false)
       }
@@ -1457,14 +1477,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       if (step === "blocks"){
         try {
           setIsSaving(true);
-          const hasChanged = !documentBlockContentUnchanged(
-            localContent,
-            lastSavedContentRef.current,
-          );
-
-          if (hasChanged) {
-            await forceSave();
-          }
+          await persistDocumentBlockChanges();
         }finally{
           setIsSaving(false)
         }
@@ -1888,14 +1901,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         blockSaveError={blockSaveError}
                         switching={isSaving}
                         onSelectBlock={(key) => handleBlockClick(key)}
-                        onContentChange={(content) => {
-                          setLocalContent(content);
-                          if (documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
-                            return;
-                          }
-                          triggerSave();
-                        }}
+                        onContentChange={handleDocumentContentChange}
                         onFlush={handleEditorFlush}
+                        editorFlushRef={editorFlushRef}
                         uploadFile={(file: File) =>
                           uploadMedia(
                             file,
@@ -2157,37 +2165,30 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                     canEditBlocks ? (
                       <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
                         <div className="flex-1 min-h-0 p-6 flex flex-col">
-                          <div className="flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
+                          <div className="relative flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">
                             {isSaving && (
-                              <div className="p-4 flex items-center justify-center min-h-[100px]">
+                              <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-ui-dark-card/70">
                                 <div className="flex items-center gap-2">
                                   <div className="h-5 w-5 rounded-full border-2 border-gray-300 border-t-purple-800 animate-spin" />
                                   <span>Guardando cambios...</span>
                                 </div>
                               </div>
                             )}
-                            {!isSaving && (
-                              <Suspense
-                                fallback={<div className="p-4 flex justify-center"><Spinner /></div>}
-                                key={activeBlockKey ?? 'none'}
-                              >
-                                <BlockNoteEditorPanel
-                                  initialContent={blockEditorContent(activeBlock)}
-                                  editable
-                                  isDark={isDark}
-                                  onChange={(content) => {
-                                    setLocalContent(content);
-                                    if (documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
-                                      return;
-                                    }
-                                    triggerSave();
-                                  }}
-                                  onFlush={handleEditorFlush}
-                                  onFullscreenChange={handleEditorFullscreenChange}
-                                  uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
-                                />
-                              </Suspense>
-                            )}
+                            <Suspense
+                              fallback={<div className="p-4 flex justify-center"><Spinner /></div>}
+                              key={activeBlockKey ?? 'none'}
+                            >
+                              <BlockNoteEditorPanel
+                                initialContent={blockEditorContent(activeBlock)}
+                                editable
+                                isDark={isDark}
+                                onChange={handleDocumentContentChange}
+                                onFlush={handleEditorFlush}
+                                editorFlushRef={editorFlushRef}
+                                onFullscreenChange={handleEditorFullscreenChange}
+                                uploadFile={(file: File) => uploadMedia(file, activeBlock?.document_block_id ? { type: 'block', id: activeBlock.document_block_id } : undefined)}
+                              />
+                            </Suspense>
                           </div>
                         </div>
                       </ErrorBoundary>

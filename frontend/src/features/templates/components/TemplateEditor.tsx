@@ -25,6 +25,10 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button, ErrorBoundary, FieldLabel, TextInput } from '@ceedcv-maya/shared-ui-react';
+import {
+  normalizeTiptapContentForPersistence,
+  type TiptapDoc,
+} from '@ceedcv-maya/shared-editor-react';
 import type { Template } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
@@ -187,7 +191,24 @@ export function TemplateEditor({ template }: Props) {
   const [localUiState, setLocalUiState] = useState<BlockUiState>('editable');
   const [localContent, setLocalContent] = useState<unknown>(null);
 
-  // Autosave state
+  const localTitleRef = useRef('');
+  const localUiStateRef = useRef<BlockUiState>('editable');
+  const localContentRef = useRef<unknown>(null);
+  const isDirtyRef = useRef(false);
+  const editorFlushRef = useRef<(() => void | Promise<void>) | null>(null);
+
+  const applyLocalContent = useCallback((content: unknown) => {
+    localContentRef.current = content;
+    setLocalContent(content);
+    isDirtyRef.current = true;
+    setIsDirty(true);
+  }, []);
+
+  const markDirty = useCallback(() => {
+    isDirtyRef.current = true;
+    setIsDirty(true);
+  }, []);
+
   const [isDirty, setIsDirty] = useState(false);
   // saveStatus and savedTimerRef are now managed by useAutoSave hook
 
@@ -196,6 +217,19 @@ export function TemplateEditor({ template }: Props) {
 
   const [creatingBlock, setCreatingBlock] = useState(false);
 
+  const syncBlockForm = useCallback((block: TemplateBlock) => {
+    const title = block.title ?? '';
+    const uiState = blockToUiState(block);
+    localTitleRef.current = title;
+    localUiStateRef.current = uiState;
+    localContentRef.current = block.default_content;
+    setLocalTitle(title);
+    setLocalUiState(uiState);
+    setLocalContent(block.default_content);
+    isDirtyRef.current = false;
+    setIsDirty(false);
+  }, []);
+
   // ── Auto-select first block after load ───────────────────────────────────────
   useEffect(() => {
     if (loading) return;
@@ -203,27 +237,25 @@ export function TemplateEditor({ template }: Props) {
       const first = blocks[0];
       setActiveBlockId(first.id);
       setRightMode('block');
-      setLocalTitle(first.title ?? '');
-      setLocalUiState(blockToUiState(first));
-      setLocalContent(first.default_content);
-      setIsDirty(false);
+      syncBlockForm(first);
     } else if (blocks.length === 0) {
       setRightMode('create');
     }
-  }, [loading, blocks.length, activeBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loading, blocks.length, activeBlockId, syncBlockForm]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Autosave: migrate to useAutoSave hook (1500ms debounce) ─────────────────
   const doSave = useCallback(async () => {
-    if (!isDirty || !activeBlockId) return;
-    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[localUiState].payload;
+    if (!activeBlockId || !isDirtyRef.current) return;
+    const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG[localUiStateRef.current].payload;
     await updateBlock(activeBlockId, {
-      title: localTitle.trim() || null,
+      title: localTitleRef.current.trim() || null,
       block_state,
       mandatory,
-      default_content: localContent,
+      default_content: localContentRef.current,
     });
+    isDirtyRef.current = false;
     setIsDirty(false);
-  }, [isDirty, activeBlockId, localTitle, localUiState, localContent, updateBlock]);
+  }, [activeBlockId, updateBlock]);
 
   const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
@@ -233,44 +265,56 @@ export function TemplateEditor({ template }: Props) {
     triggerSave();
   }, [localTitle, localUiState, localContent, isDirty, rightMode, activeBlockId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Keep saveRef for navigateToBlock (force-save before switching)
-  const saveRef = useRef(forceSave);
-  useEffect(() => { saveRef.current = forceSave; }, [forceSave]);
+  const handleEditorFlush = useCallback(
+    async (payload?: string | TiptapDoc) => {
+      if (payload != null) {
+        if (typeof payload === 'string') {
+          applyLocalContent(payload);
+        } else {
+          applyLocalContent(normalizeTiptapContentForPersistence(payload.content));
+        }
+      }
+      if (!activeBlockId || !isDirtyRef.current) return;
+      await forceSave();
+    },
+    [activeBlockId, applyLocalContent, forceSave],
+  );
 
-  const flushTemplateEditor = useCallback(() => {
-    if (isDirty && activeBlockId) void forceSave();
-  }, [isDirty, activeBlockId, forceSave]);
+  const flushActiveEditor = useCallback(async () => {
+    await editorFlushRef.current?.();
+  }, []);
 
-  useFlushOnPageLeave(flushTemplateEditor, rightMode === 'block' && !!activeBlockId);
+  useFlushOnPageLeave(flushActiveEditor, rightMode === 'block' && !!activeBlockId);
 
   // ── Navigate to a block (saves current if dirty) ─────────────────────────────
   const navigateToBlock = useCallback(
     async (blockId: string) => {
       if (activeBlockId === blockId && rightMode === 'block') return;
-      if (isDirty && activeBlockId) {
-        try {
-          await saveRef.current();
-        } catch {
-          // Navigate anyway; error is already shown in saveStatus
+      try {
+        await flushActiveEditor();
+        if (isDirtyRef.current && activeBlockId) {
+          await forceSave();
         }
+      } catch {
+        // Navigate anyway; error is already shown in saveStatus
       }
       const block = blocks.find((b) => b.id === blockId);
       if (!block) return;
       setActiveBlockId(blockId);
       setRightMode('block');
-      setLocalTitle(block.title ?? '');
-      setLocalUiState(blockToUiState(block));
-      setLocalContent(block.default_content);
-      setIsDirty(false);
+      syncBlockForm(block);
     },
-    [activeBlockId, rightMode, isDirty, blocks],
+    [activeBlockId, rightMode, blocks, flushActiveEditor, forceSave, syncBlockForm],
   );
 
   // ── Create block ─────────────────────────────────────────────────────────────
   const handleCreateBlock = async () => {
     setCreatingBlock(true);
     try {
-      if (isDirty && activeBlockId) await saveRef.current();
+      await flushActiveEditor();
+      if (isDirtyRef.current && activeBlockId) {
+        await forceSave();
+      }
       const { block_state, mandatory } = BLOCK_UI_STATE_CONFIG['editable'].payload;
       const block = await createBlock({
         type: 'paragraph',
@@ -280,10 +324,7 @@ export function TemplateEditor({ template }: Props) {
       });
       setActiveBlockId(block.id);
       setRightMode('block');
-      setLocalTitle(block.title ?? '');
-      setLocalUiState(blockToUiState(block));
-      setLocalContent(block.default_content);
-      setIsDirty(false);
+      syncBlockForm(block);
     } catch {
       // TODO: send to error tracker
     } finally {
@@ -298,11 +339,6 @@ export function TemplateEditor({ template }: Props) {
     const newIndex = blocks.findIndex((b) => b.id === over.id);
     if (newIndex < 0) return;
     void reorderBlocks(active.id.toString(), newIndex);
-  };
-
-  // ── Dirty helpers (called from UI handlers) ───────────────────────────────────
-  const markDirty = () => {
-    setIsDirty(true);
   };
 
   // ── Derived ───────────────────────────────────────────────────────────────────
@@ -418,6 +454,7 @@ export function TemplateEditor({ template }: Props) {
                   disabled={isBlockLocked}
                   placeholder={t('blocks.blockNamePlaceholder')}
                   onChange={(e) => {
+                    localTitleRef.current = e.target.value;
                     setLocalTitle(e.target.value);
                     markDirty();
                   }}
@@ -429,6 +466,7 @@ export function TemplateEditor({ template }: Props) {
                   <BlockUiStateToggle
                     value={localUiState}
                     onChange={(s) => {
+                      localUiStateRef.current = s;
                       setLocalUiState(s);
                       markDirty();
                     }}
@@ -460,10 +498,10 @@ export function TemplateEditor({ template }: Props) {
                 key={activeBlockId}
                 initialContent={localContent as any}
                 onChange={(content) => {
-                  setLocalContent(content);
-                  markDirty();
+                  applyLocalContent(content);
                 }}
-                onFlush={flushTemplateEditor}
+                onFlush={handleEditorFlush}
+                editorFlushRef={editorFlushRef}
                 editable={true} // Siempre editable en la plantilla
                 isDark={isDark}
                 uploadFile={uploadMedia}
@@ -569,7 +607,14 @@ export function TemplateEditor({ template }: Props) {
             size="sm"
             loading={saveStatus === 'saving'}
             disabled={!isDirty}
-            onClick={() => void saveRef.current()}
+            onClick={() => {
+              void (async () => {
+                await flushActiveEditor();
+                if (isDirtyRef.current) {
+                  await forceSave();
+                }
+              })();
+            }}
             className="text-xs font-black uppercase tracking-widest rounded-full"
           >
             Guardar ahora
