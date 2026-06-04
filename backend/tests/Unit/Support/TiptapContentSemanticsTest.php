@@ -39,4 +39,48 @@ class TiptapContentSemanticsTest extends TestCase
         ]));
         $this->assertFalse(TiptapContentSemantics::isContentFilled('<p></p>'));
     }
+
+    #[Test]
+    public function table_colwidth_from_editor_does_not_change_content_equals(): void
+    {
+        $fromTemplate = [
+            [
+                'type' => 'table',
+                'content' => [
+                    [
+                        'type' => 'tableRow',
+                        'content' => [
+                            [
+                                'type' => 'tableCell',
+                                'content' => [
+                                    ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'A']]],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+        $afterEditor = [
+            [
+                'type' => 'table',
+                'content' => [
+                    [
+                        'type' => 'tableRow',
+                        'content' => [
+                            [
+                                'type' => 'tableCell',
+                                'attrs' => ['colwidth' => [120]],
+                                'content' => [
+                                    ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'A']]],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $this->assertTrue(TiptapContentSemantics::contentEquals($fromTemplate, $afterEditor));
+    }
 }

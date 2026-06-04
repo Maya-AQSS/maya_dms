@@ -865,11 +865,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     if (documentBlockContentUnchanged(localContent, lastSavedContentRef.current)) {
       return;
     }
-    // No persistir el texto guía de plantilla en bloques editables sin cambio real del usuario.
-    if (
-      block.block_state === 'editable' &&
-      documentBlockContentUnchanged(localContent, block.default_content)
-    ) {
+    // Sin cambio respecto a la plantilla: no PUT (evita ruido TipTap tras abrir el bloque).
+    if (documentBlockContentUnchanged(localContent, block.default_content)) {
       return;
     }
     setBlockSaveError(null);
@@ -1884,9 +1881,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         onSelectBlock={(key) => handleBlockClick(key)}
                         onContentChange={(content) => {
                           setLocalContent(content);
-                          if (!documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
-                            triggerSave();
+                          if (documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
+                            return;
                           }
+                          if (
+                            activeBlock &&
+                            documentBlockContentUnchanged(content, activeBlock.default_content)
+                          ) {
+                            return;
+                          }
+                          triggerSave();
                         }}
                         onFlush={handleEditorFlush}
                         uploadFile={(file: File) =>
@@ -2170,9 +2174,16 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                   isDark={isDark}
                                   onChange={(content) => {
                                     setLocalContent(content);
-                                    if (!documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
-                                      triggerSave();
+                                    if (documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
+                                      return;
                                     }
+                                    if (
+                                      activeBlock &&
+                                      documentBlockContentUnchanged(content, activeBlock.default_content)
+                                    ) {
+                                      return;
+                                    }
+                                    triggerSave();
                                   }}
                                   onFlush={handleEditorFlush}
                                   onFullscreenChange={handleEditorFullscreenChange}

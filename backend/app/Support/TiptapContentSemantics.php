@@ -48,12 +48,46 @@ final class TiptapContentSemantics
 
     public static function normalizeContentArray(mixed $content): array
     {
-        $nodes = self::toContentArray($content);
+        $nodes = array_map(
+            self::canonicalizeNode(...),
+            self::toContentArray($content),
+        );
         while ($nodes !== [] && self::isEmptyBlockNode($nodes[array_key_last($nodes)])) {
             array_pop($nodes);
         }
 
         return $nodes;
+    }
+
+    /**
+     * Elimina atributos volátiles que TipTap añade al hidratar (p. ej. colwidth).
+     *
+     * @return array<string, mixed>
+     */
+    private static function canonicalizeNode(mixed $node): array
+    {
+        if (! is_array($node)) {
+            return [];
+        }
+
+        $out = $node;
+        if (isset($out['attrs']) && is_array($out['attrs'])) {
+            $attrs = $out['attrs'];
+            foreach (['colwidth', 'columnSizing', 'data-colwidth'] as $key) {
+                unset($attrs[$key]);
+            }
+            if ($attrs === []) {
+                unset($out['attrs']);
+            } else {
+                $out['attrs'] = $attrs;
+            }
+        }
+
+        if (isset($out['content']) && is_array($out['content'])) {
+            $out['content'] = array_map(self::canonicalizeNode(...), $out['content']);
+        }
+
+        return $out;
     }
 
     public static function contentEquals(mixed $a, mixed $b): bool
