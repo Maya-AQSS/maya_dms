@@ -2,6 +2,13 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // react-draggable@4.6.0 (transitiva vía react-grid-layout) lee
+      // process.env.DRAGGABLE_DEBUG sin guarda; en el navegador `process` no
+      // existe y lanza "process is not defined" al arrastrar/redimensionar los
+      // widgets del dashboard. Shim mínimo cargado antes que cualquier módulo.
+      window.process = window.process || { env: {} };
+    </script>
         <link rel="icon" type="image/png+xml" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>DocuCEED</title>
