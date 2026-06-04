@@ -7,6 +7,7 @@ namespace App\DTOs\Documents;
 use App\Models\Document;
 use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\ApiEmbeddedTeamResponse;
+use App\Support\VersionSubmissionChangelog;
 
 final readonly class DocumentDto
 {
@@ -46,6 +47,7 @@ final readonly class DocumentDto
         public ?string $reviewMode,
         public bool $isAssignedReviewer = false,
         public ?array $reviewHistory,
+        public ?string $submissionChangelog = null,
     ) {}
 
     public static function fromModel(Document $m): self
@@ -105,6 +107,17 @@ final readonly class DocumentDto
             reviewMode: $m->review_mode !== null ? (string) $m->review_mode : null,
             isAssignedReviewer: (bool) ($m->getAttribute('is_assigned_reviewer') ?? false),
             reviewHistory: $reviewHistory,
+            submissionChangelog: self::submissionChangelogFrom($m),
+        );
+    }
+
+    private static function submissionChangelogFrom(Document $m): ?string
+    {
+        $m->loadMissing('headVersion');
+
+        return VersionSubmissionChangelog::forApiExposure(
+            $m->status !== null ? (string) $m->status : null,
+            $m->headVersion?->changelog,
         );
     }
 

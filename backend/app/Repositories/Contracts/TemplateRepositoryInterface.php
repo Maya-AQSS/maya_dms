@@ -134,4 +134,75 @@ interface TemplateRepositoryInterface
      * Ejecuta una operación dentro de transacción.
      */
     public function transaction(callable $callback): mixed;
+
+    /**
+     * Obtiene el nombre de un usuario por su ID (para UI, p. ej. mostrar quién edita).
+     */
+    public function getUserNameById(string $userId): ?string;
+
+    /**
+     * Verifica si una plantilla tiene revisores asignados.
+     */
+    public function templateHasReviewers(string $templateId): bool;
+
+    /**
+     * Sincroniza revisores de plantilla via relación (forceDelete old, create new).
+     *
+     * @param  string  $templateId
+     * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
+     */
+    public function syncTemplateReviewers(string $templateId, array $reviewerData): void;
+
+    /**
+     * Sincroniza revisores de documentos via relación (delete old, create new).
+     *
+     * @param  string  $templateId
+     * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
+     */
+    public function syncDocumentReviewers(string $templateId, array $reviewerData): void;
+
+    /**
+     * Verifica si una plantilla tiene al menos un revisor asignado.
+     */
+    public function doesntHaveReviewers(string $templateId): bool;
+
+    /**
+     * Verifica si una plantilla tiene al menos un validador de documento asignado.
+     */
+    public function doesntHaveDocumentReviewers(string $templateId): bool;
+
+    /**
+     * Actualiza el estado de todos los revisores de una plantilla.
+     */
+    public function updateReviewersStatus(string $templateId, string $status): void;
+
+    /**
+     * Actualiza el snapshot de la versión cabezal (headVersion) con datos específicos.
+     */
+    public function updateHeadVersionSnapshot(string $templateId, array $snapshotData): void;
+
+    /**
+     * Limpia datos de submission del head version snapshot (cuando se publica).
+     */
+    public function cleanHeadVersionSubmissionData(string $templateId): void;
+
+    /**
+     * Persiste el changelog de envío a validación en la versión de trabajo (head).
+     */
+    public function updateHeadVersionChangelog(string $templateId, string $changelog): void;
+
+    /**
+     * Elimina el changelog de envío de la versión de trabajo (head).
+     */
+    public function clearHeadVersionChangelog(string $templateId): void;
+
+    /**
+     * Fetch template data for rendering (HTML export/preview).
+     * Returns template ID, name, description, theme_id, and blocks ordered by sort_order.
+     * Blocks contain: id, title, default_content.
+     * Without global catalog scope; caller must authorize.
+     *
+     * @return \App\DTOs\Templates\TemplateRenderDto|null
+     */
+    public function findForRenderingWithoutCatalogScope(string $id): ?\App\DTOs\Templates\TemplateRenderDto;
 }

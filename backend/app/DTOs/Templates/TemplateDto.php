@@ -7,6 +7,7 @@ namespace App\DTOs\Templates;
 use App\Models\Template;
 use App\Support\ApiEmbeddedTeamResponse;
 use App\Support\TemplateHeadSnapshot;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Date;
 
@@ -56,6 +57,7 @@ final readonly class TemplateDto
         /** @var array<string, mixed>|null Mini-payload del theme cuando la relación está cargada. */
         public ?array $themeMini = null,
         public ?string $documentReviewMode = null,
+        public ?string $submissionChangelog = null,
     ) {}
 
     public static function fromModel(Template $m): self
@@ -174,6 +176,17 @@ final readonly class TemplateDto
             themeId: $m->theme_id !== null ? (string) $m->theme_id : null,
             themeMini: $themeMini,
             documentReviewMode: self::storedDocumentReviewModeFrom($m),
+            submissionChangelog: self::submissionChangelogFrom($m),
+        );
+    }
+
+    private static function submissionChangelogFrom(Template $m): ?string
+    {
+        $m->loadMissing('headVersion');
+
+        return VersionSubmissionChangelog::forApiExposure(
+            $m->status !== null ? (string) $m->status : null,
+            $m->headVersion?->changelog,
         );
     }
 

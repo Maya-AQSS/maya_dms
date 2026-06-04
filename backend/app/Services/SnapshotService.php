@@ -62,11 +62,8 @@ class SnapshotService implements SnapshotServiceInterface
             $entityVersionId,
         );
 
-        $document->refresh();
-        $document->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
-
         $latestVersion = $this->documentRepository->findLatestDocumentVersionOrFail($dto->documentId);
-        $this->documentVersionBlockLayerWriter->syncLayersForNewPublication($latestVersion, $document);
+        $this->documentVersionBlockLayerWriter->syncLayersForNewPublication((string) $latestVersion->id, $dto->documentId);
     }
 
     /**
@@ -78,7 +75,8 @@ class SnapshotService implements SnapshotServiceInterface
      */
     private function buildDocumentVersionSnapshot(Document $document, int $snapshotVersionNumber): array
     {
-        $document->loadMissing([
+        $document = $this->documentRepository->findOrFailForRefreshAfterMutation((string) $document->id);
+        $document->load([
             'blocks' => fn ($q) => $q->orderBy('sort_order'),
             'reviews' => fn ($q) => $q->orderBy('stage')->orderBy('created_at'),
         ]);

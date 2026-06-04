@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Template;
 use App\Services\Contracts\TemplateRenderServiceInterface;
+use App\Services\Contracts\TemplateServiceInterface;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Gate;
 
@@ -20,15 +20,14 @@ class TemplatePreviewController extends Controller
 {
     public function __construct(
         private readonly TemplateRenderServiceInterface $renderer,
+        private readonly TemplateServiceInterface $templateService,
     ) {}
 
     public function show(string $template): Response
     {
-        // La policy ya gobierna quién puede ver la plantilla; usamos la query
+        // La policy ya gobierna quién puede ver la plantilla; usamos service/repository
         // sin global scopes para que la policy decida (no el catálogo).
-        $model = Template::query()
-            ->withoutGlobalScopes(['user_access'])
-            ->findOrFail($template);
+        $model = $this->templateService->findOrFailWithoutCatalogScope($template);
         if (! Gate::forUser(request()->user())->allows('view', $model)) {
             abort(404);
         }

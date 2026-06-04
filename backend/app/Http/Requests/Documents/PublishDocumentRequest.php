@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\Documents;
 
 use App\Models\Document;
-use App\Models\EntityVersion;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class PublishDocumentRequest extends FormRequest
 {
@@ -30,21 +29,8 @@ class PublishDocumentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $document = $this->resolveDocument();
-        $hasPublishedVersions = EntityVersion::query()
-            ->where('versionable_type', Document::class)
-            ->where('versionable_id', $document->id)
-            ->where('status', 'published')
-            ->exists();
-
         return [
-            'changelog' => [
-                Rule::requiredIf($hasPublishedVersions),
-                'nullable',
-                'string',
-                'min:1',
-                'max:5000',
-            ],
+            'changelog' => ['required', 'string', 'min:1', 'max:'.VersionSubmissionChangelog::MAX_LENGTH],
         ];
     }
 

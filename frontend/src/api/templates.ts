@@ -239,8 +239,14 @@ export async function publishTemplate(
 }
 
 /** POST /api/v1/templates/{id}/submit-review */
-export async function submitTemplateForReview(id: string): Promise<{ data: Template }> {
-  return apiFetchJson<{ data: Template }>(`templates/${id}/submit-review`, { method: 'POST', body: {} });
+export async function submitTemplateForReview(
+  id: string,
+  changelog: string,
+): Promise<{ data: Template }> {
+  return apiFetchJson<{ data: Template }>(`templates/${id}/submit-review`, {
+    method: 'POST',
+    body: { changelog },
+  });
 }
 
 /** POST /api/v1/templates/{id}/reviewers */

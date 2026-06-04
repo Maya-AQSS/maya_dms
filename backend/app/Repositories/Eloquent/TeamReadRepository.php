@@ -40,7 +40,29 @@ class TeamReadRepository implements TeamReadRepositoryInterface
     }
 
     /**
-     * Devuelve equipos visibles para el usuario.
+     * Devuelve todos los equipos (sin filtros de acceso).
+     *
+     * @return list<array{id: string, name: string, is_department: bool, owner_id: string}>
+     */
+    public function listAllTeams(): array
+    {
+        return DB::table('teams')
+            ->whereNull('teams.deleted_at')
+            ->select(['teams.id', 'teams.name', 'teams.is_department', 'teams.owner_id'])
+            ->orderBy('teams.name')
+            ->get()
+            ->map(fn ($row) => [
+                'id' => (string) $row->id,
+                'name' => (string) $row->name,
+                'is_department' => (bool) ($row->is_department ?? false),
+                'owner_id' => (string) $row->owner_id,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Devuelve equipos visibles para el usuario (aplica filtros de acceso).
      *
      * @return list<array{id: string, name: string, is_department: bool}>
      */
@@ -76,7 +98,32 @@ class TeamReadRepository implements TeamReadRepositoryInterface
     }
 
     /**
-     * Devuelve un equipo visible por ID para el usuario o null.
+     * Devuelve un equipo por ID sin filtros de acceso o null.
+     *
+     * @return array{id: string, name: string, is_department: bool, owner_id: string}|null
+     */
+    public function findTeamById(string $teamId): ?array
+    {
+        $row = DB::table('teams')
+            ->tap(fn (Builder $q) => $this->whereTeamIdMatches($q, 'teams.id', $teamId))
+            ->whereNull('teams.deleted_at')
+            ->select(['teams.id', 'teams.name', 'teams.is_department', 'teams.owner_id'])
+            ->first();
+
+        if ($row === null) {
+            return null;
+        }
+
+        return [
+            'id' => (string) $row->id,
+            'name' => (string) $row->name,
+            'is_department' => (bool) ($row->is_department ?? false),
+            'owner_id' => (string) $row->owner_id,
+        ];
+    }
+
+    /**
+     * Devuelve un equipo visible por ID para el usuario o null (aplica filtros de acceso).
      *
      * @return array{id: string, name: string, is_department: bool}|null
      */

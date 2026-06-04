@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Exceptions\ResourceNotFoundException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AnchoredCommentRequest;
 use App\Http\Resources\AnchoredCommentResource;
 use App\Repositories\Resolvers\PolymorphicResourceResolver;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -37,7 +39,7 @@ final class AnchoredCommentController extends Controller
 
         $anchors = $this->anchoredCommentService->listForResource($resourceType, (string) $resource->getKey());
 
-        return response()->json(['data' => AnchoredCommentResource::collection($anchors)]);
+        return response()->json(['data' => array_map(fn ($dto) => new AnchoredCommentResource($dto), $anchors)]);
     }
 
     public function store(
@@ -104,7 +106,11 @@ final class AnchoredCommentController extends Controller
 
     private function resolveAndAuthorize(string $resourceType, string $resourceId, string $ability): \Illuminate\Database\Eloquent\Model
     {
-        $resource = $this->resourceResolver->resolve($resourceType, $resourceId);
+        try {
+            $resource = $this->resourceResolver->resolve($resourceType, $resourceId);
+        } catch (ResourceNotFoundException | ModelNotFoundException) {
+            throw new NotFoundHttpException();
+        }
 
         $this->authorize($ability, $resource);
 

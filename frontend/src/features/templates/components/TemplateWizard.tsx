@@ -11,15 +11,14 @@ import type { TemplateBlock } from '../../../types/blocks';
 import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
-  publishTemplate as apiPublishTemplate,
   submitTemplateForReview as apiSubmitTemplateForReview,
   syncTemplateValidators,
   syncDocumentReviewers,
 } from '../../../api/templates';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
+import { VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
-import { useTemplateVersionSummariesQuery } from '../hooks/useTemplateVersionSummaries';
 import {
   templateCommentsKey,
   type TemplateCommentsResponse,
@@ -136,20 +135,14 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
   const [saving, setSaving] = useState(false);
   const blocksRef = useRef<WizardStep2BlocksHandle>(null);
   const [permissionError, setPermissionError] = useState<string | null>(null);
-  const [showValidationModal, setShowValidationModal] = useState(false);
-  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [showChangelogModal, setShowChangelogModal] = useState(false);
+  const [changelogModalMode, setChangelogModalMode] = useState<'submit' | 'publish'>('submit');
+  const [changelogModalError, setChangelogModalError] = useState<string | null>(null);
   const [showNoValidatorsModal, setShowNoValidatorsModal] = useState(false);
   const [noValidatorsModalMessage, setNoValidatorsModalMessage] = useState('');
-  const [publishChangelog, setPublishChangelog] = useState('');
-  const [publishModalError, setPublishModalError] = useState<string | null>(null);
   const [blocksCount, setBlocksCount] = useState(0);
   const [blocksLoading, setBlocksLoading] = useState(true);
   const [wizardBlocks, setWizardBlocks] = useState<TemplateBlock[]>([]);
-
-  const versionSummariesQuery = useTemplateVersionSummariesQuery(template?.id ?? '', {
-    enabled: !!template?.id,
-  });
-  const publishedVersionCount = versionSummariesQuery.data?.length ?? 0;
 
   const effectiveProcessId =
     processId ?? template?.process_id ?? initial?.process_id ?? null;
@@ -291,77 +284,100 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
     }
   });
   
-  const handlePublish = async (changelog?: string | null) => {
-    if (!template?.id) return false;
-    setSaving(true);
-    try {
-      await apiPublishTemplate(template.id, changelog);
-      setShowPublishModal(false);
-      setPublishModalError(null);
-      setPublishChangelog('');
-      navigate(processBackTo);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Error al publicar la plantilla';
-      if (showPublishModal) {
-        setPublishModalError(message);
-      } else {
-        setErrors({ api: message });
-      }
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const requiresPublishChangelog = publishedVersionCount > 0;
-
-  const handlePublishClick = () => {
+  const openChangelogModal = (mode: 'submit' | 'publish') => {
     const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
     if (blockInvariantErr) {
       setBlockInvariantModal(blockInvariantErr);
       return;
     }
-    if (requiresPublishChangelog) {
-      setPublishModalError(null);
-      setShowPublishModal(true);
-      return;
-    }
-    void handlePublish(null);
+    setChangelogModalError(null);
+    setChangelogModalMode(mode);
+    setShowChangelogModal(true);
   };
 
-  const handleSubmitForReviewClick = () => {
-    const blockInvariantErr = validateBlocksInvariants(wizardBlocks);
-    if (blockInvariantErr) {
-      setBlockInvariantModal(blockInvariantErr);
-      return;
-    }
-    setShowValidationModal(true);
-  };
-
-  const handleConfirmPublish = async () => {
-    if (requiresPublishChangelog && publishChangelog.trim() === '') {
-      setPublishModalError('El changelog es obligatorio a partir de la segunda versión.');
-      return false;
-    }
-    return handlePublish(publishChangelog.trim());
-  };
-
-  const handleSubmitForReview = async () => {
+  const handleConfirmChangelogSubmit = async (changelog: string) => {
     if (!template?.id) return false;
     setSaving(true);
     setErrors({});
+    setChangelogModalError(null);
     try {
-      const res = await apiSubmitTemplateForReview(template.id);
+      const res = await apiSubmitTemplateForReview(template.id, changelog);
       setTemplate(res.data);
-      setShowValidationModal(false);
+      setShowChangelogModal(false);
       navigate(processBackTo);
     } catch (e) {
-      setErrors({ api: e instanceof Error ? e.message : 'Error al enviar la plantilla a validación' });
+      const message = e instanceof Error ? e.message : 'Error al enviar la plantilla a validación';
+      setChangelogModalError(message);
       return false;
     } finally {
       setSaving(false);
     }
   };
+
+  const changelogModalIntro =
+    changelogModalMode === 'submit' ? (
+      <div className="space-y-4">
+        <p className="text-xs text-text-muted">
+          Se notificará a los validadores asignados. Una vez enviada, la plantilla no podrá editarse hasta ser aprobada o rechazada.
+        </p>
+        {validators.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
+              Validadores de plantilla ({validationType}) — {validators.length}
+            </p>
+            {validators.map((v, i) => {
+              const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+              return (
+                <div key={v.userId} className="flex items-center gap-2.5">
+                  {validationType === 'ordenada' && (
+                    <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold flex items-center justify-center">
+                      {i + 1}
+                    </span>
+                  )}
+                  <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20 flex items-center justify-center">
+                    {initials}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                    {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {documentValidators.length > 0 && (
+          <div className="space-y-2 pt-3 border-t border-ui-border dark:border-ui-dark-border">
+            <p className="text-xs font-bold uppercase tracking-widest text-odoo-teal">
+              Validadores de documento ({documentValidationType}) — {documentValidators.length}
+            </p>
+            {documentValidators.map((v, i) => {
+              const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
+              return (
+                <div key={v.userId} className="flex items-center gap-2.5">
+                  {documentValidationType === 'ordenada' && (
+                    <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-xs font-bold flex items-center justify-center">
+                      {i + 1}
+                    </span>
+                  )}
+                  <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-xs font-black border border-odoo-teal/20 flex items-center justify-center">
+                    {initials}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
+                    {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    ) : (
+      <p className="text-xs text-text-muted">
+        No hay validadores configurados. La plantilla se publicará directamente al confirmar.
+      </p>
+    );
   const pendingOwnerTransfer = step1Methods.watch('createdBy');
 
   const handleTransferOwnership = async () => {
@@ -555,7 +571,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           variant="primary"
           size="sm"
           disabled={blocksGateActive}
-          onClick={handleSubmitForReviewClick}
+          onClick={() => openChangelogModal('submit')}
           className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
         >
           Enviar a validar
@@ -567,7 +583,7 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
           size="sm"
           loading={saving}
           disabled={blocksGateActive}
-          onClick={handlePublishClick}
+          onClick={() => openChangelogModal('publish')}
           className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
         >
           Publicar plantilla
@@ -753,100 +769,27 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
         onCancel={() => setShowNoValidatorsModal(false)}
       />
 
-      {/* Validation modal */}
-      <ConfirmDialog
-        open={showValidationModal}
-        title={t('templates:modals.sendValidation')}
-        icon="✉️"
-        description={
-          <div className="space-y-4">
-            <p className="text-xs text-text-muted">Se notificará a los validadores asignados. Una vez enviada, la plantilla no podrá editarse hasta ser aprobada o rechazada.</p>
-            {validators.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-widest text-text-secondary">
-                  Validadores de plantilla ({validationType}) — {validators.length}
-                </p>
-                {validators.map((v, i) => {
-                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
-                  return (
-                    <div key={v.userId} className="flex items-center gap-2.5">
-                      {validationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-purple text-text-inverse text-xs font-bold flex items-center justify-center">
-                          {i + 1}
-                        </span>
-                      )}
-                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-purple/10 text-odoo-purple text-xs font-black border border-odoo-purple/20 flex items-center justify-center">
-                        {initials}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            {documentValidators.length > 0 && (
-              <div className="space-y-2 pt-3 border-t border-ui-border dark:border-ui-dark-border">
-                <p className="text-xs font-bold uppercase tracking-widest text-odoo-teal">
-                  Validadores de documento ({documentValidationType}) — {documentValidators.length}
-                </p>
-                {documentValidators.map((v, i) => {
-                  const initials = v.name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('');
-                  return (
-                    <div key={v.userId} className="flex items-center gap-2.5">
-                      {documentValidationType === 'ordenada' && (
-                        <span className="shrink-0 w-5 h-5 rounded-full bg-odoo-teal text-text-inverse text-xs font-bold flex items-center justify-center">
-                          {i + 1}
-                        </span>
-                      )}
-                      <span className="shrink-0 w-7 h-7 rounded-full bg-odoo-teal/10 text-odoo-teal text-xs font-black border border-odoo-teal/20 flex items-center justify-center">
-                        {initials}
-                      </span>
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-text-primary dark:text-text-dark-primary truncate">{v.name}</p>
-                        {v.role && <p className="text-xs text-text-secondary uppercase tracking-wider">{v.role}</p>}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+      <VersionChangelogModal
+        open={showChangelogModal}
+        title={changelogModalMode === 'submit' ? t('templates:modals.sendValidation') : t('templates:modals.publish')}
+        intro={changelogModalIntro}
+        initialValue={template?.submission_changelog}
+        confirmLabel={
+          saving
+            ? changelogModalMode === 'submit'
+              ? 'Enviando…'
+              : 'Publicando…'
+            : changelogModalMode === 'submit'
+              ? 'Confirmar y salir →'
+              : 'Publicar'
         }
-        confirmLabel={saving ? 'Enviando…' : 'Confirmar y salir →'}
         loading={saving}
-        onCancel={() => setShowValidationModal(false)}
-        onConfirm={handleSubmitForReview}
-      />
-      <ConfirmDialog
-        open={showPublishModal}
-        title={t('templates:modals.publish')}
-        description={
-          <div className="space-y-2">
-            <p className="text-xs text-text-muted">
-              Añade un changelog para esta publicación.
-            </p>
-            <textarea
-              value={publishChangelog}
-              onChange={(e) => {
-                setPublishChangelog(e.target.value);
-                if (publishModalError) setPublishModalError(null);
-              }}
-              placeholder={t('placeholders.changeDescription')}
-              className="w-full min-h-24 rounded-md border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg px-3 py-2 text-sm"
-            />
-          </div>
-        }
-        confirmLabel={saving ? 'Publicando…' : 'Publicar'}
-        loading={saving}
-        error={publishModalError}
+        error={changelogModalError}
         onCancel={() => {
-          setShowPublishModal(false);
-          setPublishModalError(null);
+          setShowChangelogModal(false);
+          setChangelogModalError(null);
         }}
-        onConfirm={handleConfirmPublish}
+        onConfirm={handleConfirmChangelogSubmit}
       />
     </>
   );

@@ -24,6 +24,7 @@ import type { BlockState } from '../types/blocks';
 import type { DocumentDetail, DocumentDisplayBlock } from '../types/documents';
 import { visibilityLabel } from '../features/templates/constants';
 import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
+import { SubmissionChangelogReadonly, VersionChangelogModal } from '../components/VersionChangelogModal';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { refreshDmsDashboardQuery } from '../features/dashboard/hooks/useDmsDashboard';
@@ -177,6 +178,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
+  const [showChangelogModal, setShowChangelogModal] = useState(false);
+  const [changelogModalError, setChangelogModalError] = useState<string | null>(null);
   // Validate-mode comment + info state (mirrors TemplateReviewView)
   type ValidateActiveView = { blockId: string; mode: 'comments' | 'info' } | null;
   const [validateActiveView, setValidateActiveView] = useState<ValidateActiveView>(null);
@@ -531,7 +534,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     }
   };
 
-  const handleSubmit = async () => {
+  const handleOpenSubmitChangelogModal = () => {
     if (!documentId || !detail) return;
 
     const emptyEditable = detail.blocks.filter((b: DocumentDisplayBlock) =>
@@ -543,14 +546,26 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       return;
     }
 
+    setChangelogModalError(null);
+    setShowChangelogModal(true);
+  };
+
+  const handleConfirmChangelogSubmit = async (changelog: string) => {
+    if (!documentId || !detail) return false;
+
     setActionLoading(true);
     setActionError(null);
+    setChangelogModalError(null);
     try {
-      const res = await submitDocumentForReview(documentId);
+      const res = await submitDocumentForReview(documentId, changelog);
       if (res.status === 'published') setAutoPublishBanner(true);
-      setDetail((prev) => prev ? ({ ...prev, status: res.status, submitted_at: res.submitted_at } as typeof prev) : prev);
+      setDetail((prev) => (prev ? ({ ...prev, status: res.status, submitted_at: res.submitted_at } as typeof prev) : prev));
+      setShowChangelogModal(false);
+      return true;
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'No se pudo enviar a validar.');
+      const message = e instanceof Error ? e.message : 'No se pudo enviar a validar.';
+      setChangelogModalError(message);
+      return false;
     } finally {
       setActionLoading(false);
     }
@@ -747,7 +762,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
             variant="primary"
             size="sm"
             loading={actionLoading}
-            onClick={() => void handleSubmit()}
+            onClick={handleOpenSubmitChangelogModal}
           >
             Enviar a validar
           </Button>
@@ -1037,6 +1052,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                   {previewTitle}
                 </h1>
               </header>
+              {detail.submission_changelog?.trim() ? (
+                <SubmissionChangelogReadonly text={detail.submission_changelog.trim()} />
+              ) : null}
               {validateBlocks.length === 0 ? (
                 <div className="py-20 text-center border-2 border-dashed border-ui-border dark:border-ui-dark-border rounded-xl">
                   <p className="text-sm text-text-muted italic">Este documento no tiene bloques.</p>
@@ -1486,6 +1504,20 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
           setShowDiscardVersionModal(false);
           setDiscardVersionError(null);
         }}
+      />
+
+      <VersionChangelogModal
+        open={showChangelogModal}
+        title={t('documents:sendForReviewTitle')}
+        initialValue={detail?.submission_changelog}
+        confirmLabel={actionLoading ? 'Enviando…' : 'Confirmar envío'}
+        loading={actionLoading}
+        error={changelogModalError}
+        onCancel={() => {
+          setShowChangelogModal(false);
+          setChangelogModalError(null);
+        }}
+        onConfirm={handleConfirmChangelogSubmit}
       />
     </>
   );

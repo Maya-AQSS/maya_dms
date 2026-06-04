@@ -6,8 +6,7 @@ import {
   createTemplate,
   updateTemplate,
   syncTemplateValidators,
-  publishTemplate,
-  fetchTemplateVersionSummaries,
+  submitTemplateForReview,
 } from '../../../../api/templates';
 import { fetchBlocks } from '../../../../api/blocks';
 import { fetchMe } from '../../../../api/users';
@@ -15,6 +14,29 @@ import { MemoryRouter } from 'react-router-dom';
 import { UserProfileProvider } from '../../../../features/user-profile';
 
 // --- Mocks ---
+
+vi.mock('@ceedcv-maya/shared-editor-react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@ceedcv-maya/shared-editor-react')>();
+  return {
+    ...actual,
+    MayaEditor: ({
+      initialContent,
+      onChange,
+      placeholder,
+    }: {
+      initialContent?: string;
+      onChange?: (html: string) => void;
+      placeholder?: string;
+    }) => (
+      <textarea
+        data-testid="changelog-editor"
+        placeholder={placeholder}
+        defaultValue={typeof initialContent === 'string' ? initialContent : ''}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    ),
+  };
+});
 
 vi.mock('../../../../api/templates');
 vi.mock('../../../../api/blocks');
@@ -136,8 +158,9 @@ describe('TemplateWizard Integration', () => {
       data: fullTemplate({ name: payload.name ?? 'Existing' }),
     }));
     (syncTemplateValidators as any).mockResolvedValue({ data: [] });
-    (publishTemplate as any).mockResolvedValue({ data: { success: true } });
-    (fetchTemplateVersionSummaries as any).mockResolvedValue([]);
+    (submitTemplateForReview as any).mockResolvedValue({
+      data: fullTemplate({ status: 'published' }),
+    });
   });
 
   const renderWizard = async (props = {}) => {
@@ -228,6 +251,16 @@ describe('TemplateWizard Integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Publicar plantilla/ }));
 
     await waitFor(() => {
+      expect(screen.getByTestId('changelog-editor')).toBeTruthy();
+    }, { timeout: 10000 });
+
+    fireEvent.change(screen.getByTestId('changelog-editor'), {
+      target: { value: 'Primera publicación con changelog.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Publicar/i }));
+
+    await waitFor(() => {
+      expect(submitTemplateForReview).toHaveBeenCalledWith('t123', 'Primera publicación con changelog.');
       expect(mockNavigate).toHaveBeenCalledWith('/procesos/proc-test-1');
     }, { timeout: 10000 });
   }, 15000);

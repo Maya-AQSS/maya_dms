@@ -154,7 +154,7 @@ class DocumentsRenderViewTest extends TestCase
     {
         $html = $this->render($this->baseTheme(), '<p>Texto <strong>bold</strong></p>');
 
-        // BlockNoteHtmlRenderer ya escapa el contenido; aquí el Blade lo inserta tal cual.
+        // El renderer ya escapa el contenido; aquí el Blade lo inserta tal cual.
         $this->assertStringContainsString('<p>Texto <strong>bold</strong></p>', $html);
     }
 

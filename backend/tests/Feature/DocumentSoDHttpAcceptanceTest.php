@@ -221,7 +221,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $response = $this->postJson(
             "/api/v1/templates/{$templateId}/submit-review",
-            [],
+            ['changelog' => 'Primera publicación con changelog obligatorio.'],
             ['Authorization' => 'Bearer '.$token],
         );
 

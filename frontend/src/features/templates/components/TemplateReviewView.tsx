@@ -9,6 +9,7 @@ import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
+import { SubmissionChangelogReadonly } from '../../../components/VersionChangelogModal';
 import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
 import { approveTemplateReview, rejectTemplateReview } from '../../../api/templates';
 import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
@@ -581,6 +582,9 @@ export function TemplateReviewView({ template }: Props) {
           {error}
         </div>
       )}
+      {template.submission_changelog?.trim() ? (
+        <SubmissionChangelogReadonly text={template.submission_changelog.trim()} />
+      ) : null}
       {/* Blocks list (article content) */}
       <div className="space-y-12">
         {blocks.length === 0 ? (

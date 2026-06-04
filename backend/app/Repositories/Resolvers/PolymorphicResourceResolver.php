@@ -4,14 +4,18 @@ declare(strict_types=1);
 
 namespace App\Repositories\Resolvers;
 
+use App\Exceptions\ResourceNotFoundException;
 use Illuminate\Database\Eloquent\Model;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * Resolves polymorphic resources given a resource type key and resource ID.
  *
  * Maintains a RESOURCE_MAP allow-list to prevent IDOR attacks by restricting
  * which model classes can be resolved via string keys passed through URLs.
+ *
+ * Throws domain exceptions (ResourceNotFoundException, ModelNotFoundException).
+ * HTTP mapping (404 responses) is the responsibility of the Controller/middleware.
  */
 final class PolymorphicResourceResolver
 {
@@ -32,13 +36,14 @@ final class PolymorphicResourceResolver
      * @param  string  $resourceType  The resource type key (e.g., 'document', 'template')
      * @param  string  $resourceId    The resource ID (UUID)
      * @return Model                  The resolved Eloquent model
-     * @throws NotFoundHttpException  If the resource type is not allowed or the resource is not found
+     * @throws ResourceNotFoundException  If the resource type is not allowed
+     * @throws ModelNotFoundException     If the resource is not found (domain exception)
      */
     public function resolve(string $resourceType, string $resourceId): Model
     {
         $class = self::RESOURCE_MAP[$resourceType] ?? null;
         if ($class === null) {
-            throw new NotFoundHttpException();
+            throw ResourceNotFoundException::forUnknownType($resourceType);
         }
 
         /** @var Model $resource */

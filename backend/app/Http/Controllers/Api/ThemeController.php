@@ -32,9 +32,12 @@ class ThemeController extends Controller
 
     public function show(string $theme): ThemeResource
     {
-        $this->authorize('view', Theme::query()->findOrFail($theme));
+        $dto = $this->service->get($theme);
+        // Convert DTO back to model for authorization (short-lived, used only for policy check)
+        $model = new Theme(['id' => $dto->id]);
+        $this->authorize('view', $model);
 
-        return new ThemeResource($this->service->get($theme));
+        return new ThemeResource($dto);
     }
 
     public function store(StoreThemeRequest $request): JsonResponse
@@ -54,7 +57,9 @@ class ThemeController extends Controller
 
     public function destroy(string $theme): Response
     {
-        $model = Theme::query()->findOrFail($theme);
+        $dto = $this->service->get($theme);
+        // Convert DTO back to model for authorization (short-lived, used only for policy check)
+        $model = new Theme(['id' => $dto->id]);
         $this->authorize('delete', $model);
 
         $this->service->delete($theme);

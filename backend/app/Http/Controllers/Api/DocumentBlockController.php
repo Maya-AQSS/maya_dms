@@ -36,8 +36,10 @@ class DocumentBlockController extends Controller
         $this->authorize('listDocumentBlocks', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
+        $blocks = $this->documentService->blocksForDisplay($document);
+
         return DocumentBlockResource::collection(
-            $this->documentService->blocksForDisplay($doc),
+            array_map(fn ($dto) => $dto->toArray(), $blocks),
         );
     }
 
@@ -60,7 +62,7 @@ class DocumentBlockController extends Controller
             ),
         );
 
-        return (new DocumentBlockResource($updated))->response();
+        return (new DocumentBlockResource($updated->toArray()))->response();
     }
 
     /**

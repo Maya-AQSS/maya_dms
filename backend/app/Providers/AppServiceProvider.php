@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\DTOs\Users\JwtProfileDto;
+use App\Support\FdwTeardown;
+use Illuminate\Console\Events\CommandStarting;
+use Illuminate\Support\Facades\Event;
 use App\Models\Comment;
 use App\Models\Document;
 use App\Models\DocumentBlock;
@@ -62,10 +66,12 @@ use App\Repositories\Resolvers\FdwUserProfileResolver;
 use App\Services\AnchoredCommentService;
 use App\Services\ApiTeamEmbedService;
 use App\Services\CommentService;
+use App\Services\MediaService;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use App\Services\Contracts\DashboardServiceInterface;
+use App\Services\Contracts\DocumentExportServiceInterface;
 use App\Services\Contracts\DocumentPdfServiceInterface;
 use App\Services\Contracts\DocumentRenderServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -81,6 +87,8 @@ use App\Services\Contracts\UserDirectoryServiceInterface;
 use App\Services\Contracts\UserFavoriteServiceInterface;
 use App\Services\Contracts\UserProfileServiceInterface;
 use App\Services\DashboardService;
+use App\Services\DocumentDocxExportService;
+use App\Services\DocumentExportService;
 use App\Services\DocumentPdfService;
 use App\Services\Contracts\TemplateRenderServiceInterface;
 use App\Services\DocumentRenderService;
@@ -134,6 +142,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(SnapshotServiceInterface::class, SnapshotService::class);
         $this->app->bind(DocumentServiceInterface::class, DocumentService::class);
         $this->app->bind(DocumentRenderServiceInterface::class, DocumentRenderService::class);
+        $this->app->bind(DocumentExportServiceInterface::class, DocumentExportService::class);
+        $this->app->bind(DocumentDocxExportService::class, DocumentDocxExportService::class);
         $this->app->bind(TemplateRenderServiceInterface::class, TemplateRenderService::class);
         $this->app->bind(DocumentPdfServiceInterface::class, DocumentPdfService::class);
         $this->app->bind(EntityVersionLifecycleServiceInterface::class, EntityVersionLifecycleService::class);
@@ -156,6 +166,7 @@ class AppServiceProvider extends ServiceProvider
         );
         $this->app->bind(UserFavoriteServiceInterface::class, UserFavoriteService::class);
         $this->app->bind(UserDirectoryServiceInterface::class, UserDirectoryService::class);
+        $this->app->singleton(MediaService::class);
     }
 
     public function boot(): void
@@ -178,6 +189,16 @@ class AppServiceProvider extends ServiceProvider
         $this->loadMigrationsFrom(ProfileMigrations::teams());
         $this->loadMigrationsFrom(ProfileMigrations::userPermissions());
 
+        // db:wipe no elimina vistas ni foreign tables FDW (las crea el paquete
+        // shared-profile). Las limpiamos antes de migrate:fresh/db:wipe para que
+        // la reconstrucción sea reproducible (si no, el rewrite de la vista
+        // `teams` falla con «cannot drop columns from view»).
+        Event::listen(CommandStarting::class, static function (CommandStarting $event): void {
+            if (in_array($event->command, ['migrate:fresh', 'db:wipe'], true)) {
+                FdwTeardown::dropAllInPublicSchema();
+            }
+        });
+
         // Guard JWT stateless: resuelve el usuario desde el atributo 'jwt_user'
         // que JwtMiddleware deposita en el request tras validar el token.
         // Auth::user() / $request->user() lo invocan de forma diferida, sin sesión.
@@ -191,7 +212,7 @@ class AppServiceProvider extends ServiceProvider
             $userId = (string) $jwtProfile['id'];
 
             /** @var array<string, mixed> $fromDb Perfil unificado (FDW o fallback JWT vía {@see UserProfileService}). */
-            $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, $jwtProfile);
+            $fromDb = app(UserProfileServiceInterface::class)->getProfile($userId, JwtProfileDto::fromArray($jwtProfile));
 
             $profile = array_merge($jwtProfile, [
                 'study_type_ids' => $fromDb['study_type_ids'] ?? [],

@@ -21,6 +21,7 @@ import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { BlockState, TemplateBlock } from '../types/blocks';
 import { Button, ConfirmDialog, statusBadgeClass } from '@ceedcv-maya/shared-ui-react';
+import { VersionChangelogModal } from '../components/VersionChangelogModal';
 import { FavoriteButton } from '../components/FavoriteButton';
 import { VersionHistoryPanel } from '../components/VersionHistoryPanel';
 import { useUserProfile } from '../features/user-profile';
@@ -132,6 +133,8 @@ export function TemplatePreviewPage() {
   const [showNewVersionConfirm, setShowNewVersionConfirm] = useState(false);
   const [newVersionLoading, setNewVersionLoading] = useState(false);
   const [newVersionError, setNewVersionError] = useState<string | null>(null);
+  const [showChangelogModal, setShowChangelogModal] = useState(false);
+  const [changelogModalError, setChangelogModalError] = useState<string | null>(null);
   // processLabel derived from useProcessesQuery + template.process_id below.
   const { hierarchy } = useHierarchy();
   const [historicalVersionDetail, setHistoricalVersionDetail] = useState<TemplateVersionDetail | null>(null);
@@ -316,7 +319,7 @@ export function TemplatePreviewPage() {
       template.latest_published_version_id,
       template.working_version_id,
       template.status,
-      ['draft', 'in_review'],
+      ['draft', 'in_review', 'rejected'],
     );
 
   const processesQuery = useProcessesQuery(undefined, {
@@ -329,15 +332,20 @@ export function TemplatePreviewPage() {
     return `Proceso: ${process.code} — ${process.name}`;
   })();
 
-  const handleSubmitForReview = async () => {
-    if (!id || !template) return;
+  const handleConfirmChangelogSubmit = async (changelog: string) => {
+    if (!id || !template) return false;
     setActionLoading(true);
     setActionError(null);
+    setChangelogModalError(null);
     try {
-      const res = await submitTemplateForReview(id);
+      const res = await submitTemplateForReview(id, changelog);
       setTemplate(res.data);
+      setShowChangelogModal(false);
+      return true;
     } catch (e) {
-      setActionError(e instanceof Error ? e.message : 'No se pudo enviar a validar.');
+      const message = e instanceof Error ? e.message : 'No se pudo enviar a validar.';
+      setChangelogModalError(message);
+      return false;
     } finally {
       setActionLoading(false);
     }
@@ -535,7 +543,16 @@ export function TemplatePreviewPage() {
             </Button>
           )}
           {canSubmit && (
-            <Button type="button" variant="primary" size="sm" loading={actionLoading} onClick={() => void handleSubmitForReview()}>
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              loading={actionLoading}
+              onClick={() => {
+                setChangelogModalError(null);
+                setShowChangelogModal(true);
+              }}
+            >
               Enviar a validar
             </Button>
           )}
@@ -792,6 +809,20 @@ export function TemplatePreviewPage() {
           setShowDiscardVersionModal(false);
           setDiscardVersionError(null);
         }}
+      />
+
+      <VersionChangelogModal
+        open={showChangelogModal}
+        title={t('modals.sendValidation')}
+        initialValue={template?.submission_changelog}
+        confirmLabel={actionLoading ? 'Enviando…' : 'Confirmar envío'}
+        loading={actionLoading}
+        error={changelogModalError}
+        onCancel={() => {
+          setShowChangelogModal(false);
+          setChangelogModalError(null);
+        }}
+        onConfirm={handleConfirmChangelogSubmit}
       />
     </>
   );

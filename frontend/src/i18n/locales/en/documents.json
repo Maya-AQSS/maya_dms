@@ -3,6 +3,7 @@
   "blockDescription": "Block description",
   "approveTitle": "Confirm approval",
   "validateTitle": "Document validation",
+  "sendForReviewTitle": "Submit for validation",
   "wizard": {
     "searchByName": "Search by name...",
     "searchVisibility": "Global, personal, team, team name, study or module…",

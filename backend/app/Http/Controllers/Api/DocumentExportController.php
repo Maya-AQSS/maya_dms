@@ -5,50 +5,39 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\GenerateDocumentPdf;
-use App\Models\Document;
+use App\Http\Requests\Documents\ExportPdfRequest;
+use App\Http\Resources\DocumentPdfExportResource;
+use App\Repositories\Contracts\DocumentRepositoryInterface;
+use App\Services\Contracts\DocumentExportServiceInterface;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class DocumentExportController extends Controller
 {
+    public function __construct(
+        private readonly DocumentRepositoryInterface $documentRepository,
+        private readonly DocumentExportServiceInterface $exportService,
+    ) {}
+
     /**
      * POST /api/v1/documents/{document}/export-pdf
      * Encola la generación del PDF/UA. Idempotente: si ya hay un job en curso
      * para este documento, devuelve el estado actual sin reencolar.
      */
-    public function start(Request $request, string $document): JsonResponse
+    public function start(ExportPdfRequest $request, string $document): JsonResponse
     {
-        $model = Document::query()->findOrFail($document);
+        $model = $this->documentRepository->findOrFail($document);
         $this->authorize('view', $model);
 
         $userId = (string) $request->user()->getAuthIdentifier();
-        $cacheKey = GenerateDocumentPdf::keyFor($document);
-        $current = Cache::get($cacheKey);
+        $status = $this->exportService->startPdfExport($document, $userId);
 
-        // Si ya está procesándose, no encolamos otra vez.
-        if (is_array($current) && in_array($current['state'] ?? null, ['queued', 'processing'], true)) {
-            return response()->json(['data' => $current], Response::HTTP_ACCEPTED);
-        }
-
-        Cache::put($cacheKey, [
-            'state' => 'queued',
-            'document_id' => $document,
-            'queued_at' => now()->toIso8601String(),
-        ], 1800);
-
-        GenerateDocumentPdf::dispatch($document, $userId);
-
-        return response()->json([
-            'data' => [
-                'state' => 'queued',
-                'document_id' => $document,
-            ],
-        ], Response::HTTP_ACCEPTED);
+        return response()->json(
+            ['data' => new DocumentPdfExportResource($status)],
+            Response::HTTP_ACCEPTED
+        );
     }
 
     /**
@@ -57,12 +46,12 @@ class DocumentExportController extends Controller
      */
     public function status(string $document): JsonResponse
     {
-        Document::query()->findOrFail($document);
+        $this->documentRepository->findOrFail($document);
 
-        $payload = Cache::get(GenerateDocumentPdf::keyFor($document));
+        $status = $this->exportService->getPdfExportStatus($document);
 
         return response()->json([
-            'data' => $payload ?: ['state' => 'none', 'document_id' => $document],
+            'data' => new DocumentPdfExportResource($status),
         ]);
     }
 
@@ -72,24 +61,23 @@ class DocumentExportController extends Controller
      */
     public function download(string $document): BinaryFileResponse
     {
-        $model = Document::query()->findOrFail($document);
+        $model = $this->documentRepository->findOrFail($document);
         $this->authorize('view', $model);
 
-        $payload = Cache::get(GenerateDocumentPdf::keyFor($document));
-        if (! is_array($payload) || ($payload['state'] ?? null) !== 'ready' || empty($payload['path'])) {
+        $path = $this->exportService->getPdfExportPath($document);
+        if ($path === null) {
             abort(404, 'No hay PDF generado para este documento. Solicita un export primero.');
         }
 
-        $relative = (string) $payload['path'];
         $disk = Storage::disk('local');
-        if (! $disk->exists($relative)) {
+        if (! $disk->exists($path)) {
             abort(404, 'El PDF generado ya no está disponible. Solicita un export nuevo.');
         }
 
-        $filename = preg_replace('/[^A-Za-z0-9_.-]/', '_', (string) ($model->name ?? 'documento')).'.pdf';
+        $filename = $this->exportService->sanitizeFilename((string) ($model->title ?? 'documento')).'.pdf';
 
         return response()->download(
-            $disk->path($relative),
+            $disk->path($path),
             $filename,
             ['Content-Type' => 'application/pdf'],
         );

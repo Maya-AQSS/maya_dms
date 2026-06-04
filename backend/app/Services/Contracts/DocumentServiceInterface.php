@@ -12,7 +12,6 @@ use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
 use App\Models\DocumentReview;
-use App\Models\DocumentVersion;
 use App\Models\EntityVersion;
 use Illuminate\Support\Collection;
 use Maya\Http\Pagination\PaginatedDto;
@@ -98,7 +97,7 @@ interface DocumentServiceInterface
     /**
      * Envia el documento a revisión. Devuelve Model.
      */
-    public function submitToReview(string $documentId, string $actorId): Document;
+    public function submitToReview(string $documentId, string $actorId, string $changelog): Document;
 
     /**
      * Publica el documento. Devuelve Model.
@@ -135,10 +134,16 @@ interface DocumentServiceInterface
     public function approveReview(string $documentId, string $reviewId, string $actorId, ?string $publicationChangelog = null): Document;
 
     /**
-     * Localiza una versión snapshot del documento por id. Devuelve Model —
-     * el Controller adjunta atributos derivados para la representación final.
+     * Localiza una versión snapshot del documento por id (legacy o polimórfico).
+     * Devuelve datos de render; la lógica de versión vive en el Service, no en el Controller.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     * }
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion;
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): array;
 
     /**
      * Detalle de versión del documento aceptando id legacy o id polimórfico.

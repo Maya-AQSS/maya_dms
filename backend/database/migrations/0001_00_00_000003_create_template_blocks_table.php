@@ -26,6 +26,7 @@ return new class extends Migration
                 ->default(BlockState::Editable->value);
             $table->integer('sort_order')->default(0);
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index(['template_id', 'sort_order']);
         });

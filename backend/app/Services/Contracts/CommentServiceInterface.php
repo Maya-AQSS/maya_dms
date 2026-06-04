@@ -51,11 +51,11 @@ interface CommentServiceInterface
     /**
      * Edita el cuerpo de un comentario y registra la versión anterior en el historial.
      */
-    public function update(Comment $comment, string $body, string $editedBy): CommentDto;
+    public function update(string $commentId, string $body, string $editedBy): CommentDto;
 
     /**
-     * Elimina un comentario. Recibe el Model Eloquent (las policies del Controller
-     * ya lo cargan vía `findModelOrFail()` o el route binding).
+     * Elimina un comentario por id. La autorización se resuelve en el Controller
+     * (`findModelOrFail()` + policy) antes de delegar; el Service trabaja solo con el id.
      */
-    public function delete(Comment $comment, string $deletedBy, string $deletedByName): void;
+    public function delete(string $commentId, string $deletedBy, string $deletedByName): void;
 }

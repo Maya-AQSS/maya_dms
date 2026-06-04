@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Repositories\Resolvers;
 
+use App\Exceptions\ResourceNotFoundException;
 use App\Models\Document;
 use App\Models\Process;
 use App\Models\Template;
@@ -13,7 +14,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Auth\User as AuthUser;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Tests\TestCase;
 
 final class PolymorphicResourceResolverTest extends TestCase
@@ -57,9 +57,9 @@ final class PolymorphicResourceResolverTest extends TestCase
         $this->assertEquals($template->id, $result->id);
     }
 
-    public function test_resolve_throws_not_found_for_unknown_resource_type(): void
+    public function test_resolve_throws_domain_exception_for_unknown_resource_type(): void
     {
-        $this->expectException(NotFoundHttpException::class);
+        $this->expectException(ResourceNotFoundException::class);
 
         $this->resolver->resolve('unknown', 'some-id');
     }

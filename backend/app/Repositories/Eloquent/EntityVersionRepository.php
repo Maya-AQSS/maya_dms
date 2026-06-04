@@ -362,4 +362,75 @@ class EntityVersionRepository implements EntityVersionRepositoryInterface
             ->get()
             ->keyBy('versionable_id');
     }
+
+    /**
+     * Fetch entity version as DTO with blocks snapshot rows.
+     *
+     * @return \App\DTOs\Templates\EntityVersionSnapshotDto
+     */
+    public function findOrFailAsSnapshot(string $id): \App\DTOs\Templates\EntityVersionSnapshotDto
+    {
+        $version = $this->findOrFail($id);
+
+        return new \App\DTOs\Templates\EntityVersionSnapshotDto(
+            id: (string) $version->id,
+            entityId: (string) $version->versionable_id,
+            versionNumber: (int) $version->version_number,
+            blocksSnapshotRows: $this->getBlocksSnapshotRows($version),
+        );
+    }
+
+    /**
+     * Find published entity version by entity and number, return as DTO.
+     *
+     * @return \App\DTOs\Templates\EntityVersionSnapshotDto|null
+     */
+    public function findPublishedByEntityAndNumberAsSnapshot(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+    ): ?\App\DTOs\Templates\EntityVersionSnapshotDto {
+        $version = $this->findPublishedByEntityAndNumber($versionableType, $versionableId, $versionNumber);
+        if ($version === null) {
+            return null;
+        }
+
+        return new \App\DTOs\Templates\EntityVersionSnapshotDto(
+            id: (string) $version->id,
+            entityId: (string) $version->versionable_id,
+            versionNumber: (int) $version->version_number,
+            blocksSnapshotRows: $this->getBlocksSnapshotRows($version),
+        );
+    }
+
+    /**
+     * Find published entity version or fail, return as DTO.
+     *
+     * @return \App\DTOs\Templates\EntityVersionSnapshotDto
+     */
+    public function findOrFailPublishedByEntityAndNumberAsSnapshot(
+        string $versionableType,
+        string $versionableId,
+        int $versionNumber,
+    ): \App\DTOs\Templates\EntityVersionSnapshotDto {
+        $version = $this->findOrFailPublishedByEntityAndNumber($versionableType, $versionableId, $versionNumber);
+
+        return new \App\DTOs\Templates\EntityVersionSnapshotDto(
+            id: (string) $version->id,
+            entityId: (string) $version->versionable_id,
+            versionNumber: (int) $version->version_number,
+            blocksSnapshotRows: $this->getBlocksSnapshotRows($version),
+        );
+    }
+
+    /**
+     * Extract blocks snapshot rows from entity version.
+     * Encapsulates model method call in repository.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function getBlocksSnapshotRows(EntityVersion $version): array
+    {
+        return $version->blocksSnapshotRows();
+    }
 }

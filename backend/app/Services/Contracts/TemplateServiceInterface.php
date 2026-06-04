@@ -69,7 +69,7 @@ interface TemplateServiceInterface
     /**
      * Envía el borrador a revisión. Solo el creador puede ejecutar esta acción.
      */
-    public function submitForReview(string $templateId, string $actorId): Template;
+    public function submitForReview(string $templateId, string $actorId, string $changelog): Template;
 
     /**
      * Rechaza la revisión de la plantilla. Solo un revisor asignado puede ejecutar esta acción.
@@ -180,4 +180,9 @@ interface TemplateServiceInterface
      * Sincroniza el pool de posibles revisores de documentos generados desde la plantilla.
      */
     public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void;
+
+    /**
+     * Verifica si un usuario es revisor activo para una plantilla en estado in_review.
+     */
+    public function isUserActiveReviewerForTemplate(string $templateId, string $userId): bool;
 }

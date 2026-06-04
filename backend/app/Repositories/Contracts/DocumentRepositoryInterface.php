@@ -134,6 +134,16 @@ interface DocumentRepositoryInterface
     public function saveReview(DocumentReview $review): void;
 
     /**
+     * Aprueba una revisión (actualiza estado y timestamp).
+     */
+    public function approveReview(string $reviewId): void;
+
+    /**
+     * Rechaza una revisión (actualiza estado, timestamp y razón).
+     */
+    public function rejectReview(string $reviewId, ?string $rejectionReason = null): void;
+
+    /**
      * Listado paginado de documentos con filtros de dominio (ADR-C).
      *
      * Aplica el scope global `user_access` del modelo para garantizar visibilidad.
@@ -197,6 +207,13 @@ interface DocumentRepositoryInterface
      * Última fila de {@see DocumentVersion} con trigger_event «published».
      */
     public function findLatestPublishedDocumentVersion(string $documentId): ?DocumentVersion;
+
+    /**
+     * Todas las filas de document_versions para un documento, ordenadas descendentemente por version_number.
+     *
+     * @return Collection<int, DocumentVersion>
+     */
+    public function findLegacyDocumentVersionsOrderedDesc(string $documentId): Collection;
 
     /**
      * Contexto académico de módulo para creación documental.
@@ -273,4 +290,28 @@ interface DocumentRepositoryInterface
      * sin importar el estado de la revisión (pending, approved, rejected).
      */
     public function isReviewerAssignedToDocument(string $documentId, string $reviewerId): bool;
+
+    /**
+     * Busca un documento por su ID con control de acceso (scope user_access),
+     * o lanza ModelNotFoundException. Para usar en operaciones que necesitan autorización.
+     */
+    public function findByIdWithAccessControl(string $id): Document;
+
+    /**
+     * Busca los bloques de un documento ordenados por sort_order, con solo columnas de contenido.
+     * Para uso en exportación/renderizado.
+     *
+     * @return Collection<int, DocumentBlock>
+     */
+    public function findBlocksForExport(string $documentId): Collection;
+
+    /**
+     * Persiste el changelog de envío a validación en la versión de trabajo (head).
+     */
+    public function updateHeadVersionChangelog(string $documentId, string $changelog): void;
+
+    /**
+     * Elimina el changelog de envío de la versión de trabajo (head).
+     */
+    public function clearHeadVersionChangelog(string $documentId): void;
 }

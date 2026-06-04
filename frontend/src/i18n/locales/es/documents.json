@@ -3,6 +3,7 @@
   "blockDescription": "Descripción del Bloque",
   "approveTitle": "Confirmar aprobación",
   "validateTitle": "Validación de Documento",
+  "sendForReviewTitle": "Enviar a validación",
   "wizard": {
     "searchByName": "Buscar por nombre...",
     "searchVisibility": "Global, personal, equipo, nombre de equipo, estudio o módulo…",

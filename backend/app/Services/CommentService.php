@@ -21,14 +21,17 @@ class CommentService implements CommentServiceInterface
         private readonly CommentRepositoryInterface $commentRepository,
     ) {}
 
-    public function findOrFail(string $id): CommentDto
-    {
-        return CommentDto::fromModel($this->commentRepository->findOrFail($id));
-    }
-
+    /**
+     * @internal Used by controllers for policy gates only — do not use in service-to-service calls.
+     */
     public function findModelOrFail(string $id): Comment
     {
         return $this->commentRepository->findOrFail($id);
+    }
+
+    public function findOrFail(string $id): CommentDto
+    {
+        return CommentDto::fromModel($this->commentRepository->findOrFail($id));
     }
 
     /**
@@ -102,20 +105,17 @@ class CommentService implements CommentServiceInterface
         return CommentDto::fromModel($comment);
     }
 
-    public function update(Comment $comment, string $body, string $editedBy): CommentDto
+    public function update(string $commentId, string $body, string $editedBy): CommentDto
     {
-        $commentModel = $this->commentRepository->update($comment, $body, $editedBy);
+        $commentModel = $this->commentRepository->update($commentId, $body, $editedBy);
         $commentModel->loadMissing('author');
 
         return CommentDto::fromModel($commentModel);
     }
 
-    public function delete(Comment $comment, string $deletedBy, string $deletedByName): void
+    public function delete(string $commentId, string $deletedBy, string $deletedByName): void
     {
-        $comment->deleted_by = $deletedBy;
-        $comment->deleted_by_name = $deletedByName;
-        $comment->save();
-        $comment->delete();
+        $this->commentRepository->delete($commentId, $deletedBy, $deletedByName);
     }
 
     private function assertBlockBelongsToResource(

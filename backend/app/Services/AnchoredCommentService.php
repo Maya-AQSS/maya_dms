@@ -7,31 +7,33 @@ namespace App\Services;
 use App\DTOs\AnchoredComment\AnchoredCommentDto;
 use App\Repositories\Contracts\AnchoredCommentRepositoryInterface;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
-use Illuminate\Database\Eloquent\Collection;
-
 class AnchoredCommentService implements AnchoredCommentServiceInterface
 {
     public function __construct(
         private readonly AnchoredCommentRepositoryInterface $anchoredCommentRepository,
     ) {}
 
-    public function listForResource(string $resourceType, string $resourceId): Collection
+    /**
+     * @return array<int, AnchoredCommentDto>
+     */
+    public function listForResource(string $resourceType, string $resourceId): array
     {
         $anchors = $this->anchoredCommentRepository->findByResource($resourceType, $resourceId);
 
-        return new Collection($anchors->map(static fn ($anchor) => AnchoredCommentDto::fromModel($anchor))->all());
+        return $anchors->map(static fn ($anchor) => AnchoredCommentDto::fromModel($anchor))->all();
     }
 
     public function getForResource(string $resourceType, string $resourceId, string $anchorId): ?AnchoredCommentDto
     {
         try {
             $anchor = $this->anchoredCommentRepository->findByIdOrFail($anchorId);
+            $dto = AnchoredCommentDto::fromModel($anchor);
 
-            if ((string) $anchor->resource_type !== $resourceType || (string) $anchor->resource_id !== $resourceId) {
+            if ((string) $dto->resourceType !== $resourceType || (string) $dto->resourceId !== $resourceId) {
                 return null;
             }
 
-            return AnchoredCommentDto::fromModel($anchor);
+            return $dto;
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             return null;
         }
@@ -66,11 +68,12 @@ class AnchoredCommentService implements AnchoredCommentServiceInterface
         ?string $anchorTextSnapshot,
     ): AnchoredCommentDto {
         $anchor = $this->anchoredCommentRepository->findByIdOrFail($anchorId);
+        $dto = AnchoredCommentDto::fromModel($anchor);
 
         $anchor = $this->anchoredCommentRepository->update($anchor, [
             'anchor_from' => $anchorFrom,
             'anchor_to' => $anchorTo,
-            'anchor_text_snapshot' => $anchorTextSnapshot ?? $anchor->anchor_text_snapshot,
+            'anchor_text_snapshot' => $anchorTextSnapshot ?? $dto->anchorTextSnapshot,
             'anchor_is_valid' => $anchorTo > $anchorFrom,
             'anchor_last_synced_at' => now(),
         ]);

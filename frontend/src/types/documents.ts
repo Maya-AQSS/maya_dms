@@ -57,6 +57,8 @@ export type Document = {
   latest_published_title?: string | null;
   list_variant?: 'live' | 'published_fallback';
   list_row_id?: string;
+  /** Changelog del envío a validación (versión de trabajo). */
+  submission_changelog?: string | null;
 };
 
 /**

@@ -19,7 +19,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Str;
 use JsonException;
 use RuntimeException;
@@ -60,7 +60,7 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->first();
 
         if ($document === null) {
-            throw new NotFoundHttpException('Documento no encontrado.');
+            throw (new ModelNotFoundException())->setModel(Document::class);
         }
 
         return $document;
@@ -337,6 +337,33 @@ class DocumentRepository implements DocumentRepositoryInterface
     public function saveReview(DocumentReview $review): void
     {
         $review->save();
+    }
+
+    /**
+     * Aprueba una revisión (actualiza estado y timestamp).
+     */
+    public function approveReview(string $reviewId): void
+    {
+        DocumentReview::query()
+            ->where('id', $reviewId)
+            ->update([
+                'status' => 'approved',
+                'reviewed_at' => now(),
+            ]);
+    }
+
+    /**
+     * Rechaza una revisión (actualiza estado, timestamp y razón).
+     */
+    public function rejectReview(string $reviewId, ?string $rejectionReason = null): void
+    {
+        DocumentReview::query()
+            ->where('id', $reviewId)
+            ->update([
+                'status' => 'rejected',
+                'reviewed_at' => now(),
+                'rejection_reason' => $rejectionReason,
+            ]);
     }
 
     /**
@@ -628,6 +655,14 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->first();
     }
 
+    public function findLegacyDocumentVersionsOrderedDesc(string $documentId): Collection
+    {
+        return DocumentVersion::query()
+            ->where('document_id', $documentId)
+            ->orderByDesc('version_number')
+            ->get();
+    }
+
     /**
      * Contexto académico de módulo para creación documental.
      *
@@ -834,5 +869,82 @@ class DocumentRepository implements DocumentRepositoryInterface
             ->unique()
             ->values()
             ->all();
+    }
+
+    /**
+     * Busca un documento por su ID con control de acceso (scope user_access),
+     * o lanza ModelNotFoundException. Para usar en operaciones que necesitan autorización.
+     */
+    public function findByIdWithAccessControl(string $id): Document
+    {
+        return Document::query()
+            ->whereKey($id)
+            ->firstOrFail();
+    }
+
+    /**
+     * Busca los bloques de un documento ordenados por sort_order, con solo columnas de contenido.
+     * Para uso en exportación/renderizado.
+     *
+     * @return Collection<int, DocumentBlock>
+     */
+    public function findBlocksForExport(string $documentId): Collection
+    {
+        return DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->orderBy('sort_order')
+            ->get(['content', 'sort_order']);
+    }
+
+    /**
+     * Fetch document blocks as DTOs, ordered by sort_order.
+     * Encapsulates model access; exposes only needed data as DTO.
+     *
+     * @return Collection<int, \App\DTOs\Documents\DocumentBlockPayloadDto>
+     */
+    public function findBlocksAsPayloadDtosForDocument(string $documentId): Collection
+    {
+        return DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function (DocumentBlock $block) {
+                return new \App\DTOs\Documents\DocumentBlockPayloadDto(
+                    blockId: (string) $block->id,
+                    templateBlockId: $block->template_block_id ? (string) $block->template_block_id : null,
+                    content: $block->content,
+                    isFilled: (bool) $block->is_filled,
+                    sortOrder: (int) $block->sort_order,
+                    lastEditedBy: $block->last_edited_by ? (string) $block->last_edited_by : null,
+                    lockedBy: $block->locked_by ? (string) $block->locked_by : null,
+                    lockedAt: $block->locked_at ? $block->locked_at->toIso8601String() : null,
+                );
+            });
+    }
+
+    public function updateHeadVersionChangelog(string $documentId, string $changelog): void
+    {
+        $document = $this->findOrFail($documentId);
+        $document->loadMissing('headVersion');
+
+        if ($document->headVersion === null) {
+            throw new RuntimeException('Documento sin versión cabezal en entity_versions.');
+        }
+
+        $document->headVersion->changelog = $changelog;
+        $document->headVersion->save();
+    }
+
+    public function clearHeadVersionChangelog(string $documentId): void
+    {
+        $document = $this->findOrFail($documentId);
+        $document->loadMissing('headVersion');
+
+        if ($document->headVersion === null) {
+            return;
+        }
+
+        $document->headVersion->changelog = null;
+        $document->headVersion->save();
     }
 }

@@ -105,9 +105,9 @@ class TemplateService implements TemplateServiceInterface
      *   sucesivas: en draft post-rechazo los estados quedan visibles para el autor,
      *   y solo se limpian al reenviar) y transiciona a `in_review`.
      */
-    public function submitForReview(string $templateId, string $actorId): Template
+    public function submitForReview(string $templateId, string $actorId, string $changelog): Template
     {
-        return $this->templateReviewService->submitForReview($templateId, $actorId);
+        return $this->templateReviewService->submitForReview($templateId, $actorId, $changelog);
     }
 
     /**
@@ -455,9 +455,9 @@ class TemplateService implements TemplateServiceInterface
                 ]);
             }
 
-            if (! in_array((string) $head->status, ['draft', 'in_review'], true)) {
+            if (! in_array((string) $head->status, ['draft', 'in_review', 'rejected'], true)) {
                 throw ValidationException::withMessages([
-                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review).'],
+                    'version' => ['Solo se pueden descartar versiones no publicadas (draft/in_review/rejected).'],
                 ]);
             }
 
@@ -475,6 +475,7 @@ class TemplateService implements TemplateServiceInterface
 
             $head->snapshot_data = $publishedSnapshot;
             $head->status = 'published';
+            $head->changelog = null;
             $head->updated_at = now();
             $head->save();
 
@@ -1138,5 +1139,19 @@ class TemplateService implements TemplateServiceInterface
     public function syncDocumentReviewers(string $templateId, SyncUsersDto $dto): void
     {
         $this->templateReviewerAssignmentService->syncDocumentReviewers($templateId, $dto);
+    }
+
+    /**
+     * Verifica si un usuario es revisor activo para una plantilla en estado in_review.
+     */
+    public function isUserActiveReviewerForTemplate(string $templateId, string $userId): bool
+    {
+        $template = $this->templateRepository->findOrFail($templateId);
+
+        return $template->status === 'in_review'
+            && DB::table('template_reviewers')
+                ->where('template_id', $templateId)
+                ->where('user_id', $userId)
+                ->exists();
     }
 }

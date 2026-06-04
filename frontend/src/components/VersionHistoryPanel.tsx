@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@ceedcv-maya/shared-ui-react';
+import { ChangelogHtmlContent } from './ChangelogHtmlContent';
 import { ApiHttpError } from '../api/http';
 import type { DocumentVersionSummary } from '../api/documents';
 import type { TemplateVersionSummary } from '../api/templates';
@@ -207,10 +208,13 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
                       </span>
                     </div>
 
-                    {row.changelog ? (
-                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap mb-2.5 pb-2.5 border-b border-ui-border/50 dark:border-ui-dark-border/50 italic">
-                        {row.changelog}
-                      </p>
+                    {row.changelog?.trim() ? (
+                      <div className="mb-2.5 pb-2.5 border-b border-ui-border/50 dark:border-ui-dark-border/50">
+                        <p className="text-2xs font-black uppercase tracking-widest text-text-muted dark:text-text-dark-muted mb-1">
+                          {t('versionChangelog.label')}
+                        </p>
+                        <ChangelogHtmlContent html={row.changelog} variant="compact" />
+                      </div>
                     ) : null}
 
                     <div className="space-y-1.5">
@@ -273,10 +277,13 @@ export function VersionHistoryPanel({ open, entityType, entityId, onClose, canSt
                       </p>
                     ) : null}
 
-                    {(row.notes ?? row.changelog) ? (
-                      <p className="text-xs text-text-secondary dark:text-text-dark-secondary leading-snug whitespace-pre-wrap mb-2.5 pb-2.5 border-b border-ui-border/50 dark:border-ui-dark-border/50 italic">
-                        {row.notes ?? row.changelog}
-                      </p>
+                    {(row.notes ?? row.changelog)?.trim() ? (
+                      <div className="mb-2.5 pb-2.5 border-b border-ui-border/50 dark:border-ui-dark-border/50">
+                        <p className="text-2xs font-black uppercase tracking-widest text-text-muted dark:text-text-dark-muted mb-1">
+                          {t('versionChangelog.label')}
+                        </p>
+                        <ChangelogHtmlContent html={row.notes ?? row.changelog ?? ''} variant="compact" />
+                      </div>
                     ) : null}
 
                     <div className="space-y-1.5">

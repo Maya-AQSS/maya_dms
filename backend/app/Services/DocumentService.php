@@ -117,7 +117,7 @@ class DocumentService implements DocumentServiceInterface
             }
         }
 
-        $snapshot = $this->documentBlockService->templatePublicationDefinitionRowsFromEntityVersion($ev);
+        $snapshot = $this->documentBlockService->templatePublicationDefinitionRowsFromEntityVersion((string) $ev->id);
         if ($snapshot === []) {
             throw ValidationException::withMessages([
                 'template_id' => ['La versión de plantilla no contiene bloques.'],
@@ -680,7 +680,8 @@ class DocumentService implements DocumentServiceInterface
      */
     public function blocksForDisplay(Document $document): array
     {
-        return $this->documentBlockService->blocksForDisplay($document);
+        $dtos = $this->documentBlockService->blocksForDisplay((string) $document->id);
+        return array_map(fn ($dto) => $dto->toArray(), $dtos);
     }
 
     /**
@@ -946,6 +947,7 @@ class DocumentService implements DocumentServiceInterface
 
             $head->snapshot_data = $publishedSnapshot;
             $head->status = 'published';
+            $head->changelog = null;
             $head->updated_at = now();
             $head->save();
 
@@ -1025,8 +1027,9 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Envia el documento a revisión.
      */
-    public function submitToReview(string $documentId, string $actorId): Document
+    public function submitToReview(string $documentId, string $actorId, string $changelog): Document
     {
+        $normalizedChangelog = \App\Support\VersionSubmissionChangelog::normalize($changelog);
         $document = $this->documentRepository->findOrFail($documentId);
 
         if (! in_array($document->status, ['draft', 'rejected'], true)) {
@@ -1035,10 +1038,11 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
-        $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
+        $this->documentBlockService->assertMandatoryBlocksAreFilled($documentId);
 
-        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document) {
+        return $this->documentRepository->transaction(function () use ($documentId, $actorId, $document, $normalizedChangelog) {
             $this->documentRepository->deleteReviewsForDocument($documentId);
+            $this->documentRepository->updateHeadVersionChangelog($documentId, $normalizedChangelog);
 
             $candidates = $this->resolveReviewCandidatesFromTemplateVersion($document);
 
@@ -1048,14 +1052,13 @@ class DocumentService implements DocumentServiceInterface
                 // is a valid state (e.g. personal use, or a coordinator who skipped step 3).
                 $this->documentStateService->transition($documentId, 'published', $actorId);
 
-                // Misma convención que {@see TemplatePublishingService} (plantilla ya numerada en creación).
-                $autoChangelog = 'Publicación automática (sin revisores configurados)';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',
                     triggeredBy: $actorId,
-                    notes: $autoChangelog,
+                    notes: $normalizedChangelog,
                 ));
+                $this->documentRepository->clearHeadVersionChangelog($documentId);
 
                 $autoPublished = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
 
@@ -1070,6 +1073,10 @@ class DocumentService implements DocumentServiceInterface
                             recipientId: $recipientId,
                             title: 'Documento publicado',
                             body: 'El documento "' . $autoPublished->title . '" ha sido publicado correctamente',
+                            titleKey: 'notifications.document.published.title',
+                            bodyKey: 'notifications.document.published.body',
+                            params: ['document_id' => (string) $autoPublished->id, 'document_title' => $autoPublished->title],
+                            severity: 'info',
                             channels: ['app'],
                             metadata: ['document_id' => (string) $autoPublished->id],
                         );
@@ -1139,6 +1146,10 @@ class DocumentService implements DocumentServiceInterface
                     recipientId: $reviewerId,
                     title: 'Nueva solicitud de revisión',
                     body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    titleKey: 'notifications.document.validation_requested.title',
+                    bodyKey: 'notifications.document.validation_requested.body',
+                    params: ['document_id' => (string) $document->id, 'document_title' => $document->title],
+                    severity: 'high',
                     channels: ['app'],
                     metadata: ['document_id' => (string) $document->id],
                 );
@@ -1258,7 +1269,7 @@ class DocumentService implements DocumentServiceInterface
                 ]);
             }
 
-            $this->documentBlockService->assertMandatoryBlocksAreFilled($document);
+            $this->documentBlockService->assertMandatoryBlocksAreFilled((string) $document->id);
         }
 
         if ($document->status === 'in_review' && $this->documentRepository->countPendingReviewsForDocument($documentId) > 0) {
@@ -1268,8 +1279,12 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
-            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
-            $resolvedChangelog = $trimmedChangelog !== '' ? $trimmedChangelog : 'Publicación automática';
+            $document = $this->documentRepository->findOrFail($documentId);
+            $document->loadMissing('headVersion');
+            $resolvedChangelog = \App\Support\VersionSubmissionChangelog::requireNonEmpty(
+                $changelog,
+                $document->headVersion?->changelog,
+            );
 
             $this->documentStateService->transition($documentId, 'published', $actorId);
             $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
@@ -1278,6 +1293,7 @@ class DocumentService implements DocumentServiceInterface
                 triggeredBy: $actorId,
                 notes: $resolvedChangelog,
             ));
+            $this->documentRepository->clearHeadVersionChangelog($documentId);
 
             $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
 
@@ -1292,6 +1308,10 @@ class DocumentService implements DocumentServiceInterface
                         recipientId: $recipientId,
                         title: 'Documento publicado',
                         body: 'El documento "' . $refreshed->title . '" ha sido publicado correctamente',
+                        titleKey: 'notifications.document.published.title',
+                        bodyKey: 'notifications.document.published.body',
+                        params: ['document_id' => (string) $refreshed->id, 'document_title' => $refreshed->title],
+                        severity: 'info',
                         channels: ['app'],
                         metadata: ['document_id' => (string) $refreshed->id],
                     );
@@ -1358,8 +1378,14 @@ class DocumentService implements DocumentServiceInterface
 
     /**
      * Localiza una versión de documento por su ID.
+     *
+     * @return array{
+     *   id: string,
+     *   document_id: string,
+     *   version_number: int,
+     * }
      */
-    public function findDocumentVersionOrFail(string $documentId, string $versionId): DocumentVersion
+    public function findDocumentVersionOrFail(string $documentId, string $versionId): array
     {
         return $this->documentVersionService->findDocumentVersionOrFail($documentId, $versionId);
     }
@@ -1534,5 +1560,50 @@ class DocumentService implements DocumentServiceInterface
         }
 
         return $title;
+    }
+
+    /**
+     * Obtiene el nombre del usuario propietario del documento.
+     * Devuelve un nombre por defecto si el usuario no existe.
+     */
+    public function getOwnerNameForDocument(string $documentId): string
+    {
+        $document = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
+
+        if ($document->owner_id === null) {
+            return 'otro usuario';
+        }
+
+        $ownerName = \App\Models\User::query()
+            ->where('id', $document->owner_id)
+            ->value('name');
+
+        return is_string($ownerName) && $ownerName !== '' ? $ownerName : 'otro usuario';
+    }
+
+    /**
+     * Prepara un documento para visualización, adjuntando relaciones y metadatos derivados.
+     * Centraliza la carga de relaciones y cálculo de metadatos que antes estaban dispersos
+     * en el controller.
+     */
+    public function prepareDocumentForDisplay(
+        Document $document,
+        ?EntityVersion $latestPublished = null,
+        bool $isAssignedReviewer = false,
+    ): void {
+        // Cargar propietario si no está cargado
+        $document->loadMissing(['owner']);
+
+        // Si se proporciona última versión publicada, establecerla como relación
+        if ($latestPublished !== null) {
+            $document->setRelation('headVersion', $latestPublished);
+        }
+
+        // Determinar si hay comentarios de revisión rechazada
+        $hasReviewComments = $document->comments()->exists();
+        $document->setAttribute('has_review_comments', $hasReviewComments);
+
+        // Establecer si es revisor asignado
+        $document->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
     }
 }

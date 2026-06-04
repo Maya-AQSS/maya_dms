@@ -673,4 +673,213 @@ class TemplateRepository implements TemplateRepositoryInterface
     {
         return DB::transaction($callback);
     }
+
+    /**
+     * Obtiene el nombre de un usuario por su ID.
+     */
+    public function getUserNameById(string $userId): ?string
+    {
+        return DB::table('users')
+            ->where('id', $userId)
+            ->value('name');
+    }
+
+    /**
+     * Verifica si una plantilla tiene revisores asignados.
+     */
+    public function templateHasReviewers(string $templateId): bool
+    {
+        return DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->exists();
+    }
+
+    /**
+     * Sincroniza revisores de plantilla via relación (forceDelete old, create new).
+     *
+     * @param  string  $templateId
+     * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
+     */
+    public function syncTemplateReviewers(string $templateId, array $reviewerData): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->reviewers()->withTrashed()->forceDelete();
+
+        foreach ($reviewerData as $reviewer) {
+            $template->reviewers()->create([
+                'user_id' => $reviewer['user_id'],
+                'stage' => $reviewer['stage'],
+            ]);
+        }
+    }
+
+    /**
+     * Sincroniza revisores de documentos via relación (delete old, create new).
+     *
+     * @param  string  $templateId
+     * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
+     */
+    public function syncDocumentReviewers(string $templateId, array $reviewerData): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->documentReviewers()->delete();
+
+        foreach ($reviewerData as $reviewer) {
+            $template->documentReviewers()->create([
+                'user_id' => $reviewer['user_id'],
+                'stage' => $reviewer['stage'],
+            ]);
+        }
+    }
+
+    /**
+     * Verifica si una plantilla no tiene revisores asignados.
+     */
+    public function doesntHaveReviewers(string $templateId): bool
+    {
+        return ! DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->exists();
+    }
+
+    /**
+     * Verifica si una plantilla no tiene validadores de documento asignados.
+     */
+    public function doesntHaveDocumentReviewers(string $templateId): bool
+    {
+        return ! DB::table('template_document_reviewers')
+            ->where('template_id', $templateId)
+            ->exists();
+    }
+
+    /**
+     * Actualiza el estado de todos los revisores de una plantilla.
+     */
+    public function updateReviewersStatus(string $templateId, string $status): void
+    {
+        DB::table('template_reviewers')
+            ->where('template_id', $templateId)
+            ->update(['status' => $status]);
+    }
+
+    /**
+     * Actualiza el snapshot de la versión cabezal (headVersion) con datos específicos.
+     */
+    public function updateHeadVersionSnapshot(string $templateId, array $snapshotData): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion !== null) {
+            $ev = $template->headVersion;
+            $existing = is_array($ev->snapshot_data) ? $ev->snapshot_data : (array) ($ev->snapshot_data ?? []);
+            $merged = array_merge($existing, $snapshotData);
+            $ev->snapshot_data = $merged;
+            $ev->save();
+        }
+    }
+
+    /**
+     * Limpia datos de submission del head version snapshot (cuando se publica).
+     */
+    public function cleanHeadVersionSubmissionData(string $templateId): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion !== null) {
+            $ev = $template->headVersion;
+            $headData = is_array($ev->snapshot_data) ? $ev->snapshot_data : [];
+            unset($headData['blocks_at_submission'], $headData['blocks_at_previous_submission'], $headData['blocks_submission_history']);
+            $ev->snapshot_data = $headData ?: null;
+            $ev->changelog = null;
+            $ev->save();
+        }
+    }
+
+    public function updateHeadVersionChangelog(string $templateId, string $changelog): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion === null) {
+            throw new RuntimeException('Plantilla sin versión cabezal en entity_versions.');
+        }
+
+        $template->headVersion->changelog = $changelog;
+        $template->headVersion->save();
+    }
+
+    public function clearHeadVersionChangelog(string $templateId): void
+    {
+        $template = $this->findOrFail($templateId);
+        $template->loadMissing('headVersion');
+
+        if ($template->headVersion === null) {
+            return;
+        }
+
+        $template->headVersion->changelog = null;
+        $template->headVersion->save();
+    }
+
+    /**
+     * Fetch template data for rendering (HTML export/preview).
+     * Returns template ID, name, description, theme_id, and blocks ordered by sort_order.
+     * Blocks contain: id, title, default_content.
+     * Without global catalog scope; caller must authorize.
+     *
+     * @return \App\DTOs\Templates\TemplateRenderDto|null
+     */
+    public function findForRenderingWithoutCatalogScope(string $id): ?\App\DTOs\Templates\TemplateRenderDto
+    {
+        $template = Template::query()
+            ->withoutGlobalScopes(['user_access'])
+            ->with(['blocks' => fn ($q) => $q->orderBy('sort_order')])
+            ->find($id);
+
+        if ($template === null) {
+            return null;
+        }
+
+        $blocks = $template->blocks
+            ->map(fn (TemplateBlock $b) => [
+                'id' => (string) $b->id,
+                'title' => $b->title,
+                'default_content' => $b->default_content,
+            ])
+            ->all();
+
+        return new \App\DTOs\Templates\TemplateRenderDto(
+            id: (string) $template->id,
+            name: $template->name,
+            description: $template->description,
+            themeId: $template->theme_id !== null ? (string) $template->theme_id : null,
+            blocks: $blocks,
+        );
+    }
+
+    /**
+     * Fetch template blocks as DTOs, ordered by sort_order.
+     * Encapsulates model access; exposes only needed data as DTO.
+     *
+     * @return \Illuminate\Support\Collection<int, \App\DTOs\Templates\TemplateBlockPayloadDto>
+     */
+    public function findBlocksAsPayloadDtosForTemplate(string $templateId): \Illuminate\Support\Collection
+    {
+        return \App\Models\TemplateBlock::query()
+            ->where('template_id', $templateId)
+            ->orderBy('sort_order')
+            ->get()
+            ->map(function (\App\Models\TemplateBlock $block) {
+                return new \App\DTOs\Templates\TemplateBlockPayloadDto(
+                    blockId: (string) $block->id,
+                    title: $block->title ?? '',
+                    description: $block->description,
+                    defaultContent: $block->default_content,
+                    blockState: $block->block_state,
+                    sortOrder: (int) $block->sort_order,
+                );
+            });
+    }
 }

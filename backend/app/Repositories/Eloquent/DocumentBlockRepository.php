@@ -60,4 +60,42 @@ class DocumentBlockRepository implements DocumentBlockRepositoryInterface
             ->values()
             ->all();
     }
+
+    /**
+     * Obtiene los bloques de un documento con sus relaciones.
+     *
+     * @return Collection<string, DocumentBlock>
+     */
+    public function findBlocksForDocumentWithRelations(string $documentId): Collection
+    {
+        return DocumentBlock::query()
+            ->where('document_id', $documentId)
+            ->with('templateBlock')
+            ->get()
+            ->keyBy('template_block_id');
+    }
+
+    /**
+     * Actualiza el contenido y estado de un bloque del documento.
+     *
+     * @param  DocumentBlock  $block  El bloque a actualizar (se modifica en-place).
+     * @param  mixed  $content  Nuevo contenido.
+     * @param  bool  $isFilled  Indicador de relleno.
+     * @param  string  $lastEditedBy  ID del actor que editó.
+     */
+    public function updateBlock(DocumentBlock $block, mixed $content, bool $isFilled, string $lastEditedBy): void
+    {
+        $block->content = $content;
+        $block->is_filled = $isFilled;
+        $block->last_edited_by = $lastEditedBy;
+        $block->save();
+    }
+
+    /**
+     * Elimina un bloque del documento.
+     */
+    public function deleteBlock(DocumentBlock $block): void
+    {
+        $block->delete();
+    }
 }

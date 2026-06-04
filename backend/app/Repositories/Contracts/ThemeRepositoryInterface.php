@@ -48,4 +48,22 @@ interface ThemeRepositoryInterface
         ?array $assetsOverrides,
         ?array $accessibilityOverrides,
     ): ThemeDto;
+
+    /**
+     * Fetch resolved theme data for rendering by theme ID.
+     * Returns theme assets and styling configuration as DTO.
+     * Returns null if theme not found.
+     *
+     * @return \App\DTOs\Themes\ThemeResolvedDto|null
+     */
+    public function findThemeResolvedById(string $id): ?\App\DTOs\Themes\ThemeResolvedDto;
+
+    /**
+     * Fetch raw assets array for a theme by ID for mutation.
+     * Used internally by asset upload service.
+     * Returns null if theme not found.
+     *
+     * @return array<string, ?string>|null
+     */
+    public function findThemeAssetsById(string $id): ?array;
 }

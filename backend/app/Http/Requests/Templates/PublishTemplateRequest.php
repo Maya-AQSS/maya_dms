@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Templates;
 
-use App\Models\EntityVersion;
 use App\Models\Template;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class PublishTemplateRequest extends FormRequest
 {
@@ -39,28 +38,14 @@ class PublishTemplateRequest extends FormRequest
     /**
      * Reglas de validación para la publicación de una plantilla.
      *
-     * El changelog es obligatorio a partir de la segunda versión publicada (cuando ya existe
-     * al menos una fila publicada en entity_versions). La primera publicación puede omitir changelog;
-     * el servicio usa entonces un texto por defecto genérico.
+     * Changelog obligatorio en toda publicación explícita (incluida la primera versión).
      *
      * @return array<string, mixed>
      */
     public function rules(): array
     {
-        $template = $this->resolveTemplate();
-        $hasPublishedVersions = EntityVersion::query()
-            ->where('versionable_type', Template::class)
-            ->where('versionable_id', $template->id)
-            ->where('status', 'published')
-            ->exists();
-
         return [
-            'changelog' => [
-                Rule::requiredIf($hasPublishedVersions),
-                'nullable',
-                'string',
-                'min:1',
-            ],
+            'changelog' => ['required', 'string', 'min:1', 'max:'.VersionSubmissionChangelog::MAX_LENGTH],
         ];
     }
 

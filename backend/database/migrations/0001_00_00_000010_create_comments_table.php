@@ -8,6 +8,7 @@ return new class extends Migration
 {
     /**
      * Comentarios polimórficos para plantillas y documentos.
+     * Estado final: sin resolved* columns (dropped), con updated_at/deleted_by/deleted_by_name.
      */
     public function up(): void
     {
@@ -21,15 +22,14 @@ return new class extends Migration
             $table->uuid('parent_id')->nullable(); // para respuestas anidadas
             $table->string('author_id');          // FK lógica → users (FDW)
             $table->text('body');
-            $table->boolean('resolved')->default(false);
-            $table->string('resolved_by')->nullable();
-            $table->timestamp('resolved_at')->nullable();
             $table->timestamp('created_at')->useCurrent();
+            $table->timestamp('updated_at')->nullable();
             $table->softDeletes();
+            $table->string('deleted_by')->nullable();
+            $table->string('deleted_by_name')->nullable();
 
             $table->index(['commentable_type', 'commentable_id']);
             $table->index(['commentable_type', 'commentable_id', 'commentable_version']);
-            $table->index(['commentable_type', 'commentable_id', 'commentable_version', 'resolved']);
             $table->index(['blockable_type', 'blockable_id']);
         });
     }

@@ -95,8 +95,7 @@ class TemplateController extends Controller
         if (! $isCreator && in_array($model->status, ['draft', 'in_review', 'rejected'], true)) {
             // Only serve real content to an active reviewer during in_review.
             // For draft/rejected (or in_review for non-reviewer), serve the last published snapshot.
-            $isActiveReviewer = $model->status === 'in_review'
-                && $model->reviewers()->where('user_id', $viewerId)->exists();
+            $isActiveReviewer = $this->templateService->isUserActiveReviewerForTemplate($model->id, $viewerId);
 
             if (! $isActiveReviewer) {
                 $latestPublished = $this->templateService->findLatestPublishedVersion($model->id);

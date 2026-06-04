@@ -51,6 +51,7 @@ class DocumentResource extends JsonResource
             'review_mode' => $dto->reviewMode,
             'is_assigned_reviewer' => $dto->isAssignedReviewer,
             'review_history' => $dto->reviewHistory,
+            'submission_changelog' => $dto->submissionChangelog,
         ];
     }
 }

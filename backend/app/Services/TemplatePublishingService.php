@@ -14,6 +14,7 @@ use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserFavoriteRepositoryInterface;
 use App\Services\Contracts\EntityVersionLifecycleServiceInterface;
 use App\Support\TemplateHeadSnapshot;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maya\Messaging\Publishers\NotificationPublisher;
@@ -144,18 +145,11 @@ class TemplatePublishingService
                 ->all();
 
             $next = $this->entityVersionRepository->nextVersionNumber(Template::class, $templateId);
-            $trimmedChangelog = is_string($changelog) ? trim($changelog) : '';
-
-            // Sin changelog explícito (tras trim): texto por defecto en la fila publicada en entity_versions.
-            // El número de versión ($next) solo vive en entity_versions y en este snapshot, no en la tabla templates.
-            // El flujo POST /publish puede exigir changelog en republicaciones vía PublishTemplateRequest.
-            if ($trimmedChangelog === '') {
-                $resolvedChangelog = 'Publicación automática';
-            } else {
-                $resolvedChangelog = $trimmedChangelog;
-            }
-
             $template->loadMissing('headVersion');
+            $resolvedChangelog = VersionSubmissionChangelog::requireNonEmpty(
+                $changelog,
+                $template->headVersion?->changelog,
+            );
             $templateFields = data_get($template->headVersion?->snapshot_data, TemplateHeadSnapshot::JSON_TEMPLATE_KEY);
             $templateFields = is_array($templateFields) ? $templateFields : [];
 
@@ -194,7 +188,7 @@ class TemplatePublishingService
                 $resolvedChangelog,
             );
 
-            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication($entityVersion, $template);
+            $this->templateVersionBlockLayerWriter->syncLayersForNewPublication((string) $entityVersion->id, (string) $template->id);
 
             // Migrar favoritos: los que apuntaban a la versión publicada anterior pasan a la nueva.
             if ($entityVersion->base_version_id !== null) {
@@ -209,14 +203,8 @@ class TemplatePublishingService
                 'status' => 'published',
             ]);
 
-            $updated->loadMissing('headVersion');
-            $headEv = $updated->headVersion;
-            if ($headEv !== null) {
-                $headData = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : [];
-                unset($headData['blocks_at_submission'], $headData['blocks_at_previous_submission'], $headData['blocks_submission_history']);
-                $headEv->snapshot_data = $headData ?: null;
-                $headEv->save();
-            }
+            // Clean submission data from head version via repository
+            $this->templateRepository->cleanHeadVersionSubmissionData($templateId);
 
             event(new TemplateStateChanged(
                 template: $updated,
@@ -237,6 +225,10 @@ class TemplatePublishingService
                         recipientId: $createdBy,
                         title: $createdByTitle,
                         body: $createdByBody,
+                        titleKey: 'notifications.template.published.title',
+                        bodyKey: 'notifications.template.published.body',
+                        params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name],
+                        severity: 'info',
                         channels: ['app'],
                         metadata: $createdByMetadata,
                     );
@@ -279,6 +271,10 @@ class TemplatePublishingService
                         recipientId: $ownerId,
                         title: $ownerTitle,
                         body: $ownerBody,
+                        titleKey: 'notifications.template.version.affects_my_document.title',
+                        bodyKey: 'notifications.template.version.affects_my_document.body',
+                        params: ['template_id' => (string) $updated->id, 'template_name' => $updated->name, 'version' => $next, 'document_id' => $ownerId],
+                        severity: 'medium',
                         channels: ['app'],
                         metadata: $ownerMetadata,
                     );

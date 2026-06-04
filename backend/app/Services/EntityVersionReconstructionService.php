@@ -17,13 +17,12 @@ class EntityVersionReconstructionService
     /**
      * Reconstruye el estado efectivo de una versión aplicando su cadena base + change_set.
      *
+     * @param  string  $versionId  ID de la versión a reconstruir
      * @return array<string, mixed>
      */
-    public function reconstruct(EntityVersion|string $version): array
+    public function reconstruct(string $versionId): array
     {
-        $target = is_string($version)
-            ? $this->repository->findOrFail($version)
-            : $version;
+        $target = $this->repository->findOrFail($versionId);
 
         if (is_array($target->snapshot_data)) {
             return $target->snapshot_data;

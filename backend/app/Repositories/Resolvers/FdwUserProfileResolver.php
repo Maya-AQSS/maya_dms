@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories\Resolvers;
 
+use App\DTOs\Users\JwtProfileDto;
 use App\Services\Contracts\UserProfileServiceInterface as LocalUserProfileServiceInterface;
 use Maya\Profile\Dtos\UserProfileDto;
 use Maya\Profile\Enums\Locale;
@@ -51,7 +52,7 @@ final class FdwUserProfileResolver implements UserProfileResolverInterface
 
     public function resolve(string $userId, array $jwtProfile): UserProfileDto
     {
-        $profile = $this->localProfile->getProfile($userId, $jwtProfile);
+        $profile = $this->localProfile->getProfile($userId, JwtProfileDto::fromArray($jwtProfile));
 
         $localeValue = is_string($profile['locale'] ?? null) ? $profile['locale'] : null;
         $locale = ($localeValue !== null && Locale::tryFrom($localeValue) !== null)

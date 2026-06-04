@@ -61,6 +61,7 @@ import {
   Spinner,
   TextInput,
 } from '@ceedcv-maya/shared-ui-react';
+import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock } from '../../../utils/blockComments';
@@ -207,6 +208,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [reviewerListKind, setReviewerListKind] = useState<'document' | 'template_fallback' | 'none'>('none');
   const [documentReviewMode, setDocumentReviewMode] = useState<ReviewModeView>('parallel');
   const [summaryConfirmAction, setSummaryConfirmAction] = useState<SummaryConfirmAction>(null);
+  const [showChangelogModal, setShowChangelogModal] = useState(false);
+  const [changelogModalError, setChangelogModalError] = useState<string | null>(null);
   const [showNoValidatorsDocModal, setShowNoValidatorsDocModal] = useState(false);
 
   const [template, setTemplate] = useState<Template | null>(null);
@@ -1112,20 +1115,25 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
   };
 
-  const handleSubmitForReview = async () => {
+  const handleSubmitForReview = async (changelog: string) => {
     if (!detail || !['draft', 'rejected'].includes(detail.status)) {
-      return;
+      return false;
     }
     setSummaryError(null);
+    setChangelogModalError(null);
     setSubmittingForReview(true);
     try {
-      const updated = await submitDocumentForReview(detail.id);
+      const updated = await submitDocumentForReview(detail.id, changelog);
       setDetail((prev) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
+      setShowChangelogModal(false);
       navigate(processBackTo, {
         state: { tab: 'documents', documentSubmittedForReview: true },
       });
+      return true;
     } catch (e) {
-      setSummaryError(e instanceof Error ? e.message : 'No se pudo enviar el documento a validar.');
+      const message = e instanceof Error ? e.message : 'No se pudo enviar el documento a validar.';
+      setChangelogModalError(message);
+      return false;
     } finally {
       setSubmittingForReview(false);
     }
@@ -1135,13 +1143,40 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     if (summaryConfirmAction === 'save') {
       setSummaryConfirmAction(null);
       navigate(processBackTo, { state: { tab: 'documents' } });
-      return;
-    }
-    if (summaryConfirmAction === 'submit') {
-      await handleSubmitForReview();
-      setSummaryConfirmAction(null);
     }
   };
+
+  const documentChangelogIntro = (
+    <div className="space-y-2">
+      <p>
+        {willSubmitDocumentToReview
+          ? 'Se enviará una notificación a los validadores del documento configurados en la plantilla.'
+          : 'No hay validadores de documento en la plantilla. El documento se publicará directamente sin pasar por revisión.'}
+      </p>
+      {willSubmitDocumentToReview && documentReviewers.length > 0 ? (
+        <>
+          <p>
+            Tipo de revisión:{' '}
+            <strong>{documentReviewMode === 'sequential' ? 'Ordenada' : 'Libre'}</strong>
+          </p>
+          {documentReviewMode === 'sequential' ? (
+            <ol className="list-decimal pl-4 space-y-1">
+              {documentReviewers.map((reviewer) => (
+                <li key={reviewer.id}>{reviewer.name}</li>
+              ))}
+            </ol>
+          ) : (
+            <ul className="space-y-1">
+              {documentReviewers.map((reviewer) => (
+                <li key={reviewer.id}>• {reviewer.name}</li>
+              ))}
+            </ul>
+          )}
+        </>
+      ) : null}
+      <p>Después no se podrá seguir editando como borrador.</p>
+    </div>
+  );
 
   const handleApproveValidation = async () => {
     if (!documentId || !actionableReviewId) {
@@ -1323,7 +1358,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             size="sm"
             loading={submittingForReview}
             disabled={!isDraft}
-            onClick={() => setSummaryConfirmAction('submit')}
+            onClick={() => {
+              setChangelogModalError(null);
+              setShowChangelogModal(true);
+            }}
           >
             {willSubmitDocumentToReview ? 'Enviar a validar' : 'Publicar'}
           </Button>
@@ -1592,7 +1630,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               </div>
             </div>
 
-            {(isDraft && detail?.owner_id === currentUserId )|| (!detail?.owner_id ) && (
+            {((isDraft && detail?.owner_id === currentUserId )|| (!detail?.owner_id)) && (
               <div className="pt-5 border-t border-ui-border dark:border-ui-dark-border animate-in slide-in-from-top-2 fade-in space-y-3">
                 <p className="text-xs font-black uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
                   Propietario
@@ -2146,6 +2184,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
               Revisa el resumen del documento y confirma si lo apruebas o lo rechazas.
             </p>
           )}
+          {isValidateMode && detail.submission_changelog?.trim() ? (
+            <SubmissionChangelogReadonly text={detail.submission_changelog.trim()} />
+          ) : null}
 
           <div className="shrink-0 bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden grid grid-cols-2 animate-in fade-in slide-in-from-top-1 w-full">
             {/* Columna izquierda — Propiedades */}
@@ -2411,61 +2452,36 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
           : () => { setValidateConfirm(null); setValidationModalError(null); }}
       />
       <ConfirmDialog
-        open={summaryConfirmAction !== null}
-        title={
-          summaryConfirmAction === 'submit'
-            ? willSubmitDocumentToReview
-              ? 'Confirmar envío a validar'
-              : 'Confirmar publicación'
-            : 'Confirmar guardado'
-        }
-        description={
-          summaryConfirmAction === 'submit'
-            ? (
-                <div className="space-y-2">
-                  <p>
-                    {willSubmitDocumentToReview
-                      ? 'Se enviará una notificación a los validadores del documento configurados en la plantilla.'
-                      : 'No hay validadores de documento en la plantilla. El documento se publicará directamente sin pasar por revisión.'}
-                  </p>
-                  {willSubmitDocumentToReview && documentReviewers.length > 0 ? (
-                    <>
-                      <p>
-                        Tipo de revisión:{' '}
-                        <strong>{documentReviewMode === 'sequential' ? 'Ordenada' : 'Libre'}</strong>
-                      </p>
-                      {documentReviewMode === 'sequential' ? (
-                        <ol className="list-decimal pl-4 space-y-1">
-                          {documentReviewers.map((reviewer) => (
-                            <li key={reviewer.id}>{reviewer.name}</li>
-                          ))}
-                        </ol>
-                      ) : (
-                        <ul className="space-y-1">
-                          {documentReviewers.map((reviewer) => (
-                            <li key={reviewer.id}>• {reviewer.name}</li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
-                  ) : null}
-                  <p>Después no se podrá seguir editando como borrador.</p>
-                </div>
-              )
-            : '¿Quieres guardar y salir sin enviar? El documento permanecerá en estado borrador.'
-        }
-        confirmLabel={
-          summaryConfirmAction === 'submit'
-            ? willSubmitDocumentToReview
-              ? 'Sí, enviar a validar'
-              : 'Sí, publicar'
-            : 'Sí, guardar y salir'
-        }
+        open={summaryConfirmAction === 'save'}
+        title="Confirmar guardado"
+        description="¿Quieres guardar y salir sin enviar? El documento permanecerá en estado borrador."
+        confirmLabel="Sí, guardar y salir"
         cancelLabel="Cancelar"
-        variant={summaryConfirmAction === 'submit' ? 'primary' : 'teal'}
-        loading={summaryConfirmAction === 'submit' && submittingForReview}
+        variant="teal"
         onCancel={() => setSummaryConfirmAction(null)}
         onConfirm={() => void handleConfirmSummaryAction()}
+      />
+      <VersionChangelogModal
+        open={showChangelogModal}
+        title={willSubmitDocumentToReview ? 'Confirmar envío a validar' : 'Confirmar publicación'}
+        intro={documentChangelogIntro}
+        initialValue={detail?.submission_changelog}
+        confirmLabel={
+          submittingForReview
+            ? willSubmitDocumentToReview
+              ? 'Enviando…'
+              : 'Publicando…'
+            : willSubmitDocumentToReview
+              ? 'Sí, enviar a validar'
+              : 'Sí, publicar'
+        }
+        loading={submittingForReview}
+        error={changelogModalError}
+        onCancel={() => {
+          setShowChangelogModal(false);
+          setChangelogModalError(null);
+        }}
+        onConfirm={handleSubmitForReview}
       />
       <ConfirmDialog
         open={showNoValidatorsDocModal}

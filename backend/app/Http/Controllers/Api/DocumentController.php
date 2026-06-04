@@ -118,12 +118,10 @@ class DocumentController extends Controller
             if ($latestPublished === null) {
                 abort(404);
             }
-            $resolved->setRelation('headVersion', $latestPublished);
+            $this->documentService->prepareDocumentForDisplay($resolved, $latestPublished, $isAssignedReviewer);
             $this->attachCanCloneMeta($resolved, $request);
             $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
             $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
-            $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
-            $resolved->loadMissing(['owner']);
             $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
             $blocks = $this->documentService->blocksForDisplay($resolved);
 
@@ -135,15 +133,10 @@ class DocumentController extends Controller
             ]);
         }
 
-        $resolved->setAttribute(
-            'has_review_comments',
-            $resolved->comments()->exists(),
-        );
-        $resolved->setAttribute('is_assigned_reviewer', $isAssignedReviewer);
+        $this->documentService->prepareDocumentForDisplay($resolved, null, $isAssignedReviewer);
         $this->attachCanCloneMeta($resolved, $request);
         $this->documentService->attachLatestPublishedVersionMeta(collect([$resolved]));
         $this->documentService->attachShareMetadataForViewer(collect([$resolved]), $viewerId);
-        $resolved->loadMissing(['owner']);
         $this->apiTeamEmbedService->embedOnDocument($resolved, $viewerId);
         $blocks = $this->documentService->blocksForDisplay($resolved);
 

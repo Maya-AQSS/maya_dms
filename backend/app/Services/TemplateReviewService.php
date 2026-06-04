@@ -9,6 +9,7 @@ use App\Models\Template;
 use App\Models\TemplateReviewer;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Support\ReviewValidationNotificationRecipients;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maya\Messaging\Publishers\NotificationPublisher;
@@ -24,9 +25,11 @@ class TemplateReviewService
     /**
      * Envia el borrador a revisión.
      */
-    public function submitForReview(string $templateId, string $actorId): Template
+    public function submitForReview(string $templateId, string $actorId, string $changelog): Template
     {
-        return $this->templateRepository->transaction(function () use ($templateId, $actorId) {
+        $normalizedChangelog = VersionSubmissionChangelog::normalize($changelog);
+
+        return $this->templateRepository->transaction(function () use ($templateId, $actorId, $normalizedChangelog) {
             $template = $this->templateRepository->findOrFail($templateId);
 
             if (! in_array($template->status, ['draft', 'rejected'], true)) {
@@ -51,6 +54,7 @@ class TemplateReviewService
                 'block_state' => $b->block_state,
             ])->values()->all();
 
+            $template->loadMissing('headVersion');
             $headVersion = $template->headVersion;
             if ($headVersion !== null) {
                 $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
@@ -60,7 +64,8 @@ class TemplateReviewService
                     'submitted_by' => $actorId,
                     'blocks' => $blocksSnapshot,
                 ];
-                $headVersion->update(['change_set' => $cycles]);
+                // Repository update instead of direct model mutation
+                $this->templateRepository->updateHeadVersionSnapshot($templateId, ['change_set' => $cycles]);
             }
 
             $hasEditableBlock = $template->blocks->contains(
@@ -93,35 +98,39 @@ class TemplateReviewService
                 ]);
             }
 
-            if ($template->reviewers()->doesntExist()) {
+            $this->templateRepository->updateHeadVersionChangelog($templateId, $normalizedChangelog);
+
+            if ($this->templateRepository->doesntHaveReviewers($templateId)) {
                 if ($template->visibility_level !== TemplateVisibilityLevel::Personal) {
                     throw ValidationException::withMessages([
                         'reviewers' => ['Las plantillas no personales requieren al menos un revisor asignado antes de enviarse a revisión.'],
                     ]);
                 }
 
-                return $this->templatePublishingService->publishWithSnapshot($templateId, 'Publicación automática', $actorId);
+                return $this->templatePublishingService->publishWithSnapshot($templateId, $normalizedChangelog, $actorId);
             }
 
             if ($template->visibility_level !== TemplateVisibilityLevel::Personal
-                && $template->documentReviewers()->doesntExist()) {
+                && $this->templateRepository->doesntHaveDocumentReviewers($templateId)) {
                 throw ValidationException::withMessages([
                     'document_reviewers' => ['Las plantillas no personales requieren al menos un validador de documento asignado antes de enviarse a revisión.'],
                 ]);
             }
 
-            $template->reviewers()->update(['status' => 'pending']);
+            $this->templateRepository->updateReviewersStatus($templateId, 'pending');
+
+            // Use repository to update head version snapshot
+            $blocksSnapshot = $template->blocks->map(fn ($b) => [
+                'id' => $b->id,
+                'title' => $b->title,
+                'default_content' => $b->default_content,
+                'block_state' => (string) $b->block_state,
+                'sort_order' => (int) $b->sort_order,
+            ])->values()->all();
 
             $template->loadMissing('headVersion');
             $headEv = $template->headVersion;
             if ($headEv !== null) {
-                $blocksSnapshot = $template->blocks->map(fn ($b) => [
-                    'id' => $b->id,
-                    'title' => $b->title,
-                    'default_content' => $b->default_content,
-                    'block_state' => (string) $b->block_state,
-                    'sort_order' => (int) $b->sort_order,
-                ])->values()->all();
                 $existing = is_array($headEv->snapshot_data) ? $headEv->snapshot_data : (array) ($headEv->snapshot_data ?? []);
                 if (isset($existing['blocks_at_submission']) && is_array($existing['blocks_at_submission'])) {
                     $history = isset($existing['blocks_submission_history']) && is_array($existing['blocks_submission_history'])
@@ -132,8 +141,7 @@ class TemplateReviewService
                     $existing['blocks_at_previous_submission'] = $existing['blocks_at_submission'];
                 }
                 $existing['blocks_at_submission'] = $blocksSnapshot;
-                $headEv->snapshot_data = $existing;
-                $headEv->save();
+                $this->templateRepository->updateHeadVersionSnapshot($templateId, $existing);
             }
 
             $inReview = $this->templatePublishingService->transitionStatus($template, 'in_review', $actorId);
@@ -190,6 +198,10 @@ class TemplateReviewService
                         recipientId: $createdBy,
                         title: 'Revisión de plantilla rechazada',
                         body: 'La revisión de la plantilla "' . $rejected->name . '" ha sido rechazada',
+                        titleKey: 'notifications.template.rejected.title',
+                        bodyKey: 'notifications.template.rejected.body',
+                        params: ['template_id' => (string) $rejected->id, 'template_name' => $rejected->name],
+                        severity: 'high',
                         channels: ['app'],
                         metadata: ['template_id' => (string) $rejected->id],
                     );
@@ -252,8 +264,8 @@ class TemplateReviewService
             if ($allApproved) {
                 return $this->templatePublishingService->publishWithSnapshot(
                     $templateId,
-                    'Aprobado por todos los revisores.',
-                    $actorId
+                    null,
+                    $actorId,
                 );
             }
 
@@ -315,6 +327,10 @@ class TemplateReviewService
                     recipientId: $reviewerId,
                     title: 'Nueva solicitud de revisión de plantilla',
                     body: 'La plantilla "' . $template->name . '" requiere tu revisión',
+                    titleKey: 'notifications.template.validation_requested.title',
+                    bodyKey: 'notifications.template.validation_requested.body',
+                    params: ['template_id' => (string) $template->id, 'template_name' => $template->name],
+                    severity: 'high',
                     channels: ['app'],
                     metadata: ['template_id' => (string) $template->id],
                 );

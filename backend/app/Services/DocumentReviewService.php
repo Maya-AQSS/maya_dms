@@ -76,22 +76,27 @@ class DocumentReviewService
 
             $this->assertSequentialReviewAllowsActing($document, $review);
 
-            $review->status = 'approved';
-            $review->reviewed_at = now();
-            $this->documentRepository->saveReview($review);
+            $this->documentRepository->approveReview((string) $review->id);
+
+            // Recargar para tener timestamp actualizado
+            $review = $this->documentRepository->findReviewInDocument((string) $review->id, $documentId);
             DocumentReviewApproved::dispatch($documentId, $review, $actorId);
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
+                $document->loadMissing('headVersion');
+                $changelog = \App\Support\VersionSubmissionChangelog::requireNonEmpty(
+                    $publicationChangelog,
+                    $document->headVersion?->changelog,
+                );
+
                 $this->stateService->transition($documentId, 'published', $actorId);
-                $changelog = $publicationChangelog !== null && trim($publicationChangelog) !== ''
-                    ? trim($publicationChangelog)
-                    : 'Aprobado por todos los revisores.';
                 $this->snapshotService->createDocumentSnapshot(new CreateDocumentSnapshotDto(
                     documentId: $documentId,
                     triggerEvent: 'published',
                     triggeredBy: $actorId,
                     notes: $changelog,
                 ));
+                $this->documentRepository->clearHeadVersionChangelog($documentId);
 
                 $refreshed = $this->documentRepository->findOrFailForRefreshAfterMutation($documentId);
                 $this->notifyDocumentPublished($refreshed);
@@ -136,6 +141,10 @@ class DocumentReviewService
                     recipientId: $reviewerId,
                     title: 'Nueva solicitud de revisión',
                     body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    titleKey: 'notifications.document.validation_requested.title',
+                    bodyKey: 'notifications.document.validation_requested.body',
+                    params: ['document_id' => $documentId, 'document_title' => $document->title],
+                    severity: 'high',
                     channels: ['app'],
                     metadata: ['document_id' => $documentId],
                 );
@@ -170,6 +179,10 @@ class DocumentReviewService
                 recipientId: $recipientId,
                 title: $title,
                 body: $body,
+                titleKey: 'notifications.document.published.title',
+                bodyKey: 'notifications.document.published.body',
+                params: ['document_id' => (string) $document->id, 'document_title' => $document->title],
+                severity: 'info',
                 channels: ['app'],
                 metadata: $metadata,
             );
@@ -219,6 +232,10 @@ class DocumentReviewService
                 recipientId: $recipientId,
                 title: $title,
                 body: $body,
+                titleKey: 'notifications.document.rejected.title',
+                bodyKey: 'notifications.document.rejected.body',
+                params: ['document_id' => (string) $document->id, 'document_title' => $document->title, 'reason' => $reason],
+                severity: 'high',
                 channels: ['app'],
                 metadata: $metadata,
             );
@@ -280,10 +297,10 @@ class DocumentReviewService
 
             $this->assertSequentialReviewAllowsActing($document, $review);
 
-            $review->status = 'rejected';
-            $review->rejection_reason = $reason;
-            $review->reviewed_at = now();
-            $this->documentRepository->saveReview($review);
+            $this->documentRepository->rejectReview((string) $review->id, $reason);
+
+            // Recargar para tener datos actualizados
+            $review = $this->documentRepository->findReviewInDocument((string) $review->id, $documentId);
             DocumentReviewRejected::dispatch($documentId, $review, $actorId, $reason);
 
             $this->stateService->transition($documentId, 'rejected', $actorId);

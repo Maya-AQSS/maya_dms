@@ -4,13 +4,14 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\EntityVersion;
+use App\DTOs\Templates\EntityVersionSnapshotDto;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 
 /**
  * Reconstruye el snapshot efectivo de bloques desde capas incrementales.
+ * Accepts scalar IDs and DTOs, not Eloquent models.
  */
 final class TemplateVersionBlockLayerResolver
 {
@@ -24,12 +25,12 @@ final class TemplateVersionBlockLayerResolver
      */
     public function resolveBlocksSnapshot(string $entityVersionId): array
     {
-        $version = $this->entityVersionRepository->findOrFail($entityVersionId);
+        $version = $this->entityVersionRepository->findOrFailAsSnapshot($entityVersionId);
 
-        $layers = $this->layerRepository->listForVersion($entityVersionId);
+        $layers = $this->layerRepository->listForVersionAsDto($entityVersionId);
 
         if ($layers->isEmpty()) {
-            return $version->blocksSnapshotRows();
+            return array_values($version->blocksSnapshotRows);
         }
 
         $out = [];
@@ -38,7 +39,7 @@ final class TemplateVersionBlockLayerResolver
                 continue;
             }
 
-            $eff = $this->effectiveBlockPayload((string) $layer->template_block_id, $version);
+            $eff = $this->effectiveBlockPayload($layer->templateBlockId, $version);
             if ($eff !== null) {
                 $out[] = $eff;
             }
@@ -50,9 +51,9 @@ final class TemplateVersionBlockLayerResolver
     /**
      * @return array<string, mixed>|null
      */
-    private function effectiveBlockPayload(string $templateBlockId, EntityVersion $version): ?array
+    private function effectiveBlockPayload(string $templateBlockId, EntityVersionSnapshotDto $version): ?array
     {
-        $layer = $this->layerRepository->findForVersionAndBlock((string) $version->id, $templateBlockId);
+        $layer = $this->layerRepository->findForVersionAndBlockAsDto($version->id, $templateBlockId);
 
         if ($layer === null) {
             return $this->blockFromSnapshotOnly($version, $templateBlockId);
@@ -62,29 +63,29 @@ final class TemplateVersionBlockLayerResolver
             return null;
         }
 
-        if ($layer->inherits_from_previous_publication) {
-            if ($version->version_number <= 1) {
-                return is_array($layer->override_payload) ? $layer->override_payload : null;
+        if ($layer->inheritsFromPreviousPublication) {
+            if ($version->versionNumber <= 1) {
+                return $layer->overridePayload;
             }
 
-            $parent = $this->entityVersionRepository->findOrFailPublishedByEntityAndNumber(
+            $parent = $this->entityVersionRepository->findOrFailPublishedByEntityAndNumberAsSnapshot(
                 Template::class,
-                (string) $version->versionable_id,
-                (int) $version->version_number - 1,
+                $version->entityId,
+                $version->versionNumber - 1,
             );
 
             return $this->effectiveBlockPayload($templateBlockId, $parent);
         }
 
-        return is_array($layer->override_payload) ? $layer->override_payload : null;
+        return $layer->overridePayload;
     }
 
     /**
      * @return array<string, mixed>|null
      */
-    private function blockFromSnapshotOnly(EntityVersion $version, string $templateBlockId): ?array
+    private function blockFromSnapshotOnly(EntityVersionSnapshotDto $version, string $templateBlockId): ?array
     {
-        foreach ($version->blocksSnapshotRows() as $b) {
+        foreach ($version->blocksSnapshotRows as $b) {
             if (is_array($b) && isset($b['id']) && (string) $b['id'] === $templateBlockId) {
                 return $b;
             }
