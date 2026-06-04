@@ -53,3 +53,46 @@ export function documentBlockContentDiffersFromTemplateDefault(
 ): boolean {
   return !isEditableBlockStillPlaceholder(content, defaultContent);
 }
+
+export type DocumentBlockSavePlan =
+  | { action: 'skip' }
+  | { action: 'persist'; payload: unknown };
+
+/**
+ * Decide si el autoguardado debe llamar al API y con qué payload.
+ * - Sin cambio vs último guardado en sesión → skip.
+ * - Igual a plantilla y BD ya alineada → skip (evita PUT fantasma).
+ * - Igual a plantilla pero BD con edición previa en editable → PUT null (volver al guía).
+ */
+export function planDocumentBlockSave(
+  local: unknown,
+  lastSavedInSession: unknown,
+  persistedInDb: unknown,
+  defaultContent: unknown,
+  blockState: DocumentDisplayBlock['block_state'],
+): DocumentBlockSavePlan {
+  if (documentBlockContentUnchanged(local, lastSavedInSession)) {
+    return { action: 'skip' };
+  }
+
+  const matchesDefault = documentBlockContentUnchanged(local, defaultContent);
+
+  if (matchesDefault) {
+    const dbAlreadyAtDefault =
+      blockState === 'editable'
+        ? isEditableBlockStillPlaceholder(persistedInDb ?? null, defaultContent)
+        : documentBlockContentUnchanged(local, persistedInDb ?? null);
+
+    if (dbAlreadyAtDefault) {
+      return { action: 'skip' };
+    }
+
+    if (blockState === 'editable') {
+      return { action: 'persist', payload: null };
+    }
+
+    return { action: 'persist', payload: local };
+  }
+
+  return { action: 'persist', payload: local };
+}

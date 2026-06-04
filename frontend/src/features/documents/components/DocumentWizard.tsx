@@ -53,6 +53,7 @@ import {
   documentBlockContentUnchanged,
   listUnresolvedEditableBlockTitles,
   isUnresolvedEditableBlock,
+  planDocumentBlockSave,
 } from '../lib/blockContentEquals';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
@@ -857,30 +858,38 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setBlockViewTab('content');
   }, [activeBlockKey]);
 
-  const doSave = useCallback(async () => {
+  const doSave = useCallback(async (): Promise<boolean> => {
     const block = activeBlockRef.current;
-    if (!block || !isDraft || blockToUiState(block) === 'locked') return;
+    if (!block || !isDraft || blockToUiState(block) === 'locked') return false;
     const blockId = block.document_block_id;
-    if (!blockId) return;
-    if (documentBlockContentUnchanged(localContent, lastSavedContentRef.current)) {
-      return;
+    if (!blockId) return false;
+
+    const plan = planDocumentBlockSave(
+      localContent,
+      lastSavedContentRef.current,
+      block.content ?? null,
+      block.default_content ?? null,
+      block.block_state,
+    );
+
+    if (plan.action === 'skip') {
+      lastSavedContentRef.current = localContent;
+      return false;
     }
-    // Sin cambio respecto a la plantilla: no PUT (evita ruido TipTap tras abrir el bloque).
-    if (documentBlockContentUnchanged(localContent, block.default_content)) {
-      return;
-    }
+
     setBlockSaveError(null);
     try {
-      if (!documentId) return;
-      const saved = await updateDocumentBlock(documentId, blockId, localContent);
+      if (!documentId) return false;
+      const saved = await updateDocumentBlock(documentId, blockId, plan.payload);
       setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
       lastSavedContentRef.current = localContent;
+      return true;
     } catch (e) {
       const msg = e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al guardar el bloque.';
       setBlockSaveError(msg);
       throw e;
     }
-  }, [documentId, isDraft, refreshDetail, localContent]);
+  }, [documentId, isDraft, localContent]);
 
   const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
@@ -1884,12 +1893,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                           if (documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
                             return;
                           }
-                          if (
-                            activeBlock &&
-                            documentBlockContentUnchanged(content, activeBlock.default_content)
-                          ) {
-                            return;
-                          }
                           triggerSave();
                         }}
                         onFlush={handleEditorFlush}
@@ -2175,12 +2178,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                                   onChange={(content) => {
                                     setLocalContent(content);
                                     if (documentBlockContentUnchanged(content, lastSavedContentRef.current)) {
-                                      return;
-                                    }
-                                    if (
-                                      activeBlock &&
-                                      documentBlockContentUnchanged(content, activeBlock.default_content)
-                                    ) {
                                       return;
                                     }
                                     triggerSave();

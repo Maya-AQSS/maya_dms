@@ -39,6 +39,7 @@ import { BlockCommentsCard, ViewCardHeader } from '../features/templates/compone
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
 import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
+import { listUnresolvedEditableBlockTitles } from '../features/documents/lib/blockContentEquals';
 import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
 import { DocumentBlockHistoryPanel } from '../features/documents/components/DocumentBlockHistoryPanel';
 import { apiFetchJson, ApiHttpError } from '../api/http';
@@ -537,12 +538,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const handleOpenSubmitChangelogModal = () => {
     if (!documentId || !detail) return;
 
-    const emptyEditable = detail.blocks.filter((b: DocumentDisplayBlock) =>
-      b.block_state === 'editable' && !b.is_filled && !b.is_deleted,
-    );
-    if (emptyEditable.length > 0) {
-      const names = emptyEditable.map((b: DocumentDisplayBlock) => b.title ?? 'Sin título').join(', ');
-      setActionError(`Debes rellenar todos los bloques editables antes de enviar a revisión. Pendientes: ${names}.`);
+    const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
+    if (unresolvedEditable.length > 0) {
+      setActionError(
+        `Debes rellenar todos los bloques editables antes de enviar a revisión. Pendientes: ${unresolvedEditable.join(', ')}.`,
+      );
       return;
     }
 
