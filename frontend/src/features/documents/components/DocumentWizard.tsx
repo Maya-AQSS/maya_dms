@@ -48,6 +48,7 @@ import { useHierarchy } from '../../hierarchy';
 import type { Study, CourseModule } from '../../../types/hierarchy';
 import type { Template } from '../../../types/templates';
 import { BLOCK_UI_STATE_CONFIG, blockToUiState } from '../../templates/blockUiState';
+import { applyBlockSaveToDetail } from '../lib/applyBlockSaveToDetail';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { visibilityLabel } from '../../templates/constants';
@@ -228,6 +229,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const [emptyEditableBlocksModal, setEmptyEditableBlocksModal] = useState<string[] | null>(null);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
   const activeBlockRef = useRef<DocumentDisplayBlock | null>(null);
+  const detailRef = useRef<DocumentDetail | null>(null);
+  detailRef.current = detail;
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
 
   // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks).
@@ -857,8 +860,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     setBlockSaveError(null);
     try {
       if (!documentId) return;
-      await updateDocumentBlock(documentId, blockId, localContent);
-      await refreshDetail();
+      const saved = await updateDocumentBlock(documentId, blockId, localContent);
+      setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
+      lastSavedContentRef.current = localContent;
     } catch (e) {
       const msg = e instanceof ApiHttpError ? e.message : e instanceof Error ? e.message : 'Error al guardar el bloque.';
       setBlockSaveError(msg);
@@ -915,15 +919,27 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   useEffect(() => {
     activeBlockRef.current = activeBlock;
-    if (activeBlock) {
-      setLocalContent(normalizeBlockContentForEditor(activeBlock.content).length > 0
-        ? activeBlock.content
-        : activeBlock.default_content
-      );
-      lastSavedContentRef.current = activeBlock.content;
-      setShowDocumentCommentPanel(true); // re-show comment panel on block change
-    }
   }, [activeBlock]);
+
+  // Solo al cambiar de bloque o al cargar otro documento; no rehidratar tras cada autoguardado.
+  useEffect(() => {
+    if (!activeBlockKey || !documentId) return;
+    const currentDetail = detailRef.current;
+    if (!currentDetail || currentDetail.id !== documentId) return;
+
+    const block = currentDetail.blocks.find(
+      (b) => (b.document_block_id ?? b.template_block_id) === activeBlockKey,
+    );
+    if (!block) return;
+
+    setLocalContent(
+      normalizeBlockContentForEditor(block.content).length > 0
+        ? block.content
+        : block.default_content,
+    );
+    lastSavedContentRef.current = block.content;
+    setShowDocumentCommentPanel(true);
+  }, [activeBlockKey, documentId, detail?.id]);
 
   useEffect(() => {
     if (saveStatus === 'saved') {
