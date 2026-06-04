@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\DTOs\Documents\BlockDisplayDto;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
@@ -74,7 +75,7 @@ interface DocumentServiceInterface
     /**
      * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
      *
-     * @return list<array<string, mixed>>
+     * @return list<BlockDisplayDto>
      */
     public function blocksForDisplay(Document $document): array;
 

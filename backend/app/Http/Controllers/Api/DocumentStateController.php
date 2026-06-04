@@ -12,6 +12,7 @@ use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\SubmitDocumentForReviewRequest;
 use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
+use App\Http\Resources\DocumentBlockResource;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
@@ -117,7 +118,7 @@ class DocumentStateController extends Controller
         return response()->json([
             'data' => array_merge(
                 (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
-                ['blocks' => $blocks],
+                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ]);
     }
@@ -139,7 +140,7 @@ class DocumentStateController extends Controller
         return response()->json([
             'data' => array_merge(
                 (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
-                ['blocks' => $blocks],
+                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
             ),
         ]);
     }

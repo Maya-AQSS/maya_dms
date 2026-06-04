@@ -11,7 +11,6 @@ use App\Http\Requests\Documents\UpdateDocumentBlockRequest;
 use App\Http\Resources\DocumentBlockResource;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
@@ -36,11 +35,9 @@ class DocumentBlockController extends Controller
         $this->authorize('listDocumentBlocks', $doc);
         $this->assertOptionalProcessContextMatches((string) $doc->process_id);
 
-        $blocks = $this->documentService->blocksForDisplay($document);
+        $blocks = $this->documentService->blocksForDisplay($doc);
 
-        return DocumentBlockResource::collection(
-            array_map(fn ($dto) => $dto->toArray(), $blocks),
-        );
+        return DocumentBlockResource::collection($blocks);
     }
 
     /**
@@ -48,7 +45,7 @@ class DocumentBlockController extends Controller
      *
      * Actualiza un bloque de un documento.
      */
-    public function update(UpdateDocumentBlockRequest $request, string $document, string $block): JsonResponse
+    public function update(UpdateDocumentBlockRequest $request, string $document, string $block): DocumentBlockResource
     {
         $doc = $this->documentService->findModelOrFail($document);
         $this->authorize('updateDocumentBlock', $doc);
@@ -62,7 +59,7 @@ class DocumentBlockController extends Controller
             ),
         );
 
-        return (new DocumentBlockResource($updated->toArray()))->response();
+        return new DocumentBlockResource($updated);
     }
 
     /**
