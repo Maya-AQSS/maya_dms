@@ -1,86 +1,9 @@
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
+import { diffTiptapContentLines, type TiptapDiffLine } from '../lib/tiptapLineDiff';
 import type { DocumentReviewCycleSnapshot, DocumentReviewCycleBlock } from '../../../types/documents';
 
-// ─── Diff utilities ───────────────────────────────────────────────────────────
-
-function extractBlockText(block: unknown): string {
-  if (!block || typeof block !== 'object') return '';
-  const b = block as Record<string, unknown>;
-  const content = Array.isArray(b.content) ? b.content : [];
-  const inline = content
-    .map((c: unknown) => {
-      if (!c || typeof c !== 'object') return '';
-      const item = c as Record<string, unknown>;
-      if (item.type === 'text') return String(item.text ?? '');
-      if (item.type === 'link') {
-        const lc = Array.isArray(item.content) ? item.content : [];
-        return lc.map((x: unknown) => String((x as Record<string, unknown>).text ?? '')).join('');
-      }
-      return '';
-    })
-    .join('');
-  const type = String(b.type ?? '');
-  const props = (b.props ?? {}) as Record<string, unknown>;
-  let prefix = '';
-  if (type === 'heading') prefix = '#'.repeat(Number(props.level ?? 1)) + ' ';
-  else if (type === 'bulletListItem') prefix = '• ';
-  else if (type === 'numberedListItem') prefix = '1. ';
-  return prefix + inline;
-}
-
-function normalizeText(s: string): string {
-  return s.trim().replace(/\s+/g, ' ');
-}
-
-function extractTextLines(content: unknown): string[] {
-  const blocks = normalizeBlockContentForEditor(content);
-  if (!Array.isArray(blocks)) return [];
-  const lines: string[] = [];
-  for (const block of blocks) {
-    const text = normalizeText(extractBlockText(block));
-    if (text) lines.push(text);
-    const b = block as Record<string, unknown>;
-    const children = Array.isArray(b.children) ? b.children : [];
-    for (const child of children) {
-      const ct = normalizeText(extractBlockText(child));
-      if (ct) lines.push('  ' + ct);
-    }
-  }
-  return lines;
-}
-
-type DiffLine = { type: 'removed' | 'added' | 'unchanged'; text: string };
-
-function computeLineDiff(original: string[], modified: string[]): DiffLine[] {
-  const m = original.length;
-  const n = modified.length;
-  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] =
-        original[i - 1] === modified[j - 1]
-          ? dp[i - 1][j - 1] + 1
-          : Math.max(dp[i - 1][j], dp[i][j - 1]);
-  const result: DiffLine[] = [];
-  let i = m;
-  let j = n;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && original[i - 1] === modified[j - 1]) {
-      result.unshift({ type: 'unchanged', text: original[i - 1] });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.unshift({ type: 'added', text: modified[j - 1] });
-      j--;
-    } else {
-      result.unshift({ type: 'removed', text: original[i - 1] });
-      i--;
-    }
-  }
-  return result;
-}
+type DiffLine = TiptapDiffLine;
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -136,20 +59,10 @@ export function DocumentBlockHistoryPanel({ blockId, blockNumber, history, onClo
         const prevBlock =
           i > 0 ? (history[i - 1].blocks.find((b) => b.document_block_id === blockId) ?? null) : null;
 
-        const mkDiff = (getCurrent: (b: DocumentReviewCycleBlock) => unknown, getPrev: (b: DocumentReviewCycleBlock) => unknown) => {
-          const cur = extractTextLines(getCurrent(block));
-          const prev = prevBlock ? extractTextLines(getPrev(prevBlock)) : [];
-          return prevBlock
-            ? computeLineDiff(prev, cur).filter((l) => l.type !== 'unchanged')
-            : cur.map((text) => ({ type: 'added' as const, text }));
-        };
-
-        const diffContent = mkDiff((b) => b.content, (b) => b.content);
-
-        /*const cur = extractTextLines(block.content);
-        const diff = prevBlock
-          ? computeLineDiff(extractTextLines(prevBlock.content), cur).filter((l) => l.type !== 'unchanged')
-          : cur.map((text) => ({ type: 'added' as const, text }));*/
+        const diffContent = diffTiptapContentLines(
+          prevBlock?.content ?? null,
+          block.content,
+        );
 
         if (diffContent.length === 0) return null;
         return { cycle: cycle.cycle, submitted_at: cycle.submitted_at, block, diffContent};

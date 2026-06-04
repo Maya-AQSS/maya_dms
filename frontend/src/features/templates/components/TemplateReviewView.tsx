@@ -7,6 +7,10 @@ import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
 import { visibilityLabel } from '../constants';
 import { BlockContentHtml } from './BlockContentHtml';
 import { normalizeBlockContentForEditor } from '../../documents/lib/normalizeBlockContent';
+import {
+  diffTiptapContentLines,
+  type TiptapDiffLine,
+} from '../../documents/lib/tiptapLineDiff';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
 import { SubmissionChangelogReadonly } from '../../../components/VersionChangelogModal';
@@ -30,84 +34,7 @@ type Props = { template: Template };
 
 type ActiveView = { blockId: string; mode: 'comments' | 'info' };
 
-// ─── Diff utilities (same logic as DocumentDiffPanel) ─────────────────────────
-
-function extractBlockText(block: unknown): string {
-  if (!block || typeof block !== 'object') return '';
-  const b = block as Record<string, unknown>;
-  const content = Array.isArray(b.content) ? b.content : [];
-  const inline = content
-    .map((c: unknown) => {
-      if (!c || typeof c !== 'object') return '';
-      const item = c as Record<string, unknown>;
-      if (item.type === 'text') return String(item.text ?? '');
-      if (item.type === 'link') {
-        const lc = Array.isArray(item.content) ? item.content : [];
-        return lc.map((x: unknown) => String((x as Record<string, unknown>).text ?? '')).join('');
-      }
-      return '';
-    })
-    .join('');
-  const type = String(b.type ?? '');
-  const props = (b.props ?? {}) as Record<string, unknown>;
-  let prefix = '';
-  if (type === 'heading') prefix = '#'.repeat(Number(props.level ?? 1)) + ' ';
-  else if (type === 'bulletListItem') prefix = '• ';
-  else if (type === 'numberedListItem') prefix = '1. ';
-  return prefix + inline;
-}
-
-function normalizeText(s: string): string {
-  return s.trim().replace(/\s+/g, ' ');
-}
-
-function extractTextLines(content: unknown): string[] {
-  const blocks = normalizeBlockContentForEditor(content);
-  if (!Array.isArray(blocks)) return [];
-  const lines: string[] = [];
-  for (const block of blocks) {
-    const text = normalizeText(extractBlockText(block));
-    if (text) lines.push(text);
-    const b = block as Record<string, unknown>;
-    const children = Array.isArray(b.children) ? b.children : [];
-    for (const child of children) {
-      const ct = normalizeText(extractBlockText(child));
-      if (ct) lines.push('  ' + ct);
-    }
-  }
-  return lines;
-}
-
-type DiffLine = { type: 'removed' | 'added' | 'unchanged'; text: string };
-
-function computeLineDiff(original: string[], modified: string[]): DiffLine[] {
-  const m = original.length;
-  const n = modified.length;
-  const dp = Array.from({ length: m + 1 }, () => new Array<number>(n + 1).fill(0));
-  for (let i = 1; i <= m; i++)
-    for (let j = 1; j <= n; j++)
-      dp[i][j] =
-        original[i - 1] === modified[j - 1]
-          ? dp[i - 1][j - 1] + 1
-          : Math.max(dp[i - 1][j], dp[i][j - 1]);
-  const result: DiffLine[] = [];
-  let i = m;
-  let j = n;
-  while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && original[i - 1] === modified[j - 1]) {
-      result.unshift({ type: 'unchanged', text: original[i - 1] });
-      i--;
-      j--;
-    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-      result.unshift({ type: 'added', text: modified[j - 1] });
-      j--;
-    } else {
-      result.unshift({ type: 'removed', text: original[i - 1] });
-      i--;
-    }
-  }
-  return result;
-}
+type DiffLine = TiptapDiffLine;
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
@@ -183,13 +110,11 @@ function TemplateBlockHistoryPanel({ blockId, blockNumber, history, onClose }: H
         if (!block) return null;
         const prevBlock = i > 0 ? (history[i - 1].blocks.find((b) => b.id === blockId) ?? null) : null;
 
-        const mkDiff = (getCurrent: (b: ReviewCycleBlock) => unknown, getPrev: (b: ReviewCycleBlock) => unknown) => {
-          const cur = extractTextLines(getCurrent(block));
-          const prev = prevBlock ? extractTextLines(getPrev(prevBlock)) : [];
-          return prevBlock
-            ? computeLineDiff(prev, cur).filter((l) => l.type !== 'unchanged')
-            : cur.map((text) => ({ type: 'added' as const, text }));
-        };
+        const mkDiff = (getCurrent: (b: ReviewCycleBlock) => unknown, getPrev: (b: ReviewCycleBlock) => unknown) =>
+          diffTiptapContentLines(
+            prevBlock ? getPrev(prevBlock) : null,
+            getCurrent(block),
+          );
 
         const diffContent = mkDiff((b) => b.default_content, (b) => b.default_content);
         const diffDescription = mkDiff((b) => b.description, (b) => b.description);
