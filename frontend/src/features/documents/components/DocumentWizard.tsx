@@ -75,7 +75,8 @@ import {
 import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
-import { getCommentsForBlock } from '../../../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
+import { markCommentAsReadInDocumentCache } from '../../comments/commentCache';
 import { uploadMedia } from '../../../api/media';
 
 const BlockNoteEditorPanel = lazy(() =>
@@ -355,6 +356,11 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
       ['documents', documentId, 'comments'],
       (current) => ({ data: (current?.data ?? []).filter(c => c.id !== commentId) }),
     );
+  }, [documentId, queryClient]);
+
+  const handleDocumentCommentMarkAsRead = useCallback(async (commentId: string) => {
+    if (!documentId) return;
+    await markCommentAsReadInDocumentCache(queryClient, documentId, commentId);
   }, [documentId, queryClient]);
 
   const refreshDetail = useCallback(async () => {
@@ -1875,9 +1881,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                           ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
                           : t('documents:wizard.viewMode.showComments', 'Comentarios')}
                       </span>
-                      {!showDocumentCommentPanel && getCommentsForBlock(activeBlock.document_block_id, reviewComments).length > 0 && (
+                      {!showDocumentCommentPanel && countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments) > 0 && (
                         <span className="ml-0.5 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none">
-                          {getCommentsForBlock(activeBlock.document_block_id, reviewComments).length}
+                          {countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments)}
                         </span>
                       )}
                     </button>
@@ -1928,7 +1934,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                         }}
                         openDescriptionBlockKey={descriptionBlockKey}
                         getCommentCount={(block) =>
-                          getCommentsForBlock(block.document_block_id, reviewComments).length
+                          countUnreadCommentsForBlock(block.document_block_id, reviewComments)
                         }
                       />
                     </Suspense>
@@ -2000,6 +2006,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                               canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                               onEditComment={handleDocumentCommentEdit}
                               onDeleteComment={handleDocumentCommentDelete}
+                              onMarkAsRead={handleDocumentCommentMarkAsRead}
                             />
                           )
                         )}
@@ -2240,6 +2247,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                 onEditComment={handleDocumentCommentEdit}
                 onDeleteComment={handleDocumentCommentDelete}
+                onMarkAsRead={handleDocumentCommentMarkAsRead}
               />
             </div>
           )}

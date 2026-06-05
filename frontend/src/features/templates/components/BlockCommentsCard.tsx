@@ -17,6 +17,7 @@ export type BlockComment = {
   updated_at?: string | null;
   is_edited?: boolean;
   is_deleted?: boolean;
+  is_read_by_me?: boolean;
   deleted_at?: string | null;
   deleted_by_name?: string | null;
   parent_id?: string | null;
@@ -136,6 +137,7 @@ function CommentItem({
   canDelete = false,
   onEditComment,
   onDeleteComment,
+  onMarkAsRead,
 }: {
   comment: BlockComment;
   mode: CommentMode;
@@ -147,6 +149,7 @@ function CommentItem({
   canDelete?: boolean;
   onEditComment?: (commentId: string, newBody: string) => Promise<void>;
   onDeleteComment?: (commentId: string) => Promise<void>;
+  onMarkAsRead?: (commentId: string) => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editBody, setEditBody] = useState(comment.body);
@@ -154,6 +157,9 @@ function CommentItem({
   const [editError, setEditError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [markReadLoading, setMarkReadLoading] = useState(false);
+
+  const isUnread = comment.is_read_by_me !== true;
 
   useEffect(() => {
     if (!isEditing) setEditBody(comment.body);
@@ -195,6 +201,16 @@ function CommentItem({
     } finally {
       setDeleteLoading(false);
       setConfirmDelete(false);
+    }
+  };
+
+  const handleMarkAsRead = async () => {
+    if (!onMarkAsRead || !isUnread) return;
+    setMarkReadLoading(true);
+    try {
+      await onMarkAsRead(comment.id);
+    } finally {
+      setMarkReadLoading(false);
     }
   };
 
@@ -248,13 +264,22 @@ function CommentItem({
         </div>
       ) : (
         /* Bubble */
-        <div
-          className={`relative text-sm leading-relaxed p-4 rounded-xl border shadow-sm break-words whitespace-pre-wrap transition-all duration-500 ${
-            isHighlighted
-              ? 'bg-odoo-purple/10 dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary'
-              : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
-          }`}
-        >
+        <div className={`flex ${isUnread ? '' : 'opacity-80'}`}>
+          {isUnread && (
+            <div
+              className="w-1 bg-odoo-purple rounded-l-xl shrink-0 self-stretch"
+              aria-hidden="true"
+            />
+          )}
+          <div
+            className={`relative flex-1 min-w-0 text-sm leading-relaxed p-4 border shadow-sm break-words whitespace-pre-wrap transition-all duration-500 ${
+              isUnread ? 'rounded-r-xl rounded-l-none' : 'rounded-xl'
+            } ${
+              isHighlighted
+                ? 'bg-odoo-purple/10 dark:bg-odoo-purple/30 border-odoo-purple ring-2 ring-odoo-purple/50 text-text-primary dark:text-text-dark-primary'
+                : 'bg-ui-body/30 dark:bg-ui-dark-bg border-ui-border/50 text-text-primary dark:text-text-dark-primary'
+            }`}
+          >
           {parentComment && onScrollToComment && (
             <QuotedReply
               parent={parentComment}
@@ -264,8 +289,25 @@ function CommentItem({
           {comment.body}
 
           {/* Hover action pill */}
-          {(canEdit || canDelete) && !confirmDelete && (
+          {(canEdit || canDelete || (isUnread && onMarkAsRead)) && !confirmDelete && (
             <span className="absolute -top-3 right-2 opacity-0 group-hover/comment:opacity-100 transition-opacity duration-150 inline-flex items-center gap-0.5 bg-white dark:bg-ui-dark-card border border-ui-border dark:border-ui-dark-border rounded-full shadow-md px-1 py-0.5 z-10">
+              {isUnread && onMarkAsRead && (
+                <button
+                  type="button"
+                  onClick={handleMarkAsRead}
+                  disabled={markReadLoading}
+                  aria-label="Marcar como leído"
+                  title="Marcar como leído"
+                  className="p-1 rounded-full text-text-muted hover:text-odoo-purple hover:bg-odoo-purple/10 transition-colors disabled:opacity-40"
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </button>
+              )}
+              {isUnread && onMarkAsRead && (canEdit || canDelete) && (
+                <span className="w-px h-3 bg-ui-border dark:bg-ui-dark-border" />
+              )}
               {canEdit && (
                 <button
                   type="button"
@@ -295,6 +337,7 @@ function CommentItem({
               )}
             </span>
           )}
+          </div>
         </div>
       )}
 
@@ -357,6 +400,8 @@ type BlockCommentsCardProps = {
   canDeleteAnyComment?: boolean;
   onEditComment?: (commentId: string, newBody: string) => Promise<void>;
   onDeleteComment?: (commentId: string) => Promise<void>;
+  onMarkAsRead?: (commentId: string) => Promise<void>;
+  autoMarkUnreadOnOpen?: boolean;
 };
 
 export function BlockCommentsCard({
@@ -374,6 +419,8 @@ export function BlockCommentsCard({
   canDeleteAnyComment = false,
   onEditComment,
   onDeleteComment,
+  onMarkAsRead,
+  autoMarkUnreadOnOpen = true,
 }: BlockCommentsCardProps) {
   const { t } = useTranslation(['templates', 'documents']);
   const [replyingTo, setReplyingTo] = useState<{ id: string; name: string } | null>(null);
@@ -389,6 +436,27 @@ export function BlockCommentsCard({
 
   const activeComments = sortedComments.filter(c => !c.is_deleted);
   const deletedComments = sortedComments.filter(c => c.is_deleted);
+
+  const unreadSignature = activeComments
+    .filter((c) => c.is_read_by_me !== true)
+    .map((c) => c.id)
+    .sort()
+    .join('|');
+
+  useEffect(() => {
+    if (!autoMarkUnreadOnOpen || !onMarkAsRead || !unreadSignature) return;
+
+    const unreadIds = unreadSignature.split('|');
+    void (async () => {
+      for (const commentId of unreadIds) {
+        try {
+          await onMarkAsRead(commentId);
+        } catch {
+          break;
+        }
+      }
+    })();
+  }, [autoMarkUnreadOnOpen, blockSortOrder, onMarkAsRead, unreadSignature]);
 
   const canEditComment = (comment: BlockComment) =>
     !commentingClosed && canEditOwnBlockComment(currentUserId, comment.author_id);
@@ -469,6 +537,7 @@ export function BlockCommentsCard({
                 canDelete={canDeleteComment(comment)}
                 onEditComment={onEditComment}
                 onDeleteComment={onDeleteComment}
+                onMarkAsRead={onMarkAsRead}
               />
             );
           })}

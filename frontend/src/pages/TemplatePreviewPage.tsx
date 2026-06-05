@@ -34,7 +34,8 @@ import { PaperPreviewLayout } from '../features/documents/components/PaperPrevie
 import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
-import { getCommentsForBlock } from '../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock } from '../utils/blockComments';
+import { markCommentAsRead } from '../api/comments';
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 type ReviewComment = BlockComment;
@@ -247,6 +248,11 @@ export function TemplatePreviewPage() {
   const handleDeleteComment = async (commentId: string) => {
     await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
     setReviewComments(prev => prev.filter(c => c.id !== commentId));
+  };
+
+  const handleMarkCommentAsRead = async (commentId: string) => {
+    const updated = await markCommentAsRead(commentId);
+    setReviewComments(prev => prev.map(c => (c.id === commentId ? updated : c)));
   };
 
 
@@ -618,6 +624,7 @@ export function TemplatePreviewPage() {
                 canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                 onEditComment={handleEditComment}
                 onDeleteComment={handleDeleteComment}
+                onMarkAsRead={handleMarkCommentAsRead}
               />
             );
           }
@@ -673,7 +680,7 @@ export function TemplatePreviewPage() {
                   const isSelected = activeView?.blockId === block.id;
                   const infoActive = isSelected && activeView?.mode === 'info';
                   const commentsActive = isSelected && activeView?.mode === 'comments';
-                  const totalComments = getCommentsForBlock(block.id, reviewComments);
+                  const unreadComments = countUnreadCommentsForBlock(block.id, reviewComments);
 
                   return (
                     <section
@@ -724,9 +731,9 @@ export function TemplatePreviewPage() {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                               </svg>
                               <span>Mensajes</span>
-                              {totalComments.length > 0 && (
+                              {unreadComments > 0 && (
                                 <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
-                                  {totalComments.length}
+                                  {unreadComments}
                                 </span>
                               )}
                             </button>

@@ -45,7 +45,8 @@ import { DocumentBlockHistoryPanel } from '../features/documents/components/Docu
 import { apiFetchJson, ApiHttpError } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
-import { getCommentsForBlock } from '../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock } from '../utils/blockComments';
+import { markCommentAsReadInDocumentCache } from '../features/comments/commentCache';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
 // Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
@@ -482,6 +483,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     if (!documentId) return;
     await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
     removeCommentFromCache(documentId, commentId);
+  };
+
+  const handleMarkCommentAsRead = async (commentId: string) => {
+    if (!documentId) return;
+    await markCommentAsReadInDocumentCache(queryClient, documentId, commentId);
   };
 
   const handleValidateSendMessage = async (parentId: string | null, body: string) => {
@@ -977,6 +983,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                         onEditComment={handleEditComment}
                         onDeleteComment={handleDeleteComment}
+                        onMarkAsRead={handleMarkCommentAsRead}
                       />
                     ) : (
                       <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -1161,9 +1168,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                               </svg>
                               <span>Mensajes</span>
-                              {getCommentsForBlock(block.document_block_id, validateComments).length > 0 && (
+                              {countUnreadCommentsForBlock(block.document_block_id, validateComments) > 0 && (
                                 <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
-                                  {getCommentsForBlock(block.document_block_id, validateComments).length}
+                                  {countUnreadCommentsForBlock(block.document_block_id, validateComments)}
                                 </span>
                               )}
                             </button>
@@ -1269,6 +1276,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                 onEditComment={handleEditComment}
                 onDeleteComment={handleDeleteComment}
+                onMarkAsRead={handleMarkCommentAsRead}
               />
             );
           }
@@ -1405,9 +1413,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                               <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                             </svg>
                             <span>Mensajes</span>
-                            {getCommentsForBlock(block.document_block_id, reviewComments).length > 0 && (
+                            {countUnreadCommentsForBlock(block.document_block_id, reviewComments) > 0 && (
                               <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
-                                {getCommentsForBlock(block.document_block_id, reviewComments).length}
+                                {countUnreadCommentsForBlock(block.document_block_id, reviewComments)}
                               </span>
                             )}
                           </button>}

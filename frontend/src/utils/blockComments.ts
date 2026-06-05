@@ -33,3 +33,13 @@ export function getCommentsForBlock(
     return true;
   });
 }
+
+/** Active comments in a block thread that the current user has not read yet. */
+export function countUnreadCommentsForBlock(
+  blockId: string | null,
+  allComments: BlockComment[],
+): number {
+  return getCommentsForBlock(blockId, allComments).filter(
+    (c) => !c.is_deleted && c.is_read_by_me !== true,
+  ).length;
+}

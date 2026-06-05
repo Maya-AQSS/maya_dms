@@ -33,7 +33,8 @@ import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-reac
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
-import { getCommentsForBlock } from '../../../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
+import { markCommentAsReadInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
 import { useQueryClient } from '@tanstack/react-query';
@@ -718,6 +719,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     );
   }, [queryClient, template.id]);
 
+  const handleMarkCommentAsRead = useCallback(async (commentId: string) => {
+    await markCommentAsReadInTemplateCache(queryClient, template.id, commentId);
+  }, [queryClient, template.id]);
+
   const renderSaveStatus = () => {
     if (saveStatus === 'saving') return <span className="text-xs text-text-muted italic">Guardando…</span>;
     if (saveStatus === 'saved') return <span className="text-xs text-success-dark flex items-center gap-1">✓ Guardado</span>;
@@ -850,7 +855,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                 </div>
                 <div className="flex items-center flex-wrap gap-2 sm:shrink-0">
                   {!showCommentPanel && selectedBlock?.title && (() => {
-                    const blockCommentsCount = getCommentsForBlock(activeSingleId, reviewComments).length;
+                    const blockCommentsCount = countUnreadCommentsForBlock(activeSingleId, reviewComments);
                     return (
                       <Button
                         variant="outline"
@@ -1098,6 +1103,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
             onEditComment={handleEditComment}
             onDeleteComment={handleDeleteComment}
+            onMarkAsRead={handleMarkCommentAsRead}
           />
         </div>
       )}

@@ -28,7 +28,8 @@ import {
 } from '../hooks/useTemplateComments';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
-import { getCommentsForBlock } from '../../../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
+import { markCommentAsReadInTemplateCache } from '../../comments/commentCache';
 
 type Props = { template: Template };
 
@@ -345,6 +346,10 @@ export function TemplateReviewView({ template }: Props) {
     );
   };
 
+  const handleMarkCommentAsRead = async (commentId: string) => {
+    await markCommentAsReadInTemplateCache(queryClient, template.id, commentId);
+  };
+
   const openView = (blockId: string, mode: 'comments' | 'info') => {
     setDiffBlockId(null);
     setActiveView({ blockId, mode });
@@ -482,6 +487,7 @@ export function TemplateReviewView({ template }: Props) {
                   canDeleteAnyComment={canDeleteBlockComment(hasPermission)}
                   onEditComment={handleEditComment}
                   onDeleteComment={handleDeleteComment}
+                  onMarkAsRead={handleMarkCommentAsRead}
                 />
               ) : (
                 <div className="bg-ui-card dark:bg-ui-dark-card shadow-xl rounded-xl flex flex-col overflow-hidden h-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -583,9 +589,9 @@ export function TemplateReviewView({ template }: Props) {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
                       </svg>
                       <span>Mensajes</span>
-                      {getCommentsForBlock(block.id, comments).length > 0 && (
+                      {countUnreadCommentsForBlock(block.id, comments) > 0 && (
                         <span className="ml-1 bg-odoo-purple text-text-inverse px-1.5 py-0.5 rounded-full text-2xs leading-none font-bold">
-                          {getCommentsForBlock(block.id, comments).length}
+                          {countUnreadCommentsForBlock(block.id, comments)}
                         </span>
                       )}
                     </button>
