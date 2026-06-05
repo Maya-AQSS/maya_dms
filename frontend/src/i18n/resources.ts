@@ -1,4 +1,4 @@
-import { commonResources, deepMerge } from '@ceedcv-maya/shared-i18n-react';
+import { commonResources, notificationResources, deepMerge } from '@ceedcv-maya/shared-i18n-react';
 
 import esAuth from './locales/es/auth.json';
 import esCommon from './locales/es/common.json';
@@ -26,7 +26,7 @@ export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
 
 export const DEFAULT_LOCALE: SupportedLocale = 'es';
 
-export const NAMESPACES = ['auth', 'common', 'nav', 'themes', 'documents', 'templates'] as const;
+export const NAMESPACES = ['auth', 'common', 'nav', 'themes', 'documents', 'templates', 'notifications'] as const;
 export type Namespace = (typeof NAMESPACES)[number];
 
 // Cada namespace fusiona el canon shared (actions, status, pagination,
@@ -47,6 +47,7 @@ export const resources = {
     themes: deepMerge(baseEs, esThemes),
     documents: deepMerge(baseEs, esDocuments),
     templates: deepMerge(baseEs, esTemplates),
+    notifications: notificationResources.es.notifications,
   },
   va: {
     auth: deepMerge(baseVa, vaAuth),
@@ -55,6 +56,7 @@ export const resources = {
     themes: deepMerge(baseVa, vaThemes),
     documents: deepMerge(baseVa, vaDocuments),
     templates: deepMerge(baseVa, vaTemplates),
+    notifications: notificationResources.va.notifications,
   },
   en: {
     auth: deepMerge(baseEn, enAuth),
@@ -63,5 +65,6 @@ export const resources = {
     themes: deepMerge(baseEn, enThemes),
     documents: deepMerge(baseEn, enDocuments),
     templates: deepMerge(baseEn, enTemplates),
+    notifications: notificationResources.en.notifications,
   },
 } as const;
