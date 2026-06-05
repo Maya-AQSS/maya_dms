@@ -223,6 +223,18 @@ final class TiptapContentSemantics
             return $inner === [] || self::everyBlockEmpty($inner);
         }
 
+        if ($type === 'text') {
+            $text = is_string($node['text'] ?? null) ? $node['text'] : '';
+            $marks = $node['marks'] ?? null;
+            $hasMarks = is_array($marks) && $marks !== [];
+
+            return trim(str_replace("\u{00A0}", ' ', $text)) === '' && ! $hasMarks;
+        }
+
+        if ($type === 'hardBreak') {
+            return true;
+        }
+
         return ! self::blockChildrenHaveMeaningfulContent($node['content'] ?? []);
     }
 
