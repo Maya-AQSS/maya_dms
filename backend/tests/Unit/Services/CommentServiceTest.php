@@ -10,6 +10,7 @@ use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Repositories\Contracts\CommentReadRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Services\CommentService;
 use Illuminate\Validation\ValidationException;
@@ -60,9 +61,11 @@ final class CommentServiceTest extends TestCase
         return $c;
     }
 
-    private function makeService(CommentRepositoryInterface $repo): CommentService
+    private function makeService(CommentRepositoryInterface $repo, ?CommentReadRepositoryInterface $readRepo = null): CommentService
     {
-        return new CommentService($repo);
+        $readRepo ??= Mockery::mock(CommentReadRepositoryInterface::class);
+
+        return new CommentService($repo, $readRepo);
     }
 
     // ─── findOrFail / findModelOrFail ────────────────────────────────────────

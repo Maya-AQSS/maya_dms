@@ -12,7 +12,7 @@ interface CommentRepositoryInterface
     /**
      * Localiza un comentario por su ID o lanza ModelNotFoundException.
      */
-    public function findOrFail(string $id): Comment;
+    public function findOrFail(string $id, ?string $readerUserId = null): Comment;
 
     /**
      * Lista comentarios paginados por recurso comentable.
@@ -22,6 +22,7 @@ interface CommentRepositoryInterface
         string $commentableId,
         int $commentableVersion,
         int $perPage,
+        ?string $readerUserId = null,
     ): LengthAwarePaginator;
 
     /**

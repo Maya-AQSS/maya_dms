@@ -28,6 +28,7 @@ final readonly class CommentDto
         public ?string $updatedAt,
         public bool $isEdited,
         public bool $isDeleted,
+        public bool $isReadByMe,
         public ?string $deletedAt,
         public ?string $deletedByName,
         // Source model retained for policy gates that need an Eloquent instance.
@@ -59,6 +60,7 @@ final readonly class CommentDto
             updatedAt: $m->updated_at?->toIso8601String(),
             isEdited: self::commentWasEdited($m),
             isDeleted: $m->trashed(),
+            isReadByMe: self::commentIsReadByMe($m),
             deletedAt: $m->deleted_at?->toIso8601String(),
             deletedByName: $m->deleted_by_name,
             source: $m,
@@ -73,6 +75,15 @@ final readonly class CommentDto
 
         if ($m->relationLoaded('edits')) {
             return $m->edits->isNotEmpty();
+        }
+
+        return false;
+    }
+
+    private static function commentIsReadByMe(Comment $m): bool
+    {
+        if ($m->offsetExists('is_read_by_me')) {
+            return filter_var($m->getAttribute('is_read_by_me'), FILTER_VALIDATE_BOOLEAN);
         }
 
         return false;

@@ -10,6 +10,7 @@ use App\Models\Document;
 use App\Models\DocumentBlock;
 use App\Models\Template;
 use App\Models\TemplateBlock;
+use App\Repositories\Contracts\CommentReadRepositoryInterface;
 use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Services\Contracts\CommentServiceInterface;
 use Illuminate\Validation\ValidationException;
@@ -19,19 +20,20 @@ class CommentService implements CommentServiceInterface
 {
     public function __construct(
         private readonly CommentRepositoryInterface $commentRepository,
+        private readonly CommentReadRepositoryInterface $commentReadRepository,
     ) {}
 
     /**
      * @internal Used by controllers for policy gates only — do not use in service-to-service calls.
      */
-    public function findModelOrFail(string $id): Comment
+    public function findModelOrFail(string $id, ?string $readerUserId = null): Comment
     {
-        return $this->commentRepository->findOrFail($id);
+        return $this->commentRepository->findOrFail($id, $readerUserId);
     }
 
-    public function findOrFail(string $id): CommentDto
+    public function findOrFail(string $id, ?string $readerUserId = null): CommentDto
     {
-        return CommentDto::fromModel($this->commentRepository->findOrFail($id));
+        return CommentDto::fromModel($this->commentRepository->findOrFail($id, $readerUserId));
     }
 
     /**
@@ -42,12 +44,14 @@ class CommentService implements CommentServiceInterface
         string $commentableId,
         int $commentableVersion,
         int $perPage,
+        ?string $readerUserId = null,
     ): PaginatedDto {
         $page = $this->commentRepository->listForResource(
             $commentableType,
             $commentableId,
             $commentableVersion,
             $perPage,
+            $readerUserId,
         );
 
         return PaginatedDto::fromPaginator(
@@ -100,22 +104,44 @@ class CommentService implements CommentServiceInterface
             'body' => $body,
         ]);
 
-        $comment->loadMissing('author');
-
-        return CommentDto::fromModel($comment);
+        return $this->findOrFail((string) $comment->id, $authorId);
     }
 
-    public function update(string $commentId, string $body, string $editedBy): CommentDto
+    public function update(string $commentId, string $body, string $editedBy, ?string $readerUserId = null): CommentDto
     {
-        $commentModel = $this->commentRepository->update($commentId, $body, $editedBy);
-        $commentModel->loadMissing('author');
+        $this->commentRepository->update($commentId, $body, $editedBy);
 
-        return CommentDto::fromModel($commentModel);
+        return $this->findOrFail($commentId, $readerUserId);
     }
 
     public function delete(string $commentId, string $deletedBy, string $deletedByName): void
     {
         $this->commentRepository->delete($commentId, $deletedBy, $deletedByName);
+    }
+
+    public function markAsRead(string $commentId, string $userId): CommentDto
+    {
+        $this->commentReadRepository->markAsRead($commentId, $userId);
+
+        return $this->findOrFail($commentId, $userId);
+    }
+
+    public function markBlockAsRead(
+        string $commentableType,
+        string $commentableId,
+        int $commentableVersion,
+        string $blockableType,
+        string $blockableId,
+        string $userId,
+    ): int {
+        return $this->commentReadRepository->markBlockAsRead(
+            $userId,
+            $commentableType,
+            $commentableId,
+            $commentableVersion,
+            $blockableType,
+            $blockableId,
+        );
     }
 
     private function assertBlockBelongsToResource(

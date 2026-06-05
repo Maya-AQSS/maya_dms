@@ -14,6 +14,7 @@ use App\Repositories\Contracts\CommentRepositoryInterface;
 use App\Support\DocumentHeadSnapshot;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
 class CommentRepository implements CommentRepositoryInterface
@@ -21,9 +22,15 @@ class CommentRepository implements CommentRepositoryInterface
     /**
      * Localiza un comentario por su ID o lanza ModelNotFoundException.
      */
-    public function findOrFail(string $id): Comment
+    public function findOrFail(string $id, ?string $readerUserId = null): Comment
     {
-        return Comment::query()->withCount('edits')->findOrFail($id);
+        $query = Comment::query()
+            ->select('comments.*')
+            ->with('author:id,name')
+            ->withCount('edits');
+        $this->applyReaderState($query, $readerUserId);
+
+        return $query->findOrFail($id);
     }
 
     /**
@@ -34,16 +41,20 @@ class CommentRepository implements CommentRepositoryInterface
         string $commentableId,
         int $commentableVersion,
         int $perPage,
+        ?string $readerUserId = null,
     ): LengthAwarePaginator {
-        return Comment::withTrashed()
+        $query = Comment::withTrashed()
             ->select('comments.*')
             ->where('commentable_type', $commentableType)
             ->where('commentable_id', $commentableId)
             ->where('commentable_version', $commentableVersion)
             ->with('author:id,name')
             ->withCount('edits')
-            ->orderBy('created_at', 'asc')
-            ->paginate($perPage);
+            ->orderBy('created_at', 'asc');
+
+        $this->applyReaderState($query, $readerUserId);
+
+        return $query->paginate($perPage);
     }
 
     /**
@@ -158,5 +169,25 @@ class CommentRepository implements CommentRepositoryInterface
             ->where('id', $blockId)
             ->where('document_id', $documentId)
             ->exists();
+    }
+
+    /**
+     * Enriquece la consulta con `is_read_by_me` para el usuario lector.
+     */
+    private function applyReaderState(Builder $query, ?string $readerUserId): void
+    {
+        if ($readerUserId === null || $readerUserId === '') {
+            $query->selectRaw('false AS is_read_by_me');
+
+            return;
+        }
+
+        $query->leftJoin('comment_reads', function ($join) use ($readerUserId): void {
+            $join->on('comment_reads.comment_id', '=', 'comments.id')
+                ->where('comment_reads.user_id', '=', $readerUserId);
+        })->selectRaw(
+            'CASE WHEN comment_reads.comment_id IS NOT NULL OR comments.author_id = ? THEN true ELSE false END AS is_read_by_me',
+            [$readerUserId],
+        );
     }
 }

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\DTOs\Comments\CommentableResource;
-use App\DTOs\Comments\CommentDto;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Comments\StoreCommentRequest;
@@ -54,6 +53,7 @@ class CommentController extends Controller
             (string) $resource->model->id,
             $resource->version,
             $perPage,
+            (string) Auth::id(),
         );
 
         return response()->json([
@@ -97,35 +97,46 @@ class CommentController extends Controller
 
     public function show(string $comment): JsonResponse
     {
-        // findModelOrFail: authorizeCommentAccess pasa el Model a la policy y
-        // setea la relación commentable; ambos requieren Model Eloquent.
-        $commentModel = $this->commentService->findModelOrFail($comment);
-        $this->authorizeCommentAccess($commentModel, 'view');
+        $readerUserId = (string) Auth::id();
+        $commentDto = $this->commentService->findOrFail($comment, $readerUserId);
+        $this->authorizeCommentAccess($commentDto->source, 'view');
 
-        return (new CommentResource(CommentDto::fromModel($commentModel)))->response();
+        return (new CommentResource($commentDto))->response();
     }
 
     public function update(UpdateCommentRequest $request, string $comment): JsonResponse
     {
-        $commentModel = $this->commentService->findModelOrFail($comment);
-        $this->authorizeCommentAccess($commentModel, 'view');
-        $this->authorize('update', $commentModel);
+        $readerUserId = (string) Auth::id();
+        $commentDto = $this->commentService->findOrFail($comment, $readerUserId);
+        $this->authorizeCommentAccess($commentDto->source, 'view');
+        $this->authorize('update', $commentDto->source);
 
         $commentDto = $this->commentService->update(
             $comment,
             $request->commentBody(),
-            (string) Auth::id(),
+            $readerUserId,
+            $readerUserId,
         );
+
+        return (new CommentResource($commentDto))->response();
+    }
+
+    public function markRead(string $comment): JsonResponse
+    {
+        $readerUserId = (string) Auth::id();
+        $commentDto = $this->commentService->findOrFail($comment, $readerUserId);
+        $this->authorizeCommentAccess($commentDto->source, 'view');
+
+        $commentDto = $this->commentService->markAsRead($comment, $readerUserId);
 
         return (new CommentResource($commentDto))->response();
     }
 
     public function destroy(string $comment): JsonResponse
     {
-        // findModelOrFail: authorize('delete', $model) requiere Model Eloquent.
-        $commentModel = $this->commentService->findModelOrFail($comment);
-        $this->authorizeCommentAccess($commentModel, 'view');
-        $this->authorize('delete', $commentModel);
+        $commentDto = $this->commentService->findOrFail($comment);
+        $this->authorizeCommentAccess($commentDto->source, 'view');
+        $this->authorize('delete', $commentDto->source);
 
         $this->commentService->delete($comment, (string) Auth::id(), Auth::user()?->name ?? '');
 

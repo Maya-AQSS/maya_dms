@@ -218,6 +218,8 @@ Route::prefix('v1')->group(function () {
             ->shallow()
             ->whereUuid('template')
             ->whereUuid('comment');
+        Route::post('comments/{comment}/read', [CommentController::class, 'markRead'])
+            ->whereUuid('comment');
 
         // Anchored comments — polymorphic on {resource_type}/{resource_id}.
         // Authorization is enforced inside the controller against the
