@@ -159,4 +159,9 @@ class Comment extends Model
     {
         return $this->hasMany(CommentEdit::class);
     }
+
+    public function reads(): HasMany
+    {
+        return $this->hasMany(CommentRead::class);
+    }
 }
