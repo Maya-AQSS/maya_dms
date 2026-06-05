@@ -57,11 +57,24 @@ final readonly class CommentDto
             resolvedAt: $m->resolved_at?->toIso8601String(),
             createdAt: $m->created_at?->toIso8601String(),
             updatedAt: $m->updated_at?->toIso8601String(),
-            isEdited: $m->updated_at !== null,
+            isEdited: self::commentWasEdited($m),
             isDeleted: $m->trashed(),
             deletedAt: $m->deleted_at?->toIso8601String(),
             deletedByName: $m->deleted_by_name,
             source: $m,
         );
+    }
+
+    private static function commentWasEdited(Comment $m): bool
+    {
+        if ($m->offsetExists('edits_count')) {
+            return (int) $m->edits_count > 0;
+        }
+
+        if ($m->relationLoaded('edits')) {
+            return $m->edits->isNotEmpty();
+        }
+
+        return false;
     }
 }

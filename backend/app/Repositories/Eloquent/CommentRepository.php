@@ -23,7 +23,7 @@ class CommentRepository implements CommentRepositoryInterface
      */
     public function findOrFail(string $id): Comment
     {
-        return Comment::findOrFail($id);
+        return Comment::query()->withCount('edits')->findOrFail($id);
     }
 
     /**
@@ -41,6 +41,7 @@ class CommentRepository implements CommentRepositoryInterface
             ->where('commentable_id', $commentableId)
             ->where('commentable_version', $commentableVersion)
             ->with('author:id,name')
+            ->withCount('edits')
             ->orderBy('created_at', 'asc')
             ->paginate($perPage);
     }
@@ -69,7 +70,7 @@ class CommentRepository implements CommentRepositoryInterface
 
         $comment->update(['body' => $newBody]);
 
-        return $comment;
+        return $comment->loadCount('edits');
     }
 
     /**
