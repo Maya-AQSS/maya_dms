@@ -12,6 +12,7 @@ use App\Http\Requests\Documents\DocumentCreateFromModuleRequest;
 use App\Http\Requests\Documents\DocumentCreationOptionsRequest;
 use App\Http\Resources\DocumentCreateFromModuleResource;
 use App\Http\Resources\DocumentCreationOptionsResource;
+use App\Http\Resources\DocumentMigrationPayloadResource;
 use App\Http\Resources\DocumentResource;
 use App\Http\Resources\DocumentTemplateVersionStatusResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
@@ -100,5 +101,23 @@ class DocumentOptionsController extends Controller
         $statusData = $this->documentService->templateVersionStatus($document->id);
 
         return (new DocumentTemplateVersionStatusResource($statusData))->response();
+    }
+
+    /**
+     * GET /api/v1/documents/{document}/migration-payload
+     *
+     * Payload del paso de migración: bloques de la versión nueva de plantilla
+     * comparados con la versión anclada al documento origen, con el contenido
+     * real del origen. Requiere que exista una versión más reciente.
+     */
+    public function migrationPayload(Request $request, string $id): JsonResponse
+    {
+        $document = $this->documentService->findModelOrFail($id);
+        $this->authorize('view', $document);
+        $this->assertOptionalProcessContextMatches((string) $document->process_id);
+
+        $payload = $this->documentService->migrationPayload($document->id);
+
+        return (new DocumentMigrationPayloadResource($payload))->response();
     }
 }

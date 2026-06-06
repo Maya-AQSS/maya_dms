@@ -137,6 +137,8 @@ Route::prefix('v1')->group(function () {
         Route::post('documents/create-from-module', [DocumentOptionsController::class, 'createFromModule']);
         Route::get('documents/{document}/template-version-status', [DocumentOptionsController::class, 'templateVersionStatus'])
             ->whereUuid('document');
+        Route::get('documents/{document}/migration-payload', [DocumentOptionsController::class, 'migrationPayload'])
+            ->whereUuid('document');
 
         // Documentos — CRUD (DocumentController)
         Route::get('documents', [DocumentController::class, 'index']);

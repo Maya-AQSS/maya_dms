@@ -12,6 +12,7 @@ import {
   rejectDocumentReview,
   startDocumentNewVersion,
   cloneDocument,
+  fetchTemplateVersionStatus,
   discardDocumentWorkingVersion,
   type DocumentReview,
 } from '../api/documents';
@@ -608,6 +609,23 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setActionLoading(true);
     setActionError(null);
     try {
+      // Si la plantilla tiene una versión más nueva, continuar pasa por el wizard
+      // con un paso de migración; si no, clon directo (camino rápido).
+      let hasUpdate = false;
+      try {
+        const status = await fetchTemplateVersionStatus(documentId);
+        hasUpdate = status.has_update === true;
+      } catch {
+        hasUpdate = false;
+      }
+
+      if (hasUpdate && detail?.template_id) {
+        navigate(`/documentos/nuevo/${detail.template_id}/wizard`, {
+          state: { sourceDocumentId: documentId },
+        });
+        return;
+      }
+
       const cloned = await cloneDocument(documentId);
       navigate(`/documents/${cloned.id}/editor`);
     } catch (e) {
@@ -853,14 +871,19 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     </>
   ) : null;
 
+  // Subtítulo del header: plantilla con su versión de creación + proceso.
+  const headerSubtitle = detail ? (() => {
+    const parts: string[] = [];
+    if (detail.template_name) {
+      const v = detail.template_version_number ? ` · v${detail.template_version_number}` : '';
+      parts.push(`Plantilla: ${detail.template_name}${v}`);
+    }
+    if (processLabel) parts.push(processLabel);
+    return parts.length > 0 ? parts.join(' · ') : null;
+  })() : null;
+
   const headerMetaInfo = detail ? (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
-      {processLabel ? (
-        <>
-          {processLabel}
-          {' · '}
-        </>
-      ) : null}
       {(versionSnapshot?.ownerName ?? versionSnapshot?.authorName ?? detail.owner_name) ?? 'Autor desconocido'}
       {' · '}
       {detail.visibility_level ? visibilityLabel(detail.visibility_level) : (detail.is_shared_with_me ? 'Compartida' : 'Personal')}
@@ -900,18 +923,15 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       <>
         <PaperPreviewLayout
           title={t('validateTitle')}
+          subtitle={headerSubtitle}
           onBack={handleBack}
           backLabel="Volver"
+          viewMode={viewMode}
           metaInfo={
             <div className="flex flex-col items-center">
               <p className="text-xs text-text-muted uppercase tracking-widest font-black truncate max-w-[320px]">
                 {detail?.title ?? 'Documento'}
               </p>
-              {processLabel && (
-                <p className="text-2xs text-text-muted mt-0.5 truncate max-w-[420px]">
-                  {processLabel}
-                </p>
-              )}
             </div>
           }
           actions={
@@ -1238,6 +1258,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     <>
       <PaperPreviewLayout
         title={previewTitle}
+        subtitle={headerSubtitle}
         onBack={handleBack}
         backLabel={backLabel}
         metaInfo={headerMetaInfo}

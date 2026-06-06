@@ -4,7 +4,7 @@ import type { DocumentReview } from '../../../api/documents';
 import type { Template } from '../../../types/templates';
 import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 
-export type Step = 'properties' | 'blocks' | 'summary';
+export type Step = 'properties' | 'migration' | 'blocks' | 'summary';
 export type SummaryConfirmAction = 'save' | 'submit' | null;
 export type BlockViewTab = 'content' | 'description';
 export type ReviewModeView = 'sequential' | 'parallel';

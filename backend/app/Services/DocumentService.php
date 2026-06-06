@@ -10,6 +10,7 @@ use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
+use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Document;
@@ -55,6 +56,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly TeamReadRepositoryInterface $teamReadRepository,
         private readonly NotificationPublisher $notificationPublisher,
         private readonly DocumentReviewModeResolver $documentReviewModeResolver,
+        private readonly DocumentMigrationPayloadResolver $migrationPayloadResolver,
     ) {}
 
     /**
@@ -125,15 +127,25 @@ class DocumentService implements DocumentServiceInterface
             ]);
         }
 
+        $migrated = $dto->migratedBlockContent ?? [];
+
         $blockRows = collect($snapshot)
             ->sortBy(fn ($b) => $b['sort_order'] ?? 0)
-            ->map(function (array $b): array {
+            ->map(function (array $b) use ($migrated): array {
                 $state = (string) ($b['block_state'] ?? 'editable');
+                $templateBlockId = (string) $b['id'];
+
+                // Editables: vacío en BD; el docente ve default_content solo como guía en UI.
+                $content = $state === 'editable' ? null : ($b['default_content'] ?? null);
+
+                // Paso de migración: precarga el contenido antiguo salvo en bloques bloqueados.
+                if ($state !== 'locked' && array_key_exists($templateBlockId, $migrated)) {
+                    $content = $migrated[$templateBlockId];
+                }
 
                 return [
-                    'template_block_id' => (string) $b['id'],
-                    // Editables: vacío en BD; el docente ve default_content solo como guía en UI.
-                    'content' => $state === 'editable' ? null : ($b['default_content'] ?? null),
+                    'template_block_id' => $templateBlockId,
+                    'content' => $content,
                     'sort_order' => (int) ($b['sort_order'] ?? 0),
                 ];
             })
@@ -550,6 +562,11 @@ class DocumentService implements DocumentServiceInterface
             'has_update' => $hasUpdate,
             'changelog' => $hasUpdate ? $latestFull['changelog'] : null,
         ];
+    }
+
+    public function migrationPayload(string $sourceDocumentId): DocumentMigrationPayloadDto
+    {
+        return $this->migrationPayloadResolver->resolve($sourceDocumentId);
     }
 
     /**

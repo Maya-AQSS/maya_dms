@@ -53,12 +53,6 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
 
   const headerMetaInfo = (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
-      {processLabel ? (
-        <>
-          {processLabel}
-          {' · '}
-        </>
-      ) : null}
       {template.author_name ?? 'Autor desconocido'}
       {' · '}
       {visibilityLabel(template.visibility_level)}
@@ -86,8 +80,10 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
   return (
     <PaperPreviewLayout
       title={template.name}
+      subtitle={processLabel}
       onBack={onClose}
       backLabel="Cerrar previsualización"
+      viewMode="default"
       metaInfo={headerMetaInfo}
       actions={headerActions}
       asOverlay

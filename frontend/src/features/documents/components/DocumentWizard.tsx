@@ -21,6 +21,7 @@ import {
   createDocument,
   deleteDocumentBlock,
   fetchDocument,
+  fetchDocumentMigrationPayload,
   fetchDocumentReviews,
   rejectDocumentReview,
   submitDocumentForReview,
@@ -29,6 +30,12 @@ import {
   delegateDocument,
   type DocumentReview,
 } from '../../../api/documents';
+import { DocumentMigrationStep } from './DocumentMigrationStep';
+import { concatTiptapContent } from '../lib/tiptapContentConcat';
+import type {
+  DocumentMigrationPayload,
+  MigrationChoice,
+} from '../schemas/migrationPayload';
 import { useQueryClient } from '@tanstack/react-query';
 import { refreshDmsDashboardQuery } from '../../dashboard/hooks/useDmsDashboard';
 import { ApiHttpError, apiFetchJson } from '../../../api/http';
@@ -126,13 +133,15 @@ type Props = {
   documentId?: string | null;
   templateId?: string | null;
   mode?: 'edit' | 'validate';
+  /** Documento origen al continuar/clonar; activa el paso de migración si su plantilla tiene versión nueva. */
+  sourceDocumentId?: string | null;
 };
 
 /**
  * Asistente de edición de documento (3 pasos, sin usuarios/validadores).
  * Reutiliza estética y piezas de plantillas (BlockNote, preview HTML) sin acoplar al flujo de TemplateWizard.
  */
-export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props) {
+export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDocumentId }: Props) {
   const navigate = useNavigate();
   const { t } = useTranslation(['documents', 'common']);
   const queryClient = useQueryClient();
@@ -142,6 +151,63 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   const [step, setStep] = useState<Step>('properties');
   const [completedSteps, setCompletedSteps] = useState<Step[]>([]);
+
+  // Paso de migración: solo en creación al continuar un documento cuya plantilla tiene versión nueva.
+  const [migrationPayload, setMigrationPayload] = useState<DocumentMigrationPayload | null>(null);
+  const [migrationChoices, setMigrationChoices] = useState<Record<string, MigrationChoice>>({});
+
+  useEffect(() => {
+    if (documentId || !sourceDocumentId) {
+      setMigrationPayload(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchDocumentMigrationPayload(sourceDocumentId)
+      .then((payload) => {
+        if (!cancelled) setMigrationPayload(payload);
+      })
+      .catch(() => {
+        // Sin versión nueva (422) u otro error → no se muestra el paso de migración.
+        if (!cancelled) setMigrationPayload(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, sourceDocumentId]);
+
+  const migratableBlocks = useMemo(
+    () => migrationPayload?.blocks.filter((b) => b.old_content != null) ?? [],
+    [migrationPayload],
+  );
+  const showMigrationStep = !documentId && migratableBlocks.length > 0;
+
+  const setMigrationChoice = useCallback(
+    (templateBlockId: string, choice: MigrationChoice | undefined) => {
+      setMigrationChoices((prev) => {
+        if (!choice) {
+          const { [templateBlockId]: _removed, ...rest } = prev;
+          return rest;
+        }
+        return { ...prev, [templateBlockId]: choice };
+      });
+    },
+    [],
+  );
+
+  const buildMigratedBlocks = useCallback((): Record<string, unknown> => {
+    if (!migrationPayload) return {};
+    const out: Record<string, unknown> = {};
+    for (const block of migrationPayload.blocks) {
+      if (block.locked || block.new_block || block.removed_block) continue;
+      const choice = migrationChoices[block.template_block_id];
+      if (!choice || block.old_content == null) continue;
+      out[block.template_block_id] =
+        choice === 'append'
+          ? concatTiptapContent(block.new_default_content, block.old_content)
+          : block.old_content;
+    }
+    return out;
+  }, [migrationPayload, migrationChoices]);
 
   const [detail, setDetail] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1072,10 +1138,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
     }
     if (s === 'properties'){
       setStep(s);
-    } 
+    }
+    else if (s === 'migration' && showMigrationStep && completedSteps.includes('properties')){
+      setStep(s);
+    }
     else if (s === 'blocks' && completedSteps.includes('properties')){
       setStep(s);
-    } 
+    }
     else if (s === 'summary' && completedSteps.includes('blocks')){
       if (detail) {
         const unresolvedEditable = listUnresolvedEditableBlockTitles(detail.blocks);
@@ -1115,6 +1184,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         for (const [field, message] of Object.entries(contextErrors)) {
           setStep1Error(field as keyof DocumentStep1Input, { type: 'manual', message });
         }
+        return;
+      }
+
+      // Modo migración: no se crea aún; el usuario elige qué contenido antiguo arrastrar.
+      if (!documentId && showMigrationStep) {
+        setCompletedSteps((prev: Step[]) => (prev.includes('properties') ? prev : [...prev, 'properties']));
+        setStep('migration');
         return;
       }
 
@@ -1171,6 +1247,46 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
         }
       } catch (e) {
         setFormError(e instanceof Error ? e.message : 'No se pudieron guardar los datos del documento.');
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+    if (step === 'migration') {
+      if (!templateId || !template?.process_id) {
+        setFormError('La plantilla seleccionada no tiene proceso asociado.');
+        return;
+      }
+      const targetVersionId = migrationPayload?.target_template_version_id ?? selectedTemplateVersionUuid;
+      setSaving(true);
+      try {
+        const created = await createDocument({
+          template_id: templateId,
+          process_id: template.process_id,
+          ...(targetVersionId ? { template_version_id: targetVersionId } : {}),
+          title: title.trim(),
+          study_type_id: studyTypeId || undefined,
+          study_id: studyId || undefined,
+          module_id: moduleId || undefined,
+          team_id: teamId || undefined,
+          delivery_deadline: deliveryDeadline || null,
+          migrated_blocks: buildMigratedBlocks(),
+        });
+
+        navigate(`/documents/${created.id}/editor`, {
+          replace: true,
+          state: {
+            processId: locationProcessId,
+            moduleId: locationModuleId,
+            fromTemplateSelection: true,
+          },
+        });
+        setCompletedSteps((prev: Step[]) =>
+          Array.from(new Set([...prev, 'properties', 'migration'] as Step[])),
+        );
+        setStep('blocks');
+      } catch (e) {
+        setFormError(e instanceof Error ? e.message : 'No se pudo crear el documento.');
       } finally {
         setSaving(false);
       }
@@ -1326,6 +1442,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   const stepsData: WizardStepDef<Step>[] = [
     { id: 'properties', label: 'Propiedades', sub: 'Título y metadatos' },
+    ...(showMigrationStep
+      ? [{ id: 'migration' as const, label: t('migration.stepLabel'), sub: t('migration.stepSub') }]
+      : []),
     { id: 'blocks', label: 'Bloques', sub: 'Contenido de la programación' },
     { id: 'summary', label: 'Resumen', sub: 'Revisión antes de salir' },
   ];
@@ -1483,7 +1602,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   ) : null;
 
   const handleWizardBack = async () => {
-    const order: Step[] = ['properties', 'blocks', 'summary'];
+    const order: Step[] = stepsData.map((s) => s.id);
     const idx = order.indexOf(step);
     if (isValidateMode) {
       navigate('/dashboard');
@@ -1776,6 +1895,14 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
             )}
           </div>
         </div>
+      )}
+
+      {!isValidateMode && step === 'migration' && migrationPayload && (
+        <DocumentMigrationStep
+          payload={migrationPayload}
+          choices={migrationChoices}
+          onChoose={setMigrationChoice}
+        />
       )}
 
       {!isValidateMode && step === 'blocks' && (

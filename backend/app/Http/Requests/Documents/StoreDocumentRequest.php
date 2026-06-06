@@ -74,6 +74,9 @@ class StoreDocumentRequest extends FormRequest
                     static fn ($q) => $q->where('versionable_type', Template::class)->where('status', 'published'),
                 ),
             ],
+            // Paso de migración del wizard: contenido a precargar por template_block_id.
+            'migrated_blocks' => ['sometimes', 'nullable', 'array'],
+            'migrated_blocks.*' => ['array'],
         ];
     }
 
@@ -130,6 +133,8 @@ class StoreDocumentRequest extends FormRequest
                 ->value('versionable_id') ?? '');
         }
 
+        $migratedBlocks = $this->validated('migrated_blocks');
+
         return new CreateDocumentDto(
             templateId: (string) $templateId,
             title: $this->validated('title'),
@@ -142,6 +147,7 @@ class StoreDocumentRequest extends FormRequest
             teamId: $this->validated('team_id') ?? null,
             deliveryDeadline: $this->validated('delivery_deadline'),
             templateVersionId: $templateVersionId ?? null,
+            migratedBlockContent: is_array($migratedBlocks) && $migratedBlocks !== [] ? $migratedBlocks : null,
         );
     }
 }

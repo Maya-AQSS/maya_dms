@@ -24,6 +24,7 @@ class DocumentResource extends JsonResource
             'template_id' => $dto->templateId,
             'template_version_id' => $dto->templateVersionId,
             'template_version_number' => $dto->templateVersionNumber,
+            'template_name' => $dto->templateName,
             'team' => $dto->team,
             'title' => $dto->title,
             'study_type_id' => $dto->studyTypeId,

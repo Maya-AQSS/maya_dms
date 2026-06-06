@@ -101,6 +101,26 @@
       "edited": "Block · edited"
     }
   },
+  "migration": {
+    "stepLabel": "Migration",
+    "stepSub": "Adapt content to the new version",
+    "intro": "The template changed from version {{from}} to {{to}}. Review your previous content and add it to the new version's blocks.",
+    "legend": "Green: new version content · Red: your previous content.",
+    "oldContent": "─ Your previous content",
+    "newContent": "+ New version block",
+    "untitled": "Untitled",
+    "addAction": "Add your previous content:",
+    "replace": "Replace",
+    "append": "Append below",
+    "newBadge": "New",
+    "removedBadge": "Removed",
+    "lockedBadge": "Locked",
+    "stateChangedBadge": "State changed",
+    "lockedHelp": "This block is locked in the new version: content cannot be migrated.",
+    "removedHelp": "This block no longer exists in the new version. Copy it manually if you need it.",
+    "removedSection_one": "{{count}} removed block (content not migrated)",
+    "removedSection_other": "{{count}} removed blocks (content not migrated)"
+  },
   "blocks": {
     "pendingComments": "Pending comments",
     "requiredBlock": "Required — this block must be filled",

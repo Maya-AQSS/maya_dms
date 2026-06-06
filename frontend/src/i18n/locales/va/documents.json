@@ -100,6 +100,26 @@
       "edited": "Bloc · editat"
     }
   },
+  "migration": {
+    "stepLabel": "Migració",
+    "stepSub": "Adaptar el contingut a la versió nova",
+    "intro": "La plantilla ha canviat de la versió {{from}} a la {{to}}. Revisa el teu contingut anterior i afig-lo als blocs de la versió nova.",
+    "legend": "Verd: contingut de la versió nova · Roig: el teu contingut anterior.",
+    "oldContent": "─ El teu contingut anterior",
+    "newContent": "+ Bloc de la versió nova",
+    "untitled": "Sense títol",
+    "addAction": "Afig el teu contingut anterior:",
+    "replace": "Reemplaçar",
+    "append": "Afegir davall",
+    "newBadge": "Nou",
+    "removedBadge": "Eliminat",
+    "lockedBadge": "Bloquejat",
+    "stateChangedBadge": "Estat canviat",
+    "lockedHelp": "Aquest bloc està bloquejat en la versió nova: no es pot migrar contingut.",
+    "removedHelp": "Aquest bloc ja no existix en la versió nova. Copia'l manualment si el necessites.",
+    "removedSection_one": "{{count}} bloc eliminat (contingut no migrat)",
+    "removedSection_other": "{{count}} blocs eliminats (contingut no migrat)"
+  },
   "blocks": {
     "pendingComments": "Comentaris pendents",
     "requiredBlock": "Obligatori — aquest bloc s'ha d'omplir",

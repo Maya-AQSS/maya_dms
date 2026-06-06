@@ -1,12 +1,16 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { DocumentWizard } from '../features/documents/components/DocumentWizard';
 import { Button, ErrorBoundary } from '@ceedcv-maya/shared-ui-react';
 
 /**
  * Editor de programación: asistente de 3 pasos (propiedades, bloques, resumen), sin paso de usuarios.
+ * Al crear continuando un documento previo (state.sourceDocumentId) y si su plantilla tiene una
+ * versión nueva, el asistente inserta un paso extra de migración de contenido.
  */
 export function DocumentEditorPage() {
   const { documentId, templateId } = useParams<{ documentId?: string; templateId?: string }>();
+  const location = useLocation();
+  const sourceDocumentId = (location.state as { sourceDocumentId?: string } | null)?.sourceDocumentId ?? null;
 
   if (!documentId && !templateId) {
     return (
@@ -21,7 +25,12 @@ export function DocumentEditorPage() {
 
   return (
     <ErrorBoundary>
-      <DocumentWizard documentId={documentId} templateId={templateId} mode="edit" />
+      <DocumentWizard
+        documentId={documentId}
+        templateId={templateId}
+        mode="edit"
+        sourceDocumentId={sourceDocumentId}
+      />
     </ErrorBoundary>
   );
 }

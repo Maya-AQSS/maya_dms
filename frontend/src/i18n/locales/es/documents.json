@@ -101,6 +101,26 @@
       "edited": "Bloque · editado"
     }
   },
+  "migration": {
+    "stepLabel": "Migración",
+    "stepSub": "Adaptar contenido a la versión nueva",
+    "intro": "La plantilla cambió de la versión {{from}} a la {{to}}. Revisa tu contenido anterior y añádelo a los bloques de la versión nueva.",
+    "legend": "Verde: contenido de la versión nueva · Rojo: tu contenido anterior.",
+    "oldContent": "─ Tu contenido anterior",
+    "newContent": "+ Bloque de la versión nueva",
+    "untitled": "Sin título",
+    "addAction": "Añadir tu contenido anterior:",
+    "replace": "Reemplazar",
+    "append": "Anexar debajo",
+    "newBadge": "Nuevo",
+    "removedBadge": "Eliminado",
+    "lockedBadge": "Bloqueado",
+    "stateChangedBadge": "Estado cambiado",
+    "lockedHelp": "Este bloque está bloqueado en la versión nueva: no se puede migrar contenido.",
+    "removedHelp": "Este bloque ya no existe en la versión nueva. Cópialo manualmente si lo necesitas.",
+    "removedSection_one": "{{count}} bloque eliminado (contenido no migrado)",
+    "removedSection_other": "{{count}} bloques eliminados (contenido no migrado)"
+  },
   "blocks": {
     "pendingComments": "Comentarios pendientes",
     "requiredBlock": "Obligatorio — este bloque debe rellenarse",

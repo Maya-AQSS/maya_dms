@@ -580,12 +580,6 @@ export function TemplatePreviewPage() {
 
   const headerMeta = template ? (
     <p className="text-xs text-text-muted dark:text-text-dark-muted text-center">
-      {processLabel ? (
-        <>
-          {processLabel}
-          {' · '}
-        </>
-      ) : null}
       {authorDisplay}
       {' · '}
       {displayVisibility ? visibilityLabel(displayVisibility) : '—'}
@@ -612,6 +606,7 @@ export function TemplatePreviewPage() {
     <>
       <PaperPreviewLayout
         title={displayTitle ?? template?.name ?? 'Plantilla'}
+        subtitle={processLabel}
         onBack={handleBack}
         backLabel={selectionMode ? 'Seleccionar plantilla' : 'Volver'}
         metaInfo={headerMeta}

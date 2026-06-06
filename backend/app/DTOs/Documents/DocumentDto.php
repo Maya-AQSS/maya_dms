@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\DTOs\Documents;
 
 use App\Models\Document;
+use App\Models\EntityVersion;
+use App\Models\Template;
 use App\Services\DocumentTemplateVersionNumberResolver;
 use App\Support\ApiEmbeddedTeamResponse;
 use App\Support\VersionSubmissionChangelog;
@@ -20,6 +22,7 @@ final readonly class DocumentDto
         public ?string $templateId,
         public ?string $templateVersionId,
         public ?int $templateVersionNumber,
+        public ?string $templateName,
         public ?array $team,
         public ?string $title,
         public ?string $studyTypeId,
@@ -78,6 +81,7 @@ final readonly class DocumentDto
             templateId: $m->template_id !== null ? (string) $m->template_id : null,
             templateVersionId: $m->template_version_id !== null ? (string) $m->template_version_id : null,
             templateVersionNumber: $templateVersionNumber,
+            templateName: self::resolveTemplateName($m),
             team: is_array($team) ? $team : null,
             title: $m->title,
             studyTypeId: $m->study_type_id !== null ? (string) $m->study_type_id : null,
@@ -119,6 +123,40 @@ final readonly class DocumentDto
             $m->status !== null ? (string) $m->status : null,
             $m->headVersion?->changelog,
         );
+    }
+
+    /**
+     * Nombre de la plantilla en la versión con la que se creó el documento.
+     * Se lee del snapshot de la versión anclada ({@see EntityVersion}); la relación
+     * `templateVersion` ya viene cargada en los caminos de detalle y listado, por lo
+     * que no introduce N+1 (solo consulta como último recurso).
+     */
+    private static function resolveTemplateName(Document $m): ?string
+    {
+        $preloaded = $m->getAttribute('template_name');
+        if (is_string($preloaded) && $preloaded !== '') {
+            return $preloaded;
+        }
+
+        if ($m->template_version_id === null) {
+            return null;
+        }
+
+        $version = $m->relationLoaded('templateVersion') && $m->templateVersion !== null
+            ? $m->templateVersion
+            : EntityVersion::query()
+                ->whereKey($m->template_version_id)
+                ->where('versionable_type', Template::class)
+                ->first();
+
+        $snapshot = $version?->snapshot_data;
+        if (is_array($snapshot) && isset($snapshot['template']['name']) && is_string($snapshot['template']['name'])) {
+            $name = $snapshot['template']['name'];
+
+            return $name !== '' ? $name : null;
+        }
+
+        return null;
     }
 
     private static function resolveTemplateVersionNumber(Document $m): ?int

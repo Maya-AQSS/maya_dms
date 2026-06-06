@@ -23,6 +23,8 @@ export type Document = {
   template_version_id: string | null;
   /** Número de versión publicada de la plantilla anclada (p. ej. 1); null si no hay ancla. */
   template_version_number?: number | null;
+  /** Nombre de la plantilla en la versión con la que se creó el documento. */
+  template_name?: string | null;
   title: string;
   study_type_id: string | null;
   study_id: string | null;

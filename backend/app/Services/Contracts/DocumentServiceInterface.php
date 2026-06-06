@@ -10,6 +10,7 @@ use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
 use App\DTOs\Documents\DocumentFilterDto;
+use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
 use App\Http\Controllers\Api\DocumentController;
 use App\Models\Document;
@@ -243,6 +244,13 @@ interface DocumentServiceInterface
      * }
      */
     public function templateVersionStatus(string $documentId): array;
+
+    /**
+     * Payload del paso de migración del wizard: bloques de la última versión de
+     * plantilla comparados con la versión anclada al documento origen, con el
+     * contenido real del origen. Requiere que exista una versión más reciente.
+     */
+    public function migrationPayload(string $sourceDocumentId): DocumentMigrationPayloadDto;
 
     /**
      * Crea o actualiza un compartido del documento (solo titular vía policy en controlador).

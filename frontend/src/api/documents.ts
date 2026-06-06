@@ -1,6 +1,17 @@
 import type { Document, DocumentDetail } from '../types/documents';
 import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
 import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
+import {
+  migrationPayloadSchema,
+  type DocumentMigrationPayload,
+} from '../features/documents/schemas/migrationPayload';
+
+export type TemplateVersionStatus = {
+  current_version: { id: string; version_number: number } | null;
+  latest_version: { id: string; version_number: number; changelog: string } | null;
+  has_update: boolean;
+  changelog: string | null;
+};
 
 export type DocumentListFilters = {
   process_id?: string;
@@ -166,12 +177,40 @@ export async function createDocument(payload: {
   team_id?: string | null;
   template_version_id?: string | null;
   delivery_deadline?: string | null;
+  /** Paso de migración: contenido a precargar por template_block_id. */
+  migrated_blocks?: Record<string, unknown>;
 }): Promise<Document> {
   const body = await apiFetchJson<DocumentMutationApiResponse>('documents', {
     method: 'POST',
     body: payload,
   });
   return body.data;
+}
+
+/**
+ * GET /api/v1/documents/{id}/template-version-status — indica si existe una
+ * versión publicada de plantilla más reciente que la anclada al documento.
+ */
+export async function fetchTemplateVersionStatus(
+  documentId: string,
+): Promise<TemplateVersionStatus> {
+  const body = await apiGetJson<{ data: TemplateVersionStatus }>(
+    `documents/${encodeURIComponent(documentId)}/template-version-status`,
+  );
+  return body.data;
+}
+
+/**
+ * GET /api/v1/documents/{id}/migration-payload — payload del paso de migración:
+ * bloques de la versión nueva comparados con la versión del documento origen.
+ */
+export async function fetchDocumentMigrationPayload(
+  sourceDocumentId: string,
+): Promise<DocumentMigrationPayload> {
+  const body = await apiGetJson<{ data: unknown }>(
+    `documents/${encodeURIComponent(sourceDocumentId)}/migration-payload`,
+  );
+  return migrationPayloadSchema.parse(body.data);
 }
 
 type DocumentMutationApiResponse = { data: Document };
