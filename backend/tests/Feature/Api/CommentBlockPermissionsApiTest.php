@@ -243,3 +243,55 @@ it('allows document owner comment with comment-block.create', function () {
         'body' => 'Nota del titular',
     ])->assertCreated();
 });
+
+it('allows document edit-share collaborator to comment when rejected', function () {
+    $ownerId = test()->userId;
+    $collabId = test()->otherUserId;
+
+    DB::table('user_resolved_permissions')->insert([
+        'user_id' => $collabId,
+        'permission_slug' => 'comment-block.create',
+    ]);
+
+    $templateId = (string) Str::uuid();
+    $documentId = (string) Str::uuid();
+
+    Template::query()->forceCreate([
+        'id' => $templateId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'name' => 'Tpl',
+        'visibility_level' => TemplateVisibilityLevel::Personal->value,
+        'created_by' => $ownerId,
+        'status' => 'published',
+        'review_stages' => 0,
+        'review_mode' => 'parallel',
+    ]);
+
+    Document::query()->forceCreate([
+        'id' => $documentId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'template_id' => $templateId,
+        'title' => 'Doc',
+        'created_by' => $ownerId,
+        'owner_id' => $ownerId,
+        'status' => 'rejected',
+    ]);
+
+    DB::table('document_shares')->insert([
+        'id' => (string) Str::uuid(),
+        'document_id' => $documentId,
+        'user_id' => $collabId,
+        'permission' => 'edit',
+        'granted_by' => $ownerId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    test()->app['events']->listen(RouteMatched::class, function ($event) use ($collabId) {
+        $event->request->attributes->set('jwt_user', ['id' => $collabId, 'sub' => $collabId]);
+    });
+
+    $this->postJson("/api/v1/documents/{$documentId}/comments", [
+        'body' => 'Nota del colaborador',
+    ])->assertCreated();
+});

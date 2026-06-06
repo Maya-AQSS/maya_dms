@@ -126,6 +126,11 @@ class DocumentPolicy
         return $user->getAuthIdentifier() === $document->owner_id;
     }
 
+    public function hasEditShareForUser(JwtUser $user, Document $document): bool
+    {
+        return $this->hasEditShare($document, (string) $user->getAuthIdentifier());
+    }
+
     private function hasEditShare(Document $document, string $userId): bool
     {
         if ($document->relationLoaded('shares')) {

@@ -14,6 +14,7 @@ use App\Models\TemplateReviewer;
 use App\Policies\CommentPolicy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -148,6 +149,72 @@ class CommentPolicyTest extends TestCase
         $comment = $this->makeComment($authorId, $documentFromDb);
 
         $this->assertTrue($this->policy->delete($user, $comment));
+    }
+
+    public function test_document_edit_share_collaborator_can_participate_in_draft(): void
+    {
+        $ownerId = '11111111-1111-1111-1111-111111111111';
+        $collabId = '22222222-2222-2222-2222-222222222222';
+
+        $document = $this->makeDocument($ownerId, $ownerId, 'draft');
+        DB::table('document_shares')->insert([
+            'id' => (string) Str::uuid(),
+            'document_id' => $document->id,
+            'user_id' => $collabId,
+            'permission' => 'edit',
+            'granted_by' => $ownerId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $documentFromDb = Document::withoutGlobalScopes()->findOrFail($document->id);
+        $user = $this->makeJwtUser($collabId, ['comment-block.create']);
+
+        $this->assertTrue($this->policy->mayParticipateOnDocument($user, $documentFromDb));
+    }
+
+    public function test_document_edit_share_collaborator_can_participate_when_rejected(): void
+    {
+        $ownerId = '11111111-1111-1111-1111-111111111111';
+        $collabId = '22222222-2222-2222-2222-222222222222';
+
+        $document = $this->makeDocument($ownerId, $ownerId, 'rejected');
+        DB::table('document_shares')->insert([
+            'id' => (string) Str::uuid(),
+            'document_id' => $document->id,
+            'user_id' => $collabId,
+            'permission' => 'edit',
+            'granted_by' => $ownerId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $documentFromDb = Document::withoutGlobalScopes()->findOrFail($document->id);
+        $user = $this->makeJwtUser($collabId, ['comment-block.create']);
+
+        $this->assertTrue($this->policy->mayParticipateOnDocument($user, $documentFromDb));
+    }
+
+    public function test_document_edit_share_read_only_cannot_participate(): void
+    {
+        $ownerId = '11111111-1111-1111-1111-111111111111';
+        $collabId = '22222222-2222-2222-2222-222222222222';
+
+        $document = $this->makeDocument($ownerId, $ownerId, 'draft');
+        DB::table('document_shares')->insert([
+            'id' => (string) Str::uuid(),
+            'document_id' => $document->id,
+            'user_id' => $collabId,
+            'permission' => 'read',
+            'granted_by' => $ownerId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $documentFromDb = Document::withoutGlobalScopes()->findOrFail($document->id);
+        $user = $this->makeJwtUser($collabId, ['comment-block.create']);
+
+        $this->assertFalse($this->policy->mayParticipateOnDocument($user, $documentFromDb));
     }
 
     /**
