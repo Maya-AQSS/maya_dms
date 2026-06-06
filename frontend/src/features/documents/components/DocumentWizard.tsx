@@ -75,7 +75,7 @@ import {
 import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
-import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
 import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache } from '../../comments/commentCache';
 import { uploadMedia } from '../../../api/media';
 
@@ -248,6 +248,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   // Sourced from the shared TanStack Query cache (useDocumentCommentsQuery) so the
   // DocumentPreviewPage and the wizard reuse the same in-memory comments.
   const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
+  const [documentCommentLoading, setDocumentCommentLoading] = useState(false);
+  const [documentCommentSubmitError, setDocumentCommentSubmitError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const lastSavedContentRef = useRef<unknown>(null);
@@ -324,17 +326,28 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
 
   const handleDocumentCommentSend = useCallback(async (parentId: string | null, body: string) => {
     if (!documentId) return;
-    const blockableId = parentId
-      ? (reviewComments.find(c => c.id === parentId)?.blockable_id ?? null)
-      : (activeBlockRef.current?.document_block_id ?? null);
-    const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
-      method: 'POST',
-      body: { body, parent_id: parentId, blockable_id: blockableId },
-    });
-    queryClient.setQueryData<{ data: BlockComment[] }>(
-      ['documents', documentId, 'comments'],
-      (current) => ({ data: [...(current?.data ?? []), res.data] }),
-    );
+    setDocumentCommentSubmitError(null);
+    setDocumentCommentLoading(true);
+    try {
+      const blockableId = resolveCommentBlockableId(
+        parentId,
+        reviewComments,
+        activeBlockRef.current?.document_block_id ?? null,
+      );
+      const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
+        method: 'POST',
+        body: { body, parent_id: parentId, blockable_id: blockableId },
+      });
+      queryClient.setQueryData<{ data: BlockComment[] }>(
+        ['documents', documentId, 'comments'],
+        (current) => ({ data: [...(current?.data ?? []), res.data] }),
+      );
+    } catch {
+      setDocumentCommentSubmitError('No se pudo guardar el comentario.');
+      throw new Error('comment-send-failed');
+    } finally {
+      setDocumentCommentLoading(false);
+    }
   }, [documentId, reviewComments, queryClient]);
 
   const handleDocumentCommentEdit = useCallback(async (commentId: string, newBody: string) => {
@@ -1997,6 +2010,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                               blockComments={getCommentsForBlock(activeBlock.document_block_id, reviewComments)}
                               allComments={reviewComments}
                               onSendMessage={handleDocumentCommentSend}
+                              commentLoading={documentCommentLoading}
+                              submitError={documentCommentSubmitError}
                               onClose={() => setShowDocumentCommentPanel(false)}
                               canAddComments={detail?.status !== 'published'}
                               currentUserId={currentUserId ?? undefined}
@@ -2238,6 +2253,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
                 blockComments={getCommentsForBlock(activeBlock.document_block_id, reviewComments)}
                 allComments={reviewComments}
                 onSendMessage={handleDocumentCommentSend}
+                commentLoading={documentCommentLoading}
+                submitError={documentCommentSubmitError}
                 onClose={() => setShowDocumentCommentPanel(false)}
                 canAddComments={detail?.status !== 'published'}
                 currentUserId={currentUserId ?? undefined}

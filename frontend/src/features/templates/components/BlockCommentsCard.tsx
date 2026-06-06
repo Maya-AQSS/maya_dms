@@ -392,6 +392,7 @@ type BlockCommentsCardProps = {
   allComments: BlockComment[];
   onSendMessage?: (parentId: string | null, body: string) => Promise<void>;
   commentLoading?: boolean;
+  submitError?: string | null;
   canAddComments?: boolean;
   commentingClosed?: boolean;
   headerRef?: RefObject<HTMLDivElement | null>;
@@ -412,6 +413,7 @@ export function BlockCommentsCard({
   commentingClosed = false,
   onSendMessage,
   commentLoading = false,
+  submitError = null,
   canAddComments = true,
   headerRef,
   onClose,
@@ -636,6 +638,11 @@ export function BlockCommentsCard({
               placeholder={t('templates:comments.messagePlaceholder')}
               className="w-full h-20 p-3 text-sm rounded-xl border border-ui-border dark:border-ui-dark-border bg-white dark:bg-ui-dark-bg text-text-primary dark:text-text-dark-primary focus:ring-2 focus:ring-odoo-purple/20 focus:border-odoo-purple outline-none transition-all resize-none shadow-inner"
             />
+            {submitError && (
+              <p className="mt-2 text-xs text-danger-dark font-medium" role="alert">
+                ⚠ {submitError}
+              </p>
+            )}
             <div className="mt-3 flex justify-end">
               <Button
                 variant="primary"

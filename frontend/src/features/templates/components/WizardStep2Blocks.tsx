@@ -33,7 +33,7 @@ import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-reac
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
-import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
 import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
@@ -242,6 +242,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [panelMode, setPanelMode] = useState<PanelMode>('empty');
   const [activeSingleId, setActiveSingleId] = useState<string | null>(null);
   const [showCommentPanel, setShowCommentPanel] = useState(false);
+  const [commentSubmitLoading, setCommentSubmitLoading] = useState(false);
+  const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
 
   // const [multiIndex, setMultiIndex] = useState(0);
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -636,12 +638,22 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   const handleSendMessage = useCallback(async (parentId: string | null, body: string) => {
     if (!activeSingleId) return;
-    const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
-      method: 'POST',
-      body: { body, parent_id: parentId, blockable_id: activeSingleId },
-    });
-    onCommentAdded?.(res.data);
-  }, [activeSingleId, template.id, onCommentAdded]);
+    setCommentSubmitError(null);
+    setCommentSubmitLoading(true);
+    try {
+      const blockableId = resolveCommentBlockableId(parentId, reviewComments, activeSingleId);
+      const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
+        method: 'POST',
+        body: { body, parent_id: parentId, blockable_id: blockableId },
+      });
+      onCommentAdded?.(res.data);
+    } catch {
+      setCommentSubmitError('No se pudo guardar el comentario.');
+      throw new Error('comment-send-failed');
+    } finally {
+      setCommentSubmitLoading(false);
+    }
+  }, [activeSingleId, reviewComments, template.id, onCommentAdded]);
 
   /**
    * Anchored comment on a text selection from inside the editor.
@@ -1091,6 +1103,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
             blockComments={blockComments}
             allComments={reviewComments}
             onSendMessage={handleSendMessage}
+            commentLoading={commentSubmitLoading}
+            submitError={commentSubmitError}
             onClose={() => setShowCommentPanel(false)}
             canAddComments={template.status !== 'published' && mayComment}
             currentUserId={profile?.id}

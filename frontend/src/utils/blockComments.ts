@@ -34,6 +34,18 @@ export function getCommentsForBlock(
   });
 }
 
+/** blockable_id del bloque activo o, en respuestas, el del comentario padre. */
+export function resolveCommentBlockableId(
+  parentId: string | null,
+  allComments: BlockComment[],
+  activeBlockId: string | null,
+): string | null {
+  if (parentId) {
+    return allComments.find((c) => c.id === parentId)?.blockable_id ?? null;
+  }
+  return activeBlockId;
+}
+
 /** Active comments in a block thread that the current user has not read yet. */
 export function countUnreadCommentsForBlock(
   blockId: string | null,

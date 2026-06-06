@@ -28,7 +28,7 @@ import {
 } from '../hooks/useTemplateComments';
 import { BlockCommentsCard, ViewCardHeader } from './BlockCommentsCard';
 import type { BlockComment, CommentMode } from './BlockCommentsCard';
-import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
 import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
 
 type Props = { template: Template };
@@ -249,8 +249,8 @@ export function TemplateReviewView({ template }: Props) {
   const [diffBlockId, setDiffBlockId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [, setCommentLoading] = useState(false);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [commentSubmitError, setCommentSubmitError] = useState<string | null>(null);
 
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showNoCommentsWarning, setShowNoCommentsWarning] = useState(false);
@@ -296,15 +296,20 @@ export function TemplateReviewView({ template }: Props) {
   }, [template.process_id, processesQuery.data]);
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
+    setCommentSubmitError(null);
     setCommentLoading(true);
     try {
-      const parent = parentId ? comments.find(c => c.id === parentId) : null;
+      const blockableId = resolveCommentBlockableId(
+        parentId,
+        comments,
+        activeView?.blockId ?? null,
+      );
       const res = await apiFetchJson<{ data: BlockComment }>(`templates/${template.id}/comments`, {
         method: 'POST',
         body: {
           body,
           parent_id: parentId,
-          blockable_id: activeView?.blockId || parent?.blockable_id || null
+          blockable_id: blockableId,
         },
       });
       queryClient.setQueryData<TemplateCommentsResponse>(
@@ -315,7 +320,8 @@ export function TemplateReviewView({ template }: Props) {
         },
       );
     } catch {
-      setError('No se pudo guardar el comentario.');
+      setCommentSubmitError('No se pudo guardar el comentario.');
+      throw new Error('comment-send-failed');
     } finally {
       setCommentLoading(false);
     }
@@ -471,7 +477,8 @@ export function TemplateReviewView({ template }: Props) {
                   allComments={comments}
                   onClose={closeView}
                   onSendMessage={handleSendMessage}
-                  commentLoading={actionLoading}
+                  commentLoading={commentLoading}
+                  submitError={commentSubmitError}
                   canAddComments={
                     template.status !== 'published' &&
                     canCreateBlockComment(hasPermission) &&

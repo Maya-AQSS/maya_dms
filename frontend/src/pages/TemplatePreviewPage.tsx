@@ -34,7 +34,7 @@ import { PaperPreviewLayout } from '../features/documents/components/PaperPrevie
 import { PagedThemedPreview } from '../features/documents/components/PagedThemedPreview';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
-import { getCommentsForBlock, countUnreadCommentsForBlock } from '../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../utils/blockComments';
 import { markCommentAsRead } from '../api/comments';
 import { applyCommentDeleted } from '../features/comments/commentCache';
 
@@ -144,6 +144,7 @@ export function TemplatePreviewPage() {
   // Review comments (only loaded when owner & has_review_comments)
   const [reviewComments, setReviewComments] = useState<ReviewComment[]>([]);
   const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
+  const [reviewCommentSubmitError, setReviewCommentSubmitError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
   // publishedVersionCount derived from useTemplateVersionSummariesQuery below.
 
@@ -224,15 +225,22 @@ export function TemplatePreviewPage() {
 
   const handleSendMessage = async (parentId: string | null, body: string) => {
     if (!activeView?.blockId || !id) return;
+    setReviewCommentSubmitError(null);
     setReviewCommentsLoading(true);
     try {
+      const blockableId = resolveCommentBlockableId(
+        parentId,
+        reviewComments,
+        activeView.blockId,
+      );
       const res = await apiFetchJson<{ data: ReviewComment }>(`templates/${id}/comments`, {
         method: 'POST',
-        body: { body, parent_id: parentId, blockable_id: activeView.blockId },
+        body: { body, parent_id: parentId, blockable_id: blockableId },
       });
       setReviewComments(prev => [...prev, res.data]);
     } catch {
-      // TODO: send to error tracker
+      setReviewCommentSubmitError('No se pudo guardar el comentario.');
+      throw new Error('comment-send-failed');
     } finally {
       setReviewCommentsLoading(false);
     }
@@ -620,6 +628,7 @@ export function TemplatePreviewPage() {
                 blockComments={getCommentsForBlock(activeView.blockId, reviewComments)}
                 allComments={reviewComments}
                 commentLoading={reviewCommentsLoading}
+                submitError={reviewCommentSubmitError}
                 onSendMessage={handleSendMessage}
                 headerRef={commentCardHeaderRef}
                 onClose={() => setActiveView(null)}

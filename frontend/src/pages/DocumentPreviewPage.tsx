@@ -45,7 +45,7 @@ import { DocumentBlockHistoryPanel } from '../features/documents/components/Docu
 import { apiFetchJson, ApiHttpError } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
-import { getCommentsForBlock, countUnreadCommentsForBlock } from '../utils/blockComments';
+import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../utils/blockComments';
 import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache } from '../features/comments/commentCache';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
@@ -193,6 +193,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   // Creator preview-mode comment state (mirrors TemplatePreviewPage)
   const [reviewCommentsLoading, setReviewCommentsLoading] = useState(false);
+  const [previewCommentSubmitError, setPreviewCommentSubmitError] = useState<string | null>(null);
   const [selectedReviewView, setSelectedReviewView] = useState<{ blockId: string; mode: 'comments' | 'info' } | null>(null);
   const pageHeaderRef = useRef<HTMLDivElement>(null);
 
@@ -420,7 +421,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     validateCommentsEnabled && documentCommentsQuery.error
       ? documentCommentsQuery.error.message ?? 'No se pudieron cargar los comentarios.'
       : null;
-  const validateCommentError = validateCommentSubmitError ?? validateCommentLoadError;
+  const validateCommentError = validateCommentLoadError;
 
   const openValidateView = (blockId: string, mode: 'comments' | 'info') => {
     setValidateActiveView((prev) =>
@@ -437,20 +438,29 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
 
   const handlePreviewSendMessage = async (parentId: string | null, body: string) => {
     if (!documentId || !selectedReviewView?.blockId) return;
+    setPreviewCommentSubmitError(null);
     setReviewCommentsLoading(true);
     try {
+      const block = detail?.blocks?.find(
+        (b) => (b.document_block_id || b.template_block_id) === selectedReviewView.blockId,
+      );
+      const blockableId = resolveCommentBlockableId(
+        parentId,
+        reviewComments,
+        block?.document_block_id ?? null,
+      );
       const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
         method: 'POST',
         body: {
           body,
           parent_id: parentId,
-          blockable_id: selectedReviewView.blockId,
-          document_version_id: detail?.working_version_id || null
+          blockable_id: blockableId,
         },
       });
       appendCommentToCache(documentId, res.data);
     } catch {
-      // TODO: send to error tracker
+      setPreviewCommentSubmitError('No se pudo guardar el comentario.');
+      throw new Error('comment-send-failed');
     } finally {
       setReviewCommentsLoading(false);
     }
@@ -488,10 +498,11 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     setValidateCommentLoading(true);
     setValidateCommentSubmitError(null);
     try {
-      const parent = parentId ? validateComments.find(c => c.id === parentId) : null;
-      const blockableId = parentId
-        ? (parent?.blockable_id ?? null)
-        : (detail?.blocks.find(b => b.template_block_id === validateActiveBlockId)?.document_block_id ?? null);
+      const blockableId = resolveCommentBlockableId(
+        parentId,
+        validateComments,
+        detail?.blocks.find((b) => b.template_block_id === validateActiveBlockId)?.document_block_id ?? null,
+      );
       const res = await apiFetchJson<{ data: BlockComment }>(`documents/${documentId}/comments`, {
         method: 'POST',
         body: { body, parent_id: parentId, blockable_id: blockableId },
@@ -499,6 +510,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       appendCommentToCache(documentId, res.data);
     } catch {
       setValidateCommentSubmitError('No se pudo guardar el comentario.');
+      throw new Error('comment-send-failed');
     } finally {
       setValidateCommentLoading(false);
     }
@@ -969,6 +981,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         allComments={validateComments}
                         onSendMessage={handleValidateSendMessage}
                         commentLoading={validateCommentLoading}
+                        submitError={validateCommentSubmitError}
                         canAddComments={isDocumentReviewer && !isPublished}
                         headerRef={validateViewHeaderRef}
                         onClose={() => setValidateActiveView(null)}
@@ -1256,6 +1269,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                 blockComments={getCommentsForBlock(block.document_block_id, reviewComments)}
                 allComments={reviewComments}
                 commentLoading={reviewCommentsLoading}
+                submitError={previewCommentSubmitError}
                 onClose={() => setSelectedReviewView(null)}
                 onSendMessage={handlePreviewSendMessage}
                 headerRef={pageHeaderRef}
