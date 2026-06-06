@@ -35,7 +35,7 @@ import { PagedThemedPreview } from '../features/documents/components/PagedThemed
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../utils/blockComments';
-import { markCommentAsRead } from '../api/comments';
+import { markCommentAsRead, fetchResourceComments } from '../api/comments';
 import { applyCommentDeleted } from '../features/comments/commentCache';
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
@@ -205,7 +205,7 @@ export function TemplatePreviewPage() {
           }
           if (!cancelled) {
             if (t.has_review_comments) {
-              void apiFetchJson<{ data: ReviewComment[] }>(`templates/${id}/comments`)
+              void fetchResourceComments(`templates/${id}/comments`)
                 .then((res) => { if (!cancelled) setReviewComments(res.data); })
                 .catch(() => { /* TODO: send to error tracker */ });
             }

@@ -1,10 +1,8 @@
 import { createDataHook } from '@ceedcv-maya/shared-auth-react';
-import { apiFetchJson } from '../../../api/http';
+import { fetchResourceComments, type CommentsListResponse } from '../../../api/comments';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
 
-interface DocumentCommentsResponse {
-  data: BlockComment[];
-}
+export type DocumentCommentsResponse = CommentsListResponse;
 
 export const useDocumentCommentsQuery = createDataHook<
   string,
@@ -12,6 +10,6 @@ export const useDocumentCommentsQuery = createDataHook<
 >({
   queryKey: (documentId) => ['documents', documentId, 'comments'],
   fetcher: (documentId) =>
-    apiFetchJson<DocumentCommentsResponse>(`documents/${documentId}/comments`),
+    fetchResourceComments(`documents/${documentId}/comments`),
   defaultOptions: { staleTime: 0 },
 });

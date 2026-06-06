@@ -50,7 +50,7 @@ class CommentRepository implements CommentRepositoryInterface
             ->where('commentable_version', $commentableVersion)
             ->with('author:id,name')
             ->withCount('edits')
-            ->orderBy('created_at', 'asc');
+            ->orderBy('created_at', 'desc');
 
         $this->applyReaderState($query, $readerUserId);
 

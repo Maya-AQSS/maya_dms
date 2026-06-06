@@ -433,7 +433,7 @@ export function BlockCommentsCard({
   const commentById = new Map(allComments.map(c => [c.id, c]));
 
   const sortedComments = [...blockComments].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
   const activeComments = sortedComments.filter(c => !c.is_deleted);
@@ -509,7 +509,7 @@ export function BlockCommentsCard({
         </div>
       )}
 
-      {/* Flat message list — oldest first */}
+      {/* Flat message list — newest first */}
       <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pt-4 pb-4 space-y-5">
         {activeComments.length === 0 && deletedComments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-center opacity-40">
