@@ -51,6 +51,15 @@ function seedPublishedGlobalDocument(string $ownerId): string
     $headId = (string) Str::uuid();
     $publishedId = (string) Str::uuid();
 
+    // Contexto académico para que la regla "catálogo publicado" del scope user_access
+    // haga visible el documento ajeno al usuario actuante (matriculado en el mismo tipo de estudio).
+    $studyTypeId = (string) Str::uuid();
+    DB::table('user_study_types')->insert([
+        'id' => (string) Str::uuid(),
+        'user_id' => test()->userId,
+        'study_type_id' => $studyTypeId,
+    ]);
+
     Template::query()->forceCreate([
         'id' => $templateId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
@@ -68,21 +77,8 @@ function seedPublishedGlobalDocument(string $ownerId): string
         'review_mode' => 'parallel',
     ]);
 
-    Document::query()->forceCreate([
-        'id' => $documentId,
-        'process_id' => '00000000-0000-0000-0000-000000000001',
-        'template_id' => $templateId,
-        'title' => 'Programación publicada',
-        'study_type_id' => null,
-        'study_id' => null,
-        'module_id' => null,
-        'delivery_deadline' => now()->addWeek()->toDateString(),
-        'created_by' => $ownerId,
-        'owner_id' => $ownerId,
-        'status' => 'published',
-        'head_entity_version_id' => $headId,
-    ]);
-
+    // Las versiones se crean antes que el documento: documents.head_entity_version_id
+    // tiene FK a entity_versions, y entity_versions.versionable_id es polimórfico (sin FK).
     EntityVersion::query()->forceCreate([
         'id' => $headId,
         'versionable_type' => Document::class,
@@ -95,9 +91,12 @@ function seedPublishedGlobalDocument(string $ownerId): string
                 'status' => 'published',
                 'created_by' => $ownerId,
                 'owner_id' => $ownerId,
+                'study_type_id' => $studyTypeId,
+                'delivery_deadline' => now()->addWeek()->toDateString(),
             ],
         ],
         'changelog' => 'head',
+        'created_by' => $ownerId,
         'published_at' => now(),
         'published_by' => $ownerId,
     ]);
@@ -114,11 +113,29 @@ function seedPublishedGlobalDocument(string $ownerId): string
                 'status' => 'published',
                 'created_by' => $ownerId,
                 'owner_id' => $ownerId,
+                'study_type_id' => $studyTypeId,
+                'delivery_deadline' => now()->addWeek()->toDateString(),
             ],
         ],
         'changelog' => 'v1',
+        'created_by' => $ownerId,
         'published_at' => now(),
         'published_by' => $ownerId,
+    ]);
+
+    Document::query()->forceCreate([
+        'id' => $documentId,
+        'process_id' => '00000000-0000-0000-0000-000000000001',
+        'template_id' => $templateId,
+        'title' => 'Programación publicada',
+        'study_type_id' => null,
+        'study_id' => null,
+        'module_id' => null,
+        'delivery_deadline' => now()->addWeek()->toDateString(),
+        'created_by' => $ownerId,
+        'owner_id' => $ownerId,
+        'status' => 'published',
+        'head_entity_version_id' => $headId,
     ]);
 
     return $documentId;

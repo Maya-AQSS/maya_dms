@@ -27,6 +27,7 @@ use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
+use App\Support\CloneDeadlinePolicy;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -237,7 +238,7 @@ class DocumentService implements DocumentServiceInterface
                 'study_id' => $source->study_id,
                 'module_id' => $source->module_id,
                 'team_id' => $source->team_id,
-                'delivery_deadline' => $source->delivery_deadline,
+                'delivery_deadline' => $this->clearPastDeliveryDeadline($source->delivery_deadline),
                 'created_by' => $actorId,
                 'owner_id' => $actorId,
                 'status' => 'draft',
@@ -321,7 +322,9 @@ class DocumentService implements DocumentServiceInterface
             'study_id' => array_key_exists('study_id', $docSnap) ? $docSnap['study_id'] : $source->study_id,
             'module_id' => array_key_exists('module_id', $docSnap) ? $docSnap['module_id'] : $source->module_id,
             'team_id' => array_key_exists('team_id', $docSnap) ? $docSnap['team_id'] : $source->team_id,
-            'delivery_deadline' => $deliveryDeadline,
+            // Un clon es para un curso nuevo: una fecha límite ya vencida se limpia
+            // para que el editor obligue a fijar una nueva (validación de paso 1).
+            'delivery_deadline' => $this->clearPastDeliveryDeadline($deliveryDeadline),
             'created_by' => $actorId,
             'owner_id' => $actorId,
             'status' => 'draft',
@@ -914,6 +917,11 @@ class DocumentService implements DocumentServiceInterface
         $templateMeta = $latestPublished->snapshot_data['template'] ?? null;
 
         return is_array($templateMeta) ? $templateMeta : null;
+    }
+
+    private function clearPastDeliveryDeadline(mixed $deadline): mixed
+    {
+        return CloneDeadlinePolicy::clearIfPast($deadline);
     }
 
     private function assertDocumentMetadataInvariantsForMutation(string $title, mixed $deliveryDeadline): void

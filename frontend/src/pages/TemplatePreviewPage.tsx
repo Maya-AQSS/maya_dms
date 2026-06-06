@@ -544,8 +544,15 @@ export function TemplatePreviewPage() {
             </Button>
           )}
           {canClone && (
-            <Button type="button" variant="outline" size="sm" loading={actionLoading} onClick={() => void handleClone()}>
-              Clonar
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              loading={actionLoading}
+              onClick={() => void handleClone()}
+              title="Crea una plantilla nueva e independiente (no una versión de esta). Para una versión nueva, edita y publica esta plantilla."
+            >
+              Clonar como nueva plantilla
             </Button>
           )}
           {canDiscardWorkingVersion && (

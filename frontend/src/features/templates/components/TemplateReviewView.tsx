@@ -401,6 +401,8 @@ export function TemplateReviewView({ template }: Props) {
   return (
     <PaperPreviewLayout
       title={template.name}
+      subtitle={processLabel}
+      viewMode="default"
       onBack={() => navigate('/templates')}
       backLabel="Volver a plantillas"
       metaInfo={
@@ -408,7 +410,6 @@ export function TemplateReviewView({ template }: Props) {
           <span>{visibilityLabel(template.visibility_level)}</span>
           {template.study_id && <span>• {String(template.study_id)}</span>}
           {template.module_id && <span>• {String(template.module_id)}</span>}
-          {processLabel && <span>• Proceso: {processLabel}</span>}
         </div>
       }
       actions={
