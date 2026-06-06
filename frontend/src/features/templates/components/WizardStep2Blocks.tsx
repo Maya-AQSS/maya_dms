@@ -34,7 +34,7 @@ import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
 import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
-import { markCommentAsReadInTemplateCache } from '../../comments/commentCache';
+import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
 import { useQueryClient } from '@tanstack/react-query';
@@ -710,14 +710,8 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
 
   const handleDeleteComment = useCallback(async (commentId: string) => {
     await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
-    queryClient.setQueryData<TemplateCommentsResponse>(
-      templateCommentsKey(template.id),
-      (current) => {
-        if (!current) return current;
-        return { ...current, data: current.data.filter(c => c.id !== commentId) };
-      },
-    );
-  }, [queryClient, template.id]);
+    markCommentDeletedInTemplateCache(queryClient, template.id, commentId, profile?.name);
+  }, [queryClient, template.id, profile?.name]);
 
   const handleMarkCommentAsRead = useCallback(async (commentId: string) => {
     await markCommentAsReadInTemplateCache(queryClient, template.id, commentId);

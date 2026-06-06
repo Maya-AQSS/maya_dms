@@ -76,7 +76,7 @@ import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../com
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
 import { getCommentsForBlock, countUnreadCommentsForBlock } from '../../../utils/blockComments';
-import { markCommentAsReadInDocumentCache } from '../../comments/commentCache';
+import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache } from '../../comments/commentCache';
 import { uploadMedia } from '../../../api/media';
 
 const BlockNoteEditorPanel = lazy(() =>
@@ -136,7 +136,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const navigate = useNavigate();
   const { t } = useTranslation(['documents', 'common']);
   const queryClient = useQueryClient();
-  const { hasPermission } = useUserProfile();
+  const { profile, hasPermission } = useUserProfile();
   const location = useLocation();
   const { isDark } = useDarkMode();
 
@@ -352,11 +352,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit' }: Props)
   const handleDocumentCommentDelete = useCallback(async (commentId: string) => {
     if (!documentId) return;
     await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
-    queryClient.setQueryData<{ data: BlockComment[] }>(
-      ['documents', documentId, 'comments'],
-      (current) => ({ data: (current?.data ?? []).filter(c => c.id !== commentId) }),
-    );
-  }, [documentId, queryClient]);
+    markCommentDeletedInDocumentCache(queryClient, documentId, commentId, profile?.name);
+  }, [documentId, queryClient, profile?.name]);
 
   const handleDocumentCommentMarkAsRead = useCallback(async (commentId: string) => {
     if (!documentId) return;

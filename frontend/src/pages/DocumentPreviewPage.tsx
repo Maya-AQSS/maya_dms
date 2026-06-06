@@ -46,7 +46,7 @@ import { apiFetchJson, ApiHttpError } from '../api/http';
 import type { Process } from '../types/processes';
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock, countUnreadCommentsForBlock } from '../utils/blockComments';
-import { markCommentAsReadInDocumentCache } from '../features/comments/commentCache';
+import { markCommentAsReadInDocumentCache, markCommentDeletedInDocumentCache } from '../features/comments/commentCache';
 import { SequentialValidatorBadge } from '../features/documents/components/SequentialValidatorBadge';
 
 // Estado: clases en `statusBadgeClass` (módulo `@ceedcv-maya/shared-ui-react/badges`).
@@ -463,13 +463,6 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     );
   };
 
-  const removeCommentFromCache = (docId: string, commentId: string) => {
-    queryClient.setQueryData<{ data: BlockComment[] }>(
-      ['documents', docId, 'comments'],
-      (prev) => ({ data: (prev?.data ?? []).filter(c => c.id !== commentId) }),
-    );
-  };
-
   const handleEditComment = async (commentId: string, newBody: string) => {
     if (!documentId) return;
     const res = await apiFetchJson<{ data: BlockComment }>(`comments/${commentId}`, {
@@ -482,7 +475,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
   const handleDeleteComment = async (commentId: string) => {
     if (!documentId) return;
     await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
-    removeCommentFromCache(documentId, commentId);
+    markCommentDeletedInDocumentCache(queryClient, documentId, commentId, profile?.name);
   };
 
   const handleMarkCommentAsRead = async (commentId: string) => {

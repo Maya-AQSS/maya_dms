@@ -36,6 +36,7 @@ import { SequentialValidatorBadge } from '../features/documents/components/Seque
 import { formatCalendarDateForBrowser } from '../utils/formatCalendarDate';
 import { getCommentsForBlock, countUnreadCommentsForBlock } from '../utils/blockComments';
 import { markCommentAsRead } from '../api/comments';
+import { applyCommentDeleted } from '../features/comments/commentCache';
 
 // Re-use the shared BlockComment type (has resolved, parent_id, etc.)
 type ReviewComment = BlockComment;
@@ -247,7 +248,9 @@ export function TemplatePreviewPage() {
 
   const handleDeleteComment = async (commentId: string) => {
     await apiFetchJson(`comments/${commentId}`, { method: 'DELETE' });
-    setReviewComments(prev => prev.filter(c => c.id !== commentId));
+    setReviewComments(prev =>
+      prev.map(c => (c.id === commentId ? applyCommentDeleted(c, profile?.name) : c)),
+    );
   };
 
   const handleMarkCommentAsRead = async (commentId: string) => {
