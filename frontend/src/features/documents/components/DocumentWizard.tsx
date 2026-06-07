@@ -1992,43 +1992,60 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
               ? 'fixed inset-y-0 right-0 left-0 md:left-[var(--sidebar-w,0px)] z-[80] overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg animate-in fade-in'
               : 'flex-1 overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg'
             }>
-              {/* Floating action stack — only in fullscreen. Esc también sale. */}
-              {isContinuousFullscreen && (
-                <div className="fixed top-4 right-4 z-[90] flex flex-col items-end gap-2">
-                  {activeBlock && activeBlock.document_block_id && (
-                    <button
-                      type="button"
-                      onClick={() => setShowDocumentCommentPanel((v) => !v)}
-                      className={[
-                        'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-md transition-colors',
-                        showDocumentCommentPanel
-                          ? 'border-odoo-purple/40 bg-odoo-purple/10 text-odoo-purple'
-                          : 'border-ui-border bg-white dark:bg-ui-dark-card text-text-secondary hover:text-text-primary hover:border-odoo-purple/40',
-                      ].join(' ')}
-                      title={showDocumentCommentPanel
-                        ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
-                        : t('documents:wizard.viewMode.showComments', 'Mostrar comentarios')}
-                      aria-pressed={showDocumentCommentPanel}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                      </svg>
-                      <span>
-                        {showDocumentCommentPanel
-                          ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
-                          : t('documents:wizard.viewMode.showComments', 'Comentarios')}
-                      </span>
-                      {!showDocumentCommentPanel && countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments) > 0 && (
-                        <span className="ml-0.5 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none">
-                          {countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments)}
-                        </span>
-                      )}
-                    </button>
-                  )}
-                </div>
-              )}
               <div className="flex flex-row flex-nowrap items-start gap-8 px-6 py-6">
                 <div className="shrink-0 mx-auto">
+                  {/* Fullscreen controls — sit just above the title instead of
+                      floating over the content. Exit fullscreen + comments toggle,
+                      aligned to the paper's right edge. Esc también sale. */}
+                  {isContinuousFullscreen && (
+                    <div
+                      className="mb-3 flex w-full items-center justify-end gap-2 sticky top-3 z-[85]"
+                      style={{ maxWidth: '760px' }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setIsContinuousFullscreen(false)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card dark:text-light px-3 py-1.5 text-xs font-medium shadow-md hover:text-text-secondary hover:border-odoo-purple/80 transition-colors dark:border-ui-dark-border"
+                        title={t('documents:wizard.viewMode.exitFullscreenTitle', 'Salir de pantalla completa (Esc)')}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="4 14 10 14 10 20" />
+                          <polyline points="20 10 14 10 14 4" />
+                          <line x1="14" y1="10" x2="21" y2="3" />
+                          <line x1="3" y1="21" x2="10" y2="14" />
+                        </svg>
+                        <span>{t('documents:wizard.viewMode.exitFullscreen', 'Reducir')}</span>
+                      </button>
+                      {activeBlock && activeBlock.document_block_id && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDocumentCommentPanel((v) => !v)}
+                          className={[
+                            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-md transition-colors',
+                            showDocumentCommentPanel
+                              ? 'border-odoo-purple/40 bg-odoo-purple/10 text-odoo-purple'
+                              : 'border-ui-border bg-white dark:bg-ui-dark-card text-text-secondary hover:text-text-primary hover:border-odoo-purple/40',
+                          ].join(' ')}
+                          title={showDocumentCommentPanel
+                            ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
+                            : t('documents:wizard.viewMode.showComments', 'Mostrar comentarios')}
+                          aria-pressed={showDocumentCommentPanel}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                          </svg>
+                          <span>{showDocumentCommentPanel
+                            ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
+                            : t('documents:wizard.viewMode.showComments', 'Comentarios')}</span>
+                          {!showDocumentCommentPanel && countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments) > 0 && (
+                            <span className="ml-0.5 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none">
+                              {countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments)}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   <article
                     className="bg-white dark:bg-ui-dark-card shadow-xl preview-content"
                     style={{ maxWidth: '760px', minHeight: 'calc(100vh - 14rem)', padding: '56px 72px' }}
