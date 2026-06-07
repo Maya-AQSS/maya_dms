@@ -1073,16 +1073,6 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     return () => root.classList.remove('continuous-fullscreen');
   }, [isContinuousFullscreen]);
 
-  // Continuous-view sidebar visibility (description has priority over comments).
-  // Drives the paper width: the article fills the available space when no
-  // sidebar is shown, and shrinks to a readable column when it is. Must mirror
-  // the sidebar render logic below so width and sidebar stay in sync.
-  const continuousDescriptionBlock = descriptionBlockKey
-    ? sortedBlocks.find((b) => b.template_block_id === descriptionBlockKey) ?? null
-    : null;
-  const continuousHasSidebar =
-    !!continuousDescriptionBlock ||
-    (showDocumentCommentPanel && !!activeBlock && !!activeBlock.document_block_id);
   useEffect(() => {
     if (!isContinuousFullscreen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -2011,7 +2001,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
               : 'flex-1 overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg'
             }>
               <div className="flex flex-row flex-nowrap items-start gap-8 px-6 py-6">
-                <div className={continuousHasSidebar ? 'shrink-0 mx-auto' : 'flex-1 min-w-0'}>
+                <div className="flex-1 min-w-0">
                   {/* Fullscreen controls — sit just above the title instead of
                       floating over the content. Exit fullscreen + comments toggle,
                       aligned to the paper's right edge. Esc también sale. */}
@@ -2062,8 +2052,8 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                     </div>
                   )}
                   <article
-                    className="w-full mx-auto bg-white dark:bg-ui-dark-card shadow-xl preview-content"
-                    style={{ maxWidth: continuousHasSidebar ? '760px' : 'none', minHeight: 'calc(100vh - 14rem)', padding: '56px 72px' }}
+                    className="w-full bg-white dark:bg-ui-dark-card shadow-xl preview-content"
+                    style={{ minHeight: 'calc(100vh - 14rem)', padding: '56px 72px' }}
                   >
                     <Suspense fallback={<div className="p-4 flex justify-center"><Spinner /></div>}>
                       <ContinuousDocumentEditor
