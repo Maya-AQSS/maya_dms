@@ -1,6 +1,8 @@
 import { useMemo, type MutableRefObject } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   MayaEditor,
+  buildToolbarLabels,
   normalizeTiptapContentForPersistence,
   type TiptapDoc,
   type CommentHoverData,
@@ -92,6 +94,15 @@ export function MayaEditorPanel({
 }: Props) {
   const initialDoc = useMemo(() => normaliseToDoc(initialContent), [initialContent]);
 
+  // Toolbar tooltips & group captions in the session language (es/va/en).
+  // The shared `editor.*` canon lives in the `common` namespace.
+  const { t, i18n } = useTranslation('common');
+  const toolbarLabels = useMemo(
+    () => buildToolbarLabels(t),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [t, i18n.language],
+  );
+
   return (
     <MayaEditor
       mode="full"
@@ -99,6 +110,7 @@ export function MayaEditorPanel({
       initialContent={initialDoc}
       editable={editable}
       isDark={isDark}
+      toolbarLabels={toolbarLabels}
       onChange={
         onChange
           ? (payload) => {
