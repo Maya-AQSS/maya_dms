@@ -1065,6 +1065,13 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   useEffect(() => {
     if (blocksViewMode !== 'continuous') setIsContinuousFullscreen(false);
   }, [blocksViewMode]);
+  // Hide the app sidebar while the continuous page fullscreen is active so the
+  // document overlay covers the viewport instead of sitting behind the sidebar.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle('continuous-fullscreen', isContinuousFullscreen);
+    return () => root.classList.remove('continuous-fullscreen');
+  }, [isContinuousFullscreen]);
 
   // Continuous-view sidebar visibility (description has priority over comments).
   // Drives the paper width: the article fills the available space when no
@@ -2000,7 +2007,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
           {/* Continuous mode body — only when NOT block-editor fullscreen. Fullscreen always uses the per-block editor. */}
           {!isEditorFullscreen && blocksViewMode === 'continuous' ? (
             <div className={isContinuousFullscreen
-              ? 'fixed inset-y-0 right-0 left-0 md:left-[var(--sidebar-w,0px)] z-[80] overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg animate-in fade-in'
+              ? 'fixed inset-0 z-[105] overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg animate-in fade-in'
               : 'flex-1 overflow-y-auto bg-app-gradient dark:bg-ui-dark-bg'
             }>
               <div className="flex flex-row flex-nowrap items-start gap-8 px-6 py-6">

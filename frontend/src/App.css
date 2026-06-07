@@ -33,3 +33,16 @@ html.editor-fullscreen div:has(> main#main-content) {
   margin-left: 0 !important;
   transition: none !important;
 }
+
+/* Same treatment for the continuous-view page fullscreen ("Pantalla completa").
+   A separate class (not editor-fullscreen) so the two fullscreen sources never
+   clobber each other's state. Hides the fixed sidebar and drops the content
+   margin so the document overlay truly covers the viewport and never sits
+   behind the sidebar. */
+html.continuous-fullscreen aside.fixed {
+  display: none !important;
+}
+html.continuous-fullscreen div:has(> main#main-content) {
+  margin-left: 0 !important;
+  transition: none !important;
+}
