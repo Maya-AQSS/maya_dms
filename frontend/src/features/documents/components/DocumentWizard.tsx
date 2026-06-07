@@ -313,7 +313,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   // Review comments for creator-edit mode (mirrors TemplateWizard + WizardStep2Blocks).
   // Sourced from the shared TanStack Query cache (useDocumentCommentsQuery) so the
   // DocumentPreviewPage and the wizard reuse the same in-memory comments.
-  const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(true);
+  const [showDocumentCommentPanel, setShowDocumentCommentPanel] = useState(false);
   const [documentCommentLoading, setDocumentCommentLoading] = useState(false);
   const [documentCommentSubmitError, setDocumentCommentSubmitError] = useState<string | null>(null);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
