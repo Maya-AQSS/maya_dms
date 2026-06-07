@@ -11,7 +11,7 @@
     "require": {
         "php": "^8.4",
         "ceedcv-maya/shared-auth-laravel": "^0.8",
-        "ceedcv-maya/shared-editor-laravel": "^0.7",
+        "ceedcv-maya/shared-editor-laravel": "^0.10",
         "ceedcv-maya/shared-http-laravel": "^0.8",
         "ceedcv-maya/shared-messaging-laravel": "^0.8",
         "ceedcv-maya/shared-platform-laravel": "^0.8",

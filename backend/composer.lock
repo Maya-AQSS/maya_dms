@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bdff456e4ea23cb3065a3a27b361b901",
+    "content-hash": "972e1b0bcfcb52fae5b4739a65606c15",
     "packages": [
         {
             "name": "brick/math",
@@ -209,20 +209,21 @@
         },
         {
             "name": "ceedcv-maya/shared-editor-laravel",
-            "version": "v0.7.0",
+            "version": "v0.10.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/Maya-AQSS/shared-editor-laravel.git",
-                "reference": "99b64cec7af6a18737b17b31ff3707e4be9dd72c"
+                "reference": "9724241dca445123f0e76409107e5e7ee79e9948"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Maya-AQSS/shared-editor-laravel/zipball/99b64cec7af6a18737b17b31ff3707e4be9dd72c",
-                "reference": "99b64cec7af6a18737b17b31ff3707e4be9dd72c",
+                "url": "https://api.github.com/repos/Maya-AQSS/shared-editor-laravel/zipball/9724241dca445123f0e76409107e5e7ee79e9948",
+                "reference": "9724241dca445123f0e76409107e5e7ee79e9948",
                 "shasum": ""
             },
             "require": {
                 "illuminate/support": "^11.0 || ^12.0 || ^13.0",
+                "league/commonmark": "^2.8",
                 "php": "^8.4"
             },
             "require-dev": {
@@ -285,7 +286,7 @@
                 "issues": "https://github.com/Maya-AQSS/maya_platform/issues",
                 "source": "https://github.com/Maya-AQSS/shared-editor-laravel"
             },
-            "time": "2026-06-03T14:19:31+00:00"
+            "time": "2026-06-07T08:21:39+00:00"
         },
         {
             "name": "ceedcv-maya/shared-http-laravel",
