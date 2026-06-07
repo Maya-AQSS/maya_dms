@@ -2007,48 +2007,55 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                       aligned to the paper's right edge. Esc también sale. */}
                   {isContinuousFullscreen && (
                     <div className="mb-3 flex w-full items-center justify-end gap-2 sticky top-3 z-[85]">
-                      <button
+                      <Button
                         type="button"
+                        size="xs"
+                        variant="outline"
+                        className="shadow-md"
                         onClick={() => setIsContinuousFullscreen(false)}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-ui-border bg-white dark:bg-ui-dark-card dark:text-light px-3 py-1.5 text-xs font-medium shadow-md hover:text-text-secondary hover:border-odoo-purple/80 transition-colors dark:border-ui-dark-border"
                         title={t('documents:wizard.viewMode.exitFullscreenTitle', 'Salir de pantalla completa (Esc)')}
                       >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                          <polyline points="4 14 10 14 10 20" />
-                          <polyline points="20 10 14 10 14 4" />
-                          <line x1="14" y1="10" x2="21" y2="3" />
-                          <line x1="3" y1="21" x2="10" y2="14" />
-                        </svg>
-                        <span>{t('documents:wizard.viewMode.exitFullscreen', 'Reducir')}</span>
-                      </button>
-                      {activeBlock && activeBlock.document_block_id && (
-                        <button
-                          type="button"
-                          onClick={() => setShowDocumentCommentPanel((v) => !v)}
-                          className={[
-                            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium shadow-md transition-colors',
-                            showDocumentCommentPanel
-                              ? 'border-odoo-purple/40 bg-odoo-purple/10 text-odoo-purple'
-                              : 'border-ui-border bg-white dark:bg-ui-dark-card text-text-secondary hover:text-text-primary hover:border-odoo-purple/40',
-                          ].join(' ')}
-                          title={showDocumentCommentPanel
-                            ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
-                            : t('documents:wizard.viewMode.showComments', 'Mostrar comentarios')}
-                          aria-pressed={showDocumentCommentPanel}
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        <span className="inline-flex items-center gap-1.5">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <polyline points="4 14 10 14 10 20" />
+                            <polyline points="20 10 14 10 14 4" />
+                            <line x1="14" y1="10" x2="21" y2="3" />
+                            <line x1="3" y1="21" x2="10" y2="14" />
                           </svg>
-                          <span>{showDocumentCommentPanel
-                            ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
-                            : t('documents:wizard.viewMode.showComments', 'Comentarios')}</span>
-                          {!showDocumentCommentPanel && countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments) > 0 && (
-                            <span className="ml-0.5 inline-flex items-center justify-center min-w-[1rem] h-4 px-1 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none">
-                              {countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments)}
-                            </span>
-                          )}
-                        </button>
-                      )}
+                          {t('documents:wizard.viewMode.exitFullscreen', 'Reducir')}
+                        </span>
+                      </Button>
+                      {activeBlock && activeBlock.document_block_id && (() => {
+                        const blockCommentsCount = countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments);
+                        return (
+                          <Button
+                            type="button"
+                            size="xs"
+                            variant="outline"
+                            className={showDocumentCommentPanel
+                              ? 'relative shadow-md text-odoo-purple border-odoo-purple/40 bg-odoo-purple/10'
+                              : 'relative shadow-md text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5'}
+                            onClick={() => setShowDocumentCommentPanel((v) => !v)}
+                            aria-pressed={showDocumentCommentPanel}
+                            title={showDocumentCommentPanel
+                              ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
+                              : t('documents:wizard.viewMode.showComments', 'Mostrar comentarios')}
+                          >
+                            <span className="hidden sm:inline">{showDocumentCommentPanel
+                              ? t('documents:wizard.viewMode.hideComments', 'Ocultar comentarios')
+                              : t('documents:wizard.viewMode.showComments', 'Comentarios')}</span>
+                            <span className="sm:hidden" aria-hidden>💬</span>
+                            {!showDocumentCommentPanel && blockCommentsCount > 0 && (
+                              <span
+                                aria-label={`${blockCommentsCount} comentarios`}
+                                className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none"
+                              >
+                                {blockCommentsCount > 99 ? '99+' : blockCommentsCount}
+                              </span>
+                            )}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   )}
                   <article
@@ -2274,17 +2281,30 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                         </Button>
                       );
                     })()}
-                    {!showDocumentCommentPanel && activeBlock.document_block_id && (
-                      <Button
-                        type="button"
-                        size="xs"
-                        variant="outline"
-                        className="text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
-                        onClick={() => setShowDocumentCommentPanel(true)}
-                      >
-                        Comentarios ({getCommentsForBlock(activeBlock.document_block_id, reviewComments).length})
-                      </Button>
-                    )}
+                    {!showDocumentCommentPanel && activeBlock.document_block_id && (() => {
+                      const blockCommentsCount = countUnreadCommentsForBlock(activeBlock.document_block_id, reviewComments);
+                      return (
+                        <Button
+                          type="button"
+                          size="xs"
+                          variant="outline"
+                          className="relative text-odoo-purple border-odoo-purple/40 hover:bg-odoo-purple/5"
+                          onClick={() => setShowDocumentCommentPanel(true)}
+                          title="Comentarios de revisión"
+                        >
+                          <span className="hidden sm:inline">Comentarios</span>
+                          <span className="sm:hidden" aria-hidden>💬</span>
+                          {blockCommentsCount > 0 && (
+                            <span
+                              aria-label={`${blockCommentsCount} comentarios`}
+                              className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-odoo-purple text-white text-[10px] font-bold leading-none"
+                            >
+                              {blockCommentsCount > 99 ? '99+' : blockCommentsCount}
+                            </span>
+                          )}
+                        </Button>
+                      );
+                    })()}
                     {canDeleteOptionalBlock && (
                       <Button
                         type="button"
