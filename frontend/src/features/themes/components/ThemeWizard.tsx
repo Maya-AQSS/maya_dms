@@ -279,8 +279,6 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         <ThemeWizardStepIdentity
           value={identity}
           onChange={setIdentity}
-          theme={theme}
-          onAssetsUploaded={setTheme}
         />
       )}
       {step === 'layout' && theme && (

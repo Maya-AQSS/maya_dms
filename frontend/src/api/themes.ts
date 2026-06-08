@@ -1,7 +1,6 @@
 import type {
   Theme,
   ThemeAccessibility,
-  ThemeAssets,
   ThemeFontsCatalog,
   ThemeLayout,
   ThemeListFilters,
@@ -20,7 +19,6 @@ export interface CreateThemePayload {
   palette?: Partial<ThemePalette>;
   typography?: Partial<ThemeTypography>;
   layout?: Partial<ThemeLayout>;
-  assets?: Partial<ThemeAssets>;
   accessibility?: Partial<ThemeAccessibility>;
 }
 
@@ -31,7 +29,6 @@ export interface UpdateThemePayload {
   palette?: Partial<ThemePalette>;
   typography?: Partial<ThemeTypography>;
   layout?: Partial<ThemeLayout>;
-  assets?: Partial<ThemeAssets>;
   accessibility?: Partial<ThemeAccessibility>;
 }
 
@@ -40,7 +37,6 @@ export interface CloneThemePayload {
   palette?: Partial<ThemePalette>;
   typography?: Partial<ThemeTypography>;
   layout?: Partial<ThemeLayout>;
-  assets?: Partial<ThemeAssets>;
   accessibility?: Partial<ThemeAccessibility>;
 }
 
@@ -103,24 +99,20 @@ export async function archiveTheme(id: string): Promise<{ data: Theme }> {
   return apiFetchJson<{ data: Theme }>(`themes/${id}/archive`, { method: 'POST' });
 }
 
-export type ThemeAssetKind = 'logo' | 'background' | 'watermark';
-
 /**
- * POST /api/v1/themes/{id}/assets — multipart upload.
+ * POST /api/v1/themes/{id}/images — multipart upload de archivo de imagen.
  * Hace fetch directo porque apiFetchJson serializa siempre el body como JSON
  * (no detecta FormData). El boundary lo fija el browser.
  */
-export async function uploadThemeAsset(
+export async function uploadThemeImage(
   themeId: string,
-  kind: ThemeAssetKind,
   file: File,
-): Promise<{ data: Theme }> {
+): Promise<{ data: { src: string; url: string } }> {
   const form = new FormData();
-  form.append('kind', kind);
   form.append('file', file);
 
   const token = await getBearerToken();
-  const response = await fetch(buildApiUrl(`themes/${themeId}/assets`), {
+  const response = await fetch(buildApiUrl(`themes/${themeId}/images`), {
     method: 'POST',
     headers: token ? { Authorization: `Bearer ${token}` } : undefined,
     body: form,
@@ -137,6 +129,20 @@ export async function uploadThemeAsset(
     throw new ApiHttpError(response.status, message);
   }
 
-  return (await response.json()) as { data: Theme };
+  return (await response.json()) as { data: { src: string; url: string } };
+}
+
+/**
+ * POST /api/v1/themes/{id}/images — ingesta de imagen desde URL remota.
+ * Envía { url: "https://..." } al servidor para que descargue y procese.
+ */
+export async function ingestThemeImageUrl(
+  themeId: string,
+  url: string,
+): Promise<{ data: { src: string; url: string } }> {
+  return apiFetchJson<{ data: { src: string; url: string } }>(
+    `themes/${themeId}/images`,
+    { method: 'POST', body: { url } },
+  );
 }
 

@@ -3,6 +3,7 @@ import { Responsive, WidthProvider, type Layout } from 'react-grid-layout';
 import { useTranslation } from 'react-i18next';
 import { Button, FieldLabel, Select, TextInput } from '@ceedcv-maya/shared-ui-react';
 import type { Theme, ThemeBlockType, ThemeLayoutRegion } from '../../../types/themes';
+import { uploadThemeImage, ingestThemeImageUrl } from '../../../api/themes';
 import './theme-grid.css';
 
 const ResponsiveGridLayout = WidthProvider(Responsive);
@@ -47,11 +48,9 @@ const BLOCK_CATALOG: Array<{
     defaultProps: { label: 'Aquí se carga el cuerpo del documento' },
   },
   { type: 'text', label: 'Texto', defaultSize: { w: 4, h: 2 }, defaultProps: { text: 'Texto', size: 9, color: '#333333', align: 'left' } },
-  { type: 'logo', label: 'Logo', defaultSize: { w: 3, h: 3 }, defaultProps: { alt: 'Logo' } },
-  { type: 'image', label: 'Imagen (asset)', defaultSize: { w: 4, h: 4 }, defaultProps: { asset: 'background', alt: 'Imagen' } },
+  { type: 'image', label: 'Imagen', defaultSize: { w: 4, h: 4 }, defaultProps: { alt: '', opacity: 1, objectFit: 'contain' } },
   { type: 'page_number', label: 'Nº de página', defaultSize: { w: 3, h: 2 }, defaultProps: { format: 'page-of-pages', align: 'right' } },
   { type: 'date', label: 'Fecha', defaultSize: { w: 3, h: 2 }, defaultProps: { format: 'short', align: 'left' } },
-  { type: 'watermark', label: 'Marca de agua', defaultSize: { w: 8, h: 8 }, defaultProps: { text: 'BORRADOR', opacity: 0.15, rotate: -30 } },
 ];
 
 function newRegion(type: ThemeBlockType, occupiedZ: number): ThemeLayoutRegion {
@@ -206,8 +205,6 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
 
   const layout = useMemo(() => regionsToLayout(editableRegions), [editableRegions]);
 
-  const backgroundUrl = theme.assets.background_image_path || null;
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       {!embedded && (
@@ -248,10 +245,6 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
                  A4 — un bloque en y=49 aparece visualmente al 94% en el
                  editor igual que en el PDF. */
               minHeight: `${ROW_HEIGHT * GRID_ROWS}px`,
-              backgroundImage: backgroundUrl ? `url("${backgroundUrl}")` : undefined,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-              backgroundRepeat: 'no-repeat',
               // Inyectamos la tipografía del theme en la canvas para que el
               // editor sea WYSIWYG: los bloques de texto (`.theme-grid-slot`)
               // usan `var(--font-body)` — sin esto verían system-ui mientras
@@ -288,7 +281,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
                     style={{ zIndex: r.grid?.z ?? 1 }}
                     onMouseDown={() => setSelectedId(r.id)}
                   >
-                    <BlockPreview region={r} theme={theme} />
+                    <BlockPreview region={r} />
                     <div className="theme-grid-block-controls">
                       <button
                         type="button"
@@ -333,6 +326,7 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
           {selected ? (
             <BlockInspector
               region={selected}
+              themeId={theme.id}
               onUpdateProps={(p) => handleUpdateProps(selected.id, p)}
               onUpdateGrid={(p) => handleUpdateGrid(selected.id, p)}
             />
@@ -412,7 +406,7 @@ function Toolbar({ onAddBlock, saving, dirty, error }: ToolbarProps) {
 
 /* ─── Preview de cada bloque dentro de la rejilla ─────────────────────── */
 
-function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: Theme }) {
+function BlockPreview({ region }: { region: ThemeLayoutRegion }) {
   const { t } = useTranslation('themes');
   const p = region.props ?? {};
   switch (region.type) {
@@ -436,30 +430,28 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
           {(p.text as string) ?? 'Texto'}
         </div>
       );
-    case 'logo': {
-      const url = theme.assets.logo_path || null;
-      return (
-        <div className="theme-grid-slot theme-grid-slot--logo">
-          {url ? (
-            <img src={url} alt={(p.alt as string) ?? 'Logo'} className="max-h-full max-w-full object-contain" />
-          ) : (
-            <span className="text-text-muted">Logo (sube uno en el paso anterior)</span>
-          )}
-        </div>
-      );
-    }
     case 'image': {
-      const asset = (p.asset as 'background' | 'watermark' | 'logo') ?? 'background';
-      const path = theme.assets[
-        asset === 'background' ? 'background_image_path' : asset === 'watermark' ? 'watermark_path' : 'logo_path'
-      ];
-      const url = path || null;
+      const url = (p.srcUrl as string) || null;
       return (
-        <div className="theme-grid-slot theme-grid-slot--image">
+        <div
+          className="theme-grid-slot theme-grid-slot--image"
+          style={{
+            opacity: (p.opacity as number) ?? 1,
+            transform: `rotate(${(p.rotate as number) ?? 0}deg)`,
+          }}
+        >
           {url ? (
-            <img src={url} alt={(p.alt as string) ?? ''} className="max-h-full max-w-full object-contain" />
+            <img
+              src={url}
+              alt={(p.alt as string) ?? ''}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: ((p.objectFit as string) ?? 'contain') as React.CSSProperties['objectFit'],
+              }}
+            />
           ) : (
-            <span className="text-text-muted">{asset} (sin imagen)</span>
+            <span className="text-text-muted">{t('editor.imageEmpty')}</span>
           )}
         </div>
       );
@@ -482,24 +474,6 @@ function BlockPreview({ region, theme }: { region: ThemeLayoutRegion; theme: The
           {(p.format as string) === 'long' ? '1 de enero de 2026' : '01/01/2026'}
         </div>
       );
-    case 'watermark':{
-      const url = theme.assets.watermark_path || null;
-      return (
-        <div
-          className="theme-grid-slot theme-grid-slot--watermark"
-          style={{
-            opacity: (p.opacity as number) ?? 0.15,
-            transform: `rotate(${(p.rotate as number) ?? -30}deg)`,
-          }}
-        >
-          {url ? (
-            <img src={url} alt={(p.alt as string) ?? 'Marca de agua'} className="max-h-full max-w-full object-contain" />
-          ) : (
-            <span className="text-text-muted">BORRADOR</span>
-          )}
-        </div>
-      );
-    }
     default:
       return (
         <div className="theme-grid-slot theme-grid-slot--legacy">
@@ -535,11 +509,12 @@ function EmptyInspector() {
 
 interface BlockInspectorProps {
   region: ThemeLayoutRegion;
+  themeId: string;
   onUpdateProps: (patch: Record<string, unknown>) => void;
   onUpdateGrid: (patch: { w?: number; h?: number; x?: number; y?: number }) => void;
 }
 
-function BlockInspector({ region, onUpdateProps, onUpdateGrid }: BlockInspectorProps) {
+function BlockInspector({ region, themeId, onUpdateProps, onUpdateGrid }: BlockInspectorProps) {
   const { t } = useTranslation('themes');
   const p = region.props ?? {};
   const grid = region.grid;
@@ -572,7 +547,7 @@ function BlockInspector({ region, onUpdateProps, onUpdateGrid }: BlockInspectorP
         <h4 className="text-xs font-bold uppercase tracking-wider text-text-secondary">
           Propiedades
         </h4>
-        {renderTypeFields(region.type, p, onUpdateProps, t)}
+        {renderTypeFields(region.type, p, onUpdateProps, t, themeId)}
       </section>
     </div>
   );
@@ -583,6 +558,7 @@ function renderTypeFields(
   p: Record<string, unknown>,
   onChange: (patch: Record<string, unknown>) => void,
   t: (key: string) => string,
+  themeId?: string,
 ): React.ReactNode {
   switch (type) {
     case 'text':
@@ -610,41 +586,15 @@ function renderTypeFields(
           <AlignField value={(p.align as string) ?? 'left'} onChange={(v) => onChange({ align: v })} />
         </>
       );
-    case 'logo':
-      return (
-        <div>
-          <FieldLabel htmlFor="blk-alt">Texto alternativo</FieldLabel>
-          <TextInput
-            id="blk-alt"
-            value={(p.alt as string) ?? 'Logo'}
-            onChange={(e) => onChange({ alt: e.target.value })}
-          />
-        </div>
-      );
     case 'image':
-      return (
-        <>
-          <div>
-            <FieldLabel htmlFor="blk-asset">Asset</FieldLabel>
-            <Select
-              id="blk-asset"
-              value={(p.asset as string) ?? 'background'}
-              onChange={(e) => onChange({ asset: e.target.value })}
-            >
-              <option value="background">Imagen de fondo</option>
-              <option value="watermark">Marca de agua</option>
-              <option value="logo">Logo</option>
-            </Select>
-          </div>
-          <div>
-            <FieldLabel htmlFor="blk-img-alt">Texto alternativo</FieldLabel>
-            <TextInput
-              id="blk-img-alt"
-              value={(p.alt as string) ?? ''}
-              onChange={(e) => onChange({ alt: e.target.value })}
-            />
-          </div>
-        </>
+      return themeId ? (
+        <ImageBlockEditor
+          props={p}
+          themeId={themeId}
+          onChange={onChange}
+        />
+      ) : (
+        <p className="text-xs text-text-muted">ID de theme no disponible</p>
       );
     case 'page_number':
       return (
@@ -678,34 +628,6 @@ function renderTypeFields(
             </Select>
           </div>
           <AlignField value={(p.align as string) ?? 'left'} onChange={(v) => onChange({ align: v })} />
-        </>
-      );
-    case 'watermark':
-      return (
-        <>
-          <div>
-            <FieldLabel htmlFor="blk-wm-text">Texto</FieldLabel>
-            <TextInput
-              id="blk-wm-text"
-              value={(p.text as string) ?? 'BORRADOR'}
-              onChange={(e) => onChange({ text: e.target.value })}
-            />
-          </div>
-          <NumField
-            label="Opacidad (0–1)"
-            value={(p.opacity as number) ?? 0.15}
-            min={0}
-            max={1}
-            step={0.05}
-            onChange={(v) => onChange({ opacity: v })}
-          />
-          <NumField
-            label="Rotación (grados)"
-            value={(p.rotate as number) ?? -30}
-            min={-180}
-            max={180}
-            onChange={(v) => onChange({ rotate: v })}
-          />
         </>
       );
     case 'content_slot':
@@ -773,6 +695,159 @@ function AlignField({ value, onChange }: AlignFieldProps) {
         <option value="center">Centro</option>
         <option value="right">Derecha</option>
       </Select>
+    </div>
+  );
+}
+
+/* ─── Editor de bloques de imagen ───────────────────────────────────── */
+
+interface ImageBlockEditorProps {
+  props: Record<string, unknown>;
+  themeId: string;
+  onChange: (patch: Record<string, unknown>) => void;
+}
+
+function ImageBlockEditor({ props, themeId, onChange }: ImageBlockEditorProps) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [urlInput, setUrlInput] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const srcUrl = (props.srcUrl as string) || null;
+
+  const handleFileUpload = async (file: File) => {
+    setUploading(true);
+    setError(null);
+    try {
+      const response = await uploadThemeImage(themeId, file);
+      onChange({ src: response.data.src, srcUrl: response.data.url });
+      // Reset input
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error subiendo imagen');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleUrlIngest = async () => {
+    if (!urlInput.trim()) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const response = await ingestThemeImageUrl(themeId, urlInput);
+      onChange({ src: response.data.src, srcUrl: response.data.url });
+      setUrlInput('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error ingiriendo imagen desde URL');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      {/* Miniatura si hay imagen */}
+      {srcUrl && (
+        <div>
+          <FieldLabel>Vista previa</FieldLabel>
+          <div className="h-24 w-full rounded border border-ui-border overflow-hidden bg-ui-body">
+            <img src={srcUrl} alt="Preview" className="w-full h-full object-cover" />
+          </div>
+        </div>
+      )}
+
+      {/* Origen: Archivo */}
+      <div>
+        <FieldLabel htmlFor="blk-img-file">Subir imagen</FieldLabel>
+        <input
+          ref={fileInputRef}
+          id="blk-img-file"
+          type="file"
+          accept="image/*"
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.currentTarget.files?.[0];
+            if (file) handleFileUpload(file);
+          }}
+          className="block w-full text-xs file:mr-2 file:rounded file:border-0 file:bg-primary file:px-2 file:py-1 file:text-white file:text-xs file:cursor-pointer file:disabled:bg-text-muted disabled:opacity-50"
+        />
+      </div>
+
+      {/* Origen: URL */}
+      <div>
+        <FieldLabel htmlFor="blk-img-url">O usar URL</FieldLabel>
+        <div className="flex gap-1">
+          <input
+            id="blk-img-url"
+            type="url"
+            value={urlInput}
+            onChange={(e) => setUrlInput(e.target.value)}
+            disabled={uploading}
+            placeholder="https://ejemplo.com/imagen.jpg"
+            className="flex-1 rounded border border-ui-border px-2 py-1 text-xs disabled:opacity-50"
+          />
+          <Button
+            type="button"
+            variant="primary"
+            size="sm"
+            loading={uploading}
+            disabled={!urlInput.trim() || uploading}
+            onClick={handleUrlIngest}
+            className="shrink-0"
+          >
+            Usar
+          </Button>
+        </div>
+      </div>
+
+      {/* Errores */}
+      {error && (
+        <p className="rounded bg-danger/10 p-2 text-xs text-danger-dark">
+          {error}
+        </p>
+      )}
+
+      {/* Texto alternativo */}
+      <div>
+        <FieldLabel htmlFor="blk-img-alt">Texto alternativo</FieldLabel>
+        <TextInput
+          id="blk-img-alt"
+          value={(props.alt as string) ?? ''}
+          onChange={(e) => onChange({ alt: e.target.value })}
+        />
+      </div>
+
+      {/* Propiedades visuales */}
+      <NumField
+        label="Opacidad (0–1)"
+        value={(props.opacity as number) ?? 1}
+        min={0}
+        max={1}
+        step={0.05}
+        onChange={(v) => onChange({ opacity: v })}
+      />
+
+      <NumField
+        label="Rotación (grados)"
+        value={(props.rotate as number) ?? 0}
+        min={-180}
+        max={180}
+        onChange={(v) => onChange({ rotate: v })}
+      />
+
+      <div>
+        <FieldLabel htmlFor="blk-img-fit">Ajuste de imagen</FieldLabel>
+        <Select
+          id="blk-img-fit"
+          value={(props.objectFit as string) ?? 'contain'}
+          onChange={(e) => onChange({ objectFit: e.target.value })}
+        >
+          <option value="contain">Contener (espacio vacío)</option>
+          <option value="cover">Cubrir (recorte)</option>
+          <option value="stretch">Estirar</option>
+        </Select>
+      </div>
     </div>
   );
 }

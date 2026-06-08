@@ -34,15 +34,9 @@ export interface ThemeLayoutPage {
 export type ThemeBlockType =
   | 'content_slot'   // marca el área donde se renderiza el cuerpo del documento
   | 'text'           // texto estático (cabecera, pie, etc.)
-  | 'logo'           // logo del theme
-  | 'image'          // imagen adicional
+  | 'image'          // imagen auto-contenida con origen archivo-local O URL
   | 'page_number'    // contador de páginas
-  | 'date'           // fecha
-  | 'watermark'      // marca de agua (capa de fondo)
-  /** Legacy — bloques generados por el editor Puck anterior. */
-  | 'header'
-  | 'footer'
-  | 'sidebar';
+  | 'date';          // fecha
 
 /** Una región / bloque del layout del theme. */
 export interface ThemeLayoutRegion {
@@ -58,7 +52,16 @@ export interface ThemeLayoutRegion {
    * mantiene para no romper datos serializados previos).
    */
   position?: { x: number; y: number; width: number; height: number };
-  /** Props específicas del bloque (texto, color, formato, etc.). */
+  /**
+   * Props específicas del bloque (texto, color, formato, etc.).
+   * Para bloques de tipo 'image', esperados:
+   *   - src: string — path interno canónico, ej. "themes/{themeId}/{uuid}"
+   *   - srcUrl: string — URL firmada lista para <img src> (SOLO LECTURA, devuelta por el backend)
+   *   - alt?: string — texto alternativo
+   *   - opacity?: number (0..1) — opacidad de la imagen
+   *   - rotate?: number — rotación en grados (-180..180)
+   *   - objectFit?: 'cover' | 'contain' | 'stretch' — ajuste de la imagen en el bloque
+   */
   props?: Record<string, unknown>;
   /** @deprecated Datos del editor Puck anterior — sólo backward-compat. */
   puck?: unknown;
@@ -67,12 +70,6 @@ export interface ThemeLayoutRegion {
 export interface ThemeLayout {
   regions: ThemeLayoutRegion[];
   page: ThemeLayoutPage;
-}
-
-export interface ThemeAssets {
-  logo_path: string | null;
-  background_image_path: string | null;
-  watermark_path: string | null;
 }
 
 export interface ThemeAccessibility {
@@ -92,7 +89,6 @@ export interface Theme {
   palette: ThemePalette;
   typography: ThemeTypography;
   layout: ThemeLayout;
-  assets: ThemeAssets;
   accessibility: ThemeAccessibility;
   cloned_from_id: string | null;
   created_at: string;

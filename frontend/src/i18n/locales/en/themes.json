@@ -46,10 +46,6 @@
       "ca": "Catalan/Valencian",
       "en": "English",
       "fr": "French"
-    },
-    "assets": {
-      "assetsTitle": "Visual assets (logo, background, watermark):",
-      "assetsHint": "save the theme first so you can upload images. Once created, this panel will show the upload cards."
     }
   },
   "editor": {
@@ -57,7 +53,8 @@
     "addBlock": "+ Add block",
     "pageNumber": "Page N",
     "pageNumberOfTotal": "Page N of M",
-    "alignment": "Alignment"
+    "alignment": "Alignment",
+    "imageEmpty": "No image"
   },
   "emptyMessage": "No themes yet. Create one from \"New theme\"."
 }

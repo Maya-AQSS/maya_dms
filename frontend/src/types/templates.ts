@@ -114,9 +114,6 @@ export interface ThemeMini {
     heading_font: string | null;
     body_font: string | null;
   };
-  assets: {
-    logo_path: string | null;
-  };
 }
 
 export type TemplatesListMeta = {

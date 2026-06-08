@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import type { Theme, ThemeLayoutRegion, ThemeBlockType } from '../../../types/themes';
 
 interface ThemeA4PreviewProps {
@@ -54,14 +53,6 @@ function blockStyle(
         label: 'Contenido',
         textColor: palette.text ?? '#1a1a1a',
       };
-    case 'logo':
-      return { bg: 'rgba(255,255,255,0.6)', border: `1px solid ${palette.secondary}`, label: 'Logo', textColor: palette.text };
-    case 'header':
-      return { bg: palette.primary, border: 'none', label: 'Header', textColor: '#ffffff' };
-    case 'footer':
-      return { bg: palette.secondary, border: 'none', label: 'Footer', textColor: '#ffffff' };
-    case 'sidebar':
-      return { bg: palette.accent ?? palette.secondary, border: 'none', label: 'Sidebar', textColor: '#ffffff' };
     case 'text':
       return { bg: 'rgba(0,0,0,0.04)', border: `1px solid ${palette.secondary}`, label: 'Texto', textColor: palette.text };
     case 'image':
@@ -70,8 +61,6 @@ function blockStyle(
       return { bg: 'rgba(0,0,0,0.04)', border: `1px dashed ${palette.secondary}`, label: '# Pág.', textColor: palette.text };
     case 'date':
       return { bg: 'rgba(0,0,0,0.04)', border: `1px dashed ${palette.secondary}`, label: 'Fecha', textColor: palette.text };
-    case 'watermark':
-      return { bg: 'rgba(0,0,0,0.05)', border: `1px dotted ${palette.secondary}`, label: 'Marca agua', textColor: palette.text };
     default:
       return { bg: 'rgba(0,0,0,0.06)', border: `1px solid ${palette.secondary}`, label: type, textColor: palette.text };
   }
@@ -87,8 +76,6 @@ function blockStyle(
  * ve a escala el aspecto que tendrá el documento al exportarse a PDF.
  */
 export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
-  const logoUrl = useMemo(() => theme?.assets.logo_path ?? null, [theme]);
-
   if (!theme) {
     return (
       <div
@@ -128,7 +115,9 @@ export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
       >
         {regions.map(({ region, rect }) => {
           const style = blockStyle(region.type, palette);
-          const isLogo = region.type === 'logo' && logoUrl;
+          const p = region.props ?? {};
+          const imageUrl = (p.srcUrl as string) || null;
+          const isImage = region.type === 'image' && imageUrl;
           return (
             <div
               key={region.id}
@@ -148,11 +137,14 @@ export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
               }}
               title={`${style.label} (${region.type})`}
             >
-              {isLogo ? (
+              {isImage ? (
                 <img
-                  src={logoUrl}
+                  src={imageUrl}
                   alt=""
-                  className="max-h-full max-w-full object-contain"
+                  className="max-h-full max-w-full"
+                  style={{
+                    objectFit: ((p.objectFit as string) ?? 'contain') as React.CSSProperties['objectFit'],
+                  }}
                 />
               ) : region.type === 'content_slot' ? (
                 <ContentSlotPreview palette={palette} headingFont={typography?.heading_font ?? undefined} />

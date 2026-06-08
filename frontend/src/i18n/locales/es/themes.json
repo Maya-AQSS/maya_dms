@@ -46,10 +46,6 @@
       "ca": "Catalán/Valenciano",
       "en": "Inglés",
       "fr": "Francés"
-    },
-    "assets": {
-      "assetsTitle": "Assets visuales (logo, fondo, marca de agua):",
-      "assetsHint": "guarda primero el theme para poder subir imágenes. Una vez creado, este panel mostrará las tarjetas de subida."
     }
   },
   "editor": {
@@ -57,7 +53,8 @@
     "addBlock": "+ Añadir bloque",
     "pageNumber": "Página N",
     "pageNumberOfTotal": "Página N de M",
-    "alignment": "Alineación"
+    "alignment": "Alineación",
+    "imageEmpty": "Sin imagen"
   },
   "emptyMessage": "Aún no hay temas. Crea uno desde \"Nuevo tema\"."
 }

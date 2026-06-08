@@ -46,10 +46,6 @@
       "ca": "Català/Valencià",
       "en": "Anglès",
       "fr": "Francès"
-    },
-    "assets": {
-      "assetsTitle": "Assets visuals (logo, fons, marca d'aigua):",
-      "assetsHint": "guarda primer el theme per poder pujar imatges. Una vegada creat, aquest panell mostrarà les targetes de pujada."
     }
   },
   "editor": {
@@ -57,7 +53,8 @@
     "addBlock": "+ Afegir bloc",
     "pageNumber": "Pàgina N",
     "pageNumberOfTotal": "Pàgina N de M",
-    "alignment": "Alineació"
+    "alignment": "Alineació",
+    "imageEmpty": "Sense imatge"
   },
   "emptyMessage": "Encara no hi ha temes. Crea'n un des de \"Nou tema\"."
 }

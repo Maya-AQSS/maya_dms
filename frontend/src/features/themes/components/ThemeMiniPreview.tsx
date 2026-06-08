@@ -20,7 +20,6 @@ interface NormalizedTheme {
 function normalize(theme: Theme | ThemeMini): NormalizedTheme {
   const palette = theme.palette as Record<string, string | null | undefined>;
   const typo = (theme as Theme).typography ?? (theme as ThemeMini).typography;
-  const assets = (theme as Theme).assets ?? (theme as ThemeMini).assets;
 
   const swatches = [
     palette?.primary,
@@ -30,7 +29,18 @@ function normalize(theme: Theme | ThemeMini): NormalizedTheme {
     palette?.text,
   ].filter((c): c is string => typeof c === 'string' && c.length > 0);
 
-  const logoUrl = assets?.logo_path ?? null;
+  // Obtener logo URL del primer bloque de imagen con srcUrl en el layout (si es Theme)
+  // O si es ThemeMini, no hay layout, devolver null
+  let logoUrl: string | null = null;
+  const fullTheme = theme as Theme;
+  if (fullTheme.layout?.regions) {
+    const firstImageBlock = fullTheme.layout.regions.find(
+      (r) => r.type === 'image' && (r.props?.srcUrl as string),
+    );
+    if (firstImageBlock) {
+      logoUrl = (firstImageBlock.props?.srcUrl as string) ?? null;
+    }
+  }
 
   return {
     id: theme.id,

@@ -1,9 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { FieldLabel, Select, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { useThemeFonts } from '../hooks/useThemeFonts';
-import { ThemeAssetsSection } from './ThemeAssetsSection';
 import type {
-  Theme,
   ThemeAccessibility,
   ThemeFontsCatalog,
   ThemePalette,
@@ -21,9 +19,6 @@ export interface ThemeIdentityValue {
 interface ThemeWizardStepIdentityProps {
   value: ThemeIdentityValue;
   onChange: (next: ThemeIdentityValue) => void;
-  /** Si hay theme persistido, se muestra el panel de assets. */
-  theme?: Theme | null;
-  onAssetsUploaded?: (theme: Theme) => void;
 }
 
 const LANG_OPTION_KEYS = ['es', 'ca', 'en', 'fr'] as const;
@@ -38,8 +33,6 @@ const LANG_OPTION_KEYS = ['es', 'ca', 'en', 'fr'] as const;
 export function ThemeWizardStepIdentity({
   value,
   onChange,
-  theme,
-  onAssetsUploaded,
 }: ThemeWizardStepIdentityProps) {
   const { t } = useTranslation('themes');
   const { catalog: fonts } = useThemeFonts();
@@ -170,14 +163,6 @@ export function ThemeWizardStepIdentity({
             {t('identity.fields.authorHint')}
           </p>
         </section>
-
-        {theme && onAssetsUploaded ? (
-          <ThemeAssetsSection theme={theme} onUploaded={onAssetsUploaded} />
-        ) : (
-          <section className="rounded border border-dashed border-ui-border p-4 text-sm text-text-muted">
-            <strong>{t('identity.assets.assetsTitle')}</strong> {t('identity.assets.assetsHint')}
-          </section>
-        )}
       </div>
     </div>
   );
