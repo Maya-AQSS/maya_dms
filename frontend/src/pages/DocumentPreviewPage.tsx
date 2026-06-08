@@ -591,7 +591,20 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       const data = await startDocumentNewVersion(documentId);
       setDetail(data);
       setShowNewVersionConfirm(false);
-      navigate(`/documents/${documentId}/editor`, { state: { step: 'properties' } });
+
+      // Si la plantilla tiene una versión más nueva, el wizard muestra el paso de
+      // migración para actualizar el documento in-situ a la versión nueva.
+      let hasUpdate = false;
+      try {
+        const status = await fetchTemplateVersionStatus(documentId);
+        hasUpdate = status.has_update === true;
+      } catch {
+        hasUpdate = false;
+      }
+
+      navigate(`/documents/${documentId}/editor`, {
+        state: hasUpdate ? { migrationMode: 'upgrade' } : { step: 'properties' },
+      });
     } catch (e) {
       if (e instanceof ApiHttpError && e.status === 409) {
         setShowNewVersionConfirm(false);

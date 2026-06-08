@@ -24,6 +24,8 @@ readonly class BlockDisplayDto
         public mixed $content,
         public bool $is_filled,
         public bool $is_deleted,
+        /** True si el bloque ya no existe en la versión de plantilla anclada (se mantuvo al migrar). */
+        public bool $is_orphaned = false,
     ) {}
 
     /**
@@ -44,6 +46,7 @@ readonly class BlockDisplayDto
             'content' => $this->content,
             'is_filled' => $this->is_filled,
             'is_deleted' => $this->is_deleted,
+            'is_orphaned' => $this->is_orphaned,
         ];
     }
 }

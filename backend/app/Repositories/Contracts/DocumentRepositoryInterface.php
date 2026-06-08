@@ -67,6 +67,12 @@ interface DocumentRepositoryInterface
     public function createDocumentWithBlocks(array $documentAttributes, array $blockRows): Document;
 
     /**
+     * Re-ancla el documento a otra versión publicada de plantilla (columna
+     * `template_version_id`). Usado por la actualización in-situ de versión.
+     */
+    public function updateTemplateVersionAnchor(string $documentId, string $templateVersionId): void;
+
+    /**
      * Localiza un bloque por su ID dentro del documento o lanza ModelNotFoundException.
      */
     public function findBlockInDocumentOrFail(string $documentId, string $blockId): DocumentBlock;

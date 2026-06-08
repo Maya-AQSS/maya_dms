@@ -213,6 +213,25 @@ export async function fetchDocumentMigrationPayload(
   return migrationPayloadSchema.parse(body.data);
 }
 
+/**
+ * POST /api/v1/documents/{id}/apply-template-migration — actualiza in-situ el
+ * documento (en ciclo de nueva versión) a la versión de plantilla destino.
+ */
+export async function applyTemplateMigration(
+  documentId: string,
+  payload: {
+    target_template_version_id: string;
+    migrated_blocks: Record<string, unknown>;
+    removed_block_actions: Record<string, 'delete' | 'keep'>;
+  },
+): Promise<DocumentDetail> {
+  const body = await apiFetchJson<DocumentDetailApiResponse>(
+    `documents/${encodeURIComponent(documentId)}/apply-template-migration`,
+    { method: 'POST', body: payload },
+  );
+  return body.data;
+}
+
 type DocumentMutationApiResponse = { data: Document };
 type DocumentSubmitApiResponse = { data: Document };
 

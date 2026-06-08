@@ -5,20 +5,33 @@ import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import type {
   DocumentMigrationBlock,
   MigrationChoice,
+  RemovedBlockChoice,
 } from '../schemas/migrationPayload';
 
 type Props = {
   block: DocumentMigrationBlock;
   choice: MigrationChoice | undefined;
   onChoose: (templateBlockId: string, choice: MigrationChoice | undefined) => void;
+  /** Elección Eliminar/Mantener (solo bloques eliminados en upgrade). */
+  removedChoice?: RemovedBlockChoice | undefined;
+  onChooseRemoved?: (templateBlockId: string, choice: RemovedBlockChoice | undefined) => void;
+  allowRemovedDecision?: boolean;
 };
 
 /**
  * Una fila del paso de migración: contenido nuevo (verde) vs contenido antiguo
  * del usuario (rojo), reutilizando el patrón visual de DocumentDiffModal. Permite
  * elegir Reemplazar / Anexar salvo en bloques bloqueados, nuevos o eliminados.
+ * En upgrade, los bloques eliminados ofrecen Eliminar / Mantener.
  */
-export function MigrationBlockItem({ block, choice, onChoose }: Props) {
+export function MigrationBlockItem({
+  block,
+  choice,
+  onChoose,
+  removedChoice,
+  onChooseRemoved,
+  allowRemovedDecision = false,
+}: Props) {
   const { t } = useTranslation('documents');
 
   const id = block.template_block_id;
@@ -102,6 +115,33 @@ export function MigrationBlockItem({ block, choice, onChoose }: Props) {
             {choice && (
               <span className="ml-1 text-[11px] font-semibold text-success-dark dark:text-success">
                 ✓ {choice === 'replace' ? t('migration.replace') : t('migration.append')}
+              </span>
+            )}
+          </div>
+        )}
+
+        {block.removed_block && allowRemovedDecision && onChooseRemoved && (
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-xs text-text-muted dark:text-text-dark-muted mr-1">{t('migration.removedAction')}</span>
+            <Button
+              type="button"
+              size="xs"
+              variant={removedChoice === 'keep' ? 'primary' : 'outline'}
+              onClick={() => onChooseRemoved(id, removedChoice === 'keep' ? undefined : 'keep')}
+            >
+              {t('migration.keep')}
+            </Button>
+            <Button
+              type="button"
+              size="xs"
+              variant={removedChoice === 'delete' ? 'primary' : 'outline'}
+              onClick={() => onChooseRemoved(id, removedChoice === 'delete' ? undefined : 'delete')}
+            >
+              {t('migration.delete')}
+            </Button>
+            {removedChoice && (
+              <span className="ml-1 text-[11px] font-semibold text-success-dark dark:text-success">
+                ✓ {removedChoice === 'keep' ? t('migration.keep') : t('migration.delete')}
               </span>
             )}
           </div>

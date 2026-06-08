@@ -8,6 +8,7 @@ use App\Models\DocumentBlock;
 use App\Models\TemplateBlock;
 use App\Repositories\Contracts\DocumentBlockRepositoryInterface;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
 
 class DocumentBlockRepository implements DocumentBlockRepositoryInterface
 {
@@ -31,6 +32,21 @@ class DocumentBlockRepository implements DocumentBlockRepositoryInterface
     public function create(array $attributes): DocumentBlock
     {
         return DocumentBlock::query()->create($attributes);
+    }
+
+    public function insertDocumentBlock(array $attributes): DocumentBlock
+    {
+        $block = new DocumentBlock;
+        $block->setAttribute('id', (string) Str::uuid());
+        $block->document_id = (string) $attributes['document_id'];
+        $block->template_block_id = (string) $attributes['template_block_id'];
+        $block->content = $attributes['content'] ?? null; // cast 'array' → JSON
+        $block->sort_order = (int) ($attributes['sort_order'] ?? 0);
+        $block->is_filled = (bool) ($attributes['is_filled'] ?? false);
+        $block->last_edited_by = $attributes['last_edited_by'] ?? null;
+        $block->save();
+
+        return $block;
     }
 
     public function deleteAllForDocument(string $documentId): int

@@ -73,6 +73,39 @@ class DocumentBlockService
             );
         }
 
+        // Bloques que ya no están en la versión de plantilla anclada pero siguen en el
+        // documento (se mantuvieron al migrar de versión): se anexan para que sigan
+        // visibles/editables, marcados como huérfanos para que la UI los señale.
+        $definitionIds = [];
+        foreach ($definitions as $def) {
+            $definitionIds[(string) ($def['id'] ?? '')] = true;
+        }
+        foreach ($byTemplateBlockId as $tid => $row) {
+            $tid = (string) $tid;
+            if ($tid === '' || isset($definitionIds[$tid])) {
+                continue;
+            }
+            $tpl = $row->templateBlock;
+            $tplState = $tpl?->block_state;
+            $state = $tplState instanceof \App\Enums\BlockState ? $tplState->value : (string) ($tplState ?? 'optional');
+
+            $out[] = new BlockDisplayDto(
+                document_block_id: $row->id,
+                template_block_id: $tid,
+                type: '',
+                title: $tpl?->title,
+                description: $tpl?->description,
+                default_content: $tpl?->default_content,
+                block_state: $state !== '' ? $state : 'optional',
+                mandatory: false,
+                sort_order: (int) $row->sort_order,
+                content: $row->content,
+                is_filled: (bool) $row->is_filled,
+                is_deleted: false,
+                is_orphaned: true,
+            );
+        }
+
         return $out;
     }
 

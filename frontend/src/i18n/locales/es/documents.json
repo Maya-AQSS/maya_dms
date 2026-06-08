@@ -118,8 +118,13 @@
     "stateChangedBadge": "Estado cambiado",
     "lockedHelp": "Este bloque está bloqueado en la versión nueva: no se puede migrar contenido.",
     "removedHelp": "Este bloque ya no existe en la versión nueva. Cópialo manualmente si lo necesitas.",
-    "removedSection_one": "{{count}} bloque eliminado (contenido no migrado)",
-    "removedSection_other": "{{count}} bloques eliminados (contenido no migrado)"
+    "removedSection_one": "{{count}} bloque eliminado en la versión nueva",
+    "removedSection_other": "{{count}} bloques eliminados en la versión nueva",
+    "removedAction": "Este bloque ya no está en la plantilla:",
+    "keep": "Mantener",
+    "delete": "Eliminar",
+    "pendingTitle": "Faltan decisiones",
+    "pendingDescription": "Debes elegir una opción en todos los bloques antes de continuar. Bloques pendientes:"
   },
   "blocks": {
     "pendingComments": "Comentarios pendientes",

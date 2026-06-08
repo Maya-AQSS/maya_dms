@@ -91,4 +91,27 @@ describe('DocumentMigrationStep', () => {
     render(<DocumentMigrationStep payload={mixed} choices={{}} onChoose={vi.fn()} />);
     expect(screen.getByText(/migration\.removedSection/)).toBeTruthy();
   });
+
+  it('does NOT offer Keep/Remove for removed blocks in clone mode', () => {
+    render(<DocumentMigrationStep payload={mixed} choices={{}} onChoose={vi.fn()} />);
+    expect(screen.queryByText('migration.keep')).toBeNull();
+    expect(screen.queryByText('migration.delete')).toBeNull();
+  });
+
+  it('offers Keep/Remove for removed blocks in upgrade mode and reports the choice', () => {
+    const onChooseRemoved = vi.fn();
+    render(
+      <DocumentMigrationStep
+        payload={mixed}
+        choices={{}}
+        onChoose={vi.fn()}
+        removedChoices={{}}
+        onChooseRemoved={onChooseRemoved}
+        allowRemovedDecision
+      />,
+    );
+    expect(screen.getByText('migration.keep')).toBeTruthy();
+    fireEvent.click(screen.getByText('migration.delete'));
+    expect(onChooseRemoved).toHaveBeenCalledWith('removed-1', 'delete');
+  });
 });

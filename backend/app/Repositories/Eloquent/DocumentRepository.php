@@ -224,6 +224,15 @@ class DocumentRepository implements DocumentRepositoryInterface
         });
     }
 
+    public function updateTemplateVersionAnchor(string $documentId, string $templateVersionId): void
+    {
+        // Sin scopes globales: es una actualización directa de la columna ancla
+        // (los scopes añaden JOINs que rompen el UPDATE en Postgres).
+        Document::withoutGlobalScopes()
+            ->whereKey($documentId)
+            ->update(['template_version_id' => $templateVersionId]);
+    }
+
     /**
      * Busca un bloque por su ID dentro del documento o lanza ModelNotFoundException.
      */
