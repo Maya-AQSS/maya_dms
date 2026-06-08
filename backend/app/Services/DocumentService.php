@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Documents\ApplyTemplateMigrationDto;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
@@ -751,6 +752,126 @@ class DocumentService implements DocumentServiceInterface
             'owner_id' => $actorId,
             'created_by' => $actorId,
         ]);
+    }
+
+    public function applyTemplateMigration(ApplyTemplateMigrationDto $dto): Document
+    {
+        return $this->documentRepository->transaction(function () use ($dto): Document {
+            $document = $this->documentRepository->findOrFail($dto->documentId);
+
+            if ($document->status !== 'draft') {
+                throw ValidationException::withMessages([
+                    'status' => ['El documento debe estar en borrador (nueva versión) para migrar de plantilla.'],
+                ]);
+            }
+
+            $target = $this->entityVersionRepository->findPublishedByIdForVersionable(
+                $dto->targetTemplateVersionId,
+                Template::class,
+                (string) $document->template_id,
+            );
+            if ($target === null) {
+                throw ValidationException::withMessages([
+                    'target_template_version_id' => ['La versión de plantilla destino no existe o no es publicada.'],
+                ]);
+            }
+
+            $current = $this->resolveCurrentPublishedTemplateVersionMeta($document);
+            if ($current !== null && (int) $target->version_number <= (int) $current['version_number']) {
+                throw ValidationException::withMessages([
+                    'target_template_version_id' => ['La versión de plantilla destino debe ser más reciente que la actual.'],
+                ]);
+            }
+
+            $targetDefinitions = $this->documentBlockService
+                ->templatePublicationDefinitionRowsFromEntityVersion((string) $target->id);
+            if ($targetDefinitions === []) {
+                throw ValidationException::withMessages([
+                    'target_template_version_id' => ['La versión de plantilla destino no contiene bloques.'],
+                ]);
+            }
+
+            $this->reconcileDocumentBlocks(
+                (string) $document->id,
+                $targetDefinitions,
+                $dto->migratedBlockContent,
+                $dto->removedBlockActions,
+                $dto->actorId,
+            );
+
+            // Re-anclar tras reconciliar (la columna no es atributo delegado del head).
+            $this->documentRepository->updateTemplateVersionAnchor(
+                (string) $document->id,
+                (string) $target->id,
+            );
+
+            return $this->documentRepository->findOrFailForRefreshAfterMutation($dto->documentId);
+        });
+    }
+
+    /**
+     * Reconcilia los bloques del documento con las definiciones de la versión destino:
+     * crea los nuevos, aplica contenido migrado (salvo locked) en los existentes, y
+     * elimina/mantiene los removidos según {@code $removedActions}.
+     *
+     * @param  list<array<string, mixed>>  $targetDefinitions
+     * @param  array<string, mixed>  $migrated
+     * @param  array<string, string>  $removedActions
+     */
+    private function reconcileDocumentBlocks(
+        string $documentId,
+        array $targetDefinitions,
+        array $migrated,
+        array $removedActions,
+        string $actorId,
+    ): void {
+        $existing = $this->documentBlockRepository->listByDocumentKeyedByTemplateBlock($documentId);
+        $targetIds = [];
+
+        foreach ($targetDefinitions as $def) {
+            $templateBlockId = (string) ($def['id'] ?? '');
+            if ($templateBlockId === '') {
+                continue;
+            }
+            $targetIds[$templateBlockId] = true;
+
+            $state = (string) ($def['block_state'] ?? 'editable');
+            $row = $existing->get($templateBlockId);
+            $hasMigrated = $state !== 'locked' && array_key_exists($templateBlockId, $migrated);
+
+            if ($row !== null) {
+                if ($hasMigrated) {
+                    $this->documentBlockRepository->updateBlock($row, $migrated[$templateBlockId], true, $actorId);
+                }
+
+                continue;
+            }
+
+            // Bloque nuevo en la versión destino: lo instanciamos.
+            $content = $state === 'editable' ? null : ($def['default_content'] ?? null);
+            if ($hasMigrated) {
+                $content = $migrated[$templateBlockId];
+            }
+
+            $this->documentBlockRepository->insertDocumentBlock([
+                'document_id' => $documentId,
+                'template_block_id' => $templateBlockId,
+                'content' => $content,
+                'sort_order' => (int) ($def['sort_order'] ?? 0),
+                'is_filled' => $content !== null,
+                'last_edited_by' => $content !== null ? $actorId : null,
+            ]);
+        }
+
+        foreach ($existing as $templateBlockId => $row) {
+            if (isset($targetIds[(string) $templateBlockId])) {
+                continue;
+            }
+            // Removido en la versión destino: eliminar o mantener según elección.
+            if (($removedActions[(string) $templateBlockId] ?? null) === 'delete') {
+                $this->documentBlockRepository->deleteBlock($row);
+            }
+        }
     }
 
     /**

@@ -29,6 +29,14 @@ interface DocumentBlockRepositoryInterface
     public function create(array $attributes): DocumentBlock;
 
     /**
+     * Inserta un bloque nuevo en un documento existente generando su UUID
+     * (DocumentBlock no autogenera id). Usado por la reconciliación de versión.
+     *
+     * @param  array{document_id: string, template_block_id: string, content?: mixed, sort_order?: int, is_filled?: bool, last_edited_by?: ?string}  $attributes
+     */
+    public function insertDocumentBlock(array $attributes): DocumentBlock;
+
+    /**
      * Elimina todos los bloques del documento (cambio destructivo, ver caller).
      */
     public function deleteAllForDocument(string $documentId): int;

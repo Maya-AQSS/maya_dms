@@ -159,6 +159,8 @@ Route::prefix('v1')->group(function () {
             ->whereUuid('document');
         Route::post('documents/{document}/new-version', [DocumentStateController::class, 'startNewVersion'])
             ->whereUuid('document');
+        Route::post('documents/{document}/apply-template-migration', [DocumentStateController::class, 'applyTemplateMigration'])
+            ->whereUuid('document');
         Route::post('documents/{document}/delegate', [DocumentStateController::class, 'delegate'])
             ->whereUuid('document');
 

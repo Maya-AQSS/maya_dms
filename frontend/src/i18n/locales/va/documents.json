@@ -117,8 +117,13 @@
     "stateChangedBadge": "Estat canviat",
     "lockedHelp": "Aquest bloc està bloquejat en la versió nova: no es pot migrar contingut.",
     "removedHelp": "Aquest bloc ja no existix en la versió nova. Copia'l manualment si el necessites.",
-    "removedSection_one": "{{count}} bloc eliminat (contingut no migrat)",
-    "removedSection_other": "{{count}} blocs eliminats (contingut no migrat)"
+    "removedSection_one": "{{count}} bloc eliminat en la versió nova",
+    "removedSection_other": "{{count}} blocs eliminats en la versió nova",
+    "removedAction": "Aquest bloc ja no està en la plantilla:",
+    "keep": "Mantindre",
+    "delete": "Eliminar",
+    "pendingTitle": "Falten decisions",
+    "pendingDescription": "Has de triar una opció en tots els blocs abans de continuar. Blocs pendents:"
   },
   "blocks": {
     "pendingComments": "Comentaris pendents",

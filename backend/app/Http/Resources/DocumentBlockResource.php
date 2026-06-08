@@ -70,6 +70,7 @@ class DocumentBlockResource extends JsonResource
             'content' => $dto->content,
             'is_filled' => $dto->is_filled,
             'is_deleted' => $dto->is_deleted,
+            'is_orphaned' => $dto->is_orphaned,
             'last_edited_by' => null,
             'created_at' => null,
             'updated_at' => null,

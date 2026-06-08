@@ -34,3 +34,6 @@ export type DocumentMigrationPayload = z.infer<typeof migrationPayloadSchema>;
 
 /** Elección del usuario para precargar el contenido antiguo en el bloque nuevo. */
 export type MigrationChoice = 'replace' | 'append';
+
+/** Elección para un bloque eliminado en la versión nueva (solo upgrade in-situ). */
+export type RemovedBlockChoice = 'delete' | 'keep';

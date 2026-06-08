@@ -9,6 +9,7 @@ use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
+use App\DTOs\Documents\ApplyTemplateMigrationDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
@@ -111,6 +112,14 @@ interface DocumentServiceInterface
      * Publicado → borrador para iniciar un nuevo ciclo de edición/revisión. Devuelve Model.
      */
     public function startNewRevisionCycle(string $documentId, string $actorId): Document;
+
+    /**
+     * Actualiza in-situ un documento (en ciclo de nueva versión, borrador) a una versión
+     * de plantilla más reciente: re-ancla `template_version_id` y reconcilia los bloques
+     * (crea los nuevos, aplica el contenido migrado salvo en locked, y elimina/mantiene
+     * los removidos según la elección). Devuelve el Model refrescado.
+     */
+    public function applyTemplateMigration(ApplyTemplateMigrationDto $dto): Document;
 
     /**
      * Descarta una versión no publicada en curso y restaura la última publicación. Devuelve Model.

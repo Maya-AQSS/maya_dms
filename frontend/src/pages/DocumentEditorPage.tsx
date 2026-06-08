@@ -10,7 +10,9 @@ import { Button, ErrorBoundary } from '@ceedcv-maya/shared-ui-react';
 export function DocumentEditorPage() {
   const { documentId, templateId } = useParams<{ documentId?: string; templateId?: string }>();
   const location = useLocation();
-  const sourceDocumentId = (location.state as { sourceDocumentId?: string } | null)?.sourceDocumentId ?? null;
+  const navState = location.state as { sourceDocumentId?: string; migrationMode?: 'clone' | 'upgrade' } | null;
+  const sourceDocumentId = navState?.sourceDocumentId ?? null;
+  const migrationMode = navState?.migrationMode ?? 'clone';
 
   if (!documentId && !templateId) {
     return (
@@ -30,6 +32,7 @@ export function DocumentEditorPage() {
         templateId={templateId}
         mode="edit"
         sourceDocumentId={sourceDocumentId}
+        migrationMode={migrationMode}
       />
     </ErrorBoundary>
   );

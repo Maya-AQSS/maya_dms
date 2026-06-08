@@ -81,6 +81,8 @@ export type DocumentDisplayBlock = {
   is_filled: boolean;
   /** True cuando es un bloque opcional que el usuario eliminó explícitamente. Solo aparece en la vista diff. */
   is_deleted?: boolean;
+  /** True si el bloque ya no está en la versión de plantilla anclada (se mantuvo al migrar de versión). */
+  is_orphaned?: boolean;
 };
 
 export type DocumentDetail = Document & {

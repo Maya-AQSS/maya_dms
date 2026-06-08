@@ -8,6 +8,7 @@ use App\DTOs\Documents\DocumentDto;
 use App\Http\Concerns\AttachesDocumentCanCloneMeta;
 use App\Http\Concerns\ValidatesOptionalProcessContext;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Documents\ApplyTemplateMigrationRequest;
 use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
 use App\Http\Requests\Documents\SubmitDocumentForReviewRequest;
@@ -112,6 +113,30 @@ class DocumentStateController extends Controller
         $updated = $this->documentService->startNewRevisionCycle($model->id, $userId);
         $this->attachCanCloneMeta($updated, $request);
 
+        $this->apiTeamEmbedService->embedOnDocument($updated, $userId);
+        $blocks = $this->documentService->blocksForDisplay($updated);
+
+        return response()->json([
+            'data' => array_merge(
+                (new DocumentResource(DocumentDto::fromModel($updated)))->toArray($request),
+                ['blocks' => DocumentBlockResource::resolveDisplayList($request, $blocks)],
+            ),
+        ]);
+    }
+
+    /**
+     * Actualiza in-situ el documento (en ciclo de nueva versión) a la versión de
+     * plantilla destino: re-ancla y reconcilia bloques según las elecciones del wizard.
+     */
+    public function applyTemplateMigration(ApplyTemplateMigrationRequest $request, string $document): JsonResponse
+    {
+        $model = $this->documentService->findModelOrFail($document);
+        $this->assertOptionalProcessContextMatches((string) $model->process_id);
+
+        $updated = $this->documentService->applyTemplateMigration($request->toDto());
+        $this->attachCanCloneMeta($updated, $request);
+
+        $userId = (string) $request->user()->getAuthIdentifier();
         $this->apiTeamEmbedService->embedOnDocument($updated, $userId);
         $blocks = $this->documentService->blocksForDisplay($updated);
 
