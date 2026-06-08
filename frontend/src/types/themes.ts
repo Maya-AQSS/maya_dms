@@ -43,8 +43,15 @@ export interface ThemeLayoutRegion {
   id: string;
   type: ThemeBlockType;
   /**
-   * Posición en la rejilla del editor (12 columnas). `z` define la capa
-   * (mayor valor = más arriba) y permite solapar bloques.
+   * Posición absoluta en milímetros relativa a la esquina superior-izquierda
+   * de la página. `x/y` = offset; `w/h` = tamaño; `z` = capa (mayor = encima,
+   * permite solapar bloques). Misma unidad que usa el render Blade (mm→cm /10).
+   */
+  box?: { x: number; y: number; w: number; h: number; z?: number };
+  /**
+   * @deprecated Posición legacy en celdas de rejilla 12×52. Migrada a `box`
+   * (mm) por `convert_theme_grid_to_box`. Se conserva el tipo sólo para leer
+   * datos no migrados; el editor y el render usan `box`.
    */
   grid?: { x: number; y: number; w: number; h: number; z?: number };
   /**

@@ -121,6 +121,43 @@ class DocumentsRenderViewTest extends TestCase
         $this->assertStringContainsString('margin: 3.4269cm 3.5000cm 3.4269cm 3.5000cm', $html);
     }
 
+    public function test_box_mode_margins_come_from_content_slot(): void
+    {
+        // Modelo nuevo: caja en mm absolutos (sin rejilla). A4 = 210×297 mm.
+        $theme = $this->baseTheme([
+            'layout' => [
+                'regions' => [
+                    ['id' => 'cs', 'type' => 'content_slot', 'box' => ['x' => 35, 'y' => 30, 'w' => 140, 'h' => 200, 'z' => 1]],
+                ],
+            ],
+        ]);
+
+        $html = $this->render($theme);
+
+        // top = 30/10 = 3.0cm · left = 35/10 = 3.5cm
+        // right = (210-35-140)/10 = 3.5cm · bottom = (297-30-200)/10 = 6.7cm
+        $this->assertStringContainsString('margin: 3.0000cm 3.5000cm 6.7000cm 3.5000cm', $html);
+    }
+
+    public function test_box_mode_renders_overlay_block_geometry_in_cm(): void
+    {
+        $theme = $this->baseTheme([
+            'layout' => [
+                'regions' => [
+                    ['id' => 't1', 'type' => 'text', 'box' => ['x' => 10, 'y' => 20, 'w' => 60, 'h' => 12, 'z' => 2],
+                     'props' => ['text' => 'CEEDCV']],
+                ],
+            ],
+        ]);
+
+        $html = $this->render($theme);
+
+        $this->assertStringContainsString('class="theme-overlay"', $html);
+        // mm/10 → cm: left 1.0, top 2.0, width 6.0, height 1.2.
+        $this->assertStringContainsString('left:1.0000cm;top:2.0000cm;width:6.0000cm;height:1.2000cm', $html);
+        $this->assertStringContainsString('CEEDCV', $html);
+    }
+
     public function test_grid_mode_falls_back_to_legacy_margins_when_no_content_slot(): void
     {
         $theme = $this->baseTheme([

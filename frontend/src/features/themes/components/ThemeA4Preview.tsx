@@ -1,4 +1,5 @@
 import type { Theme, ThemeLayoutRegion, ThemeBlockType } from '../../../types/themes';
+import { pageDimsMm, type PageDimsMm } from '../pageSizes';
 
 interface ThemeA4PreviewProps {
   /** Theme con layout completo. `null` muestra placeholder. */
@@ -6,38 +7,45 @@ interface ThemeA4PreviewProps {
   className?: string;
 }
 
-const GRID_COLS = 12;
-const GRID_ROWS = 52;
-
-/** Devuelve el rectángulo en porcentajes para una region en la rejilla 12×52. */
-function regionRect(region: ThemeLayoutRegion): {
-  left: string;
-  top: string;
-  width: string;
-  height: string;
-  z: number;
-} | null {
-  const g = region.grid;
-  if (!g) {
-    // Fallback al modelo legacy en %.
-    if (region.position) {
-      return {
-        left: `${region.position.x}%`,
-        top: `${region.position.y}%`,
-        width: `${region.position.width}%`,
-        height: `${region.position.height}%`,
-        z: 1,
-      };
-    }
-    return null;
+/**
+ * Rectángulo en porcentajes para una region, a partir de su caja `box` (mm)
+ * relativa a las dimensiones físicas de la página. Acepta `grid` legacy
+ * (celdas 12×52) y `position` (%) como compatibilidad hacia atrás.
+ */
+function regionRect(
+  region: ThemeLayoutRegion,
+  page: PageDimsMm,
+): { left: string; top: string; width: string; height: string; z: number } | null {
+  const b = region.box;
+  if (b) {
+    return {
+      left: `${(b.x / page.width) * 100}%`,
+      top: `${(b.y / page.height) * 100}%`,
+      width: `${(b.w / page.width) * 100}%`,
+      height: `${(b.h / page.height) * 100}%`,
+      z: b.z ?? 1,
+    };
   }
-  return {
-    left: `${(g.x / GRID_COLS) * 100}%`,
-    top: `${(g.y / GRID_ROWS) * 100}%`,
-    width: `${(g.w / GRID_COLS) * 100}%`,
-    height: `${(g.h / GRID_ROWS) * 100}%`,
-    z: g.z ?? 1,
-  };
+  const g = region.grid;
+  if (g) {
+    return {
+      left: `${(g.x / 12) * 100}%`,
+      top: `${(g.y / 52) * 100}%`,
+      width: `${(g.w / 12) * 100}%`,
+      height: `${(g.h / 52) * 100}%`,
+      z: g.z ?? 1,
+    };
+  }
+  if (region.position) {
+    return {
+      left: `${region.position.x}%`,
+      top: `${region.position.y}%`,
+      width: `${region.position.width}%`,
+      height: `${region.position.height}%`,
+      z: 1,
+    };
+  }
+  return null;
 }
 
 /** Estilo visual por tipo de bloque (color de fondo + borde + label). */
@@ -90,8 +98,9 @@ export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
   }
 
   const { palette, typography, layout } = theme;
+  const page = pageDimsMm(layout?.page?.size);
   const regions = (layout?.regions ?? [])
-    .map((r) => ({ region: r, rect: regionRect(r) }))
+    .map((r) => ({ region: r, rect: regionRect(r, page) }))
     .filter((x): x is { region: ThemeLayoutRegion; rect: NonNullable<ReturnType<typeof regionRect>> } => x.rect !== null)
     // Pintar primero las capas bajas (z menor) para que las altas queden encima.
     .sort((a, b) => a.rect.z - b.rect.z);

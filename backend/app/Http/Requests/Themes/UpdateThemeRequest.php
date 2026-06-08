@@ -53,6 +53,14 @@ class UpdateThemeRequest extends FormRequest
             'layout.regions.*.props.rotate' => ['nullable', 'numeric', 'between:-360,360'],
             'layout.regions.*.props.objectFit' => ['nullable', 'string', 'in:cover,contain,stretch'],
 
+            // Geometría absoluta en mm (relativa a la esquina superior-izq).
+            'layout.regions.*.box' => ['nullable', 'array'],
+            'layout.regions.*.box.x' => ['nullable', 'numeric', 'between:0,2000'],
+            'layout.regions.*.box.y' => ['nullable', 'numeric', 'between:0,2000'],
+            'layout.regions.*.box.w' => ['nullable', 'numeric', 'between:0,2000'],
+            'layout.regions.*.box.h' => ['nullable', 'numeric', 'between:0,2000'],
+            'layout.regions.*.box.z' => ['nullable', 'integer', 'between:0,9999'],
+
             'accessibility' => ['sometimes', 'array'],
             'accessibility.language' => ['sometimes', 'string', 'size:2'],
             'accessibility.title' => ['sometimes', 'nullable', 'string', 'max:255'],

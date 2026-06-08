@@ -1,27 +1,22 @@
 /*
- * Editor de layout por rejilla (react-grid-layout) para Themes.
+ * Editor de layout absoluto en milímetros para Themes.
  *
- * El canvas simula una página A4. Cada bloque se posiciona libremente en
- * una rejilla de 12 columnas; se puede arrastrar, redimensionar y solapar
- * (capas vía z-index). Los controles de cada bloque (↑/↓/✕) se ocultan
- * salvo hover/selección para no estorbar la edición.
+ * El canvas simula la página a escala 96 dpi (1 mm ≈ 3.78 px). Cada bloque se
+ * posiciona libremente con coordenadas en mm (campo `box`), se puede arrastrar,
+ * redimensionar (tirador inferior-derecho) y solapar (capas vía z-index). Los
+ * controles de cada bloque (↑/↓/✕) se ocultan salvo hover/selección.
  */
 
 .theme-grid-page {
   position: relative;
-  /* Mostramos una rejilla guía sutil para orientar visualmente */
+  /* Rejilla guía de 1 cm (ambos ejes). 1 cm = 10 mm * 96/25.4 ≈ 37.7953 px. */
   background-image:
-    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
-  background-size: calc(100% / 12) 100%;
-}
-
-.theme-grid {
-  position: relative;
-  min-height: 1248px; /* ROW_HEIGHT (24) * GRID_ROWS (52) — coincide con el JS */
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 37.7953px 37.7953px;
 }
 
 .theme-grid-block {
-  position: relative;
   display: flex;
   align-items: stretch;
   justify-content: stretch;
@@ -166,15 +161,24 @@
   border: 1px dashed #9ca3af;
 }
 
-/* Anula los bordes punteados que react-grid-layout dibuja al arrastrar
- * (queremos los nuestros) y ajusta el resizable handle al estilo del shell. */
-.theme-grid .react-grid-placeholder {
-  background: rgba(99, 102, 241, 0.18) !important;
-  border-radius: 4px;
-  opacity: 1 !important;
+/* ─── Tirador de redimensionado ────────────────────────────────────── */
+.theme-grid-resize {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #6366f1;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  cursor: nwse-resize;
+  touch-action: none;
+  display: none;
+  z-index: 60;
 }
 
-.theme-grid .react-resizable-handle::after {
-  border-right-color: rgba(99, 102, 241, 0.6) !important;
-  border-bottom-color: rgba(99, 102, 241, 0.6) !important;
+.theme-grid-block:hover .theme-grid-resize,
+.theme-grid-block.is-selected .theme-grid-resize {
+  display: block;
 }

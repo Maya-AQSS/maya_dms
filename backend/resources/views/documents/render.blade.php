@@ -3,9 +3,10 @@
      * Render del documento (HTML para preview navegador + entrada a WeasyPrint
      * para PDF/UA).
      *
-     * El theme puede tener un layout configurable por el editor de rejilla
-     * (12 cols × 52 rows sobre A4). Cada region tiene `grid: {x,y,w,h,z}` +
-     * `type` + `props`. Aquí lo traducimos a:
+     * El theme puede tener un layout configurable por el editor visual. Cada
+     * region tiene `box: {x,y,w,h,z}` en MILÍMETROS (absoluto, relativo a la
+     * esquina superior-izquierda de la página) + `type` + `props`. Datos
+     * legacy con `grid` (celdas 12×52) se convierten al vuelo. Lo traducimos a:
      *   - Margins de @page calculadas desde el `content_slot` (define dónde
      *     fluye el cuerpo del documento).
      *   - Una capa fija `<div class="theme-overlay">` con `position: fixed` —
@@ -23,10 +24,59 @@
      * contenido decorativo / paginal.
      */
 
+    // Dimensiones físicas de página en mm (única fuente de verdad, espejo de
+    // frontend/src/features/themes/pageSizes.ts). Orientación vertical.
+    $pageSize = $theme['layout']['page']['size'] ?? 'A4';
+    $pageSizesMm = [
+        'A4'     => ['w' => 210.0, 'h' => 297.0],
+        'Letter' => ['w' => 215.9, 'h' => 279.4],
+        'A3'     => ['w' => 297.0, 'h' => 420.0],
+    ];
+    $pageMm = $pageSizesMm[$pageSize] ?? $pageSizesMm['A4'];
+    $pageWidthMm  = $pageMm['w'];
+    $pageHeightMm = $pageMm['h'];
+    $pageWidthCm  = $pageWidthMm / 10.0;
+    $pageHeightCm = $pageHeightMm / 10.0;
+
+    // Constantes de conversión legacy (celdas rejilla 12×52 → mm), para datos
+    // serializados antes de la migración a `box`.
+    $legacyColWmm = $pageWidthMm / 12.0;
+    $legacyRowHmm = $pageHeightMm / 52.0;
+
+    // Normaliza una region a su caja en mm: usa `box` si existe; si no, convierte
+    // `grid` (celdas) → mm. Devuelve null si no tiene geometría posicionable.
+    $boxOf = function (array $r) use ($legacyColWmm, $legacyRowHmm): ?array {
+        if (isset($r['box']) && is_array($r['box'])) {
+            $b = $r['box'];
+
+            return [
+                'x' => (float) ($b['x'] ?? 0),
+                'y' => (float) ($b['y'] ?? 0),
+                'w' => (float) ($b['w'] ?? 0),
+                'h' => (float) ($b['h'] ?? 0),
+                'z' => (int) ($b['z'] ?? 1),
+            ];
+        }
+        if (isset($r['grid']) && is_array($r['grid'])) {
+            $g = $r['grid'];
+
+            return [
+                'x' => (float) ($g['x'] ?? 0) * $legacyColWmm,
+                'y' => (float) ($g['y'] ?? 0) * $legacyRowHmm,
+                'w' => (float) ($g['w'] ?? 0) * $legacyColWmm,
+                'h' => (float) ($g['h'] ?? 0) * $legacyRowHmm,
+                'z' => (int) ($g['z'] ?? 1),
+            ];
+        }
+
+        return null;
+    };
+
     $regions = $theme['layout']['regions'] ?? [];
     $gridBlocks = [];
     foreach ($regions as $r) {
-        if (is_array($r) && isset($r['grid']) && is_array($r['grid'])) {
+        if (is_array($r) && ($box = $boxOf($r)) !== null) {
+            $r['_box'] = $box;
             $gridBlocks[] = $r;
         }
     }
@@ -40,24 +90,17 @@
     }
     $hasGridLayout = count($gridBlocks) > 0;
 
-    // A4 portrait — mismo modelo que usa el editor frontend.
-    $pageWidthCm = 21.0;
-    $pageHeightCm = 29.7;
-    $cols = 12;
-    $rows = 52;
-    $colW = $pageWidthCm / $cols;       // 1.75 cm
-    $rowH = $pageHeightCm / $rows;      // ~0.5712 cm
-
     $defaultMargin = $theme['layout']['page']['margin_cm'] ?? [
         'top' => 2.5, 'right' => 2, 'bottom' => 2.5, 'left' => 2,
     ];
 
     if ($contentSlot !== null) {
-        $g = $contentSlot['grid'];
-        $marginTop    = max(0.0, (float) $g['y']                          * $rowH);
-        $marginLeft   = max(0.0, (float) $g['x']                          * $colW);
-        $marginRight  = max(0.0, (float) ($cols - $g['x'] - $g['w'])      * $colW);
-        $marginBottom = max(0.0, (float) ($rows - $g['y'] - $g['h'])      * $rowH);
+        // Márgenes (en cm) derivados de la caja del content_slot en mm.
+        $g = $contentSlot['_box'];
+        $marginTop    = max(0.0, $g['y']                               / 10.0);
+        $marginLeft   = max(0.0, $g['x']                               / 10.0);
+        $marginRight  = max(0.0, ($pageWidthMm  - $g['x'] - $g['w'])   / 10.0);
+        $marginBottom = max(0.0, ($pageHeightMm - $g['y'] - $g['h'])   / 10.0);
     } else {
         $marginTop    = (float) ($defaultMargin['top']    ?? 2.5);
         $marginRight  = (float) ($defaultMargin['right']  ?? 2);
@@ -345,12 +388,12 @@
     <div class="theme-overlay" role="presentation" aria-hidden="true">
         @foreach ($overlayBlocks as $b)
             @php
-                $g = $b['grid'];
+                $g = $b['_box'];
                 $p = $b['props'] ?? [];
-                $left   = $cm((float) $g['x'] * $colW);
-                $top    = $cm((float) $g['y'] * $rowH);
-                $width  = $cm((float) $g['w'] * $colW);
-                $height = $cm((float) $g['h'] * $rowH);
+                $left   = $cm($g['x'] / 10.0);
+                $top    = $cm($g['y'] / 10.0);
+                $width  = $cm($g['w'] / 10.0);
+                $height = $cm($g['h'] / 10.0);
                 $z      = (int) ($g['z'] ?? 1);
                 $type   = $b['type'] ?? 'text';
             @endphp
