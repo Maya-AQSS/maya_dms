@@ -36,10 +36,25 @@ class DocumentBlockRepository implements DocumentBlockRepositoryInterface
 
     public function insertDocumentBlock(array $attributes): DocumentBlock
     {
-        $block = new DocumentBlock;
-        $block->setAttribute('id', (string) Str::uuid());
-        $block->document_id = (string) $attributes['document_id'];
-        $block->template_block_id = (string) $attributes['template_block_id'];
+        $documentId = (string) $attributes['document_id'];
+        $templateBlockId = (string) $attributes['template_block_id'];
+
+        // La unique (document_id, template_block_id) NO excluye soft-deletes: si existe una
+        // fila (incluso borrada) para ese par, la restauramos/reutilizamos en vez de insertar.
+        $block = DocumentBlock::withTrashed()
+            ->where('document_id', $documentId)
+            ->where('template_block_id', $templateBlockId)
+            ->first();
+
+        if ($block === null) {
+            $block = new DocumentBlock;
+            $block->setAttribute('id', (string) Str::uuid());
+            $block->document_id = $documentId;
+            $block->template_block_id = $templateBlockId;
+        } elseif ($block->trashed()) {
+            $block->restore();
+        }
+
         $block->content = $attributes['content'] ?? null; // cast 'array' → JSON
         $block->sort_order = (int) ($attributes['sort_order'] ?? 0);
         $block->is_filled = (bool) ($attributes['is_filled'] ?? false);

@@ -243,6 +243,28 @@ it('returns 422 when target version is not newer than the current anchor', funct
     ])->assertStatus(422);
 });
 
+it('restores a soft-deleted block instead of failing the unique constraint', function () {
+    $s = seedApplyMigrationScenario(test()->userId);
+
+    // El bloque A queda soft-deleted (la unique (document_id, template_block_id) no excluye borrados).
+    DB::table('document_blocks')
+        ->where('document_id', $s['document_id'])
+        ->where('template_block_id', $s['block_a'])
+        ->update(['deleted_at' => now()]);
+
+    $this->postJson("/api/v1/documents/{$s['document_id']}/apply-template-migration", [
+        'target_template_version_id' => $s['v2_id'],
+        'removed_block_actions' => [$s['block_b'] => 'delete'],
+    ])->assertOk();
+
+    // A vuelve a estar activo (restaurado, no insert duplicado).
+    expect(fetchDocBlock($s['document_id'], $s['block_a']))->not->toBeNull();
+    expect(DB::table('document_blocks')
+        ->where('document_id', $s['document_id'])
+        ->where('template_block_id', $s['block_a'])
+        ->whereNull('deleted_at')->count())->toBe(1);
+});
+
 it('denies applying migration to a foreign document outside scope', function () {
     $s = seedApplyMigrationScenario(test()->otherUserId);
 
