@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { buildApiUrl, getBearerToken } from '../../../api/http';
 
 interface PagedThemedPreviewProps {
-  /** `document` o `template` — define el endpoint de preview. */
-  kind: 'document' | 'template';
-  /** UUID del documento o de la plantilla. */
+  /** `document`, `template` o `theme` — define el endpoint de preview. */
+  kind: 'document' | 'template' | 'theme';
+  /** UUID del documento, plantilla o theme. */
   id: string;
   /** Altura del iframe. Defecto: ocupa el alto restante del contenedor. */
   className?: string;
@@ -37,7 +37,12 @@ export function PagedThemedPreview({ kind, id, className }: PagedThemedPreviewPr
       setLoading(true);
       setError(null);
       try {
-        const path = kind === 'document' ? `documents/${id}/preview` : `templates/${id}/preview`;
+        const path =
+          kind === 'document'
+            ? `documents/${id}/preview`
+            : kind === 'template'
+              ? `templates/${id}/preview`
+              : `themes/${id}/preview`;
         const token = await getBearerToken();
         const response = await fetch(buildApiUrl(path), {
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -88,7 +93,13 @@ export function PagedThemedPreview({ kind, id, className }: PagedThemedPreviewPr
   return (
     <iframe
       src={blobUrl}
-      title={kind === 'document' ? 'Vista PDF del documento' : 'Vista PDF de la plantilla'}
+      title={
+        kind === 'document'
+          ? 'Vista PDF del documento'
+          : kind === 'template'
+            ? 'Vista PDF de la plantilla'
+            : 'Vista PDF del tema'
+      }
       // sandbox: permite scripts (paged.js los necesita) pero bloquea formularios,
       // navegación top-level, popups y same-origin (cookies). El HTML es de
       // nuestro backend autenticado, así que el riesgo es bajo, pero

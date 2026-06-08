@@ -27,6 +27,7 @@ use App\Http\Controllers\Api\TemplateVersionController;
 use App\Http\Controllers\Api\ThemeController;
 use App\Http\Controllers\Api\ThemeFontController;
 use App\Http\Controllers\Api\ThemeImageController;
+use App\Http\Controllers\Api\ThemePreviewController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 use Maya\Profile\Routing\AcademicContextRoutes;
@@ -94,6 +95,12 @@ Route::prefix('v1')->group(function () {
 
         // Imágenes de Theme (subidas al layout como bloques).
         Route::post('themes/{theme}/images', [ThemeImageController::class, 'store'])
+            ->whereUuid('theme');
+
+        // Verificación del theme: previsualización HTML (paged.js) y PDF de muestra.
+        Route::get('themes/{theme}/preview', [ThemePreviewController::class, 'show'])
+            ->whereUuid('theme');
+        Route::get('themes/{theme}/sample-pdf', [ThemePreviewController::class, 'samplePdf'])
             ->whereUuid('theme');
 
         // Plantillas

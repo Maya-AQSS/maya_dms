@@ -84,6 +84,8 @@ use App\Services\Contracts\TeamReadServiceInterface;
 use App\Services\Contracts\TemplateBlockServiceInterface;
 use App\Services\Contracts\TemplateServiceInterface;
 use App\Services\Contracts\ThemeImageServiceInterface;
+use App\Services\Contracts\ThemePdfServiceInterface;
+use App\Services\Contracts\ThemeRenderServiceInterface;
 use App\Services\Contracts\ThemeServiceInterface;
 use App\Services\Contracts\UserDirectoryServiceInterface;
 use App\Services\Contracts\UserFavoriteServiceInterface;
@@ -103,6 +105,8 @@ use App\Services\TeamReadService;
 use App\Services\TemplateBlockService;
 use App\Services\TemplateService;
 use App\Services\ThemeImageService;
+use App\Services\ThemePdfService;
+use App\Services\ThemeRenderService;
 use App\Services\ThemeService;
 use App\Services\UserDirectoryService;
 use App\Services\UserFavoriteService;
@@ -159,6 +163,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(TemplateBlockServiceInterface::class, TemplateBlockService::class);
         $this->app->bind(ThemeServiceInterface::class, ThemeService::class);
         $this->app->bind(ThemeImageServiceInterface::class, ThemeImageService::class);
+        $this->app->bind(ThemeRenderServiceInterface::class, ThemeRenderService::class);
+        $this->app->bind(ThemePdfServiceInterface::class, ThemePdfService::class);
         $this->app->bind(UserProfileServiceInterface::class, UserProfileService::class);
         // /me + /me/locale viven en maya/shared-profile-laravel. El paquete
         // bindea por defecto JwtPassthroughResolver; aquí lo sobrescribimos

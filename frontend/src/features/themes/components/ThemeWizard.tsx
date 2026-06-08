@@ -5,10 +5,11 @@ import { Button } from '@ceedcv-maya/shared-ui-react';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { ThemeWizardStepIdentity, type ThemeIdentityValue } from './ThemeWizardStepIdentity';
 import { ThemeGridEditor } from './ThemeGridEditor';
+import { ThemeVerificationStep } from './ThemeVerificationStep';
 import { useThemes } from '../hooks/useThemes';
 import type { Theme, ThemeLayoutRegion } from '../../../types/themes';
 
-type Step = 'identity' | 'layout';
+type Step = 'identity' | 'layout' | 'verification';
 
 interface ThemeWizardProps {
   /** Theme inicial (modo edición). `null` significa creación. */
@@ -82,8 +83,9 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
   const [saving, setSaving] = useState(false);
 
   const stepsData: WizardStepDef<Step>[] = [
-    { id: 'identity', label: 'Identidad', sub: 'Nombre, paleta, tipografía, assets' },
+    { id: 'identity', label: 'Identidad', sub: 'Nombre, paleta, tipografía' },
     { id: 'layout', label: 'Layout', sub: 'Editor visual del documento' },
+    { id: 'verification', label: 'Verificación', sub: 'Previsualizar y publicar' },
   ];
 
   const persistIdentity = async (): Promise<Theme | null> => {
@@ -136,6 +138,32 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
     }
   };
 
+  const doPublish = async () => {
+    if (!theme) return;
+    clearActionError();
+    clearActionInfo();
+    setSaving(true);
+    try {
+      await publishTheme(theme.id);
+      navigate('/themes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const doArchive = async () => {
+    if (!theme) return;
+    clearActionError();
+    clearActionInfo();
+    setSaving(true);
+    try {
+      await archiveTheme(theme.id);
+      navigate('/themes');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleContinue = async () => {
     if (step === 'identity') {
       if (!identity.name.trim()) {
@@ -146,7 +174,8 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
       setCompletedSteps((prev) => Array.from(new Set([...prev, 'identity'])) as Step[]);
       setStep('layout');
     } else if (step === 'layout') {
-      navigate('/themes');
+      setCompletedSteps((prev) => Array.from(new Set([...prev, 'identity', 'layout'])) as Step[]);
+      setStep('verification');
     }
   };
 
@@ -157,10 +186,18 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
     }
     if (s === 'layout' && completedSteps.includes('identity')) {
       setStep('layout');
+      return;
+    }
+    if (s === 'verification' && completedSteps.includes('layout')) {
+      setStep('verification');
     }
   };
 
   const handleBack = () => {
+    if (step === 'verification') {
+      setStep('layout');
+      return;
+    }
     if (step === 'layout') {
       setStep('identity');
       return;
@@ -192,52 +229,25 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
           >
             Guardar y salir
           </Button>
-          {theme && theme.status === 'draft' && (
-            <Button
-              variant="primary"
-              size="sm"
-              loading={saving}
-              onClick={async () => {
-                if (!theme) return;
-                clearActionError();
-                clearActionInfo();
-                setSaving(true);
-                try {
-                  const updated = await publishTheme(theme.id);
-                  setTheme(updated);
-                  navigate('/themes');
-                } finally {
-                  setSaving(false);
-                }
-              }}
-              className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
-            >
-              Publicar
-            </Button>
-          )}
-          {theme && theme.status === 'published' && (
-            <Button
-              variant="outline"
-              size="sm"
-              loading={saving}
-              onClick={async () => {
-                if (!theme) return;
-                clearActionError();
-                clearActionInfo();
-                setSaving(true);
-                try {
-                  const updated = await archiveTheme(theme.id);
-                  setTheme(updated);
-                  navigate('/themes');
-                } finally {
-                  setSaving(false);
-                }
-              }}
-            >
-              Archivar
-            </Button>
-          )}
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => void handleContinue()}
+            className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+          >
+            Verificar →
+          </Button>
         </>
+      )}
+      {step === 'verification' && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate('/themes')}
+          className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10"
+        >
+          Guardar y salir
+        </Button>
       )}
     </>
   );
@@ -284,6 +294,16 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
       {step === 'layout' && theme && (
         <div className="flex-1 min-h-0">
           <ThemeGridEditor theme={theme} onSave={persistLayout} embedded />
+        </div>
+      )}
+      {step === 'verification' && theme && (
+        <div className="flex flex-1 min-h-0">
+          <ThemeVerificationStep
+            theme={theme}
+            onPublish={doPublish}
+            onArchive={doArchive}
+            onBack={() => setStep('layout')}
+          />
         </div>
       )}
     </WizardShell>
