@@ -33,9 +33,7 @@ class ThemeController extends Controller
     public function show(string $theme): ThemeResource
     {
         $dto = $this->service->get($theme);
-        // Convert DTO back to model for authorization (short-lived, used only for policy check)
-        $model = new Theme(['id' => $dto->id]);
-        $this->authorize('view', $model);
+        $this->authorize('view', $this->modelForPolicy($dto));
 
         return new ThemeResource($dto);
     }
@@ -74,13 +72,27 @@ class ThemeController extends Controller
     public function destroy(string $theme): Response
     {
         $dto = $this->service->get($theme);
-        // Convert DTO back to model for authorization (short-lived, used only for policy check)
-        $model = new Theme(['id' => $dto->id]);
-        $this->authorize('delete', $model);
+        $this->authorize('delete', $this->modelForPolicy($dto));
 
         $this->service->delete($theme);
 
         return response()->noContent();
+    }
+
+    /**
+     * Modelo efímero (no persistido) para evaluar la ThemePolicy. Necesita
+     * `created_by` y `status` además del `id`, porque la policy distingue al
+     * creador y a los themes publicados — un stub solo con `id` rompía la
+     * autorización de `view`/`delete`.
+     */
+    private function modelForPolicy(\App\DTOs\Themes\ThemeDto $dto): Theme
+    {
+        $model = new Theme;
+        $model->id = $dto->id;
+        $model->created_by = $dto->createdBy;
+        $model->status = $dto->status;
+
+        return $model;
     }
 
     public function clone(CloneThemeRequest $request, string $theme): JsonResponse
