@@ -193,9 +193,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     () => migrationPayload?.blocks.filter((b) => b.old_content != null) ?? [],
     [migrationPayload],
   );
-  // En upgrade el paso aparece siempre que haya payload (has_update garantizado por el backend).
+  // Decisiones reales del usuario en upgrade: bloques accionables (replace/append) o eliminados (delete/keep).
+  const upgradeHasDecisions = useMemo(() => {
+    if (!migrationPayload) return false;
+    return migrationPayload.blocks.some(
+      (b) =>
+        (!b.locked && !b.new_block && !b.removed_block && b.old_content != null) || b.removed_block,
+    );
+  }, [migrationPayload]);
+  // Upgrade pendiente: hay versión nueva a la que actualizar (aunque no haya nada que elegir).
+  const upgradePending = isUpgradeMigration && !!migrationPayload;
+  // El paso de migración se muestra solo si hay algo que decidir; si no, se aplica directo (mejora UX).
   const showMigrationStep = isUpgradeMigration
-    ? !!migrationPayload
+    ? upgradePending && upgradeHasDecisions
     : !documentId && migratableBlocks.length > 0;
 
   const setMigrationChoice = useCallback(
@@ -1223,6 +1233,21 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     }
   };
 
+  // Aplica el upgrade in-situ (re-ancla + reconcilia) con las elecciones actuales y pasa a bloques.
+  const applyUpgradeAndContinue = async () => {
+    if (!documentId) return;
+    const updated = await applyTemplateMigration(documentId, {
+      target_template_version_id: migrationPayload?.target_template_version_id ?? '',
+      migrated_blocks: buildMigratedBlocks(),
+      removed_block_actions: buildRemovedBlockActions(),
+    });
+    setDetail(updated);
+    setCompletedSteps((prev: Step[]) =>
+      Array.from(new Set([...prev, 'properties', 'migration'] as Step[])),
+    );
+    setStep('blocks');
+  };
+
   const handleContinue = async () => {
     setFormError(null);
     if (step === 'properties') {
@@ -1309,8 +1334,15 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
 
           setDetail((prev: DocumentDetail | null) => (prev ? { ...prev, ...updated, blocks: prev.blocks } : prev));
           setCompletedSteps((prev: Step[]) => Array.from(new Set([...prev, 'properties'] as Step[])));
-          // En upgrade de versión, pasar por el paso de migración antes de bloques.
-          setStep(showMigrationStep ? 'migration' : 'blocks');
+          if (showMigrationStep) {
+            // Upgrade con decisiones: pasar por el paso de migración.
+            setStep('migration');
+          } else if (upgradePending) {
+            // Upgrade sin nada que decidir: aplicar directo (re-ancla + reconcilia) y saltar el paso.
+            await applyUpgradeAndContinue();
+          } else {
+            setStep('blocks');
+          }
         }
       } catch (e) {
         setFormError(e instanceof Error ? e.message : 'No se pudieron guardar los datos del documento.');
@@ -1331,16 +1363,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       try {
         if (isUpgradeMigration && documentId) {
           // Upgrade in-situ: actualiza ESTE documento a la versión nueva.
-          const updated = await applyTemplateMigration(documentId, {
-            target_template_version_id: migrationPayload?.target_template_version_id ?? '',
-            migrated_blocks: buildMigratedBlocks(),
-            removed_block_actions: buildRemovedBlockActions(),
-          });
-          setDetail(updated);
-          setCompletedSteps((prev: Step[]) =>
-            Array.from(new Set([...prev, 'properties', 'migration'] as Step[])),
-          );
-          setStep('blocks');
+          await applyUpgradeAndContinue();
         } else {
           // Clone: crea un documento nuevo en la versión destino con el contenido migrado.
           if (!templateId || !template?.process_id) {
