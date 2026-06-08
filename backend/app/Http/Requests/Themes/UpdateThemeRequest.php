@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Themes;
 
 use App\DTOs\Themes\UpdateThemeDto;
+use App\Http\Requests\Themes\Concerns\SanitizesThemeLayout;
 use App\Models\Theme;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateThemeRequest extends FormRequest
 {
+    use SanitizesThemeLayout;
     public function authorize(): bool
     {
         $theme = Theme::query()->findOrFail($this->route('theme'));
@@ -45,11 +47,11 @@ class UpdateThemeRequest extends FormRequest
             'layout' => ['sometimes', 'array'],
             'layout.regions' => ['sometimes', 'array'],
             'layout.page' => ['sometimes', 'array'],
-
-            'assets' => ['sometimes', 'array'],
-            'assets.logo_path' => ['sometimes', 'nullable', 'string', 'max:1024'],
-            'assets.background_image_path' => ['sometimes', 'nullable', 'string', 'max:1024'],
-            'assets.watermark_path' => ['sometimes', 'nullable', 'string', 'max:1024'],
+            'layout.regions.*.props.src' => ['nullable', 'string', 'regex:/^themes\/[a-f0-9\-]{36}\/[a-f0-9\-]{36}$/'],
+            'layout.regions.*.props.alt' => ['nullable', 'string', 'max:500'],
+            'layout.regions.*.props.opacity' => ['nullable', 'numeric', 'between:0,1'],
+            'layout.regions.*.props.rotate' => ['nullable', 'numeric', 'between:-360,360'],
+            'layout.regions.*.props.objectFit' => ['nullable', 'string', 'in:cover,contain,stretch'],
 
             'accessibility' => ['sometimes', 'array'],
             'accessibility.language' => ['sometimes', 'string', 'size:2'],
@@ -63,14 +65,17 @@ class UpdateThemeRequest extends FormRequest
     {
         $v = $this->validated();
 
+        // Layout desde el input crudo (no validated()): preserva type/id/grid
+        // de cada region; la validación de seguridad ya corrió sobre el input.
+        $layout = $this->has('layout') ? $this->stripDerivedLayoutFields((array) $this->input('layout')) : null;
+
         return new UpdateThemeDto(
             name: $v['name'] ?? null,
             description: array_key_exists('description', $v) ? $v['description'] : null,
             status: null, // las transiciones de estado no pasan por PATCH (ver rules()).
             palette: $v['palette'] ?? null,
             typography: $v['typography'] ?? null,
-            layout: $v['layout'] ?? null,
-            assets: $v['assets'] ?? null,
+            layout: $layout,
             accessibility: $v['accessibility'] ?? null,
         );
     }

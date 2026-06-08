@@ -62,7 +62,6 @@ class DocumentRenderService implements DocumentRenderServiceInterface
             'palette' => (array) ($themeModel->palette ?? DocumentConstants::DEFAULT_THEME['palette']),
             'typography' => (array) ($themeModel->typography ?? DocumentConstants::DEFAULT_THEME['typography']),
             'layout' => (array) ($themeModel->layout ?? DocumentConstants::DEFAULT_THEME['layout']),
-            'assets' => (array) ($themeModel->assets ?? DocumentConstants::DEFAULT_THEME['assets']),
             'accessibility' => (array) ($themeModel->accessibility ?? DocumentConstants::DEFAULT_THEME['accessibility']),
             'brand_name' => (string) ($themeModel->name ?? 'CEEDCV'),
         ];

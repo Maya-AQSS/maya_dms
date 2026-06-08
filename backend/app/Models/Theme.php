@@ -25,7 +25,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property array<string, string> $palette
  * @property array{heading_font: string, body_font: string, base_size_pt: int, line_height: float} $typography
  * @property array{regions: array<int, mixed>, page: array<string, mixed>} $layout
- * @property array{logo_path: ?string, background_image_path: ?string, watermark_path: ?string} $assets
  * @property array{language: string, title: ?string, subject: ?string, author: string} $accessibility
  * @property string|null $cloned_from_id
  */
@@ -46,7 +45,6 @@ class Theme extends Model
         'palette',
         'typography',
         'layout',
-        'assets',
         'accessibility',
         'cloned_from_id',
     ];
@@ -57,7 +55,6 @@ class Theme extends Model
             'palette' => 'array',
             'typography' => 'array',
             'layout' => 'array',
-            'assets' => 'array',
             'accessibility' => 'array',
         ];
     }

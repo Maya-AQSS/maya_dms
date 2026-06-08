@@ -41,7 +41,6 @@ interface ThemeRepositoryInterface
      * @param  array<string, mixed>|null  $paletteOverrides
      * @param  array<string, mixed>|null  $typographyOverrides
      * @param  array<string, mixed>|null  $layoutOverrides
-     * @param  array<string, mixed>|null  $assetsOverrides
      * @param  array<string, mixed>|null  $accessibilityOverrides
      */
     public function clone(
@@ -51,7 +50,6 @@ interface ThemeRepositoryInterface
         ?array $paletteOverrides,
         ?array $typographyOverrides,
         ?array $layoutOverrides,
-        ?array $assetsOverrides,
         ?array $accessibilityOverrides,
     ): ThemeDto;
 
@@ -63,13 +61,4 @@ interface ThemeRepositoryInterface
      * @return \App\DTOs\Themes\ThemeResolvedDto|null
      */
     public function findThemeResolvedById(string $id): ?\App\DTOs\Themes\ThemeResolvedDto;
-
-    /**
-     * Fetch raw assets array for a theme by ID for mutation.
-     * Used internally by asset upload service.
-     * Returns null if theme not found.
-     *
-     * @return array<string, ?string>|null
-     */
-    public function findThemeAssetsById(string $id): ?array;
 }

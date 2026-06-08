@@ -58,7 +58,6 @@ class TemplateDtoThemeTest extends TestCase
             'background' => '#fff', 'text' => '#1a1a1a',
         ];
         $theme->typography = ['heading_font' => 'Inter, sans-serif', 'body_font' => 'Inter, sans-serif', 'base_size_pt' => 11, 'line_height' => 1.5];
-        $theme->assets = ['logo_path' => 'themes/abc/logo.png', 'background_image_path' => null, 'watermark_path' => null];
 
         $t->setRelation('theme', $theme);
 
@@ -69,7 +68,6 @@ class TemplateDtoThemeTest extends TestCase
         $this->assertSame('#0b5394', $dto->themeMini['palette']['primary']);
         $this->assertSame('#f59e0b', $dto->themeMini['palette']['accent']);
         $this->assertSame('Inter, sans-serif', $dto->themeMini['typography']['heading_font']);
-        $this->assertSame('themes/abc/logo.png', $dto->themeMini['assets']['logo_path']);
     }
 
     public function test_dto_emits_null_theme_when_no_relation(): void
@@ -90,7 +88,6 @@ class TemplateDtoThemeTest extends TestCase
         $theme->name = 'Tema parcial';
         $theme->palette = ['primary' => '#000']; // sólo primary
         $theme->typography = null;
-        $theme->assets = null;
         $t->setRelation('theme', $theme);
 
         $dto = TemplateDto::fromModel($t);
@@ -99,6 +96,5 @@ class TemplateDtoThemeTest extends TestCase
         $this->assertSame('#000', $dto->themeMini['palette']['primary']);
         $this->assertNull($dto->themeMini['palette']['secondary']);
         $this->assertNull($dto->themeMini['typography']['heading_font']);
-        $this->assertNull($dto->themeMini['assets']['logo_path']);
     }
 }

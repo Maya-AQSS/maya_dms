@@ -90,7 +90,6 @@ class TemplateRenderService implements TemplateRenderServiceInterface
             'palette' => $themeDto->palette ?: DocumentConstants::DEFAULT_THEME['palette'],
             'typography' => $themeDto->typography ?: DocumentConstants::DEFAULT_THEME['typography'],
             'layout' => $themeDto->layout ?: DocumentConstants::DEFAULT_THEME['layout'],
-            'assets' => $themeDto->assets ?: DocumentConstants::DEFAULT_THEME['assets'],
             'accessibility' => $themeDto->accessibility ?: DocumentConstants::DEFAULT_THEME['accessibility'],
             'brand_name' => $themeDto->brandName,
         ];

@@ -47,13 +47,12 @@ return [
             'report' => false,
         ],
 
-        // Assets de Themes (logo, fondo, watermark). Aislado del disco `local`
+        // Imágenes de Themes (subidas como bloques de layout). Aislado del disco `local`
         // para versionado y políticas de retención propias. NO usar `serve:true`
-        // — ThemeAssetController sirve los binarios con autorización por JWT,
-        // los assets no deben ser públicos.
+        // — Las imágenes se sirven vía MediaController con token HMAC, no son públicas.
         'themes' => [
             'driver' => 'local',
-            'root' => storage_path('app/themes'),
+            'root' => storage_path('app/media'),
             'throw' => false,
             'report' => false,
         ],

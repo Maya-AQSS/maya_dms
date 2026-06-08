@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Themes;
 
 use App\DTOs\Themes\CreateThemeDto;
+use App\Http\Requests\Themes\Concerns\SanitizesThemeLayout;
 use App\Models\Theme;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreThemeRequest extends FormRequest
 {
+    use SanitizesThemeLayout;
     public function authorize(): bool
     {
         return $this->user()->can('create', Theme::class);
@@ -41,11 +43,11 @@ class StoreThemeRequest extends FormRequest
             'layout' => ['nullable', 'array'],
             'layout.regions' => ['nullable', 'array'],
             'layout.page' => ['nullable', 'array'],
-
-            'assets' => ['nullable', 'array'],
-            'assets.logo_path' => ['nullable', 'string', 'max:1024'],
-            'assets.background_image_path' => ['nullable', 'string', 'max:1024'],
-            'assets.watermark_path' => ['nullable', 'string', 'max:1024'],
+            'layout.regions.*.props.src' => ['nullable', 'string', 'regex:/^themes\/[a-f0-9\-]{36}\/[a-f0-9\-]{36}$/'],
+            'layout.regions.*.props.alt' => ['nullable', 'string', 'max:500'],
+            'layout.regions.*.props.opacity' => ['nullable', 'numeric', 'between:0,1'],
+            'layout.regions.*.props.rotate' => ['nullable', 'numeric', 'between:-360,360'],
+            'layout.regions.*.props.objectFit' => ['nullable', 'string', 'in:cover,contain,stretch'],
 
             'accessibility' => ['nullable', 'array'],
             'accessibility.language' => ['nullable', 'string', 'size:2'],
@@ -77,11 +79,6 @@ class StoreThemeRequest extends FormRequest
                 'regions' => [],
                 'page' => ['size' => 'A4', 'margin_cm' => ['top' => 2.5, 'right' => 2, 'bottom' => 2.5, 'left' => 2]],
             ],
-            'assets' => [
-                'logo_path' => null,
-                'background_image_path' => null,
-                'watermark_path' => null,
-            ],
             'accessibility' => [
                 'language' => 'es',
                 'title' => null,
@@ -90,14 +87,20 @@ class StoreThemeRequest extends FormRequest
             ],
         ];
 
+        // El layout se toma del input crudo (no de validated()): las reglas
+        // `layout.regions.*.props.*` validan campos concretos pero validated()
+        // descartaría las claves sin regla (type, id, grid) y rompería la
+        // estructura de las regions. La validación de seguridad (regex de src,
+        // etc.) ya se aplicó sobre el input.
+        $layoutInput = $this->stripDerivedLayoutFields((array) ($this->input('layout') ?? []));
+
         return new CreateThemeDto(
             name: (string) $v['name'],
             description: $v['description'] ?? null,
             teamId: $v['team_id'] ?? null,
             palette: array_replace($defaults['palette'], (array) ($v['palette'] ?? [])),
             typography: array_replace($defaults['typography'], (array) ($v['typography'] ?? [])),
-            layout: array_replace($defaults['layout'], (array) ($v['layout'] ?? [])),
-            assets: array_replace($defaults['assets'], (array) ($v['assets'] ?? [])),
+            layout: array_replace($defaults['layout'], $layoutInput),
             accessibility: array_replace($defaults['accessibility'], (array) ($v['accessibility'] ?? [])),
         );
     }

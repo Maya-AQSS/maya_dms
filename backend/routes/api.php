@@ -24,9 +24,9 @@ use App\Http\Controllers\Api\TemplateController;
 use App\Http\Controllers\Api\TemplateReviewersController;
 use App\Http\Controllers\Api\TemplateStateController;
 use App\Http\Controllers\Api\TemplateVersionController;
-use App\Http\Controllers\Api\ThemeAssetController;
 use App\Http\Controllers\Api\ThemeController;
 use App\Http\Controllers\Api\ThemeFontController;
+use App\Http\Controllers\Api\ThemeImageController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 use Maya\Profile\Routing\AcademicContextRoutes;
@@ -92,8 +92,8 @@ Route::prefix('v1')->group(function () {
         Route::post('themes/{theme}/archive', [ThemeController::class, 'archive'])
             ->whereUuid('theme');
 
-        // Assets de Theme (logo / background / watermark).
-        Route::post('themes/{theme}/assets', [ThemeAssetController::class, 'store'])
+        // Imágenes de Theme (subidas al layout como bloques).
+        Route::post('themes/{theme}/images', [ThemeImageController::class, 'store'])
             ->whereUuid('theme');
 
         // Plantillas

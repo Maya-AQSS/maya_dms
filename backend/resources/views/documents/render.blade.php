@@ -101,10 +101,6 @@
         return 'file://'.$absolute;
     };
 
-    $logoFileUrl       = $assetUrl($theme['assets']['logo_path']             ?? null);
-    $backgroundFileUrl = $assetUrl($theme['assets']['background_image_path'] ?? null);
-    $watermarkFileUrl  = $assetUrl($theme['assets']['watermark_path']        ?? null);
-
     // Helper para formatear cm con 4 decimales sin notación científica.
     $cm = fn (float $v) => number_format($v, 4, '.', '').'cm';
 @endphp
@@ -251,12 +247,6 @@
                 height: {{ $cm($pageHeightCm) }};
                 pointer-events: none;
                 z-index: 1;
-                @if ($backgroundFileUrl)
-                    background-image: url('{{ $backgroundFileUrl }}');
-                    background-size: cover;
-                    background-position: center;
-                    background-repeat: no-repeat;
-                @endif
             }
             .theme-overlay .blk {
                 position: absolute;
@@ -303,12 +293,6 @@
             }
             .pagedjs_page {
                 background: var(--color-bg);
-                @if ($backgroundFileUrl)
-                    background-image: url('{{ $backgroundFileUrl }}');
-                    background-size: cover;
-                    background-position: center;
-                    background-repeat: no-repeat;
-                @endif
                 box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15) !important;
                 margin: 1px auto ;
                 margin-bottom: 32px !important
@@ -386,28 +370,11 @@
                     </div>
                     @break
 
-                @case('logo')
-                    @if ($logoFileUrl)
-                        <div class="blk blk-logo"
-                             style="left:{{ $left }};top:{{ $top }};width:{{ $width }};height:{{ $height }};z-index:{{ $z }};">
-                            <img src="{{ $logoFileUrl }}" alt="">
-                        </div>
-                    @endif
-                    @break
-
                 @case('image')
-                    @php
-                        $asset = $p['asset'] ?? 'background';
-                        $url = match ($asset) {
-                            'logo' => $logoFileUrl,
-                            'watermark' => $watermarkFileUrl,
-                            default => $backgroundFileUrl,
-                        };
-                    @endphp
-                    @if ($url)
-                        <div class="blk blk-image"
-                             style="left:{{ $left }};top:{{ $top }};width:{{ $width }};height:{{ $height }};z-index:{{ $z }};">
-                            <img src="{{ $url }}" alt="">
+                    @php $imgUrl = $assetUrl($p['src'] ?? null); @endphp
+                    @if ($imgUrl)
+                        <div class="blk blk-image" style="left:{{ $left }};top:{{ $top }};width:{{ $width }};height:{{ $height }};z-index:{{ $z }};opacity:{{ max(0,min(1,(float)($p['opacity'] ?? 1))) }};transform:rotate({{ (int)($p['rotate'] ?? 0) }}deg);">
+                            <img src="{{ $imgUrl }}" alt="{{ $p['alt'] ?? '' }}" style="width:100%;height:100%;object-fit:{{ in_array($p['objectFit'] ?? 'contain',['cover','contain','stretch'],true) ? ($p['objectFit'] ?? 'contain') : 'contain' }};">
                         </div>
                     @endif
                     @break
@@ -444,43 +411,6 @@
                     </div>
                     @break
 
-                @case('watermark')
-                    @php
-                        $url = $watermarkFileUrl ?? null;
-                        $opacity = (float) ($p['opacity'] ?? 0.15);
-                        $rotate = (int) ($p['rotate'] ?? -30);
-                        $alt = $p['alt'] ?? 'Marca de agua';
-                    @endphp
-
-                    <div
-                        class="blk blk-watermark"
-                        style="
-                            left:{{ $left }};
-                            top:{{ $top }};
-                            width:{{ $width }};
-                            height:{{ $height }};
-                            z-index:{{ $z }};
-                            opacity:{{ max(0, min(1, $opacity)) }};
-                            transform:rotate({{ $rotate }}deg);
-                        "
-                    >
-                        @if($url)
-                            <img
-                                src="{{ $url }}"
-                                alt="{{ $alt }}"
-                                style="
-                                    max-width:100%;
-                                    max-height:100%;
-                                    object-fit:contain;
-                                "
-                            >
-                        @else
-                            <span style="color:#9ca3af;">
-                                BORRADOR
-                            </span>
-                        @endif
-                    </div>
-                    @break
             @endswitch
         @endforeach
     </div>

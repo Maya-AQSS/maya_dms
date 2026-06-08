@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\DTOs\Themes\ThemeDto;
+use App\Support\ThemeMediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
-use Illuminate\Support\Str;
 
 /**
  * Recibe un ThemeDto desde ThemeService — nunca el modelo Eloquent.
@@ -33,12 +33,7 @@ class ThemeResource extends JsonResource
             'team_id' => $t->teamId,
             'palette' => $t->palette,
             'typography' => $t->typography,
-            'layout' => $t->layout,
-            'assets' => [
-                'logo_path'             => $this->buildMediaUrl($t->assets['logo_path'] ?? null),
-                'background_image_path' => $this->buildMediaUrl($t->assets['background_image_path'] ?? null),
-                'watermark_path'        => $this->buildMediaUrl($t->assets['watermark_path'] ?? null),
-            ],
+            'layout' => $this->withImageUrls($t->layout),
             'accessibility' => $t->accessibility,
             'cloned_from_id' => $t->clonedFromId,
             'created_at' => $t->createdAt,
@@ -47,32 +42,41 @@ class ThemeResource extends JsonResource
     }
 
     /**
-     * Converts a stored path (themes/{themeId}/{uuid}) to an HMAC-signed
-     * media URL readable by <img> and WeasyPrint without a Bearer token.
-     * Returns null for missing paths or legacy-format paths that predate the
-     * unified media endpoint.
+     * Inyecta srcUrl en los bloques imagen del layout sin mutar el original.
+     * srcUrl es un campo derivado (solo lectura) que resuelve src a una URL firmada.
+     *
+     * @param  array<string, mixed>  $layout
+     * @return array<string, mixed>
      */
-    private function buildMediaUrl(mixed $path): ?string
+    private function withImageUrls(array $layout): array
     {
-        if (!is_string($path) || $path === '') {
-            return null;
+        if (empty($layout['regions']) || ! is_array($layout['regions'])) {
+            return $layout;
         }
 
-        $uuid = basename($path);
-        if (!Str::isUuid($uuid)) {
-            return null; // Legacy path — asset must be re-uploaded.
-        }
+        $cleanRegions = array_map(function (array $region) {
+            if (($region['type'] ?? null) !== 'image') {
+                return $region;
+            }
+            if (empty($region['props']) || ! is_array($region['props'])) {
+                return $region;
+            }
 
-        $parts = explode('/', $path);
-        $token = hash_hmac('sha256', $path, (string) config('app.key'));
-        $base  = route('api.v1.media.show', ['uuid' => $uuid]);
+            $src = $region['props']['src'] ?? null;
+            if (! is_string($src) || $src === '') {
+                return $region;
+            }
 
-        if (count($parts) >= 3) {
-            $ct = rtrim($parts[0], 's'); // 'themes' → 'theme'
-            $ci = $parts[1];
-            return "{$base}?ct={$ct}&ci={$ci}&token={$token}";
-        }
+            $url = ThemeMediaUrl::build($src);
+            if ($url === null) {
+                return $region;
+            }
 
-        return "{$base}?token={$token}";
+            return array_replace($region, [
+                'props' => array_replace($region['props'], ['srcUrl' => $url]),
+            ]);
+        }, $layout['regions']);
+
+        return array_replace($layout, ['regions' => $cleanRegions]);
     }
 }

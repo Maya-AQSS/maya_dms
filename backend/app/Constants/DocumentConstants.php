@@ -33,11 +33,6 @@ final class DocumentConstants
             'regions' => [],
             'page' => ['size' => 'A4', 'margin_cm' => ['top' => 2.5, 'right' => 2, 'bottom' => 2.5, 'left' => 2]],
         ],
-        'assets' => [
-            'logo_path' => null,
-            'background_image_path' => null,
-            'watermark_path' => null,
-        ],
         'accessibility' => [
             'language' => 'es',
             'title' => null,

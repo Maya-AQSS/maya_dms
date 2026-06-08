@@ -14,7 +14,6 @@ readonly class UpdateThemeDto
      * @param  array<string, mixed>|null  $palette
      * @param  array<string, mixed>|null  $typography
      * @param  array<string, mixed>|null  $layout
-     * @param  array<string, mixed>|null  $assets
      * @param  array<string, mixed>|null  $accessibility
      */
     public function __construct(
@@ -24,7 +23,6 @@ readonly class UpdateThemeDto
         public ?array $palette = null,
         public ?array $typography = null,
         public ?array $layout = null,
-        public ?array $assets = null,
         public ?array $accessibility = null,
     ) {}
 }

@@ -27,7 +27,6 @@ readonly class ThemeDto
      * @param  array<string, string>  $palette
      * @param  array<string, mixed>  $typography
      * @param  array<string, mixed>  $layout
-     * @param  array<string, ?string>  $assets
      * @param  array<string, ?string|string>  $accessibility
      */
     public function __construct(
@@ -40,7 +39,6 @@ readonly class ThemeDto
         public array $palette,
         public array $typography,
         public array $layout,
-        public array $assets,
         public array $accessibility,
         public ?string $clonedFromId,
         public string $createdAt,

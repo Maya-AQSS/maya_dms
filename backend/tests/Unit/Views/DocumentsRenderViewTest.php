@@ -30,9 +30,6 @@ class DocumentsRenderViewTest extends TestCase
                 'regions' => [],
                 'page' => ['size' => 'A4', 'margin_cm' => ['top' => 2.5, 'right' => 2, 'bottom' => 2.5, 'left' => 2]],
             ],
-            'assets' => [
-                'logo_path' => null, 'background_image_path' => null, 'watermark_path' => null,
-            ],
             'accessibility' => ['language' => 'es', 'title' => null, 'subject' => null, 'author' => 'CEEDCV'],
             'brand_name' => 'CEEDCV',
         ], $overrides);
@@ -87,9 +84,6 @@ class DocumentsRenderViewTest extends TestCase
                     // Fecha en pie (col 0..3, fila 50..52).
                     ['id' => 'd1', 'type' => 'date', 'grid' => ['x' => 0, 'y' => 50, 'w' => 3, 'h' => 2, 'z' => 2],
                      'props' => ['format' => 'short', 'align' => 'left']],
-                    // Watermark casi a página completa.
-                    ['id' => 'w1', 'type' => 'watermark', 'grid' => ['x' => 2, 'y' => 20, 'w' => 8, 'h' => 8, 'z' => 0],
-                     'props' => ['text' => 'BORRADOR', 'opacity' => 0.15, 'rotate' => -30]],
                 ],
             ],
         ]);
@@ -103,8 +97,6 @@ class DocumentsRenderViewTest extends TestCase
         // Bloques renderizados.
         $this->assertStringContainsString('class="blk blk-text"', $html);
         $this->assertStringContainsString('CEEDCV', $html);
-        $this->assertStringContainsString('class="blk blk-watermark"', $html);
-        $this->assertStringContainsString('BORRADOR', $html);
         // Aria-hidden en el overlay → marcado como artifact por WeasyPrint (PDF/UA).
         $this->assertStringContainsString('aria-hidden="true"', $html);
     }

@@ -27,7 +27,6 @@ class CloneThemeRequest extends FormRequest
             'palette' => ['nullable', 'array'],
             'typography' => ['nullable', 'array'],
             'layout' => ['nullable', 'array'],
-            'assets' => ['nullable', 'array'],
             'accessibility' => ['nullable', 'array'],
         ];
     }
@@ -41,7 +40,6 @@ class CloneThemeRequest extends FormRequest
             paletteOverrides: $v['palette'] ?? null,
             typographyOverrides: $v['typography'] ?? null,
             layoutOverrides: $v['layout'] ?? null,
-            assetsOverrides: $v['assets'] ?? null,
             accessibilityOverrides: $v['accessibility'] ?? null,
         );
     }

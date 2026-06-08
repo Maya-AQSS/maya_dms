@@ -160,7 +160,6 @@ class ThemeApiTest extends TestCase
         $theme->palette = ['primary' => '#000', 'secondary' => '#000', 'text' => '#000', 'background' => '#fff'];
         $theme->typography = ['heading_font' => 'sans', 'body_font' => 'sans', 'base_size_pt' => 11, 'line_height' => 1.5];
         $theme->layout = ['regions' => [], 'page' => ['size' => 'A4']];
-        $theme->assets = ['logo_path' => null, 'background_image_path' => null, 'watermark_path' => null];
         $theme->accessibility = ['language' => 'es', 'title' => null, 'subject' => null, 'author' => 'CEEDCV'];
         $theme->save();
 

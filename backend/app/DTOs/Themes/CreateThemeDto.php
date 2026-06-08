@@ -10,7 +10,6 @@ readonly class CreateThemeDto
      * @param  array<string, mixed>  $palette
      * @param  array<string, mixed>  $typography
      * @param  array<string, mixed>  $layout
-     * @param  array<string, mixed>  $assets
      * @param  array<string, mixed>  $accessibility
      */
     public function __construct(
@@ -20,7 +19,6 @@ readonly class CreateThemeDto
         public array $palette,
         public array $typography,
         public array $layout,
-        public array $assets,
         public array $accessibility,
     ) {}
 }

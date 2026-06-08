@@ -116,7 +116,6 @@ final readonly class TemplateDto
         if ($m->relationLoaded('theme') && $m->theme !== null) {
             $palette = (array) ($m->theme->palette ?? []);
             $typo = (array) ($m->theme->typography ?? []);
-            $assets = (array) ($m->theme->assets ?? []);
             $themeMini = [
                 'id' => (string) $m->theme->id,
                 'name' => (string) ($m->theme->name ?? ''),
@@ -130,9 +129,6 @@ final readonly class TemplateDto
                 'typography' => [
                     'heading_font' => $typo['heading_font'] ?? null,
                     'body_font' => $typo['body_font'] ?? null,
-                ],
-                'assets' => [
-                    'logo_path' => $assets['logo_path'] ?? null,
                 ],
             ];
         }

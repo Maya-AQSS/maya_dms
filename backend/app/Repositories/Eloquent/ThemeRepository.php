@@ -74,7 +74,6 @@ class ThemeRepository implements ThemeRepositoryInterface
         $theme->palette = $dto->palette;
         $theme->typography = $dto->typography;
         $theme->layout = $dto->layout;
-        $theme->assets = $dto->assets;
         $theme->accessibility = $dto->accessibility;
         $theme->save();
 
@@ -102,9 +101,6 @@ class ThemeRepository implements ThemeRepositoryInterface
         }
         if ($dto->layout !== null) {
             $theme->layout = $dto->layout;
-        }
-        if ($dto->assets !== null) {
-            $theme->assets = $dto->assets;
         }
         if ($dto->accessibility !== null) {
             // El autor es inmutable (es el usuario creador): se preserva el
@@ -141,7 +137,6 @@ class ThemeRepository implements ThemeRepositoryInterface
         ?array $paletteOverrides,
         ?array $typographyOverrides,
         ?array $layoutOverrides,
-        ?array $assetsOverrides,
         ?array $accessibilityOverrides,
     ): ThemeDto {
         /** @var Theme $parent */
@@ -165,9 +160,6 @@ class ThemeRepository implements ThemeRepositoryInterface
         $clone->layout = $layoutOverrides
             ? array_replace($parent->layout, $layoutOverrides)
             : $parent->layout;
-        $clone->assets = $assetsOverrides
-            ? array_replace($parent->assets, $assetsOverrides)
-            : $parent->assets;
         $clone->accessibility = $accessibilityOverrides
             ? array_replace($parent->accessibility, $accessibilityOverrides)
             : $parent->accessibility;
@@ -189,7 +181,6 @@ class ThemeRepository implements ThemeRepositoryInterface
             palette: (array) $theme->palette,
             typography: (array) $theme->typography,
             layout: (array) $theme->layout,
-            assets: (array) $theme->assets,
             accessibility: (array) $theme->accessibility,
             clonedFromId: $theme->cloned_from_id,
             createdAt: (string) $theme->created_at,
@@ -216,23 +207,8 @@ class ThemeRepository implements ThemeRepositoryInterface
             palette: (array) ($model->palette ?? []),
             typography: (array) ($model->typography ?? []),
             layout: (array) ($model->layout ?? []),
-            assets: (array) ($model->assets ?? []),
             accessibility: (array) ($model->accessibility ?? []),
             brandName: (string) ($model->name ?? 'CEEDCV'),
         );
-    }
-
-    /**
-     * Fetch raw assets array for a theme by ID for mutation.
-     * Used internally by asset upload service.
-     * Returns null if theme not found.
-     *
-     * @return array<string, ?string>|null
-     */
-    public function findThemeAssetsById(string $id): ?array
-    {
-        $theme = Theme::query()->find($id);
-
-        return $theme ? (array) ($theme->assets ?? []) : null;
     }
 }

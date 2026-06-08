@@ -51,7 +51,6 @@ class ThemeService implements ThemeServiceInterface
             palette: $dto->palette,
             typography: $dto->typography,
             layout: $dto->layout,
-            assets: $dto->assets,
             accessibility: array_replace($dto->accessibility, [
                 'author' => $this->resolveAuthorName($userId),
             ]),
@@ -111,7 +110,6 @@ class ThemeService implements ThemeServiceInterface
             paletteOverrides: $dto->paletteOverrides,
             typographyOverrides: $dto->typographyOverrides,
             layoutOverrides: $dto->layoutOverrides,
-            assetsOverrides: $dto->assetsOverrides,
             accessibilityOverrides: $accessibilityOverrides,
         );
     }

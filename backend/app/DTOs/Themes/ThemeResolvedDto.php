@@ -17,14 +17,12 @@ readonly class ThemeResolvedDto
      * @param  array<string, string>  $palette
      * @param  array<string, mixed>  $typography
      * @param  array<string, mixed>  $layout
-     * @param  array<string, ?string>  $assets
      * @param  array<string, ?string|string>  $accessibility
      */
     public function __construct(
         public array $palette,
         public array $typography,
         public array $layout,
-        public array $assets,
         public array $accessibility,
         public string $brandName,
     ) {}
@@ -38,7 +36,6 @@ readonly class ThemeResolvedDto
             'palette' => $this->palette,
             'typography' => $this->typography,
             'layout' => $this->layout,
-            'assets' => $this->assets,
             'accessibility' => $this->accessibility,
             'brand_name' => $this->brandName,
         ];
