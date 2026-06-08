@@ -55,6 +55,22 @@ class ThemeController extends Controller
         return new ThemeResource($this->service->update($theme, $request->toUpdateDto()));
     }
 
+    public function publish(string $theme): ThemeResource
+    {
+        $model = Theme::query()->findOrFail($theme);
+        $this->authorize('update', $model);
+
+        return new ThemeResource($this->service->publish($theme));
+    }
+
+    public function archive(string $theme): ThemeResource
+    {
+        $model = Theme::query()->findOrFail($theme);
+        $this->authorize('update', $model);
+
+        return new ThemeResource($this->service->archive($theme));
+    }
+
     public function destroy(string $theme): Response
     {
         $dto = $this->service->get($theme);

@@ -26,7 +26,8 @@
       "language": "Language",
       "title": "Title",
       "subject": "Subject",
-      "author": "Author (PDF metadata)"
+      "author": "Author (PDF metadata)",
+      "authorHint": "The PDF metadata author is the user who creates the theme; it cannot be edited."
     },
     "colors": {
       "primary": "Primary",

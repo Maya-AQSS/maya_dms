@@ -26,7 +26,8 @@
       "language": "Idioma",
       "title": "Títol",
       "subject": "Assumpte",
-      "author": "Autor (metadades PDF)"
+      "author": "Autor (metadades PDF)",
+      "authorHint": "L'autor de les metadades PDF és l'usuari que crea el tema; no es pot editar."
     },
     "colors": {
       "primary": "Primari",

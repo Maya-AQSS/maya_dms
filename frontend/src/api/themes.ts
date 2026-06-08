@@ -6,7 +6,6 @@ import type {
   ThemeLayout,
   ThemeListFilters,
   ThemePalette,
-  ThemeStatus,
   ThemeTypography,
   ThemesListResponse,
 } from '../types/themes';
@@ -28,7 +27,7 @@ export interface CreateThemePayload {
 export interface UpdateThemePayload {
   name?: string;
   description?: string | null;
-  status?: ThemeStatus;
+  // El estado no se cambia por PATCH: usar publishTheme()/archiveTheme().
   palette?: Partial<ThemePalette>;
   typography?: Partial<ThemeTypography>;
   layout?: Partial<ThemeLayout>;
@@ -92,6 +91,16 @@ export async function deleteTheme(id: string): Promise<void> {
 /** POST /api/v1/themes/{id}/clone */
 export async function cloneTheme(id: string, payload: CloneThemePayload = {}): Promise<{ data: Theme }> {
   return apiFetchJson<{ data: Theme }>(`themes/${id}/clone`, { method: 'POST', body: payload });
+}
+
+/** POST /api/v1/themes/{id}/publish — transición draft → published. */
+export async function publishTheme(id: string): Promise<{ data: Theme }> {
+  return apiFetchJson<{ data: Theme }>(`themes/${id}/publish`, { method: 'POST' });
+}
+
+/** POST /api/v1/themes/{id}/archive — transición published → archived. */
+export async function archiveTheme(id: string): Promise<{ data: Theme }> {
+  return apiFetchJson<{ data: Theme }>(`themes/${id}/archive`, { method: 'POST' });
 }
 
 export type ThemeAssetKind = 'logo' | 'background' | 'watermark';

@@ -24,6 +24,18 @@ interface ThemeServiceInterface
 
     public function update(string $id, UpdateThemeDto $dto): ThemeDto;
 
+    /**
+     * Transiciona el theme a `published`. Idempotente (no-op si ya lo está).
+     * Lanza 422 si la transición no está permitida.
+     */
+    public function publish(string $id): ThemeDto;
+
+    /**
+     * Transiciona el theme a `archived`. Idempotente (no-op si ya lo está).
+     * Lanza 422 si la transición no está permitida.
+     */
+    public function archive(string $id): ThemeDto;
+
     public function delete(string $id): void;
 
     public function clone(string $parentId, string $userId, CloneThemeDto $dto): ThemeDto;

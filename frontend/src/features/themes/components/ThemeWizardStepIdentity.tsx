@@ -13,7 +13,6 @@ import type {
 export interface ThemeIdentityValue {
   name: string;
   description: string;
-  status?: 'draft' | 'published' | 'archived';
   palette: ThemePalette;
   typography: ThemeTypography;
   accessibility: ThemeAccessibility;
@@ -22,14 +21,12 @@ export interface ThemeIdentityValue {
 interface ThemeWizardStepIdentityProps {
   value: ThemeIdentityValue;
   onChange: (next: ThemeIdentityValue) => void;
-  showStatus?: boolean;
   /** Si hay theme persistido, se muestra el panel de assets. */
   theme?: Theme | null;
   onAssetsUploaded?: (theme: Theme) => void;
 }
 
 const LANG_OPTION_KEYS = ['es', 'ca', 'en', 'fr'] as const;
-const STATUS_OPTION_KEYS = ['draft', 'published', 'archived'] as const;
 
 /**
  * Paso 1 del wizard: información estática (general, paleta, tipografía,
@@ -41,7 +38,6 @@ const STATUS_OPTION_KEYS = ['draft', 'published', 'archived'] as const;
 export function ThemeWizardStepIdentity({
   value,
   onChange,
-  showStatus,
   theme,
   onAssetsUploaded,
 }: ThemeWizardStepIdentityProps) {
@@ -86,25 +82,6 @@ export function ThemeWizardStepIdentity({
               placeholder={t('identity.fields.descriptionPlaceholder')}
             />
           </div>
-
-          {showStatus && (
-            <div>
-              <FieldLabel htmlFor="theme-status">{t('identity.fields.status')}</FieldLabel>
-              <Select
-                id="theme-status"
-                value={value.status ?? 'draft'}
-                onChange={(e) =>
-                  set({ status: e.target.value as 'draft' | 'published' | 'archived' })
-                }
-              >
-                {STATUS_OPTION_KEYS.map((key) => (
-                  <option key={key} value={key}>
-                    {t(`identity.statusOptions.${key}`)}
-                  </option>
-                ))}
-              </Select>
-            </div>
-          )}
         </section>
 
         <section className="space-y-3">
@@ -188,15 +165,10 @@ export function ThemeWizardStepIdentity({
                 ))}
               </Select>
             </div>
-            <div>
-              <FieldLabel htmlFor="theme-author">{t('identity.fields.author')}</FieldLabel>
-              <TextInput
-                id="theme-author"
-                value={value.accessibility.author}
-                onChange={(e) => setAccessibility({ author: e.target.value })}
-              />
-            </div>
           </div>
+          <p className="text-xs text-text-muted">
+            {t('identity.fields.authorHint')}
+          </p>
         </section>
 
         {theme && onAssetsUploaded ? (

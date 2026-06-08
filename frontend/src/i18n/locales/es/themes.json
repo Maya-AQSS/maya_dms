@@ -26,7 +26,8 @@
       "language": "Idioma",
       "title": "Título",
       "subject": "Asunto",
-      "author": "Autor (metadatos PDF)"
+      "author": "Autor (metadatos PDF)",
+      "authorHint": "El autor de los metadatos PDF es el usuario que crea el theme; no es editable."
     },
     "colors": {
       "primary": "Primario",

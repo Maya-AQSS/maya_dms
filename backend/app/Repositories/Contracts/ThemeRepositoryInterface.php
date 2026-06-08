@@ -26,6 +26,12 @@ interface ThemeRepositoryInterface
 
     public function update(string $id, UpdateThemeDto $dto): ThemeDto;
 
+    /**
+     * Cambia únicamente el estado del theme. La validez de la transición la
+     * gobierna {@see \App\Services\ThemeStateTransitions}, no este método.
+     */
+    public function updateStatus(string $id, string $status): ThemeDto;
+
     public function delete(string $id): void;
 
     /**

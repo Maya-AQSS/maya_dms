@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ApiHttpError } from '../../../api/http';
 import {
+  archiveTheme as archiveThemeRequest,
   cloneTheme as cloneThemeRequest,
   createTheme as createThemeRequest,
   deleteTheme as deleteThemeRequest,
   fetchThemes,
+  publishTheme as publishThemeRequest,
   updateTheme as updateThemeRequest,
 } from '../../../api/themes';
 import type {
@@ -112,6 +114,40 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
     [load],
   );
 
+  const publishTheme = useCallback(
+    async (id: string): Promise<Theme> => {
+      try {
+        setActionError(null);
+        setActionInfo(null);
+        const res = await publishThemeRequest(id);
+        setActionInfo('Theme publicado.');
+        await load();
+        return res.data;
+      } catch (e) {
+        setActionError(formatActionError(e));
+        throw e;
+      }
+    },
+    [load],
+  );
+
+  const archiveTheme = useCallback(
+    async (id: string): Promise<Theme> => {
+      try {
+        setActionError(null);
+        setActionInfo(null);
+        const res = await archiveThemeRequest(id);
+        setActionInfo('Theme archivado.');
+        await load();
+        return res.data;
+      } catch (e) {
+        setActionError(formatActionError(e));
+        throw e;
+      }
+    },
+    [load],
+  );
+
   const deleteTheme = useCallback(
     async (id: string) => {
       try {
@@ -160,6 +196,8 @@ export function useThemes(initialFilters: ThemeListFilters = {}) {
     goToPage,
     createTheme,
     updateTheme,
+    publishTheme,
+    archiveTheme,
     deleteTheme,
     cloneTheme,
   };

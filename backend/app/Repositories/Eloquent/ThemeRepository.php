@@ -92,9 +92,8 @@ class ThemeRepository implements ThemeRepositoryInterface
         if ($dto->description !== null) {
             $theme->description = $dto->description;
         }
-        if ($dto->status !== null) {
-            $theme->status = $dto->status;
-        }
+        // El estado NO se muta aquí: las transiciones pasan por
+        // ThemeRepository::updateStatus() vía ThemeStateTransitions.
         if ($dto->palette !== null) {
             $theme->palette = $dto->palette;
         }
@@ -108,8 +107,23 @@ class ThemeRepository implements ThemeRepositoryInterface
             $theme->assets = $dto->assets;
         }
         if ($dto->accessibility !== null) {
-            $theme->accessibility = $dto->accessibility;
+            // El autor es inmutable (es el usuario creador): se preserva el
+            // valor existente sea cual sea el que llegue en el payload.
+            $existingAuthor = ((array) $theme->accessibility)['author'] ?? 'CEEDCV';
+            $theme->accessibility = array_replace($dto->accessibility, [
+                'author' => $existingAuthor,
+            ]);
         }
+        $theme->save();
+
+        return $this->toDto($theme);
+    }
+
+    public function updateStatus(string $id, string $status): ThemeDto
+    {
+        /** @var Theme $theme */
+        $theme = Theme::query()->findOrFail($id);
+        $theme->status = $status;
         $theme->save();
 
         return $this->toDto($theme);

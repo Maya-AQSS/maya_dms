@@ -86,6 +86,12 @@ Route::prefix('v1')->group(function () {
         Route::post('themes/{theme}/clone', [ThemeController::class, 'clone'])
             ->whereUuid('theme');
 
+        // Transiciones de estado (máquina de estados, ver ThemeStateTransitions).
+        Route::post('themes/{theme}/publish', [ThemeController::class, 'publish'])
+            ->whereUuid('theme');
+        Route::post('themes/{theme}/archive', [ThemeController::class, 'archive'])
+            ->whereUuid('theme');
+
         // Assets de Theme (logo / background / watermark).
         Route::post('themes/{theme}/assets', [ThemeAssetController::class, 'store'])
             ->whereUuid('theme');

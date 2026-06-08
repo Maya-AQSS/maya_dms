@@ -25,7 +25,9 @@ class UpdateThemeRequest extends FormRequest
         return [
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'description' => ['sometimes', 'nullable', 'string', 'max:2000'],
-            'status' => ['sometimes', 'string', 'in:draft,published,archived'],
+            // El estado no se edita vía PATCH: las transiciones pasan por los
+            // endpoints dedicados POST /themes/{id}/publish y /archive.
+            'status' => ['prohibited'],
 
             'palette' => ['sometimes', 'array'],
             'palette.primary' => ['sometimes', 'string', 'regex:/^#[0-9a-fA-F]{3,8}$/'],
@@ -64,7 +66,7 @@ class UpdateThemeRequest extends FormRequest
         return new UpdateThemeDto(
             name: $v['name'] ?? null,
             description: array_key_exists('description', $v) ? $v['description'] : null,
-            status: $v['status'] ?? null,
+            status: null, // las transiciones de estado no pasan por PATCH (ver rules()).
             palette: $v['palette'] ?? null,
             typography: $v['typography'] ?? null,
             layout: $v['layout'] ?? null,

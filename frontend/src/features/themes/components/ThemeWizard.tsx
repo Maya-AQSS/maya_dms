@@ -43,7 +43,6 @@ function themeToIdentity(t: Theme): ThemeIdentityValue {
   return {
     name: t.name,
     description: t.description ?? '',
-    status: t.status,
     palette: t.palette,
     typography: t.typography,
     accessibility: t.accessibility,
@@ -63,7 +62,16 @@ function themeToIdentity(t: Theme): ThemeIdentityValue {
 export function ThemeWizard({ initial }: ThemeWizardProps) {
   const { t } = useTranslation('themes');
   const navigate = useNavigate();
-  const { createTheme, updateTheme, actionError, actionInfo, clearActionError, clearActionInfo } = useThemes();
+  const {
+    createTheme,
+    updateTheme,
+    publishTheme,
+    archiveTheme,
+    actionError,
+    actionInfo,
+    clearActionError,
+    clearActionInfo,
+  } = useThemes();
 
   const [theme, setTheme] = useState<Theme | null>(initial);
   const [identity, setIdentity] = useState<ThemeIdentityValue>(
@@ -87,7 +95,6 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         const updated = await updateTheme(theme.id, {
           name: identity.name,
           description: identity.description || null,
-          status: identity.status,
           palette: identity.palette,
           typography: identity.typography,
           accessibility: identity.accessibility,
@@ -196,7 +203,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
                 clearActionInfo();
                 setSaving(true);
                 try {
-                  const updated = await updateTheme(theme.id, { status: 'published' });
+                  const updated = await publishTheme(theme.id);
                   setTheme(updated);
                   navigate('/themes');
                 } finally {
@@ -219,7 +226,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
                 clearActionInfo();
                 setSaving(true);
                 try {
-                  const updated = await updateTheme(theme.id, { status: 'archived' });
+                  const updated = await archiveTheme(theme.id);
                   setTheme(updated);
                   navigate('/themes');
                 } finally {
@@ -272,7 +279,6 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         <ThemeWizardStepIdentity
           value={identity}
           onChange={setIdentity}
-          showStatus={!!theme}
           theme={theme}
           onAssetsUploaded={setTheme}
         />
