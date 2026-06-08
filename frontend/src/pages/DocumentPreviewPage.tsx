@@ -603,7 +603,8 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
       }
 
       navigate(`/documents/${documentId}/editor`, {
-        state: hasUpdate ? { migrationMode: 'upgrade' } : { step: 'properties' },
+        // Siempre a propiedades; en upgrade el wizard intercala el paso de migración.
+        state: hasUpdate ? { step: 'properties', migrationMode: 'upgrade' } : { step: 'properties' },
       });
     } catch (e) {
       if (e instanceof ApiHttpError && e.status === 409) {

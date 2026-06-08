@@ -594,6 +594,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setCompletedSteps([]);
       return;
     }
+    // En upgrade de versión nunca saltamos a bloques: hay que pasar por migración.
+    if (isUpgradeMigration) {
+      setStep('properties');
+      setCompletedSteps([]);
+      return;
+    }
     // Si es borrador pero le falta la fecha límite, forzamos paso de propiedades
     if (!detail.delivery_deadline) {
       setStep('properties');
@@ -602,7 +608,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
       setCompletedSteps(['properties']);
       setStep('blocks');
     }
-  }, [detail?.id, detail?.status, detail?.delivery_deadline, forcePropertiesStep, mode]);
+  }, [detail?.id, detail?.status, detail?.delivery_deadline, forcePropertiesStep, mode, isUpgradeMigration]);
 
   useEffect(() => {
     if (mode === 'validate') return;
@@ -1197,6 +1203,10 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
     }
     else if (s === 'migration' && showMigrationStep && completedSteps.includes('properties')){
       setStep(s);
+    }
+    else if ((s === 'blocks' || s === 'summary') && showMigrationStep && !completedSteps.includes('migration')){
+      // No se puede saltar la migración pendiente: redirige al paso de migración.
+      if (completedSteps.includes('properties')) setStep('migration');
     }
     else if (s === 'blocks' && completedSteps.includes('properties')){
       setStep(s);
