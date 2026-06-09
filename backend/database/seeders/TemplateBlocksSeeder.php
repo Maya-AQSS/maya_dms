@@ -34,7 +34,10 @@ class TemplateBlocksSeeder extends Seeder
             unset($row['type'], $row['mandatory']);
 
             if (array_key_exists('description', $row)) {
-                $row['description'] = TemplateBlockDescriptionNormalizer::toPlainString($row['description']);
+                // La descripción se almacena como doc Tiptap (igual que default_content),
+                // no como texto plano: el modelo la castea/sirve como rich text.
+                $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc($row['description']);
+                $row['description'] = $doc === null ? null : json_encode($doc, JSON_UNESCAPED_UNICODE);
             }
 
             $row['created_at'] ??= $now;

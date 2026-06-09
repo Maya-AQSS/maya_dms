@@ -10,6 +10,84 @@ namespace App\Support;
  */
 final class TemplateBlockDescriptionNormalizer
 {
+    /**
+     * Normaliza cualquier valor de descripción (prosa plana, JSON legado,
+     * BlockNote, doc Tiptap) a un documento Tiptap `{type:doc, content:[...]}`
+     * — la forma que esperan el cast `array` del modelo y el frontend
+     * (`normalizeBlockContentForEditor`). Un doc Tiptap limpio se preserva tal
+     * cual; la prosa y las formas legadas se aplanan a párrafos.
+     *
+     * @return array{type: string, content: list<array<string, mixed>>}|null
+     */
+    public static function toTiptapDoc(mixed $value): ?array
+    {
+        if (is_string($value)) {
+            $t = trim($value);
+            if ($t === '') {
+                return null;
+            }
+
+            if ($t[0] === '{' || $t[0] === '[') {
+                $decoded = json_decode($t, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return self::toTiptapDoc($decoded);
+                }
+            }
+
+            return self::wrapProse($t);
+        }
+
+        if (is_array($value)) {
+            // Doc Tiptap limpio (sin marcadores BlockNote) → se preserva el rich text.
+            if (($value['type'] ?? null) === 'doc'
+                && is_array($value['content'] ?? null)
+                && ! self::looksLikeBlockNote($value)) {
+                return ['type' => 'doc', 'content' => array_values($value['content'])];
+            }
+
+            // BlockNote / lista / prosa estructurada → aplanar a texto y reenvolver.
+            $text = self::toPlainString($value);
+
+            return $text === null ? null : self::wrapProse($text);
+        }
+
+        return null;
+    }
+
+    /** Detecta formas BlockNote (usan `props`/`styles`/`children`, no `attrs`/`marks`). */
+    private static function looksLikeBlockNote(array $doc): bool
+    {
+        $json = json_encode($doc);
+
+        return $json !== false
+            && (str_contains($json, '"props"') || str_contains($json, '"styles"') || str_contains($json, '"children"'));
+    }
+
+    /**
+     * Envuelve prosa plana en un doc Tiptap: cada bloque separado por línea en
+     * blanco se convierte en un párrafo.
+     *
+     * @return array{type: string, content: list<array<string, mixed>>}
+     */
+    private static function wrapProse(string $text): array
+    {
+        $paragraphs = preg_split('/\n{2,}/', trim($text)) ?: [];
+        $content = [];
+        foreach ($paragraphs as $paragraph) {
+            $paragraph = trim($paragraph);
+            if ($paragraph === '') {
+                continue;
+            }
+            $content[] = [
+                'type' => 'paragraph',
+                'attrs' => ['textAlign' => 'left'],
+                'content' => [['type' => 'text', 'text' => $paragraph]],
+            ];
+        }
+
+        return ['type' => 'doc', 'content' => $content];
+    }
+
     public static function toPlainString(mixed $value): ?string
     {
         if ($value === null) {

@@ -197,4 +197,87 @@ final class TemplateBlockDescriptionNormalizerTest extends TestCase
         $result = TemplateBlockDescriptionNormalizer::toPlainString([]);
         $this->assertNull($result);
     }
+
+    // ─── toTiptapDoc: forma rich-text (array) esperada por el cast/frontend ───
+
+    public function test_to_tiptap_doc_null_and_empty_return_null(): void
+    {
+        $this->assertNull(TemplateBlockDescriptionNormalizer::toTiptapDoc(null));
+        $this->assertNull(TemplateBlockDescriptionNormalizer::toTiptapDoc(''));
+        $this->assertNull(TemplateBlockDescriptionNormalizer::toTiptapDoc('   '));
+        $this->assertNull(TemplateBlockDescriptionNormalizer::toTiptapDoc([]));
+    }
+
+    public function test_to_tiptap_doc_wraps_plain_prose_in_paragraph(): void
+    {
+        $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc('  Guía para el revisor  ');
+
+        $this->assertSame([
+            'type' => 'doc',
+            'content' => [[
+                'type' => 'paragraph',
+                'attrs' => ['textAlign' => 'left'],
+                'content' => [['type' => 'text', 'text' => 'Guía para el revisor']],
+            ]],
+        ], $doc);
+    }
+
+    public function test_to_tiptap_doc_splits_blank_lines_into_paragraphs(): void
+    {
+        $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc("Uno\n\nDos");
+
+        $this->assertCount(2, $doc['content']);
+        $this->assertSame('Uno', $doc['content'][0]['content'][0]['text']);
+        $this->assertSame('Dos', $doc['content'][1]['content'][0]['text']);
+    }
+
+    public function test_to_tiptap_doc_passthrough_clean_tiptap_doc(): void
+    {
+        $tiptap = [
+            'type' => 'doc',
+            'content' => [[
+                'type' => 'paragraph',
+                'attrs' => ['textAlign' => 'left'],
+                'content' => [['type' => 'text', 'text' => 'Negrita', 'marks' => [['type' => 'bold']]]],
+            ]],
+        ];
+
+        // Se preserva tal cual (no se aplana el rich text creado en la UI).
+        $this->assertSame($tiptap, TemplateBlockDescriptionNormalizer::toTiptapDoc($tiptap));
+    }
+
+    public function test_to_tiptap_doc_flattens_legacy_blocknote_doc(): void
+    {
+        // Doc BlockNote (usa props/styles/children) → se aplana a párrafos Tiptap limpios.
+        $blocknote = [
+            'type' => 'doc',
+            'content' => [[
+                'type' => 'paragraph',
+                'props' => ['textAlignment' => 'left'],
+                'content' => [['type' => 'text', 'text' => 'Texto legado', 'styles' => []]],
+                'children' => [],
+            ]],
+        ];
+
+        $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc($blocknote);
+
+        $this->assertSame('Texto legado', $doc['content'][0]['content'][0]['text']);
+        $this->assertArrayNotHasKey('props', $doc['content'][0]);
+    }
+
+    public function test_to_tiptap_doc_decodes_json_string(): void
+    {
+        $json = json_encode([
+            'type' => 'doc',
+            'content' => [[
+                'type' => 'paragraph',
+                'attrs' => ['textAlign' => 'left'],
+                'content' => [['type' => 'text', 'text' => 'Desde JSON']],
+            ]],
+        ], JSON_UNESCAPED_UNICODE);
+
+        $doc = TemplateBlockDescriptionNormalizer::toTiptapDoc($json);
+
+        $this->assertSame('Desde JSON', $doc['content'][0]['content'][0]['text']);
+    }
 }
