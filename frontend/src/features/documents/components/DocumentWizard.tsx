@@ -1957,7 +1957,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-text-secondary dark:text-text-dark-secondary">Actual:</span>
                   <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
-                    {newOwnerForDoc ? newOwnerForDoc.name : (detail?.owner_name ?? '—')}
+                    {newOwnerForDoc ? newOwnerForDoc.name : (detail?.owner_name ?? profile?.name ?? '—')}
                   </span>
                   {newOwnerForDoc && (
                     <button

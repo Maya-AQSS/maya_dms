@@ -62,6 +62,20 @@ class DocumentsRenderViewTest extends TestCase
         $this->assertStringContainsString('class="page-header"', $html);
     }
 
+    public function test_first_block_does_not_force_page_break_before(): void
+    {
+        // Regresión: cuando el primer bloque es portada/blanco (ambos llevan
+        // `page-break-before: always`), paged.js generaba una página en blanco
+        // ANTES de la portada en el preview. El primer bloque del cuerpo debe
+        // anular ese salto forzado.
+        $html = $this->render($this->baseTheme());
+
+        $this->assertMatchesRegularExpression(
+            '/main\s*>\s*\.doc-block:first-of-type\s*\{[^}]*page-break-before:\s*auto/i',
+            $html,
+        );
+    }
+
     public function test_legacy_margins_taken_from_theme_layout_page(): void
     {
         $html = $this->render($this->baseTheme([

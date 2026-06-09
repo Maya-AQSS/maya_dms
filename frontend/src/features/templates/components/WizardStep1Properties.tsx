@@ -24,7 +24,7 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
   const { t } = useTranslation('templates');
   const deadlineLocked = templateStatus === 'in_review' || templateStatus === 'published';
   const { hierarchy, teams: hierarchyTeams, loading: hierarchyLoading, error: hierarchyError } = useHierarchy();
-  const { hasPermission } = useUserProfile();
+  const { hasPermission, profile } = useUserProfile();
   const teams: UserTeam[] = hierarchyTeams;
   const teamsLoading = hierarchyLoading;
   const teamsError = hierarchyError
@@ -346,7 +346,7 @@ export function WizardStep1Properties({ errors, templateStatus, isCreator, curre
                 Actual:
               </span>
               <span className="text-xs font-semibold text-text-primary dark:text-text-dark-primary">
-                {createdBy ? (selectedOwnerName ?? '—') : (currentAuthorName ?? '—')}
+                {createdBy ? (selectedOwnerName ?? '—') : (currentAuthorName ?? profile?.name ?? '—')}
               </span>
               {createdBy && (
                 <button

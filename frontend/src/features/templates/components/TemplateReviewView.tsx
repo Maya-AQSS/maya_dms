@@ -12,6 +12,7 @@ import {
   type TiptapDiffLine,
 } from '../../documents/lib/tiptapLineDiff';
 import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayout';
+import { StructuralBlockPreview, isStructuralBlockType } from '../../documents/components/StructuralBlockPreview';
 import { SequentialValidatorBadge } from '../../documents/components/SequentialValidatorBadge';
 import { SubmissionChangelogReadonly } from '../../../components/VersionChangelogModal';
 import { Button, ConfirmDialog } from '@ceedcv-maya/shared-ui-react';
@@ -621,7 +622,9 @@ export function TemplateReviewView({ template }: Props) {
                     )}
                   </div>
                 </div>
-                {nodes.length > 0 ? (
+                {isStructuralBlockType(block.block_type) ? (
+                  <StructuralBlockPreview block={block} allBlocks={blocks} />
+                ) : nodes.length > 0 ? (
                   <BlockContentHtml content={nodes} />
                 ) : (
                   <p className="text-sm text-text-muted italic">Bloque sin contenido.</p>

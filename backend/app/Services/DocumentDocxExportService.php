@@ -44,9 +44,14 @@ class DocumentDocxExportService
             if (! is_array($doc)) {
                 continue;
             }
-            // Los bloques se persisten como documento TipTap (`{type:doc}`);
-            // el render produce el HTML que empaqueta el DOCX.
-            $htmlParts[] = TiptapHtmlRenderer::renderDoc($doc);
+            // El editor persiste el contenido editado como LISTA PELADA de nodos
+            // (`[ {...}, {...} ]`), no como documento completo `{type:doc}`.
+            // `renderDoc()` exige `type === 'doc'` y devolvería vacío para la
+            // lista pelada (los bloques editados desaparecían del DOCX), así que
+            // derivamos a `renderNodes()` cuando el payload es una lista.
+            $htmlParts[] = array_is_list($doc)
+                ? TiptapHtmlRenderer::renderNodes($doc)
+                : TiptapHtmlRenderer::renderDoc($doc);
         }
 
         $html = implode("\n", array_filter($htmlParts));

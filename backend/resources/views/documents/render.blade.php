@@ -285,6 +285,16 @@
                 @bottom-right { content: none; }
             @endif
         }
+        /* El PRIMER bloque del cuerpo nunca fuerza un salto de página antes:
+           cuando el primer bloque es portada o página en blanco (ambos llevan
+           `page-break-before: always`), paged.js materializa ese salto forzado
+           como una página vacía ANTES de la portada en el preview. WeasyPrint lo
+           ignora de forma nativa, así que la regla es inocua en el export PDF.
+           Usamos `auto` (no `avoid`): sólo anulamos el salto FORZADO; no hace
+           falta prohibir el salto, y `auto` lo soporta paged.js sin ambigüedad. */
+        main > .doc-block:first-of-type {
+            page-break-before: auto !important;
+        }
         .doc-block--cover {
             page: cover;
             page-break-before: always;

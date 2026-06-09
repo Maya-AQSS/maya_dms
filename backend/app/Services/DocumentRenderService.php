@@ -169,7 +169,7 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                     $default = is_array($tpl?->default_content) ? $tpl->default_content : $default;
                 }
                 if (is_array($default) && count($default) > 0) {
-                    $inner .= TiptapHtmlRenderer::renderDoc($default);
+                    $inner .= $this->renderTiptapContent($default);
                 } elseif (is_string($default) && $default !== '') {
                     // Backwards-compat: algún seed legacy guardaba string en lugar de array.
                     $inner .= '<p>'.e($default).'</p>';
@@ -197,6 +197,30 @@ class DocumentRenderService implements DocumentRenderServiceInterface
         }
 
         return $blockHtmlParts;
+    }
+
+    /**
+     * Renderiza contenido tiptap aceptando las DOS formas que conviven en el
+     * sistema:
+     *  - documento completo `{ type:'doc', content:[...] }` → es lo que guarda
+     *    `template_blocks.default_content`.
+     *  - lista pelada de nodos `[ {...}, {...} ]` → es lo que guarda el editor en
+     *    `document_blocks.content` cuando el redactor edita el bloque.
+     *
+     * `TiptapHtmlRenderer::renderDoc()` SÓLO acepta la primera (exige
+     * `type === 'doc'`). Sin envolver/derivar la lista pelada, los bloques
+     * EDITADOS se renderizaban vacíos en el PDF mientras que los no editados
+     * (que caen al `default_content` de la plantilla) sí aparecían.
+     *
+     * @param  array<mixed>  $content
+     */
+    private function renderTiptapContent(array $content): string
+    {
+        if (array_is_list($content)) {
+            return TiptapHtmlRenderer::renderNodes($content);
+        }
+
+        return TiptapHtmlRenderer::renderDoc($content);
     }
 
     /**
