@@ -75,6 +75,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/processes', [ProcessController::class, 'store']);
         Route::get('/processes/{process}', [ProcessController::class, 'show'])->whereUuid('process');
         Route::match(['put', 'patch'], '/processes/{process}', [ProcessController::class, 'update'])->whereUuid('process');
+        Route::get('/processes/{process}/deletion-preview', [ProcessController::class, 'deletionPreview'])->whereUuid('process');
         Route::delete('/processes/{process}', [ProcessController::class, 'destroy'])->whereUuid('process');
 
         // Media — subida de imágenes para bloques BlockNote
