@@ -460,6 +460,18 @@
                 pointer-events: none;
                 z-index: 1;
             }
+            /* Contadores de página del overlay (Página N de M). DEBEN vivir en el
+               <head>: un <style> en el <body> lo materializa paged.js como un
+               bloque de flujo en la primera página, empujando la portada a la
+               página 2 y dejando una hoja en blanco inicial. WeasyPrint sustituye
+               estos contadores nativamente; en preview los reescribe el JS de
+               PagedConfig.after (este CSS es el fallback). */
+            .theme-overlay .blk-meta .pn::before { content: counter(page); }
+            .theme-overlay .blk-meta .pn { font-size: 0; }
+            .theme-overlay .blk-meta .pn::before { font-size: 9pt; }
+            .theme-overlay .blk-meta .pt::before { content: counter(pages); }
+            .theme-overlay .blk-meta .pt { font-size: 0; }
+            .theme-overlay .blk-meta .pt::before { font-size: 9pt; }
             .theme-overlay .blk {
                 position: absolute;
                 /* `overflow: visible` para que un texto cuya fuente sea más
@@ -627,19 +639,9 @@
         @endforeach
     </div>
 
-    {{-- Counter para page number en CSS Paged Media: WeasyPrint reemplaza
-         estos elementos en cada página via `target-counter` o `counter(page)`.
-         Como están dentro de un fixed que se repite, podemos usar el contador
-         de página actual con un pseudo-elemento. Implementación: usamos
-         `content: counter(page)` sobre los spans .pn/.pt vía CSS counters. --}}
-    <style>
-        .theme-overlay .blk-meta .pn::before { content: counter(page); }
-        .theme-overlay .blk-meta .pn { font-size: 0; }
-        .theme-overlay .blk-meta .pn::before { font-size: 9pt; }
-        .theme-overlay .blk-meta .pt::before { content: counter(pages); }
-        .theme-overlay .blk-meta .pt { font-size: 0; }
-        .theme-overlay .blk-meta .pt::before { font-size: 9pt; }
-    </style>
+    {{-- Los contadores de página del overlay viven ahora en el <head> (ver
+         `.theme-overlay .blk-meta .pn/.pt`): un <style> aquí, en el <body>, lo
+         materializaba paged.js como un bloque de flujo en la primera página. --}}
 @else
     <header class="page-header" role="banner">
         <span class="brand">{{ $theme['brand_name'] ?? 'CEEDCV' }}</span>
@@ -648,13 +650,25 @@
 @endif
 
 <main role="main">
-    {{-- El PDF muestra solo los bloques. El título no se imprime como portada;
-         se mantiene como elemento oculto para alimentar la cabecera de página
-         (string-set: doc-title) sin ocupar la primera página. --}}
-    <h1 class="doc-title doc-title--running">{{ $document['title'] }}</h1>
+    @unless ($hasGridLayout)
+        {{-- Modo chrome estándar: el <h1> alimenta `string-set: doc-title` para
+             `@top-right`. Va al INICIO para que la cabecera tenga el título desde
+             la primera página. El elemento está oculto (doc-title--running). --}}
+        <h1 class="doc-title doc-title--running">{{ $document['title'] }}</h1>
+    @endunless
 
     {{-- Contenido del documento (HTML producido por TiptapHtmlRenderer en backend) --}}
     {!! $document['body_html'] !!}
+
+    @if ($hasGridLayout)
+        {{-- Modo rejilla: la cabecera la pinta el overlay fixed, NO el string-set,
+             así que el <h1> no se consume. Lo colocamos al FINAL para que no genere
+             un bloque de flujo antes de la portada: un <h1> previo (aunque oculto)
+             impide que la portada —de altura de página completa— quepa en la primera
+             hoja, empujándola a la página 2 y dejando una hoja en blanco inicial.
+             Se conserva (oculto) por si algún consumidor lee el título. --}}
+        <h1 class="doc-title doc-title--running">{{ $document['title'] }}</h1>
+    @endif
 </main>
 
 @if (! empty($preview_mode))
