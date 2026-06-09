@@ -32,7 +32,12 @@ interface ProcessRepositoryInterface
 
     public function delete(string $id): void;
 
-    public function hasDependents(string $processId): bool;
+    public function hasSubprocesses(string $processId): bool;
+
+    /**
+     * @return array{templates_count: int, documents_count: int, subprocess_count: int}
+     */
+    public function deletionCounts(string $processId): array;
 
     /**
      * @param  array{search?: string, parent_id?: string}  $filters

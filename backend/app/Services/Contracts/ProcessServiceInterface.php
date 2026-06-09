@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Contracts;
 
 use App\DTOs\Processes\CreateProcessDto;
+use App\DTOs\Processes\ProcessDeletionPreviewDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
@@ -31,6 +32,11 @@ interface ProcessServiceInterface
     public function update(string $id, UpdateProcessDto $dto): array;
 
     public function delete(string $id): void;
+
+    /**
+     * Conteo de dependientes afectados por el borrado del proceso.
+     */
+    public function deletionPreview(string $id): ProcessDeletionPreviewDto;
 
     /**
      * @param  array{search?: string, parent_id?: string}  $filters

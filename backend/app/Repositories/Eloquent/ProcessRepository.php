@@ -6,11 +6,14 @@ namespace App\Repositories\Eloquent;
 
 use App\DTOs\Processes\CreateProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
+use App\Models\Document;
 use App\Models\Process;
+use App\Models\Template;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator as ConcretePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class ProcessRepository implements ProcessRepositoryInterface
@@ -85,21 +88,74 @@ class ProcessRepository implements ProcessRepositoryInterface
         return $this->toRow($process);
     }
 
+    /**
+     * Soft-delete del proceso y, en cascada, de sus plantillas y documentos.
+     *
+     * No se borran las filas hijas de cada plantilla/documento (bloques, versiones,
+     * comentarios, etc.): quedan accesibles solo a través del padre soft-deleted,
+     * que es la semántica habitual de soft delete en el proyecto.
+     */
     public function delete(string $id): void
     {
-        Process::destroy($id);
+        DB::transaction(function () use ($id): void {
+            $this->templatesQueryForProcess($id)
+                ->get()
+                ->each(fn (Template $template) => $template->delete());
+
+            $this->documentsQueryForProcess($id)
+                ->get()
+                ->each(fn (Document $document) => $document->delete());
+
+            Process::query()->whereKey($id)->first()?->delete();
+        });
     }
 
-    public function hasDependents(string $processId): bool
+    public function hasSubprocesses(string $processId): bool
     {
         return Process::query()
-            ->whereKey($processId)
-            ->where(function ($q) {
-                $q->whereHas('children')
-                    ->orWhereHas('templates')
-                    ->orWhereHas('documents');
-            })
+            ->where('process_parent_id', $processId)
             ->exists();
+    }
+
+    /**
+     * Conteo de dependientes afectados por el borrado, sobre TODAS las filas
+     * (sin scopes de visibilidad por usuario), porque el borrado las afecta a todas.
+     *
+     * @return array{templates_count: int, documents_count: int, subprocess_count: int}
+     */
+    public function deletionCounts(string $processId): array
+    {
+        return [
+            'templates_count' => $this->templatesQueryForProcess($processId)->count(),
+            'documents_count' => $this->documentsQueryForProcess($processId)->count(),
+            'subprocess_count' => Process::query()
+                ->where('process_parent_id', $processId)
+                ->count(),
+        ];
+    }
+
+    /**
+     * Plantillas del proceso sin los scopes de visibilidad/join de cabezal
+     * (mantiene el scope de soft delete para excluir las ya eliminadas).
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<Template>
+     */
+    private function templatesQueryForProcess(string $processId)
+    {
+        return Template::withoutGlobalScopes(['join_head_entity_version', 'user_access'])
+            ->where('process_id', $processId);
+    }
+
+    /**
+     * Documentos del proceso sin los scopes de visibilidad/join de cabezal
+     * (mantiene el scope de soft delete para excluir los ya eliminados).
+     *
+     * @return \Illuminate\Database\Eloquent\Builder<Document>
+     */
+    private function documentsQueryForProcess(string $processId)
+    {
+        return Document::withoutGlobalScopes(['join_head_document_entity_version', 'user_access'])
+            ->where('process_id', $processId);
     }
 
     /**
