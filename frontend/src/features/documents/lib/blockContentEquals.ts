@@ -31,6 +31,17 @@ export function isUnresolvedEditableBlock(block: DocumentDisplayBlock): boolean 
     return false;
   }
 
+  // Bloques estructurales (portada/índice/blanco) no se rellenan con texto tiptap:
+  // el chequeo de "placeholder" no aplica. La portada se considera resuelta cuando
+  // tiene datos de relleno guardados (objeto cover-fill); índice y blanco siempre.
+  const blockType = block.block_type ?? 'content';
+  if (blockType === 'index' || blockType === 'blank') {
+    return false;
+  }
+  if (blockType === 'cover') {
+    return !(block.content !== null && typeof block.content === 'object');
+  }
+
   return isEditableBlockStillPlaceholder(
     block.content ?? null,
     block.default_content ?? null,

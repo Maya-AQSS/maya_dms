@@ -17,6 +17,7 @@ import { useTemplateVersionSummariesQuery } from '../features/templates/hooks/us
 import { useProcessesQuery } from '../hooks/useProcesses';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
+import { StructuralBlockPreview, isStructuralBlockType } from '../features/documents/components/StructuralBlockPreview';
 import { visibilityLabel } from '../features/templates/constants';
 import type { Template } from '../types/templates';
 import type { BlockState, TemplateBlock } from '../types/blocks';
@@ -757,7 +758,9 @@ export function TemplatePreviewPage() {
                           )}
                         </div>
                       </div>
-                      {hasContent ? (
+                      {isStructuralBlockType(block.block_type) ? (
+                        <StructuralBlockPreview block={block} allBlocks={blocks} />
+                      ) : hasContent ? (
                         <BlockContentHtml content={nodes} />
                       ) : (
                         <p className="text-sm text-text-muted dark:text-text-dark-muted italic">

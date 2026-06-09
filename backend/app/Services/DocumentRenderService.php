@@ -209,7 +209,13 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                 'id' => $tpl?->id !== null ? (string) $tpl->id : (string) $block->id,
                 'title' => (string) ($tpl?->title ?? ''),
                 'block_type' => $type,
-                'index_config' => ($type === 'index' && is_array($tpl?->default_content)) ? $tpl->default_content : null,
+                // El índice usa la config guardada en el DOCUMENTO (selección del
+                // redactor) si existe; si no, la config por defecto de la plantilla.
+                'index_config' => $type === 'index'
+                    ? (is_array($block->content)
+                        ? $block->content
+                        : (is_array($tpl?->default_content) ? $tpl->default_content : null))
+                    : null,
             ];
         }
 

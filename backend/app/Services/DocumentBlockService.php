@@ -49,6 +49,11 @@ class DocumentBlockService
             $tid = (string) $def['id'];
             $row = $byTemplateBlockId->get($tid);
             $state = (string) ($def['block_state'] ?? 'editable');
+            // El índice es SIEMPRE modificable (el redactor elige qué secciones
+            // entran), aunque la plantilla lo guardara con otro estado.
+            if (($def['block_type'] ?? 'content') === 'index') {
+                $state = 'modifiable';
+            }
             // 'mandatory' is not stored as a separate column; it is fully determined by
             // block_state: only 'editable' blocks are mandatory (must be filled by document creator).
             // 'modifiable' blocks are optional — creator may keep the template default. The snapshot
@@ -140,12 +145,26 @@ class DocumentBlockService
             $definition = $definitions->get((string) $block->template_block_id) ?? [];
 
             $state = (string) ($definition['block_state'] ?? 'editable');
+            $blockType = (string) ($definition['block_type'] ?? 'content');
+            // El índice es siempre modificable (coherente con blocksForDisplay).
+            if ($blockType === 'index') {
+                $state = 'modifiable';
+            }
 
             if ($state === 'locked') {
                 throw new AuthorizationException('Este bloque está bloqueado y no admite edición.');
             }
 
-            if ($this->documentBlockContentEquals($block->content, $dto->content)) {
+            // Portada e índice guardan una CONFIG (objeto `{kind:...}`), no cuerpo
+            // tiptap. La comparación semántica tiptap los normaliza a vacío y los
+            // trataría como "sin cambios" (no se guardaría nunca). Para ellos
+            // comparamos el contenido crudo canónico.
+            $isStructuralFill = $blockType === 'cover' || $blockType === 'index';
+            $contentUnchanged = $isStructuralFill
+                ? $this->jsonEncodeCanonical($block->content) === $this->jsonEncodeCanonical($dto->content)
+                : $this->documentBlockContentEquals($block->content, $dto->content);
+
+            if ($contentUnchanged) {
                 return new BlockUpdateDto(
                     document_block_id: (string) $block->id,
                     template_block_id: (string) $block->template_block_id,
@@ -158,8 +177,10 @@ class DocumentBlockService
 
             $this->appendModifiableBlockVersionSnapshotsIfNeeded($document, $block, $definition, $dto);
 
-            $isFilled = $this->isContentFilled($dto->content);
-            if ($state === 'editable') {
+            $isFilled = $isStructuralFill
+                ? ($dto->content !== null && $dto->content !== [])
+                : $this->isContentFilled($dto->content);
+            if (! $isStructuralFill && $state === 'editable') {
                 $default = $definition['default_content'] ?? null;
                 if ($this->documentBlockContentEquals($dto->content, $default)) {
                     $isFilled = false;
@@ -181,8 +202,11 @@ class DocumentBlockService
     public function assertMandatoryBlocksAreFilled(string $documentId): void
     {
         $document = $this->documentRepository->findOrFail($documentId);
+        // Solo bloques de CONTENIDO editables son obligatorios de rellenar con
+        // texto. Los estructurales (portada/índice/blanco) no se miden como tiptap.
         $definitions = collect($this->blockDefinitionsForDocument($document))
-            ->filter(fn (array $def): bool => ($def['block_state'] ?? '') === 'editable');
+            ->filter(fn (array $def): bool => ($def['block_state'] ?? '') === 'editable'
+                && ! in_array($def['block_type'] ?? 'content', ['cover', 'index', 'blank'], true));
 
         if ($definitions->isEmpty()) {
             return;

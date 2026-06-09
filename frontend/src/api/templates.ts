@@ -158,6 +158,7 @@ export type TemplateVersionSnapshotBlock = {
   title: string;
   default_content: unknown;
   block_state?: string;
+  block_type?: import('../types/blocks').BlockType;
   mandatory?: boolean;
   sort_order: number;
 };

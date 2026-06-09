@@ -26,6 +26,7 @@ import {
 import { fetchTemplateVersion, type TemplateVersionSnapshotBlock } from '../api/templates';
 import { normalizeBlockContentForEditor } from '../features/documents/lib/normalizeBlockContent';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
+import { StructuralBlockPreview, isStructuralBlockType } from '../features/documents/components/StructuralBlockPreview';
 import { useUserProfile } from '../features/user-profile';
 import { DMS_PERMISSIONS } from '../permissions';
 import type { Document, DocumentStatus } from '../types/documents';
@@ -601,7 +602,9 @@ export function DocumentsContent() {
                                 {snapshotBlockStateLabel(block.block_state)}
                               </span>
                             </div>
-                            {hasContent ? (
+                            {isStructuralBlockType(block.block_type) ? (
+                              <StructuralBlockPreview block={block} allBlocks={previewBlocks} />
+                            ) : hasContent ? (
                               <BlockContentHtml content={nodes as unknown[]} />
                             ) : (
                               <p className="text-sm text-text-muted dark:text-text-dark-muted italic">

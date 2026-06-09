@@ -8,6 +8,7 @@ use App\DTOs\Templates\EntityVersionSnapshotDto;
 use App\DTOs\Templates\TemplateVersionBlockLayerDto;
 use App\Models\Template;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
+use App\Repositories\Contracts\TemplateBlockRepositoryInterface;
 use App\Repositories\Contracts\TemplateVersionBlockLayerRepositoryInterface;
 use App\Services\TemplateVersionBlockLayerResolver;
 use Illuminate\Support\Collection;
@@ -84,8 +85,16 @@ final class TemplateVersionBlockLayerResolverTest extends TestCase
     private function makeResolver(
         EntityVersionRepositoryInterface $evRepo,
         TemplateVersionBlockLayerRepositoryInterface $layerRepo,
+        ?TemplateBlockRepositoryInterface $blockRepo = null,
     ): TemplateVersionBlockLayerResolver {
-        return new TemplateVersionBlockLayerResolver($evRepo, $layerRepo);
+        if ($blockRepo === null) {
+            // Por defecto: sin bloques vivos coincidentes → el backfill en
+            // lectura es no-op y la salida del snapshot queda intacta.
+            $blockRepo = Mockery::mock(TemplateBlockRepositoryInterface::class);
+            $blockRepo->shouldReceive('findByIds')->andReturn(new \Illuminate\Database\Eloquent\Collection);
+        }
+
+        return new TemplateVersionBlockLayerResolver($evRepo, $layerRepo, $blockRepo);
     }
 
     // ─── resolveBlocksSnapshot: no layers → fall back to snapshot ────────────

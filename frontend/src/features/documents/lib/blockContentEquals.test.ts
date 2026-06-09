@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { planDocumentBlockSave } from './blockContentEquals';
+import { planDocumentBlockSave, isUnresolvedEditableBlock } from './blockContentEquals';
+import type { DocumentDisplayBlock } from '../../../types/documents';
+
+const block = (over: Partial<DocumentDisplayBlock>): DocumentDisplayBlock => ({
+  document_block_id: 'd1',
+  template_block_id: 't1',
+  type: '',
+  title: null,
+  default_content: null,
+  block_state: 'editable',
+  mandatory: true,
+  sort_order: 0,
+  content: null,
+  is_filled: false,
+  ...over,
+});
 
 const guide = [
   { type: 'paragraph', content: [{ type: 'text', text: 'Texto guía' }] },
@@ -37,5 +52,26 @@ describe('planDocumentBlockSave', () => {
     expect(
       planDocumentBlockSave(userEdit, guide, null, guide, 'editable'),
     ).toEqual({ action: 'persist', payload: userEdit });
+  });
+});
+
+describe('isUnresolvedEditableBlock — bloques estructurales', () => {
+  it('portada editable SIN relleno está sin resolver (punto rojo)', () => {
+    expect(isUnresolvedEditableBlock(block({ block_type: 'cover', content: null }))).toBe(true);
+  });
+
+  it('portada con datos de relleno se considera resuelta (sin punto)', () => {
+    expect(
+      isUnresolvedEditableBlock(block({ block_type: 'cover', content: { kind: 'cover-fill', values: { k: 'x' } } })),
+    ).toBe(false);
+  });
+
+  it('índice y hoja en blanco nunca cuentan como sin resolver', () => {
+    expect(isUnresolvedEditableBlock(block({ block_type: 'index', content: null }))).toBe(false);
+    expect(isUnresolvedEditableBlock(block({ block_type: 'blank', content: null }))).toBe(false);
+  });
+
+  it('bloque de contenido editable vacío sigue sin resolver', () => {
+    expect(isUnresolvedEditableBlock(block({ block_type: 'content', content: null }))).toBe(true);
   });
 });

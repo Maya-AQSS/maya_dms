@@ -9,6 +9,7 @@
   height: 100%;
   padding: 4px 6px;
   overflow: hidden;
+  box-sizing: border-box;
   font-family: var(--font-body, system-ui, sans-serif);
 }
 
@@ -41,11 +42,31 @@
   white-space: pre-wrap;
 }
 
-.theme-grid-slot--logo,
+.theme-grid-slot--logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 4px;
+}
+
+/*
+ * La imagen se renderiza a sangre (full-bleed): sin padding ni borde para que
+ * llegue al borde de su caja y pueda usarse como fondo de página completa. El
+ * recorte/encaje lo decide `object-fit` (cover/contain/stretch) en el <img>.
+ */
 .theme-grid-slot--image {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+/* Solo el placeholder vacío muestra el recuadro guía en el editor. */
+.theme-grid-slot--image-empty {
   background: rgba(0, 0, 0, 0.03);
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 4px;

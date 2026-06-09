@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Templates\TemplateBlockPayloadDto;
+use App\Enums\BlockType;
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
@@ -45,14 +47,9 @@ class TemplateReviewService
             }
 
             $template->load(['blocks' => fn ($q) => $q->orderBy('sort_order')]);
-            $blocksSnapshot = $template->blocks->map(fn ($b) => [
-                'id' => (string) $b->id,
-                'sort_order' => (int) $b->sort_order,
-                'title' => $b->title,
-                'description' => $b->description,
-                'default_content' => $b->default_content,
-                'block_state' => $b->block_state,
-            ])->values()->all();
+            $blocksSnapshot = $template->blocks
+                ->map(fn ($b) => TemplateBlockPayloadDto::fromModel($b)->toArray())
+                ->values()->all();
 
             $template->loadMissing('headVersion');
             $headVersion = $template->headVersion;
@@ -79,9 +76,13 @@ class TemplateReviewService
 
             $isEmptyContent = fn ($b) => is_null($b->default_content)
                 || (is_array($b->default_content) && count($b->default_content) === 0);
+            // Los bloques estructurales sin cuerpo (hoja en blanco) están exentos
+            // de la invariante de "no vacío". Fuente: BlockType::requiresBodyContent().
+            $requiresContent = fn ($b) => ! ($b->block_type instanceof BlockType)
+                || $b->block_type->requiresBodyContent();
 
             $emptyModifiableBlock = $template->blocks->first(
-                fn ($b) => (string) $b->block_state === 'modifiable' && $isEmptyContent($b)
+                fn ($b) => (string) $b->block_state === 'modifiable' && $isEmptyContent($b) && $requiresContent($b)
             );
             if ($emptyModifiableBlock !== null) {
                 throw ValidationException::withMessages([
@@ -90,7 +91,7 @@ class TemplateReviewService
             }
 
             $emptyLockedBlock = $template->blocks->first(
-                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b)
+                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b) && $requiresContent($b)
             );
             if ($emptyLockedBlock !== null) {
                 throw ValidationException::withMessages([
@@ -120,13 +121,9 @@ class TemplateReviewService
             $this->templateRepository->updateReviewersStatus($templateId, 'pending');
 
             // Use repository to update head version snapshot
-            $blocksSnapshot = $template->blocks->map(fn ($b) => [
-                'id' => $b->id,
-                'title' => $b->title,
-                'default_content' => $b->default_content,
-                'block_state' => (string) $b->block_state,
-                'sort_order' => (int) $b->sort_order,
-            ])->values()->all();
+            $blocksSnapshot = $template->blocks
+                ->map(fn ($b) => TemplateBlockPayloadDto::fromModel($b)->toArray())
+                ->values()->all();
 
             $template->loadMissing('headVersion');
             $headEv = $template->headVersion;

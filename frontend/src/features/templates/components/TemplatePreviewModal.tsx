@@ -9,6 +9,7 @@ import { PaperPreviewLayout } from '../../documents/components/PaperPreviewLayou
 import { formatCalendarDateForBrowser } from '../../../utils/formatCalendarDate';
 import { ViewCardHeader } from './BlockCommentsCard';
 import { BlockContentHtml } from './BlockContentHtml';
+import { StructuralBlockPreview, isStructuralBlockType } from '../../documents/components/StructuralBlockPreview';
 
 interface Props {
   template: Template;
@@ -159,7 +160,9 @@ export function TemplatePreviewModal({ template, blocks, onClose }: Props) {
                     )}
                   </div>
                 </div>
-                {nodes.length > 0 ? (
+                {isStructuralBlockType(block.block_type) ? (
+                  <StructuralBlockPreview block={block} allBlocks={blocks} />
+                ) : nodes.length > 0 ? (
                   <BlockContentHtml content={nodes} />
                 ) : (
                   <p className="text-sm text-text-muted dark:text-text-dark-muted italic">

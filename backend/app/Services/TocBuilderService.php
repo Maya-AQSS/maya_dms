@@ -13,12 +13,11 @@ use DOMXPath;
  * Construye el índice (tabla de contenidos) de un documento dentro de los
  * bloques de tipo `index`.
  *
- * Modelo híbrido (decidido con el usuario):
- *   - Entrada por BLOQUE: el bloque índice referencia otros bloques por id
- *     (config en su `default_content`: `{ kind:'index', blockIds:[], includeHeadings:bool }`).
- *     Si no hay `blockIds`, por defecto entran todos los bloques de contenido.
- *   - Subentradas por ENCABEZADO (opcional, `includeHeadings`): los H1–H3 del
- *     contenido de cada bloque seleccionado, indentados.
+ * Modelo: las entradas son los TÍTULOS INTERNOS (encabezados H1–H3) del
+ * contenido de TODOS los bloques (en orden del documento), NO el nombre del
+ * bloque. La config del índice (`{ kind:'index', excludedHeadings:[] }`) es una
+ * deny-list de títulos a ocultar, con clave `{blockId}#{idxEncabezado}`. Por
+ * defecto entran todos. La indentación se normaliza (nivel más alto → h1).
  *
  * Cada sección de bloque lleva `id="block-{id}"` (lo emite el render service);
  * el índice enlaza a ese ancla. El número de página NO se calcula aquí: lo
@@ -95,20 +94,6 @@ class TocBuilderService
             }
         }
 
-        // IDs de bloque de contenido por defecto (cuando el índice no fija blockIds).
-        $defaultBlockIds = [];
-        foreach ($blocks as $b) {
-            if (($b['block_type'] ?? '') === 'content') {
-                $defaultBlockIds[] = (string) $b['id'];
-            }
-        }
-        $titleById = [];
-        $orderIndex = [];
-        foreach ($blocks as $i => $b) {
-            $titleById[(string) $b['id']] = (string) ($b['title'] ?? '');
-            $orderIndex[(string) $b['id']] = $i;
-        }
-
         $built = false;
         foreach ($blocks as $b) {
             if (($b['block_type'] ?? '') !== 'index') {
@@ -121,58 +106,62 @@ class TocBuilderService
             }
 
             $config = is_array($b['index_config'] ?? null) ? $b['index_config'] : [];
-            // blockIds vacío o ausente ⇒ por defecto todos los bloques de contenido.
-            $configured = (isset($config['blockIds']) && is_array($config['blockIds']))
-                ? array_map('strval', $config['blockIds'])
+            // Deny-list de títulos excluidos. Clave: `{blockId}#{idxEncabezado}`.
+            $excluded = (isset($config['excludedHeadings']) && is_array($config['excludedHeadings']))
+                ? array_flip(array_map('strval', $config['excludedHeadings']))
                 : [];
-            $selected = $configured !== [] ? $configured : $defaultBlockIds;
-            $includeHeadings = (bool) ($config['includeHeadings'] ?? false);
 
-            // Respeta el orden del documento y descarta ids desconocidos / el propio índice.
-            $selected = array_values(array_filter(
-                array_unique($selected),
-                fn (string $id) => $id !== $indexId && isset($orderIndex[$id]),
-            ));
-            usort($selected, fn (string $a, string $c) => $orderIndex[$a] <=> $orderIndex[$c]);
+            // Las entradas son los TÍTULOS INTERNOS (encabezados H1–H3) de TODOS
+            // los bloques (en orden del documento), menos los excluidos. No se
+            // listan nombres de bloque. El propio índice y otros índices se omiten.
+            $entries = [];
+            foreach ($blocks as $sb) {
+                $blockId = (string) $sb['id'];
+                if ($blockId === $indexId || ($sb['block_type'] ?? '') === 'index') {
+                    continue;
+                }
+                if (! isset($sectionById[$blockId])) {
+                    continue;
+                }
+                foreach ($this->headingsIn($sectionById[$blockId]) as $hi => $heading) {
+                    if (isset($excluded[$blockId.'#'.$hi])) {
+                        continue;
+                    }
+                    if ($headingEntries >= self::MAX_HEADING_ENTRIES) {
+                        break 2;
+                    }
+                    $text = trim((string) $heading->textContent);
+                    if ($text === '') {
+                        continue;
+                    }
+                    $headingEntries++;
+                    $hid = $heading->getAttribute('id');
+                    if ($hid === '') {
+                        do {
+                            $counter++;
+                            $hid = 'doc-toc-'.$counter;
+                        } while (isset($usedIds[$hid]));
+                        $heading->setAttribute('id', $hid);
+                        $usedIds[$hid] = true;
+                    }
+                    $entries[] = [
+                        'level' => (int) substr($heading->nodeName, 1),
+                        'text' => $text,
+                        'href' => '#'.$hid,
+                    ];
+                }
+            }
 
-            if ($selected === []) {
+            if ($entries === []) {
                 continue;
             }
 
-            $entries = [];
-            foreach ($selected as $blockId) {
-                $entries[] = [
-                    'level' => 0,
-                    'text' => $titleById[$blockId] !== '' ? $titleById[$blockId] : '—',
-                    'href' => '#block-'.$blockId,
-                ];
-                if ($includeHeadings && isset($sectionById[$blockId])) {
-                    foreach ($this->headingsIn($sectionById[$blockId]) as $heading) {
-                        if ($headingEntries >= self::MAX_HEADING_ENTRIES) {
-                            break;
-                        }
-                        $text = trim((string) $heading->textContent);
-                        if ($text === '') {
-                            continue;
-                        }
-                        $headingEntries++;
-                        $hid = $heading->getAttribute('id');
-                        if ($hid === '') {
-                            do {
-                                $counter++;
-                                $hid = 'doc-toc-'.$counter;
-                            } while (isset($usedIds[$hid]));
-                            $heading->setAttribute('id', $hid);
-                            $usedIds[$hid] = true;
-                        }
-                        $entries[] = [
-                            'level' => (int) substr($heading->nodeName, 1),
-                            'text' => $text,
-                            'href' => '#'.$hid,
-                        ];
-                    }
-                }
-            }
+            // Normaliza la indentación: el nivel más alto presente pasa a 1.
+            $minLevel = min(array_map(fn (array $e) => $e['level'], $entries));
+            $entries = array_map(
+                fn (array $e) => ['level' => $e['level'] - $minLevel + 1, 'text' => $e['text'], 'href' => $e['href']],
+                $entries,
+            );
 
             $section->appendChild($this->buildNav($dom, $entries));
             $built = true;

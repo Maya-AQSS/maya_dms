@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\DTOs\Templates\TemplateBlockPayloadDto;
+use App\Enums\BlockType;
 use App\Events\TemplateStateChanged;
 use App\Models\Template;
 use App\Models\TemplateReviewer;
@@ -105,14 +107,17 @@ class TemplatePublishingService
 
             $isEmptyContent = fn ($b) => is_null($b->default_content)
                 || (is_array($b->default_content) && count($b->default_content) === 0);
+            // Bloques estructurales sin cuerpo (hoja en blanco) exentos de "no vacío".
+            $requiresContent = fn ($b) => ! ($b->block_type instanceof BlockType)
+                || $b->block_type->requiresBodyContent();
 
             $emptyEditableBlock = $template->blocks->first(
                 fn ($b) => in_array((string) $b->block_state, ['editable', 'modifiable'], true)
-                    && $isEmptyContent($b)
+                    && $isEmptyContent($b) && $requiresContent($b)
             );
 
             $emptyLockedBlock = $template->blocks->first(
-                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b)
+                fn ($b) => (string) $b->block_state === 'locked' && $isEmptyContent($b) && $requiresContent($b)
             );
             if ($emptyLockedBlock !== null) {
                 throw ValidationException::withMessages([
@@ -120,14 +125,9 @@ class TemplatePublishingService
                 ]);
             }
 
-            $blocksSnapshot = $template->blocks->map(fn ($b) => [
-                'id' => $b->id,
-                'title' => $b->title,
-                'description' => $b->description,
-                'default_content' => $b->default_content,
-                'block_state' => $b->block_state,
-                'sort_order' => $b->sort_order,
-            ])->values()->all();
+            $blocksSnapshot = $template->blocks
+                ->map(fn ($b) => TemplateBlockPayloadDto::fromModel($b)->toArray())
+                ->values()->all();
             $templateReviewersSnapshot = $template->reviewers
                 ->map(fn ($r): array => [
                     'user_id' => (string) $r->user_id,

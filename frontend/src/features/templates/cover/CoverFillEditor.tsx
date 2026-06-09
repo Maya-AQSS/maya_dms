@@ -43,15 +43,37 @@ export function CoverFillEditor({ geometry, value, pageSize = 'A4', editable = t
   const onPersistRef = useRef(onPersist);
   onPersistRef.current = onPersist;
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
+  const valuesRef = useRef(values);
+  valuesRef.current = values;
+  const pendingRef = useRef(false);
+
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const saveStateRef = useRef(setSaveState);
+  saveStateRef.current = setSaveState;
+
+  // Vuelca el guardado pendiente AHORA (en blur o al desmontar/cambiar de bloque):
+  // antes se limpiaba el timer al desmontar y se perdía lo escrito.
+  const flush = () => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (pendingRef.current) {
+      pendingRef.current = false;
+      saveStateRef.current('saving');
+      Promise.resolve(onPersistRef.current({ kind: 'cover-fill', values: valuesRef.current }))
+        .then(() => saveStateRef.current('saved'))
+        .catch(() => saveStateRef.current('idle'));
+    }
+  };
+  useEffect(() => () => { flush(); }, []); // flush al desmontar (no clear)
 
   const setValue = (key: string, text: string) => {
     const next = { ...values, [key]: text };
     setValues(next);
+    pendingRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      void onPersistRef.current({ kind: 'cover-fill', values: next });
-    }, 1000);
+    timerRef.current = setTimeout(() => { flush(); }, 1000);
   };
 
   const noop = () => {};
@@ -81,7 +103,14 @@ export function CoverFillEditor({ geometry, value, pageSize = 'A4', editable = t
 
       {/* Panel de campos rellenables */}
       <aside className="w-full shrink-0 overflow-y-auto border-t border-ui-border bg-white p-4 dark:border-ui-dark-border dark:bg-ui-dark-card md:w-80 md:border-l md:border-t-0">
-        <h3 className="mb-3 text-sm font-bold uppercase tracking-widest text-text-secondary">Campos de la portada</h3>
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h3 className="text-sm font-bold uppercase tracking-widest text-text-secondary">Campos de la portada</h3>
+          {saveState !== 'idle' && (
+            <span className="text-xs text-text-muted">
+              {saveState === 'saving' ? 'Guardando…' : 'Guardado ✓'}
+            </span>
+          )}
+        </div>
         {placeholders.length === 0 ? (
           <p className="text-sm text-text-muted">Esta portada no tiene campos rellenables.</p>
         ) : (
@@ -97,6 +126,7 @@ export function CoverFillEditor({ geometry, value, pageSize = 'A4', editable = t
                     disabled={!editable || key === ''}
                     placeholder={(ph.props.defaultText as string) ?? ''}
                     onChange={(e) => setValue(key, e.target.value)}
+                    onBlur={() => flush()}
                   />
                 </div>
               );

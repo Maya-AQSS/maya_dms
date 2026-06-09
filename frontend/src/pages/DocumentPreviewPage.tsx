@@ -39,6 +39,7 @@ import { PaperBlocksArticle, type PaperArticleBlock } from '../features/document
 import { BlockCommentsCard, ViewCardHeader } from '../features/templates/components/BlockCommentsCard';
 import type { BlockComment } from '../features/templates/components/BlockCommentsCard';
 import { BlockContentHtml } from '../features/templates/components/BlockContentHtml';
+import { StructuralBlockPreview } from '../features/documents/components/StructuralBlockPreview';
 import { computeChangedBlocks } from '../features/documents/components/DocumentDiffModal';
 import { listUnresolvedEditableBlockTitles } from '../features/documents/lib/blockContentEquals';
 import { DocumentDiffPanel } from '../features/documents/components/DocumentDiffPanel';
@@ -65,6 +66,13 @@ function blockContentForPreview(block: DocumentDisplayBlock): unknown[] {
   return normalizeBlockContentForEditor(block.default_content);
 }
 
+/** Los bloques estructurales (portada, índice, hoja en blanco) no llevan cuerpo
+ *  Tiptap: se previsualizan con `StructuralBlockPreview`, no con el editor. */
+function isStructuralBlock(block: DocumentDisplayBlock): boolean {
+  const t = block.block_type ?? 'content';
+  return t === 'cover' || t === 'index' || t === 'blank';
+}
+
 function mapSnapshotDocumentBlocks(raw: unknown): DocumentDisplayBlock[] {
   if (!Array.isArray(raw)) return [];
   const out: DocumentDisplayBlock[] = [];
@@ -80,6 +88,9 @@ function mapSnapshotDocumentBlocks(raw: unknown): DocumentDisplayBlock[] {
       title: o.title != null ? String(o.title) : null,
       description: o.description,
       default_content: o.default_content ?? null,
+      block_type: typeof o.block_type === 'string'
+        ? (o.block_type as DocumentDisplayBlock['block_type'])
+        : undefined,
       block_state: blockState,
       mandatory: Boolean(o.mandatory),
       sort_order: typeof o.sort_order === 'number' ? o.sort_order : idx,
@@ -917,6 +928,34 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
     isLocked: b.block_state === 'locked',
     nodes: blockContentForPreview(b),
   }));
+  // Los bloques estructurales (portada, índice, hoja en blanco) no llevan cuerpo
+  // Tiptap: se pintan vía el hook `renderBlockBody` de PaperBlocksArticle.
+  //
+  // Los snapshots de versión guardan solo `content` por bloque (no `block_type`
+  // ni la geometría `default_content`, que viven en la plantilla), así que
+  // enriquecemos cada bloque con esos campos desde `detail.blocks` (datos en
+  // vivo, que el backend ya mezcla con la plantilla) emparejando por plantilla.
+  const detailByTemplateId = new Map((detail?.blocks ?? []).map((b) => [b.template_block_id, b]));
+  const resolveStructural = (b: DocumentDisplayBlock): DocumentDisplayBlock => {
+    const ref = detailByTemplateId.get(b.template_block_id);
+    if (!ref) return b;
+    return {
+      ...b,
+      block_type: b.block_type ?? ref.block_type,
+      default_content: b.default_content ?? ref.default_content,
+    };
+  };
+  const structuralByKey = new Map(blocksForArticle.map((b) => [b.template_block_id, b]));
+  const structuralAllBlocks = blocksForArticle.map(resolveStructural);
+  const renderStructuralBody = (ab: PaperArticleBlock) => {
+    const orig = structuralByKey.get(ab.id);
+    if (!orig) return undefined;
+    const resolved = resolveStructural(orig);
+    if (isStructuralBlock(resolved)) {
+      return <StructuralBlockPreview block={resolved} allBlocks={structuralAllBlocks} />;
+    }
+    return undefined;
+  };
 
   if (isValidateMode) {
     const validateBlocks = detail?.blocks ?? [];
@@ -1218,7 +1257,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         </div>
 
                         <div>
-                          {nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">Sin contenido.</p>}
+                          {isStructuralBlock(block)
+                            ? <StructuralBlockPreview block={block} allBlocks={validateBlocks} />
+                            : nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">Sin contenido.</p>}
                         </div>
                       </section>
                     );
@@ -1464,7 +1505,9 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
                         </div>
                       </div>
                       <div>
-                        {nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">Sin contenido.</p>}
+                        {isStructuralBlock(block)
+                          ? <StructuralBlockPreview block={block} allBlocks={detail.blocks} />
+                          : nodes.length > 0 ? <BlockContentHtml content={nodes} /> : <p className="text-xs text-text-muted italic">Sin contenido.</p>}
                       </div>
                     </section>
                   );
@@ -1476,6 +1519,7 @@ export function DocumentPreviewPage({ mode = 'preview' }: Props = {}) {
               title={previewTitle}
               blocks={articleBlocks}
               emptyMessage="Este documento no tiene bloques."
+              renderBlockBody={renderStructuralBody}
             />
           )
         )}
