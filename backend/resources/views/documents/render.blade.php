@@ -311,6 +311,19 @@
                 brand-name "{{ $cssString($theme['brand_name'] ?? null, 'CEEDCV') }}";
         }
 
+        /* El título alimenta la cabecera (string-set) pero no se imprime en el
+           cuerpo: oculto sin sacarlo del flujo de maquetación de WeasyPrint. */
+        h1.doc-title--running {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            clip: rect(0 0 0 0);
+            white-space: nowrap;
+        }
+
         @page {
             size: {{ $theme['layout']['page']['size'] ?? 'A4' }};
             margin: {{ $cm($marginTop) }} {{ $cm($marginRight) }} {{ $cm($marginBottom) }} {{ $cm($marginLeft) }};
@@ -625,10 +638,10 @@
 @endif
 
 <main role="main">
-    <h1 class="doc-title">{{ $document['title'] }}</h1>
-    @if (! empty($document['subject']))
-        <p class="doc-subject">{{ $document['subject'] }}</p>
-    @endif
+    {{-- El PDF muestra solo los bloques. El título no se imprime como portada;
+         se mantiene como elemento oculto para alimentar la cabecera de página
+         (string-set: doc-title) sin ocupar la primera página. --}}
+    <h1 class="doc-title doc-title--running">{{ $document['title'] }}</h1>
 
     {{-- Contenido del documento (HTML producido por TiptapHtmlRenderer en backend) --}}
     {!! $document['body_html'] !!}

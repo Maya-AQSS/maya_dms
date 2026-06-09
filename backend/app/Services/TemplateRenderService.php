@@ -85,7 +85,9 @@ class TemplateRenderService implements TemplateRenderServiceInterface
             } elseif ($type !== 'blank') {
                 $title = (string) ($block['title'] ?? '');
                 if ($title !== '') {
-                    $inner .= '<h2>'.e($title).'</h2>';
+                    // Título de bloque = metadato; se marca para excluirlo del índice
+                    // (TocBuilderService solo lista encabezados internos del contenido).
+                    $inner .= '<h2 class="doc-block-title">'.e($title).'</h2>';
                 }
                 $default = $block['default_content'];
                 if (is_array($default) && count($default) > 0) {

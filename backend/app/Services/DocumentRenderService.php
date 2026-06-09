@@ -158,9 +158,18 @@ class DocumentRenderService implements DocumentRenderServiceInterface
             } elseif ($type !== 'blank') {
                 $title = (string) ($tpl?->title ?? '');
                 if ($title !== '') {
-                    $inner .= '<h2>'.e($title).'</h2>';
+                    // El título del bloque es metadato, no contenido: se marca para
+                    // que TocBuilderService NO lo liste en el índice (que solo
+                    // recoge los encabezados internos del contenido, como el preview).
+                    $inner .= '<h2 class="doc-block-title">'.e($title).'</h2>';
                 }
+                // El redactor puede dejar el bloque sin rellenar (content vacío):
+                // se cae al contenido por defecto de la plantilla, igual que el
+                // preview de edición (`blockContentForPreview`).
                 $default = $block->content;
+                if (! is_array($default) || count($default) === 0) {
+                    $default = is_array($tpl?->default_content) ? $tpl->default_content : $default;
+                }
                 if (is_array($default) && count($default) > 0) {
                     $inner .= TiptapHtmlRenderer::renderDoc($default);
                 } elseif (is_string($default) && $default !== '') {

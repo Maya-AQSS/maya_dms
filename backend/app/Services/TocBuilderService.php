@@ -210,7 +210,11 @@ class TocBuilderService
     {
         foreach ($node->childNodes as $child) {
             if ($child instanceof DOMElement) {
-                if (in_array(strtolower($child->nodeName), self::HEADING_TAGS, true)) {
+                // El `<h2 class="doc-block-title">` es el nombre del bloque (metadato),
+                // no un encabezado de contenido: se omite para que el índice liste
+                // solo los títulos internos, igual que el preview de edición.
+                $isBlockTitle = str_contains(' '.$child->getAttribute('class').' ', ' doc-block-title ');
+                if (! $isBlockTitle && in_array(strtolower($child->nodeName), self::HEADING_TAGS, true)) {
                     $out[] = $child;
                 }
                 $this->collectHeadings($child, $out);
