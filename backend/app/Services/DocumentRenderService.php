@@ -156,13 +156,11 @@ class DocumentRenderService implements DocumentRenderServiceInterface
                     $inner .= '<h2>'.e($title).'</h2>';
                 }
             } elseif ($type !== 'blank') {
-                $title = (string) ($tpl?->title ?? '');
-                if ($title !== '') {
-                    // El título del bloque es metadato, no contenido: se marca para
-                    // que TocBuilderService NO lo liste en el índice (que solo
-                    // recoge los encabezados internos del contenido, como el preview).
-                    $inner .= '<h2 class="doc-block-title">'.e($title).'</h2>';
-                }
+                // El título del bloque NO se imprime en el PDF: es metadato (el
+                // nombre que ve el redactor), y el contenido ya trae sus propios
+                // encabezados. Imprimirlo duplicaba cada cabecera. El índice se
+                // construye con los encabezados internos del contenido.
+                //
                 // El redactor puede dejar el bloque sin rellenar (content vacío):
                 // se cae al contenido por defecto de la plantilla, igual que el
                 // preview de edición (`blockContentForPreview`).

@@ -67,24 +67,6 @@ class TocBuilderServiceTest extends TestCase
         $this->assertMatchesRegularExpression('/<h2 id="doc-toc-\d+">Capítulo Uno<\/h2>/', $out);
     }
 
-    public function test_excludes_block_title_heading_from_index(): void
-    {
-        // El render emite el NOMBRE del bloque como <h2 class="doc-block-title">
-        // seguido del contenido. El índice debe listar solo el encabezado interno
-        // del contenido, no el título del bloque (espeja el preview de edición).
-        $html =
-            $this->section('idx', 'index', '<h2 class="doc-block-title">Índice</h2>').
-            $this->section('a', 'content', '<h2 class="doc-block-title">Modalidad</h2><h1>Curso semipresencial</h1>');
-        $blocks = [$this->indexBlock('idx'), $this->contentBlock('a', 'Modalidad')];
-
-        $out = $this->svc()->build($html, $blocks);
-
-        $this->assertStringContainsString('doc-toc__text">Curso semipresencial', $out);
-        $this->assertStringNotContainsString('doc-toc__text">Modalidad', $out);
-        // Una sola entrada: el título de bloque no cuenta.
-        $this->assertSame(1, substr_count($out, 'doc-toc__link'));
-    }
-
     public function test_excludes_headings_in_deny_list(): void
     {
         $html =

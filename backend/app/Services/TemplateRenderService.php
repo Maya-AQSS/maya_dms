@@ -83,12 +83,8 @@ class TemplateRenderService implements TemplateRenderServiceInterface
                     $inner .= '<h2>'.e($title).'</h2>';
                 }
             } elseif ($type !== 'blank') {
-                $title = (string) ($block['title'] ?? '');
-                if ($title !== '') {
-                    // Título de bloque = metadato; se marca para excluirlo del índice
-                    // (TocBuilderService solo lista encabezados internos del contenido).
-                    $inner .= '<h2 class="doc-block-title">'.e($title).'</h2>';
-                }
+                // El título del bloque NO se imprime (metadato): el contenido ya
+                // trae sus propios encabezados; imprimirlo duplicaba cada cabecera.
                 $default = $block['default_content'];
                 if (is_array($default) && count($default) > 0) {
                     $inner .= TiptapHtmlRenderer::renderDoc($default);
