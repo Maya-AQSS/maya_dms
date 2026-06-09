@@ -1,4 +1,4 @@
-import type { Process } from '../types/processes';
+import type { Process, ProcessDeletionPreview } from '../types/processes';
 import { apiFetchJson, apiGetJson } from './http';
 
 /** GET /api/v1/processes — catálogo de procesos disponibles. */
@@ -29,6 +29,13 @@ export async function createProcess(payload: ProcessPayload): Promise<{ data: Pr
 /** PATCH /api/v1/processes/:id */
 export async function updateProcess(id: string, payload: ProcessPayload): Promise<{ data: Process }> {
   return apiFetchJson<{ data: Process }>(`processes/${id}`, { method: 'PATCH', body: payload });
+}
+
+/** GET /api/v1/processes/:id/deletion-preview — conteo de dependientes afectados. */
+export async function fetchProcessDeletionPreview(
+  id: string,
+): Promise<{ data: ProcessDeletionPreview }> {
+  return apiGetJson<{ data: ProcessDeletionPreview }>(`processes/${id}/deletion-preview`);
 }
 
 /** DELETE /api/v1/processes/:id */

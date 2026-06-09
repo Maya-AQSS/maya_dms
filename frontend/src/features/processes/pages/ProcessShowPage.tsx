@@ -8,7 +8,13 @@ import { Alert, Button, ConfirmDialog, PageTitle, useConfirm } from '@ceedcv-may
 import { useUserProfile } from '../../user-profile';
 import { useProcessesQuery } from '../../../hooks/useProcesses';
 import { DMS_PERMISSIONS } from '../../../permissions';
-import { fetchProcess, createProcess, deleteProcess, updateProcess } from '../../../api/processes';
+import {
+  fetchProcess,
+  createProcess,
+  deleteProcess,
+  fetchProcessDeletionPreview,
+  updateProcess,
+} from '../../../api/processes';
 import { ColorBadge } from '../components/ColorBadge';
 import { getProcessIcon, PROCESS_ICON_SLUGS } from '../../../components/layout/processIcons';
 import { formatError } from '../utils/formatError';
@@ -41,7 +47,16 @@ export function ProcessShowPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { hasPermission } = useUserProfile();
-  const { confirmState, confirm, closeConfirm } = useConfirm();
+  const {
+    confirmState: deleteConfirmState,
+    confirm: confirmDelete,
+    closeConfirm: closeDeleteConfirm,
+  } = useConfirm();
+  const {
+    confirmState: impactConfirmState,
+    confirm: confirmImpact,
+    closeConfirm: closeImpactConfirm,
+  } = useConfirm();
 
   const [editing, setEditing] = useState(isCreate);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -133,6 +148,69 @@ export function ProcessShowPage() {
     }
   };
 
+  const plural = (n: number, singular: string, pluralForm: string) =>
+    `${n} ${n === 1 ? singular : pluralForm}`;
+
+  // Paso 1: confirmación genérica. Tras aceptar, se consulta el impacto y se
+  // decide si bloquear (subprocesos), pedir 2.ª confirmación (con dependientes)
+  // o eliminar directamente (sin dependientes).
+  const openDeleteFlow = () => {
+    if (!data) return;
+    confirmDelete({
+      title: 'Eliminar proceso',
+      description: `¿Está seguro de que quiere eliminar "${data.name}" (${data.code})?`,
+      confirmLabel: 'Sí, continuar',
+      variant: 'danger',
+      onConfirm: () => evaluateDeletionImpact(),
+    });
+  };
+
+  const evaluateDeletionImpact = async () => {
+    if (!data) return;
+    try {
+      setActionError(null);
+      const { data: preview } = await fetchProcessDeletionPreview(data.id);
+
+      if (preview.subprocess_count > 0) {
+        confirmImpact({
+          title: 'No se puede eliminar',
+          description: `Este proceso tiene ${plural(
+            preview.subprocess_count,
+            'subproceso',
+            'subprocesos',
+          )}. Elimina o reubica primero sus subprocesos.`,
+          confirmLabel: 'Entendido',
+          variant: 'primary',
+          onConfirm: () => {},
+        });
+        return;
+      }
+
+      if (preview.templates_count > 0 || preview.documents_count > 0) {
+        confirmImpact({
+          title: 'Confirmar eliminación',
+          description: `Al borrar este proceso borrarás ${plural(
+            preview.templates_count,
+            'plantilla',
+            'plantillas',
+          )} y ${plural(
+            preview.documents_count,
+            'documento',
+            'documentos',
+          )}. ¿Estás seguro?`,
+          confirmLabel: 'Eliminar definitivamente',
+          variant: 'danger',
+          onConfirm: () => handleDelete(),
+        });
+        return;
+      }
+
+      await handleDelete();
+    } catch (e) {
+      setActionError(formatError(e));
+    }
+  };
+
   const handleCancelEdit = () => {
     if (isCreate) {
       navigate('/admin/procesos');
@@ -198,15 +276,7 @@ export function ProcessShowPage() {
                     type="button"
                     variant="danger"
                     size="sm"
-                    onClick={() =>
-                      confirm({
-                        title: 'Eliminar proceso',
-                        description: `¿Eliminar "${data.name}" (${data.code})? Esta acción no se puede deshacer.`,
-                        confirmLabel: 'Eliminar',
-                        variant: 'danger',
-                        onConfirm: () => void handleDelete(),
-                      })
-                    }
+                    onClick={openDeleteFlow}
                   >
                     Eliminar
                   </Button>
@@ -474,7 +544,8 @@ export function ProcessShowPage() {
         </>
       )}
 
-      <ConfirmDialog {...confirmState} onCancel={closeConfirm} />
+      <ConfirmDialog {...deleteConfirmState} onCancel={closeDeleteConfirm} />
+      <ConfirmDialog {...impactConfirmState} onCancel={closeImpactConfirm} />
     </div>
   );
 }

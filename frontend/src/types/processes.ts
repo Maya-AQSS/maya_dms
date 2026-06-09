@@ -18,3 +18,10 @@ export type Process = {
   description: string | null;
   process_parent_id: string | null;
 };
+
+/** Conteo de dependientes afectados al eliminar un proceso. */
+export type ProcessDeletionPreview = {
+  templates_count: number;
+  documents_count: number;
+  subprocess_count: number;
+};
