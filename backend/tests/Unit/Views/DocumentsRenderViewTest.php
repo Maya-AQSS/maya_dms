@@ -115,6 +115,45 @@ class DocumentsRenderViewTest extends TestCase
         $this->assertStringContainsString('aria-hidden="true"', $html);
     }
 
+    public function test_grid_mode_keeps_body_free_of_style_blocks_and_title_after_content(): void
+    {
+        // Regresión (página en blanco antes de la portada): paged.js materializa
+        // un <style> dentro del <body> y el <h1> oculto que preceden a la portada
+        // como bloques de flujo en la primera hoja, empujando la portada —de altura
+        // de página completa— a la página 2. La corrección mueve los contadores al
+        // <head> y el <h1> al FINAL del <main> en modo rejilla.
+        $theme = $this->baseTheme([
+            'layout' => [
+                'regions' => [
+                    ['id' => 'cs', 'type' => 'content_slot', 'grid' => ['x' => 1, 'y' => 4, 'w' => 10, 'h' => 44, 'z' => 1]],
+                    ['id' => 'pn', 'type' => 'page_number', 'grid' => ['x' => 9, 'y' => 50, 'w' => 3, 'h' => 2, 'z' => 2],
+                        'props' => ['format' => 'page-of-pages', 'align' => 'right']],
+                ],
+            ],
+        ]);
+
+        $html = $this->render($theme, '<p>BODYMARKER</p>');
+
+        // Los contadores de página están presentes (movidos al <head>).
+        $this->assertStringContainsString('.theme-overlay .blk-meta .pn::before', $html);
+
+        // NINGÚN <style> dentro del <body> (la causa de la hoja en blanco).
+        $bodyStart = strpos($html, '<body');
+        $this->assertNotFalse($bodyStart);
+        $body = substr($html, $bodyStart);
+        $this->assertStringNotContainsString('<style', $body);
+
+        // En modo rejilla el <h1> oculto va DESPUÉS del contenido del cuerpo
+        // (comparamos el ELEMENTO dentro del <body>, no el selector CSS del <head>).
+        $h1Pos = strpos($body, '<h1 class="doc-title doc-title--running"');
+        $this->assertNotFalse($h1Pos, 'El <h1> oculto debe estar presente en el cuerpo.');
+        $this->assertGreaterThan(
+            strpos($body, 'BODYMARKER'),
+            $h1Pos,
+            'En modo rejilla el <h1> debe ir tras el body_html para no empujar la portada.',
+        );
+    }
+
     public function test_grid_mode_margins_come_from_content_slot(): void
     {
         $theme = $this->baseTheme([
