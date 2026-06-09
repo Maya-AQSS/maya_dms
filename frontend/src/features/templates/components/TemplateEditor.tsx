@@ -24,7 +24,8 @@ import {
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, ErrorBoundary, FieldLabel, TextInput } from '@ceedcv-maya/shared-ui-react';
+import { Button, FieldLabel, TextInput } from '@ceedcv-maya/shared-ui-react';
+import { ErrorBoundaryWrapper as ErrorBoundary } from '../../../components/ErrorBoundaryWrapper';
 import type { Template } from '../../../types/templates';
 import type { TemplateBlock } from '../../../types/blocks';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';

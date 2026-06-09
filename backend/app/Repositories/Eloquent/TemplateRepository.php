@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Repositories\Eloquent;
 
 use App\DTOs\Templates\FilterTemplatesDto;
+use App\DTOs\Templates\TemplateBlockPayloadDto;
 use App\DTOs\Templates\TemplateFilterDto;
+use App\DTOs\Templates\TemplateRenderDto;
+use App\Enums\BlockType;
 use App\Models\Template;
 use App\Models\TemplateBlock;
 use App\Models\TemplateReviewer;
@@ -15,6 +18,7 @@ use App\Support\SearchAccentFold;
 use App\Support\TemplateHeadSnapshot;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Date;
@@ -47,7 +51,7 @@ class TemplateRepository implements TemplateRepositoryInterface
             ->value('versionable_id');
 
         if ($versionableId === null) {
-            throw (new \Illuminate\Database\Eloquent\ModelNotFoundException())->setModel(Template::class, [$entityVersionId]);
+            throw (new ModelNotFoundException)->setModel(Template::class, [$entityVersionId]);
         }
 
         return Template::query()
@@ -697,7 +701,6 @@ class TemplateRepository implements TemplateRepositoryInterface
     /**
      * Sincroniza revisores de plantilla via relación (forceDelete old, create new).
      *
-     * @param  string  $templateId
      * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
      */
     public function syncTemplateReviewers(string $templateId, array $reviewerData): void
@@ -716,7 +719,6 @@ class TemplateRepository implements TemplateRepositoryInterface
     /**
      * Sincroniza revisores de documentos via relación (delete old, create new).
      *
-     * @param  string  $templateId
      * @param  array<int, array{user_id: string, stage: int}>  $reviewerData
      */
     public function syncDocumentReviewers(string $templateId, array $reviewerData): void
@@ -828,10 +830,8 @@ class TemplateRepository implements TemplateRepositoryInterface
      * Returns template ID, name, description, theme_id, and blocks ordered by sort_order.
      * Blocks contain: id, title, default_content.
      * Without global catalog scope; caller must authorize.
-     *
-     * @return \App\DTOs\Templates\TemplateRenderDto|null
      */
-    public function findForRenderingWithoutCatalogScope(string $id): ?\App\DTOs\Templates\TemplateRenderDto
+    public function findForRenderingWithoutCatalogScope(string $id): ?TemplateRenderDto
     {
         $template = Template::query()
             ->withoutGlobalScopes(['user_access'])
@@ -847,10 +847,14 @@ class TemplateRepository implements TemplateRepositoryInterface
                 'id' => (string) $b->id,
                 'title' => $b->title,
                 'default_content' => $b->default_content,
+                'block_type' => $b->block_type instanceof BlockType ? $b->block_type->value : (string) ($b->block_type ?? 'content'),
+                'page_break_after' => (bool) $b->page_break_after,
+                'theme_id' => $b->theme_id !== null ? (string) $b->theme_id : null,
+                'apply_theme' => (bool) $b->apply_theme,
             ])
             ->all();
 
-        return new \App\DTOs\Templates\TemplateRenderDto(
+        return new TemplateRenderDto(
             id: (string) $template->id,
             name: $template->name,
             description: $template->description,
@@ -863,22 +867,26 @@ class TemplateRepository implements TemplateRepositoryInterface
      * Fetch template blocks as DTOs, ordered by sort_order.
      * Encapsulates model access; exposes only needed data as DTO.
      *
-     * @return \Illuminate\Support\Collection<int, \App\DTOs\Templates\TemplateBlockPayloadDto>
+     * @return Collection<int, TemplateBlockPayloadDto>
      */
-    public function findBlocksAsPayloadDtosForTemplate(string $templateId): \Illuminate\Support\Collection
+    public function findBlocksAsPayloadDtosForTemplate(string $templateId): Collection
     {
-        return \App\Models\TemplateBlock::query()
+        return TemplateBlock::query()
             ->where('template_id', $templateId)
             ->orderBy('sort_order')
             ->get()
-            ->map(function (\App\Models\TemplateBlock $block) {
-                return new \App\DTOs\Templates\TemplateBlockPayloadDto(
+            ->map(function (TemplateBlock $block) {
+                return new TemplateBlockPayloadDto(
                     blockId: (string) $block->id,
                     title: $block->title ?? '',
                     description: $block->description,
                     defaultContent: $block->default_content,
                     blockState: $block->block_state,
                     sortOrder: (int) $block->sort_order,
+                    blockType: $block->block_type,
+                    pageBreakAfter: (bool) $block->page_break_after,
+                    themeId: $block->theme_id !== null ? (string) $block->theme_id : null,
+                    applyTheme: (bool) $block->apply_theme,
                 );
             });
     }

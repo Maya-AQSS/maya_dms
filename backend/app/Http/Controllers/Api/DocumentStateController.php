@@ -11,13 +11,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Documents\ApplyTemplateMigrationRequest;
 use App\Http\Requests\Documents\DelegateDocumentRequest;
 use App\Http\Requests\Documents\PublishDocumentRequest;
-use App\Http\Requests\Documents\SubmitDocumentForReviewRequest;
 use App\Http\Requests\Documents\StartNewDocumentRevisionRequest;
+use App\Http\Requests\Documents\SubmitDocumentForReviewRequest;
 use App\Http\Resources\DocumentBlockResource;
 use App\Http\Resources\DocumentResource;
 use App\Services\Contracts\ApiTeamEmbedServiceInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\DocumentReviewService;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -84,7 +85,7 @@ class DocumentStateController extends Controller
         try {
             $model = $this->documentService->findModelOrFail($document);
             $directAccess = true;
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             $model = $this->documentService->findModelOrFailWithoutUserAccess($document);
             if (! $this->documentService->hasPublishedSnapshot($model->id)) {
                 abort(404);

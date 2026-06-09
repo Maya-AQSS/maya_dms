@@ -33,10 +33,10 @@ class DashboardResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'stats'                   => $this->resource['stats'] ?? [],
-            'recent_documents'        => $this->resource['recent_documents'] ?? [],
-            'template_review_inbox'   => $this->resource['template_review_inbox'] ?? [],
-            'document_review_inbox'   => $this->resource['document_review_inbox'] ?? [],
+            'stats' => $this->resource['stats'] ?? [],
+            'recent_documents' => $this->resource['recent_documents'] ?? [],
+            'template_review_inbox' => $this->resource['template_review_inbox'] ?? [],
+            'document_review_inbox' => $this->resource['document_review_inbox'] ?? [],
         ];
     }
 }

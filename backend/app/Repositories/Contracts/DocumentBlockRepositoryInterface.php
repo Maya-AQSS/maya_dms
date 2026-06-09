@@ -75,6 +75,14 @@ interface DocumentBlockRepositoryInterface
     public function updateBlock(DocumentBlock $block, mixed $content, bool $isFilled, string $lastEditedBy): void;
 
     /**
+     * Persiste un conjunto arbitrario de atributos sobre un bloque existente
+     * y devuelve la instancia refrescada. Usado por la restauración de versión.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateBlockAttributes(DocumentBlock $block, array $attributes): DocumentBlock;
+
+    /**
      * Elimina un bloque del documento.
      */
     public function deleteBlock(DocumentBlock $block): void;

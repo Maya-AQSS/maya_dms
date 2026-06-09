@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\TemplateVisibilityLevel;
+use App\Models\Template;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\DB;
@@ -34,6 +35,15 @@ beforeEach(function () {
         'user_id' => $this->reviewerId,
         'permission_slug' => 'template.review',
     ]);
+
+    // El validador `exists:users,id` de sync-reviewers exige que el revisor
+    // exista en la tabla `users`.
+    DB::table('users')->insert([
+        'id' => $this->reviewerId,
+        'name' => 'Revisor',
+        'email' => substr($this->reviewerId, 0, 8).'@test.local',
+        'is_active' => true,
+    ]);
 });
 
 function grantTemplateReviewPermission(string $slug): void
@@ -48,7 +58,7 @@ function insertDraftTemplate(string $creatorId, string $visibility, string $stat
 {
     $templateId = (string) Str::uuid();
 
-    DB::table('templates')->insert([
+    Template::query()->forceCreate([
         'id' => $templateId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'name' => 'Plantilla revisión',
@@ -91,6 +101,25 @@ it('allows approve review when assigned and has template.review', function () {
     grantTemplateReviewPermission('template.review');
 
     $templateId = insertDraftTemplate(test()->userId, TemplateVisibilityLevel::Global->value);
+
+    // Publicar exige un changelog no vacío; normalmente lo fija el envío a
+    // validación. Aquí se simula sobre el cabezal de versión en curso.
+    DB::table('entity_versions')
+        ->where('versionable_id', $templateId)
+        ->where('versionable_type', Template::class)
+        ->update(['changelog' => 'Cambios de la versión en revisión']);
+
+    // Aprobar la última revisión publica la plantilla, que exige al menos un bloque.
+    DB::table('template_blocks')->insert([
+        'id' => (string) Str::uuid(),
+        'template_id' => $templateId,
+        'title' => 'Bloque',
+        'default_content' => json_encode([]),
+        'block_state' => 'editable',
+        'sort_order' => 0,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
 
     DB::table('template_reviewers')->insert([
         'id' => (string) Str::uuid(),

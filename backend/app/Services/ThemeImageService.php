@@ -5,37 +5,27 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\Services\Contracts\ThemeImageServiceInterface;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-class ThemeImageService implements ThemeImageServiceInterface
+class ThemeImageService extends MediaUploadService implements ThemeImageServiceInterface
 {
-    /**
-     * Sube un archivo de imagen al almacenamiento media.
-     *
-     * @return array{src: string, uuid: string}
-     */
-    public function upload(string $themeId, UploadedFile $file): array
+    protected function scopePrefix(): string
     {
-        $uuid = (string) Str::uuid();
-        $path = "themes/{$themeId}/{$uuid}";
-
-        Storage::disk('media')->put($path, $file->getContent());
-
-        return [
-            'src' => $path,
-            'uuid' => $uuid,
-        ];
+        return 'themes';
     }
+
+    // upload() se hereda de MediaUploadService (themes admite SVG, validado por
+    // el FormRequest + content-type en la ingesta remota).
 
     /**
      * Descarga una imagen de URL remota con validación anti-SSRF.
      *
-     * @throws ValidationException
      * @return array{src: string, uuid: string}
+     *
+     * @throws ValidationException
      */
     public function ingestFromUrl(string $themeId, string $url): array
     {

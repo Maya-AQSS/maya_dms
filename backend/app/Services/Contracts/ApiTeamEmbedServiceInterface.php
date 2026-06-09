@@ -13,7 +13,7 @@ interface ApiTeamEmbedServiceInterface
      *
      * @return array|null El equipo embedido, listo para ser aplicado a una plantilla
      */
-    public function resolveTemplateTeam(string|null $teamCatalogId, string $viewerUserId): array|null;
+    public function resolveTemplateTeam(?string $teamCatalogId, string $viewerUserId): ?array;
 
     /**
      * Resuelve el equipo visible para un documento.
@@ -22,7 +22,7 @@ interface ApiTeamEmbedServiceInterface
      *
      * @return array|null El equipo embedido, listo para ser aplicado a un documento
      */
-    public function resolveDocumentTeam(string|null $teamCatalogId, string $viewerUserId): array|null;
+    public function resolveDocumentTeam(?string $teamCatalogId, string $viewerUserId): ?array;
 
     /**
      * @deprecated Use resolveTemplateTeam() instead.

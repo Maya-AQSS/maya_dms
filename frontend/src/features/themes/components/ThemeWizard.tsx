@@ -83,7 +83,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
   const [saving, setSaving] = useState(false);
 
   const stepsData: WizardStepDef<Step>[] = [
-    { id: 'identity', label: 'Identidad', sub: 'Nombre, paleta, tipografía' },
+    { id: 'identity', label: 'Propiedades', sub: 'Nombre, paleta, tipografía' },
     { id: 'layout', label: 'Layout', sub: 'Editor visual del documento' },
     { id: 'verification', label: 'Verificación', sub: 'Previsualizar y publicar' },
   ];
@@ -240,14 +240,37 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         </>
       )}
       {step === 'verification' && (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => navigate('/themes')}
-          className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10"
-        >
-          Guardar y salir
-        </Button>
+        <>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate('/themes')}
+            className="border-odoo-teal text-odoo-teal hover:bg-odoo-teal/10"
+          >
+            Guardar y salir
+          </Button>
+          {theme?.status === 'draft' && (
+            <Button
+              variant="primary"
+              size="sm"
+              loading={saving}
+              onClick={() => void doPublish()}
+              className="text-xs font-black uppercase tracking-widest px-6 rounded-full shadow-sm"
+            >
+              Publicar
+            </Button>
+          )}
+          {theme?.status === 'published' && (
+            <Button
+              variant="outline"
+              size="sm"
+              loading={saving}
+              onClick={() => void doArchive()}
+            >
+              Archivar
+            </Button>
+          )}
+        </>
       )}
     </>
   );
@@ -289,6 +312,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
         <ThemeWizardStepIdentity
           value={identity}
           onChange={setIdentity}
+          theme={theme}
         />
       )}
       {step === 'layout' && theme && (
@@ -298,12 +322,7 @@ export function ThemeWizard({ initial }: ThemeWizardProps) {
       )}
       {step === 'verification' && theme && (
         <div className="flex flex-1 min-h-0">
-          <ThemeVerificationStep
-            theme={theme}
-            onPublish={doPublish}
-            onArchive={doArchive}
-            onBack={() => setStep('layout')}
-          />
+          <ThemeVerificationStep theme={theme} />
         </div>
       )}
     </WizardShell>

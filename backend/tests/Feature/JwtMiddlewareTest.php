@@ -1,16 +1,16 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
-use Maya\Auth\Middleware\JwtMiddleware;
-use App\Services\Contracts\HealthCheckServiceInterface;
-use Maya\Auth\Contracts\JwksServiceInterface;
 use DateTimeImmutable;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Lcobucci\JWT\Configuration;
 use Lcobucci\JWT\Signer\Key\InMemory;
 use Lcobucci\JWT\Signer\Rsa\Sha256;
+use Maya\Auth\Contracts\JwksServiceInterface;
+use Maya\Auth\Middleware\JwtMiddleware;
 use Mockery;
 use Tests\TestCase;
 
@@ -72,11 +72,13 @@ class JwtMiddlewareTest extends TestCase
         $this->withHeaders(['User-Agent' => 'TestClient/2.0'])
             ->getJson('/api/v1/me');
 
-        $spy->shouldHaveReceived('warning')
+        // El middleware compartido registra con `Log::log($level, ...)`, donde
+        // $level es 'warning' para fallos no-expiración (token ausente aquí).
+        $spy->shouldHaveReceived('log')
             ->with(
+                'warning',
                 'JWT authentication failed',
-                Mockery::on(fn (array $context) =>
-                    isset($context['ip'])
+                Mockery::on(fn (array $context) => isset($context['ip'])
                     && $context['user_agent'] === 'TestClient/2.0'
                 )
             );
@@ -95,11 +97,11 @@ class JwtMiddlewareTest extends TestCase
 
         // El middleware compartido (maya-shared-auth-laravel) registra IP/UA/reason
         // pero NUNCA el token completo. Validamos esa garantía de seguridad.
-        $spy->shouldHaveReceived('warning')
+        $spy->shouldHaveReceived('log')
             ->with(
+                'warning',
                 'JWT authentication failed',
-                Mockery::on(fn (array $context) =>
-                    ! array_key_exists('token', $context)
+                Mockery::on(fn (array $context) => ! array_key_exists('token', $context)
                     && ! in_array($token, array_values($context), true)
                 )
             );
@@ -110,11 +112,11 @@ class JwtMiddlewareTest extends TestCase
     public function test_valid_rs256_token_signature_and_claims_are_accepted(): void
     {
         [$privatePem, $publicPem] = $this->generateRsaKeyPair();
-        $kid   = 'test-kid-e2';
+        $kid = 'test-kid-e2';
         $token = $this->buildJwt($privatePem, $publicPem, $kid);
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -147,7 +149,7 @@ class JwtMiddlewareTest extends TestCase
             ->andReturn($publicPem);
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -168,7 +170,7 @@ class JwtMiddlewareTest extends TestCase
             ->andReturn($publicPem);
 
         config([
-            'auth.jwt_issuer'   => 'expected-issuer',
+            'auth.jwt_issuer' => 'expected-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -189,7 +191,7 @@ class JwtMiddlewareTest extends TestCase
             ->andReturn($publicPem);
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'expected-audience',
         ]);
 
@@ -224,12 +226,12 @@ class JwtMiddlewareTest extends TestCase
         string $audience = 'test-audience',
     ): string {
         $config = Configuration::forAsymmetricSigner(
-            new Sha256(),
+            new Sha256,
             InMemory::plainText($privatePem),
             InMemory::plainText($publicPem),
         );
 
-        $now = new DateTimeImmutable();
+        $now = new DateTimeImmutable;
         $exp = $expiredAt
             ? $now->modify('-1 hour')
             : $now->modify('+1 hour');
@@ -243,7 +245,7 @@ class JwtMiddlewareTest extends TestCase
             ->relatedTo('user-test-uuid')
             ->withClaim('email', 'test@example.com')
             ->withHeader('kid', $kid)
-            ->getToken(new Sha256(), InMemory::plainText($privatePem))
+            ->getToken(new Sha256, InMemory::plainText($privatePem))
             ->toString();
     }
 }

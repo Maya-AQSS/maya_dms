@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Http\Controllers\Controller;
 use App\DTOs\Users\ReviewerCandidateFilterDto;
+use App\Http\Controllers\Controller;
 use App\Http\Resources\UserDirectoryResource;
 use App\Models\JwtUser;
 use App\Services\Contracts\UserDirectoryServiceInterface;

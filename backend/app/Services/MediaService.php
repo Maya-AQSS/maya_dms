@@ -12,15 +12,14 @@ use Illuminate\Support\Str;
 class MediaService
 {
     private const DISK = 'media';
-    private const ALLOWED_CONTEXT_TYPES = ['block', 'template', 'document', 'theme'];
+
+    private const ALLOWED_CONTEXT_TYPES = ['block', 'template', 'document', 'theme', 'cover'];
 
     /**
      * Store an uploaded media file and return a DTO with the signed URL.
      *
-     * @param UploadedFile $file
-     * @param string|null $contextType One of: block, template, document, theme
-     * @param string|null $contextId UUID of the context
-     * @return MediaDto
+     * @param  string|null  $contextType  One of: block, template, document, theme
+     * @param  string|null  $contextId  UUID of the context
      */
     public function store(UploadedFile $file, ?string $contextType = null, ?string $contextId = null): MediaDto
     {
@@ -38,11 +37,8 @@ class MediaService
     /**
      * Retrieve media file content by UUID and validate token.
      *
-     * @param string $uuid
-     * @param string|null $contextType
-     * @param string|null $contextId
-     * @param string $token
      * @return string File content
+     *
      * @throws \Exception If token is invalid or file not found
      */
     public function retrieve(string $uuid, ?string $contextType = null, ?string $contextId = null, ?string $token = null): string
@@ -51,13 +47,16 @@ class MediaService
 
         $path = $this->buildPath($contextType, $contextId, $uuid);
 
-        if ($token !== null && !hash_equals($this->makeToken($path), $token)) {
+        // El token HMAC es la única autorización de esta ruta pública (servida sin
+        // JWT para que <img src> funcione). Por eso es obligatorio: un token
+        // ausente o vacío se rechaza siempre — no hay "modo sin token".
+        if ($token === null || $token === '' || ! hash_equals($this->makeToken($path), $token)) {
             throw new \Exception('Token de media inválido.');
         }
 
         $disk = Storage::disk(self::DISK);
 
-        if (!$disk->exists($path)) {
+        if (! $disk->exists($path)) {
             throw new \Exception('Imagen no encontrada.');
         }
 
@@ -66,9 +65,6 @@ class MediaService
 
     /**
      * Detect MIME type from file content.
-     *
-     * @param string $content
-     * @return string
      */
     public function detectMimeType(string $content): string
     {
@@ -77,11 +73,6 @@ class MediaService
 
     /**
      * Build the storage path for a media file.
-     *
-     * @param string|null $contextType
-     * @param string|null $contextId
-     * @param string $uuid
-     * @return string
      */
     private function buildPath(?string $contextType, ?string $contextId, string $uuid): string
     {
@@ -94,12 +85,6 @@ class MediaService
 
     /**
      * Build the signed URL for a media file.
-     *
-     * @param string $uuid
-     * @param string|null $contextType
-     * @param string|null $contextId
-     * @param string $token
-     * @return string
      */
     private function buildUrl(string $uuid, ?string $contextType, ?string $contextId, string $token): string
     {
@@ -114,9 +99,6 @@ class MediaService
 
     /**
      * Generate HMAC token for a path.
-     *
-     * @param string $path
-     * @return string
      */
     private function makeToken(string $path): string
     {
@@ -126,14 +108,12 @@ class MediaService
     /**
      * Validate context type and ID parameters.
      *
-     * @param string|null $contextType
-     * @param string|null $contextId
      * @throws \Exception If parameters are invalid
      */
     private function validateContextParams(?string $contextType, ?string $contextId): void
     {
         if ($contextType !== '' && $contextType !== null) {
-            if (!in_array($contextType, self::ALLOWED_CONTEXT_TYPES, true) || !Str::isUuid($contextId)) {
+            if (! in_array($contextType, self::ALLOWED_CONTEXT_TYPES, true) || ! Str::isUuid($contextId)) {
                 throw new \Exception('Token de media inválido.');
             }
         }

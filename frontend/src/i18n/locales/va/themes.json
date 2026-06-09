@@ -7,8 +7,9 @@
   "layerDown": "Capa avall",
   "newPurposePlaceholder": "Per a quin tipus de documents usar aquest theme",
   "identity": {
+    "previewLabel": "Vista prèvia",
     "sections": {
-      "general": "Informació general",
+      "general": "Propietats",
       "palette": "Paleta de colors",
       "typography": "Tipografia",
       "accessibility": "Accessibilitat (PDF/UA)"

@@ -1,17 +1,19 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use App\Models\Document;
 use App\Models\EntityVersion;
 use App\Models\Template;
-use App\Support\TemplateHeadSnapshot;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Services\DocumentReviewService;
 use App\Services\DocumentStateService;
 use App\Support\DocumentReviewModeResolver;
+use App\Support\TemplateHeadSnapshot;
 use Maya\Messaging\Publishers\NotificationPublisher;
 use Mockery;
 use Tests\TestCase;
@@ -56,7 +58,7 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $doc = new Document;
         $doc->forceFill([
             'template_version_id' => 'ev-uuid',
-            'template_id'         => 'tpl-uuid',
+            'template_id' => 'tpl-uuid',
         ]);
         $doc->setRelation('template', $template);
 
@@ -76,12 +78,16 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $doc = new Document;
         $doc->forceFill([
             'template_version_id' => 'ev-uuid',
-            'template_id'         => 'tpl-uuid',
+            'template_id' => 'tpl-uuid',
         ]);
+        // Sin modo "live": relaciones cargadas explícitamente a null para que
+        // loadMissing no intente resolverlas contra la BD (ids no-UUID de prueba).
+        $doc->setRelation('headVersion', null);
+        $doc->setRelation('template', null);
 
         $entityVersion = new EntityVersion;
         $entityVersion->forceFill([
-            'id'            => 'ev-uuid',
+            'id' => 'ev-uuid',
             'snapshot_data' => [
                 'template' => [
                     'review_mode' => 'parallel',
@@ -108,12 +114,16 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $doc = new Document;
         $doc->forceFill([
             'template_version_id' => 'ev-uuid',
-            'template_id'         => 'tpl-uuid',
+            'template_id' => 'tpl-uuid',
         ]);
+        // Sin modo "live": relaciones cargadas explícitamente a null para que
+        // loadMissing no intente resolverlas contra la BD (ids no-UUID de prueba).
+        $doc->setRelation('headVersion', null);
+        $doc->setRelation('template', null);
 
         $entityVersion = new EntityVersion;
         $entityVersion->forceFill([
-            'id'            => 'ev-uuid',
+            'id' => 'ev-uuid',
             'snapshot_data' => ['template' => ['review_mode' => 'parallel']],
         ]);
 
@@ -145,11 +155,11 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $doc = new Document;
         $doc->forceFill([
             'template_version_id' => null,
-            'template_id'         => null,
+            'template_id' => null,
         ]);
         $doc->setRelation('template', $template);
 
-        $evRepo  = Mockery::mock(EntityVersionRepositoryInterface::class);
+        $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
         $evRepo->shouldNotReceive('findPublishedByIdForVersionable');
 
         $docRepo = Mockery::mock(DocumentRepositoryInterface::class);
@@ -177,15 +187,14 @@ class DocumentReviewServiceReviewModeTest extends TestCase
         $doc = new Document;
         $doc->forceFill([
             'template_version_id' => 'ev-uuid',
-            'template_id'         => 'tpl-uuid',
+            'template_id' => 'tpl-uuid',
         ]);
         $doc->setRelation('template', $template);
 
+        // El modo "live" del head de plantilla tiene prioridad sobre el ancla,
+        // por lo que el repositorio de entity versions no se consulta.
         $evRepo = Mockery::mock(EntityVersionRepositoryInterface::class);
-        $evRepo->shouldReceive('findPublishedByIdForVersionable')
-            ->once()
-            ->with('ev-uuid', Template::class, 'tpl-uuid')
-            ->andReturn(null);
+        $evRepo->shouldNotReceive('findPublishedByIdForVersionable');
 
         $docRepo = Mockery::mock(DocumentRepositoryInterface::class);
 

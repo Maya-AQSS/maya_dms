@@ -11,11 +11,8 @@ namespace App\DTOs\Documents;
 final class DocumentRenderDataDto
 {
     /**
-     * @param string $id
-     * @param string $title
-     * @param string|null $templateDescription
-     * @param list<array<string, mixed>> $blockHtmlParts HTML-rendered block content
-     * @param array<string, mixed> $theme Theme configuration array
+     * @param  list<array<string, mixed>>  $blockHtmlParts  HTML-rendered block content
+     * @param  array<string, mixed>  $theme  Theme configuration array
      */
     public function __construct(
         public readonly string $id,

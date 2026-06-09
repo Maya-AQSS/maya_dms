@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Documents\ApplyTemplateMigrationDto;
+use App\DTOs\Documents\BlockDisplayDto;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
@@ -26,13 +27,15 @@ use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\Contracts\DocumentServiceInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Support\CloneDeadlinePolicy;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Auth\Access\AuthorizationException;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -59,6 +62,7 @@ class DocumentService implements DocumentServiceInterface
         private readonly NotificationPublisher $notificationPublisher,
         private readonly DocumentReviewModeResolver $documentReviewModeResolver,
         private readonly DocumentMigrationPayloadResolver $migrationPayloadResolver,
+        private readonly UserDirectoryRepositoryInterface $userDirectoryRepository,
     ) {}
 
     /**
@@ -703,7 +707,7 @@ class DocumentService implements DocumentServiceInterface
     /**
      * Bloques para mostrar/editar: definición según {@see Document::$template_version_id} y contenido en document_blocks.
      *
-     * @return list<\App\DTOs\Documents\BlockDisplayDto>
+     * @return list<BlockDisplayDto>
      */
     public function blocksForDisplay(Document $document): array
     {
@@ -1094,11 +1098,11 @@ class DocumentService implements DocumentServiceInterface
                 ? $publishedSnapshot['blocks']
                 : [];
 
-            $head->snapshot_data = $publishedSnapshot;
-            $head->status = 'published';
-            $head->changelog = null;
-            $head->updated_at = now();
-            $head->save();
+            $this->entityVersionRepository->update($head, [
+                'snapshot_data' => $publishedSnapshot,
+                'status' => 'published',
+                'changelog' => null,
+            ]);
 
             $this->restorePublishedDocumentBlocks($documentId, $publishedBlocks);
             $this->documentRepository->deleteReviewsForDocument($documentId);
@@ -1150,8 +1154,7 @@ class DocumentService implements DocumentServiceInterface
             /** @var DocumentBlock|null $existing */
             $existing = $existingByTemplateBlock->get($templateBlockId);
             if ($existing !== null) {
-                $existing->fill($payload);
-                $existing->save();
+                $this->documentBlockRepository->updateBlockAttributes($existing, $payload);
 
                 continue;
             }
@@ -1178,7 +1181,7 @@ class DocumentService implements DocumentServiceInterface
      */
     public function submitToReview(string $documentId, string $actorId, string $changelog): Document
     {
-        $normalizedChangelog = \App\Support\VersionSubmissionChangelog::normalize($changelog);
+        $normalizedChangelog = VersionSubmissionChangelog::normalize($changelog);
         $document = $this->documentRepository->findOrFail($documentId);
 
         if (! in_array($document->status, ['draft', 'rejected'], true)) {
@@ -1221,7 +1224,7 @@ class DocumentService implements DocumentServiceInterface
                             type: 'document.published',
                             recipientId: $recipientId,
                             title: 'Documento publicado',
-                            body: 'El documento "' . $autoPublished->title . '" ha sido publicado correctamente',
+                            body: 'El documento "'.$autoPublished->title.'" ha sido publicado correctamente',
                             titleKey: 'notifications.document.published.title',
                             bodyKey: 'notifications.document.published.body',
                             params: ['document_id' => (string) $autoPublished->id, 'document_title' => $autoPublished->title],
@@ -1245,18 +1248,18 @@ class DocumentService implements DocumentServiceInterface
             $blocksSnapshot = $document->blocks->map(fn ($b) => [
                 'document_block_id' => (string) $b->id,
                 'template_block_id' => (string) $b->template_block_id,
-                'sort_order'        => (int) $b->sort_order,
-                'content'           => $b->content,
+                'sort_order' => (int) $b->sort_order,
+                'content' => $b->content,
             ])->values()->all();
 
             $headVersion = $document->headVersion;
             if ($headVersion !== null) {
                 $cycles = is_array($headVersion->change_set) ? $headVersion->change_set : [];
                 $cycles[] = [
-                    'cycle'        => count($cycles) + 1,
+                    'cycle' => count($cycles) + 1,
                     'submitted_at' => now()->toIso8601String(),
                     'submitted_by' => $actorId,
-                    'blocks'       => $blocksSnapshot,
+                    'blocks' => $blocksSnapshot,
                 ];
                 $this->entityVersionRepository->update($headVersion, ['change_set' => $cycles]);
             }
@@ -1294,7 +1297,7 @@ class DocumentService implements DocumentServiceInterface
                     type: 'document.validation_requested',
                     recipientId: $reviewerId,
                     title: 'Nueva solicitud de revisión',
-                    body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    body: 'El documento "'.$document->title.'" requiere tu revisión',
                     titleKey: 'notifications.document.validation_requested.title',
                     bodyKey: 'notifications.document.validation_requested.body',
                     params: ['document_id' => (string) $document->id, 'document_title' => $document->title],
@@ -1430,7 +1433,7 @@ class DocumentService implements DocumentServiceInterface
         return $this->documentRepository->transaction(function () use ($documentId, $actorId, $changelog) {
             $document = $this->documentRepository->findOrFail($documentId);
             $document->loadMissing('headVersion');
-            $resolvedChangelog = \App\Support\VersionSubmissionChangelog::requireNonEmpty(
+            $resolvedChangelog = VersionSubmissionChangelog::requireNonEmpty(
                 $changelog,
                 $document->headVersion?->changelog,
             );
@@ -1456,7 +1459,7 @@ class DocumentService implements DocumentServiceInterface
                         type: 'document.published',
                         recipientId: $recipientId,
                         title: 'Documento publicado',
-                        body: 'El documento "' . $refreshed->title . '" ha sido publicado correctamente',
+                        body: 'El documento "'.$refreshed->title.'" ha sido publicado correctamente',
                         titleKey: 'notifications.document.published.title',
                         bodyKey: 'notifications.document.published.body',
                         params: ['document_id' => (string) $refreshed->id, 'document_title' => $refreshed->title],
@@ -1668,7 +1671,7 @@ class DocumentService implements DocumentServiceInterface
 
         try {
             $this->documentRepository->findOrFail($documentId);
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             $servePublishedSnapshot = true;
         }
 
@@ -1723,11 +1726,9 @@ class DocumentService implements DocumentServiceInterface
             return 'otro usuario';
         }
 
-        $ownerName = \App\Models\User::query()
-            ->where('id', $document->owner_id)
-            ->value('name');
+        $ownerName = $this->userDirectoryRepository->findNameById($document->owner_id);
 
-        return is_string($ownerName) && $ownerName !== '' ? $ownerName : 'otro usuario';
+        return $ownerName ?? 'otro usuario';
     }
 
     /**

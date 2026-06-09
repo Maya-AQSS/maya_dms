@@ -17,7 +17,7 @@ trait SeedsTemplatePublicationAnchor
      * Inserta una fila publicada en {@see entity_versions}.
      *
      * @param  list<array<string, mixed>>  $snapshotBlocks  Filas de bloque para snapshot_data.blocks
-     * @param  array<string, mixed>|null  $extraSnapshot   Claves extra en snapshot_data (p. ej. reviewers)
+     * @param  array<string, mixed>|null  $extraSnapshot  Claves extra en snapshot_data (p. ej. reviewers)
      * @return array{entity_version_id: string}
      */
     protected function seedCanonicalPublicationForTemplate(

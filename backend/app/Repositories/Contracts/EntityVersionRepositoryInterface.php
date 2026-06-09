@@ -173,10 +173,10 @@ interface EntityVersionRepositoryInterface
      * keyed by versionable_id. Devuelve Collection de EntityVersion completos (con snapshot_data).
      *
      * @param  list<string>  $versionableIds
-     * @return \Illuminate\Support\Collection<string, EntityVersion>
+     * @return Collection<string, EntityVersion>
      */
     public function findLatestPublishedEntityVersionsByVersionableIds(
         string $versionableType,
         array $versionableIds,
-    ): \Illuminate\Support\Collection;
+    ): Collection;
 }

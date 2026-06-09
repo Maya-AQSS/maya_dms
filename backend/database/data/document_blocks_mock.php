@@ -15,7 +15,6 @@ declare(strict_types=1);
  * Solo se crean document_blocks para bloques `editable`, `modifiable` y `optional` con contenido.
  * Los bloques `locked` heredan el `default_content` del template_block (sin row aquí).
  */
-
-$pack = require __DIR__ . '/programaciones_didacticas_pack.php';
+$pack = require __DIR__.'/programaciones_didacticas_pack.php';
 
 return $pack['document_blocks'];

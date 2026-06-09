@@ -6,20 +6,8 @@ import { pageDimsMm } from '../pageSizes';
 import { BLOCK_CATALOG, newRegion } from '../themeBlocks';
 import { ThemeBlockPreview } from './ThemeBlockPreview';
 import { BlockInspector, EmptyInspector, type BoxPatch } from './ThemeBlockInspector';
-import { RULER_SIZE, ThemeCanvasRuler } from './ThemeCanvasRuler';
+import { AbsoluteCanvas } from '../../../components/canvas/AbsoluteCanvas';
 import './theme-grid.css';
-
-/* ─── Constantes del lienzo ────────────────────────────────────────────────
- * El modelo de posición es absoluto en mm (campo `box` de cada region). El
- * lienzo dibuja a escala fija para ser WYSIWYG con el PDF: 96 dpi → 1 mm =
- * 96/25.4 px ≈ 3.78 px (A4 = 210 mm ≈ 794 px, igual que el PDF a 96 dpi).
- */
-const PX_PER_MM = 96 / 25.4;
-const SNAP_MM = 1; // imán de posicionamiento (mm)
-const MIN_SIZE_MM = 5; // tamaño mínimo de un bloque (mm)
-
-const snap = (v: number) => Math.round(v / SNAP_MM) * SNAP_MM;
-const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 interface ThemeGridEditorProps {
   theme: Theme;
@@ -160,50 +148,6 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
     );
   };
 
-  /**
-   * Inicia un arrastre (mover) o redimensionado de un bloque. Usa listeners en
-   * `window` para seguir el puntero aunque salga del bloque, y convierte el
-   * desplazamiento en px a mm dividiendo por la escala. Aplica snap y clamp a
-   * los límites de la página.
-   */
-  const beginInteraction = useCallback(
-    (e: React.PointerEvent, region: ThemeLayoutRegion, mode: 'move' | 'resize') => {
-      if (!region.box) return;
-      e.preventDefault();
-      e.stopPropagation();
-      setSelectedId(region.id);
-      const startBox = { ...region.box };
-      const startX = e.clientX;
-      const startY = e.clientY;
-
-      const onMove = (ev: PointerEvent) => {
-        const dxMm = (ev.clientX - startX) / PX_PER_MM;
-        const dyMm = (ev.clientY - startY) / PX_PER_MM;
-        if (mode === 'move') {
-          updateBox(region.id, {
-            x: clamp(snap(startBox.x + dxMm), 0, Math.max(0, page.width - startBox.w)),
-            y: clamp(snap(startBox.y + dyMm), 0, Math.max(0, page.height - startBox.h)),
-          });
-        } else {
-          updateBox(region.id, {
-            w: clamp(snap(startBox.w + dxMm), MIN_SIZE_MM, page.width - startBox.x),
-            h: clamp(snap(startBox.h + dyMm), MIN_SIZE_MM, page.height - startBox.y),
-          });
-        }
-      };
-      const onUp = () => {
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onUp);
-      };
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onUp);
-    },
-    [page.width, page.height, updateBox],
-  );
-
-  const pageWidthPx = page.width * PX_PER_MM;
-  const pageHeightPx = page.height * PX_PER_MM;
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       {!embedded && (
@@ -222,78 +166,27 @@ export function ThemeGridEditor({ theme, onSave, embedded, onClose }: ThemeGridE
       <Toolbar onAddBlock={handleAddBlock} saving={saving} dirty={dirty} error={error} pageSize={theme.layout?.page?.size ?? 'A4'} />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* Canvas central — scrollable */}
-        <div className="min-w-0 flex-1 overflow-auto bg-ui-body p-6 dark:bg-ui-dark-bg">
-          <div style={{ width: RULER_SIZE + pageWidthPx }}>
-            {/* Fila de regla superior (con esquina) */}
-            <div className="flex">
-              <div style={{ width: RULER_SIZE, height: RULER_SIZE }} className="shrink-0 bg-ui-body dark:bg-ui-dark-bg" />
-              <ThemeCanvasRuler orientation="horizontal" lengthMm={page.width} scale={PX_PER_MM} />
-            </div>
-            {/* Fila de regla lateral + página */}
-            <div className="flex">
-              <ThemeCanvasRuler orientation="vertical" lengthMm={page.height} scale={PX_PER_MM} />
-              <div
-                className="theme-grid-page relative bg-white shadow"
-                style={{
-                  width: pageWidthPx,
-                  height: pageHeightPx,
-                  ['--font-body' as never]: theme.typography?.body_font ?? 'system-ui, sans-serif',
-                  ['--font-heading' as never]: theme.typography?.heading_font ?? 'system-ui, sans-serif',
-                }}
-                onPointerDown={(e) => {
-                  if (e.target === e.currentTarget) setSelectedId(null);
-                }}
-              >
-                {editableRegions.map((r) => {
-                  if (!r.box) return null;
-                  const isSelected = r.id === selectedId;
-                  return (
-                    <div
-                      key={r.id}
-                      className={`theme-grid-block ${isSelected ? 'is-selected' : ''}`}
-                      style={{
-                        position: 'absolute',
-                        left: r.box.x * PX_PER_MM,
-                        top: r.box.y * PX_PER_MM,
-                        width: r.box.w * PX_PER_MM,
-                        height: r.box.h * PX_PER_MM,
-                        zIndex: r.box.z ?? 1,
-                        touchAction: 'none',
-                        cursor: 'move',
-                      }}
-                      onPointerDown={(e) => beginInteraction(e, r, 'move')}
-                    >
-                      <ThemeBlockPreview region={r} />
-
-                      <div
-                        className="theme-grid-block-controls"
-                        onPointerDown={(e) => e.stopPropagation()}
-                      >
-                        <button type="button" title={t('themes:layerUp')} onClick={() => handleZUp(r.id)}>
-                          ↑
-                        </button>
-                        <button type="button" title={t('themes:layerDown')} onClick={() => handleZDown(r.id)}>
-                          ↓
-                        </button>
-                        <button type="button" title={t('common:actions.delete')} onClick={() => handleRemove(r.id)}>
-                          ✕
-                        </button>
-                      </div>
-
-                      {/* Tirador de redimensionado (esquina inferior derecha) */}
-                      <div
-                        className="theme-grid-resize"
-                        title="Redimensionar"
-                        onPointerDown={(e) => beginInteraction(e, r, 'resize')}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Canvas central — scrollable (mecánica genérica en AbsoluteCanvas) */}
+        <AbsoluteCanvas
+          pageMm={page}
+          regions={editableRegions}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onChangeBox={updateBox}
+          onZUp={handleZUp}
+          onZDown={handleZDown}
+          onRemove={handleRemove}
+          renderRegion={(r) => <ThemeBlockPreview region={r as ThemeLayoutRegion} />}
+          surfaceStyle={{
+            ['--font-body' as never]: theme.typography?.body_font ?? 'system-ui, sans-serif',
+            ['--font-heading' as never]: theme.typography?.heading_font ?? 'system-ui, sans-serif',
+          }}
+          labels={{
+            layerUp: t('themes:layerUp'),
+            layerDown: t('themes:layerDown'),
+            remove: t('common:actions.delete'),
+          }}
+        />
 
         {/* Inspector lateral */}
         <aside className="w-72 shrink-0 overflow-y-auto border-l border-ui-border bg-white p-4 dark:border-ui-dark-border dark:bg-ui-dark-card">

@@ -172,6 +172,18 @@ class TemplateBlockService implements TemplateBlockServiceInterface
         if ($dto->set_description) {
             $attributes['description'] = $dto->description;
         }
+        if ($dto->set_block_type) {
+            $attributes['block_type'] = $dto->block_type;
+        }
+        if ($dto->set_page_break_after) {
+            $attributes['page_break_after'] = $dto->page_break_after;
+        }
+        if ($dto->set_theme_id) {
+            $attributes['theme_id'] = $dto->theme_id;
+        }
+        if ($dto->set_apply_theme) {
+            $attributes['apply_theme'] = $dto->apply_theme;
+        }
 
         if ($attributes === []) {
             return TemplateBlockDto::fromModel($block);

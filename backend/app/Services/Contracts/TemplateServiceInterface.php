@@ -91,7 +91,7 @@ interface TemplateServiceInterface
     /**
      * Listado paginado de plantillas con filtros de dominio (ADR-C).
      *
-     * @param  callable(\Illuminate\Support\Collection<int, \App\Models\Template>): void|null  $beforeMap
+     * @param  callable(Collection<int, Template>): void|null  $beforeMap
      * @return PaginatedDto<TemplateDto>
      */
     public function paginateFiltered(

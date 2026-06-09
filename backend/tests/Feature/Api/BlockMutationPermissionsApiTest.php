@@ -24,6 +24,12 @@ beforeEach(function () {
     $this->app['events']->listen(RouteMatched::class, function ($event) use ($userId) {
         $event->request->attributes->set('jwt_user', ['id' => $userId, 'sub' => $userId]);
     });
+
+    // Las rutas viven bajo el grupo `permission:dms.login`.
+    DB::table('user_resolved_permissions')->insert([
+        'user_id' => $this->userId,
+        'permission_slug' => 'dms.login',
+    ]);
 });
 
 function grantBlockMutationPermissions(string ...$slugs): void

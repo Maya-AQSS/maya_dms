@@ -9,6 +9,7 @@ use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
 use App\Repositories\Contracts\ProcessRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\LengthAwarePaginator as ConcretePaginator;
 use Illuminate\Support\Str;
 
@@ -43,16 +44,16 @@ class ProcessRepository implements ProcessRepositoryInterface
      */
     public function create(CreateProcessDto $dto): array
     {
-        $process = new Process();
+        $process = new Process;
         $process->id = (string) Str::uuid();
         $process->fill([
-            'code'              => $dto->code,
-            'name'              => $dto->name,
-            'alias'             => $dto->alias,
-            'description'       => $dto->description,
+            'code' => $dto->code,
+            'name' => $dto->name,
+            'alias' => $dto->alias,
+            'description' => $dto->description,
             'process_parent_id' => $dto->processParentId,
-            'color'             => $dto->color,
-            'icon'              => $dto->icon,
+            'color' => $dto->color,
+            'icon' => $dto->icon,
         ]);
         $process->save();
 
@@ -67,17 +68,17 @@ class ProcessRepository implements ProcessRepositoryInterface
         $process = $this->findModel($id);
 
         if ($process === null) {
-            throw new \Illuminate\Database\Eloquent\ModelNotFoundException;
+            throw new ModelNotFoundException;
         }
 
         $process->fill([
-            'code'              => $dto->code,
-            'name'              => $dto->name,
-            'alias'             => $dto->alias,
-            'description'       => $dto->description,
+            'code' => $dto->code,
+            'name' => $dto->name,
+            'alias' => $dto->alias,
+            'description' => $dto->description,
             'process_parent_id' => $dto->processParentId,
-            'color'             => $dto->color,
-            'icon'              => $dto->icon,
+            'color' => $dto->color,
+            'icon' => $dto->icon,
         ]);
         $process->save();
 
@@ -95,8 +96,8 @@ class ProcessRepository implements ProcessRepositoryInterface
             ->whereKey($processId)
             ->where(function ($q) {
                 $q->whereHas('children')
-                  ->orWhereHas('templates')
-                  ->orWhereHas('documents');
+                    ->orWhereHas('templates')
+                    ->orWhereHas('documents');
             })
             ->exists();
     }
@@ -138,7 +139,7 @@ class ProcessRepository implements ProcessRepositoryInterface
             perPage: $page->perPage(),
             currentPage: $page->currentPage(),
             options: [
-                'path'     => $page->path(),
+                'path' => $page->path(),
                 'pageName' => $page->getPageName(),
             ],
         );
@@ -155,13 +156,13 @@ class ProcessRepository implements ProcessRepositoryInterface
     private function toRow(Process $process): array
     {
         return [
-            'id'                => (string) $process->id,
-            'code'              => (string) $process->code,
-            'name'              => (string) $process->name,
-            'alias'             => (string) $process->alias,
-            'icon'              => $process->icon,
-            'color'             => $process->color,
-            'description'       => $process->description,
+            'id' => (string) $process->id,
+            'code' => (string) $process->code,
+            'name' => (string) $process->name,
+            'alias' => (string) $process->alias,
+            'icon' => $process->icon,
+            'color' => $process->color,
+            'description' => $process->description,
             'process_parent_id' => $process->process_parent_id,
         ];
     }

@@ -47,16 +47,12 @@ final readonly class JwtProfileDto
         );
     }
 
-    /**
-     * @return ?string
-     */
     private static function nullableString(mixed $value): ?string
     {
         return is_string($value) && $value !== '' ? $value : null;
     }
 
     /**
-     * @param mixed $value
      * @return list<string>
      */
     private static function arrayList(mixed $value): array

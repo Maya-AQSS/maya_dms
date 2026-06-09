@@ -26,6 +26,14 @@ readonly class BlockDisplayDto
         public bool $is_deleted,
         /** True si el bloque ya no existe en la versión de plantilla anclada (se mantuvo al migrar). */
         public bool $is_orphaned = false,
+        /** Familia de maquetación del bloque (content|cover|blank|index). */
+        public string $block_type = 'content',
+        /** Fuerza salto de página tras el bloque en el PDF. */
+        public bool $page_break_after = false,
+        /** Override de tema por bloque (null = hereda el de la plantilla). */
+        public ?string $theme_id = null,
+        /** Si false, el bloque no lleva tema (ni estilo ni chrome) y ocupa su propia página. */
+        public bool $apply_theme = true,
     ) {}
 
     /**
@@ -47,6 +55,10 @@ readonly class BlockDisplayDto
             'is_filled' => $this->is_filled,
             'is_deleted' => $this->is_deleted,
             'is_orphaned' => $this->is_orphaned,
+            'block_type' => $this->block_type,
+            'page_break_after' => $this->page_break_after,
+            'theme_id' => $this->theme_id,
+            'apply_theme' => $this->apply_theme,
         ];
     }
 }

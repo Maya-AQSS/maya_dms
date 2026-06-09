@@ -7,21 +7,21 @@ namespace App\Services;
 use App\DTOs\Documents\CreateDocumentSnapshotDto;
 use App\Events\DocumentReviewApproved;
 use App\Events\DocumentReviewRejected;
-use Maya\Messaging\Events\BroadcastNotificationCreated;
 use App\Models\Document;
 use App\Models\DocumentReview;
-use App\Models\Template;
 use App\Repositories\Contracts\DocumentRepositoryInterface;
 use App\Repositories\Contracts\EntityVersionRepositoryInterface;
 use App\Services\Contracts\SnapshotServiceInterface;
 use App\Support\DocumentReviewModeResolver;
 use App\Support\ReviewValidationNotificationRecipients;
+use App\Support\VersionSubmissionChangelog;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
+use Maya\Messaging\Events\BroadcastNotificationCreated;
 use Maya\Messaging\Publishers\NotificationPublisher;
 
 class DocumentReviewService
@@ -84,7 +84,7 @@ class DocumentReviewService
 
             if ($this->documentRepository->countPendingReviewsForDocument($documentId) === 0) {
                 $document->loadMissing('headVersion');
-                $changelog = \App\Support\VersionSubmissionChangelog::requireNonEmpty(
+                $changelog = VersionSubmissionChangelog::requireNonEmpty(
                     $publicationChangelog,
                     $document->headVersion?->changelog,
                 );
@@ -140,7 +140,7 @@ class DocumentReviewService
                     type: 'document.validation_requested',
                     recipientId: $reviewerId,
                     title: 'Nueva solicitud de revisión',
-                    body: 'El documento "' . $document->title . '" requiere tu revisión',
+                    body: 'El documento "'.$document->title.'" requiere tu revisión',
                     titleKey: 'notifications.document.validation_requested.title',
                     bodyKey: 'notifications.document.validation_requested.body',
                     params: ['document_id' => $documentId, 'document_title' => $document->title],
@@ -170,7 +170,7 @@ class DocumentReviewService
         }
 
         $title = 'Documento publicado';
-        $body = 'El documento "' . $document->title . '" ha sido publicado correctamente';
+        $body = 'El documento "'.$document->title.'" ha sido publicado correctamente';
         $metadata = ['document_id' => (string) $document->id];
 
         try {
@@ -223,7 +223,7 @@ class DocumentReviewService
         }
 
         $title = 'Revisión rechazada';
-        $body = 'La revisión del documento "' . $document->title . '" ha sido rechazada' . ($reason !== null && $reason !== '' ? ': ' . $reason : '');
+        $body = 'La revisión del documento "'.$document->title.'" ha sido rechazada'.($reason !== null && $reason !== '' ? ': '.$reason : '');
         $metadata = ['document_id' => (string) $document->id, 'reason' => $reason];
 
         try {

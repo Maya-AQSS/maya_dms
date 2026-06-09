@@ -11,7 +11,7 @@ class DocumentMigrationBlockDifferTest extends TestCase
 {
     private function differ(): DocumentMigrationBlockDiffer
     {
-        return new DocumentMigrationBlockDiffer();
+        return new DocumentMigrationBlockDiffer;
     }
 
     /**

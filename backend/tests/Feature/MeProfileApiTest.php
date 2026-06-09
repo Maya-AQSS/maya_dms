@@ -1,7 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
+use App\DTOs\Users\JwtProfileDto;
 use App\Services\Contracts\UserProfileServiceInterface;
 use Illuminate\Support\Facades\Cache;
 use Maya\Auth\Contracts\JwksServiceInterface;
@@ -30,7 +33,7 @@ class MeProfileApiTest extends TestCase
         parent::setUp();
 
         config([
-            'auth.jwt_issuer'   => 'test-issuer',
+            'auth.jwt_issuer' => 'test-issuer',
             'auth.jwt_audience' => 'test-audience',
         ]);
 
@@ -70,24 +73,24 @@ class MeProfileApiTest extends TestCase
         // /me ya no expone `teams` (objetos completos): solo `team_ids`. Los
         // nombres se sirven desde GET /me/academic-context.
         $serviceProfile = [
-            'id'             => self::SUB,
-            'email'          => 'me.contract@test.local',
-            'name'           => 'Contrato Me',
-            'department'     => 'Ingeniería',
+            'id' => self::SUB,
+            'email' => 'me.contract@test.local',
+            'name' => 'Contrato Me',
+            'department' => 'Ingeniería',
             'study_type_ids' => ['ST_ESO'],
-            'study_ids'      => ['STU_FOO'],
-            'module_ids'     => ['MOD_BAR'],
-            'team_ids'       => ['T1'],
-            'permissions'    => ['template.show', 'document.create'],
-            'source'         => 'fdw',
+            'study_ids' => ['STU_FOO'],
+            'module_ids' => ['MOD_BAR'],
+            'team_ids' => ['T1'],
+            'permissions' => ['template.show', 'document.create'],
+            'source' => 'fdw',
         ];
 
         $this->mock(UserProfileServiceInterface::class)
             ->shouldReceive('getProfile')
             ->once()
-            ->withArgs(function (string $userId, array $jwtProfile): bool {
+            ->withArgs(function (string $userId, JwtProfileDto $jwtProfile): bool {
                 return $userId === self::SUB
-                    && ($jwtProfile['id'] ?? null) === self::SUB;
+                    && $jwtProfile->id === self::SUB;
             })
             ->andReturn($serviceProfile);
 

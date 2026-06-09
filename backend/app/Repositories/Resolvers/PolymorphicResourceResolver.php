@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repositories\Resolvers;
 
 use App\Exceptions\ResourceNotFoundException;
+use App\Models\Document;
+use App\Models\Template;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -26,18 +28,19 @@ final class PolymorphicResourceResolver
      * @var array<string, class-string>
      */
     private const RESOURCE_MAP = [
-        'template' => \App\Models\Template::class,
-        'document' => \App\Models\Document::class,
+        'template' => Template::class,
+        'document' => Document::class,
     ];
 
     /**
      * Resolve a resource from its type key and ID.
      *
      * @param  string  $resourceType  The resource type key (e.g., 'document', 'template')
-     * @param  string  $resourceId    The resource ID (UUID)
-     * @return Model                  The resolved Eloquent model
-     * @throws ResourceNotFoundException  If the resource type is not allowed
-     * @throws ModelNotFoundException     If the resource is not found (domain exception)
+     * @param  string  $resourceId  The resource ID (UUID)
+     * @return Model The resolved Eloquent model
+     *
+     * @throws ResourceNotFoundException If the resource type is not allowed
+     * @throws ModelNotFoundException If the resource is not found (domain exception)
      */
     public function resolve(string $resourceType, string $resourceId): Model
     {

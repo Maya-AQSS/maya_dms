@@ -21,16 +21,21 @@ final class PolymorphicResourceResolverTest extends TestCase
     use RefreshDatabase;
 
     private PolymorphicResourceResolver $resolver;
+
     private AuthUser $testUser;
 
     protected function setUp(): void
     {
         parent::setUp();
-        $this->resolver = new PolymorphicResourceResolver();
+        $this->resolver = new PolymorphicResourceResolver;
 
         // Create a real test user for authentication to bypass global scopes
-        $this->testUser = new class extends AuthUser {
-            public function getAuthIdentifier(): mixed { return $this->attributes['id'] ?? null; }
+        $this->testUser = new class extends AuthUser
+        {
+            public function getAuthIdentifier(): mixed
+            {
+                return $this->attributes['id'] ?? null;
+            }
         };
         $this->testUser->setAttribute('id', (string) Str::uuid());
     }
@@ -84,6 +89,7 @@ final class PolymorphicResourceResolverTest extends TestCase
         ]);
 
         $templateId = (string) Str::uuid();
+
         return Template::query()->forceCreate([
             'id' => $templateId,
             'process_id' => $processId,
@@ -102,6 +108,7 @@ final class PolymorphicResourceResolverTest extends TestCase
         $userId = $this->testUser->getAuthIdentifier();
 
         $docId = (string) Str::uuid();
+
         return Document::query()->forceCreate([
             'id' => $docId,
             'created_by' => $userId,

@@ -76,10 +76,14 @@ function mapSnapshotToTemplateBlocks(templateId: string, snapshot: import('../ap
     id: b.id,
     template_id: templateId,
     type: b.type,
+    block_type: ((b as { block_type?: string }).block_type as TemplateBlock['block_type']) ?? 'content',
     title: b.title ?? null,
     default_content: b.default_content ?? null,
     description: null,
     block_state: (b.block_state as BlockState) ?? 'locked',
+    page_break_after: Boolean((b as { page_break_after?: boolean }).page_break_after),
+    theme_id: (b as { theme_id?: string | null }).theme_id ?? null,
+    apply_theme: (b as { apply_theme?: boolean }).apply_theme ?? true,
     mandatory: Boolean(b.mandatory),
     sort_order: typeof b.sort_order === 'number' ? b.sort_order : idx,
   }));
@@ -693,7 +697,6 @@ export function TemplatePreviewPage() {
                   const hasContent = nodes.length > 0;
                   const isSelected = activeView?.blockId === block.id;
                   const infoActive = isSelected && activeView?.mode === 'info';
-                  const commentsActive = isSelected && activeView?.mode === 'comments';
                   const unreadComments = countUnreadCommentsForBlock(block.id, reviewComments);
 
                   return (

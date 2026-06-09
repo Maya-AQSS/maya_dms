@@ -9,6 +9,8 @@ use App\Models\AnchoredComment;
 use App\Models\Document;
 use App\Repositories\Contracts\AnchoredCommentRepositoryInterface;
 use App\Services\AnchoredCommentService;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Mockery;
 use Tests\TestCase;
 
@@ -52,13 +54,13 @@ final class AnchoredCommentServiceTest extends TestCase
         $repo->shouldReceive('findByResource')
             ->once()
             ->with(Document::class, 'doc-uuid')
-            ->andReturn(new \Illuminate\Database\Eloquent\Collection([$anchor]));
+            ->andReturn(new Collection([$anchor]));
 
         $service = $this->makeService($repo);
         $result = $service->listForResource(Document::class, 'doc-uuid');
 
         $this->assertCount(1, $result);
-        $this->assertInstanceOf(AnchoredCommentDto::class, $result->first());
+        $this->assertInstanceOf(AnchoredCommentDto::class, $result[0]);
     }
 
     public function test_create_for_resource_creates_anchor(): void
@@ -95,7 +97,7 @@ final class AnchoredCommentServiceTest extends TestCase
         $repo = Mockery::mock(AnchoredCommentRepositoryInterface::class);
         $repo->shouldReceive('findByIdOrFail')
             ->once()
-            ->andThrow(new \Illuminate\Database\Eloquent\ModelNotFoundException);
+            ->andThrow(new ModelNotFoundException);
 
         $service = $this->makeService($repo);
         $result = $service->getForResource(Document::class, 'doc-uuid', 'anchor-uuid');

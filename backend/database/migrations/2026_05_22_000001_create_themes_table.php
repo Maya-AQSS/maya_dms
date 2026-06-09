@@ -77,7 +77,7 @@ return new class extends Migration
             Schema::table('templates', function (Blueprint $table) {
                 try {
                     $table->dropForeign(['theme_id']);
-                } catch (\Throwable) {
+                } catch (Throwable) {
                 }
             });
         }

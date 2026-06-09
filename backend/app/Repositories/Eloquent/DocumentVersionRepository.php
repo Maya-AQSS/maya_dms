@@ -17,8 +17,6 @@ class DocumentVersionRepository implements DocumentVersionRepositoryInterface
 
     /**
      * Fetch version snapshot data without exposing Eloquent model.
-     *
-     * @return DocumentVersionSnapshotDto
      */
     public function findOrFailAsSnapshot(string $id): DocumentVersionSnapshotDto
     {
@@ -40,9 +38,6 @@ class DocumentVersionRepository implements DocumentVersionRepositoryInterface
             ->first();
     }
 
-    /**
-     * @return DocumentVersionSnapshotDto|null
-     */
     public function findByDocumentAndVersionNumberAsSnapshot(string $documentId, int $versionNumber): ?DocumentVersionSnapshotDto
     {
         $version = $this->findByDocumentAndVersionNumber($documentId, $versionNumber);
@@ -66,9 +61,6 @@ class DocumentVersionRepository implements DocumentVersionRepositoryInterface
             ->firstOrFail();
     }
 
-    /**
-     * @return DocumentVersionSnapshotDto
-     */
     public function findOrFailByDocumentAndVersionNumberAsSnapshot(string $documentId, int $versionNumber): DocumentVersionSnapshotDto
     {
         $version = $this->findOrFailByDocumentAndVersionNumber($documentId, $versionNumber);

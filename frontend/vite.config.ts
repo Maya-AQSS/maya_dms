@@ -29,17 +29,6 @@ const _sharedPackageAliases: Record<string, string> = _sharedOverrideDir
 // never reach the consumer's `node_modules`. Alias each consumer-installed
 // dependency to the resolved path under `/app/node_modules` so the imports
 // land in the same module instance the consumer already loaded.
-// Resolve to the package DIRECTORY (not the entry file) so that subpath imports
-// like `@tiptap/core/jsx-runtime` resolve via the package's `exports` map.
-function _resolvePkgDir(pkg: string): string | null {
-  try {
-    const entry = _require.resolve(pkg, { paths: [appRoot] })
-    const marker = `/node_modules/${pkg}/`
-    const idx = entry.indexOf(marker)
-    if (idx < 0) return null
-    return entry.substring(0, idx + marker.length - 1)
-  } catch { return null }
-}
 
 // Symlink the consumer's `node_modules` into every shared package directory so
 // that transitive `import` calls from inside the shared sources walk up to the

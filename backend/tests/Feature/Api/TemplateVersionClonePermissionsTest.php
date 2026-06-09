@@ -72,6 +72,7 @@ function seedPublishedGlobalTemplate(string $creatorId): string
         'status' => 'published',
         'snapshot_data' => ['template' => ['name' => 'Plantilla publicada']],
         'changelog' => 'v1',
+        'created_by' => $creatorId,
         'published_at' => now(),
         'published_by' => $creatorId,
     ]);

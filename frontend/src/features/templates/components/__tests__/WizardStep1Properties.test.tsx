@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react';
 import { render, screen, fireEvent, act } from '@testing-library/react';
 import { FormProvider, useForm } from 'react-hook-form';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import i18n from '../../../../i18n';
 import { WizardStep1Properties } from '../WizardStep1Properties';
 import { UserProfileProvider } from '../../../../features/user-profile';
 import {
@@ -59,20 +61,34 @@ function Harness({
 
 async function renderWithProfile(ui: ReactElement) {
   let renderResult: ReturnType<typeof render> | null = null;
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   await act(async () => {
-    renderResult = render(<UserProfileProvider>{ui}</UserProfileProvider>);
+    renderResult = render(
+      <QueryClientProvider client={queryClient}>
+        <UserProfileProvider>{ui}</UserProfileProvider>
+      </QueryClientProvider>,
+    );
   });
   return renderResult!;
 }
 
 describe('WizardStep1Properties', () => {
+  // `usePublishedThemes` usa react-query y el componente resuelve textos vía
+  // `t('templates:...')`; sin QueryClient ni i18n el render aborta o devuelve
+  // claves. jsdom expone `navigator.language = 'en-US'`, así que forzamos 'es'.
+  beforeAll(async () => {
+    await i18n.changeLanguage('es');
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('renders correctly with default props', async () => {
     await renderWithProfile(<Harness />);
-    expect(screen.getAllByPlaceholderText(/Acta de Evaluación Final/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByPlaceholderText(/Nombre de la plantilla/i).length).toBeGreaterThan(0);
     expect(screen.getByText(/Visibilidad/i)).toBeTruthy();
   });
 
@@ -84,7 +100,7 @@ describe('WizardStep1Properties', () => {
   it('updates name via RHF register on input change', async () => {
     const ref: { current: TemplateStep1Input | null } = { current: null };
     await renderWithProfile(<Harness capture={(v) => { ref.current = v; }} />);
-    const [input] = screen.getAllByPlaceholderText(/Acta de Evaluación Final/i);
+    const [input] = screen.getAllByPlaceholderText(/Nombre de la plantilla/i);
     await act(async () => {
       fireEvent.input(input, { target: { value: 'Nueva Plantilla' } });
     });

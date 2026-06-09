@@ -1,0 +1,100 @@
+/*
+ * Chrome genérico del lienzo de posicionamiento absoluto en milímetros.
+ *
+ * Simula la página a escala 96 dpi (1 mm ≈ 3.78 px). Cada bloque se posiciona
+ * libremente con coordenadas en mm (campo `box`), se puede arrastrar,
+ * redimensionar (tirador inferior-derecho) y solapar (capas vía z-index). Los
+ * controles de cada bloque (↑/↓/✕) se ocultan salvo hover/selección.
+ *
+ * El RENDER del contenido de cada bloque lo aporta el consumidor vía la
+ * render-prop `renderRegion` (p. ej. ThemeBlockPreview para themes).
+ */
+
+.canvas-page {
+  position: relative;
+  /* Rejilla guía de 1 cm (ambos ejes). 1 cm = 10 mm * 96/25.4 ≈ 37.7953 px. */
+  background-image:
+    linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+  background-size: 37.7953px 37.7953px;
+}
+
+.canvas-block {
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+  cursor: grab;
+}
+
+.canvas-block.is-interactive:hover {
+  border-color: rgba(0, 0, 0, 0.18);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.canvas-block.is-selected {
+  border-color: #6366f1; /* indigo-500 */
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.35);
+}
+
+.canvas-block.is-interactive:active {
+  cursor: grabbing;
+}
+
+/* Controles flotantes en la esquina superior derecha del bloque. */
+.canvas-block-controls {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  display: none;
+  gap: 2px;
+  z-index: 50;
+}
+
+.canvas-block.is-interactive:hover .canvas-block-controls,
+.canvas-block.is-selected .canvas-block-controls {
+  display: flex;
+}
+
+.canvas-block-controls > button {
+  width: 22px;
+  height: 22px;
+  font-size: 12px;
+  line-height: 1;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #111;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.canvas-block-controls > button:hover {
+  background: #f3f4f6;
+}
+
+/* ─── Tirador de redimensionado ────────────────────────────────────── */
+.canvas-resize {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  background: #6366f1;
+  border: 2px solid #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  cursor: nwse-resize;
+  touch-action: none;
+  display: none;
+  z-index: 60;
+}
+
+.canvas-block.is-interactive:hover .canvas-resize,
+.canvas-block.is-selected .canvas-resize {
+  display: block;
+}

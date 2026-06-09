@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\DTOs\Themes\ThemeDto;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Themes\CloneThemeRequest;
 use App\Http\Requests\Themes\IndexThemeRequest;
@@ -85,7 +86,7 @@ class ThemeController extends Controller
      * creador y a los themes publicados — un stub solo con `id` rompía la
      * autorización de `view`/`delete`.
      */
-    private function modelForPolicy(\App\DTOs\Themes\ThemeDto $dto): Theme
+    private function modelForPolicy(ThemeDto $dto): Theme
     {
         $model = new Theme;
         $model->id = $dto->id;

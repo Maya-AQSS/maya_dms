@@ -7,8 +7,7 @@ declare(strict_types=1);
  *
  * Plantillas: favorito sobre entity_versions publicadas (template_version_id).
  */
-
-$devUsers = require __DIR__ . '/maya_dev_users.php';
+$devUsers = require __DIR__.'/maya_dev_users.php';
 $u = static fn (string $key): string => $devUsers[$key];
 
 $EV_T0_PUB = 'eeb00000-0000-4000-8000-000000000000';

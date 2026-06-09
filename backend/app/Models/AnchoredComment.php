@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 final class AnchoredComment extends Model
 {
     use HasUuids;
+
     protected $fillable = [
         'comment_id',
         'resource_type',

@@ -75,6 +75,8 @@ export type DocumentDisplayBlock = {
   description?: unknown;
   default_content: unknown | null;
   block_state: BlockState;
+  /** Familia de maquetación del bloque (content|cover|blank|index). Backend lo mezcla desde la plantilla. */
+  block_type?: 'content' | 'cover' | 'blank' | 'index';
   mandatory: boolean;
   sort_order: number;
   content: unknown | null;

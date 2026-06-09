@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Constants\DocumentConstants;
 use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\ThemeRepositoryInterface;
+use App\Services\Concerns\BlockRenderSupport;
 use App\Services\Contracts\TemplateRenderServiceInterface;
 use Illuminate\Support\Facades\View;
 use Maya\Editor\Renderers\TiptapHtmlRenderer;
@@ -21,10 +22,19 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  */
 class TemplateRenderService implements TemplateRenderServiceInterface
 {
+    use BlockRenderSupport;
+
     public function __construct(
         private readonly TemplateRepositoryInterface $templateRepository,
         private readonly ThemeRepositoryInterface $themeRepository,
+        private readonly TocBuilderService $tocBuilder,
+        private readonly CoverRenderService $coverRenderer,
     ) {}
+
+    protected function themeRepository(): ThemeRepositoryInterface
+    {
+        return $this->themeRepository;
+    }
 
     public function renderHtml(string $templateId, bool $previewMode = false): string
     {
@@ -34,6 +44,16 @@ class TemplateRenderService implements TemplateRenderServiceInterface
         }
 
         $theme = $this->resolveTheme($template->themeId);
+        $defaultThemeId = $template->themeId !== null ? (string) $template->themeId : '';
+
+        // Temas distintos del por-defecto referenciados por bloques (override por bloque).
+        $scopedThemes = $this->resolveScopedBlockThemes(
+            array_map(fn ($block) => [
+                'theme_id' => isset($block['theme_id']) && $block['theme_id'] !== null ? (string) $block['theme_id'] : null,
+                'apply_theme' => (bool) ($block['apply_theme'] ?? true),
+            ], $template->blocks),
+            $defaultThemeId,
+        );
 
         // El cuerpo del "preview document" se construye a partir de los
         // `default_content` de cada bloque, en orden. Cada bloque empieza
@@ -41,21 +61,57 @@ class TemplateRenderService implements TemplateRenderServiceInterface
         // si en algún momento alguien decide imprimir el preview.
         $blockHtmlParts = [];
         foreach ($template->blocks as $block) {
-            $title = (string) ($block['title'] ?? '');
-            if ($title !== '') {
-                $blockHtmlParts[] = '<h2>'.e($title).'</h2>';
+            $type = (string) ($block['block_type'] ?? 'content');
+            $pageBreakAfter = (bool) ($block['page_break_after'] ?? false);
+            $applyTheme = (bool) ($block['apply_theme'] ?? true);
+            $themeId = $this->effectiveThemeId(
+                isset($block['theme_id']) && $block['theme_id'] !== null ? (string) $block['theme_id'] : null,
+                $applyTheme,
+                $defaultThemeId,
+            );
+
+            $inner = '';
+            if ($type === 'cover') {
+                // Portada en preview de plantilla: geometría del default_content,
+                // sin valores (los placeholders muestran su defaultText).
+                $geometry = is_array($block['default_content'] ?? null) ? $block['default_content'] : [];
+                $inner = $this->coverRenderer->renderInner($geometry, [], $previewMode, $theme['accessibility']['language'] ?? 'es');
+            } elseif ($type === 'index') {
+                // Bloque índice: sólo el título; el TOC lo inyecta TocBuilderService.
+                $title = (string) ($block['title'] ?? '');
+                if ($title !== '') {
+                    $inner .= '<h2>'.e($title).'</h2>';
+                }
+            } elseif ($type !== 'blank') {
+                $title = (string) ($block['title'] ?? '');
+                if ($title !== '') {
+                    $inner .= '<h2>'.e($title).'</h2>';
+                }
+                $default = $block['default_content'];
+                if (is_array($default) && count($default) > 0) {
+                    $inner .= TiptapHtmlRenderer::renderDoc($default);
+                } elseif (is_string($default) && $default !== '') {
+                    // Backwards-compat: algún seed legacy guardaba string en lugar de array.
+                    $inner .= '<p>'.e($default).'</p>';
+                } else {
+                    $inner .= '<p><em>—</em></p>';
+                }
             }
-            $default = $block['default_content'];
-            if (is_array($default) && count($default) > 0) {
-                $blockHtmlParts[] = TiptapHtmlRenderer::renderDoc($default);
-            } elseif (is_string($default) && $default !== '') {
-                // Backwards-compat: algún seed legacy guardaba string en lugar de array.
-                $blockHtmlParts[] = '<p>'.e($default).'</p>';
-            } else {
-                $blockHtmlParts[] = '<p><em>—</em></p>';
-            }
+
+            $classes = $this->blockSectionClasses($type, $pageBreakAfter, $applyTheme);
+            $anchorId = (string) ($block['id'] ?? '');
+
+            $blockHtmlParts[] = $this->wrapBlockSection(
+                $classes,
+                $anchorId,
+                $anchorId,
+                $type,
+                $themeId,
+                $pageBreakAfter,
+                $inner,
+            );
         }
-        $body = implode("\n", $blockHtmlParts);
+        $body = $this->tocBuilder->build(implode("\n", $blockHtmlParts), $this->blocksMeta($template->blocks));
 
         return View::make('documents.render', [
             'document' => [
@@ -66,8 +122,31 @@ class TemplateRenderService implements TemplateRenderServiceInterface
                 'body_html' => $body,
             ],
             'theme' => $theme,
+            'scoped_themes' => $scopedThemes,
             'preview_mode' => $previewMode,
         ])->render();
+    }
+
+    /**
+     * Metadata ordenada de bloques para el índice (TocBuilderService).
+     *
+     * @param  list<array<string, mixed>>  $blocks
+     * @return list<array{id: string, title: string, block_type: string, index_config: array<string,mixed>|null}>
+     */
+    private function blocksMeta(array $blocks): array
+    {
+        $meta = [];
+        foreach ($blocks as $block) {
+            $type = (string) ($block['block_type'] ?? 'content');
+            $meta[] = [
+                'id' => (string) ($block['id'] ?? ''),
+                'title' => (string) ($block['title'] ?? ''),
+                'block_type' => $type,
+                'index_config' => ($type === 'index' && is_array($block['default_content'] ?? null)) ? $block['default_content'] : null,
+            ];
+        }
+
+        return $meta;
     }
 
     /**

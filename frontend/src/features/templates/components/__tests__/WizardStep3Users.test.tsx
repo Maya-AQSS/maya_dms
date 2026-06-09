@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
+import i18n from '../../../../i18n';
 import { WizardStep3Users } from '../WizardStep3Users';
 import {
   searchTemplateReviewerCandidates,
@@ -17,7 +18,6 @@ vi.mock('../../../../api/users', () => ({
       id: 'usr_step3',
       email: null,
       name: null,
-      department: null,
       study_type_ids: [],
       study_ids: [],
       module_ids: [],
@@ -68,6 +68,13 @@ async function renderWithProfile(ui: ReactElement) {
 }
 
 describe('WizardStep3Users', () => {
+  // El componente resuelve el placeholder de búsqueda vía `t('documents:...')`.
+  // Sin inicializar i18n, `t()` devuelve la clave y las queries por placeholder
+  // fallan. jsdom expone `navigator.language = 'en-US'`, así que forzamos 'es'.
+  beforeAll(async () => {
+    await i18n.changeLanguage('es');
+  });
+
   const defaultProps = {
     validators: mockValidators,
     onValidatorsChange: vi.fn(),
@@ -86,7 +93,6 @@ describe('WizardStep3Users', () => {
         id: 'usr_step3',
         email: null,
         name: null,
-        department: null,
         study_type_ids: [],
         study_ids: [],
         module_ids: [],
@@ -128,7 +134,6 @@ describe('WizardStep3Users', () => {
         id: 'usr_step3',
         email: null,
         name: null,
-        department: null,
         study_type_ids: [],
         study_ids: [],
         module_ids: [],

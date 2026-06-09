@@ -10,7 +10,6 @@ use App\Http\Requests\Templates\SyncTemplateDocumentReviewersRequest;
 use App\Http\Requests\Templates\SyncTemplateUsersRequest;
 use App\Http\Resources\TemplateReviewersSyncMessageResource;
 use App\Services\Contracts\TemplateServiceInterface;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**

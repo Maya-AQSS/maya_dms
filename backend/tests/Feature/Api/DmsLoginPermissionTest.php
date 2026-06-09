@@ -34,7 +34,9 @@ it('allows protected API routes when user has dms.login', function () {
         'permission_slug' => 'dms.login',
     ]);
 
-    $response = $this->getJson('/api/v1/hierarchy');
+    // El antiguo /hierarchy fue sustituido por /me/academic-context: protegido
+    // por dms.login sin permisos adicionales, ideal para verificar el gate.
+    $response = $this->getJson('/api/v1/me/academic-context');
 
     $response->assertOk();
 });

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Services;
 
 use App\DTOs\Documents\CreateDocumentDto;
@@ -27,15 +29,15 @@ class TemplateContextResolverTest extends TestCase
     private function dto(array $overrides = []): CreateDocumentDto
     {
         return new CreateDocumentDto(
-            templateId:        $overrides['templateId']  ?? 'tpl-1',
-            title:             $overrides['title']        ?? 'Doc',
-            createdBy:         $overrides['createdBy']    ?? 'user-1',
-            ownerId:           $overrides['ownerId']      ?? 'user-1',
-            processId:         $overrides['processId']    ?? 'proc-1',
-            studyTypeId:       $overrides['studyTypeId']  ?? null,
-            studyId:           $overrides['studyId']      ?? null,
-            moduleId:          $overrides['moduleId']     ?? null,
-            teamId:            $overrides['teamId']       ?? null,
+            templateId: $overrides['templateId'] ?? 'tpl-1',
+            title: $overrides['title'] ?? 'Doc',
+            createdBy: $overrides['createdBy'] ?? 'user-1',
+            ownerId: $overrides['ownerId'] ?? 'user-1',
+            processId: $overrides['processId'] ?? 'proc-1',
+            studyTypeId: $overrides['studyTypeId'] ?? null,
+            studyId: $overrides['studyId'] ?? null,
+            moduleId: $overrides['moduleId'] ?? null,
+            teamId: $overrides['teamId'] ?? null,
         );
     }
 
@@ -43,10 +45,10 @@ class TemplateContextResolverTest extends TestCase
     {
         return array_merge([
             'visibility_level' => TemplateVisibilityLevel::Global->value,
-            'study_type_id'    => null,
-            'study_id'         => null,
-            'module_id'        => null,
-            'team_id'          => null,
+            'study_type_id' => null,
+            'study_id' => null,
+            'module_id' => null,
+            'team_id' => null,
         ], $overrides);
     }
 
@@ -108,9 +110,9 @@ class TemplateContextResolverTest extends TestCase
             $this->dto(),
             $this->meta([
                 'visibility_level' => TemplateVisibilityLevel::Personal->value,
-                'study_type_id'    => 'st-1',
-                'study_id'         => 's-1',
-                'module_id'        => 'm-1',
+                'study_type_id' => 'st-1',
+                'study_id' => 's-1',
+                'module_id' => 'm-1',
             ]),
         );
 
@@ -145,9 +147,9 @@ class TemplateContextResolverTest extends TestCase
             $this->dto(),
             $this->meta([
                 'visibility_level' => TemplateVisibilityLevel::Module->value,
-                'study_type_id'    => 'st-1',
-                'study_id'         => 's-1',
-                'module_id'        => 'm-1',
+                'study_type_id' => 'st-1',
+                'study_id' => 's-1',
+                'module_id' => 'm-1',
             ]),
         );
 
@@ -182,8 +184,8 @@ class TemplateContextResolverTest extends TestCase
             $this->dto(),
             $this->meta([
                 'visibility_level' => TemplateVisibilityLevel::Study->value,
-                'study_type_id'    => 'st-1',
-                'study_id'         => 's-1',
+                'study_type_id' => 'st-1',
+                'study_id' => 's-1',
             ]),
         );
 

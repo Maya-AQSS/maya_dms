@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Template;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Events\RouteMatched;
 use Illuminate\Support\Facades\DB;
@@ -60,7 +61,7 @@ it('denies template show without template.show for non creator', function () {
         'alias' => 'default',
     ]);
 
-    DB::table('templates')->insert([
+    Template::query()->forceCreate([
         'id' => $templateId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'name' => 'Plantilla ajena',
@@ -87,7 +88,7 @@ it('allows template show for creator without template.show', function () {
 
     $templateId = (string) Str::uuid();
 
-    DB::table('templates')->insert([
+    Template::query()->forceCreate([
         'id' => $templateId,
         'process_id' => '00000000-0000-0000-0000-000000000001',
         'name' => 'Mi plantilla',

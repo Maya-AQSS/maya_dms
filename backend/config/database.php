@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 
@@ -146,49 +148,49 @@ return [
         // contrato maya_dashboard.public.v_notification_rules (level B). El cron
         // de este servicio lee aquí sus reglas activas y las evalúa.
         'notification_rules' => [
-            'host'     => env('FDW_NOTIFICATION_RULES_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port'     => env('FDW_NOTIFICATION_RULES_PORT', '5432'),
+            'host' => env('FDW_NOTIFICATION_RULES_HOST', env('DB_HOST', 'maya_infra_postgres')),
+            'port' => env('FDW_NOTIFICATION_RULES_PORT', '5432'),
             'database' => env('FDW_NOTIFICATION_RULES_DATABASE', 'maya_dashboard'),
             'username' => env('FDW_NOTIFICATION_RULES_USERNAME', 'maya'),
             'password' => env('FDW_NOTIFICATION_RULES_PASSWORD', 'secret'),
-            'schema'   => env('FDW_NOTIFICATION_RULES_SCHEMA', 'public'),
-            'table'    => env('FDW_NOTIFICATION_RULES_TABLE', 'v_notification_rules'),
+            'schema' => env('FDW_NOTIFICATION_RULES_SCHEMA', 'public'),
+            'table' => env('FDW_NOTIFICATION_RULES_TABLE', 'v_notification_rules'),
         ],
 
         // Catálogo de usuarios — FDW read-only sobre odoo.public.v_app_users.
         // Migración centralizada en `maya-shared-profile-laravel`. Estos defaults
         // funcionan en local; en staging/prod los env vars sobreescriben.
         'users' => [
-            'host'      => env('FDW_USERS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port'      => env('FDW_USERS_PORT', '5432'),
-            'database'  => env('FDW_USERS_DATABASE', 'odoo'),
-            'username'  => env('FDW_USERS_USERNAME', 'maya'),
-            'password'  => env('FDW_USERS_PASSWORD', 'secret'),
-            'schema'    => env('FDW_USERS_SCHEMA', 'public'),
-            'table'     => env('FDW_USERS_TABLE', 'v_app_users'),
+            'host' => env('FDW_USERS_HOST', env('DB_HOST', 'maya_infra_postgres')),
+            'port' => env('FDW_USERS_PORT', '5432'),
+            'database' => env('FDW_USERS_DATABASE', 'odoo'),
+            'username' => env('FDW_USERS_USERNAME', 'maya'),
+            'password' => env('FDW_USERS_PASSWORD', 'secret'),
+            'schema' => env('FDW_USERS_SCHEMA', 'public'),
+            'table' => env('FDW_USERS_TABLE', 'v_app_users'),
             'cache_ttl' => (int) env('FDW_USERS_CACHE_TTL', 900),
         ],
 
         // Catálogo de equipos — FDW read-only sobre odoo.public.v_dms_teams.
         'teams' => [
-            'host'     => env('FDW_TEAMS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port'     => env('FDW_TEAMS_PORT', '5432'),
+            'host' => env('FDW_TEAMS_HOST', env('DB_HOST', 'maya_infra_postgres')),
+            'port' => env('FDW_TEAMS_PORT', '5432'),
             'database' => env('FDW_TEAMS_DATABASE', 'odoo'),
             'username' => env('FDW_TEAMS_USERNAME', 'maya'),
             'password' => env('FDW_TEAMS_PASSWORD', 'secret'),
-            'schema'   => env('FDW_TEAMS_SCHEMA', 'public'),
-            'table'    => env('FDW_TEAMS_TABLE', 'v_dms_teams'),
+            'schema' => env('FDW_TEAMS_SCHEMA', 'public'),
+            'table' => env('FDW_TEAMS_TABLE', 'v_dms_teams'),
         ],
 
         // Membresías de equipo — FDW read-only sobre odoo.public.v_dms_team_members.
         'team_members' => [
-            'host'     => env('FDW_TEAM_MEMBERS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port'     => env('FDW_TEAM_MEMBERS_PORT', '5432'),
+            'host' => env('FDW_TEAM_MEMBERS_HOST', env('DB_HOST', 'maya_infra_postgres')),
+            'port' => env('FDW_TEAM_MEMBERS_PORT', '5432'),
             'database' => env('FDW_TEAM_MEMBERS_DATABASE', 'odoo'),
             'username' => env('FDW_TEAM_MEMBERS_USERNAME', 'maya'),
             'password' => env('FDW_TEAM_MEMBERS_PASSWORD', 'secret'),
-            'schema'   => env('FDW_TEAM_MEMBERS_SCHEMA', 'public'),
-            'table'    => env('FDW_TEAM_MEMBERS_TABLE', 'v_dms_team_members'),
+            'schema' => env('FDW_TEAM_MEMBERS_SCHEMA', 'public'),
+            'table' => env('FDW_TEAM_MEMBERS_TABLE', 'v_dms_team_members'),
         ],
 
         // Permisos resueltos por usuario — FDW de solo lectura sobre
@@ -196,25 +198,25 @@ return [
         // de todas las apps para decidir acceso/redirect al portal).
         // Lectura vía `user_resolved_permissions` local (vista pass-through).
         'user_permissions' => [
-            'host'        => env('FDW_USER_PERMISSIONS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port'        => env('FDW_USER_PERMISSIONS_PORT', '5432'),
-            'database'    => env('FDW_USER_PERMISSIONS_DATABASE', 'maya_auth'),
-            'username'    => env('FDW_USER_PERMISSIONS_USERNAME', 'maya'),
-            'password'    => env('FDW_USER_PERMISSIONS_PASSWORD', 'secret'),
-            'schema'      => env('FDW_USER_PERMISSIONS_SCHEMA', 'public'),
+            'host' => env('FDW_USER_PERMISSIONS_HOST', env('DB_HOST', 'maya_infra_postgres')),
+            'port' => env('FDW_USER_PERMISSIONS_PORT', '5432'),
+            'database' => env('FDW_USER_PERMISSIONS_DATABASE', 'maya_auth'),
+            'username' => env('FDW_USER_PERMISSIONS_USERNAME', 'maya'),
+            'password' => env('FDW_USER_PERMISSIONS_PASSWORD', 'secret'),
+            'schema' => env('FDW_USER_PERMISSIONS_SCHEMA', 'public'),
             'remote_view' => env('FDW_USER_PERMISSIONS_REMOTE_VIEW', 'v_portal_user_permissions'),
         ],
 
         // Catálogo de permisos DMS — FDW de solo lectura sobre maya_auth.v_dms_permissions.
         // En local se apunta al mismo Postgres (BD maya_auth, usuario maya).
         'permissions' => [
-            'host'     => env('FDW_PERMISSIONS_HOST', env('DB_HOST', 'maya_infra_postgres')),
-            'port'     => env('FDW_PERMISSIONS_PORT', '5432'),
+            'host' => env('FDW_PERMISSIONS_HOST', env('DB_HOST', 'maya_infra_postgres')),
+            'port' => env('FDW_PERMISSIONS_PORT', '5432'),
             'database' => env('FDW_PERMISSIONS_DATABASE', 'maya_auth'),
             'username' => env('FDW_PERMISSIONS_USERNAME', 'maya'),
             'password' => env('FDW_PERMISSIONS_PASSWORD', 'secret'),
-            'schema'   => env('FDW_PERMISSIONS_SCHEMA', 'public'),
-            'table'    => env('FDW_PERMISSIONS_TABLE', 'v_dms_permissions'),
+            'schema' => env('FDW_PERMISSIONS_SCHEMA', 'public'),
+            'table' => env('FDW_PERMISSIONS_TABLE', 'v_dms_permissions'),
         ],
 
     ],

@@ -6,6 +6,7 @@ import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { blockEditorContent } from './documentWizardUtils';
 import { blockToUiState } from '../../templates/blockUiState';
 import type { SaveStatus } from '@ceedcv-maya/shared-hooks-react';
+import type { TiptapDoc } from '@ceedcv-maya/shared-editor-react';
 
 const BlockNoteEditorPanel = lazy(() =>
   import('../../templates/components/BlockNoteEditorPanel').then((m) => ({
@@ -27,7 +28,7 @@ interface Props {
   /** Llamado por el editor del bloque activo cuando cambia su contenido. */
   onContentChange: (content: unknown) => void;
   /** Forzar autoguardado al perder foco del editor (blur, HTML/MD, destroy). */
-  onFlush?: (payload?: unknown) => void | Promise<void>;
+  onFlush?: (payload?: string | TiptapDoc) => void | Promise<void>;
   /** Flush+sync imperativo del editor activo (antes de cambiar de bloque). */
   editorFlushRef?: MutableRefObject<(() => void | Promise<void>) | null>;
   uploadFile: (file: File) => Promise<string>;
@@ -47,6 +48,25 @@ interface Props {
 
 function keyOf(block: DocumentDisplayBlock): string {
   return block.document_block_id ?? block.template_block_id;
+}
+
+/**
+ * Tipos de bloque que NO se editan con el editor de texto inline. La portada
+ * (cover) se rellena en la vista por-bloques (canvas A4 + placeholders); índice
+ * y blank no llevan contenido editable. Alimentarlos al editor TipTap corrompería
+ * su `content` (p. ej. el JSON `cover-fill`), así que la vista continua los
+ * muestra como aviso de solo lectura que dirige a la vista por-bloques.
+ */
+const NON_INLINE_BLOCK_TYPES = new Set(['cover', 'index', 'blank']);
+
+function isInlineEditable(block: DocumentDisplayBlock): boolean {
+  return !NON_INLINE_BLOCK_TYPES.has(block.block_type ?? 'content');
+}
+
+function nonInlineLabel(blockType: string | undefined): string {
+  if (blockType === 'cover') return 'Esta portada se rellena en la vista por bloques.';
+  if (blockType === 'index') return 'El índice se genera automáticamente; configúralo en la vista por bloques.';
+  return 'Este bloque no tiene contenido editable.';
 }
 
 function SaveStatusBadge({ status }: { status: SaveStatus }) {
@@ -109,6 +129,8 @@ export function ContinuousDocumentEditor({
       if (!original) return undefined;
       const ui = blockToUiState(original);
       if (ui === 'locked' || !canEdit) return undefined;
+      // La portada/índice/blank no se editan con el editor de texto inline.
+      if (!isInlineEditable(original)) return undefined;
       return (
         <Suspense
           fallback={<div className="p-2 flex justify-center"><Spinner size="sm" /></div>}
@@ -253,16 +275,22 @@ export function ContinuousDocumentEditor({
           {/* Cuando el bloque es activo y editable, `body` es el editor; en otro caso es BlockContentHtml read-only. */}
           {isActive && body
             ? body
-            : (() => {
-                const nodes = blockEditorContent(original);
-                return nodes.length > 0 ? (
-                  <BlockContentHtml content={nodes} />
-                ) : (
+            : !isInlineEditable(original)
+              ? (
                   <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                    Sin contenido.
+                    {nonInlineLabel(original.block_type)}
                   </p>
-                );
-              })()}
+                )
+              : (() => {
+                  const nodes = blockEditorContent(original);
+                  return nodes.length > 0 ? (
+                    <BlockContentHtml content={nodes} />
+                  ) : (
+                    <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                      Sin contenido.
+                    </p>
+                  );
+                })()}
         </section>
       );
     },

@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\EntityVersion;
 
 /**
  * Datos mock de plantillas (programaciones didácticas reales del CEEDCV).
@@ -12,10 +13,9 @@ declare(strict_types=1);
  *
  * IDs de jerarquía académica reales de Odoo (ver maya_infra/odoo_db.sql, view v_dms_study_types).
  *
- * El número de versión publicada vive en {@see \App\Models\EntityVersion}; no se incluye aquí.
+ * El número de versión publicada vive en {@see EntityVersion}; no se incluye aquí.
  */
-
-$pack = require __DIR__ . '/programaciones_didacticas_pack.php';
+$pack = require __DIR__.'/programaciones_didacticas_pack.php';
 
 return [
     'templates' => $pack['templates'],

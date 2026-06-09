@@ -54,7 +54,7 @@ describe('blockUiState logic', () => {
       expect(BLOCK_UI_STATE_CONFIG.modifiable.badgeCls).toContain('info');
 
       expect(BLOCK_UI_STATE_CONFIG.optional.label).toBe('Opcional');
-      expect(BLOCK_UI_STATE_CONFIG.optional.badgeCls).toContain('purple');
+      expect(BLOCK_UI_STATE_CONFIG.optional.badgeCls).toContain('warning');
     });
   });
 });

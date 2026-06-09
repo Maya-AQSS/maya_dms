@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use App\Models\Template;
@@ -125,7 +127,6 @@ class TemplateVersionsSeeder extends Seeder
     }
 
     /**
-     * @param  mixed  $raw
      * @return list<array<string, mixed>>
      */
     private function normalizeBlocksSnapshot(mixed $raw): array

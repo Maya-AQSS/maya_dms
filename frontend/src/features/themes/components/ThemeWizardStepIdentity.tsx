@@ -1,7 +1,10 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FieldLabel, Select, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { useThemeFonts } from '../hooks/useThemeFonts';
+import { ThemeA4Preview } from './ThemeA4Preview';
 import type {
+  Theme,
   ThemeAccessibility,
   ThemeFontsCatalog,
   ThemePalette,
@@ -19,7 +22,14 @@ export interface ThemeIdentityValue {
 interface ThemeWizardStepIdentityProps {
   value: ThemeIdentityValue;
   onChange: (next: ThemeIdentityValue) => void;
+  /** Theme real (con layout) cuando ya existe; `null` en creación. Alimenta el preview A4. */
+  theme?: Theme | null;
 }
+
+const PREVIEW_PAGE_DEFAULT = {
+  size: 'A4' as const,
+  margin_cm: { top: 2, right: 2, bottom: 2, left: 2 },
+};
 
 const LANG_OPTION_KEYS = ['es', 'ca', 'en', 'fr'] as const;
 
@@ -33,9 +43,31 @@ const LANG_OPTION_KEYS = ['es', 'ca', 'en', 'fr'] as const;
 export function ThemeWizardStepIdentity({
   value,
   onChange,
+  theme = null,
 }: ThemeWizardStepIdentityProps) {
   const { t } = useTranslation('themes');
   const { catalog: fonts } = useThemeFonts();
+
+  // Theme sintético para el preview A4 en vivo: conserva el layout real (si existe)
+  // y refleja al instante la paleta/tipografía/nombre que se están editando.
+  const previewTheme = useMemo<Theme>(
+    () => ({
+      id: theme?.id ?? 'preview',
+      name: value.name,
+      description: value.description || null,
+      status: theme?.status ?? 'draft',
+      created_by: theme?.created_by ?? '',
+      team_id: theme?.team_id ?? null,
+      palette: value.palette,
+      typography: value.typography,
+      accessibility: value.accessibility,
+      layout: theme?.layout ?? { regions: [], page: PREVIEW_PAGE_DEFAULT },
+      cloned_from_id: theme?.cloned_from_id ?? null,
+      created_at: theme?.created_at ?? '',
+      updated_at: theme?.updated_at ?? '',
+    }),
+    [theme, value],
+  );
 
   const set = (patch: Partial<ThemeIdentityValue>) => onChange({ ...value, ...patch });
   const setPalette = (patch: Partial<ThemePalette>) =>
@@ -47,7 +79,8 @@ export function ThemeWizardStepIdentity({
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-4">
-      <div className="mx-auto max-w-4xl space-y-8 pb-8">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-8 pb-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0 space-y-8">
         <section className="space-y-3">
           <h2 className="text-base font-semibold">{t('identity.sections.general')}</h2>
 
@@ -163,6 +196,14 @@ export function ThemeWizardStepIdentity({
             {t('identity.fields.authorHint')}
           </p>
         </section>
+        </div>
+
+        <aside className="h-fit lg:sticky lg:top-4">
+          <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-text-muted dark:text-text-dark-muted">
+            {t('identity.previewLabel')}
+          </span>
+          <ThemeA4Preview theme={previewTheme} className="max-w-[260px]" />
+        </aside>
       </div>
     </div>
   );

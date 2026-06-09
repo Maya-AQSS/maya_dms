@@ -4,15 +4,12 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Observers\TemplateObserver;
-use Illuminate\Database\Eloquent\Attributes\ObservedBy;
-
 use App\Enums\TemplateVisibilityLevel;
 use App\Models\Concerns\HasCommentingStatus;
+use App\Observers\TemplateObserver;
 use App\Policies\TemplatePolicy;
 use App\Support\TemplateHeadSnapshot;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Date;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -21,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 

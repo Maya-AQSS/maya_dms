@@ -437,7 +437,7 @@ export async function downloadDocumentPdf(documentId: string, filename: string):
     } catch {
       /* keep statusText */
     }
-    throw new ApiHttpError(response.status, message);
+    throw new ApiHttpError(message, response.status);
   }
   const blob = await response.blob();
   const url = URL.createObjectURL(blob);

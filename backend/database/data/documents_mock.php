@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use App\Models\Document;
 
 /**
  * Documentos mock (programaciones didácticas reales del CEEDCV, curso 2025-26).
@@ -16,9 +17,8 @@ declare(strict_types=1);
  * `entity_version_id` en database/data/template_versions_mock.php).
  *
  * Versión actual, submitted_at y published_at se derivan de
- * {@see \App\Models\Document} y `entity_versions` / `document_reviews`.
+ * {@see Document} y `entity_versions` / `document_reviews`.
  */
-
-$pack = require __DIR__ . '/programaciones_didacticas_pack.php';
+$pack = require __DIR__.'/programaciones_didacticas_pack.php';
 
 return $pack['documents'];

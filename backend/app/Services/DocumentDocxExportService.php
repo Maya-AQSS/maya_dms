@@ -24,8 +24,8 @@ class DocumentDocxExportService
      * Exports a document's blocks as HTML-based .docx file.
      *
      * @return array<string, mixed> Array with keys: 'bin', 'filename'
-     *   - bin: binary content of the .docx file
-     *   - filename: suggested filename for download
+     *                              - bin: binary content of the .docx file
+     *                              - filename: suggested filename for download
      */
     public function exportToDocx(string $documentId): array
     {

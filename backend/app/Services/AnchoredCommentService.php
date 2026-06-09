@@ -7,6 +7,8 @@ namespace App\Services;
 use App\DTOs\AnchoredComment\AnchoredCommentDto;
 use App\Repositories\Contracts\AnchoredCommentRepositoryInterface;
 use App\Services\Contracts\AnchoredCommentServiceInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 class AnchoredCommentService implements AnchoredCommentServiceInterface
 {
     public function __construct(
@@ -34,7 +36,7 @@ class AnchoredCommentService implements AnchoredCommentServiceInterface
             }
 
             return $dto;
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+        } catch (ModelNotFoundException) {
             return null;
         }
     }

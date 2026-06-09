@@ -19,9 +19,9 @@ final class ReviewerAcademicScopeResolver
         private readonly AcademicHierarchyRepositoryInterface $academicHierarchyRepository,
     ) {}
 
-  /**
-   * @return ReviewerAcademicAssignmentScope|null null = sin filtro académico
-   */
+    /**
+     * @return ReviewerAcademicAssignmentScope|null null = sin filtro académico
+     */
     public function resolveFromFilter(ReviewerCandidateFilterDto $filter): ?ReviewerAcademicAssignmentScope
     {
         return $this->resolve(

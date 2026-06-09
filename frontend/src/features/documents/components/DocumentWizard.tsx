@@ -29,7 +29,6 @@ import {
   updateDocument,
   updateDocumentBlock,
   delegateDocument,
-  type DocumentReview,
 } from '../../../api/documents';
 import { DocumentMigrationStep } from './DocumentMigrationStep';
 import { concatTiptapContent } from '../lib/tiptapContentConcat';
@@ -50,14 +49,14 @@ import { useDocumentCommentsQuery } from '../hooks/useDocumentComments';
 import { useCompletedBlocks } from '../hooks/useCompletedBlocks';
 import { BlockCommentsCard } from '../../templates/components/BlockCommentsCard';
 import type { BlockComment } from '../../templates/components/BlockCommentsCard';
-import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates } from '../../../api/users';
+import { fetchMe, searchDocumentReviewerCandidates, searchOwnerCandidates, searchUsers } from '../../../api/users';
 import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-react';
 import {
   normalizeTiptapContentForPersistence,
   type TiptapDoc,
 } from '@ceedcv-maya/shared-editor-react';
 import { useDarkMode } from '@ceedcv-maya/shared-layout-react';
-import type { DocumentDetail, DocumentDisplayBlock, DocumentStatus } from '../../../types/documents';
+import type { DocumentDetail, DocumentDisplayBlock } from '../../../types/documents';
 import { useHierarchy } from '../../hierarchy';
 import type { Study, CourseModule } from '../../../types/hierarchy';
 import type { Template } from '../../../types/templates';
@@ -69,19 +68,19 @@ import {
   isUnresolvedEditableBlock,
   planDocumentBlockSave,
 } from '../lib/blockContentEquals';
-import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
+import { CoverFillEditor } from '../../templates/cover/CoverFillEditor';
 import { visibilityLabel } from '../../templates/constants';
 import {
   Button,
   ConfirmDialog,
   DatePicker,
-  ErrorBoundary,
   FieldLabel,
   Select,
   Spinner,
   TextInput,
 } from '@ceedcv-maya/shared-ui-react';
+import { ErrorBoundaryWrapper as ErrorBoundary } from '../../../components/ErrorBoundaryWrapper';
 import { SubmissionChangelogReadonly, VersionChangelogModal } from '../../../components/VersionChangelogModal';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
@@ -359,7 +358,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   const [validateConfirm, setValidateConfirm] = useState<null | 'approve' | 'reject'>(null);
   const [validationActionLoading, setValidationActionLoading] = useState(false);
   const [validationModalError, setValidationModalError] = useState<string | null>(null);
-  const [localContent, setLocalContent] = useState<unknown>(null);
+  const [, setLocalContent] = useState<unknown>(null);
   const [showDeleteBlockConfirm, setShowDeleteBlockConfirm] = useState(false);
   const [emptyEditableBlocksModal, setEmptyEditableBlocksModal] = useState<string[] | null>(null);
   const [processSubtitle, setProcessSubtitle] = useState<string | null>(null);
@@ -1069,12 +1068,12 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
   }, [forceSave]);
 
   const handleEditorFlush = useCallback(
-    async (payload?: string | TiptapDoc) => {
+    async (payload?: unknown) => {
       if (payload != null) {
         if (typeof payload === 'string') {
           applyLocalContent(payload);
         } else {
-          applyLocalContent(normalizeTiptapContentForPersistence(payload.content));
+          applyLocalContent(normalizeTiptapContentForPersistence((payload as TiptapDoc).content));
         }
       }
       await flushBlockSave();
@@ -2456,7 +2455,19 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                 )}
                 <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                   {blockViewTab === 'content' ? (
-                    canEditBlocks ? (
+                    activeBlock.block_type === 'cover' ? (
+                      <CoverFillEditor
+                        geometry={activeBlock.default_content}
+                        value={activeBlock.content}
+                        editable={canEditBlocks}
+                        onPersist={async (fill) => {
+                          const blockId = activeBlock.document_block_id;
+                          if (!documentId || !blockId) return;
+                          const saved = await updateDocumentBlock(documentId, blockId, fill);
+                          setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
+                        }}
+                      />
+                    ) : canEditBlocks ? (
                       <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
                         <div className="flex-1 min-h-0 p-6 flex flex-col">
                           <div className="relative flex-1 min-h-0 flex flex-col bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm overflow-hidden">

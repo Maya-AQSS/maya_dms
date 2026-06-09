@@ -27,10 +27,10 @@ class UserDirectoryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
-            'id'    => $this->resource['id'] ?? null,
-            'name'  => $this->resource['name'] ?? null,
+            'id' => $this->resource['id'] ?? null,
+            'name' => $this->resource['name'] ?? null,
             'email' => $this->resource['email'] ?? null,
-            'role'  => $this->resource['role'] ?? null,
+            'role' => $this->resource['role'] ?? null,
         ];
     }
 }

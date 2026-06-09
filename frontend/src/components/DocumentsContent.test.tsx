@@ -12,12 +12,11 @@ vi.mock('../api/users', () => ({
       id: 'usr_docs_test',
       email: null,
       name: null,
-      department: null,
       study_type_ids: [],
       study_ids: [],
       module_ids: [],
       team_ids: [],
-      permissions: ['documents.create', 'documents.read'],
+      permissions: ['document.index', 'document.create'],
       locale: 'es',
       source: 'fdw' as const,
     },
@@ -131,12 +130,11 @@ describe('DocumentsContent creation flow', () => {
         id: 'usr_docs_test',
         email: null,
         name: null,
-        department: null,
         study_type_ids: [],
         study_ids: [],
         module_ids: [],
         team_ids: [],
-        permissions: ['documents.create', 'documents.read'],
+        permissions: ['document.index', 'document.create'],
         locale: 'es',
         source: 'fdw',
       },
@@ -151,18 +149,17 @@ describe('DocumentsContent creation flow', () => {
     mockUseHierarchy.mockReturnValue({ hierarchy: [], loading: false, error: null });
   });
 
-  it('deshabilita nueva programación sin permiso documents.create', async () => {
+  it('deshabilita nueva programación sin permiso document.create', async () => {
     vi.mocked(fetchMe).mockResolvedValue({
       data: {
         id: 'usr_docs_test',
         email: null,
         name: null,
-        department: null,
         study_type_ids: [],
         study_ids: [],
         module_ids: [],
         team_ids: [],
-        permissions: ['documents.read'],
+        permissions: ['document.index'],
         locale: 'es',
         source: 'fdw',
       },
@@ -170,7 +167,7 @@ describe('DocumentsContent creation flow', () => {
     await renderWithProfile(<DocumentsContent />);
 
     await waitFor(() => {
-      expect(screen.getByText(/documents\.create/i)).toBeTruthy();
+      expect(screen.getByText(/document\.create/i)).toBeTruthy();
     });
     const button = screen.getByRole('button', { name: 'Nueva Programación' });
     expect(button).toHaveProperty('disabled', true);

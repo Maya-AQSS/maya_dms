@@ -18,11 +18,16 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, Spinner, TextInput } from '@ceedcv-maya/shared-ui-react';
+import { Button, ConfirmDialog, ErrorBoundary, FieldLabel, Select, Spinner, TextInput } from '@ceedcv-maya/shared-ui-react';
 import { BlockListItem } from '../../blocks-ui/BlockListItem';
-import type { TemplateBlock } from '../../../types/blocks';
+import type { TemplateBlock, BlockType } from '../../../types/blocks';
+import { BLOCK_TYPE_LABELS } from '../../../types/blocks';
 import type { Template } from '../../../types/templates';
 import { useTemplateBlocks } from '../hooks/useTemplateBlocks';
+import { usePublishedThemes } from '../../themes/hooks/usePublishedThemes';
+import { CoverDesignEditor } from '../cover/CoverDesignEditor';
+import { parseCoverContent } from '../cover/coverModel';
+import { IndexBlockEditor, parseIndexConfig } from './IndexBlockEditor';
 import { useCompletedBlocks } from '../../documents/hooks/useCompletedBlocks';
 import { useTemplateCommentsQuery, templateCommentsKey, type TemplateCommentsResponse } from '../hooks/useTemplateComments';
 import { type BlockUiState, BLOCK_UI_STATE_CONFIG, blockToUiState } from '../blockUiState';
@@ -33,7 +38,7 @@ import { useAutoSave, useFlushOnPageLeave } from '@ceedcv-maya/shared-hooks-reac
 import { apiFetchJson } from '../../../api/http';
 import { uploadMedia } from '../../../api/media';
 import { BlockCommentsCard, type BlockComment } from './BlockCommentsCard';
-import { getCommentsForBlock, countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
+import { countUnreadCommentsForBlock, resolveCommentBlockableId } from '../../../utils/blockComments';
 import { markCommentAsReadInTemplateCache, markCommentDeletedInTemplateCache } from '../../comments/commentCache';
 import { useUserProfile } from '../../user-profile';
 import { canCreateBlockComment, canDeleteBlockComment } from '../../../permissions';
@@ -253,6 +258,19 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   const [formContent, setFormContent] = useState('');
   const [meaningFullContent, setMeaningFullContent] = useState(false);
   const [formUiState, setFormUiState] = useState<BlockUiState>('editable');
+  const [formBlockType, setFormBlockType] = useState<BlockType>('content');
+  const [formPageBreakAfter, setFormPageBreakAfter] = useState(false);
+  const [formThemeId, setFormThemeId] = useState<string | null>(null);
+  const [formApplyTheme, setFormApplyTheme] = useState(true);
+  const { data: publishedThemes = [] } = usePublishedThemes();
+  // Tamaño de página físico para el editor de portada: del tema asignado al
+  // bloque (override) o, en su defecto, del tema de la plantilla. El render PDF
+  // usa exactamente este tamaño (pageSizes.ts es la única fuente de verdad).
+  const coverPageSize = useMemo(() => {
+    const themeId = formThemeId ?? template.theme_id ?? null;
+    const th = themeId ? publishedThemes.find((t) => t.id === themeId) : null;
+    return th?.layout?.page?.size ?? 'A4';
+  }, [formThemeId, template.theme_id, publishedThemes]);
   const [nameError, setNameError] = useState('');
   const [busy, setBusy] = useState(false);
   const [deleteModal, setDeleteModal] = useState(false);
@@ -288,6 +306,10 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
     setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
     setFormUiState(blockToUiState(block));
+    setFormBlockType(block.block_type ?? 'content');
+    setFormPageBreakAfter(Boolean(block.page_break_after));
+    setFormThemeId(block.theme_id ?? null);
+    setFormApplyTheme(block.apply_theme ?? true);
     setTabIsDirty(false);
   };
 
@@ -358,9 +380,14 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
       default_content: parsedContent,
       block_state,
       mandatory,
+      block_type: formBlockType,
+      page_break_after: formPageBreakAfter,
+      // apply_theme=false ⇒ el bloque no lleva tema; limpiamos el override.
+      apply_theme: formApplyTheme,
+      theme_id: formApplyTheme ? formThemeId : null,
     });
     setTabIsDirty(false);
-  }, [formName, formDesc, formContent, formUiState, updateBlock]);
+  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formThemeId, formApplyTheme, updateBlock]);
 
   const { saveStatus, triggerSave, forceSave } = useAutoSave(doSave, 1500);
 
@@ -368,7 +395,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
   useEffect(() => {
     if ((panelMode !== 'edit' && panelMode !== 'multi') || !activeSingleId || !tabIsDirty) return;
     triggerSave();
-  }, [formName, formDesc, formContent, formUiState, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [formName, formDesc, formContent, formUiState, formBlockType, formPageBreakAfter, formThemeId, formApplyTheme, tabIsDirty, panelMode, activeSingleId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Convenience wrapper used by saveIfPending and manual saves
   const saveCurrentTab = useCallback(async () => {
@@ -477,7 +504,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     },
   }));
 
-  const handleAddBlock = async (block?: Partial<{ name: string; description: string; content: any }>) => {
+  const handleAddBlock = async (block?: Partial<{ name: string; description: string; content: any; block_type: BlockType }>) => {
     // Block creation if the current block still has an invalid name.
     if (activeSingleId) {
       const nameErr = validateBlockName(formName);
@@ -505,6 +532,7 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
         title: block?.name ?? null,
         description: block?.description ?? null,
         type: 'paragraph',
+        block_type: block?.block_type ?? 'content',
         block_state,
         mandatory,
         default_content: block?.content ?? null,
@@ -987,6 +1015,67 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                         <FieldLabel>Estado</FieldLabel>
                         <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
                       </div>
+                      <div>
+                        <FieldLabel>Tipo de bloque</FieldLabel>
+                        <Select
+                          value={formBlockType}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                            setFormBlockType(e.target.value as BlockType);
+                            setTabIsDirty(true);
+                          }}
+                        >
+                          {(Object.keys(BLOCK_TYPE_LABELS) as BlockType[]).map((bt) => (
+                            <option key={bt} value={bt}>{BLOCK_TYPE_LABELS[bt]}</option>
+                          ))}
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="flex items-center gap-2 text-sm text-text-primary dark:text-text-dark-primary cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formPageBreakAfter}
+                            onChange={(e) => { setFormPageBreakAfter(e.target.checked); setTabIsDirty(true); }}
+                            className="h-4 w-4 rounded border-ui-border"
+                          />
+                          Salto de página tras este bloque
+                        </label>
+                        <p className="mt-1 text-xs text-text-muted">
+                          El siguiente bloque empezará en una página nueva al exportar a PDF.
+                        </p>
+                      </div>
+                      <div className="pt-2 border-t border-ui-border dark:border-ui-dark-border">
+                        <label className="flex items-center gap-2 text-sm text-text-primary dark:text-text-dark-primary cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formApplyTheme}
+                            onChange={(e) => { setFormApplyTheme(e.target.checked); setTabIsDirty(true); }}
+                            className="h-4 w-4 rounded border-ui-border"
+                          />
+                          Aplicar tema a este bloque
+                        </label>
+                        <p className="mt-1 text-xs text-text-muted">
+                          Si lo desactivas, el bloque no llevará ningún tema (ni estilo ni cabecera/pie) y ocupará su propia página.
+                        </p>
+                      </div>
+                      <div>
+                        <FieldLabel>Tema del bloque</FieldLabel>
+                        <Select
+                          value={formThemeId ?? ''}
+                          disabled={!formApplyTheme}
+                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                            setFormThemeId(e.target.value === '' ? null : e.target.value);
+                            setTabIsDirty(true);
+                          }}
+                        >
+                          <option value="">Tema por defecto de la plantilla</option>
+                          {publishedThemes.map((th) => (
+                            <option key={th.id} value={th.id}>{th.name}</option>
+                          ))}
+                        </Select>
+                        <p className="mt-1 text-xs text-text-muted">
+                          Por defecto hereda el tema de la plantilla. Puedes asignar un tema distinto solo a este bloque.
+                        </p>
+                      </div>
                       <p className="text-xs text-text-muted italic">
                         Se guarda automáticamente tras 1500 ms de inactividad o al cambiar de pestaña.
                       </p>
@@ -994,7 +1083,49 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   </div>
                 </div>
               )}
-              {activeTab === 'content' && (
+              {activeTab === 'content' && formBlockType === 'cover' && (
+                <ErrorBoundaryWrapper>
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-60">
+                        <div className="text-4xl mb-4">🖼</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para diseñar la portada.
+                        </p>
+                      </div>
+                    ) : (
+                      <CoverDesignEditor
+                        value={parseCoverContent((() => { try { return JSON.parse(formContent); } catch { return null; } })(), coverPageSize)}
+                        pageSize={coverPageSize}
+                        templateId={template.id}
+                        onChange={(next) => { setFormContent(JSON.stringify(next)); setTabIsDirty(true); }}
+                      />
+                    )}
+                  </div>
+                </ErrorBoundaryWrapper>
+              )}
+              {activeTab === 'content' && formBlockType === 'index' && (
+                <ErrorBoundaryWrapper>
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    {!formName.trim() ? (
+                      <div className="flex-1 flex flex-col items-center justify-center p-12 text-center opacity-60">
+                        <div className="text-4xl mb-4">📑</div>
+                        <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                          Asigna un nombre al bloque en "Propiedades" para configurar el índice.
+                        </p>
+                      </div>
+                    ) : (
+                      <IndexBlockEditor
+                        blocks={blocks}
+                        currentBlockId={activeSingleId}
+                        value={parseIndexConfig((() => { try { return JSON.parse(formContent); } catch { return null; } })())}
+                        onChange={(next) => { setFormContent(JSON.stringify(next)); setTabIsDirty(true); }}
+                      />
+                    )}
+                  </div>
+                </ErrorBoundaryWrapper>
+              )}
+              {activeTab === 'content' && formBlockType !== 'cover' && formBlockType !== 'index' && (
                 <ErrorBoundaryWrapper>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
                     {!formName.trim() ? (

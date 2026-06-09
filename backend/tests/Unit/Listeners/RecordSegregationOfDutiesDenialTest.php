@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Unit\Listeners;
 
 use App\Events\SodViolationDetected;
@@ -17,23 +19,23 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
         Event::fake([SodViolationDetected::class]);
 
         $user = new JwtUser([
-            'id'          => 'not-owner',
-            'email'       => null,
-            'name'        => null,
-            'department'  => null,
+            'id' => 'not-owner',
+            'email' => null,
+            'name' => null,
+            'department' => null,
             'permissions' => [],
-            'scope'       => '',
+            'scope' => '',
         ]);
 
         $document = new Document;
         $document->forceFill([
-            'id'         => 'doc-uuid-1',
+            'id' => 'doc-uuid-1',
             'created_by' => 'owner-1',
-            'owner_id'   => 'owner-1',
-            'status'     => 'draft',
+            'owner_id' => 'owner-1',
+            'status' => 'draft',
         ]);
 
-        $listener = new RecordSegregationOfDutiesDenial();
+        $listener = new RecordSegregationOfDutiesDenial;
         $listener->handle(new GateEvaluated($user, 'submit', false, [$document]));
 
         Event::assertDispatched(
@@ -42,10 +44,10 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
                 $payload = $event->toAuditPayload();
 
                 return $payload['applicationSlug'] === 'maya-dms'
-                    && $payload['entityType']      === 'document'
-                    && $payload['entityId']        === 'doc-uuid-1'
-                    && $payload['action']          === 'sod_violation'
-                    && $payload['userId']          === 'not-owner'
+                    && $payload['entityType'] === 'document'
+                    && $payload['entityId'] === 'doc-uuid-1'
+                    && $payload['action'] === 'sod_violation'
+                    && $payload['userId'] === 'not-owner'
                     && ($payload['newValue']['ability'] ?? null) === 'submit'
                     && ($payload['newValue']['reason'] ?? null) === 'segregation_of_duties';
             },
@@ -57,23 +59,23 @@ class RecordSegregationOfDutiesDenialTest extends TestCase
         Event::fake([SodViolationDetected::class]);
 
         $user = new JwtUser([
-            'id'          => 'reviewer',
-            'email'       => null,
-            'name'        => null,
-            'department'  => null,
+            'id' => 'reviewer',
+            'email' => null,
+            'name' => null,
+            'department' => null,
             'permissions' => [],
-            'scope'       => '',
+            'scope' => '',
         ]);
 
         $document = new Document;
         $document->forceFill([
-            'id'         => 'doc-1',
+            'id' => 'doc-1',
             'created_by' => 'other',
-            'owner_id'   => 'other',
-            'status'     => 'draft',
+            'owner_id' => 'other',
+            'status' => 'draft',
         ]);
 
-        $listener = new RecordSegregationOfDutiesDenial();
+        $listener = new RecordSegregationOfDutiesDenial;
         $listener->handle(new GateEvaluated($user, 'submit', true, [$document]));
 
         Event::assertNotDispatched(SodViolationDetected::class);

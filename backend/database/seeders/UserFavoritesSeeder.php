@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -35,10 +37,10 @@ class UserFavoritesSeeder extends Seeder
             if ($documents !== []) {
                 $rows = array_map(static function (array $row) use ($now): array {
                     return [
-                        'user_id'      => $row['user_id'],
-                        'document_id'  => $row['document_id'],
-                        'created_at'   => $now,
-                        'updated_at'   => $now,
+                        'user_id' => $row['user_id'],
+                        'document_id' => $row['document_id'],
+                        'created_at' => $now,
+                        'updated_at' => $now,
                     ];
                 }, $documents);
 

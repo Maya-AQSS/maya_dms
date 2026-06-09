@@ -6,14 +6,16 @@ namespace Tests\Unit\Services;
 
 use App\DTOs\Templates\SyncUsersDto;
 use App\Models\Template;
-use App\Repositories\Contracts\TemplateRepositoryInterface;
+use App\Repositories\Contracts\AcademicHierarchyRepositoryInterface;
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
+use App\Repositories\Contracts\TemplateRepositoryInterface;
 use App\Repositories\Contracts\UserDirectoryRepositoryInterface;
 use App\Services\ReviewerAcademicScopeResolver;
 use App\Services\TemplateReviewerAssignmentService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Mockery;
+use Mockery\MockInterface;
 use Tests\TestCase;
 
 /**
@@ -43,7 +45,7 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
      */
     private function makeTemplate(string $reviewMode = 'parallel', int $reviewStages = 0): Template
     {
-        /** @var Template&\Mockery\MockInterface $template */
+        /** @var Template&MockInterface $template */
         $template = Mockery::mock(Template::class)->makePartial();
         $template->shouldReceive('getAttribute')->with('review_mode')->andReturn($reviewMode);
         $template->shouldReceive('getAttribute')->with('review_stages')->andReturn($reviewStages);
@@ -63,8 +65,12 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         ?ReviewerAcademicScopeResolver $scopeResolver = null,
         ?UserDirectoryRepositoryInterface $userDirectoryRepository = null,
     ): TemplateReviewerAssignmentService {
-        $scopeResolver ??= Mockery::mock(ReviewerAcademicScopeResolver::class);
-        $scopeResolver->shouldReceive('resolve')->andReturnNull()->byDefault();
+        // ReviewerAcademicScopeResolver es `final` (no doblable por Mockery bajo
+        // type hint). Se instancia real: con visibilidad `personal`/`global` su
+        // `resolve()` devuelve null sin tocar el repositorio académico.
+        $scopeResolver ??= new ReviewerAcademicScopeResolver(
+            Mockery::mock(AcademicHierarchyRepositoryInterface::class),
+        );
 
         $userDirectoryRepository ??= Mockery::mock(UserDirectoryRepositoryInterface::class);
         $userDirectoryRepository->shouldReceive('filterUserIdsMatchingAcademicScope')->andReturn([])->byDefault();
@@ -150,7 +156,7 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
             ->andReturn(['template.show']); // no templates.review
 
         $service = $this->makeService($tmplRepo, $permRepo);
-        $dto     = new SyncUsersDto(userIds: ['user-a']);
+        $dto = new SyncUsersDto(userIds: ['user-a']);
 
         $this->expectException(ValidationException::class);
 
@@ -173,7 +179,7 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
         $permRepo->shouldNotReceive('findPermissionSlugsByUserId');
 
         $service = $this->makeService($tmplRepo, $permRepo);
-        $dto     = new SyncUsersDto(userIds: ['user-a', 'user-a']);
+        $dto = new SyncUsersDto(userIds: ['user-a', 'user-a']);
 
         $this->expectException(ValidationException::class);
 
@@ -199,7 +205,7 @@ final class TemplateReviewerAssignmentServiceTest extends TestCase
             ->andReturn(['document.show']); // no documents.review
 
         $service = $this->makeService($tmplRepo, $permRepo);
-        $dto     = new SyncUsersDto(userIds: ['user-a']);
+        $dto = new SyncUsersDto(userIds: ['user-a']);
 
         $this->expectException(ValidationException::class);
 

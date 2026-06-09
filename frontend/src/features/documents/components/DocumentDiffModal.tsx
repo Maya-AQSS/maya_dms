@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@ceedcv-maya/shared-ui-react';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
 import { documentBlockContentDiffersFromTemplateDefault } from '../lib/blockContentEquals';
+import { normalizeBlockContentForEditor } from '../lib/normalizeBlockContent';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 
 export function computeChangedBlocks(blocks: DocumentDisplayBlock[]): DocumentDisplayBlock[] {

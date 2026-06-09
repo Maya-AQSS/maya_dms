@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Repositories\Eloquent;
 
+use App\Constants\DocumentConstants;
 use App\DTOs\Themes\CreateThemeDto;
 use App\DTOs\Themes\ThemeDto;
+use App\DTOs\Themes\ThemeResolvedDto;
 use App\DTOs\Themes\UpdateThemeDto;
 use App\Models\Theme;
 use App\Repositories\Contracts\ThemeRepositoryInterface;
@@ -192,10 +194,8 @@ class ThemeRepository implements ThemeRepositoryInterface
      * Fetch resolved theme data for rendering by theme ID.
      * Returns theme assets and styling configuration as DTO.
      * Returns null if theme not found.
-     *
-     * @return \App\DTOs\Themes\ThemeResolvedDto|null
      */
-    public function findThemeResolvedById(string $id): ?\App\DTOs\Themes\ThemeResolvedDto
+    public function findThemeResolvedById(string $id): ?ThemeResolvedDto
     {
         $model = Theme::query()->find($id);
 
@@ -203,12 +203,29 @@ class ThemeRepository implements ThemeRepositoryInterface
             return null;
         }
 
-        return new \App\DTOs\Themes\ThemeResolvedDto(
+        return new ThemeResolvedDto(
             palette: (array) ($model->palette ?? []),
             typography: (array) ($model->typography ?? []),
             layout: (array) ($model->layout ?? []),
             accessibility: (array) ($model->accessibility ?? []),
             brandName: (string) ($model->name ?? 'CEEDCV'),
         );
+    }
+
+    public function findScopedThemesByIds(array $ids): array
+    {
+        if ($ids === []) {
+            return [];
+        }
+
+        return Theme::query()
+            ->whereIn('id', $ids)
+            ->get()
+            ->map(fn (Theme $t) => [
+                'id' => (string) $t->id,
+                'palette' => (array) ($t->palette ?? DocumentConstants::DEFAULT_THEME['palette']),
+                'typography' => (array) ($t->typography ?? DocumentConstants::DEFAULT_THEME['typography']),
+            ])
+            ->all();
     }
 }

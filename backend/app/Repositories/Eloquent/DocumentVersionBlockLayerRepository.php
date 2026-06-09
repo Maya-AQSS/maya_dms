@@ -45,9 +45,6 @@ class DocumentVersionBlockLayerRepository implements DocumentVersionBlockLayerRe
             ->first();
     }
 
-    /**
-     * @return DocumentVersionBlockLayerDto|null
-     */
     public function findForVersionAndBlockAsDto(string $documentVersionId, string $documentBlockId): ?DocumentVersionBlockLayerDto
     {
         $layer = $this->findForVersionAndBlock($documentVersionId, $documentBlockId);

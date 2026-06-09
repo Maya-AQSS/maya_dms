@@ -24,6 +24,7 @@ final class AnchoredCommentApiTest extends TestCase
     use RefreshDatabase;
 
     private string $userId;
+
     private array $authHeaders;
 
     protected function setUp(): void
@@ -69,7 +70,7 @@ final class AnchoredCommentApiTest extends TestCase
     private function createDocument(string $createdBy, string $title = 'Test Doc'): string
     {
         $processId = Process::query()->value('id') ?? (string) Str::uuid();
-        if (!Process::query()->where('id', $processId)->exists()) {
+        if (! Process::query()->where('id', $processId)->exists()) {
             Process::query()->forceCreate([
                 'id' => $processId,
                 'name' => 'Test Process',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Repositories\Contracts\ResolvedPermissionReaderInterface;
@@ -74,7 +76,7 @@ class ResolvedPermissionReaderIntegrationTest extends TestCase
         $slugs = $reader->findPermissionSlugsByUserId(self::USER_WITHOUT_PERMISSIONS);
 
         $this->assertSame([], $slugs);
-        $this->assertFalse(Cache::has('user_permission_slugs:' . self::USER_WITHOUT_PERMISSIONS));
+        $this->assertFalse(Cache::has('user_permission_slugs:'.self::USER_WITHOUT_PERMISSIONS));
 
         $this->assertSame([], $reader->findPermissionSlugsByUserId(self::USER_WITHOUT_PERMISSIONS));
     }
@@ -90,13 +92,13 @@ class ResolvedPermissionReaderIntegrationTest extends TestCase
                 'audit.read',
                 'document.create',
                 'document.delete',
-                'document.show',
                 'document.review',
+                'document.show',
                 'document.update',
                 'template.create',
                 'template.delete',
-                'template.show',
                 'template.review',
+                'template.show',
                 'template.update',
             ],
             $slugs,
@@ -107,19 +109,19 @@ class ResolvedPermissionReaderIntegrationTest extends TestCase
     {
         $reader = app(ResolvedPermissionReaderInterface::class);
 
-        $this->assertNull(Cache::get('user_permission_slugs:' . self::USER_ESO));
+        $this->assertNull(Cache::get('user_permission_slugs:'.self::USER_ESO));
 
         $first = $reader->findPermissionSlugsByUserId(self::USER_ESO);
-        $this->assertNotNull(Cache::get('user_permission_slugs:' . self::USER_ESO));
+        $this->assertNotNull(Cache::get('user_permission_slugs:'.self::USER_ESO));
 
         $second = $reader->findPermissionSlugsByUserId(self::USER_ESO);
         $this->assertSame($first, $second);
 
         $reader->forgetCachedSlugsForUser(self::USER_ESO);
-        $this->assertNull(Cache::get('user_permission_slugs:' . self::USER_ESO));
+        $this->assertNull(Cache::get('user_permission_slugs:'.self::USER_ESO));
 
         $third = $reader->findPermissionSlugsByUserId(self::USER_ESO);
         $this->assertSame($first, $third);
-        $this->assertNotNull(Cache::get('user_permission_slugs:' . self::USER_ESO));
+        $this->assertNotNull(Cache::get('user_permission_slugs:'.self::USER_ESO));
     }
 }

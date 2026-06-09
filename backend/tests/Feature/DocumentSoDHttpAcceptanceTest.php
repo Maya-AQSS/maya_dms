@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Tests\Feature;
 
 use App\Models\Document;
@@ -7,11 +9,12 @@ use App\Models\DocumentBlock;
 use App\Models\DocumentShare;
 use App\Models\Template;
 use App\Models\TemplateBlock;
-use App\Models\TemplateReviewer;
+use App\Models\TemplateDocumentReviewer;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Maya\Auth\Contracts\JwksServiceInterface;
 use Maya\Messaging\Publishers\AuditPublisher;
-use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\Concerns\BuildsTestJwt;
 use Tests\TestCase;
 
@@ -63,11 +66,15 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
         // El submit valida que todos los bloques editables tienen contenido. Como el
         // documento se crea aquí sin pasar por la API, sembramos el document_block
         // ya rellenado para que el submit no falle por validación de bloques vacíos.
+        // Contenido Tiptap válido y distinto del default_content de la plantilla;
+        // si fuese igual (o vacío) el bloque se trataría como placeholder sin rellenar.
         DocumentBlock::query()->forceCreate([
             'id' => (string) Str::uuid(),
             'document_id' => $documentId,
             'template_block_id' => $templateBlockId,
-            'content' => ['text' => 'Contenido inicial'],
+            'content' => [
+                ['type' => 'paragraph', 'content' => [['type' => 'text', 'text' => 'Contenido rellenado por el titular']]],
+            ],
             'is_filled' => true,
             'sort_order' => 0,
             'last_edited_by' => $creatorId,
@@ -77,11 +84,23 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     }
 
     /**
+     * Concede `dms.login`, requerido por el grupo de rutas protegidas.
+     */
+    private function grantAppLogin(string $userId): void
+    {
+        DB::table('user_resolved_permissions')->insert([
+            'user_id' => $userId,
+            'permission_slug' => 'dms.login',
+        ]);
+    }
+
+    /**
      * El titular puede enviar a revisión su documento (HTTP 200).
      */
     public function test_owner_submit_own_document_returns_ok(): void
     {
         [$templateId, $documentId] = $this->seedTemplateAndDocument('creator-doc-uuid-01');
+        $this->grantAppLogin('creator-doc-uuid-01');
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-doc', 'creator-doc-uuid-01');
@@ -97,7 +116,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->postJson(
             "/api/v1/documents/{$documentId}/submit",
-            [],
+            ['changelog' => 'Envío a validación con changelog obligatorio.'],
             ['Authorization' => 'Bearer '.$token],
         )->assertOk()
             ->assertJsonPath('data.status', 'published');
@@ -155,6 +174,8 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'granted_by' => $ownerId,
         ]);
 
+        $this->grantAppLogin($sharedId);
+
         $auditPublisher = $this->mock(AuditPublisher::class);
         $auditPublisher->shouldReceive('publish')
             ->once()
@@ -206,6 +227,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
     {
         $creatorId = 'creator-tpl-uuid-02';
         [$templateId] = $this->seedTemplateAndDocument($creatorId);
+        $this->grantAppLogin($creatorId);
 
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-tpl', $creatorId);
@@ -261,6 +283,8 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'status' => 'draft',
         ]);
 
+        $this->grantAppLogin($ownerId);
+
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-sod-del', $ownerId);
 
@@ -275,7 +299,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->postJson(
             "/api/v1/documents/{$documentId}/submit",
-            [],
+            ['changelog' => 'Envío a validación con changelog obligatorio.'],
             ['Authorization' => 'Bearer '.$token],
         )->assertOk()
             ->assertJsonPath('data.status', 'published');
@@ -298,8 +322,9 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'review_stages' => 1,
             'review_mode' => 'sequential',
         ]);
-        TemplateReviewer::query()->forceCreate([
-            'id' => (string) Str::uuid(),
+        // Los revisores de DOCUMENTO viven en template_document_reviewers (no en
+        // template_reviewers, que valida la plantilla en sí).
+        TemplateDocumentReviewer::query()->forceCreate([
             'template_id' => $templateId,
             'user_id' => $reviewerId,
             'stage' => 1,
@@ -315,6 +340,8 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
             'status' => 'draft',
         ]);
 
+        $this->grantAppLogin($ownerId);
+
         [$privatePem, $publicPem] = $this->generateRsaKeyPairForTests();
         $token = $this->buildJwtForSub($privatePem, $publicPem, 'kid-with-reviewer', $ownerId);
 
@@ -329,7 +356,7 @@ class DocumentSoDHttpAcceptanceTest extends TestCase
 
         $this->postJson(
             "/api/v1/documents/{$documentId}/submit",
-            [],
+            ['changelog' => 'Envío a validación con changelog obligatorio.'],
             ['Authorization' => 'Bearer '.$token],
         )->assertOk()
             ->assertJsonPath('data.status', 'in_review');

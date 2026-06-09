@@ -48,7 +48,7 @@ final readonly class DocumentDto
         public ?int $latestPublishedVersionNumber,
         public ?string $latestPublishedTitle,
         public ?string $reviewMode,
-        public bool $isAssignedReviewer = false,
+        public bool $isAssignedReviewer,
         public ?array $reviewHistory,
         public ?string $submissionChangelog = null,
     ) {}

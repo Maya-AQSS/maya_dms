@@ -12,6 +12,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class StoreThemeRequest extends FormRequest
 {
     use SanitizesThemeLayout;
+
     public function authorize(): bool
     {
         return $this->user()->can('create', Theme::class);

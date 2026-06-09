@@ -126,7 +126,7 @@ export async function uploadThemeImage(
     } catch {
       /* keep statusText */
     }
-    throw new ApiHttpError(response.status, message);
+    throw new ApiHttpError(message, response.status);
   }
 
   return (await response.json()) as { data: { src: string; url: string } };

@@ -6,8 +6,42 @@ import type {
   TemplatesListResponse,
   TemplateVisibilityLevel,
 } from '../types/templates';
-import { apiFetchJson, apiGetJson } from './http';
+import { apiFetchJson, apiGetJson, buildApiUrl, getBearerToken, ApiHttpError } from './http';
 import { fetchAllPaginatedPages, normalizePaginatedResponse } from './paginatedList';
+
+/**
+ * POST /api/v1/templates/{id}/cover-images — multipart upload de imagen para un
+ * bloque de portada. Devuelve `src` (path interno para el render) + `url`
+ * (firmada, para mostrar en el editor). Fetch directo porque apiFetchJson
+ * serializa el body como JSON (no detecta FormData).
+ */
+export async function uploadCoverImage(
+  templateId: string,
+  file: File,
+): Promise<{ data: { src: string; url: string } }> {
+  const form = new FormData();
+  form.append('file', file);
+
+  const token = await getBearerToken();
+  const response = await fetch(buildApiUrl(`templates/${templateId}/cover-images`), {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    body: form,
+  });
+
+  if (!response.ok) {
+    let message = response.statusText;
+    try {
+      const body = (await response.json()) as { message?: string };
+      if (body?.message) message = body.message;
+    } catch {
+      /* keep statusText */
+    }
+    throw new ApiHttpError(message, response.status);
+  }
+
+  return (await response.json()) as { data: { src: string; url: string } };
+}
 
 export type { Template, TemplateListFilters, TemplatesListResponse } from '../types/templates';
 

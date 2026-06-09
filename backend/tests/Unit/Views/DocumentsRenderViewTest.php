@@ -80,10 +80,10 @@ class DocumentsRenderViewTest extends TestCase
                     ['id' => 'cs', 'type' => 'content_slot', 'grid' => ['x' => 1, 'y' => 4, 'w' => 10, 'h' => 44, 'z' => 1]],
                     // Texto en cabecera (col 0..6, fila 0..2).
                     ['id' => 't1', 'type' => 'text', 'grid' => ['x' => 0, 'y' => 0, 'w' => 6, 'h' => 2, 'z' => 2],
-                     'props' => ['text' => 'CEEDCV', 'size' => 10, 'color' => '#0b5394', 'align' => 'left']],
+                        'props' => ['text' => 'CEEDCV', 'size' => 10, 'color' => '#0b5394', 'align' => 'left']],
                     // Fecha en pie (col 0..3, fila 50..52).
                     ['id' => 'd1', 'type' => 'date', 'grid' => ['x' => 0, 'y' => 50, 'w' => 3, 'h' => 2, 'z' => 2],
-                     'props' => ['format' => 'short', 'align' => 'left']],
+                        'props' => ['format' => 'short', 'align' => 'left']],
                 ],
             ],
         ]);
@@ -145,7 +145,7 @@ class DocumentsRenderViewTest extends TestCase
             'layout' => [
                 'regions' => [
                     ['id' => 't1', 'type' => 'text', 'box' => ['x' => 10, 'y' => 20, 'w' => 60, 'h' => 12, 'z' => 2],
-                     'props' => ['text' => 'CEEDCV']],
+                        'props' => ['text' => 'CEEDCV']],
                 ],
             ],
         ]);
@@ -166,7 +166,7 @@ class DocumentsRenderViewTest extends TestCase
                 'regions' => [
                     // Sólo un texto, sin content_slot → mantenemos márgenes del theme.
                     ['id' => 't1', 'type' => 'text', 'grid' => ['x' => 0, 'y' => 0, 'w' => 6, 'h' => 2, 'z' => 1],
-                     'props' => ['text' => 'Hola']],
+                        'props' => ['text' => 'Hola']],
                 ],
             ],
         ]);
@@ -187,6 +187,65 @@ class DocumentsRenderViewTest extends TestCase
         $this->assertStringContainsString('<p>Texto <strong>bold</strong></p>', $html);
     }
 
+    public function test_scoped_themes_emit_per_theme_css_variables(): void
+    {
+        $html = View::make('documents.render', [
+            'document' => [
+                'id' => 'doc-1', 'title' => 'T', 'subject' => 'S', 'lang' => 'es',
+                'body_html' => '<section class="doc-block doc-block--content" data-theme-id="theme-x"><p>Hola</p></section>',
+            ],
+            'theme' => $this->baseTheme(),
+            'scoped_themes' => [
+                ['id' => 'theme-x', 'palette' => ['primary' => '#ff0000'], 'typography' => ['heading_font' => 'Georgia']],
+            ],
+        ])->render();
+
+        $this->assertStringContainsString('[data-theme-id="theme-x"]', $html);
+        $this->assertStringContainsString('--color-primary: #ff0000', $html);
+        $this->assertStringContainsString('--font-heading: Georgia', $html);
+    }
+
+    public function test_no_theme_block_gets_neutral_reset_and_named_page(): void
+    {
+        $html = $this->render(
+            $this->baseTheme(),
+            '<section class="doc-block doc-block--no-theme" data-theme-id="none"><p>Sin tema</p></section>',
+        );
+
+        $this->assertStringContainsString('[data-theme-id="none"]', $html);
+        $this->assertStringContainsString('@page no-theme', $html);
+        $this->assertStringContainsString('.doc-block--no-theme', $html);
+        $this->assertStringContainsString('page: no-theme', $html);
+    }
+
+    public function test_toc_css_and_weasyprint_target_counter_present_in_pdf_mode(): void
+    {
+        // Sin preview_mode → modo PDF (WeasyPrint): debe emitir target-counter.
+        $html = $this->render(
+            $this->baseTheme(),
+            '<nav class="doc-toc"><ul class="doc-toc__list"><li class="doc-toc__item doc-toc__item--h1">'
+            .'<a class="doc-toc__link" href="#doc-toc-1"><span class="doc-toc__text">X</span>'
+            .'<span class="doc-toc__page" data-target="#doc-toc-1"></span></a></li></ul></nav>',
+        );
+
+        $this->assertStringContainsString('.doc-toc__list', $html);
+        $this->assertStringContainsString('target-counter(attr(href), page)', $html);
+    }
+
+    public function test_cover_block_css_and_named_page_present(): void
+    {
+        $html = $this->render(
+            $this->baseTheme(),
+            '<section class="doc-block doc-block--cover"><div class="cover-el cover-el--text" style="position:absolute;left:1cm;top:2cm;">Portada</div></section>',
+        );
+
+        $this->assertStringContainsString('@page cover', $html);
+        $this->assertStringContainsString('.doc-block--cover', $html);
+        $this->assertStringContainsString('page: cover', $html);
+        // Counter del nº de página de portada.
+        $this->assertStringContainsString('.cover-pn::before { content: counter(page); }', $html);
+    }
+
     public function test_invalid_text_align_is_normalized(): void
     {
         $theme = $this->baseTheme([
@@ -194,7 +253,7 @@ class DocumentsRenderViewTest extends TestCase
                 'regions' => [
                     ['id' => 'cs', 'type' => 'content_slot', 'grid' => ['x' => 0, 'y' => 4, 'w' => 12, 'h' => 44]],
                     ['id' => 't', 'type' => 'text', 'grid' => ['x' => 0, 'y' => 0, 'w' => 4, 'h' => 2],
-                     'props' => ['text' => 'X', 'align' => 'evil-value']],
+                        'props' => ['text' => 'X', 'align' => 'evil-value']],
                 ],
             ],
         ]);

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +19,9 @@ use Maya\Platform\Database\PostgresFdwMigration;
 return new class extends Migration
 {
     private const VIEW_NAME = 'notification_rules';
+
     private const FDW_TABLE = 'notification_rules_fdw';
+
     private const FDW_SERVER = 'dashboard_server';
 
     private function isTestEnv(): bool

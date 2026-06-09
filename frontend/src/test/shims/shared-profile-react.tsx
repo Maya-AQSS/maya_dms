@@ -120,7 +120,7 @@ export function useUserProfile<TProfile extends BaseMeProfile = BaseMeProfile>()
   if (!ctx) {
     throw new Error('useUserProfile debe usarse dentro de UserProfileProvider');
   }
-  return ctx as UserProfileContextValue<TProfile>;
+  return ctx as unknown as UserProfileContextValue<TProfile>;
 }
 
 // ── Helpers de createProfileApi ─────────────────────────────────────────────

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 use App\Repositories\Contracts\TeamReadRepositoryInterface;
 use App\Services\TeamReadService;
 
@@ -74,4 +76,3 @@ it('delegates embeddable team to findVisibleTeamByIdForUser', function () {
 
     expect($this->service->embeddableTeam('g-1', 'user-123'))->toBe($expected);
 });
-

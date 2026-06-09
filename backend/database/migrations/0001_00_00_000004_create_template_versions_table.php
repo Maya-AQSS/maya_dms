@@ -1,5 +1,8 @@
 <?php
 
+declare(strict_types=1);
+
+use App\Models\EntityVersion;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -8,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
  * Función PostgreSQL compartida por tablas append-only (bloques, versiones de documento, entity_versions).
  *
  * Las tablas `template_versions` y el trigger homónimo se eliminaron del dominio; el historial canónico
- * de publicaciones de plantilla es {@see \App\Models\EntityVersion}.
+ * de publicaciones de plantilla es {@see EntityVersion}.
  */
 return new class extends Migration
 {

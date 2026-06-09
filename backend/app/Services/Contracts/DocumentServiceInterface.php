@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Services\Contracts;
 
+use App\DTOs\Documents\ApplyTemplateMigrationDto;
 use App\DTOs\Documents\BlockDisplayDto;
 use App\DTOs\Documents\BlockUpdateDto;
 use App\DTOs\Documents\CreateDocumentDto;
 use App\DTOs\Documents\DeleteDocumentBlockDto;
 use App\DTOs\Documents\DocumentDto;
-use App\DTOs\Documents\ApplyTemplateMigrationDto;
 use App\DTOs\Documents\DocumentFilterDto;
 use App\DTOs\Documents\DocumentMigrationPayloadDto;
 use App\DTOs\Documents\UpdateDocumentBlockDto;
@@ -197,7 +197,7 @@ interface DocumentServiceInterface
     /**
      * Listado paginado de documentos con filtros de dominio (ADR-C).
      *
-     * @param  callable(\Illuminate\Support\Collection<int, \App\Models\Document>): void|null  $beforeMap
+     * @param  callable(Collection<int, Document>): void|null  $beforeMap
      * @return PaginatedDto<DocumentDto>
      */
     public function paginate(

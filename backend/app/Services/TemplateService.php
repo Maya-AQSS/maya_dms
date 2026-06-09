@@ -473,11 +473,11 @@ class TemplateService implements TemplateServiceInterface
                 ? $publishedSnapshot['template']
                 : [];
 
-            $head->snapshot_data = $publishedSnapshot;
-            $head->status = 'published';
-            $head->changelog = null;
-            $head->updated_at = now();
-            $head->save();
+            $this->entityVersionRepository->update($head, [
+                'snapshot_data' => $publishedSnapshot,
+                'status' => 'published',
+                'changelog' => null,
+            ]);
 
             $this->restoreTemplateBlocksFromPublishedSnapshot($template, $publishedSnapshot);
             $this->restoreReviewersFromPublishedSnapshotIfPresent($template, $publishedSnapshot);
