@@ -61,9 +61,31 @@ export function CoverRegionPreview({
     case 'image': {
       const url = (p.srcUrl as string) || null;
       return (
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            opacity: (p.opacity as number) ?? 1,
+            // Solo el placeholder vacío muestra el recuadro guía; con imagen va
+            // a sangre para poder usarse como fondo de portada completa.
+            background: url ? undefined : 'rgba(0,0,0,0.03)',
+            border: url ? undefined : '1px solid rgba(0,0,0,0.08)',
+          }}
+        >
           {url ? (
-            <img src={url} alt={(p.alt as string) ?? ''} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            <img
+              src={url}
+              alt={(p.alt as string) ?? ''}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: ((p.objectFit as string) ?? 'contain') as CSSProperties['objectFit'],
+              }}
+            />
           ) : (
             <span style={{ fontSize: 11, color: '#9ca3af' }}>Imagen</span>
           )}

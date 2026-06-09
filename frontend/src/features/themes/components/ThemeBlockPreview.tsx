@@ -34,7 +34,7 @@ export function ThemeBlockPreview({ region }: { region: ThemeLayoutRegion }) {
       const url = (p.srcUrl as string) || null;
       return (
         <div
-          className="theme-grid-slot theme-grid-slot--image"
+          className={`theme-grid-slot theme-grid-slot--image${url ? '' : ' theme-grid-slot--image-empty'}`}
           style={{
             opacity: (p.opacity as number) ?? 1,
             transform: `rotate(${(p.rotate as number) ?? 0}deg)`,

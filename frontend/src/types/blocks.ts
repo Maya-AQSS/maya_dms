@@ -64,6 +64,21 @@ export const BLOCK_TYPE_LABELS: Record<BlockType, string> = {
   index: 'Índice',
 };
 
+/**
+ * Tipos de bloque "estructurales" que NO llevan cuerpo editable y, por tanto,
+ * están exentos de la invariante "los bloques bloqueados/modificables no pueden
+ * estar vacíos" (p. ej. la hoja en blanco está vacía por definición).
+ *
+ * Fuente única de verdad en frontend; el espejo en backend es
+ * `BlockType::requiresBodyContent()`. Para añadir un futuro tipo sin cuerpo,
+ * basta con incluirlo aquí (y en el enum del backend).
+ */
+const BODYLESS_BLOCK_TYPES: ReadonlySet<BlockType> = new Set<BlockType>(['cover', 'index', 'blank']);
+
+/** ¿Este tipo de bloque exige contenido predeterminado cuando está bloqueado/modificable? */
+export const blockTypeRequiresContent = (type?: BlockType | null): boolean =>
+  !BODYLESS_BLOCK_TYPES.has((type ?? 'content') as BlockType);
+
 export type BulkUpdateBlockPayload = {
   ids: string[];
   block_state?: BlockState;

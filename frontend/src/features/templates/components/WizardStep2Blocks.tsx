@@ -304,9 +304,16 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
     setFormName(block.title ?? '');
     setNameError('');
     setFormDesc(block.description ? (typeof block.description === 'string' ? block.description : JSON.stringify(block.description)) : '');
-    setFormContent(block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : '');
-    setFormUiState(blockToUiState(block));
-    setFormBlockType(block.block_type ?? 'content');
+    // Hoja en blanco: sin contenido y siempre bloqueada. Índice: siempre
+    // modificable (el redactor elige qué secciones entran).
+    const loadedType = block.block_type ?? 'content';
+    setFormContent(loadedType === 'blank' ? '' : (block.default_content ? (typeof block.default_content === 'string' ? block.default_content : JSON.stringify(block.default_content)) : ''));
+    setFormUiState(
+      loadedType === 'blank' ? 'locked'
+        : loadedType === 'index' ? 'modifiable'
+        : blockToUiState(block),
+    );
+    setFormBlockType(loadedType);
     setFormPageBreakAfter(Boolean(block.page_break_after));
     setFormThemeId(block.theme_id ?? null);
     setFormApplyTheme(block.apply_theme ?? true);
@@ -1013,14 +1020,38 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                       </div>
                       <div>
                         <FieldLabel>Estado</FieldLabel>
-                        <BlockUiStateToggle value={formUiState} onChange={s => { setFormUiState(s); setTabIsDirty(true); }} />
+                        <BlockUiStateToggle
+                          value={formUiState}
+                          disabled={formBlockType === 'blank' || formBlockType === 'index'}
+                          onChange={s => { setFormUiState(s); setTabIsDirty(true); }}
+                        />
+                        {formBlockType === 'blank' && (
+                          <p className="mt-1 text-xs text-text-muted">
+                            Una hoja en blanco siempre está bloqueada y no admite contenido.
+                          </p>
+                        )}
+                        {formBlockType === 'index' && (
+                          <p className="mt-1 text-xs text-text-muted">
+                            El índice siempre es modificable: el redactor elige qué secciones incluir.
+                          </p>
+                        )}
                       </div>
                       <div>
                         <FieldLabel>Tipo de bloque</FieldLabel>
                         <Select
                           value={formBlockType}
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            setFormBlockType(e.target.value as BlockType);
+                            const next = e.target.value as BlockType;
+                            setFormBlockType(next);
+                            // Hoja en blanco: sin contenido y bloqueada por definición.
+                            if (next === 'blank') {
+                              setFormUiState('locked');
+                              setFormContent('');
+                            }
+                            // Índice: siempre modificable (el redactor elige secciones).
+                            if (next === 'index') {
+                              setFormUiState('modifiable');
+                            }
                             setTabIsDirty(true);
                           }}
                         >
@@ -1125,7 +1156,18 @@ export const WizardStep2Blocks = React.forwardRef<WizardStep2BlocksHandle, Wizar
                   </div>
                 </ErrorBoundaryWrapper>
               )}
-              {activeTab === 'content' && formBlockType !== 'cover' && formBlockType !== 'index' && (
+              {activeTab === 'content' && formBlockType === 'blank' && (
+                <div className="flex-1 min-h-0 flex flex-col items-center justify-center p-12 text-center opacity-70">
+                  <div className="text-4xl mb-4">📄</div>
+                  <p className="text-sm font-bold uppercase tracking-widest text-text-secondary dark:text-text-dark-secondary">
+                    Hoja en blanco
+                  </p>
+                  <p className="mt-2 text-xs text-text-muted max-w-sm">
+                    Este bloque inserta una página vacía en el documento. No tiene contenido editable y permanece bloqueado.
+                  </p>
+                </div>
+              )}
+              {activeTab === 'content' && formBlockType !== 'cover' && formBlockType !== 'index' && formBlockType !== 'blank' && (
                 <ErrorBoundaryWrapper>
                   <div className="flex-1 min-h-0 p-6 flex flex-col">
                     {!formName.trim() ? (

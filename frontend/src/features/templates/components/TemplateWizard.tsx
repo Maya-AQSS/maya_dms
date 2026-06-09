@@ -7,7 +7,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { WizardShell, type WizardStepDef } from '../../../components/wizard/WizardShell';
 import type { Template } from '../../../types/templates';
 import type { ReviewMode } from '../../../types/templates';
-import type { TemplateBlock } from '../../../types/blocks';
+import { blockTypeRequiresContent, type TemplateBlock } from '../../../types/blocks';
 import {
   updateTemplate as apiUpdateTemplate,
   createTemplate as apiCreateTemplate,
@@ -198,11 +198,11 @@ export function TemplateWizard({ template: templateProp, initialTemplate, proces
       content === null || 
       (Array.isArray(content) && content.length === 0);
     const hasEmptyModifiable = blocksList.some(b =>
-      b.block_state === 'modifiable' && isEmpty(b.default_content)
+      b.block_state === 'modifiable' && isEmpty(b.default_content) && blockTypeRequiresContent(b.block_type)
     );
     if (hasEmptyModifiable) return 'Los bloques modificables no pueden estar vacíos: el contenido predeterminado es obligatorio.';
     const hasEmptyLocked = blocksList.some(b =>
-      b.block_state === 'locked' && isEmpty(b.default_content)
+      b.block_state === 'locked' && isEmpty(b.default_content) && blockTypeRequiresContent(b.block_type)
     );
     if (hasEmptyLocked) return 'Los bloques bloqueados no pueden estar vacíos.';
     return null;

@@ -69,7 +69,9 @@ import {
   planDocumentBlockSave,
 } from '../lib/blockContentEquals';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
+import { StructuralBlockPreview, isStructuralBlockType } from './StructuralBlockPreview';
 import { CoverFillEditor } from '../../templates/cover/CoverFillEditor';
+import { IndexFillEditor } from './IndexFillEditor';
 import { visibilityLabel } from '../../templates/constants';
 import {
   Button,
@@ -2457,6 +2459,7 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                   {blockViewTab === 'content' ? (
                     activeBlock.block_type === 'cover' ? (
                       <CoverFillEditor
+                        key={activeBlockKey ?? 'none'}
                         geometry={activeBlock.default_content}
                         value={activeBlock.content}
                         editable={canEditBlocks}
@@ -2467,6 +2470,33 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                           setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
                         }}
                       />
+                    ) : activeBlock.block_type === 'index' ? (
+                      canEditBlocks && activeBlock.block_state !== 'locked' && activeBlock.document_block_id ? (
+                        <IndexFillEditor
+                          key={activeBlockKey ?? 'none'}
+                          blocks={sortedBlocks.map((b) => ({
+                            id: b.template_block_id,
+                            title: b.title,
+                            block_type: b.block_type,
+                            content: b.content,
+                            default_content: b.default_content,
+                          }))}
+                          currentBlockId={activeBlock.template_block_id}
+                          value={activeBlock.content ?? activeBlock.default_content}
+                          onPersist={async (next) => {
+                            const blockId = activeBlock.document_block_id;
+                            if (!documentId || !blockId) return;
+                            const saved = await updateDocumentBlock(documentId, blockId, next);
+                            setDetail((prev) => (prev ? applyBlockSaveToDetail(prev, blockId, saved) : prev));
+                          }}
+                        />
+                      ) : (
+                        <div className="flex-1 overflow-y-auto p-6">
+                          <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6">
+                            <StructuralBlockPreview block={activeBlock} allBlocks={sortedBlocks} />
+                          </div>
+                        </div>
+                      )
                     ) : canEditBlocks ? (
                       <ErrorBoundary fallback={<div className="p-4 text-danger">Error al cargar el editor de contenido.</div>}>
                         <div className="flex-1 min-h-0 p-6 flex flex-col">
@@ -2501,6 +2531,9 @@ export function DocumentWizard({ documentId, templateId, mode = 'edit', sourceDo
                       <div className="flex-1 overflow-y-auto p-6">
                         <div className="bg-white dark:bg-ui-dark-card rounded-xl border border-ui-border dark:border-ui-dark-border shadow-sm p-6">
                           {(() => {
+                            if (isStructuralBlockType(activeBlock.block_type)) {
+                              return <StructuralBlockPreview block={activeBlock} allBlocks={sortedBlocks} />;
+                            }
                             const nodes = blockEditorContent(activeBlock);
                             const hasNodes = nodes.length > 0;
                             return hasNodes ? (

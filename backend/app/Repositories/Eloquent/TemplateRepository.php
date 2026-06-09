@@ -497,6 +497,10 @@ class TemplateRepository implements TemplateRepositoryInterface
                     'default_content' => $block->default_content,
                     'block_state' => $block->block_state,
                     'sort_order' => $block->sort_order,
+                    'block_type' => $block->block_type,
+                    'page_break_after' => $block->page_break_after,
+                    'theme_id' => $block->theme_id,
+                    'apply_theme' => $block->apply_theme,
                 ]);
             }
         });
@@ -533,6 +537,12 @@ class TemplateRepository implements TemplateRepositoryInterface
                         ? $block['block_state']
                         : 'editable',
                     'sort_order' => isset($block['sort_order']) ? (int) $block['sort_order'] : 0,
+                    'block_type' => isset($block['block_type']) && is_string($block['block_type'])
+                        ? $block['block_type']
+                        : 'content',
+                    'page_break_after' => (bool) ($block['page_break_after'] ?? false),
+                    'theme_id' => isset($block['theme_id']) && is_string($block['theme_id']) ? $block['theme_id'] : null,
+                    'apply_theme' => (bool) ($block['apply_theme'] ?? true),
                 ]);
             }
         });

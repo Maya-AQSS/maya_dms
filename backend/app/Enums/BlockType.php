@@ -25,4 +25,22 @@ enum BlockType: string
     {
         return array_map(fn (self $case) => $case->value, self::cases());
     }
+
+    /**
+     * ¿Este tipo de bloque lleva cuerpo editable cuyo vacío debe validarse?
+     *
+     * Los bloques estructurales (portada, índice, hoja en blanco) están exentos
+     * de la invariante "los bloques bloqueados/modificables no pueden estar
+     * vacíos": no tienen cuerpo Tiptap (la portada usa geometría, el índice se
+     * autogenera, la hoja en blanco está vacía por definición). Espejo de
+     * `blockTypeRequiresContent()` en el frontend. Para añadir un futuro tipo sin
+     * cuerpo, devuélvelo aquí como `false`.
+     */
+    public function requiresBodyContent(): bool
+    {
+        return match ($this) {
+            self::Cover, self::Index, self::Blank => false,
+            default => true,
+        };
+    }
 }

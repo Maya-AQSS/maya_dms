@@ -25,6 +25,27 @@ readonly class TemplateBlockPayloadDto
     ) {}
 
     /**
+     * Fuente ÚNICA de la forma de un bloque en snapshots de plantilla. Todos los
+     * builders de snapshot (publicación, envío a revisión, clonado) deben pasar
+     * por aquí para no volver a omitir `block_type`/maquetación.
+     */
+    public static function fromModel(\App\Models\TemplateBlock $b): self
+    {
+        return new self(
+            blockId: (string) $b->id,
+            title: (string) ($b->title ?? ''),
+            description: $b->description,
+            defaultContent: $b->default_content,
+            blockState: $b->block_state,
+            sortOrder: (int) $b->sort_order,
+            blockType: $b->block_type ?? 'content',
+            pageBreakAfter: (bool) $b->page_break_after,
+            themeId: $b->theme_id !== null ? (string) $b->theme_id : null,
+            applyTheme: (bool) ($b->apply_theme ?? true),
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toArray(): array

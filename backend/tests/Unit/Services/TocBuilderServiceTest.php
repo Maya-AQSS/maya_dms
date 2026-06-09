@@ -8,8 +8,11 @@ use App\Services\TocBuilderService;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Tests del TocBuilderService (índice híbrido): entradas por bloque seleccionado
- * + subentradas por encabezado (opcional), inyectadas en el bloque `index`.
+ * Tests del TocBuilderService. Modelo: las entradas del índice son los TÍTULOS
+ * INTERNOS (encabezados H1–H3) del contenido de TODOS los bloques (en orden del
+ * documento), NO el nombre del bloque. La config es una deny-list
+ * `{ kind:'index', excludedHeadings:[ "{blockId}#{idx}" ] }`; por defecto entran
+ * todos. La indentación se normaliza (el nivel más alto presente pasa a h1).
  */
 class TocBuilderServiceTest extends TestCase
 {
@@ -23,108 +26,111 @@ class TocBuilderServiceTest extends TestCase
         return '<section class="doc-block doc-block--'.$type.'" id="block-'.$id.'" data-block-type="'.$type.'">'.$inner.'</section>';
     }
 
+    /** @param array<string,mixed> $cfg */
+    private function indexBlock(string $id, array $cfg = []): array
+    {
+        return ['id' => $id, 'title' => 'Índice', 'block_type' => 'index', 'index_config' => ['kind' => 'index'] + $cfg];
+    }
+
+    private function contentBlock(string $id, string $title = 'Bloque'): array
+    {
+        return ['id' => $id, 'title' => $title, 'block_type' => 'content', 'index_config' => null];
+    }
+
     public function test_returns_html_unchanged_when_no_index_block(): void
     {
         $html = $this->section('a', 'content', '<h2>Intro</h2>');
-        $blocks = [['id' => 'a', 'title' => 'Intro', 'block_type' => 'content', 'index_config' => null]];
+        $blocks = [$this->contentBlock('a')];
 
         $this->assertSame($html, $this->svc()->build($html, $blocks));
     }
 
-    public function test_injects_block_entries_for_selected_blocks(): void
+    public function test_uses_internal_headings_of_all_blocks_not_names(): void
     {
         $html =
             $this->section('idx', 'index', '<h2>Índice</h2>').
-            $this->section('a', 'content', '<h2>Capítulo 1</h2>').
-            $this->section('b', 'content', '<h2>Capítulo 2</h2>');
+            $this->section('a', 'content', '<h2>Capítulo Uno</h2>').
+            $this->section('b', 'content', '<h2>Capítulo Dos</h2>');
         $blocks = [
-            ['id' => 'idx', 'title' => 'Índice', 'block_type' => 'index', 'index_config' => ['kind' => 'index', 'blockIds' => ['a', 'b'], 'includeHeadings' => false]],
-            ['id' => 'a', 'title' => 'Capítulo 1', 'block_type' => 'content', 'index_config' => null],
-            ['id' => 'b', 'title' => 'Capítulo 2', 'block_type' => 'content', 'index_config' => null],
+            $this->indexBlock('idx'),
+            ['id' => 'a', 'title' => 'NombreBloqueA', 'block_type' => 'content', 'index_config' => null],
+            ['id' => 'b', 'title' => 'NombreBloqueB', 'block_type' => 'content', 'index_config' => null],
         ];
 
         $out = $this->svc()->build($html, $blocks);
 
         $this->assertStringContainsString('class="doc-toc"', $out);
-        $this->assertStringContainsString('doc-toc__item--block', $out);
-        $this->assertStringContainsString('href="#block-a"', $out);
-        $this->assertStringContainsString('href="#block-b"', $out);
-        $this->assertStringContainsString('Capítulo 1', $out);
-        $this->assertStringContainsString('data-target="#block-a"', $out);
+        $this->assertStringContainsString('Capítulo Uno', $out);
+        $this->assertStringContainsString('Capítulo Dos', $out);
+        $this->assertStringNotContainsString('NombreBloqueA', $out);
+        $this->assertStringNotContainsString('href="#block-a"', $out);
+        $this->assertMatchesRegularExpression('/<h2 id="doc-toc-\d+">Capítulo Uno<\/h2>/', $out);
     }
 
-    public function test_defaults_to_all_content_blocks_when_no_block_ids(): void
+    public function test_excludes_headings_in_deny_list(): void
     {
         $html =
             $this->section('idx', 'index', '<h2>Índice</h2>').
-            $this->section('a', 'content', '<h2>Uno</h2>').
-            $this->section('cv', 'cover', '');
+            $this->section('a', 'content', '<h1>Principal</h1><h2>Oculto</h2>');
         $blocks = [
-            ['id' => 'idx', 'title' => 'Índice', 'block_type' => 'index', 'index_config' => ['kind' => 'index', 'blockIds' => [], 'includeHeadings' => false]],
-            ['id' => 'a', 'title' => 'Uno', 'block_type' => 'content', 'index_config' => null],
-            ['id' => 'cv', 'title' => 'Portada', 'block_type' => 'cover', 'index_config' => null],
+            // Excluye el 2º encabezado (idx 1) del bloque a.
+            $this->indexBlock('idx', ['excludedHeadings' => ['a#1']]),
+            $this->contentBlock('a'),
         ];
 
         $out = $this->svc()->build($html, $blocks);
 
-        // Por defecto entran los bloques de contenido, no la portada.
-        $this->assertStringContainsString('href="#block-a"', $out);
-        $this->assertStringNotContainsString('href="#block-cv"', $out);
+        $this->assertStringContainsString('doc-toc__text">Principal', $out);
+        $this->assertStringNotContainsString('doc-toc__text">Oculto', $out);
     }
 
-    public function test_include_headings_adds_subentries(): void
+    public function test_block_without_internal_headings_contributes_nothing(): void
     {
         $html =
             $this->section('idx', 'index', '<h2>Índice</h2>').
-            $this->section('a', 'content', '<h1>Sección</h1><h2>Subsección</h2>');
+            $this->section('a', 'content', '<p>Solo párrafos.</p>');
+        $blocks = [$this->indexBlock('idx'), $this->contentBlock('a')];
+
+        $out = $this->svc()->build($html, $blocks);
+
+        // Sin encabezados internos no se construye nav y el HTML vuelve intacto.
+        $this->assertStringNotContainsString('class="doc-toc"', $out);
+    }
+
+    public function test_respects_document_order_and_excludes_self(): void
+    {
+        $html =
+            $this->section('b', 'content', '<h2>Capítulo B</h2>').
+            $this->section('idx', 'index', '<h2>Índice propio</h2>').
+            $this->section('a', 'content', '<h2>Capítulo A</h2>');
         $blocks = [
-            ['id' => 'idx', 'title' => 'Índice', 'block_type' => 'index', 'index_config' => ['kind' => 'index', 'blockIds' => ['a'], 'includeHeadings' => true]],
-            ['id' => 'a', 'title' => 'Bloque A', 'block_type' => 'content', 'index_config' => null],
+            $this->contentBlock('b'),
+            $this->indexBlock('idx'),
+            $this->contentBlock('a'),
         ];
 
         $out = $this->svc()->build($html, $blocks);
 
-        // Entrada de bloque + subentradas de encabezado.
-        $this->assertStringContainsString('href="#block-a"', $out);
-        $this->assertStringContainsString('doc-toc__item--h1', $out);
-        $this->assertStringContainsString('Sección', $out);
-        $this->assertStringContainsString('Subsección', $out);
-        // Los encabezados reciben id para anclarse.
-        $this->assertMatchesRegularExpression('/<h1 id="doc-toc-\d+">Sección<\/h1>/', $out);
-    }
-
-    public function test_headings_not_added_when_include_headings_false(): void
-    {
-        $html =
-            $this->section('idx', 'index', '<h2>Índice</h2>').
-            $this->section('a', 'content', '<h1>Sección</h1>');
-        $blocks = [
-            ['id' => 'idx', 'title' => 'Índice', 'block_type' => 'index', 'index_config' => ['kind' => 'index', 'blockIds' => ['a'], 'includeHeadings' => false]],
-            ['id' => 'a', 'title' => 'Bloque A', 'block_type' => 'content', 'index_config' => null],
-        ];
-
-        $out = $this->svc()->build($html, $blocks);
-
-        $this->assertStringNotContainsString('doc-toc__item--h1', $out);
-    }
-
-    public function test_index_does_not_reference_itself_and_respects_order(): void
-    {
-        $html =
-            $this->section('b', 'content', '<h2>B</h2>').
-            $this->section('idx', 'index', '<h2>Índice</h2>').
-            $this->section('a', 'content', '<h2>A</h2>');
-        $blocks = [
-            ['id' => 'b', 'title' => 'B', 'block_type' => 'content', 'index_config' => null],
-            ['id' => 'idx', 'title' => 'Índice', 'block_type' => 'index', 'index_config' => ['kind' => 'index', 'blockIds' => ['a', 'idx', 'b'], 'includeHeadings' => false]],
-            ['id' => 'a', 'title' => 'A', 'block_type' => 'content', 'index_config' => null],
-        ];
-
-        $out = $this->svc()->build($html, $blocks);
-
-        // No se referencia a sí mismo.
-        $this->assertStringNotContainsString('href="#block-idx"', $out);
         // Orden del documento: B (pos 0) antes que A (pos 2).
-        $this->assertLessThan(strpos($out, 'href="#block-a"'), strpos($out, 'href="#block-b"'));
+        $this->assertLessThan(
+            strpos($out, 'doc-toc__text">Capítulo A'),
+            strpos($out, 'doc-toc__text">Capítulo B'),
+        );
+        // El índice no se incluye a sí mismo: solo 2 entradas.
+        $this->assertSame(2, substr_count($out, 'doc-toc__link'));
+    }
+
+    public function test_normalizes_indentation_to_h1(): void
+    {
+        // Todos los encabezados son H2 → tras normalizar el más alto pasa a h1.
+        $html =
+            $this->section('idx', 'index', '<h2>Índice</h2>').
+            $this->section('a', 'content', '<h2>Solo H2</h2>');
+        $blocks = [$this->indexBlock('idx'), $this->contentBlock('a')];
+
+        $out = $this->svc()->build($html, $blocks);
+
+        $this->assertStringContainsString('doc-toc__item--h1', $out);
+        $this->assertStringNotContainsString('doc-toc__item--h2', $out);
     }
 }

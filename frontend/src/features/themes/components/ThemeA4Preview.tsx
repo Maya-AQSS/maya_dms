@@ -137,12 +137,14 @@ export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
                 width: rect.width,
                 height: rect.height,
                 zIndex: rect.z,
-                backgroundColor: style.bg,
-                border: style.border,
+                // Imagen a sangre: sin recuadro ni padding para que pueda usarse
+                // como fondo de página completa, igual que en el PDF.
+                backgroundColor: isImage ? undefined : style.bg,
+                border: isImage ? undefined : style.border,
                 color: style.textColor,
                 fontSize: '6px',
                 lineHeight: 1.1,
-                padding: '2px',
+                padding: isImage ? 0 : '2px',
               }}
               title={`${style.label} (${region.type})`}
             >
@@ -150,8 +152,9 @@ export function ThemeA4Preview({ theme, className }: ThemeA4PreviewProps) {
                 <img
                   src={imageUrl}
                   alt=""
-                  className="max-h-full max-w-full"
                   style={{
+                    width: '100%',
+                    height: '100%',
                     objectFit: ((p.objectFit as string) ?? 'contain') as React.CSSProperties['objectFit'],
                   }}
                 />

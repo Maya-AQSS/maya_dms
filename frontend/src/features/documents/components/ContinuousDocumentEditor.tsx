@@ -3,6 +3,7 @@ import { Spinner } from '@ceedcv-maya/shared-ui-react';
 import type { DocumentDisplayBlock } from '../../../types/documents';
 import { PaperBlocksArticle, type PaperArticleBlock } from './PaperBlocksArticle';
 import { BlockContentHtml } from '../../templates/components/BlockContentHtml';
+import { StructuralBlockPreview, isStructuralBlockType } from './StructuralBlockPreview';
 import { blockEditorContent } from './documentWizardUtils';
 import { blockToUiState } from '../../templates/blockUiState';
 import type { SaveStatus } from '@ceedcv-maya/shared-hooks-react';
@@ -277,9 +278,13 @@ export function ContinuousDocumentEditor({
             ? body
             : !isInlineEditable(original)
               ? (
-                  <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
-                    {nonInlineLabel(original.block_type)}
-                  </p>
+                  isStructuralBlockType(original.block_type)
+                    ? <StructuralBlockPreview block={original} allBlocks={blocks} />
+                    : (
+                        <p className="text-sm text-text-muted dark:text-text-dark-muted italic">
+                          {nonInlineLabel(original.block_type)}
+                        </p>
+                      )
                 )
               : (() => {
                   const nodes = blockEditorContent(original);
@@ -297,6 +302,7 @@ export function ContinuousDocumentEditor({
     [
       activeBlockKey,
       blockByKey,
+      blocks,
       canEdit,
       getCommentCount,
       isBlockCompleted,
