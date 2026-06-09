@@ -9,10 +9,13 @@ use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 #[ObservedBy(ProcessObserver::class)]
 class Process extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'processes';
 
     public $incrementing = false;

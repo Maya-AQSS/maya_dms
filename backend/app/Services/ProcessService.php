@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services;
 
 use App\DTOs\Processes\CreateProcessDto;
+use App\DTOs\Processes\ProcessDeletionPreviewDto;
 use App\DTOs\Processes\ProcessDto;
 use App\DTOs\Processes\UpdateProcessDto;
 use App\Models\Process;
@@ -62,12 +63,19 @@ class ProcessService implements ProcessServiceInterface
     {
         $this->findOrFail($id);
 
-        if ($this->repository->hasDependents($id)) {
+        if ($this->repository->hasSubprocesses($id)) {
             throw new ConflictHttpException(
-                'No se puede eliminar un proceso con subprocesos, plantillas o documentos asociados.',
+                'No se puede eliminar un proceso con subprocesos. Elimina o reubica primero sus subprocesos.',
             );
         }
 
         $this->repository->delete($id);
+    }
+
+    public function deletionPreview(string $id): ProcessDeletionPreviewDto
+    {
+        $this->findOrFail($id);
+
+        return ProcessDeletionPreviewDto::fromArray($this->repository->deletionCounts($id));
     }
 }

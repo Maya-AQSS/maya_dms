@@ -49,6 +49,37 @@ function insertProcess(string $code = 'PX01', ?string $parentId = null): string
     return $id;
 }
 
+/**
+ * Inserta una plantilla mínima (sin cabezal) anclada al proceso. Suficiente para
+ * verificar conteo y cascada de soft delete sin construir el snapshot completo.
+ */
+function insertTemplate(string $processId): string
+{
+    $id = (string) Str::uuid();
+    DB::table('templates')->insert([
+        'id' => $id,
+        'process_id' => $processId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return $id;
+}
+
+function insertDocument(string $processId, string $templateId): string
+{
+    $id = (string) Str::uuid();
+    DB::table('documents')->insert([
+        'id' => $id,
+        'process_id' => $processId,
+        'template_id' => $templateId,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    return $id;
+}
+
 // ─── store (POST) ─────────────────────────────────────────────────────────────
 
 it('store returns 201 with the created process', function () {
@@ -174,12 +205,46 @@ it('destroy returns 404 for non-existent process', function () {
     $this->deleteJson('/api/v1/processes/'.Str::uuid())->assertNotFound();
 });
 
-it('destroy returns 204 for a process with no dependents', function () {
+it('destroy soft-deletes a process with no dependents', function () {
     $id = insertProcess('PDEL01');
 
     $this->deleteJson("/api/v1/processes/{$id}")->assertNoContent();
 
-    $this->assertDatabaseMissing('processes', ['id' => $id]);
+    $this->assertSoftDeleted('processes', ['id' => $id]);
+});
+
+it('destroy cascades soft-delete to the process templates and documents', function () {
+    $processId = insertProcess('PCASC01');
+    $templateId = insertTemplate($processId);
+    $documentId = insertDocument($processId, $templateId);
+
+    $this->deleteJson("/api/v1/processes/{$processId}")->assertNoContent();
+
+    $this->assertSoftDeleted('processes', ['id' => $processId]);
+    $this->assertSoftDeleted('templates', ['id' => $templateId]);
+    $this->assertSoftDeleted('documents', ['id' => $documentId]);
+});
+
+it('deletion-preview returns the count of affected dependents', function () {
+    $processId = insertProcess('PPREV01');
+    $templateId = insertTemplate($processId);
+    insertTemplate($processId);
+    insertDocument($processId, $templateId);
+
+    $this->getJson("/api/v1/processes/{$processId}/deletion-preview")
+        ->assertOk()
+        ->assertJsonPath('data.templates_count', 2)
+        ->assertJsonPath('data.documents_count', 1)
+        ->assertJsonPath('data.subprocess_count', 0);
+});
+
+it('deletion-preview counts subprocesses', function () {
+    $parentId = insertProcess('PPREV_PARENT');
+    insertProcess('PPREV_CHILD', $parentId);
+
+    $this->getJson("/api/v1/processes/{$parentId}/deletion-preview")
+        ->assertOk()
+        ->assertJsonPath('data.subprocess_count', 1);
 });
 
 it('destroy returns 409 when process has child processes', function () {

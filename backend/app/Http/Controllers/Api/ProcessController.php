@@ -10,6 +10,7 @@ use App\Http\Requests\Processes\IndexProcessRequest;
 use App\Http\Requests\Processes\ShowProcessRequest;
 use App\Http\Requests\Processes\StoreProcessRequest;
 use App\Http\Requests\Processes\UpdateProcessRequest;
+use App\Http\Resources\ProcessDeletionPreviewResource;
 use App\Http\Resources\ProcessResource;
 use App\Services\Contracts\ProcessServiceInterface;
 use Illuminate\Http\JsonResponse;
@@ -44,6 +45,11 @@ class ProcessController extends Controller
     public function update(UpdateProcessRequest $request, string $process): ProcessResource
     {
         return new ProcessResource($this->processService->update($process, $request->toDto()));
+    }
+
+    public function deletionPreview(DestroyProcessRequest $request, string $process): ProcessDeletionPreviewResource
+    {
+        return new ProcessDeletionPreviewResource($this->processService->deletionPreview($process));
     }
 
     public function destroy(DestroyProcessRequest $request, string $process): Response
