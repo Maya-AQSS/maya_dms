@@ -23,7 +23,7 @@ final class ProcessObserver extends AbstractAuditableModelObserver
     /** @return list<string> */
     protected function auditTemporalKeys(): array
     {
-        return ['created_at', 'updated_at'];
+        return ['created_at', 'updated_at', 'deleted_at'];
     }
 
     protected function resolveAuditUserId(Model $model): string

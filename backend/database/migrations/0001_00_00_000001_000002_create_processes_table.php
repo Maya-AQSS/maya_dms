@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('icon', 40)->nullable();
             $table->string('color', 7)->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index('process_parent_id');
         });
