@@ -136,3 +136,19 @@ it('allows process delete with process.delete when no dependents', function () {
 
     $this->deleteJson("/api/v1/processes/{$id}")->assertNoContent();
 });
+
+it('denies deletion-preview without process.delete', function () {
+    grantProcessPermission('process.show');
+    $id = insertTestProcess('PX09');
+
+    $this->getJson("/api/v1/processes/{$id}/deletion-preview")->assertForbidden();
+});
+
+it('allows deletion-preview with process.delete', function () {
+    grantProcessPermission('process.delete');
+    $id = insertTestProcess('PX10');
+
+    $this->getJson("/api/v1/processes/{$id}/deletion-preview")
+        ->assertOk()
+        ->assertJsonStructure(['data' => ['templates_count', 'documents_count', 'subprocess_count']]);
+});
